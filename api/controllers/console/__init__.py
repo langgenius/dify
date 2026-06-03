@@ -51,6 +51,8 @@ from .agent import roster as agent_roster
 from .app import (
     advanced_prompt_template,
     agent,
+    agent_app_access,
+    agent_app_feature,
     annotation,
     app,
     audio,
@@ -147,6 +149,8 @@ __all__ = [
     "activate",
     "advanced_prompt_template",
     "agent",
+    "agent_app_access",
+    "agent_app_feature",
     "agent_composer",
     "agent_providers",
     "agent_roster",

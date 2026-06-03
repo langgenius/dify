@@ -10,10 +10,12 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     edit_permission_required,
     setup_required,
+    with_current_user,
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models.account import Account
 from models.model import App
 from services.app_dsl_service import (
     IMPORT_INFO_REDIS_KEY_PREFIX,
@@ -56,7 +58,8 @@ class AppImportApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         # Check user role first
         current_user, current_tenant_id = current_account_with_tenant()
         args = AppImportPayload.model_validate(console_ns.payload)
@@ -117,7 +120,8 @@ class AppImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, import_id: str):
+    @with_current_user
+    def post(self, current_user: Account, import_id: str):
         # Check user role first
         current_user, current_tenant_id = current_account_with_tenant()
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"

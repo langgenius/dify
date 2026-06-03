@@ -2,54 +2,38 @@
 
 import type { RefObject } from 'react'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { useGotoAnythingOpen, useSetGotoAnythingOpen } from '../atoms'
 
 type UseGotoAnythingModalReturn = {
-  show: boolean
-  setShow: (show: boolean | ((prev: boolean) => boolean)) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   inputRef: RefObject<HTMLInputElement | null>
-  handleClose: () => void
 }
 
 export const useGotoAnythingModal = (): UseGotoAnythingModalReturn => {
-  const [show, setShow] = useState<boolean>(false)
+  const open = useGotoAnythingOpen()
+  const setOpen = useSetGotoAnythingOpen()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Handle keyboard shortcuts
-  const handleToggleModal = useCallback((e: KeyboardEvent) => {
+  useHotkey('Mod+K', (e) => {
     e.preventDefault()
-    setShow(prev => !prev)
-  }, [])
-
-  useHotkey('Mod+K', handleToggleModal, {
-    ignoreInputs: !show,
-  })
-
-  useHotkey('Escape', (e) => {
-    e.preventDefault()
-    setShow(false)
+    setOpen(prev => !prev)
   }, {
-    enabled: show,
-    ignoreInputs: false,
+    ignoreInputs: !open,
   })
 
-  const handleClose = useCallback(() => {
-    setShow(false)
-  }, [])
-
-  // Focus input when modal opens
   useEffect(() => {
-    if (show) {
+    if (open) {
       requestAnimationFrame(() => {
         inputRef.current?.focus()
       })
     }
-  }, [show])
+  }, [open])
 
   return {
-    show,
-    setShow,
+    open,
+    onOpenChange: setOpen,
     inputRef,
-    handleClose,
   }
 }

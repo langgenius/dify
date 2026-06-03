@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import {
@@ -42,6 +43,7 @@ export const useImportDSL = () => {
   const { push } = useRouter()
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
   const handleImportDSL = useCallback(async (
     payload: DSLPayload,
@@ -85,7 +87,7 @@ export const useImportDSL = () => {
         else
           toast.warning(message, { description })
         onSuccess?.(response)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        setNeedRefresh('1')
         await handleCheckPluginDependencies(app_id)
         getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
       }
@@ -136,7 +138,7 @@ export const useImportDSL = () => {
         onSuccess?.(response)
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        setNeedRefresh('1')
         getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
       }
       else if (status === DSLImportStatus.FAILED) {

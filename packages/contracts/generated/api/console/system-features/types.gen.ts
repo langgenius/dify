@@ -5,7 +5,6 @@ export type ClientOptions = {
 }
 
 export type SystemFeatureModel = {
-  app_dsl_version: string
   branding: BrandingModel
   enable_change_email: boolean
   enable_collaboration_mode: boolean
@@ -23,9 +22,9 @@ export type SystemFeatureModel = {
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel
+  rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
-  trial_models: Array<string>
   webapp_auth: WebAppAuthModel
 }
 

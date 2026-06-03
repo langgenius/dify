@@ -7,8 +7,8 @@ import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/i
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { updateCurrentWorkspace } from '@/service/common'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { hasPermission } from '@/utils/permission'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024

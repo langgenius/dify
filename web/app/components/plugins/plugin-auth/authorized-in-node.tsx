@@ -36,7 +36,7 @@ const AuthorizedInNode = ({
     credentials,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
-  } = usePluginAuth(pluginPayload, true)
+  } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
   const renderTrigger = useCallback((open?: boolean) => {
     let label = ''
     let removed = false

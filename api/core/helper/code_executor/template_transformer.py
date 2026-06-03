@@ -77,17 +77,16 @@ class TemplateTransformer(ABC):
         """
 
         def convert_scientific_notation(value: Any) -> Any:
-            if isinstance(value, str):
-                # Check if the string looks like scientific notation
-                if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
+            match value:
+                case str() if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
                     try:
                         return float(value)
                     except ValueError:
                         pass
-            elif isinstance(value, dict):
-                return {k: convert_scientific_notation(v) for k, v in value.items()}
-            elif isinstance(value, list):
-                return [convert_scientific_notation(v) for v in value]
+                case dict():
+                    return {k: convert_scientific_notation(v) for k, v in value.items()}
+                case list():
+                    return [convert_scientific_notation(v) for v in value]
             return value
 
         return convert_scientific_notation(result)

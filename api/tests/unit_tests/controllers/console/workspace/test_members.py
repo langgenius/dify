@@ -50,10 +50,9 @@ class TestMemberListApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.get_tenant_members", return_value=members),
         ):
-            result, status = method(api)
+            result, status = method(api, user)
 
         assert status == 200
         assert len(result["accounts"]) == 1
@@ -113,10 +112,9 @@ class TestMemberListApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
         ):
             with pytest.raises(ValueError):
-                method(api)
+                method(api, user)
 
 
 class TestMemberInviteEmailApi:
@@ -144,7 +142,6 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
             patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
@@ -152,7 +149,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
-            result, status = method(api)
+            result, status = method(api, user)
 
         assert status == 201
         assert result["result"] == "success"
@@ -175,14 +172,13 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api)
+                method(api, user)
 
     def test_invite_billing_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -203,7 +199,6 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=2),
             patch("controllers.console.workspace.members._count_current_members", return_value=9),
@@ -211,7 +206,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", True),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api)
+                method(api, user)
 
     def test_invite_already_member(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -231,7 +226,6 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=0),
             patch(
@@ -242,7 +236,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
-            result, status = method(api)
+            result, status = method(api, user)
 
         assert result["invitation_results"][0]["status"] == "success"
 
@@ -256,7 +250,7 @@ class TestMemberInviteEmailApi:
         }
 
         with app.test_request_context("/", json=payload):
-            result, status = method(api)
+            result, status = method(api, MagicMock())
 
         assert status == 400
         assert result["code"] == "invalid-role"
@@ -279,7 +273,6 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
             patch(
@@ -290,7 +283,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
-            result, _ = method(api)
+            result, _ = method(api, user)
 
         assert result["invitation_results"][0]["status"] == "failed"
 
@@ -303,7 +296,7 @@ class TestMemberUpdateRoleApi:
         payload = {"role": "invalid-role"}
 
         with app.test_request_context("/", json=payload):
-            result, status = method(api, "id")
+            result, status = method(api, MagicMock(), "id")
 
         assert status == 400
 
@@ -326,12 +319,11 @@ class TestDatasetOperatorMemberListApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.members.TenantService.get_dataset_operator_members", return_value=members
             ),
         ):
-            result, status = method(api)
+            result, status = method(api, user)
 
         assert status == 200
         assert len(result["accounts"]) == 1
@@ -344,10 +336,9 @@ class TestDatasetOperatorMemberListApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
         ):
             with pytest.raises(ValueError):
-                method(api)
+                method(api, user)
 
 
 class TestSendOwnerTransferEmailApi:
@@ -364,13 +355,12 @@ class TestSendOwnerTransferEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=False),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.send_owner_transfer_email", return_value="token"
             ),
         ):
-            result = method(api)
+            result = method(api, user)
 
         assert result["result"] == "success"
 
@@ -386,7 +376,7 @@ class TestSendOwnerTransferEmailApi:
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=True),
         ):
             with pytest.raises(EmailSendIpLimitError):
-                method(api)
+                method(api, MagicMock())
 
     def test_send_not_owner(self, app: Flask):
         api = SendOwnerTransferEmailApi()
@@ -399,11 +389,10 @@ class TestSendOwnerTransferEmailApi:
             app.test_request_context("/", json={}),
             patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=False),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=False),
         ):
             with pytest.raises(NotOwnerError):
-                method(api)
+                method(api, user)
 
 
 class TestOwnerTransferCheckApi:
@@ -418,7 +407,6 @@ class TestOwnerTransferCheckApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
@@ -430,7 +418,7 @@ class TestOwnerTransferCheckApi:
             ),
         ):
             with pytest.raises(EmailCodeError):
-                method(api)
+                method(api, user)
 
     def test_rate_limited(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -443,7 +431,6 @@ class TestOwnerTransferCheckApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
@@ -451,7 +438,7 @@ class TestOwnerTransferCheckApi:
             ),
         ):
             with pytest.raises(OwnerTransferLimitError):
-                method(api)
+                method(api, user)
 
     def test_invalid_token(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -464,7 +451,6 @@ class TestOwnerTransferCheckApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
@@ -473,7 +459,7 @@ class TestOwnerTransferCheckApi:
             patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
         ):
             with pytest.raises(InvalidTokenError):
-                method(api)
+                method(api, user)
 
     def test_invalid_email(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -486,7 +472,6 @@ class TestOwnerTransferCheckApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
@@ -498,7 +483,7 @@ class TestOwnerTransferCheckApi:
             ),
         ):
             with pytest.raises(InvalidEmailError):
-                method(api)
+                method(api, user)
 
 
 class TestOwnerTransferApi:
@@ -513,11 +498,10 @@ class TestOwnerTransferApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
         ):
             with pytest.raises(CannotTransferOwnerToSelfError):
-                method(api, "1")
+                method(api, user, "1")
 
     def test_invalid_token(self, app: Flask):
         api = OwnerTransfer()
@@ -530,9 +514,8 @@ class TestOwnerTransferApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
         ):
             with pytest.raises(InvalidTokenError):
-                method(api, "2")
+                method(api, user, "2")

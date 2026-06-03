@@ -12,8 +12,8 @@ import { PluginInstallPermissionProvider } from '@/app/components/plugins/instal
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,

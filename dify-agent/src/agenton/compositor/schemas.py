@@ -4,6 +4,8 @@ Graph config and session snapshots are separate boundaries on purpose. Graph
 config describes only reusable composition state: schema version, ordered node
 names, provider type ids, dependency mappings, and metadata. Session snapshots
 carry only ordered layer lifecycle state plus serializable ``runtime_state``.
+Live resources acquired inside ``Layer.resource_context()`` are active-scope
+only and can never appear in these DTOs.
 
 External DTOs are revalidated even when callers pass an already-constructed
 Pydantic model instance. These models are mutable, so dumping and validating
@@ -99,8 +101,9 @@ class CompositorSessionSnapshot(BaseModel):
     """Serializable compositor session snapshot.
 
     Snapshots include ordered layer lifecycle state and serializable runtime
-    state only. Live resources, handles, dependencies, prompts, tools, and
-    config are outside Agenton snapshots and are never captured here.
+    state only. Live resources from ``Layer.resource_context()``, handles,
+    dependencies, prompts, tools, and config are outside Agenton snapshots and
+    are never captured here.
     """
 
     schema_version: int = 1

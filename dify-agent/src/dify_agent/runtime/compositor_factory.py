@@ -2,18 +2,22 @@
 
 Only explicitly allowed provider type ids are constructible here. The default
 provider set contains prompt layers, the optional pydantic-ai history layer, the
-state-free Dify structured output layer, the Dify execution-context layer, and
-the Dify plugin business-layer family:
+state-free Dify structured output layer, the Dify execution-context layer, the
+stateful Dify shell layer, and the Dify plugin business-layer family:
 
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
+- ``dify.shell`` for shellctl-backed shell job control,
 - ``dify.plugin.llm`` for plugin-backed model selection, and
 - ``dify.plugin.tools`` for prepared plugin tool exposure.
 
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings are injected through the provider factory for
-``DifyExecutionContextLayer``. The resulting ``Compositor`` remains Agenton
-state-only: live resources such as the plugin daemon HTTP client are supplied
-later by the runtime and never enter providers, layers, or session snapshots.
+``DifyExecutionContextLayer`` and the optional shellctl entrypoint/auth token plus
+client factory are injected for ``DifyShellLayer``. The resulting ``Compositor``
+remains Agenton state-only at the snapshot boundary: live resources such as
+HTTP clients are injected by runtime-owned providers, may be held on active
+layer instances inside ``resource_context()``, and never enter session
+snapshots.
 """
 
 from collections.abc import Mapping, Sequence
@@ -31,6 +35,8 @@ from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
+from dify_agent.layers.shell.configs import DifyShellLayerConfig
+from dify_agent.layers.shell.layer import DifyShellLayer, create_shellctl_client_factory
 
 
 type DifyAgentLayerProvider = LayerProvider[Any]
@@ -40,8 +46,18 @@ def create_default_layer_providers(
     *,
     plugin_daemon_url: str = "http://localhost:5002",
     plugin_daemon_api_key: str = "",
+    shellctl_entrypoint: str | None = None,
+    shellctl_auth_token: str | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
-    """Return the server provider set of safe config-constructible layers."""
+    """Return the server provider set of safe config-constructible layers.
+
+    ``shellctl_auth_token`` defaults to no token. Passing an explicit empty string
+    to ``create_shellctl_client_factory`` prevents ``ShellctlClient`` from falling
+    back to the Dify Agent process's ``SHELLCTL_AUTH_TOKEN`` environment variable;
+    deployments that enable shellctl bearer auth must set the Dify Agent server
+    setting explicitly.
+    """
+    shellctl_token = shellctl_auth_token or ""
     return (
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
@@ -52,6 +68,14 @@ def create_default_layer_providers(
                 DifyExecutionContextLayerConfig.model_validate(config),
                 daemon_url=plugin_daemon_url,
                 daemon_api_key=plugin_daemon_api_key,
+            ),
+        ),
+        LayerProvider.from_factory(
+            layer_type=DifyShellLayer,
+            create=lambda config: DifyShellLayer.from_config_with_settings(
+                DifyShellLayerConfig.model_validate(config),
+                shellctl_entrypoint=shellctl_entrypoint,
+                shellctl_client_factory=create_shellctl_client_factory(token=shellctl_token),
             ),
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),

@@ -1,10 +1,10 @@
-import type { Platform } from '../sys'
+import type { Platform } from '@/sys'
 import fs from 'node:fs'
 import { dirname } from 'node:path'
 import { Entry } from '@napi-rs/keyring'
 import yaml from 'js-yaml'
 import lockfile from 'lockfile'
-import { pid, resolvePlatform } from '../sys'
+import { pid, resolvePlatform } from '@/sys'
 import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 
 const FILE_PERM = 0o600
@@ -44,7 +44,7 @@ abstract class FileBasedStore implements Store {
   flush(): void {
     fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
 
-    // we don't handle A-B-A scenario, 
+    // we don't handle A-B-A scenario,
     // which is not likely to happen in cli
     if (!this.dirty) {
       return

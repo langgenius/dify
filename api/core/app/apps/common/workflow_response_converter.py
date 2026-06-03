@@ -276,17 +276,18 @@ class WorkflowResponseConverter:
 
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
-        if isinstance(user, Account):
-            created_by = AccountCreatedByDict(
-                id=user.id,
-                name=user.name,
-                email=user.email,
-            )
-        elif isinstance(user, EndUser):
-            created_by = EndUserCreatedByDict(
-                id=user.id,
-                user=user.session_id,
-            )
+        match user:
+            case Account():
+                created_by = AccountCreatedByDict(
+                    id=user.id,
+                    name=user.name,
+                    email=user.email,
+                )
+            case EndUser():
+                created_by = EndUserCreatedByDict(
+                    id=user.id,
+                    user=user.session_id,
+                )
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -455,17 +456,18 @@ class WorkflowResponseConverter:
 
         created_by: Mapping[str, object]
         user = creator_user
-        if isinstance(user, Account):
-            created_by = {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-            }
-        else:
-            created_by = {
-                "id": user.id,
-                "user": user.session_id,
-            }
+        match user:
+            case Account():
+                created_by = {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                }
+            case _:
+                created_by = {
+                    "id": user.id,
+                    "user": user.session_id,
+                }
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -562,15 +564,16 @@ class WorkflowResponseConverter:
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 
-        if isinstance(event, QueueNodeSucceededEvent):
-            status = WorkflowNodeExecutionStatus.SUCCEEDED
-            error_message = event.error
-        elif isinstance(event, QueueNodeFailedEvent):
-            status = WorkflowNodeExecutionStatus.FAILED
-            error_message = event.error
-        else:
-            status = WorkflowNodeExecutionStatus.EXCEPTION
-            error_message = event.error
+        match event:
+            case QueueNodeSucceededEvent():
+                status = WorkflowNodeExecutionStatus.SUCCEEDED
+                error_message = event.error
+            case QueueNodeFailedEvent():
+                status = WorkflowNodeExecutionStatus.FAILED
+                error_message = event.error
+            case _:
+                status = WorkflowNodeExecutionStatus.EXCEPTION
+                error_message = event.error
 
         return NodeFinishStreamResponse(
             task_id=task_id,

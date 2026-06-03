@@ -1,6 +1,7 @@
 'use client'
 import type { RemixiconComponentType } from '@remixicon/react'
 import type { FC } from 'react'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Fill,
@@ -25,6 +26,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -57,15 +59,17 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
-  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
+  const [storedHideHeader] = useLocalStorage<boolean>('workflow-canvas-maximize', false)
+  const [storedAppSidebarMode] = useLocalStorage<string>('app-detail-collapse-or-expand', 'expand', { raw: true })
+  const [eventHideHeader, setEventHideHeader] = useState<boolean | null>(null)
+  const hideHeader = eventHideHeader ?? storedHideHeader
   const { eventEmitter } = useEventEmitterContextContext()
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === 'workflow-canvas-maximize')
-      setHideHeader(v.payload)
+  eventEmitter?.useSubscription((value: EventEmitterValue) => {
+    if (typeof value === 'object' && value.type === 'workflow-canvas-maximize' && typeof value.payload === 'boolean')
+      setEventHideHeader(value.payload)
   })
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -164,10 +168,9 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 
   useEffect(() => {
-    const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
     const mode = isMobile ? 'collapse' : 'expand'
-    setAppSidebarExpand(isMobile ? mode : localeMode)
-  }, [isMobile, setAppSidebarExpand])
+    setAppSidebarExpand(isMobile ? mode : storedAppSidebarMode)
+  }, [isMobile, setAppSidebarExpand, storedAppSidebarMode])
 
   useEffect(() => {
     if (shouldRedirect)

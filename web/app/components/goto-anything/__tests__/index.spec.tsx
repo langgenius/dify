@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { ActionItem, SearchResult } from '../actions/types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
 import * as React from 'react'
 import { GotoAnything } from '../index'
 
@@ -49,7 +50,6 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
 
 const HOTKEY_ALIAS: Record<string, string> = {
   'ctrl.k': 'Mod+K',
-  'esc': 'Escape',
 }
 
 const triggerKeyPress = (combo: string) => {
@@ -142,6 +142,16 @@ vi.mock('../../plugins/install-plugin/install-from-marketplace', () => ({
   ),
 }))
 
+const renderGotoAnything = (ui: React.ReactElement) => {
+  const store = createStore()
+
+  return render(
+    <Provider store={store}>
+      {ui}
+    </Provider>,
+  )
+}
+
 describe('GotoAnything', () => {
   beforeEach(() => {
     routerPush.mockClear()
@@ -154,7 +164,7 @@ describe('GotoAnything', () => {
 
   describe('modal behavior', () => {
     it('should open modal via Ctrl+K shortcut', async () => {
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
 
       triggerKeyPress('ctrl.k')
 
@@ -164,21 +174,22 @@ describe('GotoAnything', () => {
     })
 
     it('should close modal via ESC key', async () => {
-      render(<GotoAnything />)
+      const user = userEvent.setup()
+      renderGotoAnything(<GotoAnything />)
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
       })
 
-      triggerKeyPress('esc')
+      await user.keyboard('{Escape}')
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder')).not.toBeInTheDocument()
       })
     })
 
     it('should toggle modal when pressing Ctrl+K twice', async () => {
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
@@ -192,15 +203,16 @@ describe('GotoAnything', () => {
     })
 
     it('should call onHide when modal closes', async () => {
+      const user = userEvent.setup()
       const onHide = vi.fn()
-      render(<GotoAnything onHide={onHide} />)
+      renderGotoAnything(<GotoAnything onHide={onHide} />)
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
       })
 
-      triggerKeyPress('esc')
+      await user.keyboard('{Escape}')
       await waitFor(() => {
         expect(onHide).toHaveBeenCalled()
       })
@@ -208,7 +220,7 @@ describe('GotoAnything', () => {
 
     it('should reset search query when modal opens', async () => {
       const user = userEvent.setup()
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
@@ -218,7 +230,7 @@ describe('GotoAnything', () => {
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
       await user.type(input, 'test')
 
-      triggerKeyPress('esc')
+      await user.keyboard('{Escape}')
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder')).not.toBeInTheDocument()
       })
@@ -249,7 +261,7 @@ describe('GotoAnything', () => {
         error: null,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -267,7 +279,7 @@ describe('GotoAnything', () => {
 
     it('should clear selection when typing without prefix', async () => {
       const user = userEvent.setup()
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -291,7 +303,7 @@ describe('GotoAnything', () => {
         error: null,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -315,7 +327,7 @@ describe('GotoAnything', () => {
         error: testError,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -329,7 +341,7 @@ describe('GotoAnything', () => {
     })
 
     it('should show default state when no query', async () => {
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -348,7 +360,7 @@ describe('GotoAnything', () => {
         error: null,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -383,7 +395,7 @@ describe('GotoAnything', () => {
         error: null,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -419,7 +431,7 @@ describe('GotoAnything', () => {
         error: null,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -460,7 +472,7 @@ describe('GotoAnything', () => {
         error: null,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -492,7 +504,7 @@ describe('GotoAnything', () => {
         isAvailable: () => true,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -515,7 +527,7 @@ describe('GotoAnything', () => {
         isAvailable: () => false,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -537,7 +549,7 @@ describe('GotoAnything', () => {
         execute: executeMock,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -559,7 +571,7 @@ describe('GotoAnything', () => {
         isAvailable: () => true,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -594,7 +606,7 @@ describe('GotoAnything', () => {
         error: null,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
@@ -627,7 +639,7 @@ describe('GotoAnything', () => {
         error: null,
       }
 
-      render(<GotoAnything />)
+      renderGotoAnything(<GotoAnything />)
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {

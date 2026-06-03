@@ -14,8 +14,8 @@ import useWorkspacePluginInstallPermission from '@/app/components/plugins/instal
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import Link from '@/next/link'
-import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
 import BlockIcon from '../block-icon'
@@ -56,18 +56,7 @@ const FeaturedTools = ({
   const previewCardHandle = useMemo(() => createPreviewCardHandle<FeaturedToolPreviewPayload>(), [])
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (isServer)
-      return false
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored === 'true'
-  })
-
-  useEffect(() => {
-    if (isServer)
-      return
-    window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
-  }, [isCollapsed])
+  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
 
   if (visibleCountPlugins !== plugins) {
     setVisibleCountPlugins(plugins)

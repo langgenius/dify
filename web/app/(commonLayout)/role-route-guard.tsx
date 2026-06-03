@@ -1,7 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -24,12 +23,12 @@ const getPageRoutePermissionGuard = (pathname: string) => {
 }
 
 export default function RoleRouteGuard({ children }: { children: ReactNode }) {
-  const { isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, workspacePermissionKeys } = useAppContext()
+  const { isLoadingWorkspacePermissionKeys, workspacePermissionKeys } = useAppContext()
   const pathname = usePathname()
   const router = useRouter()
   const routePermissionGuard = getPageRoutePermissionGuard(pathname)
   const shouldGuardRoute = !!routePermissionGuard
-  const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
+  const isLoadingAccess = !!isLoadingWorkspacePermissionKeys
   const canAccessRoute = routePermissionGuard
     ? hasPermission(workspacePermissionKeys, routePermissionGuard.permissionKey)
     : true

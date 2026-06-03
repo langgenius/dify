@@ -8,6 +8,7 @@ import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '
 import type { SegmentImportStatus } from '@/types/dataset'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
+import { PermissionLevel } from './permission'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -15,11 +16,10 @@ export enum DataSourceType {
   WEB = 'website_crawl',
 }
 
-export enum DatasetPermission {
-  onlyMe = 'only_me',
-  allTeamMembers = 'all_team_members',
-  partialMembers = 'partial_members',
-}
+// Re-export PermissionLevel as DatasetPermission for backward compatibility
+export const DatasetPermission = PermissionLevel
+
+export type DatasetPermission = PermissionLevel
 
 export enum ChunkingMode {
   text = 'text_model', // General text

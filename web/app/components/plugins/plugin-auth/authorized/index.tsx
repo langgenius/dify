@@ -140,6 +140,13 @@ const Authorized = ({
     if (!open)
       pendingOperationCredentialIdRef.current = null
   }, [])
+  // Lifted state for the "+ Add API Key" modal so it isn't unmounted when the
+  // popover closes due to outside-click detection on the modal's portal.
+  const [isAddApiKeyOpen, setIsAddApiKeyOpen] = useState(false)
+  const handleAddApiKeyClick = useCallback(() => {
+    setMergedIsOpen(false)
+    setIsAddApiKeyOpen(true)
+  }, [setMergedIsOpen])
   const handleRemove = useCallback(() => {
     setDeleteCredentialId(pendingOperationCredentialIdRef.current)
   }, [])
@@ -331,6 +338,7 @@ const Authorized = ({
                       canOAuth={canOAuth}
                       canApiKey={canApiKey}
                       onUpdate={onUpdate}
+                      onApiKeyClick={handleAddApiKeyClick}
                     />
                   </div>
                 </>
@@ -364,6 +372,18 @@ const Authorized = ({
             onClose={() => handleApiKeyModalOpenChange(false)}
             onRemove={handleRemove}
             disabled={doingAction}
+            onUpdate={onUpdate}
+          />
+        )
+      }
+      {
+        isAddApiKeyOpen && (
+          <ApiKeyModal
+            open={isAddApiKeyOpen}
+            onOpenChange={setIsAddApiKeyOpen}
+            pluginPayload={pluginPayload}
+            onClose={() => setIsAddApiKeyOpen(false)}
+            disabled={disabled || doingAction}
             onUpdate={onUpdate}
           />
         )

@@ -1,22 +1,7 @@
 import type { WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { TableCell } from '../../../framework/output.js'
-import type { TableColumn, TableHandler, TableRow } from '../../../printers/format-table.js'
-import { isPayloadShape } from '../app/payload-shape.js'
+import type { TableCell, TableColumn } from '@/framework/output'
 
-export const WORKSPACE_MODE_KEY = 'workspace'
 const CURRENT_MARKER = '*'
-
-export type WorkspaceObject = {
-  mode: () => string
-  raw: () => WorkspaceListResponse
-}
-
-export function newWorkspaceObject(env: WorkspaceListResponse): WorkspaceObject {
-  return {
-    mode: () => WORKSPACE_MODE_KEY,
-    raw: () => env,
-  }
-}
 
 export const WORKSPACE_COLUMNS: readonly TableColumn[] = [
   { name: 'ID', priority: 0 },
@@ -99,22 +84,5 @@ export class WorkspaceListOutput {
 
   json(): WorkspaceListResponse {
     return this.envelope
-  }
-}
-
-export function workspaceTableHandler(currentId: string): TableHandler {
-  return {
-    columns: () => WORKSPACE_COLUMNS,
-    rows: (raw): readonly TableRow[] => {
-      if (!isPayloadShape<WorkspaceListResponse>(raw, 'workspaces'))
-        throw new Error('get/workspace table: unexpected payload shape')
-      return raw.workspaces.map(w => [
-        w.id,
-        w.name,
-        w.role,
-        w.status,
-        w.current || (currentId !== '' && w.id === currentId) ? CURRENT_MARKER : '',
-      ])
-    },
   }
 }

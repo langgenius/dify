@@ -4,6 +4,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
+  RiInformationLine,
+} from '@remixicon/react'
+import {
   memo,
   useMemo,
   useState,
@@ -19,7 +22,7 @@ import { CredentialTypeEnum } from '../types'
 type ItemProps = {
   credential: Credential
   onDelete?: (id: string) => void
-  onEdit?: (id: string, values: Record<string, any>) => void
+  onEdit?: (id: string, values: Record<string, unknown>) => void
   onSetDefault?: (id: string) => void
   onRename?: (payload: {
     credential_id: string
@@ -54,6 +57,18 @@ const Item = ({
   const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
   const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
+  const isPersonal = credential.visibility === 'only_me'
+  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  // Borrowed-from-teammate: the backend explicitly flagged this row as another member's
+  // only_me credential, returned only because the current node still references it.
+  // Fallback heuristic (created_by mismatch on a selected row) is kept for backends
+  // that don't yet emit the flag.
+  const isSelected = showSelectedIcon && selectedCredentialId === credential.id
+  const isConfiguredByOther
+    = !!credential.created_by && !!userProfile?.id && credential.created_by !== userProfile.id
+  const isBorrowed
+    = !!credential.from_other_member || (isSelected && isConfiguredByOther && isPersonal)
+  const showSwitchAwayHint = isBorrowed
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete && disableSetDefault)
   }, [disableRename, disableEdit, disableDelete, disableSetDefault])
@@ -144,9 +159,25 @@ const Item = ({
         )
       }
       {
-        credential.from_enterprise && (
+        showSwitchAwayHint && (
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <div className="ml-2 flex shrink-0 cursor-help items-center text-text-tertiary">
+                  <RiInformationLine className="size-4" />
+                </div>
+              )}
+            />
+            <TooltipContent>
+              {t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}
+            </TooltipContent>
+          </Tooltip>
+        )
+      }
+      {
+        !showSwitchAwayHint && credential.from_enterprise && (
           <Badge className="shrink-0">
-            Enterprise
+            {t('auth.enterprise', { ns: 'plugin' })}
           </Badge>
         )
       }
@@ -154,7 +185,7 @@ const Item = ({
         showAction && !renaming && (
           <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
             {
-              !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && (
+              !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && !isBorrowed && (
                 <Button
                   size="small"
                   disabled={!canManageCredential}
@@ -168,7 +199,7 @@ const Item = ({
               )
             }
             {
-              !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && (
+              !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && !isBorrowed && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
@@ -191,7 +222,7 @@ const Item = ({
               )
             }
             {
-              !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && (
+              !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && !isBorrowed && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
@@ -220,7 +251,7 @@ const Item = ({
               )
             }
             {
-              !disableDelete && !credential.from_enterprise && (
+              !disableDelete && !credential.from_enterprise && !isBorrowed && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
