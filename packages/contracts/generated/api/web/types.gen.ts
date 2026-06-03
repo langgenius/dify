@@ -128,8 +128,8 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
-export type HumanInputRemoteFileUploadPayload = {
-  url: string
+export type HumanInputFileUploadFormPayload = {
+  url?: string | null
 }
 
 export type HumanInputUploadTokenResponse = {
@@ -826,38 +826,6 @@ export type PostForgotPasswordValidityResponses = {
 export type PostForgotPasswordValidityResponse
   = PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
 
-export type PostFormHumanInputFilesRemoteUploadData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/form/human_input/files/remote-upload'
-}
-
-export type PostFormHumanInputFilesRemoteUploadResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PostFormHumanInputFilesRemoteUploadResponse
-  = PostFormHumanInputFilesRemoteUploadResponses[keyof PostFormHumanInputFilesRemoteUploadResponses]
-
-export type PostFormHumanInputFilesUploadData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/form/human_input/files/upload'
-}
-
-export type PostFormHumanInputFilesUploadResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PostFormHumanInputFilesUploadResponse
-  = PostFormHumanInputFilesUploadResponses[keyof PostFormHumanInputFilesUploadResponses]
-
 export type GetFormHumanInputByFormTokenData = {
   body?: never
   path: {
@@ -911,6 +879,20 @@ export type PostFormHumanInputByFormTokenUploadTokenResponses = {
 
 export type PostFormHumanInputByFormTokenUploadTokenResponse
   = PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
+
+export type PostHumanInputFormsFilesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/human-input-forms/files'
+}
+
+export type PostHumanInputFormsFilesResponses = {
+  201: FileResponse
+}
+
+export type PostHumanInputFormsFilesResponse
+  = PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
 
 export type PostLoginData = {
   body: LoginPayload

@@ -326,6 +326,23 @@ const getHumanInputFormUploadToken = async (formToken: string) => {
   return tokenResponse.upload_token
 }
 
+const uploadHumanInputFormFile = async (
+  formToken: string,
+  formData: FormData,
+  onProgress?: (e: ProgressEvent) => void,
+) => {
+  const uploadToken = await getHumanInputFormUploadToken(formToken)
+
+  return upload({
+    xhr: new XMLHttpRequest(),
+    data: formData,
+    headers: {
+      Authorization: `bearer ${uploadToken}`,
+    },
+    onprogress: onProgress,
+  }, true, '/human-input-forms/files')
+}
+
 export const uploadHumanInputFormLocalFile = async ({
   formToken,
   file,
@@ -344,15 +361,11 @@ export const uploadHumanInputFormLocalFile = async ({
   }
 
   try {
-    const uploadToken = await getHumanInputFormUploadToken(formToken)
-    const response = await upload({
-      xhr: new XMLHttpRequest(),
-      data: formData,
-      headers: {
-        Authorization: `bearer ${uploadToken}`,
-      },
-      onprogress: onProgress,
-    }, true, '/form/human_input/files/upload') as HumanInputFormLocalFileUploadResponse
+    const response = await uploadHumanInputFormFile(
+      formToken,
+      formData,
+      onProgress,
+    ) as HumanInputFormLocalFileUploadResponse
 
     onSuccessCallback(response)
   }
@@ -365,17 +378,10 @@ export const uploadHumanInputFormRemoteFileInfo = async (
   formToken: string,
   url: string,
 ): Promise<HumanInputFormRemoteFileUploadResponse> => {
-  const uploadToken = await getHumanInputFormUploadToken(formToken)
+  const formData = new FormData()
+  formData.append('url', url)
 
-  return post<HumanInputFormRemoteFileUploadResponse>(
-    '/form/human_input/files/remote-upload',
-    {
-      body: { url },
-      headers: {
-        Authorization: `bearer ${uploadToken}`,
-      },
-    },
-  )
+  return uploadHumanInputFormFile(formToken, formData) as Promise<HumanInputFormRemoteFileUploadResponse>
 }
 
 export const submitHumanInputForm = (token: string, data: {

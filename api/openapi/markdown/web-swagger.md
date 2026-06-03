@@ -409,25 +409,12 @@ Verify password reset token validity
 | 400 | Bad request - invalid token format |  |
 | 401 | Invalid or expired token |  |
 
-### /form/human_input/files/remote-upload
+### /human-input-forms/files
 
 #### POST
 ##### Summary
 
-Upload one remote URL file for a HITL human input form
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /form/human_input/files/upload
-
-#### POST
-##### Summary
-
-Upload one local file for a HITL human input form
+Upload one local file or remote URL file for a HITL human input form
 
 ##### Responses
 

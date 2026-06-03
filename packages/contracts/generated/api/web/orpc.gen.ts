@@ -66,8 +66,7 @@ import {
   zPostFormHumanInputByFormTokenResponse,
   zPostFormHumanInputByFormTokenUploadTokenPath,
   zPostFormHumanInputByFormTokenUploadTokenResponse,
-  zPostFormHumanInputFilesRemoteUploadResponse,
-  zPostFormHumanInputFilesUploadResponse,
+  zPostHumanInputFormsFilesResponse,
   zPostLoginBody,
   zPostLoginResponse,
   zPostLogoutResponse,
@@ -474,61 +473,6 @@ export const forgotPassword = {
 }
 
 /**
- * Upload one remote URL file for a HITL human input form
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post13 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postFormHumanInputFilesRemoteUpload',
-    path: '/form/human_input/files/remote-upload',
-    summary: 'Upload one remote URL file for a HITL human input form',
-    tags: ['web'],
-  })
-  .output(zPostFormHumanInputFilesRemoteUploadResponse)
-
-export const remoteUpload = {
-  post: post13,
-}
-
-/**
- * Upload one local file for a HITL human input form
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post14 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postFormHumanInputFilesUpload',
-    path: '/form/human_input/files/upload',
-    summary: 'Upload one local file for a HITL human input form',
-    tags: ['web'],
-  })
-  .output(zPostFormHumanInputFilesUploadResponse)
-
-export const upload2 = {
-  post: post14,
-}
-
-export const files2 = {
-  remoteUpload,
-  upload: upload2,
-}
-
-/**
  * Issue an upload token for a human input form
  *
  * POST /api/form/human_input/<form_token>/upload-token
@@ -537,7 +481,7 @@ export const files2 = {
  *
  * @deprecated
  */
-export const post15 = oc
+export const post13 = oc
   .route({
     deprecated: true,
     description:
@@ -553,7 +497,7 @@ export const post15 = oc
   .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
 
 export const uploadToken = {
-  post: post15,
+  post: post13,
 }
 
 /**
@@ -597,7 +541,7 @@ export const get2 = oc
  *
  * @deprecated
  */
-export const post16 = oc
+export const post14 = oc
   .route({
     deprecated: true,
     description:
@@ -614,17 +558,39 @@ export const post16 = oc
 
 export const byFormToken = {
   get: get2,
-  post: post16,
+  post: post14,
   uploadToken,
 }
 
 export const humanInput = {
-  files: files2,
   byFormToken,
 }
 
 export const form = {
   humanInput,
+}
+
+/**
+ * Upload one local file or remote URL file for a HITL human input form
+ */
+export const post15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputFormsFiles',
+    path: '/human-input-forms/files',
+    successStatus: 201,
+    summary: 'Upload one local file or remote URL file for a HITL human input form',
+    tags: ['web'],
+  })
+  .output(zPostHumanInputFormsFilesResponse)
+
+export const files2 = {
+  post: post15,
+}
+
+export const humanInputForms = {
+  files: files2,
 }
 
 /**
@@ -650,7 +616,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post17 = oc
+export const post16 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -664,14 +630,14 @@ export const post17 = oc
   .output(zPostLoginResponse)
 
 export const login = {
-  post: post17,
+  post: post16,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post18 = oc
+export const post17 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -683,7 +649,7 @@ export const post18 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post18,
+  post: post17,
 }
 
 /**
@@ -693,7 +659,7 @@ export const logout = {
  *
  * @deprecated
  */
-export const post19 = oc
+export const post18 = oc
   .route({
     deprecated: true,
     description:
@@ -713,7 +679,7 @@ export const post19 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post19,
+  post: post18,
 }
 
 /**
@@ -902,7 +868,7 @@ export const passport = {
  *
  * @deprecated
  */
-export const post20 = oc
+export const post19 = oc
   .route({
     deprecated: true,
     description:
@@ -917,8 +883,8 @@ export const post20 = oc
   })
   .output(zPostRemoteFilesUploadResponse)
 
-export const upload3 = {
-  post: post20,
+export const upload2 = {
+  post: post19,
 }
 
 /**
@@ -958,7 +924,7 @@ export const byUrl = {
 }
 
 export const remoteFiles = {
-  upload: upload3,
+  upload: upload2,
   byUrl,
 }
 
@@ -1010,7 +976,7 @@ export const get11 = oc
  *
  * @deprecated
  */
-export const post21 = oc
+export const post20 = oc
   .route({
     deprecated: true,
     description:
@@ -1026,7 +992,7 @@ export const post21 = oc
 
 export const savedMessages = {
   get: get11,
-  post: post21,
+  post: post20,
   byMessageId: byMessageId2,
 }
 
@@ -1103,7 +1069,7 @@ export const systemFeatures = {
  *
  * @deprecated
  */
-export const post22 = oc
+export const post21 = oc
   .route({
     deprecated: true,
     description:
@@ -1119,7 +1085,7 @@ export const post22 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post22,
+  post: post21,
 }
 
 /**
@@ -1212,7 +1178,7 @@ export const workflow = {
  *
  * @deprecated
  */
-export const post23 = oc
+export const post22 = oc
   .route({
     deprecated: true,
     description:
@@ -1228,7 +1194,7 @@ export const post23 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run = {
-  post: post23,
+  post: post22,
 }
 
 /**
@@ -1236,7 +1202,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post24 = oc
+export const post23 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1250,7 +1216,7 @@ export const post24 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post24,
+  post: post23,
 }
 
 export const byTaskId4 = {
@@ -1275,6 +1241,7 @@ export const contract = {
   files,
   forgotPassword,
   form,
+  humanInputForms,
   login,
   logout,
   messages,

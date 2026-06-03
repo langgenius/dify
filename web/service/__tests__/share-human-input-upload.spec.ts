@@ -69,7 +69,7 @@ describe('human input form upload services', () => {
         },
       }),
       true,
-      '/form/human_input/files/upload',
+      '/human-input-forms/files',
     )
     expect(onSuccessCallback).toHaveBeenCalledWith(expect.objectContaining({ id: 'file-1' }))
     expect(onErrorCallback).not.toHaveBeenCalled()
@@ -83,7 +83,7 @@ describe('human input form upload services', () => {
         upload_token: 'hitl-remote-token',
         expires_at: Math.floor(Date.now() / 1000) + 60,
       })
-      .mockResolvedValueOnce({
+    mockUpload.mockResolvedValueOnce({
         id: 'remote-file-1',
         name: 'remote.txt',
         size: 10,
@@ -96,13 +96,21 @@ describe('human input form upload services', () => {
 
     const response = await uploadHumanInputFormRemoteFileInfo('remote-form-token', 'https://example.com/file.txt')
 
+    expect(mockPostPublic).toHaveBeenCalledTimes(1)
     expect(mockPostPublic).toHaveBeenNthCalledWith(1, '/form/human_input/remote-form-token/upload-token')
-    expect(mockPostPublic).toHaveBeenNthCalledWith(2, '/form/human_input/files/remote-upload', {
-      body: { url: 'https://example.com/file.txt' },
-      headers: {
-        Authorization: 'bearer hitl-remote-token',
-      },
-    })
+    expect(mockUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.any(FormData),
+        headers: {
+          Authorization: 'bearer hitl-remote-token',
+        },
+      }),
+      true,
+      '/human-input-forms/files',
+    )
+    const uploadCall = mockUpload.mock.calls[0]
+    const formData = uploadCall?.[0]?.data as FormData
+    expect(formData.get('url')).toBe('https://example.com/file.txt')
     expect(response).toEqual(expect.objectContaining({ id: 'remote-file-1' }))
   })
 })

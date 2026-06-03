@@ -173,10 +173,12 @@ export const zForgotPasswordSendPayload = z.object({
 })
 
 /**
- * HumanInputRemoteFileUploadPayload
+ * HumanInputFileUploadFormPayload
+ *
+ * Parsed multipart form fields for HITL uploads.
  */
-export const zHumanInputRemoteFileUploadPayload = z.object({
-  url: z.url().min(1).max(2083),
+export const zHumanInputFileUploadFormPayload = z.object({
+  url: z.url().min(1).max(2083).nullish(),
 })
 
 /**
@@ -542,16 +544,6 @@ export const zPostForgotPasswordValidityBody = zForgotPasswordCheckPayload
  */
 export const zPostForgotPasswordValidityResponse = zVerificationTokenResponse
 
-/**
- * Success
- */
-export const zPostFormHumanInputFilesRemoteUploadResponse = z.record(z.string(), z.unknown())
-
-/**
- * Success
- */
-export const zPostFormHumanInputFilesUploadResponse = z.record(z.string(), z.unknown())
-
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
 })
@@ -578,6 +570,11 @@ export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
  * Success
  */
 export const zPostFormHumanInputByFormTokenUploadTokenResponse = z.record(z.string(), z.unknown())
+
+/**
+ * File uploaded successfully
+ */
+export const zPostHumanInputFormsFilesResponse = zFileResponse
 
 export const zPostLoginBody = zLoginPayload
 
