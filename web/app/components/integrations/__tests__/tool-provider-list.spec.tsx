@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { getToolType } from '@/app/components/tools/utils'
@@ -392,12 +392,13 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('tool-provider-grid')).toHaveClass('max-w-[1600px]')
     })
 
-    it('uses the Figma two-column wrapping layout in compact integrations pages', () => {
+    it('uses a two-column grid in compact integrations pages', () => {
       renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('flex', 'flex-wrap')
-      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('grid-cols-1', 'md:grid-cols-3')
-      expect(screen.getByTestId('card-google-search')).toHaveClass('min-w-[min(100%,496px)]', 'flex-1')
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('grid', 'grid-cols-1', 'lg:grid-cols-2')
+      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap', 'md:grid-cols-3')
+      expect(screen.getByTestId('card-google-search').parentElement).toHaveClass('min-w-0')
+      expect(screen.getByTestId('card-google-search').parentElement).not.toHaveClass('flex-1')
     })
 
     it('keeps the default plugin card border visible until a card is selected', () => {
@@ -616,6 +617,15 @@ describe('ProviderList', () => {
       renderProviderList()
 
       expect(screen.getByTestId('card-google-search')).toHaveAttribute('data-from', 'package')
+    })
+
+    it('shows only the built-in source label on integrations tool cards', () => {
+      renderProviderList(undefined, 'builtin', 'compact')
+
+      expect(within(screen.getByTestId('card-google-search')).getByText('plugin.from')).toBeInTheDocument()
+      expect(within(screen.getByTestId('card-google-search')).getByText('dataset.metadata.datasetMetadata.builtIn')).toBeInTheDocument()
+      expect(within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.from')).not.toBeInTheDocument()
+      expect(within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
     })
 
     it('falls back to the collection name when plugin_id has no package segment', () => {

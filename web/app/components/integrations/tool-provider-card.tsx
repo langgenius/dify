@@ -2,7 +2,7 @@
 
 import type { Collection } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowRightUpLine, RiLoginCircleLine } from '@remixicon/react'
+import { RiLoginCircleLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -41,9 +41,7 @@ function IntegrationsToolProviderCard({
   const { org, name } = getCollectionPluginIdentity(collection)
   const toolsCount = collection.tools?.length ?? 0
   const builtInLabel = t('metadata.datasetMetadata.builtIn', { ns: 'dataset' })
-  const source = collection.plugin_id
-    ? t('source.marketplace', { ns: 'plugin' })
-    : builtInLabel
+  const showBuiltInSource = !collection.plugin_id
 
   return (
     <div
@@ -65,14 +63,6 @@ function IntegrationsToolProviderCard({
           </div>
           <div className="w-full truncate system-xs-regular text-text-tertiary" title={description}>
             {description}
-          </div>
-        </div>
-        <div className="absolute top-[-0.5px] right-[-0.5px] flex items-start overflow-hidden">
-          <div className="h-5 w-3 bg-background-section" />
-          <div className="bg-background-section py-1 pr-2">
-            <div className="system-2xs-medium-uppercase text-text-tertiary">
-              {builtInLabel}
-            </div>
           </div>
         </div>
       </div>
@@ -97,15 +87,16 @@ function IntegrationsToolProviderCard({
             </div>
           </>
         )}
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t('from', { ns: 'plugin' })}
+        {showBuiltInSource && (
+          <div className="ml-auto flex shrink-0 items-center gap-0.5">
+            <div className="system-2xs-medium-uppercase text-text-tertiary">
+              {t('from', { ns: 'plugin' })}
+            </div>
+            <div className="system-2xs-semibold-uppercase text-text-secondary">
+              {builtInLabel}
+            </div>
           </div>
-          <div className="system-2xs-semibold-uppercase text-text-secondary">
-            {source}
-          </div>
-          {collection.plugin_id && <RiArrowRightUpLine className="size-3 text-text-secondary" />}
-        </div>
+        )}
       </div>
     </div>
   )

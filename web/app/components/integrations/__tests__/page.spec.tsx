@@ -257,6 +257,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
     expect(screen.getByTestId('model-provider-toolbar').closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6', 'pt-3', 'pb-2')
+    expect(within(screen.getByTestId('model-provider-toolbar').closest('section')!).getByText('common.settings.provider')).toHaveClass('title-2xl-semi-bold')
     expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6')
     expect(screen.getByTestId('model-provider-page').parentElement).not.toHaveClass('pt-2')
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)

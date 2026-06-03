@@ -92,7 +92,7 @@ export function ToolProviderGrid({
       data-testid="tool-provider-grid"
       className={cn(
         useIntegrationsCard
-          ? 'relative flex shrink-0 flex-wrap content-start items-start gap-2 pt-1 pb-4'
+          ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 lg:grid-cols-2'
           : 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
         frameClassName,
         showWorkflowEmptyState && 'grow',
@@ -106,7 +106,7 @@ export function ToolProviderGrid({
               {collections.map(collection => (
                 <div
                   key={collection.id}
-                  className={cn(useIntegrationsCard && 'flex min-w-[min(100%,496px)] flex-1')}
+                  className={cn(useIntegrationsCard && 'min-w-0')}
                   onClick={() => onSelectProvider(collection.id)}
                 >
                   {useIntegrationsCard
