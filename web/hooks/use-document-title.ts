@@ -7,12 +7,12 @@ import { defaultSystemFeatures } from '@/features/system-features/config'
 import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
-  const { data, isPending } = useQuery(systemFeaturesQueryOptions())
+  const { data, isPending, isPlaceholderData } = useQuery(systemFeaturesQueryOptions())
   const systemFeatures = data ?? defaultSystemFeatures
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''
   let favicon = ''
-  if (isPending === false) {
+  if (isPending === false && isPlaceholderData === false) {
     if (systemFeatures.branding.enabled) {
       titleStr = `${prefix}${systemFeatures.branding.application_title}`
       favicon = systemFeatures.branding.favicon
