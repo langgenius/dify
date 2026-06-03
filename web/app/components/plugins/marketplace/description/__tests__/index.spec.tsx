@@ -130,6 +130,22 @@ describe('Description', () => {
       expect(screen.getByTestId('marketplace-nav')).toBeInTheDocument()
       expect(screen.getByText('All plugins')).toBeInTheDocument()
     })
+
+    it('should keep platform nav 12px from the hero edge without nav wrapper padding', () => {
+      const { Wrapper } = createWrapper()
+      const { container } = render(<Description isMarketplacePlatform />, { wrapper: Wrapper })
+
+      const hero = container.firstElementChild
+      const navWrapper = container.querySelector('.relative.z-20.flex.w-full.flex-col.items-start')
+      const heroContentWrapper = container.querySelector('.relative.z-10.mx-5')
+
+      expect(hero).toHaveClass('px-3')
+      expect(hero).not.toHaveClass('px-8')
+      expect(hero).not.toHaveClass('mt-1')
+      expect(navWrapper).toBeInTheDocument()
+      expect(navWrapper).not.toHaveClass('p-3')
+      expect(heroContentWrapper).toBeInTheDocument()
+    })
   })
 
   // ================================

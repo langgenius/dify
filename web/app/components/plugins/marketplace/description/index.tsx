@@ -232,7 +232,7 @@ const Description = ({
   }
 
   const defaultMarketplaceNav = (
-    <div className="relative z-20 flex w-full flex-col items-start p-3">
+    <div className="relative z-20 flex w-full flex-col items-start">
       <div className="flex h-[60px] w-full items-center rounded-lg border-[0.5px] border-white/50 bg-components-panel-bg-blur backdrop-blur-[6px]">
         <div className="flex h-full min-w-0 flex-1 items-center px-5 py-2">
           <div className="flex shrink-0 items-center gap-1">
@@ -264,7 +264,7 @@ const Description = ({
   return (
     <motion.div
       ref={headerRef}
-      className="sticky top-0 z-20 mt-1 w-full shrink-0 overflow-hidden rounded-lg px-8"
+      className="sticky top-0 z-20 w-full shrink-0 overflow-hidden rounded-lg px-3"
       style={{
         paddingTop,
         paddingBottom,
@@ -284,7 +284,7 @@ const Description = ({
         style={{ backgroundImage: 'url(/marketplace/hero-gradient-noise.svg)' }}
       />
       {marketplaceNav ?? defaultMarketplaceNav}
-      <div className="relative z-10">
+      <div className="relative z-10 mx-5">
         <motion.div
           style={{
             opacity: contentOpacity,

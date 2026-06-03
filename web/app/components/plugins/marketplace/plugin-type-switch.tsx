@@ -10,6 +10,7 @@ import {
   RiSpeakAiLine,
 } from '@remixicon/react'
 import { useSetAtom } from 'jotai'
+import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
 import { BoxSparkleFill as PluginIcon, Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import { searchModeAtom, useActivePluginType } from './atoms'
@@ -85,34 +86,43 @@ const PluginTypeSwitch = ({
     )}
     >
       {
-        options.map((option) => {
+        options.map((option, index) => {
           const isActive = activePluginType === option.value
 
           return (
-            <div
-              key={option.value}
-              className={cn(
-                'flex h-8 cursor-pointer items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap',
-                isHero
-                  ? 'text-text-primary-on-surface'
-                  : 'text-text-tertiary',
-                !isActive && (isHero
-                  ? 'hover:bg-white/20'
-                  : 'hover:bg-state-base-hover hover:text-text-secondary'),
-                isActive && (isHero
-                  ? 'border-white/95 bg-components-main-nav-nav-button-bg-active text-saas-dify-blue-inverted shadow-md backdrop-blur-[5px]'
-                  : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
+            <Fragment key={option.value}>
+              <div
+                className={cn(
+                  'flex h-8 cursor-pointer items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap',
+                  isHero
+                    ? 'text-text-primary-on-surface'
+                    : 'text-text-tertiary',
+                  !isActive && (isHero
+                    ? 'hover:bg-white/20'
+                    : 'hover:bg-state-base-hover hover:text-text-secondary'),
+                  isActive && (isHero
+                    ? 'border-white/95 bg-components-main-nav-nav-button-bg-active text-saas-dify-blue-inverted shadow-md backdrop-blur-[5px]'
+                    : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
+                )}
+                onClick={() => {
+                  handleActivePluginTypeChange(option.value)
+                  if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
+                    setSearchMode(null)
+                  }
+                }}
+              >
+                {option.icon}
+                {option.text}
+              </div>
+              {isHero && index === 0 && (
+                <div
+                  aria-hidden
+                  className="flex h-8 items-center justify-center px-2 system-md-regular text-text-primary-on-surface"
+                >
+                  ·
+                </div>
               )}
-              onClick={() => {
-                handleActivePluginTypeChange(option.value)
-                if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
-                  setSearchMode(null)
-                }
-              }}
-            >
-              {option.icon}
-              {option.text}
-            </div>
+            </Fragment>
           )
         })
       }

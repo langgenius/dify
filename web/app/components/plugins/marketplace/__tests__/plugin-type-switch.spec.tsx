@@ -85,6 +85,17 @@ describe('PluginTypeSwitch', () => {
     expect(modelsButton).toHaveClass('hover:bg-white/20')
   })
 
+  it('should render a hero divider between all plugins and the category filters', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch variant="hero" />, { wrapper: Wrapper })
+
+    const allButton = screen.getByText('All plugins').closest('div')
+    const divider = allButton?.nextElementSibling
+    expect(divider).toHaveTextContent('·')
+    expect(divider).toHaveClass('px-2')
+    expect(divider?.nextElementSibling).toHaveTextContent('Models')
+  })
+
   it('should apply custom className', () => {
     const { Wrapper } = createWrapper()
     const { container } = render(<PluginTypeSwitch className="custom-class" />, { wrapper: Wrapper })
