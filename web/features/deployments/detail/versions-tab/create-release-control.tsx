@@ -289,6 +289,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
           {isCreating && (
             <form
               noValidate
+              autoComplete="off"
               onSubmit={(event) => {
                 event.preventDefault()
                 handleCreateRelease(event.currentTarget)
@@ -381,9 +382,10 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                   </label>
                   <Input
                     id="release-name"
-                    name="name"
+                    name="releaseName"
                     placeholder={t('versions.releaseNamePlaceholder')}
                     maxLength={128}
+                    autoComplete="off"
                     value={releaseName}
                     aria-invalid={releaseNameRequired || undefined}
                     aria-describedby={releaseNameRequired ? 'release-name-error' : undefined}
@@ -426,9 +428,10 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                   </div>
                   <textarea
                     id="release-description"
-                    name="description"
+                    name="releaseDescription"
                     placeholder={t('versions.releaseDescriptionPlaceholder')}
                     maxLength={DESCRIPTION_MAX_LENGTH}
+                    autoComplete="off"
                     value={description}
                     onChange={e => setDescription(e.target.value)}
                     className="min-h-24 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"

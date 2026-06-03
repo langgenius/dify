@@ -149,12 +149,14 @@ export function DeployFormHeader() {
 
 export function ReleaseField({
   displayedRelease,
+  emptyLabel,
   isExistingRelease,
   releases,
   selectedReleaseId,
   onSelectRelease,
 }: {
   displayedRelease?: Release
+  emptyLabel?: string
   isExistingRelease: boolean
   releases: Release[]
   selectedReleaseId: string
@@ -183,7 +185,7 @@ export function ReleaseField({
         : releases.length === 0
           ? (
               <DeploymentStateMessage variant="compact">
-                {t('deployDrawer.noReleaseAvailable')}
+                {emptyLabel ?? t('deployDrawer.noReleaseAvailable')}
               </DeploymentStateMessage>
             )
           : (

@@ -137,6 +137,7 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
   const undeployActionDisabled = isUndeployRequesting || !envId
   const isDeploying = status === 'deploying'
   const isDeployFailed = status === 'deploy_failed'
+  const currentReleaseId = row.currentRelease?.id
   const failedReleaseId = row.desiredRelease?.id || row.currentRelease?.id
   const deployActionLabel = isUndeployed
     ? t('deployDrawer.deploy')
@@ -214,13 +215,24 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
                     </>
                   )
                 : (
-                    <DropdownMenuItem
-                      className="gap-2 px-3"
-                      onClick={() => handleDeployAction()}
-                    >
-                      <span aria-hidden className="i-ri-rocket-line size-4 shrink-0 text-text-tertiary" />
-                      <span className="system-sm-regular text-text-secondary">{deployActionLabel}</span>
-                    </DropdownMenuItem>
+                    <>
+                      {!isUndeployed && currentReleaseId && (
+                        <DropdownMenuItem
+                          className="gap-2 px-3"
+                          onClick={() => handleDeployAction(currentReleaseId)}
+                        >
+                          <span aria-hidden className="i-ri-refresh-line size-4 shrink-0 text-text-tertiary" />
+                          <span className="system-sm-regular text-text-secondary">{t('deployTab.redeploy')}</span>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        className="gap-2 px-3"
+                        onClick={() => handleDeployAction()}
+                      >
+                        <span aria-hidden className="i-ri-rocket-line size-4 shrink-0 text-text-tertiary" />
+                        <span className="system-sm-regular text-text-secondary">{deployActionLabel}</span>
+                      </DropdownMenuItem>
+                    </>
                   )}
               {!isUndeployed && (
                 <>

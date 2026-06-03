@@ -205,7 +205,7 @@ export function GuideFrame({ activeStep, children }: {
             </div>
           </div>
           <GuideStepIntro activeStep={activeStep} />
-          <div className="mb-6 lg:hidden">
+          <div className="mb-6 min-[1120px]:hidden">
             <GuideProgress activeStep={activeStep} />
           </div>
           {children}

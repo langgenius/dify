@@ -43,6 +43,10 @@ import {
 
   ReleaseField,
 } from './form-sections'
+import {
+  currentReleaseIdForEnvironment,
+  selectableDeployReleases,
+} from './release-options'
 
 type DeployFormProps = {
   appInstanceId: string
@@ -54,6 +58,7 @@ type DeployReadyFormProps = DeployFormProps & {
   environments: EnvironmentOption[]
   releases: Release[]
   defaultReleaseId?: string
+  releaseEmptyLabel?: string
 }
 
 type BindingSelections = RuntimeCredentialBindingSelections
@@ -71,6 +76,7 @@ function DeployReadyForm({
   environments,
   releases,
   defaultReleaseId,
+  releaseEmptyLabel,
   lockedEnvId,
   presetReleaseId,
 }: DeployReadyFormProps) {
@@ -206,6 +212,7 @@ function DeployReadyForm({
         <div className="flex flex-col gap-5">
           <ReleaseField
             displayedRelease={displayedRelease}
+            emptyLabel={releaseEmptyLabel}
             isExistingRelease={isExistingRelease}
             releases={releases}
             selectedReleaseId={selectedReleaseId}
@@ -288,8 +295,18 @@ export function DeployForm({
   const environments = selectableEnvironmentRows
     .map(row => row.environment)
     .filter((environment): environment is EnvironmentOption => Boolean(environment?.id))
-  const releases = releaseHistoryQuery.data?.data?.filter(release => release.id) ?? []
+  const releaseRows = releaseHistoryQuery.data?.data?.filter(release => release.id) ?? []
+  const currentReleaseId = currentReleaseIdForEnvironment(runtimeRows, lockedEnvId)
+  const releases = selectableDeployReleases({
+    releases: releaseRows,
+    lockedEnvId,
+    currentReleaseId,
+    presetReleaseId,
+  })
   const defaultReleaseId = releases[0]?.id
+  const releaseEmptyLabel = lockedEnvId && !presetReleaseId && currentReleaseId
+    ? t('deployDrawer.noOtherReleaseAvailable')
+    : undefined
   const formKey = `${appInstanceId}-${lockedEnvId ?? 'any'}-${presetReleaseId ?? 'new'}-${defaultReleaseId ?? 'none'}`
 
   return (
@@ -299,6 +316,7 @@ export function DeployForm({
       environments={environments}
       releases={releases}
       defaultReleaseId={defaultReleaseId}
+      releaseEmptyLabel={releaseEmptyLabel}
       lockedEnvId={lockedEnvId}
       presetReleaseId={presetReleaseId}
     />

@@ -357,12 +357,14 @@ function DeploymentAccessControlDialog({
 
 type EnvironmentPermissionRowProps = {
   appInstanceId: string
+  disabled?: boolean
   environment: Environment
   summaryPolicy?: AccessPolicy
 }
 
 export function EnvironmentPermissionRow({
   appInstanceId,
+  disabled,
   environment,
   summaryPolicy,
 }: EnvironmentPermissionRowProps) {
@@ -412,7 +414,7 @@ export function EnvironmentPermissionRow({
   const subjectSelection = accessControlSelectionFromSubjects(subjects)
   const isSaving = setEnvironmentAccessPolicy.isPending
   const subjectsLoading = permissionKind === 'specific' && accessSubjectsQuery.isLoading
-  const controlsDisabled = isSaving || accessPolicyQuery.isLoading || accessPolicyQuery.isError || subjectsLoading
+  const controlsDisabled = disabled || isSaving || accessPolicyQuery.isLoading || accessPolicyQuery.isError || subjectsLoading
   const envName = environmentName(environment)
 
   const persistPolicy = (

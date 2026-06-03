@@ -30,7 +30,7 @@ const ToolsNav = ({
           ? <RiHammerFill className="size-4" />
           : <RiHammerLine className="size-4" />
       }
-      <div className="ml-2 max-[1024px]:hidden">
+      <div className="ml-2 max-[1200px]:hidden">
         {t('menus.tools', { ns: 'common' })}
       </div>
     </Link>
