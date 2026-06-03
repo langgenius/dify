@@ -1,4 +1,4 @@
-import type { MutateOptions, QueryOptions } from '@tanstack/react-query'
+import type { MutateOptions, UseQueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
   ModelProvider,
@@ -466,17 +466,30 @@ export const useRemoveAutoUpgrade = () => {
   })
 }
 
-export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], options?: QueryOptions<{ data: PluginsFromMarketplaceResponse }>) => {
+type FetchPluginsInMarketplaceByIdsResponse = {
+  data: PluginsFromMarketplaceResponse
+}
+
+type FetchPluginsInMarketplaceByIdsOptions = Pick<
+  UseQueryOptions<FetchPluginsInMarketplaceByIdsResponse>,
+  'enabled' | 'retry'
+>
+
+export const useFetchPluginsInMarketPlaceByIds = (
+  unique_identifiers: string[],
+  options?: FetchPluginsInMarketplaceByIdsOptions,
+) => {
+  const hasUniqueIdentifiers = unique_identifiers?.filter(Boolean).length > 0
+
   return useQuery({
-    ...options,
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByIds', unique_identifiers],
-    queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/identifier/batch', {
+    queryFn: () => postMarketplace<FetchPluginsInMarketplaceByIdsResponse>('/plugins/identifier/batch', {
       body: {
         unique_identifiers,
       },
     }),
-    enabled: unique_identifiers?.filter(i => !!i).length > 0,
-    retry: 0,
+    enabled: hasUniqueIdentifiers && (options?.enabled ?? true),
+    retry: options?.retry ?? 0,
   })
 }
 
