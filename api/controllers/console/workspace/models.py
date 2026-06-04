@@ -13,12 +13,14 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
     with_current_tenant_id,
+    with_current_user,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
@@ -193,7 +195,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, provider):
+    def get(self, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
 
@@ -269,8 +271,9 @@ class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
+    def get(self, tenant_id: str, user: Account, provider: str):
         args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
@@ -293,9 +296,8 @@ class ModelProviderModelCredentialApi(Resource):
 
         if args.config_from == "predefined-model":
             # Only the predefined-model branch needs visibility filtering by user.
-            # Defer the auth lookup so the other branch (and its tests) doesn't
-            # require flask-login setup.
-            user, _ = current_account_with_tenant()
+            # The account is injected once by the handler and only passed into the
+            # service branch that needs user-scoped credential visibility.
             available_credentials = model_provider_service.get_provider_available_credentials(
                 tenant_id=tenant_id,
                 provider=provider,

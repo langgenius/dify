@@ -10,6 +10,7 @@ import os
 import re
 import tempfile
 import uuid
+from typing import override
 from urllib.parse import urlparse
 
 from docx import Document as DocxDocument
@@ -91,6 +92,7 @@ class WordExtractor(BaseExtractor):
     def __del__(self):
         self.close()
 
+    @override
     def extract(self) -> list[Document]:
         """Load given path as single page."""
         content = self.parse_docx(self.file_path)

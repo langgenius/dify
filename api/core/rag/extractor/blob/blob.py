@@ -12,7 +12,7 @@ import mimetypes
 from collections.abc import Generator, Mapping
 from io import BufferedReader, BytesIO
 from pathlib import Path, PurePath
-from typing import Any
+from typing import Any, override
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -139,6 +139,7 @@ class Blob(BaseModel):
         """
         return cls(data=data, mimetype=mime_type, encoding=encoding, path=path)
 
+    @override
     def __repr__(self) -> str:
         """Define the blob representation."""
         str_repr = f"Blob {id(self)}"

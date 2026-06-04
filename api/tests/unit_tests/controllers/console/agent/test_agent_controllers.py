@@ -1,6 +1,8 @@
 from types import SimpleNamespace
+from typing import Protocol, cast
 
 import pytest
+from flask import Flask
 
 from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
@@ -114,34 +116,34 @@ def _candidates_response(variant: str) -> dict:
     }
 
 
+class _PayloadWithDescription(Protocol):
+    description: object
+
+
 @pytest.fixture
-def account():
-    return SimpleNamespace(id="account-1")
+def account_id() -> str:
+    return "account-1"
 
 
-@pytest.fixture(autouse=True)
-def patch_account_context(monkeypatch, account):
-    monkeypatch.setattr(roster_controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
-    monkeypatch.setattr(composer_controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
+def test_roster_list_get_parses_query_and_calls_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
 
-
-def test_roster_list_get_parses_query_and_calls_service(app, monkeypatch):
-    captured = {}
-
-    def list_roster_agents(_self, **kwargs):
+    def list_roster_agents(_self: object, **kwargs: object) -> dict[str, object]:
         captured.update(kwargs)
         return {"data": [], "page": kwargs["page"], "limit": kwargs["limit"], "total": 0, "has_more": False}
 
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_roster_agents", list_roster_agents)
 
     with app.test_request_context("/console/api/agents?page=2&limit=5&keyword=analyst"):
-        result = _unwrap(AgentRosterListApi.get)(AgentRosterListApi())
+        result = _unwrap(AgentRosterListApi.get)(AgentRosterListApi(), "tenant-1")
 
     assert result["page"] == 2
     assert captured == {"tenant_id": "tenant-1", "page": 2, "limit": 5, "keyword": "analyst"}
 
 
-def test_roster_list_post_creates_agent_and_returns_detail(app, monkeypatch):
+def test_roster_list_post_creates_agent_and_returns_detail(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
     created_agent = SimpleNamespace(id="agent-1")
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
@@ -155,42 +157,47 @@ def test_roster_list_post_creates_agent_and_returns_detail(app, monkeypatch):
     )
 
     with app.test_request_context(json={"name": "Analyst", "agent_soul": {"prompt": {"system_prompt": "x"}}}):
-        result, status = _unwrap(AgentRosterListApi.post)(AgentRosterListApi())
+        result, status = _unwrap(AgentRosterListApi.post)(AgentRosterListApi(), "tenant-1", account_id)
 
     assert status == 201
     assert result["id"] == "agent-1"
     assert result["agent_kind"] == "dify_agent"
 
 
-def test_invite_options_get_parses_app_id(app, monkeypatch):
-    captured = {}
+def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
 
-    def list_invite_options(_self, **kwargs):
+    def list_invite_options(_self: object, **kwargs: object) -> dict[str, object]:
         captured.update(kwargs)
         return {"data": [], "page": kwargs["page"], "limit": kwargs["limit"], "total": 0, "has_more": False}
 
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_invite_options", list_invite_options)
 
     with app.test_request_context("/console/api/agents/invite-options?page=1&limit=10&app_id=app-1"):
-        result = _unwrap(AgentInviteOptionsApi.get)(AgentInviteOptionsApi())
+        result = _unwrap(AgentInviteOptionsApi.get)(AgentInviteOptionsApi(), "tenant-1")
 
     assert result == {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
     assert captured == {"tenant_id": "tenant-1", "page": 1, "limit": 10, "keyword": None, "app_id": "app-1"}
 
 
-def test_roster_detail_patch_delete_and_versions_call_services(app, monkeypatch):
+def test_roster_detail_patch_delete_and_versions_call_services(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     version_id = "00000000-0000-0000-0000-000000000002"
-    archived = {}
+    archived: dict[str, object] = {}
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_roster_agent_detail",
-        lambda _self, **kwargs: _agent_response(kwargs["agent_id"]),
+        lambda _self, **kwargs: _agent_response(cast(str, kwargs["agent_id"])),
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "update_roster_agent",
-        lambda _self, **kwargs: {**_agent_response(kwargs["agent_id"]), "description": kwargs["payload"].description},
+        lambda _self, **kwargs: {
+            **_agent_response(cast(str, kwargs["agent_id"])),
+            "description": cast(_PayloadWithDescription, kwargs["payload"]).description,
+        },
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
@@ -206,7 +213,7 @@ def test_roster_detail_patch_delete_and_versions_call_services(app, monkeypatch)
         roster_controller.AgentRosterService,
         "get_agent_version_detail",
         lambda _self, **kwargs: {
-            **_version_response(kwargs["version_id"]),
+            **_version_response(cast(str, kwargs["version_id"])),
             "agent_id": kwargs["agent_id"],
             "config_snapshot": {},
             "revisions": [
@@ -225,18 +232,28 @@ def test_roster_detail_patch_delete_and_versions_call_services(app, monkeypatch)
         },
     )
 
-    assert _unwrap(AgentRosterDetailApi.get)(AgentRosterDetailApi(), agent_id)["id"] == agent_id
+    assert _unwrap(AgentRosterDetailApi.get)(AgentRosterDetailApi(), "tenant-1", agent_id)["id"] == agent_id
     with app.test_request_context(json={"description": "updated"}):
-        assert _unwrap(AgentRosterDetailApi.patch)(AgentRosterDetailApi(), agent_id)["description"] == "updated"
-    assert _unwrap(AgentRosterDetailApi.delete)(AgentRosterDetailApi(), agent_id) == ("", 204)
+        assert (
+            _unwrap(AgentRosterDetailApi.patch)(AgentRosterDetailApi(), "tenant-1", account_id, agent_id)["description"]
+            == "updated"
+        )
+    assert _unwrap(AgentRosterDetailApi.delete)(AgentRosterDetailApi(), "tenant-1", account_id, agent_id) == ("", 204)
     assert archived["account_id"] == "account-1"
-    assert _unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), agent_id)["data"][0]["id"] == "version-1"
-    version_detail = _unwrap(AgentRosterVersionDetailApi.get)(AgentRosterVersionDetailApi(), agent_id, version_id)
+    assert (
+        _unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), "tenant-1", agent_id)["data"][0]["id"]
+        == "version-1"
+    )
+    version_detail = _unwrap(AgentRosterVersionDetailApi.get)(
+        AgentRosterVersionDetailApi(), "tenant-1", agent_id, version_id
+    )
     assert version_detail["id"] == version_id
     assert version_detail["agent_id"] == agent_id
 
 
-def test_workflow_composer_get_put_validate_candidates_impact_and_save(app, monkeypatch):
+def test_workflow_composer_get_put_validate_candidates_impact_and_save(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
     app_model = SimpleNamespace(id="app-1")
     payload = {
         "variant": ComposerVariant.WORKFLOW.value,
@@ -269,10 +286,12 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(app, monk
         },
     )
 
-    workflow_state = _unwrap(WorkflowAgentComposerApi.get)(WorkflowAgentComposerApi(), app_model, "node-1")
+    workflow_state = _unwrap(WorkflowAgentComposerApi.get)(WorkflowAgentComposerApi(), "tenant-1", app_model, "node-1")
     assert workflow_state["node_id"] == "node-1"
     with app.test_request_context(json=payload):
-        saved_state = _unwrap(WorkflowAgentComposerApi.put)(WorkflowAgentComposerApi(), app_model, "node-1")
+        saved_state = _unwrap(WorkflowAgentComposerApi.put)(
+            WorkflowAgentComposerApi(), "tenant-1", account_id, app_model, "node-1"
+        )
         assert saved_state["save_options"] == ["node_job_only"]
         assert _unwrap(WorkflowAgentComposerValidateApi.post)(
             WorkflowAgentComposerValidateApi(), app_model, "node-1"
@@ -284,28 +303,28 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(app, monk
         == "workflow"
     )
     with app.test_request_context(json=payload):
-        assert _unwrap(WorkflowAgentComposerImpactApi.post)(WorkflowAgentComposerImpactApi(), app_model, "node-1") == {
-            "current_snapshot_id": "version-1",
-            "workflow_node_count": 1,
-            "bindings": [],
-        }
+        assert _unwrap(WorkflowAgentComposerImpactApi.post)(
+            WorkflowAgentComposerImpactApi(), "tenant-1", app_model, "node-1"
+        ) == {"current_snapshot_id": "version-1", "workflow_node_count": 1, "bindings": []}
         assert _unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
-            WorkflowAgentComposerSaveToRosterApi(), app_model, "node-1"
+            WorkflowAgentComposerSaveToRosterApi(), "tenant-1", account_id, app_model, "node-1"
         )["save_options"] == ["node_job_only"]
 
 
-def test_workflow_impact_returns_empty_without_version(app):
+def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:
     payload = {"variant": ComposerVariant.WORKFLOW.value, "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value}
 
     with app.test_request_context(json=payload):
         result = _unwrap(WorkflowAgentComposerImpactApi.post)(
-            WorkflowAgentComposerImpactApi(), SimpleNamespace(id="app-1"), "node-1"
+            WorkflowAgentComposerImpactApi(), "tenant-1", SimpleNamespace(id="app-1"), "node-1"
         )
 
     assert result == {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
 
 
-def test_agent_app_composer_get_put_validate_and_candidates(app, monkeypatch):
+def test_agent_app_composer_get_put_validate_and_candidates(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
     app_model = SimpleNamespace(id="app-1")
     payload = {
         "variant": ComposerVariant.AGENT_APP.value,
@@ -329,9 +348,12 @@ def test_agent_app_composer_get_put_validate_and_candidates(app, monkeypatch):
         lambda **kwargs: _candidates_response("agent_app"),
     )
 
-    assert _unwrap(AgentAppComposerApi.get)(AgentAppComposerApi(), app_model)["variant"] == "agent_app"
+    assert _unwrap(AgentAppComposerApi.get)(AgentAppComposerApi(), "tenant-1", app_model)["variant"] == "agent_app"
     with app.test_request_context(json=payload):
-        assert _unwrap(AgentAppComposerApi.put)(AgentAppComposerApi(), app_model)["variant"] == "agent_app"
+        assert (
+            _unwrap(AgentAppComposerApi.put)(AgentAppComposerApi(), "tenant-1", account_id, app_model)["variant"]
+            == "agent_app"
+        )
         assert _unwrap(AgentAppComposerValidateApi.post)(AgentAppComposerValidateApi(), app_model) == {
             "result": "success",
             "errors": [],

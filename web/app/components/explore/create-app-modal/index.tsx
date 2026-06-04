@@ -2,6 +2,7 @@
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -12,7 +13,6 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
@@ -114,7 +114,7 @@ const CreateAppModal = ({
   return (
     <>
       <Dialog open={show} onOpenChange={open => !open && onHide()} disablePointerDismissal>
-        <DialogContent className="px-8">
+        <DialogContent backdropProps={{ forceRender: true }} className="px-8">
           <DialogCloseButton />
           {isEditModal && (
             <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
