@@ -24,14 +24,14 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response, to_timestamp
-from libs.login import current_account_with_tenant, login_required
-from models import DataSourceOauthBinding, Document
+from libs.login import login_required
+from models import Account, DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 from .. import console_ns
-from ..wraps import account_initialization_required, setup_required
+from ..wraps import account_initialization_required, setup_required, with_current_tenant_id, with_current_user
 
 
 class NotionEstimatePayload(BaseModel):
@@ -130,9 +130,8 @@ class DataSourceApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[DataSourceIntegrateListResponse.__name__])
-    def get(self) -> tuple[dict[str, Any], int]:
-        _, current_tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str) -> tuple[dict[str, Any], int]:
         # get workspace data source integrates
         data_source_integrates = db.session.scalars(
             select(DataSourceOauthBinding).where(
@@ -180,8 +179,10 @@ class DataSourceApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def patch(self, binding_id: UUID, action: Literal["enable", "disable"]) -> tuple[dict[str, str], int]:
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def patch(
+        self, current_tenant_id: str, binding_id: UUID, action: Literal["enable", "disable"]
+    ) -> tuple[dict[str, str], int]:
         binding_id_str = str(binding_id)
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             data_source_binding = session.execute(
@@ -220,9 +221,9 @@ class DataSourceNotionListApi(Resource):
     @account_initialization_required
     @console_ns.doc(params=query_params_from_model(DataSourceNotionListQuery))
     @console_ns.response(200, "Success", console_ns.models[NotionIntegrateInfoListResponse.__name__])
-    def get(self) -> tuple[dict[str, Any], int]:
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account) -> tuple[dict[str, Any], int]:
         query = DataSourceNotionListQuery.model_validate(request.args.to_dict(flat=True))
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
@@ -311,9 +312,8 @@ class DataSourceNotionPreviewApi(Resource):
     @account_initialization_required
     @console_ns.doc(params=query_params_from_model(DataSourceNotionPreviewQuery))
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
-    def get(self, page_id: UUID, page_type: str) -> tuple[dict[str, str], int]:
-        _, current_tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, page_id: UUID, page_type: str) -> tuple[dict[str, str], int]:
         query = DataSourceNotionPreviewQuery.model_validate(request.args.to_dict(flat=True))
 
         datasource_provider_service = DatasourceProviderService()
@@ -347,9 +347,8 @@ class DataSourceNotionIndexingEstimateApi(Resource):
     @account_initialization_required
     @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[IndexingEstimate.__name__])
-    def post(self) -> tuple[dict[str, Any], int]:
-        _, current_tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str) -> tuple[dict[str, Any], int]:
         payload = NotionEstimatePayload.model_validate(console_ns.payload or {})
         args = payload.model_dump()
         # validate args

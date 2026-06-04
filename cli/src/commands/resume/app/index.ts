@@ -1,11 +1,15 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { OutputFormat } from '@/framework/output'
+import { agentGuide } from './guide'
 import { resumeApp } from './run'
 
 export default class ResumeApp extends DifyCommand {
   static override description = 'Resume a paused workflow app after submitting a human input form'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> resume app app-1 ft-abc --workflow-run-id wf-run-1 --action submit --inputs \'{"name":"Alice"}\'',
@@ -51,5 +55,9 @@ export default class ResumeApp extends DifyCommand {
       },
       { active: ctx.active, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

@@ -43,6 +43,15 @@ from models.provider_ids import ModelProviderID
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
+
+_DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
+_DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
+_DANGEROUS_ACK_KEYS = (
+    "dangerous_acknowledged",
+    "dangerous_accepted",
+    "risk_accepted",
+    "approved",
+)
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
@@ -404,7 +413,11 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
     sandbox_config = _plain_mapping(agent_soul.sandbox.config)
     return DifyShellLayerConfig(
-        cli_tools=[tool for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools) if tool is not None],
+        cli_tools=[
+            tool
+            for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools if _cli_tool_enabled(item))
+            if tool is not None
+        ],
         env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
         secret_refs=[
             secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
@@ -418,13 +431,26 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     )
 
 
+def _cli_tool_enabled(item: object) -> bool:
+    """A CLI tool is bootstrapped unless explicitly disabled (default is enabled)."""
+    data = _plain_mapping(item)
+    if data.get("enabled") is False:
+        return False
+    if data.get("pre_authorized") is False or _permission_denied(data):
+        return False
+    if _dangerous_without_acknowledgement(data):
+        return False
+    return True
+
+
 def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
     data = _plain_mapping(item)
     commands: list[str] = []
     raw_commands = data.get("install_commands")
     if isinstance(raw_commands, list):
         commands.extend(str(command) for command in raw_commands if str(command).strip())
-    for key in ("install_command", "install", "setup_command"):
+    # ``command`` is the typed AgentCliToolConfig field; the rest are accepted aliases.
+    for key in ("install_command", "install", "setup_command", "command"):
         raw_command = data.get(key)
         if isinstance(raw_command, str) and raw_command.strip():
             commands.append(raw_command)
@@ -468,3 +494,30 @@ def _name_from_mapping(item: Mapping[str, Any]) -> str | None:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _permission_denied(data: Mapping[str, Any]) -> bool:
+    permission = data.get("permission")
+    if isinstance(permission, Mapping):
+        allowed = permission.get("allowed")
+        if allowed is False:
+            return True
+        status = permission.get("status") or permission.get("state")
+        if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+            return True
+
+    for key in ("authorization_status", "permission_status", "status"):
+        status = data.get(key)
+        if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+            return True
+    return False
+
+
+def _dangerous_without_acknowledgement(data: Mapping[str, Any]) -> bool:
+    dangerous = any(data.get(key) is True for key in _DANGEROUS_FLAG_KEYS)
+    risk_level = data.get("risk_level")
+    if isinstance(risk_level, str) and risk_level == "dangerous":
+        dangerous = True
+    if not dangerous:
+        return False
+    return not any(data.get(key) is True for key in _DANGEROUS_ACK_KEYS)

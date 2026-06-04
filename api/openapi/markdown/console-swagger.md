@@ -10940,14 +10940,41 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
 
+#### AgentCliToolAuthorizationStatus
+
+Authorization state for Agent-scoped CLI tools.
+
+Missing status keeps backward compatibility with draft rows and CLI tools that
+do not need pre-authorization. Explicit denied-like states are blocked by the
+composer/publish validators and skipped by runtime request builders.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentCliToolAuthorizationStatus | string | Authorization state for Agent-scoped CLI tools.  Missing status keeps backward compatibility with draft rows and CLI tools that do not need pre-authorization. Explicit denied-like states are blocked by the composer/publish validators and skipped by runtime request builders. |  |
+
 #### AgentCliToolConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| authorization_status | [AgentCliToolAuthorizationStatus](#agentclitoolauthorizationstatus) |  | No |
 | command | string |  | No |
+| dangerous | boolean |  | No |
+| dangerous_acknowledged | boolean |  | No |
 | description | string |  | No |
 | enabled | boolean |  | No |
+| invoke_metadata | object |  | No |
 | name | string |  | No |
+| permission | object |  | No |
+| pre_authorized | boolean |  | No |
+| risk_level | [AgentCliToolRiskLevel](#agentclitoolrisklevel) |  | No |
+
+#### AgentCliToolRiskLevel
+
+Risk marker for CLI tool bootstrap commands.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentCliToolRiskLevel | string | Risk marker for CLI tool bootstrap commands. |  |
 
 #### AgentComposerAgentResponse
 
@@ -11052,7 +11079,7 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | current_snapshot_id | string |  | Yes |
 | id | string |  | Yes |
@@ -11068,7 +11095,7 @@ Audit operation recorded for Agent Soul version/revision changes.
 | ---- | ---- | ----------- | -------- |
 | agent_id | string |  | No |
 | config_snapshot | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | id | string |  | Yes |
 | revisions | [ [AgentConfigRevisionResponse](#agentconfigrevisionresponse) ] |  | No |
@@ -11087,7 +11114,7 @@ Audit operation recorded for Agent Soul version/revision changes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | agent_id | string |  | No |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | id | string |  | Yes |
 | summary | string |  | No |
@@ -11159,9 +11186,9 @@ Supported icon storage formats for Agent roster entries.
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
 | app_id | string |  | No |
-| archived_at | string |  | No |
+| archived_at | integer |  | No |
 | archived_by | string |  | No |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | Yes |
 | existing_node_ids | [ string ] |  | No |
@@ -11175,7 +11202,7 @@ Supported icon storage formats for Agent roster entries.
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
-| updated_at | string |  | No |
+| updated_at | integer |  | No |
 | updated_by | string |  | No |
 | workflow_id | string |  | No |
 | workflow_node_id | string |  | No |
@@ -11305,9 +11332,9 @@ the current roster/workflow APIs scoped to Dify Agent.
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
 | app_id | string |  | No |
-| archived_at | string |  | No |
+| archived_at | integer |  | No |
 | archived_by | string |  | No |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | Yes |
 | icon | string |  | No |
@@ -11318,7 +11345,7 @@ the current roster/workflow APIs scoped to Dify Agent.
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
-| updated_at | string |  | No |
+| updated_at | integer |  | No |
 | updated_by | string |  | No |
 | workflow_id | string |  | No |
 | workflow_node_id | string |  | No |
@@ -11345,6 +11372,8 @@ Visibility and lifecycle scope of an Agent record.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | No |
 | name | string |  | No |
+| permission | object |  | No |
+| permission_status | string |  | No |
 | provider | string |  | No |
 | type | string |  | No |
 

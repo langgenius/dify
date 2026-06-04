@@ -25,7 +25,7 @@ export const zRosterAgentUpdatePayload = z.object({
  */
 export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   summary: z.string().nullish(),
@@ -79,9 +79,9 @@ export const zAgentRosterResponse = z.object({
   active_config_snapshot_id: z.string().nullish(),
   agent_kind: zAgentKind,
   app_id: z.string().nullish(),
-  archived_at: z.string().nullish(),
+  archived_at: z.int().nullish(),
   archived_by: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   description: z.string(),
   icon: z.string().nullish(),
@@ -92,7 +92,7 @@ export const zAgentRosterResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
-  updated_at: z.string().nullish(),
+  updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
   workflow_node_id: z.string().nullish(),
@@ -117,9 +117,9 @@ export const zAgentInviteOptionResponse = z.object({
   active_config_snapshot_id: z.string().nullish(),
   agent_kind: zAgentKind,
   app_id: z.string().nullish(),
-  archived_at: z.string().nullish(),
+  archived_at: z.int().nullish(),
   archived_by: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   description: z.string(),
   existing_node_ids: z.array(z.string()).optional(),
@@ -133,7 +133,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
-  updated_at: z.string().nullish(),
+  updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
   workflow_node_id: z.string().nullish(),
@@ -184,7 +184,7 @@ export const zAgentConfigRevisionOperation = z.enum([
  * AgentConfigRevisionResponse
  */
 export const zAgentConfigRevisionResponse = z.object({
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   current_snapshot_id: z.string(),
   id: z.string(),
@@ -218,6 +218,8 @@ export const zAgentTextToSpeechFeatureConfig = z.object({
 export const zAgentSecretRefConfig = z.object({
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  permission_status: z.string().max(64).nullish(),
   provider: z.string().max(255).nullish(),
   type: z.string().max(64).nullish(),
 })
@@ -379,16 +381,6 @@ export const zAgentSoulSkillsFilesConfig = z.object({
 })
 
 /**
- * AgentCliToolConfig
- */
-export const zAgentCliToolConfig = z.object({
-  command: z.string().nullish(),
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  name: z.string().max(255).nullish(),
-})
-
-/**
  * AgentModelResponseFormatConfig
  */
 export const zAgentModelResponseFormatConfig = z.object({
@@ -428,6 +420,50 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
   enabled: z.boolean().optional().default(false),
   model: zAgentSoulModelConfig.optional(),
   prompt: z.string().nullish(),
+})
+
+/**
+ * AgentCliToolAuthorizationStatus
+ *
+ * Authorization state for Agent-scoped CLI tools.
+ *
+ * Missing status keeps backward compatibility with draft rows and CLI tools that
+ * do not need pre-authorization. Explicit denied-like states are blocked by the
+ * composer/publish validators and skipped by runtime request builders.
+ */
+export const zAgentCliToolAuthorizationStatus = z.enum([
+  'allowed',
+  'authorized',
+  'denied',
+  'forbidden',
+  'not_required',
+  'pending',
+  'pre_authorized',
+  'unauthorized',
+])
+
+/**
+ * AgentCliToolRiskLevel
+ *
+ * Risk marker for CLI tool bootstrap commands.
+ */
+export const zAgentCliToolRiskLevel = z.enum(['dangerous', 'safe', 'unknown'])
+
+/**
+ * AgentCliToolConfig
+ */
+export const zAgentCliToolConfig = z.object({
+  authorization_status: zAgentCliToolAuthorizationStatus.optional(),
+  command: z.string().nullish(),
+  dangerous: z.boolean().optional().default(false),
+  dangerous_acknowledged: z.boolean().optional().default(false),
+  description: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  invoke_metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  pre_authorized: z.boolean().nullish(),
+  risk_level: zAgentCliToolRiskLevel.optional(),
 })
 
 /**
@@ -555,7 +591,7 @@ export const zRosterAgentCreatePayload = z.object({
 export const zAgentConfigSnapshotDetailResponse = z.object({
   agent_id: z.string().nullish(),
   config_snapshot: zAgentSoulConfig,
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   revisions: z.array(zAgentConfigRevisionResponse).optional(),
