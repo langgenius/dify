@@ -64,7 +64,7 @@ describe('PermissionGroupList', () => {
     it('should render an empty state when there are no permission groups', () => {
       render(<PermissionGroupList groups={[]} value={[]} onChange={vi.fn()} />)
 
-      expect(screen.getByText('permission.permissionList.noPermissionsFound')).toBeInTheDocument()
+      expect(screen.getByText('permission.permissionList.noPermissionsFound')).toHaveClass('flex', 'h-full', 'items-center', 'justify-center')
     })
 
     it('should expand the first selected group by default', () => {

@@ -79,11 +79,14 @@ const PermissionGroupList = ({
     <div className={cn('min-h-0 flex-1 rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs', className)}>
       <ScrollArea
         className="h-full overflow-hidden rounded-xl"
-        slotClassNames={{ viewport: 'overscroll-contain' }}
+        slotClassNames={{
+          viewport: 'overscroll-contain',
+          content: groups.length === 0 ? 'h-full' : undefined,
+        }}
       >
         {groups.length === 0
           ? (
-              <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+              <div className="flex h-full items-center justify-center px-3 py-6 text-center system-sm-regular text-text-tertiary">
                 {t('permissionList.noPermissionsFound', { ns: 'permission' })}
               </div>
             )
