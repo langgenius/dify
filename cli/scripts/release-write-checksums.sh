@@ -10,9 +10,10 @@ _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${_dir}/lib/common.sh"
 
-: "${CLI_VERSION:?CLI_VERSION is required}"
-
 naming() { node "${_dir}/release-naming.mjs" "$@"; }
+
+CLI_VERSION="${CLI_VERSION:-$(node -p "require('$(cli::root)/package.json').version")}"
+[[ -n "$CLI_VERSION" && "$CLI_VERSION" != "undefined" ]] || die "CLI_VERSION could not be derived from package.json"
 
 cd "$(cli::root)/dist/bin"
 

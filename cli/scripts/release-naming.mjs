@@ -13,6 +13,7 @@
 //   targets                -> one line per target: "<bunTarget>\t<id>\t<0|1 exe>"
 //   channels               -> one channel name per line
 //   prerelease <channel>   -> "true" | "false"
+//   github-env             -> key=value lines (all fields CI needs) for $GITHUB_ENV
 //   validate               -> exit 1 if difyctl.release, version, or channel is malformed
 
 import { readFileSync } from 'node:fs'
@@ -42,7 +43,28 @@ function loadPkg() {
   const pkg = JSON.parse(readFileSync(pkgUrl, 'utf8'))
   if (!pkg.difyctl?.release)
     die('cli/package.json missing difyctl.release')
-  return { version: pkg.version, channel: pkg.difyctl.channel, release: pkg.difyctl.release }
+  return {
+    version: pkg.version,
+    channel: pkg.difyctl.channel,
+    compat: pkg.difyctl.compat ?? {},
+    release: pkg.difyctl.release,
+  }
+}
+
+// Every field downstream CI needs, as `key=value` lines for $GITHUB_ENV. Each
+// job pipes this once into the environment, then references ${{ env.<field> }},
+// so adding a field here needs no workflow edit (no per-field list to maintain).
+function githubEnv() {
+  const { version, channel, compat, release } = loadPkg()
+  const fields = {
+    version,
+    channel,
+    prerelease: channelByName(channel)?.prerelease ?? false,
+    minDify: compat.minDify,
+    maxDify: compat.maxDify,
+    tagPrefix: release.tagPrefix,
+  }
+  return Object.entries(fields).map(([k, v]) => `${k}=${v}`).join('\n')
 }
 
 function requireVersion(version) {
@@ -122,6 +144,8 @@ function main(argv) {
       return loadPkg().release.targets.map(t => `${t.bunTarget}\t${t.id}\t${t.exe ? 1 : 0}`).join('\n')
     case 'channels':
       return CHANNELS.map(c => c.name).join('\n')
+    case 'github-env':
+      return githubEnv()
     case 'prerelease': {
       const ch = channelByName(rest[0] ?? die('channel argument is required'))
       if (!ch)

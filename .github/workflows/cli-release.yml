@@ -27,12 +27,6 @@ jobs:
         shell: bash
         working-directory: ./cli
     outputs:
-      version: ${{ steps.manifest.outputs.version }}
-      channel: ${{ steps.manifest.outputs.channel }}
-      minDify: ${{ steps.manifest.outputs.minDify }}
-      maxDify: ${{ steps.manifest.outputs.maxDify }}
-      tagPrefix: ${{ steps.manifest.outputs.tagPrefix }}
-      prerelease: ${{ steps.manifest.outputs.prerelease }}
       already_exists: ${{ steps.guard.outputs.already_exists }}
     steps:
       - name: Checkout
@@ -40,23 +34,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Read cli/package.json
-        id: manifest
-        run: |
-          version=$(node -p "require('./package.json').version")
-          channel=$(node -p "require('./package.json').difyctl.channel")
-          minDify=$(node -p "require('./package.json').difyctl.compat.minDify")
-          maxDify=$(node -p "require('./package.json').difyctl.compat.maxDify")
-          tagPrefix=$(node -p "require('./package.json').difyctl.release.tagPrefix")
-          prerelease=$(node scripts/release-naming.mjs prerelease "$channel")
-          {
-              echo "version=$version"
-              echo "channel=$channel"
-              echo "minDify=$minDify"
-              echo "maxDify=$maxDify"
-              echo "tagPrefix=$tagPrefix"
-              echo "prerelease=$prerelease"
-          } >> "$GITHUB_OUTPUT"
+      - name: Export manifest to env
+        run: node scripts/release-naming.mjs github-env >> "$GITHUB_ENV"
 
       - name: Validate manifest
         run: scripts/release-validate-manifest.sh
@@ -66,7 +45,7 @@ jobs:
         # pushed tag must match it, else the tag would dangle with no release.
         if: github.ref_type == 'tag'
         run: |
-          expected="${{ steps.manifest.outputs.tagPrefix }}${{ steps.manifest.outputs.version }}"
+          expected="${tagPrefix}${version}"
           if [ "$GITHUB_REF_NAME" != "$expected" ]; then
               echo "::error::pushed tag ${GITHUB_REF_NAME} does not match manifest version (${expected}); bump cli/package.json or push the matching tag"
               exit 1
@@ -77,7 +56,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${{ steps.manifest.outputs.tagPrefix }}${{ steps.manifest.outputs.version }}"
+          tag="${tagPrefix}${version}"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
               echo "already_exists=true" >> "$GITHUB_OUTPUT"
               echo "::notice::release ${tag} already exists; release job will skip"
@@ -106,6 +85,9 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Export manifest to env
+        run: node scripts/release-naming.mjs github-env >> "$GITHUB_ENV"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
         with:
@@ -118,33 +100,28 @@ jobs:
         run: NPM_CONFIG_USERCONFIG="$PWD/cli/scripts/cross-arch.npmrc" pnpm install --frozen-lockfile
 
       - name: Compile standalone binaries (all targets)
-        env:
-          CLI_VERSION: ${{ needs.validate.outputs.version }}
-          DIFYCTL_CHANNEL: ${{ needs.validate.outputs.channel }}
-          DIFYCTL_MIN_DIFY: ${{ needs.validate.outputs.minDify }}
-          DIFYCTL_MAX_DIFY: ${{ needs.validate.outputs.maxDify }}
+        # Version/channel/compat are derived from cli/package.json by the build
+        # script itself (same validated commit), so no manifest plumbing here.
         run: |
           DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
             pnpm build:bin
 
       - name: Generate sha256 checksum file
-        env:
-          CLI_VERSION: ${{ needs.validate.outputs.version }}
         run: scripts/release-write-checksums.sh
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
-          tag_name: ${{ needs.validate.outputs.tagPrefix }}${{ needs.validate.outputs.version }}
-          name: difyctl ${{ needs.validate.outputs.version }}
-          prerelease: ${{ needs.validate.outputs.prerelease }}
+          tag_name: ${{ env.tagPrefix }}${{ env.version }}
+          name: difyctl ${{ env.version }}
+          prerelease: ${{ env.prerelease }}
           generate_release_notes: false
           fail_on_unmatched_files: true
           body: |
-            difyctl ${{ needs.validate.outputs.version }} (${{ needs.validate.outputs.channel }})
+            difyctl ${{ env.version }} (${{ env.channel }})
 
-            **Compatible with Dify** ${{ needs.validate.outputs.minDify }} – ${{ needs.validate.outputs.maxDify }}
+            **Compatible with Dify** ${{ env.minDify }} – ${{ env.maxDify }}
 
             ### Install
 
@@ -158,6 +135,6 @@ jobs:
             irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install.ps1 | iex
             ```
 
-            [Changes in `cli/`](https://github.com/langgenius/dify/commits/${{ needs.validate.outputs.tagPrefix }}${{ needs.validate.outputs.version }}/cli)
+            [Changes in `cli/`](https://github.com/langgenius/dify/commits/${{ env.tagPrefix }}${{ env.version }}/cli)
           files: |
-            cli/dist/bin/${{ needs.validate.outputs.tagPrefix }}*
+            cli/dist/bin/${{ env.tagPrefix }}*
