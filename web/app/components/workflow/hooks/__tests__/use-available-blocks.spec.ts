@@ -81,9 +81,10 @@ describe('useAvailableBlocks', () => {
       expect(result.current.availableNextBlocks).toEqual([])
     })
 
-    it('should return empty array for End node', () => {
+    it('should return available blocks for End node (same as regular nodes)', () => {
       const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.End), { hooksStoreProps })
-      expect(result.current.availableNextBlocks).toEqual([])
+      expect(result.current.availableNextBlocks.length).toBeGreaterThan(0)
+      expect(result.current.availableNextBlocks).toContain(BlockEnum.LLM)
     })
 
     it('should return empty array for LoopEnd node', () => {
@@ -143,12 +144,19 @@ describe('useAvailableBlocks', () => {
       expect(blocks.availablePrevBlocks).toEqual([])
     })
 
-    it('should return empty nextBlocks for End/LoopEnd/KnowledgeBase', () => {
+    it('should return empty nextBlocks for LoopEnd/KnowledgeBase', () => {
       const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
 
-      expect(result.current.getAvailableBlocks(BlockEnum.End).availableNextBlocks).toEqual([])
       expect(result.current.getAvailableBlocks(BlockEnum.LoopEnd).availableNextBlocks).toEqual([])
       expect(result.current.getAvailableBlocks(BlockEnum.KnowledgeBase).availableNextBlocks).toEqual([])
+    })
+
+    it('should return available nextBlocks for End node (same as regular nodes)', () => {
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
+      const blocks = result.current.getAvailableBlocks(BlockEnum.End)
+
+      expect(blocks.availableNextBlocks.length).toBeGreaterThan(0)
+      expect(blocks.availableNextBlocks).toContain(BlockEnum.LLM)
     })
 
     it('should filter by inContainer when provided', () => {
