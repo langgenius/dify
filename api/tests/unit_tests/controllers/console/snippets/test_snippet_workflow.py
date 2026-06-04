@@ -15,9 +15,7 @@ def _unwrap(func):
     return func
 
 
-def test_restore_published_snippet_workflow_to_draft_success(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_restore_published_snippet_workflow_to_draft_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = SimpleNamespace(
         unique_hash="restored-hash",
         updated_at=None,
@@ -46,9 +44,7 @@ def test_restore_published_snippet_workflow_to_draft_success(
     assert response["hash"] == "restored-hash"
 
 
-def test_restore_published_snippet_workflow_to_draft_not_found(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_restore_published_snippet_workflow_to_draft_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
     user = SimpleNamespace(id="account-1")
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
 

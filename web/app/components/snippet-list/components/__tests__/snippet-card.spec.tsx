@@ -7,6 +7,7 @@ const {
   mockDownloadBlob,
   mockExportMutateAsync,
   mockOnRefresh,
+  mockIsCurrentWorkspaceEditor,
   mockToastError,
   mockToastSuccess,
   mockUpdateMutate,
@@ -14,6 +15,7 @@ const {
   mockDeleteMutate: vi.fn(),
   mockDownloadBlob: vi.fn(),
   mockExportMutateAsync: vi.fn(),
+  mockIsCurrentWorkspaceEditor: vi.fn(() => true),
   mockOnRefresh: vi.fn(),
   mockToastError: vi.fn(),
   mockToastSuccess: vi.fn(),
@@ -22,7 +24,7 @@ const {
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceEditor: true,
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
   }),
 }))
 
@@ -67,8 +69,20 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/features/tag-management/components/tag-selector', () => ({
-  TagSelector: ({ value }: { value: Array<{ name: string }> }) => (
-    <div data-testid="snippet-tags">{value.map(tag => tag.name).join(', ')}</div>
+  TagSelector: ({
+    onOpenTagManagement,
+    onTagsChange,
+    value,
+  }: {
+    onOpenTagManagement: () => void
+    onTagsChange: () => void
+    value: Array<{ name: string }>
+  }) => (
+    <div data-testid="snippet-tags">
+      <span>{value.map(tag => tag.name).join(', ')}</span>
+      <button type="button" onClick={onOpenTagManagement}>manage tags</button>
+      <button type="button" onClick={onTagsChange}>sync tags</button>
+    </div>
   ),
 }))
 
@@ -90,6 +104,7 @@ const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListIte
 describe('SnippetCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
   })
 
   describe('Rendering', () => {
@@ -111,6 +126,12 @@ describe('SnippetCard', () => {
       expect(screen.getByText('formatted-time')).toBeInTheDocument()
     })
 
+    it('should fall back to unknown user when creator and updater are unavailable', () => {
+      render(<SnippetCard snippet={createSnippet({ created_by: 'missing-creator', updated_by: 'missing-updater' })} />)
+
+      expect(screen.getByText('snippet.unknownUser')).toBeInTheDocument()
+    })
+
     it('should not render draft status for unpublished snippets', () => {
       render(<SnippetCard snippet={createSnippet({ is_published: false })} />)
 
@@ -128,6 +149,34 @@ describe('SnippetCard', () => {
       expect(screen.queryByRole('menuitem', { name: /duplicate/i })).not.toBeInTheDocument()
     })
 
+    it('should hide operations for users without editor permission', () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+    })
+
+    it('should forward tag selector actions without navigating the card link', () => {
+      const onOpenTagManagement = vi.fn()
+      const onTagsChange = vi.fn()
+
+      render(
+        <SnippetCard
+          snippet={createSnippet({ tags: [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: 1 }] })}
+          onOpenTagManagement={onOpenTagManagement}
+          onTagsChange={onTagsChange}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'manage tags' }))
+      fireEvent.click(screen.getByRole('button', { name: 'sync tags' }))
+
+      expect(screen.getByText('Sales')).toBeInTheDocument()
+      expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
+      expect(onTagsChange).toHaveBeenCalledTimes(1)
+    })
+
     it('should export a snippet from the operations menu', async () => {
       mockExportMutateAsync.mockResolvedValue('snippet-yaml')
 
@@ -142,6 +191,20 @@ describe('SnippetCard', () => {
           fileName: 'Tone Rewriter.yml',
         }))
       })
+    })
+
+    it('should show an error toast when snippet export fails', async () => {
+      mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
+
+      await waitFor(() => {
+        expect(mockToastError).toHaveBeenCalledWith('snippet.exportFailed')
+      })
+      expect(mockDownloadBlob).not.toHaveBeenCalled()
     })
 
     it('should update snippet info from the operations menu', async () => {
@@ -173,6 +236,32 @@ describe('SnippetCard', () => {
       })
     })
 
+    it('should show update errors from the mutation callback', async () => {
+      mockUpdateMutate.mockImplementation((_payload, options?: { onError?: (error: Error) => void }) => {
+        options?.onError?.(new Error('Update failed'))
+      })
+
+      render(<SnippetCard snippet={createSnippet({ description: '' })} onRefresh={mockOnRefresh} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }))
+      fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
+        target: { value: 'Updated Snippet' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      await waitFor(() => {
+        expect(mockUpdateMutate).toHaveBeenCalledWith(expect.objectContaining({
+          body: {
+            name: 'Updated Snippet',
+            description: undefined,
+          },
+        }), expect.any(Object))
+        expect(mockToastError).toHaveBeenCalledWith('Update failed')
+      })
+      expect(mockOnRefresh).not.toHaveBeenCalled()
+    })
+
     it('should delete a snippet from the operations menu', async () => {
       mockDeleteMutate.mockImplementation((_payload, options?: { onSuccess?: () => void }) => {
         options?.onSuccess?.()
@@ -193,6 +282,23 @@ describe('SnippetCard', () => {
         }))
         expect(mockOnRefresh).toHaveBeenCalled()
       })
+    })
+
+    it('should show delete errors from the mutation callback', async () => {
+      mockDeleteMutate.mockImplementation((_payload, options?: { onError?: (error: Error) => void }) => {
+        options?.onError?.(new Error('Delete failed'))
+      })
+
+      render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }))
+      fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
+
+      await waitFor(() => {
+        expect(mockToastError).toHaveBeenCalledWith('Delete failed')
+      })
+      expect(mockOnRefresh).not.toHaveBeenCalled()
     })
   })
 })

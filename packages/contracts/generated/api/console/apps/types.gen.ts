@@ -892,8 +892,9 @@ export type WorkflowDraftVariableUpdatePayload = {
 }
 
 export type PublishWorkflowPayload = {
-  marked_comment?: string | null
-  marked_name?: string | null
+  knowledge_base_setting?: {
+    [key: string]: unknown
+  } | null
 }
 
 export type WebhookTriggerResponse = {

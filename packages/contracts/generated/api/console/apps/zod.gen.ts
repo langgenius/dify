@@ -577,10 +577,11 @@ export const zWorkflowDraftVariableUpdatePayload = z.object({
 
 /**
  * PublishWorkflowPayload
+ *
+ * Payload for publishing snippet workflow.
  */
 export const zPublishWorkflowPayload = z.object({
-  marked_comment: z.string().max(100).nullish(),
-  marked_name: z.string().max(20).nullish(),
+  knowledge_base_setting: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**

@@ -74,8 +74,7 @@ class SnippetService:
             return
         detail = ", ".join(f"{nid}:{t}" for nid, t in disallowed)
         raise ValueError(
-            "Snippet workflow cannot contain start, human-input, or knowledge-retrieval nodes. "
-            f"Found: {detail}"
+            f"Snippet workflow cannot contain start, human-input, or knowledge-retrieval nodes. Found: {detail}"
         )
 
     # --- CRUD Operations ---

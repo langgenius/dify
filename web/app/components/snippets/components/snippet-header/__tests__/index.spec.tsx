@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { HeaderProps } from '@/app/components/workflow/header'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import SnippetHeader from '..'
 
 vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
@@ -154,6 +154,131 @@ describe('SnippetHeader', () => {
 
       expect(screen.queryByText('snippet.discardDraft')).not.toBeInTheDocument()
       expect(screen.getByText('snippet.editingDraft')).toBeInTheDocument()
+    })
+
+    it('should enter editing mode from the readonly header action', () => {
+      render(
+        <SnippetHeader
+          snippetId="snippet-1"
+          canDiscardChanges
+          canSave
+          hasDraftChanges={false}
+          isEditing={false}
+          isPublishing={false}
+          onCancel={mockCancel}
+          onEdit={mockEdit}
+          onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
+          onPublish={mockPublish}
+          onSaveAndExitEditing={mockSaveAndExit}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'snippet.edit' }))
+
+      expect(mockEdit).toHaveBeenCalledTimes(1)
+    })
+
+    it('should exit editing immediately when there are no draft changes', () => {
+      render(
+        <SnippetHeader
+          snippetId="snippet-1"
+          canDiscardChanges
+          canSave
+          hasDraftChanges={false}
+          isEditing
+          isPublishing={false}
+          onCancel={mockCancel}
+          onEdit={mockEdit}
+          onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
+          onPublish={mockPublish}
+          onSaveAndExitEditing={mockSaveAndExit}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'snippet.exitEditing' }))
+
+      expect(mockExitEditing).toHaveBeenCalledTimes(1)
+      expect(mockExitEditingWithoutSave).not.toHaveBeenCalled()
+      expect(mockSaveAndExit).not.toHaveBeenCalled()
+    })
+
+    it('should disable edit actions while publishing', () => {
+      render(
+        <SnippetHeader
+          snippetId="snippet-1"
+          canDiscardChanges
+          canSave
+          hasDraftChanges
+          isEditing
+          isPublishing
+          onCancel={mockCancel}
+          onEdit={mockEdit}
+          onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
+          onPublish={mockPublish}
+          onSaveAndExitEditing={mockSaveAndExit}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'snippet.exitEditing' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /^snippet\.save$/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'snippet.doNotSave' })).toBeDisabled()
+    })
+
+    it('should discard changes from the exit confirmation dialog', async () => {
+      render(
+        <SnippetHeader
+          snippetId="snippet-1"
+          canDiscardChanges
+          canSave
+          hasDraftChanges
+          isEditing
+          isPublishing={false}
+          onCancel={mockCancel}
+          onEdit={mockEdit}
+          onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
+          onPublish={mockPublish}
+          onSaveAndExitEditing={mockSaveAndExit}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'snippet.exitEditing' }))
+      fireEvent.click(screen.getByRole('button', { name: 'snippet.doNotSave' }))
+
+      await waitFor(() => {
+        expect(mockExitEditingWithoutSave).toHaveBeenCalledTimes(1)
+      })
+      expect(mockSaveAndExit).not.toHaveBeenCalled()
+    })
+
+    it('should save and exit from the exit confirmation dialog', async () => {
+      render(
+        <SnippetHeader
+          snippetId="snippet-1"
+          canDiscardChanges
+          canSave
+          hasDraftChanges
+          isEditing
+          isPublishing={false}
+          onCancel={mockCancel}
+          onEdit={mockEdit}
+          onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
+          onPublish={mockPublish}
+          onSaveAndExitEditing={mockSaveAndExit}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'snippet.exitEditing' }))
+      fireEvent.click(screen.getByRole('button', { name: 'snippet.saveAndExit' }))
+
+      await waitFor(() => {
+        expect(mockSaveAndExit).toHaveBeenCalledTimes(1)
+      })
+      expect(mockExitEditingWithoutSave).not.toHaveBeenCalled()
     })
   })
 })
