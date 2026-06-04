@@ -12,6 +12,14 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('../toggle-button', () => ({
+  default: ({ expand, handleToggle }: { expand: boolean, handleToggle: () => void }) => (
+    <button type="button" data-testid="toggle-button" data-expand={expand} onClick={handleToggle}>
+      Toggle
+    </button>
+  ),
+}))
+
 function GotoAnythingOpenProbe() {
   const open = useGotoAnythingOpen()
 
@@ -37,7 +45,7 @@ describe('DatasetDetailTop', () => {
     renderWithGotoAnythingStore(<DatasetDetailTop />)
 
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
-    expect(screen.getByText('common.menus.datasets')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.menus.datasets' })).toHaveAttribute('href', '/datasets')
   })
 
   it('keeps the back button and quick search actions', () => {
@@ -54,5 +62,15 @@ describe('DatasetDetailTop', () => {
 
     expect(mockBack).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
+  })
+
+  it('renders the sidebar toggle action in the top right', () => {
+    const onToggle = vi.fn()
+
+    renderWithGotoAnythingStore(<DatasetDetailTop expand={false} onToggle={onToggle} />)
+    fireEvent.click(screen.getByTestId('toggle-button'))
+
+    expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-expand', 'false')
+    expect(onToggle).toHaveBeenCalledTimes(1)
   })
 })
