@@ -2,7 +2,6 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -14,7 +13,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.login import login_required
+from libs.login import login_required, current_account_with_tenant
 from models.account import Account
 from models.model import App
 from services.app_dsl_service import (
