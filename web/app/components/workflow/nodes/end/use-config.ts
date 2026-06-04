@@ -21,7 +21,6 @@ const useConfig = (id: string, payload: EndNodeType) => {
       setInputs(newInputs)
     },
     varKey: 'outputs',
-    filterVar,
   })
 
   return {

@@ -58,7 +58,6 @@ describe('end/use-config', () => {
       inputs: currentInputs,
       setInputs: expect.any(Function),
       varKey: 'outputs',
-      filterVar: expect.any(Function),
     }))
     expect(result.current.readOnly).toBe(true)
     expect(result.current.handleVarListChange).toBe(mockHandleVarListChange)
