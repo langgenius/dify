@@ -80,6 +80,8 @@ export function AgentDetailLayout({
           <Button
             variant="primary"
             disabled
+            aria-label={`${t('agentDetail.publish')} · ${t('agentDetail.publishSoon')}`}
+            title={`${t('agentDetail.publish')} · ${t('agentDetail.publishSoon')}`}
             className="min-w-40 gap-2 py-2 pr-2 pl-3"
           >
             <span aria-hidden className="i-ri-upload-cloud-2-line size-4" />
