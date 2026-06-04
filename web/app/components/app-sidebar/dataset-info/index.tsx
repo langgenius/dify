@@ -68,8 +68,8 @@ const DatasetInfo = ({
                 )}
               </div>
             </div>
-            <div className="flex size-5 shrink-0 items-center justify-center rounded-md p-0.5">
-              <Dropdown expand triggerClassName="size-5 rounded-md p-0" />
+            <div className="flex size-8 shrink-0 items-center justify-center">
+              <Dropdown expand />
             </div>
           </>
         )}

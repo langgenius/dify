@@ -136,7 +136,8 @@ const DropDown = ({
         render={(
           <ActionButton
             aria-label={t('operation.more', { ns: 'common' })}
-            className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md', 'data-popup-open:bg-state-base-hover', triggerClassName)}
+            size={expand ? 'l' : 'm'}
+            className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
           />
         )}
       >
