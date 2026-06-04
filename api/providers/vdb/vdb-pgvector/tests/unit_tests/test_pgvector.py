@@ -36,6 +36,7 @@ class TestPGVector:
         assert pgvector.get_type() == "pgvector"
         assert pgvector.pool is not None
         assert pgvector.pg_bigm is False
+        assert pgvector.index_type == "hnsw"
         assert pgvector.index_hash is not None
 
     @patch("dify_vdb_pgvector.pgvector.psycopg2.pool.SimpleConnectionPool")
@@ -264,11 +265,93 @@ class TestPGVector:
         pgvector._create_collection(1536)
 
         # Verify Redis lock was acquired with correct lock name
-        mock_redis.lock.assert_called_once_with("vector_indexing_test_collection_lock", timeout=20)
+        mock_redis.lock.assert_called_once_with("vector_collection_test_collection_hnsw_lock", timeout=20)
 
         # Verify lock context manager was entered and exited
         mock_lock.__enter__.assert_called_once()
         mock_lock.__exit__.assert_called_once()
+
+    @patch("dify_vdb_pgvector.pgvector.psycopg2.pool.SimpleConnectionPool")
+    @patch("dify_vdb_pgvector.pgvector.redis_client")
+    def test_create_collection_with_diskann(self, mock_redis, mock_pool_class):
+        """Test collection creation with DiskANN index enabled."""
+        config = PGVectorConfig(
+            host="localhost",
+            port=5432,
+            user="test_user",
+            password="test_password",
+            database="test_db",
+            min_connection=1,
+            max_connection=5,
+            pg_bigm=False,
+            index_type="diskann",
+            diskann_extension="pg_diskann",
+        )
+        mock_lock = MagicMock()
+        mock_lock.__enter__ = MagicMock()
+        mock_lock.__exit__ = MagicMock()
+        mock_redis.lock.return_value = mock_lock
+        mock_redis.get.return_value = None
+        mock_redis.set.return_value = None
+
+        mock_pool = MagicMock()
+        mock_pool_class.return_value = mock_pool
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_pool.getconn.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        mock_cursor.fetchone.side_effect = [[1], None]
+
+        pgvector = PGVector(self.collection_name, config)
+        pgvector._create_collection(3072)
+
+        executed_sql = [call.args[0] for call in mock_cursor.execute.call_args_list]
+        assert any(sql == "SELECT 1 FROM pg_extension WHERE extname = %s" for sql in executed_sql)
+        assert any("CREATE EXTENSION IF NOT EXISTS pg_diskann CASCADE" in sql for sql in executed_sql)
+        assert any("USING diskann (embedding vector_cosine_ops)" in sql for sql in executed_sql)
+        assert any("product_quantized = true" in sql for sql in executed_sql)
+        assert any("pq_param_num_chunks = 0" in sql for sql in executed_sql)
+        assert not any("USING hnsw" in sql for sql in executed_sql)
+        mock_redis.lock.assert_called_once_with("vector_collection_test_collection_diskann_lock", timeout=20)
+
+    @patch("dify_vdb_pgvector.pgvector.psycopg2.pool.SimpleConnectionPool")
+    @patch("dify_vdb_pgvector.pgvector.redis_client")
+    def test_create_collection_with_vectorscale_diskann_extension(self, mock_redis, mock_pool_class):
+        """Test DiskANN can be provided by pgvectorscale."""
+        config = PGVectorConfig(
+            host="localhost",
+            port=5432,
+            user="test_user",
+            password="test_password",
+            database="test_db",
+            min_connection=1,
+            max_connection=5,
+            pg_bigm=False,
+            index_type="diskann",
+            diskann_extension="vectorscale",
+        )
+        mock_lock = MagicMock()
+        mock_lock.__enter__ = MagicMock()
+        mock_lock.__exit__ = MagicMock()
+        mock_redis.lock.return_value = mock_lock
+        mock_redis.get.return_value = None
+        mock_redis.set.return_value = None
+
+        mock_pool = MagicMock()
+        mock_pool_class.return_value = mock_pool
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_pool.getconn.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        mock_cursor.fetchone.side_effect = [[1], None]
+
+        pgvector = PGVector(self.collection_name, config)
+        pgvector._create_collection(1536)
+
+        executed_sql = [call.args[0] for call in mock_cursor.execute.call_args_list]
+        assert any("CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE" in sql for sql in executed_sql)
+        assert any("USING diskann (embedding vector_cosine_ops)" in sql for sql in executed_sql)
+        assert not any("product_quantized = true" in sql for sql in executed_sql)
 
     @patch("dify_vdb_pgvector.pgvector.psycopg2.pool.SimpleConnectionPool")
     def test_get_cursor_context_manager(self, mock_pool_class):
@@ -290,6 +373,28 @@ class TestPGVector:
         mock_pool.getconn.assert_called_once()
         mock_cursor.close.assert_called_once()
         mock_conn.commit.assert_called_once()
+        mock_conn.rollback.assert_not_called()
+        mock_pool.putconn.assert_called_once_with(mock_conn)
+
+    @patch("dify_vdb_pgvector.pgvector.psycopg2.pool.SimpleConnectionPool")
+    def test_get_cursor_rolls_back_on_error(self, mock_pool_class):
+        """Test that _get_cursor rolls back failed transactions."""
+        mock_pool = MagicMock()
+        mock_pool_class.return_value = mock_pool
+
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_pool.getconn.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        pgvector = PGVector(self.collection_name, self.config)
+
+        with pytest.raises(RuntimeError, match="boom"):
+            with pgvector._get_cursor():
+                raise RuntimeError("boom")
+
+        mock_conn.rollback.assert_called_once()
+        mock_conn.commit.assert_not_called()
         mock_pool.putconn.assert_called_once_with(mock_conn)
 
 
@@ -304,6 +409,8 @@ class TestPGVector:
         {"min_connection": 0},  # Test invalid min_connection
         {"max_connection": 0},  # Test invalid max_connection
         {"min_connection": 10, "max_connection": 5},  # Test min > max
+        {"index_type": "ivfflat"},  # Test invalid index type
+        {"diskann_extension": "unsafe_extension"},  # Test invalid DiskANN extension
     ],
 )
 def test_config_validation_parametrized(invalid_config_override):
@@ -325,6 +432,7 @@ def test_config_validation_parametrized(invalid_config_override):
 
 def test_create_delegates_collection_creation_and_insert():
     vector = PGVector.__new__(PGVector)
+    vector.index_type = pgvector_module.PGVectorIndexType.HNSW
     vector._create_collection = MagicMock()
     vector.add_texts = MagicMock(return_value=["doc-a"])
     docs = [Document(page_content="hello", metadata={"doc_id": "doc-a"})]
@@ -332,8 +440,63 @@ def test_create_delegates_collection_creation_and_insert():
     result = vector.create(docs, [[0.1, 0.2]])
 
     assert result == ["doc-a"]
-    vector._create_collection.assert_called_once_with(2)
+    vector._create_collection.assert_called_once_with(2, create_vector_index=True)
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
+
+
+def test_create_builds_diskann_index_after_insert():
+    vector = PGVector.__new__(PGVector)
+    vector.index_type = pgvector_module.PGVectorIndexType.DISKANN
+    call_order = []
+    vector._create_collection = MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("collection"))
+    vector.add_texts = MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("insert") or ["doc-a"])
+    vector._create_vector_index = MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("index"))
+    docs = [Document(page_content="hello", metadata={"doc_id": "doc-a"})]
+
+    result = vector.create(docs, [[0.1, 0.2]])
+
+    assert result == ["doc-a"]
+    vector._create_collection.assert_called_once_with(2, create_vector_index=False)
+    vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
+    vector._create_vector_index.assert_called_once_with(2)
+    assert call_order == ["collection", "insert", "index"]
+
+
+def test_create_vector_index_skips_retryable_pg_diskann_pq_error(monkeypatch: pytest.MonkeyPatch):
+    vector = PGVector.__new__(PGVector)
+    vector._collection_name = "test_collection"
+    vector.table_name = "embedding_test_collection"
+    vector.index_type = pgvector_module.PGVectorIndexType.DISKANN
+    vector.diskann_extension = pgvector_module.PGVectorDiskannExtension.PG_DISKANN
+    vector._execute_vector_index_sql = MagicMock()
+
+    class _InternalError(Exception):
+        pass
+
+    cursor = MagicMock()
+
+    @contextmanager
+    def _cursor_ctx():
+        yield cursor
+
+    vector._get_cursor = _cursor_ctx
+    vector._execute_vector_index_sql.side_effect = _InternalError(
+        "called `Result::unwrap()` on an `Err` value: PQError"
+    )
+    monkeypatch.setattr(pgvector_module.psycopg2.errors, "InternalError", _InternalError)
+
+    mock_lock = MagicMock()
+    mock_lock.__enter__ = MagicMock()
+    mock_lock.__exit__ = MagicMock()
+    mock_redis = MagicMock()
+    mock_redis.lock.return_value = mock_lock
+    mock_redis.get.return_value = None
+    monkeypatch.setattr(pgvector_module, "redis_client", mock_redis)
+
+    vector._create_vector_index(3072)
+
+    vector._execute_vector_index_sql.assert_called_once_with(cursor, 3072)
+    mock_redis.set.assert_not_called()
 
 
 def test_add_texts_uses_execute_values_and_returns_ids(monkeypatch: pytest.MonkeyPatch):
@@ -482,6 +645,8 @@ def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pyte
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_MIN_CONNECTION", 1)
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_MAX_CONNECTION", 5)
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_PG_BIGM", False)
+    monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_INDEX_TYPE", "diskann")
+    monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_DISKANN_EXTENSION", "vectorscale")
 
     with patch.object(pgvector_module, "PGVector", return_value="vector") as vector_cls:
         result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
@@ -491,4 +656,6 @@ def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pyte
     assert result_2 == "vector"
     assert vector_cls.call_args_list[0].kwargs["collection_name"] == "EXISTING_COLLECTION"
     assert vector_cls.call_args_list[1].kwargs["collection_name"] == "AUTO_COLLECTION"
+    assert vector_cls.call_args_list[0].kwargs["config"].index_type == "diskann"
+    assert vector_cls.call_args_list[0].kwargs["config"].diskann_extension == "vectorscale"
     assert dataset_without_index.index_struct is not None
