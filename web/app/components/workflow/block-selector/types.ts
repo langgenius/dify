@@ -80,6 +80,7 @@ export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | Tri
 export type ToolValue = {
   provider_name: string
   provider_show_name?: string
+  plugin_id?: string
   tool_name: string
   tool_label: string
   tool_description?: string

@@ -16,6 +16,7 @@ const GLOBAL_FLAGS: Record<string, FlagDefinition> = {
   [VERBOSE_FLAG]: Flags.boolean({
     char: VERBOSE_CHAR,
     description: 'enable verbose output',
+    helpGroup: 'GLOBAL',
   }),
 }
 
@@ -56,7 +57,7 @@ function stringRepeatedFlag<const Opts extends { description: string, char?: str
   }
 }
 
-function booleanFlag(opts: { description: string, char?: string, default?: boolean }): FlagDefinition<boolean> {
+function booleanFlag(opts: { description: string, char?: string, default?: boolean, helpGroup?: 'GLOBAL' }): FlagDefinition<boolean> {
   return { type: 'boolean', ...opts }
 }
 
