@@ -3,6 +3,7 @@
 import type { MouseEventHandler, ReactNode } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,16 +17,20 @@ import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { env } from '@/env'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useLogout } from '@/service/use-common'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
-import Indicator from '../indicator'
 import Compliance from './compliance'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 import Support from './support'
+
+const EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY = 'education-reverify-prev-expire-at'
+const EDUCATION_REVERIFY_HAS_NOTICED_KEY = 'education-reverify-has-noticed'
+const EDUCATION_EXPIRED_HAS_NOTICED_KEY = 'education-expired-has-noticed'
 
 type AccountMenuRouteItemProps = {
   href: string
@@ -116,18 +121,20 @@ export default function AppSelector() {
   const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
+  const clearEducationReverifyPrevExpireAt = useSetLocalStorage<number>(EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY)
+  const clearEducationReverifyHasNoticed = useSetLocalStorage<boolean>(EDUCATION_REVERIFY_HAS_NOTICED_KEY)
+  const clearEducationExpiredHasNoticed = useSetLocalStorage<boolean>(EDUCATION_EXPIRED_HAS_NOTICED_KEY)
 
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
     await logout()
     resetUser()
-    localStorage.removeItem('setup_status')
     // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info
-    localStorage.removeItem('education-reverify-prev-expire-at')
-    localStorage.removeItem('education-reverify-has-noticed')
-    localStorage.removeItem('education-expired-has-noticed')
+    clearEducationReverifyPrevExpireAt(null)
+    clearEducationReverifyHasNoticed(null)
+    clearEducationExpiredHasNoticed(null)
 
     router.push('/signin')
   }
@@ -216,7 +223,7 @@ export default function AppSelector() {
                       trailing={(
                         <div className="flex shrink-0 items-center">
                           <div className="mr-2 system-xs-regular text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
-                          <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                          <StatusDot status={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'success' : 'warning'} />
                         </div>
                       )}
                     />

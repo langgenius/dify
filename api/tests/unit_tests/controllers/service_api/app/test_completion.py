@@ -211,12 +211,12 @@ class TestAppModeValidation:
 
     def test_chat_modes_are_distinct_from_completion(self):
         """Test that chat modes are distinct from completion mode."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         assert AppMode.COMPLETION not in chat_modes
 
     def test_workflow_mode_is_distinct_from_chat_modes(self):
         """Test that WORKFLOW mode is not a chat mode."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         assert AppMode.WORKFLOW not in chat_modes
 
     def test_not_chat_app_error_can_be_raised(self):
@@ -226,7 +226,16 @@ class TestAppModeValidation:
 
     def test_all_app_modes_are_defined(self):
         """Test that all expected app modes are defined."""
-        expected_modes = ["COMPLETION", "CHAT", "AGENT_CHAT", "ADVANCED_CHAT", "WORKFLOW", "CHANNEL", "RAG_PIPELINE"]
+        expected_modes = [
+            "COMPLETION",
+            "CHAT",
+            "AGENT_CHAT",
+            "AGENT",
+            "ADVANCED_CHAT",
+            "WORKFLOW",
+            "CHANNEL",
+            "RAG_PIPELINE",
+        ]
         for mode_name in expected_modes:
             assert hasattr(AppMode, mode_name), f"AppMode.{mode_name} should exist"
 

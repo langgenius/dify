@@ -187,6 +187,8 @@ def _build_exposed_json_schema(
     if description is not None:
         exposed_schema["description"] = description
     return exposed_schema
+
+
 def _reject_non_local_refs(schema: JsonValue) -> None:
     """Reject references that would require external fetching or non-local state.
 

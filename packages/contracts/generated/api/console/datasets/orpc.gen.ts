@@ -13,6 +13,7 @@ import {
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zDeleteDatasetsByDatasetIdDocumentsPath,
   zDeleteDatasetsByDatasetIdDocumentsResponse,
@@ -50,8 +51,10 @@ import {
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse,
@@ -87,7 +90,6 @@ import {
   zGetDatasetsExternalKnowledgeApiQuery,
   zGetDatasetsExternalKnowledgeApiResponse,
   zGetDatasetsMetadataBuiltInResponse,
-  zGetDatasetsNotionIndexingEstimateResponse,
   zGetDatasetsProcessRuleQuery,
   zGetDatasetsProcessRuleResponse,
   zGetDatasetsQuery,
@@ -103,8 +105,10 @@ import {
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
@@ -513,16 +517,6 @@ export const metadata = {
   builtIn,
 }
 
-export const get8 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDatasetsNotionIndexingEstimate',
-    path: '/datasets/notion-indexing-estimate',
-    tags: ['console'],
-  })
-  .output(zGetDatasetsNotionIndexingEstimateResponse)
-
 /**
  * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
@@ -543,7 +537,6 @@ export const post7 = oc
   .output(zPostDatasetsNotionIndexingEstimateResponse)
 
 export const notionIndexingEstimate = {
-  get: get8,
   post: post7,
 }
 
@@ -554,7 +547,7 @@ export const notionIndexingEstimate = {
  *
  * @deprecated
  */
-export const get9 = oc
+export const get8 = oc
   .route({
     deprecated: true,
     description:
@@ -569,13 +562,13 @@ export const get9 = oc
   .output(zGetDatasetsProcessRuleResponse)
 
 export const processRule = {
-  get: get9,
+  get: get8,
 }
 
 /**
  * Get mock dataset retrieval settings by vector type
  */
-export const get10 = oc
+export const get9 = oc
   .route({
     description: 'Get mock dataset retrieval settings by vector type',
     inputStructure: 'detailed',
@@ -588,13 +581,13 @@ export const get10 = oc
   .output(zGetDatasetsRetrievalSettingByVectorTypeResponse)
 
 export const byVectorType = {
-  get: get10,
+  get: get9,
 }
 
 /**
  * Get dataset retrieval settings
  */
-export const get11 = oc
+export const get10 = oc
   .route({
     description: 'Get dataset retrieval settings',
     inputStructure: 'detailed',
@@ -606,7 +599,7 @@ export const get11 = oc
   .output(zGetDatasetsRetrievalSettingResponse)
 
 export const retrievalSetting = {
-  get: get11,
+  get: get10,
   byVectorType,
 }
 
@@ -632,7 +625,7 @@ export const apiKeys2 = {
 /**
  * Get dataset auto disable logs
  */
-export const get12 = oc
+export const get11 = oc
   .route({
     description: 'Get dataset auto disable logs',
     inputStructure: 'detailed',
@@ -645,7 +638,7 @@ export const get12 = oc
   .output(zGetDatasetsByDatasetIdAutoDisableLogsResponse)
 
 export const autoDisableLogs = {
-  get: get12,
+  get: get11,
 }
 
 /**
@@ -653,7 +646,7 @@ export const autoDisableLogs = {
  *
  * @deprecated
  */
-export const get13 = oc
+export const get12 = oc
   .route({
     deprecated: true,
     description:
@@ -668,19 +661,11 @@ export const get13 = oc
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse)
 
 export const indexingEstimate2 = {
-  get: get13,
+  get: get12,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get14 = oc
+export const get13 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdBatchByBatchIndexingStatus',
@@ -691,7 +676,7 @@ export const get14 = oc
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse)
 
 export const indexingStatus = {
-  get: get14,
+  get: get13,
 }
 
 export const byBatch = {
@@ -814,7 +799,7 @@ export const status = {
 /**
  * Get a signed download URL for a dataset document's original uploaded file
  */
-export const get15 = oc
+export const get14 = oc
   .route({
     description: 'Get a signed download URL for a dataset document\'s original uploaded file',
     inputStructure: 'detailed',
@@ -827,7 +812,7 @@ export const get15 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
 
 export const download = {
-  get: get15,
+  get: get14,
 }
 
 /**
@@ -837,7 +822,7 @@ export const download = {
  *
  * @deprecated
  */
-export const get16 = oc
+export const get15 = oc
   .route({
     deprecated: true,
     description:
@@ -852,21 +837,15 @@ export const get16 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse)
 
 export const indexingEstimate3 = {
-  get: get16,
+  get: get15,
 }
 
 /**
  * Get document indexing status
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get17 = oc
+export const get16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get document indexing status\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get document indexing status',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatus',
@@ -877,7 +856,7 @@ export const get17 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse)
 
 export const indexingStatus2 = {
-  get: get17,
+  get: get16,
 }
 
 /**
@@ -904,7 +883,7 @@ export const metadata3 = {
   put,
 }
 
-export const get18 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -916,7 +895,7 @@ export const get18 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse)
 
 export const sync = {
-  get: get18,
+  get: get17,
 }
 
 export const notion = {
@@ -928,7 +907,7 @@ export const notion = {
  *
  * @deprecated
  */
-export const get19 = oc
+export const get18 = oc
   .route({
     deprecated: true,
     description:
@@ -943,7 +922,7 @@ export const get19 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse)
 
 export const pipelineExecutionLog = {
-  get: get19,
+  get: get18,
 }
 
 /**
@@ -1039,23 +1018,20 @@ export const patch6 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath }))
+  .input(
+    z.object({
+      params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
+      query: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery.optional(),
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse)
 
 export const byAction3 = {
   patch: patch6,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post13 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegment',
@@ -1075,7 +1051,7 @@ export const segment = {
   byAction: byAction3,
 }
 
-export const get20 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1103,7 +1079,7 @@ export const post14 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
 
 export const batchImport = {
-  get: get20,
+  get: get19,
   post: post14,
 }
 
@@ -1127,16 +1103,8 @@ export const delete3 = oc
     zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId:
@@ -1160,16 +1128,8 @@ export const byChildChunkId = {
   patch: patch7,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get21 = oc
+export const get20 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1179,20 +1139,14 @@ export const get21 = oc
   .input(
     z.object({
       params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+      query:
+        zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery.optional(),
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1201,21 +1155,14 @@ export const patch8 = oc
   })
   .input(
     z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody,
       params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1231,7 +1178,7 @@ export const post15 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
 export const childChunks = {
-  get: get21,
+  get: get20,
   patch: patch8,
   post: post15,
   byChildChunkId,
@@ -1251,16 +1198,8 @@ export const delete4 = oc
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
@@ -1290,31 +1229,33 @@ export const delete5 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath }))
+  .input(
+    z.object({
+      params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get22 = oc
+export const get21 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 export const segments = {
   delete: delete5,
-  get: get22,
+  get: get21,
   batchImport,
   bySegmentId,
 }
@@ -1336,7 +1277,7 @@ export const segments = {
  *
  * @deprecated
  */
-export const get23 = oc
+export const get22 = oc
   .route({
     deprecated: true,
     description:
@@ -1352,13 +1293,13 @@ export const get23 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse)
 
 export const summaryStatus = {
-  get: get23,
+  get: get22,
 }
 
 /**
  * sync website document
  */
-export const get24 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1371,7 +1312,7 @@ export const get24 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse)
 
 export const websiteSync = {
-  get: get24,
+  get: get23,
 }
 
 export const delete6 = oc
@@ -1393,7 +1334,7 @@ export const delete6 = oc
  *
  * @deprecated
  */
-export const get25 = oc
+export const get24 = oc
   .route({
     deprecated: true,
     description:
@@ -1414,7 +1355,7 @@ export const get25 = oc
 
 export const byDocumentId = {
   delete: delete6,
-  get: get25,
+  get: get24,
   download,
   indexingEstimate: indexingEstimate3,
   indexingStatus: indexingStatus2,
@@ -1443,16 +1384,10 @@ export const delete7 = oc
 
 /**
  * Get documents in a dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get26 = oc
+export const get25 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get documents in a dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get documents in a dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocuments',
@@ -1493,7 +1428,7 @@ export const post16 = oc
 
 export const documents = {
   delete: delete7,
-  get: get26,
+  get: get25,
   post: post16,
   downloadZip,
   generateSummary,
@@ -1505,7 +1440,7 @@ export const documents = {
 /**
  * Get dataset error documents
  */
-export const get27 = oc
+export const get26 = oc
   .route({
     description: 'Get dataset error documents',
     inputStructure: 'detailed',
@@ -1518,7 +1453,7 @@ export const get27 = oc
   .output(zGetDatasetsByDatasetIdErrorDocsResponse)
 
 export const errorDocs = {
-  get: get27,
+  get: get26,
 }
 
 /**
@@ -1584,7 +1519,7 @@ export const hitTesting = {
 /**
  * Get dataset indexing status
  */
-export const get28 = oc
+export const get27 = oc
   .route({
     description: 'Get dataset indexing status',
     inputStructure: 'detailed',
@@ -1597,7 +1532,7 @@ export const get28 = oc
   .output(zGetDatasetsByDatasetIdIndexingStatusResponse)
 
 export const indexingStatus3 = {
-  get: get28,
+  get: get27,
 }
 
 export const post19 = oc
@@ -1653,7 +1588,7 @@ export const byMetadataId = {
   patch: patch10,
 }
 
-export const get29 = oc
+export const get28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1682,13 +1617,13 @@ export const post20 = oc
   .output(zPostDatasetsByDatasetIdMetadataResponse)
 
 export const metadata4 = {
-  get: get29,
+  get: get28,
   post: post20,
   builtIn: builtIn2,
   byMetadataId,
 }
 
-export const get30 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1700,7 +1635,7 @@ export const get30 = oc
   .output(zGetDatasetsByDatasetIdNotionSyncResponse)
 
 export const sync2 = {
-  get: get30,
+  get: get29,
 }
 
 export const notion2 = {
@@ -1710,7 +1645,7 @@ export const notion2 = {
 /**
  * Get dataset permission user list
  */
-export const get31 = oc
+export const get30 = oc
   .route({
     description: 'Get dataset permission user list',
     inputStructure: 'detailed',
@@ -1723,13 +1658,13 @@ export const get31 = oc
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
 
 export const permissionPartUsers = {
-  get: get31,
+  get: get30,
 }
 
 /**
  * Get dataset query history
  */
-export const get32 = oc
+export const get31 = oc
   .route({
     description: 'Get dataset query history',
     inputStructure: 'detailed',
@@ -1742,13 +1677,13 @@ export const get32 = oc
   .output(zGetDatasetsByDatasetIdQueriesResponse)
 
 export const queries = {
-  get: get32,
+  get: get31,
 }
 
 /**
  * Get applications related to dataset
  */
-export const get33 = oc
+export const get32 = oc
   .route({
     description: 'Get applications related to dataset',
     inputStructure: 'detailed',
@@ -1761,7 +1696,7 @@ export const get33 = oc
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
 
 export const relatedApps = {
-  get: get33,
+  get: get32,
 }
 
 /**
@@ -1792,7 +1727,7 @@ export const retry = {
 /**
  * Check if dataset is in use
  */
-export const get34 = oc
+export const get33 = oc
   .route({
     description: 'Check if dataset is in use',
     inputStructure: 'detailed',
@@ -1805,7 +1740,7 @@ export const get34 = oc
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
 
 export const useCheck2 = {
-  get: get34,
+  get: get33,
 }
 
 export const delete9 = oc
@@ -1823,7 +1758,7 @@ export const delete9 = oc
 /**
  * Get dataset details
  */
-export const get35 = oc
+export const get34 = oc
   .route({
     description: 'Get dataset details',
     inputStructure: 'detailed',
@@ -1858,7 +1793,7 @@ export const patch11 = oc
 
 export const byDatasetId = {
   delete: delete9,
-  get: get35,
+  get: get34,
   patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
@@ -1905,7 +1840,7 @@ export const byApiKeyId2 = {
  *
  * Get all API keys for a dataset
  */
-export const get36 = oc
+export const get35 = oc
   .route({
     description: 'Get all API keys for a dataset',
     inputStructure: 'detailed',
@@ -1938,7 +1873,7 @@ export const post22 = oc
   .output(zPostDatasetsByResourceIdApiKeysResponse)
 
 export const apiKeys3 = {
-  get: get36,
+  get: get35,
   post: post22,
   byApiKeyId: byApiKeyId2,
 }
@@ -1950,7 +1885,7 @@ export const byResourceId = {
 /**
  * Get list of datasets
  */
-export const get37 = oc
+export const get36 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -1979,7 +1914,7 @@ export const post23 = oc
   .output(zPostDatasetsResponse)
 
 export const datasets = {
-  get: get37,
+  get: get36,
   post: post23,
   apiBaseInfo,
   apiKeys,

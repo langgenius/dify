@@ -47,4 +47,5 @@ class DifyOutputLayerConfig(LayerConfig):
             raise ValueError("Schema must declare an object output.")
         return value
 
+
 __all__ = ["DIFY_OUTPUT_LAYER_TYPE_ID", "DifyOutputLayerConfig"]

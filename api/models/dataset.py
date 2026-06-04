@@ -1,5 +1,4 @@
 import base64
-import enum
 import hashlib
 import hmac
 import json
@@ -157,10 +156,10 @@ class DocumentDict(TypedDict):
     hit_count: int | None
 
 
-class DatasetPermissionEnum(enum.StrEnum):
-    ONLY_ME = "only_me"
-    ALL_TEAM = "all_team_members"
-    PARTIAL_TEAM = "partial_members"
+from models.enums import PermissionEnum
+
+# Backward-compatible alias — new code should import PermissionEnum from models.enums
+DatasetPermissionEnum = PermissionEnum
 
 
 class Dataset(Base):
@@ -323,6 +322,12 @@ class Dataset(Base):
 
     @property
     def retrieval_model_dict(self):
+        """Return a normalized retrieval model payload for API responses.
+
+        Older rows may only persist a partial retrieval model dict. Merge the
+        stored value over the current defaults so response validation still sees
+        the required baseline fields.
+        """
         default_retrieval_model = {
             "search_method": RetrievalMethod.SEMANTIC_SEARCH,
             "reranking_enable": False,
@@ -330,7 +335,10 @@ class Dataset(Base):
             "top_k": 2,
             "score_threshold_enabled": False,
         }
-        return self.retrieval_model or default_retrieval_model
+        if not self.retrieval_model:
+            return default_retrieval_model
+
+        return {**default_retrieval_model, **self.retrieval_model}
 
     @property
     def tags(self):

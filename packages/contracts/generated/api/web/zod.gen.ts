@@ -173,6 +173,23 @@ export const zForgotPasswordSendPayload = z.object({
 })
 
 /**
+ * HumanInputFileUploadFormPayload
+ *
+ * Parsed multipart form fields for HITL uploads.
+ */
+export const zHumanInputFileUploadFormPayload = z.object({
+  url: z.url().min(1).max(2083).nullish(),
+})
+
+/**
+ * HumanInputUploadTokenResponse
+ */
+export const zHumanInputUploadTokenResponse = z.object({
+  expires_at: z.int(),
+  upload_token: z.string(),
+})
+
+/**
  * LicenseLimitationModel
  *
  * - enabled: whether this limit is enforced
@@ -364,7 +381,6 @@ export const zWebAppAuthModel = z.object({
  * SystemFeatureModel
  */
 export const zSystemFeatureModel = z.object({
-  app_dsl_version: z.string().default(''),
   branding: zBrandingModel,
   enable_change_email: z.boolean().default(true),
   enable_collaboration_mode: z.boolean().default(true),
@@ -384,7 +400,6 @@ export const zSystemFeatureModel = z.object({
   plugin_manager: zPluginManagerModel,
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
-  trial_models: z.array(z.string()).default([]),
   webapp_auth: zWebAppAuthModel,
 })
 
@@ -546,6 +561,20 @@ export const zPostFormHumanInputByFormTokenPath = z.object({
  * Success
  */
 export const zPostFormHumanInputByFormTokenResponse = z.record(z.string(), z.unknown())
+
+export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputByFormTokenUploadTokenResponse = z.record(z.string(), z.unknown())
+
+/**
+ * File uploaded successfully
+ */
+export const zPostHumanInputFormsFilesResponse = zFileResponse
 
 export const zPostLoginBody = zLoginPayload
 

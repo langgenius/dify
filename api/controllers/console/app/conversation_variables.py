@@ -19,7 +19,7 @@ from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from libs.login import login_required
 from models import ConversationVariable
-from models.model import AppMode
+from models.model import App, AppMode
 
 
 class ConversationVariablesQuery(BaseModel):
@@ -94,7 +94,7 @@ class ConversationVariablesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
-    def get(self, app_model):
+    def get(self, app_model: App):
         args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))
 
         stmt = (

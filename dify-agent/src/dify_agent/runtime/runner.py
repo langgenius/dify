@@ -21,14 +21,17 @@ snapshot; there are no separate output or snapshot events to correlate.
 """
 
 from collections.abc import AsyncIterable
-from typing import cast
+from collections import Counter
+from typing import Any, cast
 
 import httpx
 from pydantic import JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorSessionSnapshot, LayerProviderInput
+from agenton.layers.types import PydanticAITool
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
+from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.protocol.schemas import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, normalize_composition
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
@@ -107,16 +110,20 @@ class AgentRunRunner:
     async def _run_agent(self) -> tuple[JsonValue, CompositorSessionSnapshot]:
         """Run pydantic-ai inside an entered Agenton run.
 
-        Known input-shaped Agenton enter-time runtime errors, such as trying to
-        resume a ``CLOSED`` snapshot layer, are normalized to
-        ``AgentRunValidationError``. Output/history-layer graph invariants are
-        validated from the public composition before entering Agenton so
-        misnamed or extra reserved layers never silently degrade. Later runtime
-        failures still propagate as execution errors so they become terminal
-        failed runs rather than client validation responses. Structured output
-        uses a resolved contract whose type itself encodes both the model-facing
-        schema and the runtime validation hooks, so invalid model outputs can be
-        corrected before Dify Agent emits success.
+        Known request-shaped Agenton enter-time failures are normalized to
+        ``AgentRunValidationError``. That includes the existing small class of
+        enter-time ``RuntimeError`` values reported by Agenton plus
+        layer-construction or snapshot-hydration ``ValueError`` failures that
+        arise before the run becomes active, such as missing shell settings for a
+        requested ``dify.shell`` layer or malformed serialized shell offsets.
+        Output/history-layer graph invariants are validated from the public
+        composition before entering Agenton so misnamed or extra reserved layers
+        never silently degrade. Later runtime failures still propagate as
+        execution errors so they become terminal failed runs rather than client
+        validation responses. Structured output uses a resolved contract whose
+        type itself encodes both the model-facing schema and the runtime
+        validation hooks, so invalid model outputs can be corrected before Dify
+        Agent emits success.
         """
         try:
             validate_output_layer_composition(self.request.composition)
@@ -149,12 +156,13 @@ class AgentRunRunner:
                     )
                     llm_layer = run.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
                     model = llm_layer.get_model(http_client=self.plugin_daemon_http_client)
+                    tools = await _resolve_run_tools(run, http_client=self.plugin_daemon_http_client)
                 except (KeyError, TypeError, RuntimeError, ValueError) as exc:
                     raise AgentRunValidationError(str(exc)) from exc
 
                 agent = create_agent(
                     model,
-                    tools=run.tools,
+                    tools=tools,
                     output_type=output_contract.output_type,
                 )
                 result = await agent.run(
@@ -168,6 +176,10 @@ class AgentRunRunner:
             if not entered_run and is_agenton_enter_validation_runtime_error(exc):
                 raise AgentRunValidationError(str(exc)) from exc
             raise
+        except ValueError as exc:
+            if not entered_run:
+                raise AgentRunValidationError(str(exc)) from exc
+            raise
 
         if run.session_snapshot is None:
             raise RuntimeError("Agenton run did not produce a session snapshot after exit.")
@@ -178,6 +190,29 @@ class AgentRunRunner:
 def _serialize_agent_output(output: object) -> JsonValue:
     """Convert arbitrary pydantic-ai output into the public JSON-safe payload type."""
     return cast(JsonValue, _AGENT_OUTPUT_ADAPTER.dump_python(output, mode="json"))
+
+
+async def _resolve_run_tools(
+    run: Any,
+    *,
+    http_client: httpx.AsyncClient,
+) -> list[PydanticAITool[object]]:
+    """Return the static compositor tools plus any Dify plugin runtime tools."""
+    resolved_tools = list(cast(list[PydanticAITool[object]], run.tools))
+    for slot in run.slots.values():
+        layer = slot.layer
+        if isinstance(layer, DifyPluginToolsLayer):
+            resolved_tools.extend(await layer.get_tools(http_client=http_client))
+    _validate_unique_tool_names(resolved_tools)
+    return resolved_tools
+
+
+def _validate_unique_tool_names(tools: list[PydanticAITool[object]]) -> None:
+    """Reject duplicate tool names across static and dynamic tool sources."""
+    duplicate_names = sorted(name for name, count in Counter(tool.name for tool in tools).items() if count > 1)
+    if duplicate_names:
+        names = ", ".join(duplicate_names)
+        raise ValueError(f"Agent run requires unique tool names across all layers, got duplicates: {names}.")
 
 
 __all__ = ["AgentRunRunner", "AgentRunValidationError"]

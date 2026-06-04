@@ -18,7 +18,7 @@ import os
 import time
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, cast, override
 
 from sqlalchemy.orm import sessionmaker
 
@@ -162,6 +162,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         # Set to False for new deployments without legacy data in PostgreSQL
         self._enable_dual_read = os.environ.get("LOGSTORE_DUAL_READ_ENABLED", "true").lower() == "true"
 
+    @override
     def get_paginated_workflow_runs(
         self,
         tenant_id: str,
@@ -257,6 +258,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get paginated workflow runs from LogStore")
             raise
 
+    @override
     def get_workflow_run_by_id(
         self,
         tenant_id: str,
@@ -282,12 +284,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 # Use PG protocol with SQL query (get latest version of record)
                 sql_query = f"""
                     SELECT * FROM (
-                        SELECT *, 
+                        SELECT *,
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_execution_logstore}"
-                        WHERE id = '{escaped_run_id}' 
-                          AND tenant_id = '{escaped_tenant_id}' 
-                          AND app_id = '{escaped_app_id}' 
+                        WHERE id = '{escaped_run_id}'
+                          AND tenant_id = '{escaped_tenant_id}'
+                          AND app_id = '{escaped_app_id}'
                           AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 100
@@ -364,6 +366,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             )
             return session.scalar(stmt)
 
+    @override
     def get_workflow_run_by_id_without_tenant(
         self,
         run_id: str,
@@ -384,7 +387,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 # Use PG protocol with SQL query (get latest version of record)
                 sql_query = f"""
                     SELECT * FROM (
-                        SELECT *, 
+                        SELECT *,
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_execution_logstore}"
                         WHERE id = '{escaped_run_id}' AND __time__ > 0
@@ -447,6 +450,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
             return session.scalar(stmt)
 
+    @override
     def get_workflow_runs_count(
         self,
         tenant_id: str,
@@ -594,6 +598,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get workflow runs count")
             raise
 
+    @override
     def get_daily_runs_statistics(
         self,
         tenant_id: str,
@@ -652,6 +657,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get daily runs statistics")
             raise
 
+    @override
     def get_daily_terminals_statistics(
         self,
         tenant_id: str,
@@ -712,6 +718,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get daily terminals statistics")
             raise
 
+    @override
     def get_daily_token_cost_statistics(
         self,
         tenant_id: str,
@@ -772,6 +779,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get daily token cost statistics")
             raise
 
+    @override
     def get_average_app_interaction_statistics(
         self,
         tenant_id: str,

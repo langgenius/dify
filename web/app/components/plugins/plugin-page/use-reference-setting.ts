@@ -3,7 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
 import { PermissionType } from '../types'
 

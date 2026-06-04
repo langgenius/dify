@@ -2,9 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, Protocol, assert_never, cast
 
-from dify_agent.protocol import CreateRunRequest, ExecutionContext
+from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.shell import (
+    DifyShellCliToolConfig,
+    DifyShellEnvVarConfig,
+    DifyShellLayerConfig,
+    DifyShellSandboxConfig,
+    DifyShellSecretRefConfig,
+)
+from dify_agent.protocol import CreateRunRequest
+from pydantic import BaseModel
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -13,17 +23,35 @@ from clients.agent_backend import (
     AgentBackendWorkflowNodeRunInput,
     redact_for_agent_backend_log,
 )
+from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
+    DeclaredArrayItem,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
+    WorkflowPreviousNodeOutputRef,
 )
+from models.agent_config_entities import (
+    effective_declared_outputs as _effective_declared_outputs,
+)
+from models.provider_ids import ModelProviderID
 
+from .output_failure_orchestrator import retry_idempotency_key
+from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
+
+_DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
+_DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
+_DANGEROUS_ACK_KEYS = (
+    "dangerous_acknowledged",
+    "dangerous_accepted",
+    "risk_accepted",
+    "approved",
+)
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
@@ -56,6 +84,10 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
+    # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
+    # idempotency key so the backend treats each retry as a fresh request.
+    attempt: int = 0
+    session_snapshot: CompositorSessionSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,9 +107,11 @@ class WorkflowAgentRuntimeRequestBuilder:
         *,
         credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
+        plugin_tools_builder: WorkflowAgentPluginToolsBuilder | None = None,
     ) -> None:
         self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
+        self._plugin_tools_builder = plugin_tools_builder or WorkflowAgentPluginToolsBuilder()
 
     def build(self, context: WorkflowAgentRuntimeBuildContext) -> WorkflowAgentRuntimeRequest:
         agent_soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
@@ -93,20 +127,49 @@ class WorkflowAgentRuntimeRequestBuilder:
         workflow_job_prompt = node_job.workflow_prompt.strip() or "Run this workflow Agent Node for the current run."
         user_prompt = workflow_context_prompt.strip() or "Use the current workflow context."
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
+        try:
+            tools_layer = self._plugin_tools_builder.build(
+                tenant_id=context.dify_context.tenant_id,
+                app_id=context.dify_context.app_id,
+                user_id=context.dify_context.user_id,
+                tools=agent_soul.tools,
+                # Thread the *real* runtime invocation source through to
+                # ToolManager so credential quotas, rate limits, and audit
+                # trails match the actual call site (DEBUGGER for draft test
+                # run, SERVICE_API / WEB_APP for published run).
+                invoke_from=context.dify_context.invoke_from,
+            )
+        except WorkflowAgentPluginToolsBuildError as error:
+            raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
+        if tools_layer is not None or agent_soul.tools.cli_tools:
+            metadata["agent_tools"] = {
+                "dify_tool_count": len(tools_layer.tools) if tools_layer is not None else 0,
+                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools]
+                if tools_layer is not None
+                else [],
+                "cli_tool_count": len(agent_soul.tools.cli_tools),
+            }
 
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
-                    tenant_id=context.dify_context.tenant_id,
-                    plugin_id=agent_soul.model.plugin_id,
-                    model_provider=agent_soul.model.model_provider,
+                    plugin_id=self._plugin_daemon_plugin_id(
+                        plugin_id=agent_soul.model.plugin_id,
+                        model_provider=agent_soul.model.model_provider,
+                    ),
+                    model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
                     model=agent_soul.model.model,
-                    user_id=context.dify_context.user_id,
                     credentials=self._normalize_credentials(credentials),
-                    model_settings=cast(dict[str, Any], agent_soul.model.model_settings),
+                    model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
-                execution_context=ExecutionContext(
+                # The execution-context layer is now the only public protocol
+                # carrier for Dify tenant/user/run identifiers. ``user_id`` must
+                # be forwarded here because downstream plugin-daemon provider and
+                # tool clients read it from this layer rather than from any
+                # parallel top-level request field.
+                execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
+                    user_id=context.dify_context.user_id,
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
@@ -121,6 +184,10 @@ class WorkflowAgentRuntimeRequestBuilder:
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
+                tools=tools_layer,
+                include_shell=dify_config.AGENT_SHELL_ENABLED,
+                shell_config=build_shell_layer_config(agent_soul),
+                session_snapshot=context.session_snapshot,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )
@@ -141,10 +208,28 @@ class WorkflowAgentRuntimeRequestBuilder:
         return "workflow_run"
 
     @staticmethod
+    def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
+        """Return the transport plugin id expected by plugin-daemon headers."""
+        if plugin_id.count("/") == 1:
+            return plugin_id
+        if plugin_id:
+            return ModelProviderID(plugin_id).plugin_id
+        return ModelProviderID(model_provider).plugin_id
+
+    @staticmethod
+    def _plugin_daemon_provider_name(model_provider: str) -> str:
+        """Return the provider name expected by plugin-daemon dispatch payloads."""
+        return ModelProviderID(model_provider).provider_name
+
+    @staticmethod
     def _idempotency_key(context: WorkflowAgentRuntimeBuildContext) -> str:
-        if context.workflow_run_id:
-            return f"{context.workflow_run_id}:{context.node_execution_id}"
-        return context.node_execution_id
+        # Stage 4 §7 / D-4: retries get distinct keys (``...:retry-{attempt}``) so
+        # the Agent backend's protocol-level dedup can't replay a previous run.
+        return retry_idempotency_key(
+            workflow_run_id=context.workflow_run_id,
+            node_execution_id=context.node_execution_id,
+            attempt=context.attempt,
+        )
 
     @staticmethod
     def _build_metadata(
@@ -191,7 +276,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _resolve_previous_node_outputs(
         self,
         variable_pool: VariablePoolReader,
-        refs: Sequence[Mapping[str, Any]],
+        refs: Sequence[WorkflowPreviousNodeOutputRef],
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for ref in refs:
@@ -217,7 +302,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         return resolved
 
     @staticmethod
-    def _selector_from_ref(ref: Mapping[str, Any]) -> list[str] | None:
+    def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> list[str] | None:
         for key in ("selector", "variable_selector", "value_selector"):
             value = ref.get(key)
             if isinstance(value, list) and all(isinstance(item, str) for item in value):
@@ -237,11 +322,17 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
-        if not declared_outputs:
-            return None
+        """Build the structured-output layer config sent to Agent backend.
+
+        Stage 4 §4.1 (D-3): when the user hasn't declared any outputs, inject the
+        PRD-mandated defaults (text / files / json) at runtime so the backend
+        always receives a stable schema and the downstream Inspector + nodes
+        have consistent output names. The defaults are NOT persisted.
+        """
+        effective_outputs = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared_outputs)
         properties: dict[str, Any] = {}
         required: list[str] = []
-        for output in declared_outputs:
+        for output in effective_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:
                 required.append(output.name)
@@ -251,20 +342,51 @@ class WorkflowAgentRuntimeRequestBuilder:
         return AgentBackendOutputConfig(json_schema=schema)
 
     @staticmethod
+    def effective_declared_outputs(
+        declared_outputs: Sequence[DeclaredOutputConfig],
+    ) -> Sequence[DeclaredOutputConfig]:
+        """Alias for :func:`models.agent_config_entities.effective_declared_outputs`.
+
+        Kept as a static method on the builder so existing call sites
+        (``agent_node._run``, tests) don't need to change their import.
+        """
+        return _effective_declared_outputs(list(declared_outputs))
+
+    @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
-        match output.type:
+        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(output.type, array_item=output.array_item)
+        if output.description:
+            schema["description"] = output.description
+        return schema
+
+    @staticmethod
+    def _schema_for_type(
+        output_type: DeclaredOutputType,
+        *,
+        array_item: DeclaredArrayItem | None = None,
+    ) -> dict[str, Any]:
+        match output_type:
             case DeclaredOutputType.STRING:
-                schema: dict[str, Any] = {"type": "string"}
+                return {"type": "string"}
             case DeclaredOutputType.NUMBER:
-                schema = {"type": "number"}
+                return {"type": "number"}
             case DeclaredOutputType.BOOLEAN:
-                schema = {"type": "boolean"}
+                return {"type": "boolean"}
             case DeclaredOutputType.OBJECT:
-                schema = {"type": "object"}
+                return {"type": "object"}
             case DeclaredOutputType.ARRAY:
-                schema = {"type": "array"}
+                # Stage 4 §4.2: items shape mirrors the declared array_item.
+                # Validator guarantees array_item is set when type is array.
+                item_type = array_item.type if array_item else DeclaredOutputType.OBJECT
+                schema: dict[str, Any] = {
+                    "type": "array",
+                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(item_type),
+                }
+                if array_item is not None and array_item.description:
+                    schema["items"]["description"] = array_item.description
+                return schema
             case DeclaredOutputType.FILE:
-                schema = {
+                return {
                     "type": "object",
                     "properties": {
                         "file_id": {"type": "string"},
@@ -272,10 +394,9 @@ class WorkflowAgentRuntimeRequestBuilder:
                         "mime_type": {"type": "string"},
                         "url": {"type": "string"},
                     },
+                    "required": ["file_id"],
                 }
-        if output.description:
-            schema["description"] = output.description
-        return schema
+        assert_never(output_type)
 
     @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
@@ -286,3 +407,117 @@ class WorkflowAgentRuntimeRequestBuilder:
             else:
                 normalized[key] = str(value)
         return normalized
+
+
+def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:
+    """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
+    sandbox_config = _plain_mapping(agent_soul.sandbox.config)
+    return DifyShellLayerConfig(
+        cli_tools=[
+            tool
+            for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools if _cli_tool_enabled(item))
+            if tool is not None
+        ],
+        env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
+        secret_refs=[
+            secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
+        ],
+        sandbox=DifyShellSandboxConfig(
+            provider=agent_soul.sandbox.provider,
+            config=sandbox_config,
+        )
+        if agent_soul.sandbox.provider or sandbox_config
+        else None,
+    )
+
+
+def _cli_tool_enabled(item: object) -> bool:
+    """A CLI tool is bootstrapped unless explicitly disabled (default is enabled)."""
+    data = _plain_mapping(item)
+    if data.get("enabled") is False:
+        return False
+    if data.get("pre_authorized") is False or _permission_denied(data):
+        return False
+    if _dangerous_without_acknowledgement(data):
+        return False
+    return True
+
+
+def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
+    data = _plain_mapping(item)
+    commands: list[str] = []
+    raw_commands = data.get("install_commands")
+    if isinstance(raw_commands, list):
+        commands.extend(str(command) for command in raw_commands if str(command).strip())
+    # ``command`` is the typed AgentCliToolConfig field; the rest are accepted aliases.
+    for key in ("install_command", "install", "setup_command", "command"):
+        raw_command = data.get(key)
+        if isinstance(raw_command, str) and raw_command.strip():
+            commands.append(raw_command)
+    name = data.get("name") or data.get("tool_name") or data.get("label")
+    if not commands and not isinstance(name, str):
+        return None
+    return DifyShellCliToolConfig(name=name if isinstance(name, str) else None, install_commands=commands)
+
+
+def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
+    data = _plain_mapping(item)
+    name = _name_from_mapping(data)
+    if name is None:
+        return None
+    value = data.get("value", data.get("default", ""))
+    if not isinstance(value, str):
+        value = str(value)
+    return DifyShellEnvVarConfig(name=name, value=value)
+
+
+def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
+    data = _plain_mapping(item)
+    name = _name_from_mapping(data)
+    if name is None:
+        return None
+    ref = data.get("ref") or data.get("id") or data.get("credential_id") or data.get("provider_credential_id")
+    return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
+
+
+def _plain_mapping(item: object) -> dict[str, Any]:
+    if isinstance(item, BaseModel):
+        return item.model_dump(mode="python", exclude_none=True, exclude_defaults=True)
+    if isinstance(item, Mapping):
+        return dict(item)
+    return {}
+
+
+def _name_from_mapping(item: Mapping[str, Any]) -> str | None:
+    for key in ("name", "key", "env_name", "variable"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _permission_denied(data: Mapping[str, Any]) -> bool:
+    permission = data.get("permission")
+    if isinstance(permission, Mapping):
+        allowed = permission.get("allowed")
+        if allowed is False:
+            return True
+        status = permission.get("status") or permission.get("state")
+        if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+            return True
+
+    for key in ("authorization_status", "permission_status", "status"):
+        status = data.get(key)
+        if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+            return True
+    return False
+
+
+def _dangerous_without_acknowledgement(data: Mapping[str, Any]) -> bool:
+    dangerous = any(data.get(key) is True for key in _DANGEROUS_FLAG_KEYS)
+    risk_level = data.get("risk_level")
+    if isinstance(risk_level, str) and risk_level == "dangerous":
+        dangerous = True
+    if not dangerous:
+        return False
+    return not any(data.get(key) is True for key in _DANGEROUS_ACK_KEYS)

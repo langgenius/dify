@@ -461,6 +461,42 @@ Request body:
 | ---- | ----------- |
 | 200 | Success |
 
+### /form/human_input/{form_token}/upload-token
+
+#### POST
+##### Summary
+
+Issue an upload token for a human input form
+
+##### Description
+
+POST /api/form/human_input/<form_token>/upload-token
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /human-input-forms/files
+
+#### POST
+##### Summary
+
+Upload one local file or remote URL file for a HITL human input form
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded successfully | [FileResponse](#fileresponse) |
+
 ### /login
 
 #### POST
@@ -1188,6 +1224,21 @@ Returns Server-Sent Events stream.
 | email | string |  | Yes |
 | language | string |  | No |
 
+#### HumanInputFileUploadFormPayload
+
+Parsed multipart form fields for HITL uploads.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string (uri) | Remote file URL | No |
+
+#### HumanInputUploadTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | integer |  | Yes |
+| upload_token | string |  | Yes |
+
 #### LicenseLimitationModel
 
 - enabled: whether this limit is enforced
@@ -1323,7 +1374,6 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_dsl_version | string |  | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | enable_change_email | boolean |  | Yes |
 | enable_collaboration_mode | boolean |  | Yes |
@@ -1343,7 +1393,6 @@ Returns Server-Sent Events stream.
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
-| trial_models | [ string ] |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### TextToAudioPayload

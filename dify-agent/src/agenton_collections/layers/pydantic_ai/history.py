@@ -31,9 +31,7 @@ class PydanticAIHistoryRuntimeState(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", validate_assignment=True)
 
 
-class PydanticAIHistoryLayer(
-    PydanticAILayer[NoLayerDeps, object, EmptyLayerConfig, PydanticAIHistoryRuntimeState]
-):
+class PydanticAIHistoryLayer(PydanticAILayer[NoLayerDeps, object, EmptyLayerConfig, PydanticAIHistoryRuntimeState]):
     """State-only layer that stores pydantic-ai message history.
 
     The mutable history lives only in ``runtime_state.messages``. Helper methods

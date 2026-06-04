@@ -10,7 +10,7 @@ from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
 from libs.helper import AppIconUrlField
 from models.account import TenantStatus
-from models.model import App, Site
+from models.model import App, EndUser, Site
 from services.feature_service import FeatureService
 
 
@@ -70,7 +70,7 @@ class AppSiteApi(WebApiResource):
         }
     )
     @marshal_with(app_fields)
-    def get(self, app_model, end_user):
+    def get(self, app_model: App, end_user: EndUser):
         """Retrieve app site info."""
         # get site
         site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
@@ -78,10 +78,10 @@ class AppSiteApi(WebApiResource):
         if not site:
             raise Forbidden()
 
-        if app_model.tenant.status == TenantStatus.ARCHIVE:
+        if app_model.tenant and app_model.tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
 
-        can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
+        can_replace_logo = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True).can_replace_logo
 
         return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
 
@@ -119,6 +119,6 @@ def serialize_site(site: Site) -> dict[str, Any]:
 
 
 def serialize_app_site_payload(app_model: App, site: Site, end_user_id: str | None) -> dict[str, Any]:
-    can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
+    can_replace_logo = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True).can_replace_logo
     app_site_info = AppSiteInfo(app_model.tenant, app_model, site, end_user_id, can_replace_logo)
     return cast(dict[str, Any], marshal(app_site_info, AppSiteApi.app_fields))

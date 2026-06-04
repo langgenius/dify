@@ -8,15 +8,21 @@ from pydantic import BaseModel, Field
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user_id,
+)
 from core.agent.entities import AgentToolEntity
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.login import current_account_with_tenant, login_required
-from models.model import AppMode, AppModelConfig
+from libs.login import login_required
+from models.model import App, AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
 
@@ -52,9 +58,10 @@ class ModelConfigResource(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
-    def post(self, app_model):
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user_id: str, app_model: App):
         """Modify app model config"""
-        current_user, current_tenant_id = current_account_with_tenant()
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
             tenant_id=current_tenant_id,
@@ -64,8 +71,8 @@ class ModelConfigResource(Resource):
 
         new_app_model_config = AppModelConfig(
             app_id=app_model.id,
-            created_by=current_user.id,
-            updated_by=current_user.id,
+            created_by=current_user_id,
+            updated_by=current_user_id,
         )
         new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
 
@@ -90,7 +97,7 @@ class ModelConfigResource(Resource):
                         tenant_id=current_tenant_id,
                         app_id=app_model.id,
                         agent_tool=agent_tool_entity,
-                        user_id=current_user.id,
+                        user_id=current_user_id,
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_tenant_id,
@@ -130,7 +137,7 @@ class ModelConfigResource(Resource):
                             tenant_id=current_tenant_id,
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,
-                            user_id=current_user.id,
+                            user_id=current_user_id,
                         )
                     except Exception:
                         continue
@@ -167,7 +174,7 @@ class ModelConfigResource(Resource):
         db.session.flush()
 
         app_model.app_model_config_id = new_app_model_config.id
-        app_model.updated_by = current_user.id
+        app_model.updated_by = current_user_id
         app_model.updated_at = naive_utc_now()
         db.session.commit()
 

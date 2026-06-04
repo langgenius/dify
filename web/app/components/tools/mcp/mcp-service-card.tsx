@@ -16,6 +16,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
@@ -24,7 +25,6 @@ import { useTranslation } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useDocLink } from '@/context/i18n'
@@ -40,7 +40,7 @@ const StatusIndicator: FC<StatusIndicatorProps> = ({ serverActivated }) => {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-1">
-      <Indicator color={serverActivated ? 'green' : 'yellow'} />
+      <StatusDot status={serverActivated ? 'success' : 'warning'} />
       <div className={cn('system-xs-semibold-uppercase', serverActivated ? 'text-text-success' : 'text-text-warning')}>
         {serverActivated
           ? t('overview.status.running', { ns: 'appOverview' })
