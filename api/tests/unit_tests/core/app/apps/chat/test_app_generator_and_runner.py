@@ -56,7 +56,7 @@ class TestChatAppGenerator:
         generator = ChatAppGenerator()
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
         user = SimpleNamespace(id="user-1", session_id="session-1")
-        args = {"query": "hi", "inputs": {}, "model_config": {"foo": "bar"}}
+        args = {"query": "hi", "inputs": {}, "model_config": {"foo": "bar"}, "trace_session_id": "session-1"}
 
         with (
             patch("core.app.apps.chat.app_generator.ConversationService.get_conversation", return_value=None),
@@ -70,7 +70,10 @@ class TestChatAppGenerator:
             patch("core.app.apps.chat.app_generator.ModelConfigConverter.convert", return_value=SimpleNamespace()),
             patch("core.app.apps.chat.app_generator.FileUploadConfigManager.convert", return_value=None),
             patch("core.app.apps.chat.app_generator.file_factory.build_from_mappings", return_value=[]),
-            patch("core.app.apps.chat.app_generator.ChatAppGenerateEntity", DummyGenerateEntity),
+            patch(
+                "core.app.apps.chat.app_generator.ChatAppGenerateEntity",
+                Mock(side_effect=DummyGenerateEntity),
+            ) as generate_entity,
             patch("core.app.apps.chat.app_generator.TraceQueueManager", return_value=SimpleNamespace()),
             patch("core.app.apps.chat.app_generator.MessageBasedAppQueueManager", DummyQueueManager),
             patch(
@@ -91,6 +94,7 @@ class TestChatAppGenerator:
             result = generator.generate(app_model, user, args, InvokeFrom.DEBUGGER, streaming=False)
 
         assert result == {"ok": True}
+        assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
 
     def test_generate_rejects_model_config_override_for_non_debugger(self):
         generator = ChatAppGenerator()
