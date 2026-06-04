@@ -60,9 +60,9 @@ describe('runSkillsInstall', () => {
     expect(result.kind).toBe('ok')
     if (result.kind !== 'ok')
       return
+    // The detection summary lists the selectable names; the footer just shows the flag.
     expect(result.text).toContain('Detected 2 agents: claude-code, codex')
-    // The --agent hint spells out the actual selectable (detected) names.
-    expect(result.text).toContain('--agent <name>[,<name>] to pick some: claude-code, codex')
+    expect(result.text).toContain('--agent <name> to write only some')
     expect(result.text).toContain('skills install <dir>')
     expect(result.wrote).toEqual([])
   })

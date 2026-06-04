@@ -101,9 +101,10 @@ export async function runSkillsInstall(opts: SkillsInstallOptions): Promise<Skil
     const selected = opts.agents.length > 0
     const header = `${selected ? 'Selected' : 'Detected'} ${names.length} agent${names.length === 1 ? '' : 's'}: ${names.join(', ')}`
     // Only suggest --agent when the user hasn't already used it and there is more
-    // than one to choose from; spell out the actual selectable (detected) names.
+    // than one to choose from. The selectable names are the ones listed above, so
+    // the hint just shows the flag, not the (already-visible) name list.
     const pick = (!selected && names.length > 1)
-      ? `Re-run with --yes to write all, or --agent <name>[,<name>] to pick some: ${names.join(', ')}.`
+      ? 'Re-run with --yes to write all, or --agent <name> to write only some.'
       : 'Re-run with --yes to write.'
     const footer = `${pick}\nAgent not listed? Install into its directory with \`difyctl skills install <dir>\`.`
     return { kind: 'ok', text: `${header}\n\n${lines}\n\n${footer}\n`, wrote: [] }
