@@ -91,6 +91,10 @@ const Add = ({
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
+      snippetInsertPayload={{
+        prevNodeId: nodeId,
+        prevNodeSourceHandle: sourceHandle,
+      }}
       placement="top"
       offset={0}
       trigger={renderTrigger}

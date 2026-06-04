@@ -7,6 +7,7 @@ export enum TabsEnum {
   Blocks = 'blocks',
   Tools = 'tools',
   Sources = 'sources',
+  Snippets = 'snippets',
 }
 
 export enum ToolTypeEnum {
