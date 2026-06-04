@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
@@ -74,9 +74,7 @@ def test_validate_snippet_graph_forbidden_nodes_ignores_malformed_nodes() -> Non
 
 def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> None:
     with pytest.raises(ValueError, match="start-1:start"):
-        SnippetService.validate_snippet_graph_forbidden_nodes(
-            {"nodes": [{"id": "start-1", "data": {"type": "start"}}]}
-        )
+        SnippetService.validate_snippet_graph_forbidden_nodes({"nodes": [{"id": "start-1", "data": {"type": "start"}}]})
 
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(monkeypatch: pytest.MonkeyPatch) -> None:
