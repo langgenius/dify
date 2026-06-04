@@ -63,17 +63,19 @@ export const useToolSelectorState = ({
     mcpTools,
   ].every(toolProviders => toolProviders !== undefined)
 
-  // Plugin info check
-  const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck({
-    providerName: value?.provider_name,
-    providerPluginId: currentProvider ? (currentProvider.plugin_id ?? null) : undefined,
-    enabled: !!value?.provider_name && (currentProvider !== undefined || areToolProvidersResolved),
-  })
-
   // Current tool from provider
   const currentTool = useMemo(() => {
     return currentProvider?.tools.find(tool => tool.name === value?.tool_name)
   }, [currentProvider?.tools, value?.tool_name])
+
+  // Plugin info check
+  const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck({
+    providerName: value?.provider_name,
+    providerPluginId: currentProvider ? (currentProvider.plugin_id ?? null) : undefined,
+    enabled: !!value?.provider_name
+      && (!currentProvider || !currentTool)
+      && (currentProvider !== undefined || areToolProvidersResolved),
+  })
 
   // Tool settings and params
   const currentToolSettings = useMemo(() => {

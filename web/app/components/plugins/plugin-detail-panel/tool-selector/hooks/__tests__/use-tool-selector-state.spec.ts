@@ -226,9 +226,24 @@ describe('useToolSelectorState', () => {
     expect(result.current.currentToolParams).toEqual([])
   })
 
-  it('should pass the installed provider plugin id to plugin checks', () => {
+  it('should skip plugin checks after resolving the current provider and tool', () => {
     renderHook(() =>
       useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+    )
+
+    expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
+      providerName: 'test-provider',
+      providerPluginId: 'org/test-plugin',
+      enabled: false,
+    })
+  })
+
+  it('should keep plugin checks enabled when the current tool cannot be resolved', () => {
+    renderHook(() =>
+      useToolSelectorState({
+        value: { ...toolValue, tool_name: 'missing-tool' },
+        onSelect: mockOnSelect,
+      }),
     )
 
     expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
