@@ -2,8 +2,8 @@
 // release-naming.mjs — single source of truth for difyctl release artifact
 // names and version/channel rules. Reads DATA from cli/package.json
 // `difyctl.release` (plus `version` and `difyctl.channel`) and owns the name
-// FORMAT and the per-channel version form. Producer scripts call this instead
-// of hardcoding names; `validate` is the release gate.
+// FORMAT and the per-channel version form. Producer scripts call this;
+// `validate` is the release gate.
 //
 // Subcommands:
 //   tag <version>          -> <tagPrefix><version>
@@ -52,8 +52,8 @@ function loadPkg() {
 }
 
 // Every field downstream CI needs, as `key=value` lines for $GITHUB_ENV. Each
-// job pipes this once into the environment, then references ${{ env.<field> }},
-// so adding a field here needs no workflow edit (no per-field list to maintain).
+// job pipes this once into the environment, then references ${{ env.<field> }}
+// at use sites.
 function githubEnv() {
   const { version, channel, compat, release } = loadPkg()
   const fields = {

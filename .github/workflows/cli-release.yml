@@ -41,7 +41,7 @@ jobs:
         run: scripts/release-validate-manifest.sh
 
       - name: Tag matches manifest version
-        # On a tag push the version is still sourced from cli/package.json; the
+        # On a tag push the version is sourced from cli/package.json; the
         # pushed tag must match it, else the tag would dangle with no release.
         if: github.ref_type == 'tag'
         run: |
@@ -100,8 +100,8 @@ jobs:
         run: NPM_CONFIG_USERCONFIG="$PWD/cli/scripts/cross-arch.npmrc" pnpm install --frozen-lockfile
 
       - name: Compile standalone binaries (all targets)
-        # Version/channel/compat are derived from cli/package.json by the build
-        # script itself (same validated commit), so no manifest plumbing here.
+        # The build script reads version/channel/compat straight from
+        # cli/package.json, so the workflow passes none of them in.
         run: |
           DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
