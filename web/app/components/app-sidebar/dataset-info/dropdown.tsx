@@ -32,6 +32,7 @@ import Menu from './menu'
 
 type DropDownProps = {
   expand: boolean
+  triggerClassName?: string
 }
 
 type JsonErrorResponse = {
@@ -55,6 +56,7 @@ const getErrorMessage = async (error: unknown) => {
 
 const DropDown = ({
   expand,
+  triggerClassName,
 }: DropDownProps) => {
   const { t } = useTranslation()
   const { replace } = useRouter()
@@ -134,7 +136,7 @@ const DropDown = ({
         render={(
           <ActionButton
             aria-label={t('operation.more', { ns: 'common' })}
-            className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md', 'data-popup-open:bg-state-base-hover')}
+            className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md', 'data-popup-open:bg-state-base-hover', triggerClassName)}
           />
         )}
       >

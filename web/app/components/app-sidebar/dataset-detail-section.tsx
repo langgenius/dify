@@ -138,11 +138,13 @@ const DatasetDetailSection = ({
           ))}
         </nav>
         {!isCurrentWorkspaceDatasetOperator && (
-          <ExtraInfo
-            relatedApps={relatedApps}
-            expand={expand}
-            documentCount={datasetRes.document_count}
-          />
+          <div className="mt-auto shrink-0">
+            <ExtraInfo
+              relatedApps={relatedApps}
+              expand={expand}
+              documentCount={datasetRes.document_count}
+            />
+          </div>
         )}
       </div>
     </DatasetDetailContext.Provider>

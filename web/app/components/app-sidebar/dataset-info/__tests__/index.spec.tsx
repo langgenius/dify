@@ -173,9 +173,10 @@ describe('DatasetInfo', () => {
 
       // Assert
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
-      expect(screen.getByText('Dataset description')).toBeInTheDocument()
+      expect(screen.queryByText('Dataset description')).not.toBeInTheDocument()
       expect(screen.getByText('dataset.chunkingMode.general')).toBeInTheDocument()
       expect(screen.getByText('indexing-technique')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
     })
 
     it('should show external tag when provider is external', () => {
