@@ -8,7 +8,7 @@
  * available_workspaces count from auth status.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertErrorEnvelope,
   assertExitCode,
@@ -18,11 +18,14 @@ import {
 } from '../../helpers/assert.js'
 import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
-import { optionalIt } from '../../helpers/skip.js'
-import { loadE2EEnv } from '../../setup/env.js'
+import { enterpriseOnlyIt, optionalIt } from '../../helpers/skip.js'
+import { resolveEnv } from '../../setup/env.js'
 
-const E = loadE2EEnv()
+// @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
+const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
+const E = resolveEnv(caps)
 const itWithSso = optionalIt(Boolean(E.ssoToken) && E.ssoToken !== E.token)
+const eeIt = enterpriseOnlyIt(caps)
 
 describe('E2E / difyctl get app -A (all-workspaces)', () => {
   let fx: Awaited<ReturnType<typeof withAuthFixture>>
@@ -56,7 +59,7 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   // ── Output format ─────────────────────────────────────────────────────────
 
-  it('[P0] -o wide output contains WORKSPACE column and JSON has workspace_id (3.92)', async () => {
+  eeIt('[EE][P0] -o wide output contains WORKSPACE column and JSON has workspace_id (3.92)', async () => {
     // Spec 3.92: WORKSPACE column (priority:1) appears only in -o wide mode.
     // Default table shows priority:0 columns only (NAME/ID/MODE/TAGS/UPDATED).
     const wideResult = await withRetry(
@@ -112,7 +115,7 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   // ── Filters in all-workspaces mode ────────────────────────────────────────
 
-  it('[P1] --limit applies per workspace in all-workspaces mode (3.101)', async () => {
+  eeIt('[EE][P1] --limit applies per workspace in all-workspaces mode (3.101)', async () => {
     // Spec 3.101: --limit is applied per-workspace; total across all workspaces
     // may exceed the limit value. Verify the command succeeds with a valid data array.
     const result = await fx.r(['get', 'app', '-A', '--limit', '2', '-o', 'json'])
@@ -203,7 +206,7 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   // ── New cases ─────────────────────────────────────────────────────────────
 
-  it('[P1] -o wide WORKSPACE column shows workspace name for each app (3.93)', async () => {
+  eeIt('[EE][P1] -o wide WORKSPACE column shows workspace name for each app (3.93)', async () => {
     // Spec 3.93: WORKSPACE column correctly displays the workspace name.
     // WORKSPACE has priority:1 so it only appears in -o wide mode.
     const result = await withRetry(
@@ -216,7 +219,7 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
     expect(result.stdout.length).toBeGreaterThan(0)
   })
 
-  it('[P1] all-workspaces result is sorted by updated_at DESC (3.94)', async () => {
+  eeIt('[EE][P1] all-workspaces result is sorted by updated_at DESC (3.94)', async () => {
     // Spec 3.94: results ordered by updated_at DESC (first item newest).
     const result = await withRetry(
       () => fx.r(['get', 'app', '-A', '-o', 'json']),

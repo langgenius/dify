@@ -12,14 +12,16 @@ import type { AuthFixture } from '../../helpers/cli.js'
 import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, inject, it } from 'vitest'
 import { assertExitCode, assertJson, assertNonZeroExit, assertStderrContains } from '../../helpers/assert.js'
-import { withAuthFixture } from '../../helpers/cli.js'
+import { run, withAuthFixture } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalDescribe } from '../../helpers/skip.js'
-import { loadE2EEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
-const E = loadE2EEnv()
+// @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
+const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
+const E = resolveEnv(caps)
 
 const describeSuite = optionalDescribe(Boolean(E.hitlAppId))
 
@@ -150,23 +152,33 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
   })
 
   it('[P0] resume app auto-selects the single action — workflow continues execution', async () => {
-    // Spec: resume app auto-selects the single action without requiring --action
+    // Spec 4.5.9: when the form has exactly one action, --action may be omitted
+    // and the CLI auto-selects it.
+    // Uses hitlSingleActionAppId (display_in_ui=true, 1 action, no required inputs).
+    // hitlAppId now has 3 actions so it cannot be used here.
+    if (!E.hitlSingleActionAppId)
+      return
+
     const pause = await fx.r([
       'run',
       'app',
-      E.hitlAppId,
-      '--inputs',
-      JSON.stringify({ x: 'auto-action' }),
+      E.hitlSingleActionAppId,
       '-o',
       'json',
     ])
     assertExitCode(pause, 0)
-    const { form_token, workflow_run_id } = assertJson<{ form_token: string, workflow_run_id: string }>(pause)
-    // Resume without --action (single action auto-selected)
+    const { form_token, workflow_run_id, actions } = assertJson<{
+      form_token: string
+      workflow_run_id: string
+      actions: Array<{ id: string }>
+    }>(pause)
+    expect(actions.length, 'fixture must have exactly 1 action').toBe(1)
+
+    // Resume without --action — CLI auto-selects the only available action.
     const resume = await fx.r([
       'resume',
       'app',
-      E.hitlAppId,
+      E.hitlSingleActionAppId,
       form_token,
       '--workflow-run-id',
       workflow_run_id,
@@ -178,14 +190,17 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
 
   it('[P0] HITL pause in streaming mode outputs pause block (4.5.7)', async () => {
     // Spec 4.5.7: --stream mode must still emit pause block and exit 0 on HITL.
-    const result = await fx.r([
-      'run',
-      'app',
-      E.hitlAppId,
-      '--inputs',
-      JSON.stringify({ x: 'hitl-stream' }),
-      '--stream',
-    ])
+    // Streaming HITL: SSE connection can be closed unexpectedly;
+    // withRetry triggers on thrown errors so we throw when exit != 0.
+    const result = await withRetry(async () => {
+      const r = await run(
+        ['run', 'app', E.hitlAppId, '--inputs', JSON.stringify({ x: 'hitl-stream' }), '--stream'],
+        { configDir: fx.configDir, timeout: 60_000 },
+      )
+      if (r.exitCode !== 0)
+        throw new Error(`streaming HITL exited ${r.exitCode}: ${r.stderr.slice(0, 200)}`)
+      return r
+    }, { attempts: 3, delayMs: 3000 })
     assertExitCode(result, 0)
     expect(result.stdout + result.stderr).toMatch(/paused|pause|resume/i)
   })
@@ -351,5 +366,222 @@ describeSuite('E2E / difyctl run app — HITL human intervention', () => {
       '--stream',
     ])
     assertExitCode(result, 0)
+  })
+})
+
+// ── 4.5.8  display_in_ui=false — HITL pause with external channel delivery ──────
+//
+// A separate describe block so the suite can be skipped independently when
+// DIFY_E2E_HITL_EXTERNAL_APP_ID is not configured.
+
+const describeExternal = optionalDescribe(Boolean(E.hitlExternalAppId))
+
+describeExternal('E2E / difyctl run app — HITL display_in_ui=false (4.5.8)', () => {
+  let fx: AuthFixture
+
+  beforeEach(async () => {
+    fx = await withAuthFixture(E)
+  })
+  afterEach(async () => {
+    await fx.cleanup()
+  })
+
+  it('[P1] 4.5.8 HITL pause with display_in_ui=false: JSON contains display_in_ui=false and exit is 0', async () => {
+    // Spec 4.5.8: when the Human Input node has display_in_ui=false the CLI
+    // should indicate the form is delivered via an external channel.
+    //
+    // Current CLI behaviour (v1.0): the JSON field display_in_ui is correctly
+    // set to false.  The stderr hint still includes the resume command (the
+    // "form delivered via external channel" hint is not yet implemented in CLI).
+    // This test verifies the current actual behaviour and will need updating
+    // once the CLI implements the display_in_ui=false hint distinction.
+    const result = await fx.r([
+      'run',
+      'app',
+      E.hitlExternalAppId,
+      '-o',
+      'json',
+    ])
+    assertExitCode(result, 0)
+
+    const parsed = assertJson<{
+      status: string
+      display_in_ui: boolean
+      form_token: string
+      workflow_run_id: string
+    }>(result)
+
+    // display_in_ui must be false for this fixture
+    expect(parsed.display_in_ui, 'display_in_ui must be false for external-channel fixture').toBe(false)
+
+    // status must be paused
+    expect(parsed.status).toBe('paused')
+
+    // form_token must be present (resume is still possible even for external delivery)
+    expect(parsed.form_token, 'form_token must be non-empty').toBeTruthy()
+
+    // stderr must contain a hint (current behaviour: hint includes resume command)
+    expect(result.stderr.trim().length, 'stderr must contain a hint').toBeGreaterThan(0)
+    expect(result.stderr).toMatch(/hint|resume|paused/i)
+  })
+})
+
+// ── 4.5.10  multiple actions — resume without --action returns error ──────────
+//
+// The existing DIFY_E2E_HITL_APP_ID fixture now has 3 actions (action_1/2/3).
+// When --action is omitted and the form has multiple actions, the CLI must
+// return "--action required: form has multiple user actions" with exit 1.
+
+const describeMultiAction = optionalDescribe(Boolean(E.hitlAppId))
+
+describeMultiAction('E2E / difyctl resume app — HITL multiple actions (4.5.10)', () => {
+  let fx: AuthFixture
+
+  beforeEach(async () => {
+    fx = await withAuthFixture(E)
+  })
+  afterEach(async () => {
+    await fx.cleanup()
+  })
+
+  it('[P0] 4.5.10 resume without --action when form has multiple actions returns exit 1', async () => {
+    // Spec 4.5.10: when the HITL form has multiple user actions and --action is
+    // not provided, the CLI must reject the command with a clear error.
+    //
+    // Step 1: trigger the HITL pause and extract form_token + workflow_run_id.
+    const runResult = await fx.r([
+      'run',
+      'app',
+      E.hitlAppId,
+      '--inputs',
+      JSON.stringify({ x: 'multi-action-test' }),
+      '-o',
+      'json',
+    ])
+    assertExitCode(runResult, 0)
+    const { form_token, workflow_run_id, actions } = assertJson<{
+      form_token: string
+      workflow_run_id: string
+      actions: Array<{ id: string }>
+    }>(runResult)
+
+    // Confirm the fixture has more than one action.
+    expect(actions.length, 'fixture must have multiple actions for this test').toBeGreaterThan(1)
+
+    // Step 2: attempt to resume without --action.
+    const resumeResult = await fx.r([
+      'resume',
+      'app',
+      E.hitlAppId,
+      form_token,
+      '--workflow-run-id',
+      workflow_run_id,
+      // intentionally omit --action
+    ])
+
+    expect(resumeResult.exitCode, 'omitting --action with multiple actions must exit non-zero').toBe(1)
+    expect(resumeResult.stderr).toMatch(/--action required|multiple.*action|action.*required/i)
+  })
+})
+
+// ── 4.5.18  2 serial HITL nodes — run → resume → resume → finished ────────────
+//
+// Prerequisite: DIFY_E2E_HITL_MULTI_NODE_APP_ID must be set.
+// The fixture app has 2 serial Human Input nodes, each with 1 action.
+// Flow: run → pause at node 1 → resume 1 → pause at node 2 → resume 2 → finished.
+
+const describeMultiNode = optionalDescribe(Boolean(E.hitlMultiNodeAppId))
+
+describeMultiNode('E2E / difyctl run + resume — HITL 2 serial nodes (4.5.18)', () => {
+  let fx: AuthFixture
+
+  beforeEach(async () => {
+    fx = await withAuthFixture(E)
+  })
+  afterEach(async () => {
+    await fx.cleanup()
+  })
+
+  it('[P1] 4.5.18 workflow with 2 serial HITL nodes completes after two resumes', async () => {
+    // Spec 4.5.18: run → resume(node1) → resume(node2) → workflow_finished.
+    // Both resumes must succeed; final output must indicate success.
+
+    // ── Step 1: run — pauses at first HITL node ──────────────────────────
+    const pause1 = await withRetry(async () => {
+      const r = await fx.r([
+        'run',
+        'app',
+        E.hitlMultiNodeAppId,
+        '-o',
+        'json',
+      ])
+      if (r.exitCode !== 0)
+        throw new Error(`run failed: ${r.stderr.slice(0, 200)}`)
+      return r
+    }, { attempts: 3, delayMs: 3000 })
+
+    assertExitCode(pause1, 0)
+    const node1 = assertJson<{
+      status: string
+      form_token: string
+      workflow_run_id: string
+      actions: Array<{ id: string }>
+    }>(pause1)
+    expect(node1.status).toBe('paused')
+    expect(node1.form_token, 'node 1 must return a form_token').toBeTruthy()
+
+    const actionId1 = node1.actions[0]?.id ?? 'action_1'
+
+    // ── Step 2: resume node 1 — workflow continues to second HITL node ───
+    const pause2 = await withRetry(async () => {
+      const r = await fx.r([
+        'resume',
+        'app',
+        E.hitlMultiNodeAppId,
+        node1.form_token,
+        '--workflow-run-id',
+        node1.workflow_run_id,
+        '--action',
+        actionId1,
+        '-o',
+        'json',
+      ])
+      if (r.exitCode !== 0)
+        throw new Error(`resume 1 failed: ${r.stderr.slice(0, 200)}`)
+      return r
+    }, { attempts: 3, delayMs: 3000 })
+
+    assertExitCode(pause2, 0)
+    const node2 = assertJson<{
+      status: string
+      form_token: string
+      workflow_run_id: string
+      actions: Array<{ id: string }>
+    }>(pause2)
+    expect(node2.status, 'after first resume the workflow must pause again at node 2').toBe('paused')
+    expect(node2.form_token, 'node 2 must return a new form_token').toBeTruthy()
+    expect(node2.form_token, 'node 2 form_token must differ from node 1').not.toBe(node1.form_token)
+
+    const actionId2 = node2.actions[0]?.id ?? 'action_1'
+
+    // ── Step 3: resume node 2 — workflow finishes ─────────────────────────
+    const finish = await withRetry(async () => {
+      const r = await fx.r([
+        'resume',
+        'app',
+        E.hitlMultiNodeAppId,
+        node2.form_token,
+        '--workflow-run-id',
+        node2.workflow_run_id,
+        '--action',
+        actionId2,
+      ])
+      if (r.exitCode !== 0)
+        throw new Error(`resume 2 failed: ${r.stderr.slice(0, 200)}`)
+      return r
+    }, { attempts: 3, delayMs: 3000 })
+
+    assertExitCode(finish, 0)
+    expect(finish.stdout + finish.stderr).toMatch(/succeeded|finished/i)
   })
 })

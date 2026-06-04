@@ -57,14 +57,23 @@ export default defineConfig({
     // the real binary sets its own globals at startup).
     setupFiles: [],
     include: process.env.DIFY_E2E_MODE === 'local'
-      ? ['test/e2e/suites/config/**/*.e2e.ts']
+      ? ['test/e2e/suites/framework/help.e2e.ts', 'test/e2e/suites/config/**/*.e2e.ts']
       : [
           // auth tests first (most others depend on a valid session)
+          'test/e2e/suites/auth/login.e2e.ts',
           'test/e2e/suites/auth/status.e2e.ts',
           'test/e2e/suites/auth/use.e2e.ts',
           'test/e2e/suites/auth/whoami.e2e.ts',
+          // help (no network, no auth — runs first)
+          'test/e2e/suites/framework/help.e2e.ts',
           // config (local, no network)
           'test/e2e/suites/config/**/*.e2e.ts',
+          // output format (table / cross-cutting)
+          'test/e2e/suites/output/**/*.e2e.ts',
+          // error handling (cross-cutting error message spec)
+          'test/e2e/suites/error-handling/**/*.e2e.ts',
+          // framework (global flags, non-interactive, debug)
+          'test/e2e/suites/framework/**/*.e2e.ts',
           // discovery (get app / describe app)
           'test/e2e/suites/discovery/**/*.e2e.ts',
           // run tests (require valid token)

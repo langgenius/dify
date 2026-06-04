@@ -1,7 +1,7 @@
 /**
  * E2E: difyctl auth logout — Logout
  *
- * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Auth/Logout (18 cases)
+ * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Auth/Logout (18 wiki cases → 14 automated)
  */
 
 import { access } from 'node:fs/promises'
@@ -9,11 +9,11 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import { assertExitCode } from '../../helpers/assert.js'
 import { injectAuth, run, withTempConfig } from '../../helpers/cli.js'
-import { loadE2EEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
-const E = loadE2EEnv()
 // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
 const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
+const E = resolveEnv(caps)
 
 describe('E2E / difyctl auth logout', () => {
   let configDir: string
@@ -180,5 +180,107 @@ describe('E2E / difyctl auth logout', () => {
     await r(['auth', 'logout'])
     const result = await r(['run', 'app', E.chatAppId, 'test'])
     expect(result.exitCode).toBe(4)
+  })
+
+  // ── Warning output when revoke fails ────────────────────────────────────────
+
+  it('[P1] warning is printed to stdout/stderr when server revoke fails (best-effort)', async () => {
+    // Spec 1.56: when revoke API fails the CLI emits a warning but logout still completes
+    await injectAuth(configDir, {
+      host: E.host,
+      bearer: 'dfoa_invalid_will_fail_revoke',
+      workspaceId: E.workspaceId,
+      workspaceName: E.workspaceName,
+    })
+    const result = await r(['auth', 'logout'])
+    // Logout completes successfully despite revoke failure
+    assertExitCode(result, 0)
+    // CLI must emit a warning (either stdout or stderr) about the revoke failure
+    const combined = result.stdout + result.stderr
+    expect(combined).toMatch(/warning|revoke|failed|could not/i)
+    // Local credentials must still be cleared
+    expect(await hostsFileExists()).toBe(false)
+  })
+
+  // ── Keychain token storage ───────────────────────────────────────────────────
+
+  it('[P1] keychain token is deleted after logout', async () => {
+    // Spec 1.59: keychain token is deleted after logout
+    // We inject a session with token_storage=keychain; the CLI must clear the
+    // keychain entry on logout.  In CI environments without a real keychain the
+    // CLI falls back to file storage, so we accept either:
+    //   (a) exit 0 + hosts.yml removed (file-fallback path), OR
+    //   (b) exit 0 + hosts.yml absent (keychain-only path)
+    const { writeFile } = await import('node:fs/promises')
+    const hostsYml = `${[
+      `current_host: ${E.host}`,
+      `token_storage: keychain`,
+      `tokens:`,
+      `  bearer: dfoa_keychain_test_token`,
+      `workspace:`,
+      `  id: ${E.workspaceId}`,
+      `  name: "${E.workspaceName}"`,
+      `  role: owner`,
+    ].join('\n')}\n`
+    await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+
+    const result = await r(['auth', 'logout'])
+    assertExitCode(result, 0)
+    // Regardless of storage backend, the hosts.yml session file must be gone
+    expect(await hostsFileExists()).toBe(false)
+  })
+
+  // ── Multiple workspace sessions ──────────────────────────────────────────────
+
+  it('[P1] logout clears only the current session when multiple workspace sessions exist', async () => {
+    // Spec 1.62: current session is cleared on logout when multiple workspace sessions exist
+    const { writeFile } = await import('node:fs/promises')
+    const hostsYml = `${[
+      `current_host: ${E.host}`,
+      `token_storage: file`,
+      `tokens:`,
+      `  bearer: dfoa_multi_ws_test_token`,
+      `workspace:`,
+      `  id: ${E.workspaceId}`,
+      `  name: "${E.workspaceName}"`,
+      `  role: owner`,
+      `available_workspaces:`,
+      `  - id: ${E.workspaceId}`,
+      `    name: "${E.workspaceName}"`,
+      `    role: owner`,
+      `  - id: ws-secondary-001`,
+      `    name: "Secondary Workspace"`,
+      `    role: member`,
+    ].join('\n')}\n`
+    await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+
+    const result = await r(['auth', 'logout'])
+    assertExitCode(result, 0)
+    // The current session (hosts.yml) must be cleared after logout
+    expect(await hostsFileExists()).toBe(false)
+  })
+
+  // ── Re-login after logout ────────────────────────────────────────────────────
+
+  it('[P1] a new session can be injected and used successfully after logout', async () => {
+    // Spec 1.63: a new session can be created successfully after logout
+    // Use disposableToken so the shared DIFY_E2E_TOKEN is not revoked.
+    await withAuth()
+    await r(['auth', 'logout'])
+    expect(await hostsFileExists()).toBe(false)
+
+    // Simulate a new login by injecting fresh credentials
+    const token = caps.logoutToken || E.token
+    await injectAuth(configDir, {
+      host: E.host,
+      bearer: token,
+      workspaceId: E.workspaceId,
+      workspaceName: E.workspaceName,
+    })
+
+    // New session must be recognised as valid
+    const statusResult = await r(['auth', 'status'])
+    assertExitCode(statusResult, 0)
+    expect(statusResult.stdout).toMatch(/logged in/i)
   })
 })

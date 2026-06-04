@@ -14,9 +14,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { assertExitCode } from '../../helpers/assert.js'
 import { run, withTempConfig } from '../../helpers/cli.js'
 import { optionalIt } from '../../helpers/skip.js'
-import { loadE2EEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
-const E = loadE2EEnv()
+// @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
+const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
+const E = resolveEnv(caps)
 
 describe('E2E / difyctl auth whoami + SSO session', () => {
   let configDir: string

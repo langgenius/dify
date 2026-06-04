@@ -9,7 +9,7 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertErrorEnvelope,
   assertExitCode,
@@ -21,9 +21,11 @@ import { registerConversation } from '../../helpers/cleanup-registry.js'
 import { run, spawn_background, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalIt } from '../../helpers/skip.js'
-import { loadE2EEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
-const E = loadE2EEnv()
+// @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
+const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
+const E = resolveEnv(caps)
 const itWithSso = optionalIt(Boolean(E.ssoToken))
 
 describe('E2E / difyctl run app --conversation', () => {
@@ -358,5 +360,149 @@ describe('E2E / difyctl run app --conversation', () => {
       const parsed = assertJson<{ conversation_id: string }>(result)
       expect(parsed.conversation_id, `call ${i}: conversation_id must be stable`).toBe(conversation_id)
     }
+  })
+
+  // ── 4.3.7  --conversation + --file ──────────────────────────────────────────
+  //
+  // Prerequisite: DIFY_E2E_FILE_CHAT_APP_ID must be set in .env.e2e.
+  // The fixture app is an advanced-chat app with a required file input variable
+  // named "file_input" (document type, remote-URL upload supported).
+  // We use a remote PDF URL to avoid SSL certificate issues with local upload
+  // on the staging server.
+
+  const itWithFileChat = optionalIt(Boolean(E.fileChatAppId))
+
+  itWithFileChat('[P1] --conversation + --file doc uploads a file and continues the conversation', async () => {
+    // Spec 4.3.7: --conversation <cid> --file doc=@test.txt
+    // File upload succeeds, app executes correctly, conversation_id is preserved.
+    const FILE_URL = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+
+    // Step 1: Start a new conversation with a file — get the conversation_id.
+    const first = await fx.r([
+      'run',
+      'app',
+      E.fileChatAppId,
+      'summarize this document',
+      '--file',
+      `file_input=${FILE_URL}`,
+      '-o',
+      'json',
+    ])
+    assertExitCode(first, 0)
+    const { conversation_id } = assertJson<{ conversation_id: string }>(first)
+    expect(conversation_id, 'first call must return a non-empty conversation_id').toBeTruthy()
+    registerConversation(E.host, E.token, E.fileChatAppId, conversation_id)
+
+    // Step 2: Continue the same conversation with another file upload.
+    const second = await fx.r([
+      'run',
+      'app',
+      E.fileChatAppId,
+      'what is this document about?',
+      '--conversation',
+      conversation_id,
+      '--file',
+      `file_input=${FILE_URL}`,
+      '-o',
+      'json',
+    ])
+    assertExitCode(second, 0)
+    const secondParsed = assertJson<{ conversation_id: string }>(second)
+
+    // The conversation_id must be the same across both calls.
+    expect(secondParsed.conversation_id, '--conversation must preserve the conversation_id')
+      .toBe(conversation_id)
+  })
+
+  // ── 4.3.8  --conversation + --inputs ────────────────────────────────────────
+  //
+  // The echo-chat app (E.chatAppId) now has an optional text-input variable
+  // named "input" (maxLength 256, required: false).  This allows 4.3.8 to be
+  // tested against the existing fixture without a separate app.
+  //
+  // Spec: --conversation <cid> --inputs '{"key":"val"}' — input takes effect,
+  // app executes correctly, and conversation_id is preserved across calls.
+
+  it('[P1] --conversation + --inputs passes input variables and preserves conversation_id', async () => {
+    // Spec 4.3.8: combining --conversation with --inputs should work correctly.
+    // Step 1: start a new conversation with an explicit input variable.
+    const first = await fx.r([
+      'run',
+      'app',
+      E.chatAppId,
+      'hello with inputs',
+      '--inputs',
+      JSON.stringify({ input: 'context-value' }),
+      '-o',
+      'json',
+    ])
+    assertExitCode(first, 0)
+    const { conversation_id } = assertJson<{ conversation_id: string }>(first)
+    expect(conversation_id, 'first call must return a non-empty conversation_id').toBeTruthy()
+    registerConversation(E.host, E.token, E.chatAppId, conversation_id)
+
+    // Step 2: continue the conversation with another --inputs payload.
+    const second = await fx.r([
+      'run',
+      'app',
+      E.chatAppId,
+      'follow-up with inputs',
+      '--conversation',
+      conversation_id,
+      '--inputs',
+      JSON.stringify({ input: 'updated-context-value' }),
+      '-o',
+      'json',
+    ])
+    assertExitCode(second, 0)
+    const secondParsed = assertJson<{ conversation_id: string }>(second)
+
+    // The conversation_id must be identical across both calls.
+    expect(secondParsed.conversation_id, '--inputs must not break conversation continuity')
+      .toBe(conversation_id)
+  })
+
+  // ── 4.3.11  wrong app id + valid conversation_id ─────────────────────────────
+  //
+  // Prerequisite: DIFY_E2E_FILE_CHAT_APP_ID must be set.
+  // Scenario (Plan A):
+  //   1. Create a conversation using E.chatAppId → get conv_id (owned by chatApp).
+  //   2. Run E.fileChatAppId with that conv_id  → server rejects because the
+  //      conversation does not belong to fileChatApp (HTTP 500, exit 1).
+  //
+  // Note: the server returns a 500 / "stream terminated by error event" rather than
+  // a 404 "not found", because the conversation lookup is done inside the streaming
+  // pipeline.  The important contract is: exit code is 1 (non-zero) and stderr is
+  // non-empty with a recognisable error code.
+
+  itWithFileChat('[P0] running fileChatApp with a conversation_id owned by chatApp returns an error (exit 1)', async () => {
+    // Spec 4.3.11: using the wrong app id with a valid conversation_id from another
+    // app must fail with a non-zero exit code.
+
+    // Step 1: create a conversation with chatApp.
+    const setup = await fx.r(['run', 'app', E.chatAppId, 'init-for-cross-app', '-o', 'json'])
+    assertExitCode(setup, 0)
+    const { conversation_id } = assertJson<{ conversation_id: string }>(setup)
+    expect(conversation_id, 'setup call must return a conversation_id').toBeTruthy()
+    registerConversation(E.host, E.token, E.chatAppId, conversation_id)
+
+    // Step 2: attempt to continue that conversation using fileChatApp.
+    // The server rejects it because the conversation belongs to a different app.
+    const result = await fx.r([
+      'run',
+      'app',
+      E.fileChatAppId,
+      'this should fail',
+      '--conversation',
+      conversation_id,
+      '-o',
+      'json',
+    ])
+
+    // The server returns HTTP 500 (stream terminated by error event) with exit 1.
+    expect(result.exitCode, 'cross-app conversation_id must cause a non-zero exit').toBe(1)
+    expect(result.stderr.trim().length, 'stderr must contain an error message').toBeGreaterThan(0)
+    // stderr must be a JSON error envelope when -o json is active
+    assertErrorEnvelope(result)
   })
 })

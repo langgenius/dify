@@ -7,7 +7,7 @@
  * The response is returned in list-envelope format {page,limit,total,data:[...]}.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertErrorEnvelope,
   assertExitCode,
@@ -18,9 +18,11 @@ import {
 import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalIt } from '../../helpers/skip.js'
-import { loadE2EEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
-const E = loadE2EEnv()
+// @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
+const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
+const E = resolveEnv(caps)
 const itWithSso = optionalIt(Boolean(E.ssoToken))
 const NONEXISTENT_ID = 'app-does-not-exist-e2e-xyz'
 
@@ -220,5 +222,21 @@ describe('E2E / difyctl get app <id> (single)', () => {
     finally {
       await networkTmp.cleanup()
     }
+  })
+
+  // Spec 3.57: current workspace does not contain the queried app → not found, exit 1
+  it('[P1] get app <id> --workspace <other-workspace-id> returns not found (3.57)', async () => {
+    // Spec 3.57: when the queried app does not belong to the specified workspace,
+    // the server returns not-found.  We construct the scenario by passing a
+    // well-formed but non-existent workspace UUID so the server cannot locate the
+    // app within it, which is equivalent to "current workspace does not contain
+    // the app".
+    const FOREIGN_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001'
+    const result = await withRetry(
+      () => fx.r(['get', 'app', E.chatAppId, '--workspace', FOREIGN_WORKSPACE_ID]),
+      { attempts: 3, delayMs: 2000 },
+    )
+    expect(result.exitCode, 'app not in workspace should exit non-zero').not.toBe(0)
+    expect(result.stderr).toMatch(/not.?found|404|does not exist|server_5xx|not.?authorized|forbidden|workspace/i)
   })
 })

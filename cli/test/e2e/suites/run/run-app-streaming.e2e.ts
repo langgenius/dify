@@ -13,7 +13,7 @@
 import type { Buffer } from 'node:buffer'
 import type { AuthFixture } from '../../helpers/cli.js'
 import { spawn } from 'node:child_process'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertErrorEnvelope,
   assertExitCode,
@@ -24,9 +24,11 @@ import {
 import { BIN, BUN, run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalIt } from '../../helpers/skip.js'
-import { loadE2EEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
-const E = loadE2EEnv()
+// @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
+const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
+const E = resolveEnv(caps)
 const itWithSso = optionalIt(Boolean(E.ssoToken))
 
 describe('E2E / difyctl run app --stream (specialisation)', () => {

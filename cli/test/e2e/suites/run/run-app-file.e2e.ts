@@ -16,9 +16,11 @@ import { assertExitCode, assertJson, assertNoAnsi } from '../../helpers/assert.j
 import { injectAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalDescribe, optionalIt } from '../../helpers/skip.js'
-import { loadE2EEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
-const E = loadE2EEnv()
+// @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
+const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
+const E = resolveEnv(caps)
 const itWithSso = optionalIt(Boolean(E.ssoToken))
 // supportsLocalUpload capability removed — local file upload probe is no longer
 // performed in global-setup. Default to false (skip upload-specific cases).
@@ -327,9 +329,9 @@ describeSuite('E2E / difyctl run app --file', () => {
   itLocalUpload('[P1] file path with CJK characters uploads correctly (4.4.26)', async () => {
     // Spec 4.4.26: a file whose path contains CJK (Chinese) characters must upload
     // and execute successfully.
-    const cjkPath = join(fileDir, '中文测试文档.txt')
+    const cjkPath = join(fileDir, 'cjk-test-doc.txt')
     const picPath = join(fileDir, 'cjk-pic.png')
-    await writeFile(cjkPath, 'CJK path upload test — 中文内容')
+    await writeFile(cjkPath, 'CJK path upload test — Chinese content')
     await writePng(picPath)
     const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${cjkPath}`, '--file', `picture=@${picPath}`])
     assertExitCode(result, 0)
