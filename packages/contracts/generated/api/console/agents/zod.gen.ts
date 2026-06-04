@@ -25,7 +25,7 @@ export const zRosterAgentUpdatePayload = z.object({
  */
 export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   summary: z.string().nullish(),
@@ -79,9 +79,9 @@ export const zAgentRosterResponse = z.object({
   active_config_snapshot_id: z.string().nullish(),
   agent_kind: zAgentKind,
   app_id: z.string().nullish(),
-  archived_at: z.string().nullish(),
+  archived_at: z.int().nullish(),
   archived_by: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   description: z.string(),
   icon: z.string().nullish(),
@@ -92,7 +92,7 @@ export const zAgentRosterResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
-  updated_at: z.string().nullish(),
+  updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
   workflow_node_id: z.string().nullish(),
@@ -117,9 +117,9 @@ export const zAgentInviteOptionResponse = z.object({
   active_config_snapshot_id: z.string().nullish(),
   agent_kind: zAgentKind,
   app_id: z.string().nullish(),
-  archived_at: z.string().nullish(),
+  archived_at: z.int().nullish(),
   archived_by: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   description: z.string(),
   existing_node_ids: z.array(z.string()).optional(),
@@ -133,7 +133,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
-  updated_at: z.string().nullish(),
+  updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
   workflow_node_id: z.string().nullish(),
@@ -184,7 +184,7 @@ export const zAgentConfigRevisionOperation = z.enum([
  * AgentConfigRevisionResponse
  */
 export const zAgentConfigRevisionResponse = z.object({
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   current_snapshot_id: z.string(),
   id: z.string(),
@@ -591,7 +591,7 @@ export const zRosterAgentCreatePayload = z.object({
 export const zAgentConfigSnapshotDetailResponse = z.object({
   agent_id: z.string().nullish(),
   config_snapshot: zAgentSoulConfig,
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   revisions: z.array(zAgentConfigRevisionResponse).optional(),
