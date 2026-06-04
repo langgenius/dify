@@ -16,6 +16,9 @@ REPO="${DIFYCTL_REPO:-langgenius/dify}"
 PREFIX="${DIFYCTL_PREFIX:-${HOME}/.local}"
 CHANNEL="${DIFYCTL_CHANNEL:-stable}"
 VERSION="${DIFYCTL_VERSION:-}"
+# Asset/tag naming is convention-locked to cli/package.json `difyctl.release`
+# (and release-naming.mjs). This installer ships standalone (curl | sh) so it
+# cannot read that source at runtime — keep these in sync by hand if it changes.
 TAG_PREFIX="difyctl-v"
 
 err() { printf '%s\n' "install-cli: $*" >&2; }

@@ -40,4 +40,6 @@ console.log(0)
 
 [[ "$cmp" -le 0 ]] || die "minDify (${min_dify}) > maxDify (${max_dify})"
 
+node "${_dir}/release-naming.mjs" validate >/dev/null
+
 log::info "manifest valid: version=${version} channel=${channel} compat=${min_dify}..${max_dify}"

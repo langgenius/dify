@@ -12,9 +12,12 @@ source "${_dir}/lib/common.sh"
 
 : "${CLI_VERSION:?CLI_VERSION is required}"
 
+naming() { node "${_dir}/release-naming.mjs" "$@"; }
+
 cd "$(cli::root)/dist/bin"
 
-manifest="difyctl-v${CLI_VERSION}-checksums.txt"
+manifest="$(naming checksums "$CLI_VERSION")"
+asset_prefix="$(naming tag-prefix)${CLI_VERSION}-"
 > "$manifest"
 
 if command -v sha256sum >/dev/null 2>&1; then
@@ -26,13 +29,13 @@ else
 fi
 
 found=0
-for bin in difyctl-v"${CLI_VERSION}"-*; do
+for bin in "${asset_prefix}"*; do
     [[ -f "$bin" ]] || continue
     [[ "$bin" == "$manifest" ]] && continue
     $hash_cmd "$bin" >> "$manifest"
     found=$((found + 1))
 done
 
-[[ "$found" -gt 0 ]] || die "no binaries matching difyctl-v${CLI_VERSION}-* in dist/bin/"
+[[ "$found" -gt 0 ]] || die "no binaries matching ${asset_prefix}* in dist/bin/"
 
 log::info "wrote ${manifest} (${found} entries)"

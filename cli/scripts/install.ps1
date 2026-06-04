@@ -15,6 +15,9 @@ $repo    = if ($env:DIFYCTL_REPO) { $env:DIFYCTL_REPO } else { 'langgenius/dify'
 $channel = if ($env:DIFYCTL_CHANNEL) { $env:DIFYCTL_CHANNEL } else { 'stable' }
 $version = $env:DIFYCTL_VERSION
 $prefix  = if ($env:DIFYCTL_PREFIX) { $env:DIFYCTL_PREFIX } else { Join-Path $env:LOCALAPPDATA 'difyctl' }
+# Asset/tag naming is convention-locked to cli/package.json difyctl.release
+# (and release-naming.mjs). This installer ships standalone (irm | iex) so it
+# cannot read that source at runtime — keep these in sync by hand if it changes.
 $target  = 'windows-x64'
 
 function Select-Version([string]$Channel, [object[]]$Refs) {

@@ -31,6 +31,7 @@ jobs:
       channel: ${{ steps.manifest.outputs.channel }}
       minDify: ${{ steps.manifest.outputs.minDify }}
       maxDify: ${{ steps.manifest.outputs.maxDify }}
+      tagPrefix: ${{ steps.manifest.outputs.tagPrefix }}
       already_exists: ${{ steps.guard.outputs.already_exists }}
     steps:
       - name: Checkout
@@ -45,11 +46,13 @@ jobs:
           channel=$(node -p "require('./package.json').difyctl.channel")
           minDify=$(node -p "require('./package.json').difyctl.compat.minDify")
           maxDify=$(node -p "require('./package.json').difyctl.compat.maxDify")
+          tagPrefix=$(node -p "require('./package.json').difyctl.release.tagPrefix")
           {
               echo "version=$version"
               echo "channel=$channel"
               echo "minDify=$minDify"
               echo "maxDify=$maxDify"
+              echo "tagPrefix=$tagPrefix"
           } >> "$GITHUB_OUTPUT"
 
       - name: Validate manifest
@@ -60,7 +63,7 @@ jobs:
         # pushed tag must match it, else the tag would dangle with no release.
         if: github.ref_type == 'tag'
         run: |
-          expected="difyctl-v${{ steps.manifest.outputs.version }}"
+          expected="${{ steps.manifest.outputs.tagPrefix }}${{ steps.manifest.outputs.version }}"
           if [ "$GITHUB_REF_NAME" != "$expected" ]; then
               echo "::error::pushed tag ${GITHUB_REF_NAME} does not match manifest version (${expected}); bump cli/package.json or push the matching tag"
               exit 1
@@ -71,7 +74,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="difyctl-v${{ steps.manifest.outputs.version }}"
+          tag="${{ steps.manifest.outputs.tagPrefix }}${{ steps.manifest.outputs.version }}"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
               echo "already_exists=true" >> "$GITHUB_OUTPUT"
               echo "::notice::release ${tag} already exists; release job will skip"
@@ -130,7 +133,7 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
-          tag_name: difyctl-v${{ needs.validate.outputs.version }}
+          tag_name: ${{ needs.validate.outputs.tagPrefix }}${{ needs.validate.outputs.version }}
           name: difyctl ${{ needs.validate.outputs.version }}
           prerelease: ${{ needs.validate.outputs.channel != 'stable' }}
           generate_release_notes: false
@@ -152,6 +155,6 @@ jobs:
             irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install.ps1 | iex
             ```
 
-            [Changes in `cli/`](https://github.com/langgenius/dify/commits/difyctl-v${{ needs.validate.outputs.version }}/cli)
+            [Changes in `cli/`](https://github.com/langgenius/dify/commits/${{ needs.validate.outputs.tagPrefix }}${{ needs.validate.outputs.version }}/cli)
           files: |
-            cli/dist/bin/difyctl-v*
+            cli/dist/bin/${{ needs.validate.outputs.tagPrefix }}*
