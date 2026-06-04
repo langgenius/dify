@@ -554,9 +554,10 @@ describe('MainNav', () => {
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
-    expect(await screen.findByText('common.mainNav.help.learnDify')).toBeInTheDocument()
+    const learnDifyItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.learnDify' })
+    expect(learnDifyItem).toHaveAttribute('aria-checked', 'false')
 
-    fireEvent.click(screen.getByRole('switch', { name: 'common.mainNav.help.learnDify' }))
+    fireEvent.click(learnDifyItem)
 
     await waitFor(() => {
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('false')
