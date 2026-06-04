@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useStore } from '../store'
 import { useNodesReadOnly } from './use-workflow'
 
@@ -8,6 +9,7 @@ export const useWorkflowCanvasMaximize = () => {
   const maximizeCanvas = useStore(s => s.maximizeCanvas)
   const setMaximizeCanvas = useStore(s => s.setMaximizeCanvas)
   const { getNodesReadOnly } = useNodesReadOnly()
+  const [, setWorkflowCanvasMaximize] = useLocalStorage<string>('workflow-canvas-maximize', '0', { raw: true })
 
   const handleToggleMaximizeCanvas = useCallback(() => {
     if (getNodesReadOnly())
@@ -15,12 +17,12 @@ export const useWorkflowCanvasMaximize = () => {
 
     const nextValue = !maximizeCanvas
     setMaximizeCanvas(nextValue)
-    localStorage.setItem('workflow-canvas-maximize', String(nextValue))
+    setWorkflowCanvasMaximize(String(nextValue))
     eventEmitter?.emit({
       type: 'workflow-canvas-maximize',
       payload: nextValue,
     } as never)
-  }, [eventEmitter, getNodesReadOnly, maximizeCanvas, setMaximizeCanvas])
+  }, [eventEmitter, getNodesReadOnly, maximizeCanvas, setMaximizeCanvas, setWorkflowCanvasMaximize])
 
   return {
     handleToggleMaximizeCanvas,
