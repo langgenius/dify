@@ -1,6 +1,8 @@
+import type { AgentRosterListResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
+import type { InfiniteData } from '@tanstack/react-query'
 import type { Tag } from '@/contract/console/tags'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
@@ -16,6 +18,7 @@ import {
   marketplaceRouterContract,
 } from '@/contract/router'
 import { isClient } from '@/utils/client'
+// eslint-disable-next-line no-restricted-imports
 import { request } from './base'
 
 const getMarketplaceHeaders = () => new Headers({
@@ -90,6 +93,115 @@ export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleR
 export const consoleQuery = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
   experimental_defaults: {
+    agents: {
+      post: {
+        mutationOptions: {
+          onSuccess: (_createdAgent, _variables, _onMutateResult, context) => {
+            context.client.invalidateQueries({
+              queryKey: consoleQuery.agents.get.key(),
+            })
+          },
+        },
+      },
+      byAgentId: {
+        patch: {
+          mutationOptions: {
+            onSuccess: (updatedAgent, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agents.get.key({ type: 'query' }),
+                },
+                (oldList: AgentRosterListResponse | undefined) => {
+                  if (!oldList?.data.some(item => item.id === updatedAgent.id))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    data: oldList.data.map(item => item.id === updatedAgent.id ? updatedAgent : item),
+                  }
+                },
+              )
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agents.get.key({ type: 'infinite' }),
+                },
+                (oldList: InfiniteData<AgentRosterListResponse, unknown> | undefined) => {
+                  if (!oldList?.pages.some(page => page.data.some(item => item.id === updatedAgent.id)))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    pages: oldList.pages.map(page => ({
+                      ...page,
+                      data: page.data.map(item => item.id === updatedAgent.id ? updatedAgent : item),
+                    })),
+                  }
+                },
+              )
+              context.client.setQueryData(
+                consoleQuery.agents.byAgentId.get.queryKey({
+                  input: {
+                    params: {
+                      agent_id: variables.params.agent_id,
+                    },
+                  },
+                }),
+                updatedAgent,
+              )
+            },
+          },
+        },
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              const agentListQueryKey = consoleQuery.agents.get.key()
+
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agents.get.key({ type: 'query' }),
+                },
+                (oldList: AgentRosterListResponse | undefined) => {
+                  if (!oldList?.data.some(item => item.id === variables.params.agent_id))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    data: oldList.data.filter(item => item.id !== variables.params.agent_id),
+                    total: Math.max(0, oldList.total - 1),
+                  }
+                },
+              )
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agents.get.key({ type: 'infinite' }),
+                },
+                (oldList: InfiniteData<AgentRosterListResponse, unknown> | undefined) => {
+                  if (!oldList?.pages.some(page => page.data.some(item => item.id === variables.params.agent_id)))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    pages: oldList.pages.map((page) => {
+                      const total = Math.max(0, page.total - 1)
+
+                      return {
+                        ...page,
+                        data: page.data.filter(item => item.id !== variables.params.agent_id),
+                        has_more: page.page * page.limit < total,
+                        total,
+                      }
+                    }),
+                  }
+                },
+              )
+              context.client.invalidateQueries({
+                queryKey: agentListQueryKey,
+              })
+            },
+          },
+        },
+      },
+    },
     apiBasedExtension: {
       post: {
         mutationOptions: {
