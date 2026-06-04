@@ -37,7 +37,7 @@ class AgentConfigSnapshotSummaryResponse(ResponseModel):
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None
-    created_at: str | None = None
+    created_at: int | None = None
 
 
 class AgentRosterResponse(ResponseModel):
@@ -59,9 +59,9 @@ class AgentRosterResponse(ResponseModel):
     created_by: str | None = None
     updated_by: str | None = None
     archived_by: str | None = None
-    archived_at: str | None = None
-    created_at: str | None = None
-    updated_at: str | None = None
+    archived_at: int | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 class AgentInviteOptionResponse(AgentRosterResponse):
@@ -95,7 +95,7 @@ class AgentConfigRevisionResponse(ResponseModel):
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None
-    created_at: str | None = None
+    created_at: int | None = None
 
 
 class AgentConfigSnapshotDetailResponse(AgentConfigSnapshotSummaryResponse):
