@@ -51,8 +51,9 @@ needs a way to provide a tracing session ID without creating, resuming, or mutat
 - Do not change `conversation_id`, `workflow_run_id`, `message_id`, Dify `trace_id`, or OpenTelemetry trace/span IDs.
 - Do not alter Phoenix span hierarchy or nested workflow parent resolution.
 - Do not change non-Arize/Phoenix tracing provider session or trace semantics.
-- Do not add or enqueue new message traces from app generation pipelines. `trace_session_id` support must not increase the
-  number of exported traces.
+- Do not add or enqueue additional message traces from app generation pipelines. `trace_session_id` support must not
+  increase the number of exported traces, but existing message trace tasks should carry the custom session metadata when
+  they are already emitted.
 - Do not add UI controls in Console or Web App.
 - Do not support Console, Web App, or OpenAPI-originated generation requests as public `trace_session_id` input sources.
 - Do not support non-generation Service API endpoints such as stop task, workflow run detail, or log listing endpoints.
@@ -122,8 +123,10 @@ metadata by tracing providers, but the implementation should not add new applica
 2. If a resolved `trace_session_id` is valid, the controller stores the trimmed value in `args["trace_session_id"]`.
 3. App generators extract `trace_session_id` from `args` into `application_generate_entity.extras` or an equivalent
    runtime propagation field for every target generation path.
-4. Workflow trace task enqueueing copies the value into workflow trace metadata.
-5. `WorkflowTraceInfo` carries the value through `metadata["trace_session_id"]`.
+4. Workflow trace task enqueueing copies the value into workflow trace metadata. Existing message trace task enqueueing
+   also copies the value into message trace metadata when that task is already emitted by the current app path.
+5. `WorkflowTraceInfo` and existing `MessageTraceInfo` exports carry the value through
+   `metadata["trace_session_id"]`.
 6. `arize_phoenix_trace` resolves OpenInference session ID with this priority:
 
 ```text
@@ -139,7 +142,7 @@ conversation_id
   > workflow_run_id
 ```
 
-If an existing explicit message trace is produced by another path, its fallback remains:
+If an existing message trace is produced, its fallback remains:
 
 ```text
 message_data.conversation_id
@@ -147,19 +150,19 @@ message_data.conversation_id
 
 ## Phoenix Provider Behavior
 
-The normalized `trace_session_id` propagation path should be available on workflow trace metadata. In this version, only
-the Arize/Phoenix provider changes its export semantics by mapping that metadata value to OpenInference `session.id`.
-Other tracing providers may continue exporting metadata as they already do, but should not receive provider-specific
-trace/session behavior changes for this feature.
+The normalized `trace_session_id` propagation path should be available on workflow trace metadata and on existing
+message trace metadata when a message trace is already emitted. In this version, only the Arize/Phoenix provider changes
+its export semantics by mapping that metadata value to OpenInference `session.id`. Other tracing providers may continue
+exporting metadata as they already do, but should not receive provider-specific trace/session behavior changes for this
+feature.
 
-The Arize/Phoenix provider should centralize session resolution so workflow spans, wrapper spans, and node spans use the
-same value for a single workflow trace export.
+The Arize/Phoenix provider should centralize session resolution so workflow spans, wrapper spans, node spans, and
+existing message/LLM spans use the same custom session value when their trace metadata contains `trace_session_id`.
 
-Service API generation pipelines must not enqueue `MESSAGE_TRACE` tasks for this feature. The custom session ID is for
-workflow trace grouping, not for creating additional message-level traces in Phoenix. If a pre-existing explicit message
-trace path is invoked outside these generation pipelines and already passes `metadata["trace_session_id"]`, the
-Arize/Phoenix resolver may still use that value for backwards compatibility; this feature does not require adding such
-metadata to app-generated message saves.
+Service API generation pipelines must not add new `MESSAGE_TRACE` enqueueing for this feature. The custom session ID is
+for Phoenix session grouping, not for creating additional message-level traces. If an app path already emits
+`MESSAGE_TRACE`, that existing task should carry `trace_session_id` metadata so plain chat/completion traces can also be
+grouped by the caller-provided session.
 
 When a workflow invokes a nested workflow as part of the same Service API generation request, the nested workflow trace
 should inherit the same resolved `trace_session_id`. This inheritance must not change nested workflow trace identity,
@@ -175,7 +178,7 @@ session_id = resolve_trace_session_id(trace_info)
 attributes[SpanAttributes.SESSION_ID] = session_id or ""
 ```
 
-For existing explicit message traces:
+For existing message traces:
 
 ```python
 session_id = resolve_trace_session_id(trace_info)
@@ -252,8 +255,9 @@ This change is backwards-compatible:
 - Existing requests without `trace_session_id` keep current tracing behavior.
 - Existing conversation and workflow APIs keep their semantics.
 - Existing Phoenix grouping by Dify conversation or workflow identifiers remains the fallback.
-- Existing message trace behavior is preserved; Service API generation with `trace_session_id` must not enqueue extra
-  message traces or change response/SSE metadata.
+- Existing message trace task creation behavior is preserved; Service API generation with `trace_session_id` must not
+  enqueue extra message traces or change response/SSE metadata. Existing message traces may have their exported
+  OpenInference `session.id` changed to the custom session value.
 - Existing `trace_id`, `X-Trace-Id`, OpenTelemetry context, and `traceparent` behavior for trace identity is unchanged.
 - No database migration is required.
 - No frontend behavior changes are required.
@@ -284,10 +288,10 @@ Add focused tests for:
 - Service API documentation covers header, query parameter, JSON body input, and priority order for target generation
   endpoints.
 - Phoenix workflow trace uses `metadata["trace_session_id"]` for root workflow, workflow, wrapper, and node spans.
-- App generation pipelines do not enqueue `MESSAGE_TRACE` tasks when saving messages, even when a trace manager and
+- App generation pipelines do not add new `MESSAGE_TRACE` enqueueing when saving messages, even when a trace manager and
   `trace_session_id` are present.
-- Existing explicit Phoenix message trace exports keep their fallback behavior when `metadata["trace_session_id"]` is
-  absent, and may use the metadata value if such a trace is produced by another path.
+- Existing Phoenix message trace exports keep their fallback behavior when `metadata["trace_session_id"]` is absent, and
+  use the metadata value when such a trace is already produced by the app path.
 - Nested workflow traces inherit the parent request's `trace_session_id` while preserving existing parent-child span
   relationships.
 - Nested workflow traces prefer the parent workflow runtime's inherited `trace_session_id` over any different nested
@@ -299,8 +303,8 @@ Add focused tests for:
 - Decision note: keep `trace_session_id` on explicit Service API inputs and trace metadata. Do not derive it from
   `traceparent`, W3C baggage, OpenTelemetry context, or Dify business records because it is session grouping metadata,
   not trace identity or business state.
-- Completion/chat non-workflow message save paths must not enqueue message traces for this feature. Keep the
-  `trace_session_id` propagation in generate entity extras for compatibility with shared code, but do not use that as a
-  reason to create additional message-level Phoenix traces.
+- Completion/chat non-workflow message save paths must not add message trace enqueueing solely for this feature. Keep the
+  `trace_session_id` propagation in generate entity extras so existing message trace tasks can use the custom Phoenix
+  session, but do not use that as a reason to create additional message-level Phoenix traces.
 - If a target generation path does not already pass request metadata to provider trace info, add the smallest compatible
   propagation path rather than changing provider trace entity contracts broadly.

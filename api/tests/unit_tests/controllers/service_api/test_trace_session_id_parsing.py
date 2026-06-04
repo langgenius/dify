@@ -53,6 +53,52 @@ def _assert_generate_trace_session_id(mock_generate_service: MagicMock, expected
     assert kwargs["args"]["trace_session_id"] == expected
 
 
+@patch("controllers.service_api.app.completion.AppGenerateService")
+@patch("controllers.service_api.app.completion.service_api_ns")
+def test_chat_api_rejects_invalid_highest_priority_query_trace_session_id_without_generating(
+    mock_service_api_ns: MagicMock,
+    mock_generate_service: MagicMock,
+    app: Flask,
+):
+    payload = {"inputs": {}, "query": "hello", "trace_session_id": "body-session"}
+    mock_service_api_ns.payload = payload
+
+    with app.test_request_context(
+        "/chat-messages?trace_session_id=%20%20%20",
+        method="POST",
+        json=payload,
+    ):
+        with pytest.raises(BadRequest):
+            completion_module.ChatApi().post.__wrapped__(
+                completion_module.ChatApi(),
+                _app(AppMode.CHAT),
+                _end_user(),
+            )
+
+    mock_generate_service.generate.assert_not_called()
+
+
+@patch("controllers.service_api.app.workflow.AppGenerateService")
+@patch("controllers.service_api.app.workflow.service_api_ns")
+def test_workflow_run_api_rejects_invalid_highest_priority_body_trace_session_id_without_generating(
+    mock_service_api_ns: MagicMock,
+    mock_generate_service: MagicMock,
+    app: Flask,
+):
+    payload = {"inputs": {}, "trace_session_id": 123}
+    mock_service_api_ns.payload = payload
+
+    with app.test_request_context("/workflows/run", method="POST", json=payload):
+        with pytest.raises(BadRequest):
+            workflow_module.WorkflowRunApi().post.__wrapped__(
+                workflow_module.WorkflowRunApi(),
+                _app(AppMode.WORKFLOW),
+                _end_user(),
+            )
+
+    mock_generate_service.generate.assert_not_called()
+
+
 @patch("controllers.service_api.app.completion.helper.compact_generate_response", return_value={"answer": "ok"})
 @patch("controllers.service_api.app.completion.AppGenerateService")
 @patch("controllers.service_api.app.completion.service_api_ns")

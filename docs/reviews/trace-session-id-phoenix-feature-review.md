@@ -2,11 +2,12 @@
 
 ## Review scope
 
-- Target range: `origin/main..HEAD`
-- Base: `6ce61eae59` (`origin/main`)
-- Head: `0626ddd9f3` (`fix: restore easy ui message trace task`)
+- Target range: `e6c76cf945^..HEAD`
+- Base: `e6c76cf945^`
+- Head: `7ea9b894d2` (`fix: type phoenix llm span attributes`)
 - Scope: committed feature changes for `trace_session_id` / custom Phoenix session propagation.
 - Feature boundary note from owner: the Agent App / dify-agent backend path is still under separate development and is not part of this feature's required scope. This review should focus on workflow and chatflow behavior, and Agent App trace-session code introduced by this feature should be removed from the feature branch.
+- Owner decision after grill-with-docs review: `trace_session_id` should affect existing app-generated `MESSAGE_TRACE` spans when those traces are already emitted. The feature must not add extra message trace tasks, but existing message/LLM spans should use the custom Phoenix `session.id` when metadata is present.
 - Excluded: uncommitted local dev changes in `Makefile`, `docker/ssrf_proxy/squid.conf.template`, and `docker/volumes/phoenix/`.
 
 ## Subagent focus areas
@@ -14,6 +15,7 @@
 - Strong typing and data-flow review: checked typed boundaries, Pydantic/TypedDict usage, and untyped `extras` propagation.
 - Unit test quality review: checked whether tests exercise real feature logic and would fail on meaningful regressions.
 - Backward compatibility review: checked existing service API parsing, workflow/message trace behavior, nested workflows, resume/debug/single-node paths, workflow-as-tool propagation, and Phoenix session mapping.
+- Grill-with-docs review: checked every file-level intention against the design docs, implementation plan, and owner-scoped boundaries.
 
 ## Issue list
 
@@ -43,11 +45,36 @@ My view: this is exactly the kind of test that can pass while the in-scope workf
 
 ### P3: Controller negative tests miss invalid highest-priority query/body values
 
+Status: resolved in follow-up tests.
+
 - File: `api/tests/unit_tests/controllers/service_api/test_trace_session_id_parsing.py:116`
 
 Controller tests cover valid body propagation and invalid lower-priority body values, but do not cover invalid highest-priority query/body values at the controller boundary. Because controllers intentionally omit `trace_session_id` from the DTO payload before validation, the controller tests should prove that `get_trace_session_id(request)` still rejects invalid highest-priority query/body inputs and does not call `AppGenerateService.generate`.
 
-My view: helper-level tests cover part of the validation behavior, but the controller-level omit-then-validate flow is subtle enough to deserve direct negative tests. Add tests for blank, non-string, or too-long query/body `trace_session_id` on completion/chat/workflow APIs.
+My view: helper-level tests cover part of the validation behavior, but the controller-level omit-then-validate flow is subtle enough to deserve direct negative tests. Follow-up tests now cover invalid highest-priority query and body values and assert generation is not called.
+
+### P3: Review scope metadata became stale after follow-up commits
+
+Status: resolved in this document update.
+
+- File: `docs/reviews/trace-session-id-phoenix-feature-review.md`
+
+The earlier review header recorded `origin/main..HEAD` and `HEAD: 0626ddd9f3`, but follow-up commits changed the effective feature head to `7ea9b894d2`. This can mislead future readers if they use the document as current review evidence.
+
+My view: this is documentation hygiene, not a code issue. The review scope now records the feature commit range used for the current file-intention and grill-with-docs pass.
+
+### P2 candidate resolved by owner decision: Existing message traces use custom session metadata
+
+Status: resolved by owner decision.
+
+- Related files:
+  - `api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py`
+  - `api/core/ops/ops_trace_manager.py`
+  - `api/providers/trace/trace-arize-phoenix/src/dify_trace_arize_phoenix/arize_phoenix_trace.py`
+
+The grill-with-docs pass challenged whether passing `trace_session_id` into existing `MESSAGE_TRACE` tasks conflicted with the documented boundary that this feature should not add message traces.
+
+My view: there is no conflict if the boundary is stated precisely. The feature must not create additional message trace tasks, but when a chat/completion path already emits a message trace, that trace should use the caller-provided session ID for Phoenix grouping. This preserves trace count and response behavior while making plain chat/completion `trace_session_id` useful in Phoenix.
 
 ### P3: Phoenix workflow tests assert helper behavior but not actual custom session attributes on workflow spans
 
@@ -81,4 +108,4 @@ Owner decision: Agent App should not participate in this feature yet. The Agent 
 
 ## Merge assessment
 
-After the follow-up fixes, the main remaining documented gap is controller-level negative coverage for invalid highest-priority query/body `trace_session_id` values. Agent App / dify-agent backend propagation is explicitly out of scope for this feature and should stay with the separate Agent App workstream.
+After the follow-up fixes, owner decision, and controller negative coverage update, the reviewed feature issues are resolved. Agent App / dify-agent backend propagation is explicitly out of scope for this feature and should stay with the separate Agent App workstream.

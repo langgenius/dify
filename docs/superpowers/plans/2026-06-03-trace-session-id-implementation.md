@@ -4,7 +4,7 @@
 
 **Goal:** Add `trace_session_id` support for Service API generation requests and map it to Arize/Phoenix OpenInference `session.id` without changing Dify business identity or trace identity.
 
-**Architecture:** Normalize `trace_session_id` at Service API controllers, propagate the trimmed value through app generate entity extras and workflow trace task kwargs, then resolve it inside the Arize/Phoenix provider before existing session fallbacks. Preserve the value through workflow pause/resume via the existing serialized generate entity path, and keep non-Arize/Phoenix providers semantically unchanged. Do not enqueue new message traces from app generation pipelines.
+**Architecture:** Normalize `trace_session_id` at Service API controllers, propagate the trimmed value through app generate entity extras and trace task kwargs, then resolve it inside the Arize/Phoenix provider before existing session fallbacks. Preserve the value through workflow pause/resume via the existing serialized generate entity path, and keep non-Arize/Phoenix providers semantically unchanged. Do not enqueue additional message traces from app generation pipelines, but attach the session metadata to existing message trace tasks when they are already emitted.
 
 **Tech Stack:** Python 3.12, Flask-RESTX controllers, Pydantic v2 DTOs, Celery workflow tasks, Dify trace providers, pytest, Markdown/MDX API documentation.
 
@@ -17,15 +17,15 @@
 - Modify `api/controllers/service_api/app/workflow.py`: add `trace_session_id` to workflow payloads and normalize request-level inputs into `args`.
 - Modify `api/core/app/apps/chat/app_generator.py`: propagate `trace_session_id` into chat generate entity extras.
 - Modify `api/core/app/apps/agent_chat/app_generator.py`: propagate `trace_session_id` into agent chat generate entity extras.
-- Modify `api/core/app/apps/agent_app/app_generator.py`: propagate `trace_session_id` into agent app generate entity extras.
+- Modify `api/core/app/apps/agent_app/app_generator.py`: keep Agent App out of this feature and do not propagate `trace_session_id` into agent app generate entity extras.
 - Modify `api/core/app/apps/completion/app_generator.py`: propagate `trace_session_id` into completion generate entity extras.
 - Modify `api/core/app/apps/advanced_chat/app_generator.py`: propagate `trace_session_id` into advanced chat generate entity extras.
 - Modify `api/core/app/apps/workflow/app_generator.py`: propagate `trace_session_id` into workflow generate entity extras, including nested workflow inheritance.
-- Modify `api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py`: ensure saving plain chat/completion/agent messages does not enqueue `MESSAGE_TRACE` for this feature.
-- Modify `api/core/app/apps/advanced_chat/generate_task_pipeline.py`: ensure saving advanced chat messages does not enqueue `MESSAGE_TRACE` for this feature.
+- Modify `api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py`: keep existing message trace task behavior, and pass `trace_session_id` metadata only when that task is already emitted.
+- Modify `api/core/app/apps/advanced_chat/generate_task_pipeline.py`: keep existing advanced-chat message trace task behavior, and pass `trace_session_id` metadata only when that task is already emitted.
 - Modify `api/core/app/workflow/layers/persistence.py`: pass `trace_session_id` to workflow `TraceTask`.
-- Modify `api/core/ops/ops_trace_manager.py`: copy `trace_session_id` from workflow trace task kwargs into `WorkflowTraceInfo.metadata`; keep existing explicit message trace support backwards-compatible.
-- Modify `api/providers/trace/trace-arize-phoenix/src/dify_trace_arize_phoenix/arize_phoenix_trace.py`: centralize session id resolution and apply it to workflow, wrapper, and node spans; existing explicit message trace exports may continue using the same resolver when metadata is present.
+- Modify `api/core/ops/ops_trace_manager.py`: copy `trace_session_id` from workflow trace task kwargs into `WorkflowTraceInfo.metadata`; copy it into `MessageTraceInfo.metadata` for existing message trace tasks.
+- Modify `api/providers/trace/trace-arize-phoenix/src/dify_trace_arize_phoenix/arize_phoenix_trace.py`: centralize session id resolution and apply it to workflow, wrapper, node, message, and LLM spans when metadata is present.
 - Modify unit tests under `api/tests/unit_tests/...` and `api/providers/trace/trace-arize-phoenix/tests/unit_tests/...`.
 - Modify Web API documentation templates under `web/app/components/develop/template/` using the existing `trace_id` documentation style.
 
@@ -605,22 +605,26 @@ Pass it into `TraceTask`:
 trace_session_id=trace_session_id,
 ```
 
-- [ ] **Step 5: Prevent app-generated message trace enqueueing**
+- [ ] **Step 5: Keep existing message trace behavior and attach session metadata**
 
-Do not enqueue `TraceTaskName.MESSAGE_TRACE` from message-save paths as part of this feature. In
-`api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py`, saving a message must preserve the existing message
-persistence and `message_was_created` event behavior without calling `trace_manager.add_trace_task()`.
-
-Add or update the focused test so a trace manager with `add_trace_task=Mock()` is passed to `_save_message()` and the
-assertion is:
+Do not add any new `TraceTaskName.MESSAGE_TRACE` call sites as part of this feature. In
+`api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py`, if the existing message-save path already calls
+`trace_manager.add_trace_task()`, pass the session metadata on that existing task:
 
 ```python
-trace_manager.add_trace_task.assert_not_called()
+trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
 ```
 
-In `api/core/app/apps/advanced_chat/generate_task_pipeline.py`, saving a message must also avoid calling
-`self._application_generate_entity.trace_manager.add_trace_task()`. Add or update the focused advanced-chat pipeline test
-with `extras={"trace_session_id": "session-1"}` and assert that the trace manager was not called.
+Add or update the focused test so a trace manager with `add_trace_task=Mock()` is passed to `_save_message()` and the
+assertion checks the existing task kwargs:
+
+```python
+trace_task = trace_manager.add_trace_task.call_args.args[0]
+assert trace_task.kwargs["trace_session_id"] == "session-1"
+```
+
+In `api/core/app/apps/advanced_chat/generate_task_pipeline.py`, follow the same rule if that path already emits a message
+trace task: attach metadata to the existing task, but do not add a new trace task call site.
 
 - [ ] **Step 6: Update trace info metadata construction**
 
@@ -640,8 +644,7 @@ if trace_session_id:
     metadata["trace_session_id"] = trace_session_id
 ```
 
-For backwards compatibility with explicit message trace tasks, `message_trace()` may keep the same metadata handling
-after `node_execution_id` handling:
+For existing message trace tasks, `message_trace()` keeps the same metadata handling after `node_execution_id` handling:
 
 ```python
 trace_session_id = _get_trace_session_id(kwargs)
@@ -833,11 +836,11 @@ workflow_session_id = _resolve_trace_session_id(trace_info)
 
 The existing workflow span, wrapper span, and node span attributes already use `workflow_session_id`; no extra changes are needed there.
 
-- [ ] **Step 5: Preserve explicit message trace compatibility without enqueueing message traces**
+- [ ] **Step 5: Apply resolver to existing message traces without adding new trace tasks**
 
 Do not add new app generation call sites that create `TraceTaskName.MESSAGE_TRACE`. If `message_trace()` is invoked by an
-existing explicit trace path and the trace info already has `metadata["trace_session_id"]`, it may use the centralized
-resolver for backwards-compatible session grouping.
+existing trace path and the trace info already has `metadata["trace_session_id"]`, use the centralized resolver so
+plain chat/completion traces can also be grouped by the caller-provided session.
 
 In `message_trace()`, this optional compatibility path uses:
 
@@ -857,7 +860,7 @@ may be replaced with:
 SpanAttributes.SESSION_ID: message_session_id or "",
 ```
 
-This must not be paired with any new message trace enqueueing in
+This must not be paired with additional message trace enqueueing in
 `api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py` or
 `api/core/app/apps/advanced_chat/generate_task_pipeline.py`.
 
