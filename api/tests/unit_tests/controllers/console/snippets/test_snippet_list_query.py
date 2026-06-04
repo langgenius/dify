@@ -1,3 +1,5 @@
+import pytest
+from pydantic import ValidationError
 from werkzeug.datastructures import MultiDict
 
 from controllers.console.snippets.payloads import SnippetListQuery
@@ -13,12 +15,35 @@ def test_snippet_list_query_accepts_comma_separated_tag_ids() -> None:
     assert query.tag_ids == [first, second]
 
 
+def test_snippet_list_query_returns_none_for_blank_tag_ids() -> None:
+    query = SnippetListQuery.model_validate({"tag_ids": " , "})
+
+    assert query.tag_ids is None
+
+
+def test_snippet_list_query_rejects_invalid_tag_id() -> None:
+    with pytest.raises(ValidationError, match="Invalid UUID format in tag_ids"):
+        SnippetListQuery.model_validate({"tag_ids": "not-a-uuid"})
+
+
 def test_snippet_list_query_accepts_creator_id_alias() -> None:
     creator_id = "1886f96a-5bf0-42bf-961d-8d2129049076"
 
     query = SnippetListQuery.model_validate({"creator_id": creator_id})
 
     assert query.creators == [creator_id]
+
+
+def test_snippet_list_query_normalizes_creator_lists() -> None:
+    query = SnippetListQuery.model_validate({"creators": ["account-1", "", " account-2 "]})
+
+    assert query.creators == ["account-1", "account-2"]
+
+
+def test_snippet_list_query_ignores_unsupported_list_value_type() -> None:
+    query = SnippetListQuery.model_validate({"creators": {"bad": "value"}})
+
+    assert query.creators is None
 
 
 def test_normalize_snippet_list_query_accepts_indexed_creator_ids() -> None:

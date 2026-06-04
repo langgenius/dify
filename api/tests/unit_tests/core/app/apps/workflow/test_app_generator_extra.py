@@ -15,6 +15,40 @@ from models.model import AppMode
 
 
 class TestWorkflowAppGeneratorValidation:
+    def test_ensure_snippet_start_node_returns_original_for_non_snippet_workflow(self):
+        workflow = SimpleNamespace(kind_or_standard="workflow")
+        session = SimpleNamespace(scalar=Mock())
+
+        result = WorkflowAppGenerator._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+
+        assert result is workflow
+        session.scalar.assert_not_called()
+
+    def test_ensure_snippet_start_node_returns_original_when_snippet_missing(self):
+        workflow = SimpleNamespace(kind_or_standard="snippet", app_id="snippet-1", tenant_id="tenant-1")
+        session = SimpleNamespace(scalar=Mock(return_value=None))
+
+        result = WorkflowAppGenerator._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+
+        assert result is workflow
+        session.scalar.assert_called_once()
+
+    def test_ensure_snippet_start_node_delegates_when_snippet_exists(self, monkeypatch: pytest.MonkeyPatch):
+        workflow = SimpleNamespace(kind_or_standard="snippet", app_id="snippet-1", tenant_id="tenant-1")
+        snippet = SimpleNamespace(id="snippet-1")
+        injected_workflow = SimpleNamespace(id="workflow-injected")
+        session = SimpleNamespace(scalar=Mock(return_value=snippet))
+        ensure_start_node = Mock(return_value=injected_workflow)
+        monkeypatch.setattr(
+            "services.snippet_generate_service.SnippetGenerateService.ensure_start_node_for_worker",
+            ensure_start_node,
+        )
+
+        result = WorkflowAppGenerator._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+
+        assert result is injected_workflow
+        ensure_start_node.assert_called_once_with(workflow, snippet)
+
     def test_should_prepare_user_inputs(self):
         generator = WorkflowAppGenerator()
 

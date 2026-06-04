@@ -46,6 +46,23 @@ def test_get_snippet_injects_resolved_snippet(app, monkeypatch: pytest.MonkeyPat
     assert result is snippet
 
 
+def test_get_snippet_raises_not_found_when_snippet_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    @snippet_workflow_module.get_snippet
+    def view(**kwargs):
+        return kwargs
+
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "current_account_with_tenant",
+        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+    )
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
+
+    with app.test_request_context("/snippets/snippet-1"):
+        with pytest.raises(NotFound, match="Snippet not found"):
+            view(snippet_id="snippet-1")
+
+
 def test_draft_workflow_get_raises_when_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     monkeypatch.setattr(
