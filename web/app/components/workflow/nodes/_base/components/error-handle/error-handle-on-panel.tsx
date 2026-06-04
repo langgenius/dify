@@ -5,7 +5,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import Collapse from '../collapse'
 import DefaultValue from './default-value'
 import ErrorHandleTypeSelector from './error-handle-type-selector'
@@ -57,7 +57,9 @@ const ErrorHandle = ({
                   <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">
                     {t('nodes.common.errorHandle.title', { ns: 'workflow' })}
                   </div>
-                  <Tooltip popupContent={t('nodes.common.errorHandle.tip', { ns: 'workflow' })} />
+                  <Infotip aria-label={t('nodes.common.errorHandle.tip', { ns: 'workflow' })}>
+                    {t('nodes.common.errorHandle.tip', { ns: 'workflow' })}
+                  </Infotip>
                   {collapseIcon}
                 </div>
                 <ErrorHandleTypeSelector

@@ -6,7 +6,7 @@ import json
 import threading
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -648,7 +648,7 @@ def test_list_default_builtin_providers_for_postgres_and_mysql():
         assert providers == provider_records
 
 
-def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp(monkeypatch):
+def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp(monkeypatch: pytest.MonkeyPatch):
     hardcoded_controller = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="hardcoded")))
     plugin_controller = object.__new__(PluginToolProviderController)
     plugin_controller.entity = SimpleNamespace(identity=SimpleNamespace(name="plugin-provider"))
@@ -802,17 +802,36 @@ def test_generate_tool_icon_urls_for_builtin_and_plugin():
 def test_generate_tool_icon_urls_for_workflow_and_api():
     workflow_provider = SimpleNamespace(icon='{"background": "#222", "content": "W"}')
     api_provider = SimpleNamespace(icon='{"background": "#333", "content": "A"}')
+    mock_engine = object()
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.scalar.side_effect = [workflow_provider, api_provider]
-        assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "wf-1") == {"background": "#222", "content": "W"}
-        assert ToolManager.generate_api_tool_icon_url("tenant-1", "api-1") == {"background": "#333", "content": "A"}
+        mock_db.engine = mock_engine
+        with patch("core.tools.tool_manager.Session") as mock_session_cls:
+            mock_session = MagicMock()
+            mock_session.scalar.side_effect = [workflow_provider, api_provider]
+            mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
+            mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
+            assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "wf-1") == {
+                "background": "#222",
+                "content": "W",
+            }
+            assert ToolManager.generate_api_tool_icon_url("tenant-1", "api-1") == {"background": "#333", "content": "A"}
+            # Verify sessions are created with the engine
+            assert mock_session_cls.call_count == 2
+            mock_session_cls.assert_called_with(mock_engine, expire_on_commit=False)
 
 
 def test_generate_tool_icon_urls_missing_workflow_and_api_use_default():
+    mock_engine = object()
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.scalar.return_value = None
-        assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
-        assert ToolManager.generate_api_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
+        mock_db.engine = mock_engine
+        with patch("core.tools.tool_manager.Session") as mock_session_cls:
+            mock_session = MagicMock()
+            mock_session.scalar.return_value = None
+            mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
+            mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
+            assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
+            assert ToolManager.generate_api_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
+            assert mock_session_cls.call_count == 2
 
 
 def test_get_tool_icon_for_builtin_provider_variants():
@@ -925,3 +944,78 @@ def test_convert_tool_parameters_type_constant_branch():
     )
 
     assert constant == {"text": "fixed"}
+
+
+def test_convert_tool_parameters_type_model_selector_from_legacy_top_level_config():
+    model_param = ToolParameter.get_simple_instance(
+        name="vision_llm_model",
+        llm_description="vision model",
+        typ=ToolParameter.ToolParameterType.MODEL_SELECTOR,
+        required=True,
+    )
+    model_param.form = ToolParameter.ToolParameterForm.FORM
+    variable_pool = Mock()
+
+    runtime_parameters = ToolManager._convert_tool_parameters_type(
+        parameters=[model_param],
+        variable_pool=variable_pool,
+        tool_configurations={
+            "vision_llm_model": {
+                "type": "constant",
+                "value": "",
+                "provider": "langgenius/tongyi/tongyi",
+                "model": "qwen3-vl-plus",
+                "model_type": "llm",
+                "mode": "chat",
+            }
+        },
+        typ="workflow",
+    )
+
+    assert runtime_parameters == {
+        "vision_llm_model": {
+            "provider": "langgenius/tongyi/tongyi",
+            "model": "qwen3-vl-plus",
+            "model_type": "llm",
+            "mode": "chat",
+        }
+    }
+
+
+def test_convert_tool_parameters_type_model_selector_from_constant_value_config():
+    model_param = ToolParameter.get_simple_instance(
+        name="tts_model",
+        llm_description="tts model",
+        typ=ToolParameter.ToolParameterType.MODEL_SELECTOR,
+        required=True,
+    )
+    model_param.form = ToolParameter.ToolParameterForm.FORM
+    variable_pool = Mock()
+
+    runtime_parameters = ToolManager._convert_tool_parameters_type(
+        parameters=[model_param],
+        variable_pool=variable_pool,
+        tool_configurations={
+            "tts_model": {
+                "type": "constant",
+                "value": {
+                    "provider": "langgenius/tongyi/tongyi",
+                    "model": "qwen3-tts-flash",
+                    "model_type": "tts",
+                    "language": "Chinese",
+                    "voice": "Cherry",
+                },
+            }
+        },
+        typ="workflow",
+    )
+
+    assert runtime_parameters == {
+        "tts_model": {
+            "provider": "langgenius/tongyi/tongyi",
+            "model": "qwen3-tts-flash",
+            "model_type": "tts",
+            "language": "Chinese",
+            "voice": "Cherry",
+        }
+    }

@@ -85,8 +85,8 @@ vi.mock('../model-auth-dropdown', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <div data-testid="indicator" data-color={color} />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <div data-testid="indicator" data-status={status} />,
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning', () => ({
@@ -111,7 +111,7 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
 
 const renderWithQueryClient = (provider: ModelProvider) => {
   return renderWithSystemFeatures(<CredentialPanel provider={provider} />, {
-    systemFeatures: { trial_models: ['langgenius/openai/openai'] as never },
+    trialModels: ['langgenius/openai/openai'],
   })
 }
 
@@ -192,7 +192,7 @@ describe('CredentialPanel', () => {
     it('should show green indicator and credential name for api-fallback (exhausted + authorized key)', () => {
       mockTrialCredits.isExhausted = true
       renderWithQueryClient(createProvider())
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'green')
+      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
@@ -206,7 +206,7 @@ describe('CredentialPanel', () => {
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
       }))
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'green')
+      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
@@ -228,7 +228,7 @@ describe('CredentialPanel', () => {
           available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
         },
       }))
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'red')
+      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'error')
       expect(screen.getByText('Bad Key')).toBeInTheDocument()
     })
   })

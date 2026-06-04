@@ -58,7 +58,8 @@ describe('Operation', () => {
         />,
       )
 
-      expect(screen.getAllByRole('button')).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
     })
 
     it('should not render voice input button when speechToTextConfig.enabled is false', () => {
@@ -136,8 +137,7 @@ describe('Operation', () => {
         />,
       )
 
-      const buttons = screen.getAllByRole('button')
-      const voiceButton = buttons[0]
+      const voiceButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
 
       await user.click(voiceButton!)
 
@@ -157,8 +157,7 @@ describe('Operation', () => {
         />,
       )
 
-      const buttons = screen.getAllByRole('button')
-      const voiceButton = buttons[0]
+      const voiceButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
 
       expect(voiceButton)!.toBeDisabled()
 

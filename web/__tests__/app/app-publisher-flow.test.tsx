@@ -43,10 +43,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('ahooks', () => ({
-  useKeyPress: vi.fn(),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
     appDetail: mockAppDetail,
@@ -122,38 +118,7 @@ vi.mock('@/app/components/app/app-access-control', () => ({
   default: () => <div data-testid="app-access-control" />,
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
-  const OpenContext = React.createContext(false)
-
-  return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-      <OpenContext.Provider value={open}>
-        <div>{children}</div>
-      </OpenContext.Provider>
-    ),
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick?: () => void
-    }) => (
-      <div onClick={onClick}>
-        {children}
-      </div>
-    ),
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-      const open = React.useContext(OpenContext)
-      return open ? <div>{children}</div> : null
-    },
-  }
-})
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
-  getKeyboardKeyNameBySystem: (key: string) => key,
-}))
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 describe('App Publisher Flow', () => {
   beforeEach(() => {

@@ -13,7 +13,7 @@ permissions:
 jobs:
   autofix:
     if: github.repository == 'langgenius/dify'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Complete merge group check
         if: github.event_name == 'merge_group'
@@ -43,7 +43,6 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            .npmrc
             .nvmrc
       - name: Check api inputs
         if: github.event_name != 'merge_group'
@@ -52,6 +51,15 @@ jobs:
         with:
           files: |
             api/**
+      - name: Check dify-agent inputs
+        if: github.event_name != 'merge_group'
+        id: dify-agent-changes
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            dify-agent/**/*.py
+            dify-agent/pyproject.toml
+            dify-agent/uv.lock
       - if: github.event_name != 'merge_group'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -76,6 +84,17 @@ jobs:
           uv run ruff check --fix .
           # Format code
           uv run ruff format ..
+
+      - if: github.event_name != 'merge_group' && steps.dify-agent-changes.outputs.any_changed == 'true'
+        run: |
+          cd dify-agent
+          uv sync --dev
+          # fmt first to avoid line too long
+          uv run ruff format .
+          # Fix lint errors
+          uv run ruff check --fix .
+          # Format code
+          uv run ruff format .
 
       - name: count migration progress
         if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
@@ -114,8 +133,18 @@ jobs:
           find . -name "*.py.bak" -type f -delete
 
       - name: Setup web environment
-        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+        if: github.event_name != 'merge_group'
         uses: ./.github/actions/setup-web
+
+      - name: Generate API docs
+        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
+        run: |
+          cd api
+          uv run dev/generate_swagger_markdown_docs.py --swagger-dir ../packages/contracts/openapi --markdown-dir openapi/markdown --keep-swagger-json
+
+      - name: Generate frontend contracts
+        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
+        run: pnpm --dir packages/contracts gen-api-contract-from-openapi
 
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'

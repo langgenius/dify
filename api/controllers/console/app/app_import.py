@@ -2,16 +2,18 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
     setup_required,
+    with_current_user,
 )
 from extensions.ext_database import db
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models.account import Account
 from models.model import App
 from services.app_dsl_service import AppDslService, Import
 from services.enterprise.enterprise_service import EnterpriseService
@@ -33,6 +35,7 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
+register_enum_models(console_ns, ImportStatus)
 register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
 
 
@@ -47,9 +50,9 @@ class AppImportApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         # Check user role first
-        current_user, _ = current_account_with_tenant()
         args = AppImportPayload.model_validate(console_ns.payload)
 
         # AppDslService performs internal commits for some creation paths, so use a plain
@@ -96,10 +99,9 @@ class AppImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, import_id):
+    @with_current_user
+    def post(self, current_user: Account, import_id: str):
         # Check user role first
-        current_user, _ = current_account_with_tenant()
-
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             # Confirm import

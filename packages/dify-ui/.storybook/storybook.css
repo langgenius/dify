@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 
-@config '../tailwind.config.ts';
+@plugin '../src/plugins/icons.ts';
+
+@source '../src';
+@source '../.storybook';
 
 @import '../src/styles/styles.css';
 

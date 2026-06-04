@@ -2,12 +2,15 @@
 import type { FC } from 'react'
 import type { ChunkingMode, FileItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
 
@@ -18,8 +21,9 @@ type IBatchModalProps = {
   onConfirm: (file: FileItem) => void
 }
 
-const BatchModal: FC<IBatchModalProps> = ({
-  isShow,
+type BatchModalContentProps = Omit<IBatchModalProps, 'isShow'>
+
+const BatchModalContent: FC<BatchModalContentProps> = ({
   docForm,
   onCancel,
   onConfirm,
@@ -35,17 +39,13 @@ const BatchModal: FC<IBatchModalProps> = ({
     onConfirm(currentCSV)
   }
 
-  useEffect(() => {
-    if (!isShow)
-      setCurrentCSV(undefined)
-  }, [isShow])
-
   return (
-    <Modal isShow={isShow} onClose={noop} className="max-w-[520px]! rounded-xl! px-8 py-6">
-      <div className="relative pb-1 text-xl leading-[30px] font-medium text-text-primary">{t('list.batchModal.title', { ns: 'datasetDocuments' })}</div>
-      <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onCancel}>
-        <RiCloseLine className="h-4 w-4 text-text-secondary" />
-      </div>
+    <DialogContent className="w-[520px]! overflow-hidden! rounded-xl! border-0! px-8 py-6">
+      <DialogTitle className="relative pb-1 text-xl leading-[30px] font-medium text-text-primary">{t('list.batchModal.title', { ns: 'datasetDocuments' })}</DialogTitle>
+      <DialogCloseButton
+        className="top-4 right-4"
+        aria-label={t('list.batchModal.cancel', { ns: 'datasetDocuments' })}
+      />
       <CSVUploader
         file={currentCSV}
         updateFile={handleFile}
@@ -61,7 +61,33 @@ const BatchModal: FC<IBatchModalProps> = ({
           {t('list.batchModal.run', { ns: 'datasetDocuments' })}
         </Button>
       </div>
-    </Modal>
+    </DialogContent>
   )
 }
+
+const BatchModal: FC<IBatchModalProps> = ({
+  isShow,
+  docForm,
+  onCancel,
+  onConfirm,
+}) => {
+  return (
+    <Dialog
+      open={isShow}
+      onOpenChange={open => !open && onCancel()}
+      disablePointerDismissal
+    >
+      {isShow
+        ? (
+            <BatchModalContent
+              docForm={docForm}
+              onCancel={onCancel}
+              onConfirm={onConfirm}
+            />
+          )
+        : null}
+    </Dialog>
+  )
+}
+
 export default React.memo(BatchModal)

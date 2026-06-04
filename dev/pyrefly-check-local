@@ -7,6 +7,17 @@ REPO_ROOT="$SCRIPT_DIR/.."
 cd "$REPO_ROOT"
 
 EXCLUDES_FILE="api/pyrefly-local-excludes.txt"
+TEST_CONTAINERS_DIR="tests/test_containers_integration_tests"
+TEST_CONTAINERS_CONFIG="$TEST_CONTAINERS_DIR/pyrefly.toml"
+
+target_paths=()
+for target_path in "$@"; do
+  if [[ "$target_path" == api/* ]]; then
+    target_paths+=("${target_path#api/}")
+  else
+    target_paths+=("$target_path")
+  fi
+done
 
 pyrefly_args=(
   "--summary=none"
@@ -24,13 +35,39 @@ if [[ -f "$EXCLUDES_FILE" ]]; then
   done < "$EXCLUDES_FILE"
 fi
 
-tmp_output="$(mktemp)"
-set +e
-uv run --directory api --dev pyrefly check "${pyrefly_args[@]}" >"$tmp_output" 2>&1
-pyrefly_status=$?
-set -e
+run_pyrefly() {
+  local tmp_output
+  tmp_output="$(mktemp)"
 
-uv run --directory api python libs/pyrefly_diagnostics.py < "$tmp_output"
-rm -f "$tmp_output"
+  set +e
+  "$@" >"$tmp_output" 2>&1
+  local pyrefly_status=$?
+  set -e
 
-exit "$pyrefly_status"
+  uv run --directory api python libs/pyrefly_diagnostics.py < "$tmp_output"
+  rm -f "$tmp_output"
+  return "$pyrefly_status"
+}
+
+status=0
+
+pyrefly_command=(
+  uv run --directory api --dev pyrefly check
+  "${pyrefly_args[@]}"
+)
+if (( ${#target_paths[@]} > 0 )); then
+  pyrefly_command+=("${target_paths[@]}")
+fi
+
+run_pyrefly "${pyrefly_command[@]}" || status=$?
+
+if (( ${#target_paths[@]} == 0 )); then
+  run_pyrefly \
+    uv run --directory api --dev pyrefly check \
+    "--summary=none" \
+    "--use-ignore-files=false" \
+    "--config=$TEST_CONTAINERS_CONFIG" \
+    || status=$?
+fi
+
+exit "$status"

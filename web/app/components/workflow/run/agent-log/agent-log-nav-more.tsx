@@ -27,12 +27,12 @@ const AgentLogNavMore = ({
       <DropdownMenuTrigger
         render={(
           <Button
-            className="h-6 w-6"
+            className="size-6"
             variant="ghost-accent"
           />
         )}
       >
-        <RiMoreLine className="h-4 w-4" />
+        <RiMoreLine className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-start"

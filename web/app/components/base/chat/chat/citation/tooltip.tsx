@@ -1,49 +1,42 @@
 import type { FC } from 'react'
-import * as React from 'react'
-import { useState } from 'react'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
+import * as React from 'react'
 
-type TooltipProps = {
+type CitationTooltipProps = {
   data: number | string
   text: string
   icon: React.ReactNode
 }
 
-const Tooltip: FC<TooltipProps> = ({
+const CitationTooltip: FC<CitationTooltipProps> = ({
   data,
   text,
   icon,
 }) => {
-  const [open, setOpen] = useState(false)
-
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="top-start"
-    >
-      <PortalToFollowElemTrigger
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+    <Tooltip>
+      <TooltipTrigger
+        data-testid="tooltip-trigger-content"
+        className="mr-6 flex items-center border-0 bg-transparent p-0 text-left"
       >
-        <div data-testid="tooltip-trigger-content" className="mr-6 flex items-center">
-          {icon}
-          {data}
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div data-testid="tooltip-popup" className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg">
-          {text}
-          {' '}
-          {data}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        {icon}
+        {data}
+      </TooltipTrigger>
+      <TooltipContent
+        data-testid="tooltip-popup"
+        placement="top-start"
+        className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg"
+      >
+        {text}
+        {' '}
+        {data}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
-export default Tooltip
+export default CitationTooltip

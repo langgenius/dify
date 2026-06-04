@@ -47,7 +47,7 @@ def _build_fake_opensearch_modules():
 
 
 @pytest.fixture
-def lindorm_module(monkeypatch):
+def lindorm_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_opensearch_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -100,7 +100,7 @@ def test_to_opensearch_params_and_init(lindorm_module):
     assert vector_ugc._routing == "route"
 
 
-def test_create_refresh_and_add_texts_success(lindorm_module, monkeypatch):
+def test_create_refresh_and_add_texts_success(lindorm_module, monkeypatch: pytest.MonkeyPatch):
     vector = lindorm_module.LindormVectorStore(
         "collection", _config(lindorm_module), using_ugc=True, routing_value="route"
     )
@@ -301,7 +301,7 @@ def test_search_by_full_text_success_and_error(lindorm_module):
         vector.search_by_full_text("hello")
 
 
-def test_create_collection_paths(lindorm_module, monkeypatch):
+def test_create_collection_paths(lindorm_module, monkeypatch: pytest.MonkeyPatch):
     vector = lindorm_module.LindormVectorStore("collection", _config(lindorm_module), using_ugc=False)
 
     with pytest.raises(ValueError, match="cannot be empty"):
@@ -331,7 +331,7 @@ def test_create_collection_paths(lindorm_module, monkeypatch):
     vector._client.indices.create.assert_not_called()
 
 
-def test_lindorm_factory_branches(lindorm_module, monkeypatch):
+def test_lindorm_factory_branches(lindorm_module, monkeypatch: pytest.MonkeyPatch):
     factory = lindorm_module.LindormVectorStoreFactory()
 
     monkeypatch.setattr(lindorm_module.dify_config, "LINDORM_URL", "http://localhost:9200")

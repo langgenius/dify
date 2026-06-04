@@ -37,8 +37,8 @@ vi.mock('@/app/components/base/icons/src/vender/other', () => ({
   Group: ({ className }: { className?: string }) => <div className={className}>group-icon</div>,
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <div>{`indicator:${color}`}</div>,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <div>{`indicator:${status}`}</div>,
 }))
 
 vi.mock('@/utils/get-icon', () => ({
@@ -87,19 +87,17 @@ describe('agent/tool-icon', () => {
 
     const { rerender } = render(<ToolIcon id="tool-2" providerName="author/tool-b" />)
 
-    fireEvent.mouseEnter(screen.getByText('app-icon:#fff:B'))
-    expect(screen.getByText('indicator:yellow')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"tool-b"}')).toBeInTheDocument()
+    expect(screen.getByText('indicator:warning')).toBeInTheDocument()
+    expect(screen.getByLabelText('workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"tool-b"}')).toBeInTheDocument()
 
     mockWorkflowTools = []
     mockMarketplaceIcon = 'https://example.com/market-tool.png'
     rerender(<ToolIcon id="tool-3" providerName="market/tool-c" />)
 
     const marketplaceIcon = screen.getByRole('img', { name: 'tool icon' })
-    fireEvent.mouseEnter(marketplaceIcon)
     expect(marketplaceIcon).toHaveAttribute('src', 'https://example.com/market-tool.png')
-    expect(screen.getByText('indicator:red')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.toolNotInstallTooltip:{"tool":"tool-c"}')).toBeInTheDocument()
+    expect(screen.getByText('indicator:error')).toBeInTheDocument()
+    expect(screen.getByLabelText('workflow.nodes.agent.toolNotInstallTooltip:{"tool":"tool-c"}')).toBeInTheDocument()
   })
 
   it('should fall back to the group icon while tool data is still loading', () => {

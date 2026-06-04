@@ -4,6 +4,7 @@ import type { PluginDetail } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -12,8 +13,8 @@ import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { API_PREFIX } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useGetLanguage, useLocale } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
 import { useAllToolProviders } from '@/service/use-tools'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -72,7 +73,10 @@ const DetailHeader = ({
   onUpdate,
 }: Props) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
@@ -154,7 +158,7 @@ const DetailHeader = ({
           {/* Title Row */}
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
-            {verified && !isReadmeView && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+            {verified && !isReadmeView && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
 
             {/* Version Picker */}
             {!!version && (
@@ -176,7 +180,7 @@ const DetailHeader = ({
                     text={(
                       <>
                         <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 text-text-tertiary" />}
+                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary" />}
                       </>
                     )}
                     hasRedCornerMark={hasNewVersion}
@@ -250,7 +254,7 @@ const DetailHeader = ({
               detailUrl={detailUrl}
             />
             <ActionButton onClick={onHide}>
-              <span aria-hidden className="i-ri-close-line h-4 w-4" />
+              <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>
           </div>
         )}

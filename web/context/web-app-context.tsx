@@ -8,9 +8,9 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import Loading from '@/app/components/base/loading'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 
 type WebAppStore = {
@@ -114,7 +114,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
 
   if (isGlobalPending || isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
+      <div className="flex size-full items-center justify-center">
         <Loading />
       </div>
     )

@@ -148,14 +148,8 @@ describe('EmptyDatasetCreationModal', () => {
         const mockOnHide = vi.fn()
         render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
 
-        // Act - Wait for modal to be rendered, then find the close span
-        // The close span is located in the modalHeader div, next to the title
-        const titleElement = await screen.findByText('datasetCreation.stepOne.modal.title')
-        const headerDiv = titleElement.parentElement
-        const closeButton = headerDiv?.querySelector('span')
-
-        expect(closeButton).toBeInTheDocument()
-        fireEvent.click(closeButton!)
+        const closeButton = await screen.findByRole('button', { name: /operation\.close$/ })
+        fireEvent.click(closeButton)
 
         expect(mockOnHide).toHaveBeenCalledTimes(1)
       })

@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
+import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/contract/console/workflow-comment'
 
 export type CommentSliceShape = {
   comments: WorkflowCommentList[]

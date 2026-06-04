@@ -11,17 +11,16 @@ vi.mock('../../../base/app-icon', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/content-dialog', () => ({
-  default: ({ show, onClose, children, className }: {
-    show: boolean
+vi.mock('../app-info-detail-drawer', () => ({
+  AppInfoDetailDrawer: ({ open, onClose, children }: {
+    open: boolean
     onClose: () => void
     children: React.ReactNode
-    className?: string
   }) => (
-    show
+    open
       ? (
-          <div data-testid="content-dialog" className={className}>
-            <button type="button" data-testid="dialog-close" onClick={onClose}>Close</button>
+          <div data-testid="app-info-detail-drawer">
+            <button type="button" data-testid="drawer-close" onClick={onClose}>Close</button>
             {children}
           </div>
         )
@@ -96,12 +95,12 @@ describe('AppInfoDetailPanel', () => {
   describe('Rendering', () => {
     it('should not render when show is false', () => {
       render(<AppInfoDetailPanel {...defaultProps} show={false} />)
-      expect(screen.queryByTestId('content-dialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('app-info-detail-drawer')).not.toBeInTheDocument()
     })
 
-    it('should render dialog when show is true', () => {
+    it('should render drawer when show is true', () => {
       render(<AppInfoDetailPanel {...defaultProps} />)
-      expect(screen.getByTestId('content-dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('app-info-detail-drawer')).toBeInTheDocument()
     })
 
     it('should display app name', () => {
@@ -285,12 +284,12 @@ describe('AppInfoDetailPanel', () => {
     })
   })
 
-  describe('Dialog interactions', () => {
-    it('should call onClose when dialog close button is clicked', async () => {
+  describe('Drawer interactions', () => {
+    it('should call onClose when drawer close button is clicked', async () => {
       const user = userEvent.setup()
       render(<AppInfoDetailPanel {...defaultProps} />)
 
-      await user.click(screen.getByTestId('dialog-close'))
+      await user.click(screen.getByTestId('drawer-close'))
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })

@@ -9,7 +9,7 @@ This module tests the core authentication endpoints including:
 """
 
 import base64
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -41,6 +41,15 @@ def encode_code(code: str) -> str:
     return base64.b64encode(code.encode("utf-8")).decode()
 
 
+def _unwrap(func):
+    bound_self = getattr(func, "__self__", None)
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    if bound_self is not None:
+        return func.__get__(bound_self, bound_self.__class__)
+    return func
+
+
 class TestLoginApi:
     """Test cases for the LoginApi endpoint."""
 
@@ -52,12 +61,12 @@ class TestLoginApi:
         return app
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return Api(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client."""
         api.add_resource(LoginApi, "/login")
         return app.test_client()
@@ -97,7 +106,7 @@ class TestLoginApi:
         mock_get_invitation,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -110,7 +119,6 @@ class TestLoginApi:
         - Rate limit is reset after successful login
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.return_value = mock_account
@@ -142,14 +150,14 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_successful_login_with_valid_invitation(
         self,
-        mock_reset_rate_limit,
+        mock_reset_rate_limit: Mock,
         mock_login,
         mock_get_tenants,
         mock_authenticate,
         mock_get_invitation,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -162,7 +170,6 @@ class TestLoginApi:
         - Authentication proceeds with invitation token
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = {"data": {"email": "test@example.com"}}
         mock_authenticate.return_value = mock_account
@@ -190,7 +197,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
+    def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test login rejection when rate limit is exceeded.
 
@@ -199,7 +206,6 @@ class TestLoginApi:
         - EmailPasswordLoginLimitError is raised when limit exceeded
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = True
         mock_get_invitation.return_value = None
 
@@ -219,7 +225,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", True)
     @patch("controllers.console.auth.login.BillingService.is_email_in_freeze")
-    def test_login_fails_when_account_frozen(self, mock_is_frozen, mock_db, app):
+    def test_login_fails_when_account_frozen(self, mock_is_frozen, mock_db, app: Flask):
         """
         Test login rejection for frozen accounts.
 
@@ -228,7 +234,6 @@ class TestLoginApi:
         - AccountInFreezeError is raised for frozen accounts
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_frozen.return_value = True
 
         # Act & Assert
@@ -257,7 +262,7 @@ class TestLoginApi:
         mock_get_invitation,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
     ):
         """
         Test login failure with invalid credentials.
@@ -268,7 +273,6 @@ class TestLoginApi:
         - Generic error message prevents user enumeration
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = AccountPasswordError("Invalid password")
@@ -295,7 +299,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     def test_login_fails_for_banned_account(
-        self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app
+        self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask
     ):
         """
         Test login rejection for banned accounts.
@@ -305,7 +309,6 @@ class TestLoginApi:
         - Login is prevented even with valid credentials
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = AccountLoginError("Account is banned")
@@ -334,14 +337,14 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.FeatureService.get_system_features")
     def test_login_fails_when_no_workspace_and_limit_exceeded(
         self,
-        mock_get_features,
-        mock_get_tenants,
-        mock_authenticate,
-        mock_get_invitation,
-        mock_is_rate_limit,
-        mock_db,
-        app,
-        mock_account,
+        mock_get_features: MagicMock,
+        mock_get_tenants: MagicMock,
+        mock_authenticate: MagicMock,
+        mock_get_invitation: MagicMock,
+        mock_is_rate_limit: MagicMock,
+        mock_db: MagicMock,
+        app: Flask,
+        mock_account: MagicMock,
     ):
         """
         Test login failure when user has no workspace and workspace limit exceeded.
@@ -351,7 +354,6 @@ class TestLoginApi:
         - User cannot login without an assigned workspace
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.return_value = mock_account
@@ -374,7 +376,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
+    def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test login failure when invitation email doesn't match login email.
 
@@ -383,7 +385,6 @@ class TestLoginApi:
         - Security check prevents invitation token abuse
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = {"data": {"email": "invited@example.com"}}
 
@@ -420,12 +421,11 @@ class TestLoginApi:
         mock_get_invitation,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
         """Test that login retries with lowercase email when uppercase lookup fails."""
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = [AccountPasswordError("Invalid"), mock_account]
@@ -457,9 +457,8 @@ class TestLoginApi:
         mock_revoke_token,
         mock_get_token_data,
         mock_db,
-        app,
+        app: Flask,
     ):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
         mock_get_account.side_effect = Unauthorized("Account is banned.")
 
@@ -496,13 +495,9 @@ class TestLogoutApi:
         account.email = "test@example.com"
         return account
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.current_account_with_tenant")
     @patch("controllers.console.auth.login.AccountService.logout")
     @patch("controllers.console.auth.login.flask_login.logout_user")
-    def test_successful_logout(
-        self, mock_logout_user, mock_service_logout, mock_current_account, mock_db, app, mock_account
-    ):
+    def test_successful_logout(self, mock_logout_user, mock_service_logout, app: Flask, mock_account):
         """
         Test successful logout flow.
 
@@ -512,24 +507,18 @@ class TestLogoutApi:
         - All authentication cookies are cleared
         - Success response is returned
         """
-        # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_current_account.return_value = (mock_account, MagicMock())
-
         # Act
         with app.test_request_context("/logout", method="POST"):
             logout_api = LogoutApi()
-            response = logout_api.post()
+            response = _unwrap(logout_api.post)(mock_account)
 
         # Assert
         mock_service_logout.assert_called_once_with(account=mock_account)
         mock_logout_user.assert_called_once()
         assert response.json["result"] == "success"
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.current_account_with_tenant")
     @patch("controllers.console.auth.login.flask_login")
-    def test_logout_anonymous_user(self, mock_flask_login, mock_current_account, mock_db, app):
+    def test_logout_anonymous_user(self, mock_flask_login, app: Flask):
         """
         Test logout for anonymous (not logged in) user.
 
@@ -539,17 +528,15 @@ class TestLogoutApi:
         - Success response is returned
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         # Create a mock anonymous user that will pass isinstance check
         anonymous_user = MagicMock()
         mock_flask_login.AnonymousUserMixin = type("AnonymousUserMixin", (), {})
         anonymous_user.__class__ = mock_flask_login.AnonymousUserMixin
-        mock_current_account.return_value = (anonymous_user, None)
 
         # Act
         with app.test_request_context("/logout", method="POST"):
             logout_api = LogoutApi()
-            response = logout_api.post()
+            response = _unwrap(logout_api.post)(anonymous_user)
 
         # Assert
         assert response.json["result"] == "success"

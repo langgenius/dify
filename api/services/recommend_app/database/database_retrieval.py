@@ -6,6 +6,7 @@ from constants.languages import languages
 from extensions.ext_database import db
 from models.model import App, RecommendedApp
 from services.app_dsl_service import AppDslService
+from services.recommend_app.category_order import order_categories
 from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
 from services.recommend_app.recommend_app_type import RecommendAppType
 
@@ -18,7 +19,7 @@ class RecommendedAppItemDict(TypedDict):
     copyright: Any
     privacy_policy: Any
     custom_disclaimer: str
-    category: str
+    categories: list[str]
     position: int
     is_listed: bool
 
@@ -80,6 +81,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
             if not site:
                 continue
 
+            app_categories = recommended_app.categories or []
             recommended_app_result: RecommendedAppItemDict = {
                 "id": recommended_app.id,
                 "app": recommended_app.app,
@@ -88,15 +90,18 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
                 "copyright": site.copyright,
                 "privacy_policy": site.privacy_policy,
                 "custom_disclaimer": site.custom_disclaimer,
-                "category": recommended_app.category,
+                "categories": app_categories,
                 "position": recommended_app.position,
                 "is_listed": recommended_app.is_listed,
             }
             recommended_apps_result.append(recommended_app_result)
 
-            categories.add(recommended_app.category)
+            categories.update(app_categories)
 
-        return RecommendedAppsResultDict(recommended_apps=recommended_apps_result, categories=sorted(categories))
+        return RecommendedAppsResultDict(
+            recommended_apps=recommended_apps_result,
+            categories=order_categories(categories, language),
+        )
 
     @classmethod
     def fetch_recommended_app_detail_from_db(cls, app_id: str) -> RecommendedAppDetailDict | None:

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from packaging import version
 from pydantic import BaseModel, model_validator
@@ -42,6 +42,9 @@ class MilvusConfig(BaseModel):
     database: str = "default"  # Database name
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
     analyzer_params: str | None = None  # Analyzer params
+    secure: bool = False  # Enable one-way TLS to Milvus
+    server_pem_path: str | None = None  # Path to server certificate (PEM) for TLS verification
+    server_name: str | None = None  # Server name to verify against the certificate (SNI / CN)
 
     @model_validator(mode="before")
     @classmethod
@@ -92,7 +95,7 @@ class MilvusVector(BaseVector):
     def _load_collection_fields(self, fields: list[str] | None = None):
         if fields is None:
             # Load collection fields from remote server
-            collection_info = self._client.describe_collection(self._collection_name)
+            collection_info = cast(dict[str, Any], self._client.describe_collection(self._collection_name))
             fields = [field["name"] for field in collection_info["fields"]]
         # Since primary field is auto-id, no need to track it
         self._fields = [f for f in fields if f != Field.PRIMARY_KEY]
@@ -106,7 +109,8 @@ class MilvusVector(BaseVector):
             return False
 
         try:
-            milvus_version = self._client.get_server_version()
+            milvus_version_raw = self._client.get_server_version()
+            milvus_version = milvus_version_raw if isinstance(milvus_version_raw, str) else str(milvus_version_raw)
             # Check if it's Zilliz Cloud - it supports full-text search with Milvus 2.5 compatibility
             if "Zilliz Cloud" in milvus_version:
                 return True
@@ -387,16 +391,19 @@ class MilvusVector(BaseVector):
         """
         Initialize and return a Milvus client.
         """
+        kwargs: dict[str, Any] = {"uri": config.uri, "db_name": config.database}
         if config.token:
-            client = MilvusClient(uri=config.uri, token=config.token, db_name=config.database)
+            kwargs["token"] = config.token
         else:
-            client = MilvusClient(
-                uri=config.uri,
-                user=config.user or "",
-                password=config.password or "",
-                db_name=config.database,
-            )
-        return client
+            kwargs["user"] = config.user or ""
+            kwargs["password"] = config.password or ""
+        if config.secure:
+            kwargs["secure"] = True
+            if config.server_pem_path:
+                kwargs["server_pem_path"] = config.server_pem_path
+            if config.server_name:
+                kwargs["server_name"] = config.server_name
+        return MilvusClient(**kwargs)
 
 
 class MilvusVectorFactory(AbstractVectorFactory):
@@ -426,5 +433,8 @@ class MilvusVectorFactory(AbstractVectorFactory):
                 database=dify_config.MILVUS_DATABASE or "",
                 enable_hybrid_search=dify_config.MILVUS_ENABLE_HYBRID_SEARCH or False,
                 analyzer_params=dify_config.MILVUS_ANALYZER_PARAMS or "",
+                secure=dify_config.MILVUS_SECURE,
+                server_pem_path=dify_config.MILVUS_SERVER_PEM_PATH,
+                server_name=dify_config.MILVUS_SERVER_NAME,
             ),
         )

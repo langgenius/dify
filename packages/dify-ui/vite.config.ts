@@ -9,8 +9,16 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  optimizeDeps: {
+    include: [
+      '@base-ui/react/form',
+      '@base-ui/react/merge-props',
+      '@base-ui/react/use-render',
+    ],
+  },
   test: {
     globals: true,
+    setupFiles: ['./vitest.setup.ts'],
     browser: {
       enabled: true,
       provider: playwright(),

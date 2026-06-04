@@ -215,8 +215,8 @@ class TestWorkflowEventSnapshotHelpers:
         assert result == expected
 
     def test_is_terminal_event_should_recognize_finished_and_optional_paused_events(self) -> None:
-        finished_event = {"event": StreamEvent.WORKFLOW_FINISHED.value}
-        paused_event = {"event": StreamEvent.WORKFLOW_PAUSED.value}
+        finished_event = {"event": StreamEvent.WORKFLOW_FINISHED}
+        paused_event = {"event": StreamEvent.WORKFLOW_PAUSED}
 
         is_finished = service_module._is_terminal_event(finished_event, include_paused=False)
         paused_without_flag = service_module._is_terminal_event(paused_event, include_paused=False)
@@ -225,7 +225,7 @@ class TestWorkflowEventSnapshotHelpers:
         assert is_finished is True
         assert paused_without_flag is False
         assert paused_with_flag is True
-        assert service_module._is_terminal_event(StreamEvent.PING.value, include_paused=True) is False
+        assert service_module._is_terminal_event(StreamEvent.PING, include_paused=True) is False
 
     def test_apply_message_context_should_update_payload_when_context_exists(self) -> None:
         payload: dict[str, Any] = {"event": "workflow_started"}
@@ -352,7 +352,7 @@ class TestBuildWorkflowEventStream:
         monkeypatch.setattr(
             service_module,
             "_build_snapshot_events",
-            MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED.value, "task_id": "task-1"}]),
+            MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED, "task_id": "task-1"}]),
         )
 
         events = list(
@@ -365,9 +365,9 @@ class TestBuildWorkflowEventStream:
             )
         )
 
-        assert events[0] == StreamEvent.PING.value
+        assert events[0] == StreamEvent.PING
         finished_event = cast(Mapping[str, Any], events[1])
-        assert finished_event["event"] == StreamEvent.WORKFLOW_FINISHED.value
+        assert finished_event["event"] == StreamEvent.WORKFLOW_FINISHED
         assert buffer_state.stop_event.is_set() is True
         node_repo.get_execution_snapshots_by_workflow_run.assert_called_once()
         called_kwargs = node_repo.get_execution_snapshots_by_workflow_run.call_args.kwargs
@@ -421,7 +421,7 @@ class TestBuildWorkflowEventStream:
             )
         )
 
-        assert events == [StreamEvent.PING.value, StreamEvent.PING.value]
+        assert events == [StreamEvent.PING, StreamEvent.PING]
         assert buffer_state.stop_event.is_set() is True
 
     def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
@@ -461,7 +461,7 @@ class TestBuildWorkflowEventStream:
             )
         )
 
-        assert events == [StreamEvent.PING.value]
+        assert events == [StreamEvent.PING]
         assert buffer_state.stop_event.is_set() is True
 
     def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
@@ -480,7 +480,7 @@ class TestBuildWorkflowEventStream:
         monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
         monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
         monkeypatch.setattr(service_module, "_resolve_task_id", MagicMock(return_value="task-1"))
-        snapshot_builder = MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED.value}])
+        snapshot_builder = MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED}])
         monkeypatch.setattr(service_module, "_build_snapshot_events", snapshot_builder)
         buffer_state = BufferState(
             queue=queue.Queue(),
@@ -501,5 +501,5 @@ class TestBuildWorkflowEventStream:
             )
         )
 
-        assert events[0] == StreamEvent.PING.value
+        assert events[0] == StreamEvent.PING
         assert snapshot_builder.call_args.kwargs["pause_entity"] is None

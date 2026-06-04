@@ -66,7 +66,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
                 onClick={showAuthorization}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
               >
-                {!readOnly && <Settings01 className="h-3 w-3 text-text-tertiary" />}
+                {!readOnly && <Settings01 className="size-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
                   {t(`${i18nPrefix}.authorization.authorization`, { ns: 'workflow' })}
                   <span className="ml-1 text-text-secondary">{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`, { ns: 'workflow' })}</span>
@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
                 onClick={showCurlPanel}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
               >
-                {!readOnly && <FileArrow01 className="h-3 w-3 text-text-tertiary" />}
+                {!readOnly && <FileArrow01 className="size-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
                   {t(`${i18nPrefix}.curl.title`, { ns: 'workflow' })}
                 </div>

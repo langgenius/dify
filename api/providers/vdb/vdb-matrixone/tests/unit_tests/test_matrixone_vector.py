@@ -32,7 +32,7 @@ def _build_fake_mo_vector_modules():
 
 
 @pytest.fixture
-def matrixone_module(monkeypatch):
+def matrixone_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_mo_vector_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -70,7 +70,7 @@ def test_matrixone_config_validation(matrixone_module, field, value, message):
         matrixone_module.MatrixoneConfig.model_validate(values)
 
 
-def test_get_client_creates_full_text_index_when_cache_misses(matrixone_module, monkeypatch):
+def test_get_client_creates_full_text_index_when_cache_misses(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -86,7 +86,7 @@ def test_get_client_creates_full_text_index_when_cache_misses(matrixone_module, 
     matrixone_module.redis_client.set.assert_called_once()
 
 
-def test_get_client_skips_index_creation_when_cache_hits(matrixone_module, monkeypatch):
+def test_get_client_skips_index_creation_when_cache_hits(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -146,7 +146,7 @@ def test_get_type_and_create_delegate_to_add_texts(matrixone_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_get_client_handles_full_text_index_creation_error(matrixone_module, monkeypatch):
+def test_get_client_handles_full_text_index_creation_error(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -165,7 +165,7 @@ def test_get_client_handles_full_text_index_creation_error(matrixone_module, mon
     matrixone_module.redis_client.set.assert_not_called()
 
 
-def test_add_texts_generates_ids_and_inserts(matrixone_module, monkeypatch):
+def test_add_texts_generates_ids_and_inserts(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
     monkeypatch.setattr(matrixone_module.uuid, "uuid4", lambda: "generated-uuid")
@@ -224,7 +224,7 @@ def test_search_by_vector_builds_documents(matrixone_module):
     assert vector.client.query.call_args.kwargs["filter"] == {"document_id": {"$in": ["d-1"]}}
 
 
-def test_matrixone_factory_uses_existing_or_generated_collection(matrixone_module, monkeypatch):
+def test_matrixone_factory_uses_existing_or_generated_collection(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     factory = matrixone_module.MatrixoneVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

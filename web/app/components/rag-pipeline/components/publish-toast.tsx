@@ -24,7 +24,7 @@ const PublishToast = () => {
       >
         <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-[0.4]">
         </div>
-        <div className="flex h-6 w-6 items-center justify-center">
+        <div className="flex size-6 items-center justify-center">
           <RiInformation2Fill className="text-text-accent" />
         </div>
         <div className="p-1">
@@ -34,10 +34,10 @@ const PublishToast = () => {
           </div>
         </div>
         <div
-          className="pointer-events-auto flex h-6 w-6 cursor-pointer items-center justify-center"
+          className="pointer-events-auto flex size-6 cursor-pointer items-center justify-center"
           onClick={() => setHideToast(true)}
         >
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="size-4 text-text-tertiary" />
         </div>
       </div>
     </div>

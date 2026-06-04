@@ -172,7 +172,7 @@ describe('AgentLogDetail', () => {
 
       await renderAndWaitForData()
 
-      fireEvent.click(screen.getByText(/runLog.tracing/i))
+      fireEvent.click(screen.getByRole('button', { name: /runLog.tracing/i }))
 
       await waitFor(() => {
         const tracingTab = screen.getByText(/runLog.tracing/i)
@@ -188,13 +188,13 @@ describe('AgentLogDetail', () => {
 
       await renderAndWaitForData()
 
-      fireEvent.click(screen.getByText(/runLog.tracing/i))
+      fireEvent.click(screen.getByRole('button', { name: /runLog.tracing/i }))
 
       await waitFor(() => {
         expect(screen.getByText(/runLog.tracing/i).getAttribute('data-active')).toBe('true')
       })
 
-      fireEvent.click(screen.getByText(/runLog.detail/i))
+      fireEvent.click(screen.getByRole('button', { name: /runLog.detail/i }))
 
       await waitFor(() => {
         const detailTab = screen.getByText(/runLog.detail/i)

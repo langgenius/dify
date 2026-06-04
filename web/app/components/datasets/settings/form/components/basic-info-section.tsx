@@ -3,11 +3,11 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Member } from '@/models/common'
 import type { DataSet, DatasetPermission, IconInfo } from '@/models/datasets'
 import type { AppIconType } from '@/types/app'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import PermissionSelector from '../../permission-selector'
 
 const rowClass = 'flex gap-x-1'
@@ -24,7 +24,7 @@ type BasicInfoSectionProps = {
   showAppIconPicker: boolean
   handleOpenAppIconPicker: () => void
   handleSelectAppIcon: (icon: AppIconSelection) => void
-  handleCloseAppIconPicker: () => void
+  setShowAppIconPicker: (show: boolean) => void
   permission: DatasetPermission | undefined
   setPermission: (value: DatasetPermission | undefined) => void
   selectedMemberIDs: string[]
@@ -43,7 +43,7 @@ const BasicInfoSection = ({
   showAppIconPicker,
   handleOpenAppIconPicker,
   handleSelectAppIcon,
-  handleCloseAppIconPicker,
+  setShowAppIconPicker,
   permission,
   setPermission,
   selectedMemberIDs,
@@ -85,11 +85,12 @@ const BasicInfoSection = ({
         </div>
         <div className="grow">
           <Textarea
+            aria-label={t('form.desc', { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available}
             className="resize-none"
             placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             value={description}
-            onChange={e => setDescription(e.target.value)}
+            onValueChange={value => setDescription(value)}
           />
         </div>
       </div>
@@ -113,8 +114,12 @@ const BasicInfoSection = ({
 
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
+          initialEmoji={iconInfo.icon_type === 'emoji'
+            ? { icon: iconInfo.icon, background: iconInfo.icon_background }
+            : undefined}
+          onOpenChange={setShowAppIconPicker}
           onSelect={handleSelectAppIcon}
-          onClose={handleCloseAppIconPicker}
         />
       )}
     </>

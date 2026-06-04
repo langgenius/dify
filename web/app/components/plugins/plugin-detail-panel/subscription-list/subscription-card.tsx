@@ -2,6 +2,7 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -10,7 +11,6 @@ import {
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import { DeleteConfirm } from './delete-confirm'
 import { EditModal } from './edit'
 
@@ -42,7 +42,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
       >
         <div className="flex items-center justify-between">
           <div className="flex h-6 items-center gap-1">
-            <RiWebhookLine className="h-4 w-4 text-text-secondary" />
+            <RiWebhookLine className="size-4 text-text-secondary" />
             <span className="system-md-semibold text-text-secondary">
               {data.name}
             </span>
@@ -53,31 +53,38 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
               onClick={showEditModal}
               className="transition-colors hover:bg-state-base-hover"
             >
-              <RiEditLine className="h-4 w-4" />
+              <RiEditLine className="size-4" />
             </ActionButton>
             <ActionButton
               onClick={showDeleteModal}
               className="subscription-delete-btn transition-colors hover:bg-state-destructive-hover hover:text-text-destructive"
             >
-              <RiDeleteBinLine className="h-4 w-4" />
+              <RiDeleteBinLine className="size-4" />
             </ActionButton>
           </div>
         </div>
 
         <div className="mt-1 flex items-center justify-between">
-          <Tooltip
-            disabled={!data.endpoint}
-            popupContent={data.endpoint && (
-              <div className="max-w-[320px] break-all">
-                {data.endpoint}
-              </div>
-            )}
-            position="left"
-          >
-            <div className="flex-1 truncate system-xs-regular text-text-tertiary">
-              {data.endpoint}
-            </div>
-          </Tooltip>
+          {data.endpoint
+            ? (
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    aria-label={data.endpoint}
+                    className="flex-1 truncate border-0 bg-transparent p-0 text-left system-xs-regular text-text-tertiary"
+                  >
+                    {data.endpoint}
+                  </PopoverTrigger>
+                  <PopoverContent placement="left" popupClassName="max-w-[320px] break-all px-3 py-2 system-xs-regular text-text-tertiary">
+                    {data.endpoint}
+                  </PopoverContent>
+                </Popover>
+              )
+            : (
+                <div className="flex-1 truncate system-xs-regular text-text-tertiary">
+                  {data.endpoint}
+                </div>
+              )}
           <div className="mx-2 text-xs text-text-tertiary opacity-30">·</div>
           <div className="shrink-0 system-xs-regular text-text-tertiary">
             {data.workflows_in_use > 0 ? t('subscription.list.item.usedByNum', { ns: 'pluginTrigger', num: data.workflows_in_use }) : t('subscription.list.item.noUsed', { ns: 'pluginTrigger' })}

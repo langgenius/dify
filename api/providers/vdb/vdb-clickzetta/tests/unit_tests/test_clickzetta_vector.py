@@ -45,7 +45,7 @@ def _build_fake_clickzetta_module():
 
 
 @pytest.fixture
-def clickzetta_module(monkeypatch):
+def clickzetta_module(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setitem(sys.modules, "clickzetta", _build_fake_clickzetta_module())
     import dify_vdb_clickzetta.clickzetta_vector as module
 
@@ -218,7 +218,7 @@ def test_search_by_like_returns_documents_with_default_score(clickzetta_module):
     assert docs[0].metadata["score"] == 0.5
 
 
-def test_factory_initializes_clickzetta_vector(clickzetta_module, monkeypatch):
+def test_factory_initializes_clickzetta_vector(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     factory = clickzetta_module.ClickzettaVectorFactory()
     dataset = SimpleNamespace(id="dataset-1")
 
@@ -243,7 +243,7 @@ def test_factory_initializes_clickzetta_vector(clickzetta_module, monkeypatch):
     assert vector_cls.call_args.kwargs["collection_name"] == "collection"
 
 
-def test_connection_pool_singleton_and_config_key(clickzetta_module, monkeypatch):
+def test_connection_pool_singleton_and_config_key(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     clickzetta_module.ClickzettaConnectionPool._instance = None
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
 
@@ -255,7 +255,7 @@ def test_connection_pool_singleton_and_config_key(clickzetta_module, monkeypatch
     assert "username:instance:service:workspace:cluster:dify" in key
 
 
-def test_connection_pool_create_connection_retries_and_configures(clickzetta_module, monkeypatch):
+def test_connection_pool_create_connection_retries_and_configures(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
     pool = clickzetta_module.ClickzettaConnectionPool()
     config = _config(clickzetta_module)
@@ -274,7 +274,7 @@ def test_connection_pool_create_connection_retries_and_configures(clickzetta_mod
     pool._configure_connection.assert_called_once_with(connection)
 
 
-def test_connection_pool_create_connection_raises_after_retries(clickzetta_module, monkeypatch):
+def test_connection_pool_create_connection_raises_after_retries(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
     pool = clickzetta_module.ClickzettaConnectionPool()
     config = _config(clickzetta_module)
@@ -318,7 +318,7 @@ def test_connection_pool_configure_connection_swallows_errors(clickzetta_module)
     monkeypatch.undo()
 
 
-def test_connection_pool_get_return_cleanup_and_shutdown(clickzetta_module, monkeypatch):
+def test_connection_pool_get_return_cleanup_and_shutdown(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
     pool = clickzetta_module.ClickzettaConnectionPool()
     config = _config(clickzetta_module)
@@ -360,7 +360,7 @@ def test_connection_pool_get_return_cleanup_and_shutdown(clickzetta_module, monk
     assert pool._shutdown is True
 
 
-def test_connection_pool_start_cleanup_thread_runs_worker_once(clickzetta_module, monkeypatch):
+def test_connection_pool_start_cleanup_thread_runs_worker_once(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     pool = clickzetta_module.ClickzettaConnectionPool.__new__(clickzetta_module.ClickzettaConnectionPool)
     pool._shutdown = False
     pool._cleanup_expired_connections = MagicMock(side_effect=lambda: setattr(pool, "_shutdown", True))
@@ -384,7 +384,7 @@ def test_connection_pool_start_cleanup_thread_runs_worker_once(clickzetta_module
     pool._cleanup_expired_connections.assert_called_once()
 
 
-def test_vector_init_connection_context_and_helpers(clickzetta_module, monkeypatch):
+def test_vector_init_connection_context_and_helpers(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     pool.get_connection.return_value = "conn"
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "get_instance", MagicMock(return_value=pool))
@@ -405,7 +405,7 @@ def test_vector_init_connection_context_and_helpers(clickzetta_module, monkeypat
     assert vector._ensure_connection() == "conn"
 
 
-def test_write_queue_initialization_worker_and_execute_write(clickzetta_module, monkeypatch):
+def test_write_queue_initialization_worker_and_execute_write(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     class _Thread:
         def __init__(self, target, daemon):
             self.target = target
@@ -579,7 +579,7 @@ def test_create_inverted_index_branches(clickzetta_module):
     vector._create_inverted_index(cursor)
 
 
-def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeypatch):
+def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._config.batch_size = 2
@@ -811,7 +811,7 @@ def test_clickzetta_pool_cleanup_and_shutdown_edge_paths(clickzetta_module):
     assert pool._shutdown is True
 
 
-def test_clickzetta_pool_cleanup_thread_and_worker_exception_paths(clickzetta_module, monkeypatch):
+def test_clickzetta_pool_cleanup_thread_and_worker_exception_paths(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
     pool = clickzetta_module.ClickzettaConnectionPool.__new__(clickzetta_module.ClickzettaConnectionPool)
     pool._shutdown = False
 

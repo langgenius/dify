@@ -5,8 +5,8 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
-import Tooltip from '@/app/components/base/tooltip'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { usePipelineTemplateById } from '@/service/use-pipeline'
 import ChunkStructureCard from './chunk-structure-card'
@@ -111,10 +111,12 @@ const Details = ({
             <span className="system-sm-semibold-uppercase text-text-secondary">
               {t('details.structure', { ns: 'datasetPipeline' })}
             </span>
-            <Tooltip
+            <Infotip
+              aria-label={t('details.structureTooltip', { ns: 'datasetPipeline' })}
               popupClassName="max-w-[240px]"
-              popupContent={t('details.structureTooltip', { ns: 'datasetPipeline' })}
-            />
+            >
+              {t('details.structureTooltip', { ns: 'datasetPipeline' })}
+            </Infotip>
           </div>
           <ChunkStructureCard {...chunkStructureConfig[pipelineTemplateInfo.chunk_structure]} />
         </div>

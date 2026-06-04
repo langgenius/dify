@@ -30,8 +30,6 @@ vi.mock('@/context/app-context', () => ({
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
-    tags: [],
-    setTags: vi.fn(),
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,
@@ -55,8 +53,8 @@ vi.mock('../components/dataset-card-header', () => ({
 vi.mock('../components/dataset-card-modals', () => ({
   default: () => <div data-testid="card-modals" />,
 }))
-vi.mock('../components/tag-area', () => ({
-  default: ({ onClick }: { onClick: (e: React.MouseEvent) => void, ref?: React.Ref<HTMLDivElement> }) => (
+vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
+  DatasetCardTags: ({ onClick }: { onClick: (e: React.MouseEvent) => void }) => (
     <div data-testid="tag-area" onClick={onClick} />
   ),
 }))
@@ -244,6 +242,15 @@ describe('DatasetCard Component', () => {
 
     fireEvent.click(screen.getByText('Test Dataset'))
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents')
+  })
+
+  it('should not change background color on hover', () => {
+    const dataset = createMockDataset()
+    render(<DatasetCard dataset={dataset} />)
+    const card = screen.getByText('Test Dataset').closest('[data-disable-nprogress]')
+
+    expect(card).toHaveClass('bg-components-card-bg')
+    expect(card).not.toHaveClass('hover:bg-components-card-bg-alt')
   })
 
   it('should navigate to hitTesting for external provider', () => {

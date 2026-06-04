@@ -2,7 +2,9 @@ from collections.abc import Sequence
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -10,7 +12,8 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.app.wraps import with_session
+from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
 from core.app.app_config.entities import ModelConfig
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
@@ -18,13 +21,11 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from extensions.ext_database import db
+from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models import App
 from services.workflow_service import WorkflowService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class InstructionGeneratePayload(BaseModel):
@@ -41,16 +42,16 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(RuleGeneratePayload)
-reg(RuleCodeGeneratePayload)
-reg(RuleStructuredOutputPayload)
-reg(InstructionGeneratePayload)
-reg(InstructionTemplatePayload)
-reg(ModelConfig)
+register_enum_models(console_ns, LLMMode)
+register_schema_models(
+    console_ns,
+    RuleGeneratePayload,
+    RuleCodeGeneratePayload,
+    RuleStructuredOutputPayload,
+    InstructionGeneratePayload,
+    InstructionTemplatePayload,
+    ModelConfig,
+)
 
 
 @console_ns.route("/rule-generate")
@@ -64,9 +65,9 @@ class RuleGenerateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = RuleGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
 
         try:
             rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=args)
@@ -93,9 +94,9 @@ class RuleCodeGenerateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = RuleCodeGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
 
         try:
             code_result = LLMGenerator.generate_code(
@@ -125,9 +126,9 @@ class RuleStructuredOutputGenerateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = RuleStructuredOutputPayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
 
         try:
             structured_output = LLMGenerator.generate_structured_output(
@@ -157,9 +158,10 @@ class InstructionGenerateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    @with_session(write=False)
+    def post(self, session: Session, current_tenant_id: str):
         args = InstructionGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
         providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
         code_provider: type[CodeNodeProvider] | None = next(
             (p for p in providers if p.is_accept_language(args.language)), None
@@ -168,10 +170,10 @@ class InstructionGenerateApi(Resource):
         try:
             # Generate from nothing for a workflow node
             if (args.current in (code_template, "")) and args.node_id != "":
-                app = db.session.get(App, args.flow_id)
+                app = session.get(App, args.flow_id)
                 if not app:
                     return {"error": f"app {args.flow_id} not found"}, 400
-                workflow = WorkflowService().get_draft_workflow(app_model=app)
+                workflow = WorkflowService().get_draft_workflow(app_model=app, session=session)
                 if not workflow:
                     return {"error": f"workflow {args.flow_id} not found"}, 400
                 nodes: Sequence = workflow.graph_dict["nodes"]

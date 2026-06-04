@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 from dify_trace_langfuse.config import LangfuseConfig
@@ -134,4 +135,4 @@ class TestLangFuseDataTraceCompletionStartTime:
 
         assert trace._get_completion_start_time(start_time, None) is None
         assert trace._get_completion_start_time(start_time, -1) is None
-        assert trace._get_completion_start_time(start_time, "invalid") is None
+        assert trace._get_completion_start_time(start_time, cast(float | int | None, "invalid")) is None

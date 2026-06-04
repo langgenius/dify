@@ -136,7 +136,7 @@ def _build_fake_tencent_modules():
 
 
 @pytest.fixture
-def tencent_module(monkeypatch):
+def tencent_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_tencent_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -187,7 +187,7 @@ def test_config_and_init_paths(tencent_module):
     assert vector._enable_hybrid_search is False
 
 
-def test_create_collection_branches(tencent_module, monkeypatch):
+def test_create_collection_branches(tencent_module, monkeypatch: pytest.MonkeyPatch):
     vector = tencent_module.TencentVector("collection_1", _config(tencent_module))
 
     lock = MagicMock()
@@ -279,7 +279,7 @@ def test_create_add_delete_and_search_behaviour(tencent_module):
     vector._client.drop_collection.assert_called_once()
 
 
-def test_tencent_factory_existing_and_generated_collection(tencent_module, monkeypatch):
+def test_tencent_factory_existing_and_generated_collection(tencent_module, monkeypatch: pytest.MonkeyPatch):
     factory = tencent_module.TencentVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

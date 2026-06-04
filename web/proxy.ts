@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server'
 import { env } from '@/env'
 
 const NECESSARY_DOMAIN = '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://ungh.cc https://api2.amplitude.com *.amplitude.com'
+const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
+const CURRENT_SEARCH_HEADER = 'x-dify-search'
 
 const wrapResponseWithXFrameOptions = (response: NextResponse, pathname: string) => {
   // prevent clickjacking: https://owasp.org/www-community/attacks/Clickjacking
@@ -16,17 +18,20 @@ const wrapResponseWithXFrameOptions = (response: NextResponse, pathname: string)
   return response
 }
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname, search } = request.nextUrl
   const requestHeaders = new Headers(request.headers)
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  })
+  requestHeaders.set(CURRENT_PATHNAME_HEADER, pathname)
+  requestHeaders.set(CURRENT_SEARCH_HEADER, search)
 
   const isWhiteListEnabled = !!env.NEXT_PUBLIC_CSP_WHITELIST && process.env.NODE_ENV === 'production'
-  if (!isWhiteListEnabled)
+  if (!isWhiteListEnabled) {
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
     return wrapResponseWithXFrameOptions(response, pathname)
+  }
 
   const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
@@ -59,6 +64,12 @@ export function proxy(request: NextRequest) {
     'Content-Security-Policy',
     contentSecurityPolicyHeaderValue,
   )
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
 
   response.headers.set(
     'Content-Security-Policy',

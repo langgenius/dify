@@ -29,14 +29,14 @@ export function AlertDialogContent({
       <BaseAlertDialog.Backdrop
         {...backdropProps}
         className={cn(
-          'fixed inset-0 z-1002 bg-background-overlay',
+          'fixed inset-0 z-50 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
           backdropClassName,
         )}
       />
       <BaseAlertDialog.Popup
         className={cn(
-          'fixed top-1/2 left-1/2 z-1002 max-h-[calc(100vh-2rem)] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+          'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
           'transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
           className,
         )}

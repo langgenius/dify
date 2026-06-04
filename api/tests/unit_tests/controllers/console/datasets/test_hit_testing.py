@@ -1,13 +1,14 @@
 import uuid
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
 from controllers.console.datasets.hit_testing import HitTestingApi
-from controllers.console.datasets.hit_testing_base import HitTestingPayload
+from models.dataset import Dataset
 
 
 def unwrap(func):
@@ -31,11 +32,52 @@ def dataset_id():
 
 @pytest.fixture
 def dataset():
-    return MagicMock(id="dataset-1")
+    return Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="account-1")
+
+
+def hit_testing_record() -> dict[str, object]:
+    return {
+        "segment": {
+            "id": "segment-1",
+            "position": 1,
+            "document_id": "document-1",
+            "content": "Chunk text",
+            "sign_content": "Chunk text",
+            "answer": None,
+            "word_count": 2,
+            "tokens": 3,
+            "keywords": [],
+            "index_node_id": None,
+            "index_node_hash": None,
+            "hit_count": 0,
+            "enabled": True,
+            "disabled_at": None,
+            "disabled_by": None,
+            "status": "completed",
+            "created_by": "account-1",
+            "created_at": 1_700_000_000,
+            "indexing_at": None,
+            "completed_at": None,
+            "error": None,
+            "stopped_at": None,
+            "document": {
+                "id": "document-1",
+                "data_source_type": "upload_file",
+                "name": "guide.md",
+                "doc_type": None,
+                "doc_metadata": None,
+            },
+        },
+        "child_chunks": [],
+        "score": None,
+        "tsne_position": None,
+        "files": [],
+        "summary": None,
+    }
 
 
 @pytest.fixture(autouse=True)
-def bypass_decorators(mocker):
+def bypass_decorators(mocker: MockerFixture):
     """Bypass all decorators on the API method."""
     mocker.patch(
         "controllers.console.datasets.hit_testing.setup_required",
@@ -56,13 +98,12 @@ def bypass_decorators(mocker):
 
 
 class TestHitTestingApi:
-    def test_hit_testing_success(self, app, dataset, dataset_id):
+    def test_hit_testing_success(self, app: Flask, dataset, dataset_id):
         api = HitTestingApi()
         method = unwrap(api.post)
 
         payload = {
             "query": "what is vector search",
-            "top_k": 3,
         }
 
         with (
@@ -72,11 +113,6 @@ class TestHitTestingApi:
                 "payload",
                 new_callable=PropertyMock,
                 return_value=payload,
-            ),
-            patch.object(
-                HitTestingPayload,
-                "model_validate",
-                return_value=MagicMock(model_dump=lambda **_: payload),
             ),
             patch.object(
                 HitTestingApi,
@@ -90,7 +126,7 @@ class TestHitTestingApi:
             patch.object(
                 HitTestingApi,
                 "perform_hit_testing",
-                return_value={"query": "what is vector search", "records": []},
+                return_value={"query": {"content": "what is vector search"}, "records": []},
             ),
         ):
             result = method(api, dataset_id)
@@ -99,23 +135,14 @@ class TestHitTestingApi:
         assert "records" in result
         assert result["records"] == []
 
-    def test_hit_testing_success_with_optional_record_fields(self, app, dataset, dataset_id):
+    def test_hit_testing_success_with_optional_record_fields(self, app: Flask, dataset, dataset_id):
         api = HitTestingApi()
         method = unwrap(api.post)
 
         payload = {
             "query": "what is vector search",
         }
-        records = [
-            {
-                "segment": None,
-                "child_chunks": [],
-                "score": None,
-                "tsne_position": None,
-                "files": [],
-                "summary": None,
-            }
-        ]
+        records = [hit_testing_record()]
 
         with (
             app.test_request_context("/"),
@@ -124,11 +151,6 @@ class TestHitTestingApi:
                 "payload",
                 new_callable=PropertyMock,
                 return_value=payload,
-            ),
-            patch.object(
-                HitTestingPayload,
-                "model_validate",
-                return_value=MagicMock(model_dump=lambda **_: payload),
             ),
             patch.object(
                 HitTestingApi,
@@ -142,15 +164,18 @@ class TestHitTestingApi:
             patch.object(
                 HitTestingApi,
                 "perform_hit_testing",
-                return_value={"query": payload["query"], "records": records},
+                return_value={"query": {"content": payload["query"]}, "records": records},
             ),
         ):
             result = method(api, dataset_id)
 
-        assert result["query"] == payload["query"]
-        assert result["records"] == records
+        assert result["query"] == {"content": payload["query"]}
+        assert result["records"][0]["segment"]["keywords"] == []
+        assert result["records"][0]["child_chunks"] == []
+        assert result["records"][0]["files"] == []
+        assert result["records"][0]["score"] is None
 
-    def test_hit_testing_dataset_not_found(self, app, dataset_id):
+    def test_hit_testing_dataset_not_found(self, app: Flask, dataset_id):
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -175,7 +200,7 @@ class TestHitTestingApi:
             with pytest.raises(NotFound, match="Dataset not found"):
                 method(api, dataset_id)
 
-    def test_hit_testing_invalid_args(self, app, dataset, dataset_id):
+    def test_hit_testing_invalid_args(self, app: Flask, dataset, dataset_id):
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -190,11 +215,6 @@ class TestHitTestingApi:
                 "payload",
                 new_callable=PropertyMock,
                 return_value=payload,
-            ),
-            patch.object(
-                HitTestingPayload,
-                "model_validate",
-                return_value=MagicMock(model_dump=lambda **_: payload),
             ),
             patch.object(
                 HitTestingApi,

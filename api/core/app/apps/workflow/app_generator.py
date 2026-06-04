@@ -25,10 +25,18 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
-from core.helper.trace_id_helper import extract_external_trace_id_from_args
+from core.helper.trace_id_helper import (
+    extract_external_trace_id_from_args,
+    extract_parent_trace_context_from_args,
+    extract_trace_session_id_from_args,
+)
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
@@ -51,6 +59,12 @@ if TYPE_CHECKING:
 SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> dict[str, str]:
+    if isinstance(args, Mapping):
+        return extract_trace_session_id_from_args(args)
+    return extract_trace_session_id_from_args({"trace_session_id": getattr(args, "trace_session_id", None)})
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
@@ -162,6 +176,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             extras = {
                 **extract_external_trace_id_from_args(args),
+                **extract_parent_trace_context_from_args(args),
+                **extract_trace_session_id_from_args(args),
             }
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
             # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args
@@ -248,7 +264,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Resume a paused workflow execution using the persisted runtime state.
+
+        ``trace_manager`` is transient and excluded from generate-entity serialization,
+        so resumed executions rebuild it here before persistence layers receive the entity.
         """
+        if application_generate_entity.trace_manager is None:
+            application_generate_entity = application_generate_entity.model_copy(
+                update={
+                    "trace_manager": TraceQueueManager(
+                        app_id=app_model.id,
+                        user_id=user.id if isinstance(user, Account) else user.session_id,
+                    )
+                }
+            )
+
         return self._generate(
             app_model=app_model,
             workflow=workflow,
@@ -392,7 +421,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
@@ -478,7 +510,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs or {}),
             workflow_execution_id=str(uuid.uuid4()),
         )
@@ -612,7 +647,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> WorkflowAppBlockingResponse | Generator[WorkflowAppStreamResponse, None, None]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity

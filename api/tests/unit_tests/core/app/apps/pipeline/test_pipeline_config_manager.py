@@ -1,12 +1,14 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from pytest_mock import MockerFixture
+
 import core.app.apps.pipeline.pipeline_config_manager as module
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from models.model import AppMode
 
 
-def test_get_pipeline_config(mocker):
+def test_get_pipeline_config(mocker: MockerFixture):
     pipeline = MagicMock(tenant_id="tenant", id="pipe1")
     workflow = MagicMock(id="wf1")
 
@@ -26,7 +28,7 @@ def test_get_pipeline_config(mocker):
     assert result.rag_pipeline_variables == ["var1"]
 
 
-def test_config_validate_filters_related_keys(mocker):
+def test_config_validate_filters_related_keys(mocker: MockerFixture):
     config = {
         "file_upload": {"enabled": True},
         "tts": {"enabled": True},

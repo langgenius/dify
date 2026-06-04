@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Any
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
@@ -56,7 +56,8 @@ from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
-    from graphon.model_runtime.runtime import ModelRuntime
+    from graphon.model_runtime.protocols.runtime import ModelRuntime
+    from models.account import Account
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
@@ -165,7 +166,7 @@ class ProviderManager:
                 )
 
         # Get all provider entities
-        model_provider_factory = ModelProviderFactory(model_runtime=self._model_runtime)
+        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
         provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
@@ -362,7 +363,7 @@ class ProviderManager:
         if not default_model:
             return None
 
-        model_provider_factory = ModelProviderFactory(model_runtime=self._model_runtime)
+        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
         provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
 
         return DefaultModelEntity(
@@ -445,7 +446,7 @@ class ProviderManager:
     @staticmethod
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
             providers = session.scalars(stmt)
             for provider in providers:
@@ -462,7 +463,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
             provider_models = session.scalars(stmt)
             for provider_model in provider_models:
@@ -478,7 +479,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_preferred_provider_type_records_dict = {}
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
             preferred_provider_types = session.scalars(stmt)
             provider_name_to_preferred_provider_type_records_dict = {
@@ -496,7 +497,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_settings_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
             provider_model_settings = session.scalars(stmt)
             for provider_model_setting in provider_model_settings:
@@ -514,7 +515,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_credentials_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
             provider_model_credentials = session.scalars(stmt)
             for provider_model_credential in provider_model_credentials:
@@ -534,7 +535,9 @@ class ProviderManager:
         cache_key = f"tenant:{tenant_id}:model_load_balancing_enabled"
         cache_result = redis_client.get(cache_key)
         if cache_result is None:
-            model_load_balancing_enabled = FeatureService.get_features(tenant_id).model_load_balancing_enabled
+            model_load_balancing_enabled = FeatureService.get_features(
+                tenant_id, exclude_vector_space=True
+            ).model_load_balancing_enabled
             redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))
         else:
             cache_result = cache_result.decode("utf-8")
@@ -544,7 +547,7 @@ class ProviderManager:
             return {}
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
             provider_load_balancing_configs = session.scalars(stmt)
             for provider_load_balancing_config in provider_load_balancing_configs:
@@ -570,15 +573,23 @@ class ProviderManager:
         return provider_names
 
     @staticmethod
-    def get_provider_available_credentials(tenant_id: str, provider_name: str) -> list[CredentialConfiguration]:
+    def get_provider_available_credentials(
+        tenant_id: str,
+        provider_name: str,
+        user: Account | None = None,
+    ) -> list[CredentialConfiguration]:
         """
-        Get provider all credentials.
+        Get provider all credentials, filtered by visibility.
 
         :param tenant_id: workspace id
         :param provider_name: provider name
+        :param user: current user (id + admin flag drive the visibility filter)
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
+        with session_factory.create_session() as session:
             stmt = (
                 select(ProviderCredential)
                 .where(
@@ -587,6 +598,16 @@ class ProviderManager:
                 )
                 .order_by(ProviderCredential.created_at.desc())
             )
+
+            if user is not None:
+                stmt = CredentialPermissionService.apply_visibility_filter(
+                    stmt,
+                    model_id_column=ProviderCredential.id,
+                    model_user_id_column=ProviderCredential.user_id,
+                    model_visibility_column=ProviderCredential.visibility,
+                    credential_type=CredPermType.PROVIDER_CREDENTIAL,
+                    user=user,
+                )
 
             available_credentials = session.scalars(stmt).all()
 
@@ -608,7 +629,7 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = (
                 select(ProviderModelCredential)
                 .where(

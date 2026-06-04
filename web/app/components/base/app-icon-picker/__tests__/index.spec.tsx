@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { Area } from 'react-easy-crop'
 import type { ImageFile } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -122,13 +123,13 @@ describe('AppIconPicker', () => {
     })
   }
 
-  const renderPicker = () => {
+  const renderPicker = (props: Partial<ComponentProps<typeof AppIconPicker>> = {}) => {
     const onSelect = vi.fn()
-    const onClose = vi.fn()
+    const onOpenChange = vi.fn()
 
-    const { container } = render(<AppIconPicker onSelect={onSelect} onClose={onClose} />)
+    const { container } = render(<AppIconPicker open onOpenChange={onOpenChange} onSelect={onSelect} {...props} />)
 
-    return { onSelect, onClose, container }
+    return { onSelect, onOpenChange, container }
   }
 
   beforeEach(() => {
@@ -156,8 +157,9 @@ describe('AppIconPicker', () => {
     it('should render emoji and image tabs when upload is enabled', async () => {
       renderPicker()
 
-      expect(await screen.findByText(/emoji/i))!.toBeInTheDocument()
-      expect(screen.getByText(/image/i))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: /emoji/i })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /emoji/i }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /image/i }))!.toBeInTheDocument()
       expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
       expect(screen.getByText(/ok/i))!.toBeInTheDocument()
     })
@@ -172,12 +174,12 @@ describe('AppIconPicker', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onClose when cancel is clicked', async () => {
-      const { onClose } = renderPicker()
+    it('should close when cancel is clicked', async () => {
+      const { onOpenChange } = renderPicker()
 
       await userEvent.click(screen.getByText(/cancel/i))
 
-      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 
     it('should switch between emoji and image tabs', async () => {
@@ -186,7 +188,7 @@ describe('AppIconPicker', () => {
       await userEvent.click(screen.getByText(/image/i))
       expect(screen.getByText(/drop.*here/i))!.toBeInTheDocument()
 
-      await userEvent.click(screen.getByText(/emoji/i))
+      await userEvent.click(screen.getByRole('button', { name: /emoji/i }))
       expect(screen.getByPlaceholderText(/search/i))!.toBeInTheDocument()
     })
 
@@ -194,10 +196,10 @@ describe('AppIconPicker', () => {
       const { onSelect } = renderPicker()
 
       await waitFor(() => {
-        expect(screen.queryAllByTestId(/emoji-container-/i).length).toBeGreaterThan(0)
+        expect(document.querySelector('em-emoji')?.closest('button'))!.toBeInTheDocument()
       })
 
-      const firstEmoji = screen.queryAllByTestId(/emoji-container-/i)[0]
+      const firstEmoji = document.querySelector('em-emoji')?.closest('button')
       if (!firstEmoji)
         throw new Error('Could not find emoji option')
 
@@ -213,12 +215,34 @@ describe('AppIconPicker', () => {
       })
     })
 
+    it('should close through the dialog open change contract when Escape is pressed', async () => {
+      const { onOpenChange } = renderPicker()
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+    })
+
     it('should not call onSelect when no emoji has been selected', async () => {
       const { onSelect } = renderPicker()
 
       await userEvent.click(screen.getByText(/ok/i))
 
       expect(onSelect).not.toHaveBeenCalled()
+    })
+
+    it('should submit the initial emoji when provided', async () => {
+      const { onSelect } = renderPicker({ initialEmoji: { icon: 'rabbit', background: '#E4FBCC' } })
+
+      await userEvent.click(screen.getByText(/ok/i))
+
+      await waitFor(() => {
+        expect(onSelect).toHaveBeenCalledWith({
+          type: 'emoji',
+          icon: 'rabbit',
+          background: '#E4FBCC',
+        })
+      })
     })
   })
 

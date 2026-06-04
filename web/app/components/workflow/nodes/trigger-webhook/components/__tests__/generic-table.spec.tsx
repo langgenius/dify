@@ -55,7 +55,8 @@ describe('GenericTable', () => {
 
   const selectOption = async (triggerName: string, optionName: string) => {
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: triggerName }))
+      expect(screen.getByText(triggerName)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('combobox'))
     })
 
     await act(async () => {
@@ -158,7 +159,7 @@ describe('GenericTable', () => {
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
-      expect(screen.getByRole('button', { name: 'POST' }))!.toBeInTheDocument()
+      expect(screen.getAllByRole('combobox')[0])!.toHaveTextContent('POST')
     })
 
     onChange.mockClear()

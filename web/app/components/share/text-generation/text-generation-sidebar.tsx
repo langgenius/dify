@@ -1,9 +1,9 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { FC, RefObject } from 'react'
 import type { InputValueTypes, TextGenerationCustomConfig, TextGenerationRunControl } from './types'
 import type { PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
-import type { SystemFeatures } from '@/types/feature'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
@@ -38,7 +38,7 @@ type TextGenerationSidebarProps = {
   runControl: TextGenerationRunControl | null
   savedMessages: SavedMessage[]
   siteInfo: SiteInfo
-  systemFeatures: SystemFeatures
+  systemFeatures: GetSystemFeaturesResponse
   textToSpeechConfig: TextToSpeechConfig | null
   visionConfig: VisionSettings
 }
@@ -102,7 +102,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
                   id: 'saved',
                   name: t('generation.tabs.saved', { ns: 'share' }),
                   isRight: true,
-                  icon: <span aria-hidden className="i-ri-bookmark-3-line h-4 w-4" />,
+                  icon: <span aria-hidden className="i-ri-bookmark-3-line size-4" />,
                   extra: savedMessages.length > 0
                     ? (
                         <Badge className="ml-1">

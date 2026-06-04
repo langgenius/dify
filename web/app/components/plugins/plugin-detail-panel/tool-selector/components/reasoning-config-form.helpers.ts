@@ -7,13 +7,13 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 
-export type ReasoningConfigInputValue = {
+type ReasoningConfigInputValue = {
   type?: VarKindType
   value?: unknown
   [key: string]: unknown
 } | null
 
-export type ReasoningConfigInput = {
+type ReasoningConfigInput = {
   value: ReasoningConfigInputValue
   auto?: 0 | 1
 }

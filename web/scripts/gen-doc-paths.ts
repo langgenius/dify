@@ -275,7 +275,7 @@ function generateTypeDefinitions(
     typeNames.push(typeName)
 
     lines.push(`// ${sectionToTypeName(section)} paths`)
-    lines.push(`export type ${typeName} =`)
+    lines.push(`type ${typeName} =`)
 
     for (const p of paths) {
       lines.push(`  | '/${p}'`)
@@ -297,7 +297,7 @@ function generateTypeDefinitions(
   if (apiReferencePaths.length > 0) {
     const sortedPaths = [...apiReferencePaths].sort()
     lines.push('// API Reference paths (English, use apiReferencePathTranslations for other languages)')
-    lines.push('export type ApiReferencePath =')
+    lines.push('type ApiReferencePath =')
     for (const p of sortedPaths) {
       lines.push(`  | '${p}'`)
     }
@@ -307,7 +307,7 @@ function generateTypeDefinitions(
 
   // Generate base combined type
   lines.push('// Base path without language prefix')
-  lines.push('export type DocPathWithoutLangBase =')
+  lines.push('type DocPathWithoutLangBase =')
   for (const typeName of typeNames) {
     lines.push(`  | ${typeName}`)
   }

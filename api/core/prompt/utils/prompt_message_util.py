@@ -53,24 +53,27 @@ class PromptMessageUtil:
                 files = []
                 if isinstance(prompt_message.content, list):
                     for content in prompt_message.content:
-                        if isinstance(content, TextPromptMessageContent):
-                            text += content.data
-                        elif isinstance(content, ImagePromptMessageContent):
-                            files.append(
-                                {
-                                    "type": "image",
-                                    "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
-                                    "detail": content.detail.value,
-                                }
-                            )
-                        elif isinstance(content, AudioPromptMessageContent):
-                            files.append(
-                                {
-                                    "type": "audio",
-                                    "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
-                                    "format": content.format,
-                                }
-                            )
+                        match content:
+                            case TextPromptMessageContent():
+                                text += content.data
+                            case ImagePromptMessageContent():
+                                files.append(
+                                    {
+                                        "type": "image",
+                                        "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                        "detail": content.detail.value,
+                                    }
+                                )
+                            case AudioPromptMessageContent():
+                                files.append(
+                                    {
+                                        "type": "audio",
+                                        "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                        "format": content.format,
+                                    }
+                                )
+                            case _:
+                                continue
                 else:
                     text = cast(str, prompt_message.content)
 

@@ -157,8 +157,8 @@ class DraftVarLoader(VariableLoader):
         # This approach reduces loading time by querying external systems concurrently.
         with ThreadPoolExecutor(max_workers=10) as executor:
             offloaded_variables = executor.map(self._load_offloaded_variable, offloaded_draft_vars)
-            for selector, variable in offloaded_variables:
-                variable_by_selector[selector] = variable
+            for selector, offloaded_variable in offloaded_variables:
+                variable_by_selector[selector] = offloaded_variable
 
         return list(variable_by_selector.values())
 
@@ -1083,10 +1083,9 @@ class DraftVariableSaver:
             mimetype=content_type,
             user=self._user,
         )
-
+        assert self._user.current_tenant_id
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
-            id=uuidv7(),
             upload_file_id=upload_file.id,
             size=original_size,
             length=original_length,
@@ -1095,6 +1094,7 @@ class DraftVariableSaver:
             tenant_id=self._user.current_tenant_id,
             user_id=self._user.id,
         )
+        variable_file.id = str(uuidv7())
         engine = bind = self._session.get_bind()
         assert isinstance(engine, Engine)
         with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:

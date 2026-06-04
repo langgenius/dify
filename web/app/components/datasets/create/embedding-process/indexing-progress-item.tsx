@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
 } from '@remixicon/react'
 import NotionIcon from '@/app/components/base/notion-icon'
-import Tooltip from '@/app/components/base/tooltip'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { DataSourceType } from '@/models/datasets'
 import DocumentFileIcon from '../../common/document-file-icon'
@@ -27,14 +27,16 @@ const StatusIcon: FC<{ status: string, error?: string }> = ({ status, error }) =
 
   if (status === 'error') {
     return (
-      <Tooltip
-        popupClassName="px-4 py-[14px] max-w-60 body-xs-regular text-text-secondary border-[0.5px] border-components-panel-border rounded-xl"
-        offset={4}
-        popupContent={error}
-      >
-        <span>
+      <Tooltip>
+        <TooltipTrigger render={<span aria-label={error || 'Error'} />}>
           <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
-        </span>
+        </TooltipTrigger>
+        <TooltipContent
+          sideOffset={4}
+          className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-[14px] body-xs-regular text-text-secondary"
+        >
+          {error}
+        </TooltipContent>
       </Tooltip>
     )
   }

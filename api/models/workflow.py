@@ -50,7 +50,7 @@ from libs.uuid_utils import uuidv7
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
-    from .model import AppMode, UploadFile
+    from .model import AppMode
 
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
@@ -63,6 +63,10 @@ from .account import Account
 from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
+
+# UploadFile uses TypeBase while workflow execution offload models use Base, so relationships
+# must target the class object directly instead of relying on string lookup across registries.
+from .model import UploadFile
 from .types import EnumText, LongText, StringUUID
 from .utils.file_input_compat import (
     build_file_from_mapping_without_lookup,
@@ -539,13 +543,16 @@ class Workflow(Base):  # bug
         def decrypt_func(
             var: VariableBase,
         ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
-            if isinstance(var, SecretVariable):
-                return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-            elif isinstance(var, (StringVariable, IntegerVariable, FloatVariable)):
-                return var
-            else:
-                # Other variable types are not supported for environment variables
-                raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
+            match var:
+                case SecretVariable():
+                    return var.model_copy(
+                        update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
+                    )
+                case StringVariable() | IntegerVariable() | FloatVariable():
+                    return var
+                case _:
+                    # Other variable types are not supported for environment variables
+                    raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
 
         decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = [
             decrypt_func(var) for var in results
@@ -1096,8 +1103,6 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
     @staticmethod
     def _load_full_content(session: orm.Session, file_id: str, storage: Storage):
-        from .model import UploadFile
-
         stmt = sa.select(UploadFile).where(UploadFile.id == file_id)
         file = session.scalars(stmt).first()
         assert file is not None, f"UploadFile with id {file_id} should exist but not"
@@ -1191,10 +1196,11 @@ class WorkflowNodeExecutionOffload(Base):
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
+        UploadFile,
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowNodeExecutionOffload.file_id == UploadFile.id",
+        primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.file_id) == UploadFile.id,
     )
 
 
@@ -1206,6 +1212,7 @@ class WorkflowAppLogCreatedFrom(StrEnum):
     SERVICE_API = "service-api"
     WEB_APP = "web-app"
     INSTALLED_APP = "installed-app"
+    OPENAPI = "openapi"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowAppLogCreatedFrom":
@@ -1565,12 +1572,14 @@ class WorkflowDraftVariable(Base):
         ),
     )
 
-    # Relationship to WorkflowDraftVariableFile
+    # WorkflowDraftVariableFile uses TypeBase while WorkflowDraftVariable uses Base, so the relationship
+    # must resolve the class object lazily instead of relying on string lookup across registries.
     variable_file: Mapped[Optional["WorkflowDraftVariableFile"]] = orm.relationship(
+        lambda: WorkflowDraftVariableFile,
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowDraftVariableFile.id == WorkflowDraftVariable.file_id",
+        primaryjoin=lambda: orm.foreign(WorkflowDraftVariable.file_id) == WorkflowDraftVariableFile.id,
     )
 
     # Cache for deserialized value
@@ -1632,31 +1641,32 @@ class WorkflowDraftVariable(Base):
         # rather than their serialized forms.
         # However, multiple components in the codebase depend on
         # `WorkflowEntry.handle_special_values`, making a comprehensive migration challenging.
-        if isinstance(value, dict):
-            if not maybe_file_object(value):
-                return cast(Any, value)
-            tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
-            return build_file_from_stored_mapping(
-                file_mapping=cast(dict[str, Any], value),
-                tenant_id=tenant_id,
-            )
-        elif isinstance(value, list) and value:
-            value_list = cast(list[Any], value)
-            first: Any = value_list[0]
-            if not maybe_file_object(first):
-                return cast(Any, value)
-            tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
-            file_list: list[File] = []
-            for item in value_list:
-                file_list.append(
-                    build_file_from_stored_mapping(
-                        file_mapping=cast(dict[str, Any], item),
-                        tenant_id=tenant_id,
-                    )
+        match value:
+            case dict():
+                if not maybe_file_object(value):
+                    return cast(Any, value)
+                tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+                return build_file_from_stored_mapping(
+                    file_mapping=cast(dict[str, Any], value),
+                    tenant_id=tenant_id,
                 )
-            return cast(Any, file_list)
-        else:
-            return cast(Any, value)
+            case list() if value:
+                value_list = cast(list[Any], value)
+                first: Any = value_list[0]
+                if not maybe_file_object(first):
+                    return cast(Any, value)
+                tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+                file_list: list[File] = []
+                for item in value_list:
+                    file_list.append(
+                        build_file_from_stored_mapping(
+                            file_mapping=cast(dict[str, Any], item),
+                            tenant_id=tenant_id,
+                        )
+                    )
+                return cast(Any, file_list)
+            case _:
+                return cast(Any, value)
 
     def build_segment_from_serialized_value(self, segment_type: SegmentType, value: Any) -> Segment:
         # Persisted draft variable rows may contain historical file payloads.
@@ -1665,13 +1675,14 @@ class WorkflowDraftVariable(Base):
         # serialized JSON blob.
         match segment_type:
             case SegmentType.FILE:
-                if isinstance(value, File):
-                    return build_segment_with_type(segment_type, value)
-                elif isinstance(value, dict):
-                    file = self._rebuild_file_types(value)
-                    return build_segment_with_type(segment_type, file)
-                else:
-                    raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+                match value:
+                    case File():
+                        return build_segment_with_type(segment_type, value)
+                    case dict():
+                        file = self._rebuild_file_types(value)
+                        return build_segment_with_type(segment_type, file)
+                    case _:
+                        raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
             case SegmentType.ARRAY_FILE:
                 if not isinstance(value, list):
                     raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
@@ -1686,25 +1697,26 @@ class WorkflowDraftVariable(Base):
         # structural reconstruction. Persisted draft-variable payloads should go
         # through `build_segment_from_serialized_value()` so file metadata is
         # rebuilt from canonical storage records.
-        if isinstance(value, dict):
-            if not maybe_file_object(value):
-                return cast(Any, value)
-            normalized_file = dict(value)
-            normalized_file.pop("tenant_id", None)
-            return build_file_from_mapping_without_lookup(file_mapping=normalized_file)
-        elif isinstance(value, list) and value:
-            value_list = cast(list[Any], value)
-            first: Any = value_list[0]
-            if not maybe_file_object(first):
-                return cast(Any, value)
-            file_list: list[File] = []
-            for item in value_list:
-                normalized_file = dict(cast(dict[str, Any], item))
+        match value:
+            case dict():
+                if not maybe_file_object(value):
+                    return cast(Any, value)
+                normalized_file = dict(value)
                 normalized_file.pop("tenant_id", None)
-                file_list.append(build_file_from_mapping_without_lookup(file_mapping=normalized_file))
-            return cast(Any, file_list)
-        else:
-            return cast(Any, value)
+                return build_file_from_mapping_without_lookup(file_mapping=normalized_file)
+            case list() if value:
+                value_list = cast(list[Any], value)
+                first: Any = value_list[0]
+                if not maybe_file_object(first):
+                    return cast(Any, value)
+                file_list: list[File] = []
+                for item in value_list:
+                    normalized_file = dict(cast(dict[str, Any], item))
+                    normalized_file.pop("tenant_id", None)
+                    file_list.append(build_file_from_mapping_without_lookup(file_mapping=normalized_file))
+                return cast(Any, file_list)
+            case _:
+                return cast(Any, value)
 
     @classmethod
     def build_segment_with_type(cls, segment_type: SegmentType, value: Any) -> Segment:
@@ -1713,13 +1725,14 @@ class WorkflowDraftVariable(Base):
         # their serialized dictionary or list representations, respectively.
         match segment_type:
             case SegmentType.FILE:
-                if isinstance(value, File):
-                    return build_segment_with_type(segment_type, value)
-                elif isinstance(value, dict):
-                    file = cls.rebuild_file_types(value)
-                    return build_segment_with_type(segment_type, file)
-                else:
-                    raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+                match value:
+                    case File():
+                        return build_segment_with_type(segment_type, value)
+                    case dict():
+                        file = cls.rebuild_file_types(value)
+                        return build_segment_with_type(segment_type, file)
+                    case _:
+                        raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
             case SegmentType.ARRAY_FILE:
                 if not isinstance(value, list):
                     raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
@@ -1889,7 +1902,7 @@ class WorkflowDraftVariable(Base):
         return self.last_edited_at is not None
 
 
-class WorkflowDraftVariableFile(Base):
+class WorkflowDraftVariableFile(TypeBase):
     """Stores metadata about files associated with large workflow draft variables.
 
     This model acts as an intermediary between WorkflowDraftVariable and UploadFile,
@@ -1903,18 +1916,7 @@ class WorkflowDraftVariableFile(Base):
     __tablename__ = "workflow_draft_variable_files"
 
     # Primary key
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default=lambda: str(uuidv7()),
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default=naive_utc_now,
-        server_default=func.current_timestamp(),
-    )
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
     tenant_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -1966,12 +1968,21 @@ class WorkflowDraftVariableFile(Base):
         nullable=False,
     )
 
-    # Relationship to UploadFile
+    # Rows are created with `upload_file_id`; callers should load this relationship explicitly when needed.
     upload_file: Mapped["UploadFile"] = orm.relationship(
+        UploadFile,
         foreign_keys=[upload_file_id],
         lazy="raise",
+        init=False,
         uselist=False,
-        primaryjoin="WorkflowDraftVariableFile.upload_file_id == UploadFile.id",
+        primaryjoin=lambda: orm.foreign(WorkflowDraftVariableFile.upload_file_id) == UploadFile.id,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default_factory=naive_utc_now,
+        server_default=func.current_timestamp(),
     )
 
 
@@ -2095,17 +2106,18 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
 
     @classmethod
     def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
-        if isinstance(pause_reason, HumanInputRequired):
-            return cls(
-                pause_id=pause_id,
-                type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
-                form_id=pause_reason.form_id,
-                node_id=pause_reason.node_id,
-            )
-        elif isinstance(pause_reason, SchedulingPause):
-            return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
-        else:
-            raise AssertionError(f"Unknown pause reason type: {pause_reason}")
+        match pause_reason:
+            case HumanInputRequired():
+                return cls(
+                    pause_id=pause_id,
+                    type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                    form_id=pause_reason.form_id,
+                    node_id=pause_reason.node_id,
+                )
+            case SchedulingPause():
+                return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
+            case _:
+                raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
     def to_entity(self) -> PauseReason:
         if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:

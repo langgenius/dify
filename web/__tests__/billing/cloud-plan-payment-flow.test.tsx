@@ -90,6 +90,8 @@ const renderCloudPlanItem = ({
   )
 }
 
+const getPlanButton = (name: string) => screen.getByRole('button', { name })
+
 // ═══════════════════════════════════════════════════════════════════════════════
 describe('Cloud Plan Payment Flow', () => {
   beforeEach(() => {
@@ -180,30 +182,30 @@ describe('Cloud Plan Payment Flow', () => {
     it('should disable sandbox button when user is on professional plan (downgrade)', () => {
       renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.sandbox })
 
-      const button = screen.getByRole('button')
+      const button = getPlanButton('billing.plansCommon.startForFree')
       expect(button).toBeDisabled()
     })
 
     it('should disable sandbox and professional buttons when user is on team plan', () => {
       const { unmount } = renderCloudPlanItem({ currentPlan: Plan.team, plan: Plan.sandbox })
-      expect(screen.getByRole('button')).toBeDisabled()
+      expect(getPlanButton('billing.plansCommon.startForFree')).toBeDisabled()
       unmount()
 
       renderCloudPlanItem({ currentPlan: Plan.team, plan: Plan.professional })
-      expect(screen.getByRole('button')).toBeDisabled()
+      expect(getPlanButton('billing.plansCommon.startBuilding')).toBeDisabled()
     })
 
     it('should not disable current paid plan button (for invoice management)', () => {
       renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
 
-      const button = screen.getByRole('button')
+      const button = getPlanButton('billing.plansCommon.currentPlan')
       expect(button).not.toBeDisabled()
     })
 
     it('should enable higher-tier plan buttons for upgrade', () => {
       renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.team })
 
-      const button = screen.getByRole('button')
+      const button = getPlanButton('billing.plansCommon.getStarted')
       expect(button).not.toBeDisabled()
     })
   })
@@ -219,7 +221,7 @@ describe('Cloud Plan Payment Flow', () => {
         planRange: PlanRange.monthly,
       })
 
-      const button = screen.getByRole('button')
+      const button = getPlanButton('billing.plansCommon.startBuilding')
       await user.click(button)
 
       await waitFor(() => {
@@ -235,7 +237,7 @@ describe('Cloud Plan Payment Flow', () => {
         planRange: PlanRange.yearly,
       })
 
-      const button = screen.getByRole('button')
+      const button = getPlanButton('billing.plansCommon.getStarted')
       await user.click(button)
 
       await waitFor(() => {
@@ -247,7 +249,7 @@ describe('Cloud Plan Payment Flow', () => {
       const user = userEvent.setup()
       renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
 
-      const button = screen.getByRole('button')
+      const button = getPlanButton('billing.plansCommon.currentPlan')
       await user.click(button)
 
       await waitFor(() => {
@@ -261,7 +263,7 @@ describe('Cloud Plan Payment Flow', () => {
       const user = userEvent.setup()
       renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.sandbox })
 
-      const button = screen.getByRole('button')
+      const button = getPlanButton('billing.plansCommon.currentPlan')
       await user.click(button)
 
       // Wait a tick and verify no actions were taken
@@ -279,7 +281,7 @@ describe('Cloud Plan Payment Flow', () => {
       const user = userEvent.setup()
       renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional })
 
-      const button = screen.getByRole('button')
+      const button = getPlanButton('billing.plansCommon.startBuilding')
       await user.click(button)
 
       await waitFor(() => {

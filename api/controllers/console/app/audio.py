@@ -70,7 +70,7 @@ class ChatMessageAudioApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model):
+    def post(self, app_model: App):
         file = request.files["file"]
 
         try:
@@ -171,9 +171,9 @@ class TextModesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         try:
-            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
 
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,

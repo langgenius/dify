@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { ReactNode } from 'react'
-import { toast } from '.'
+import { toast, ToastHost } from '.'
 
 const buttonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs transition-colors hover:bg-state-base-hover'
 const cardClassName = 'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
@@ -272,28 +272,31 @@ const UpdateExamples = () => {
 
 const ToastDocsDemo = () => {
   return (
-    <div className="min-h-screen bg-background-default-subtle px-6 py-12">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <div className="space-y-3">
-          <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
-            Base UI toast docs
+    <>
+      <ToastHost />
+      <div className="min-h-screen bg-background-default-subtle px-6 py-12">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+          <div className="space-y-3">
+            <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
+              Base UI toast docs
+            </div>
+            <h2 className="text-[24px] leading-8 font-semibold text-text-primary">
+              Shared stacked toast examples
+            </h2>
+            <p className="max-w-3xl text-sm leading-6 text-text-secondary">
+              Each example card below triggers the same shared toast viewport in the top-right corner, so you can review stacking, state transitions, actions, and tone variants the same way the official Base UI documentation demonstrates toast behavior.
+            </p>
           </div>
-          <h2 className="text-[24px] leading-8 font-semibold text-text-primary">
-            Shared stacked toast examples
-          </h2>
-          <p className="max-w-3xl text-sm leading-6 text-text-secondary">
-            Each example card below triggers the same shared toast viewport in the top-right corner, so you can review stacking, state transitions, actions, and tone variants the same way the official Base UI documentation demonstrates toast behavior.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <VariantExamples />
-          <StackExamples />
-          <PromiseExamples />
-          <ActionExamples />
-          <UpdateExamples />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <VariantExamples />
+            <StackExamples />
+            <PromiseExamples />
+            <ActionExamples />
+            <UpdateExamples />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

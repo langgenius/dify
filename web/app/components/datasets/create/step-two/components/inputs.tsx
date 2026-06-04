@@ -12,8 +12,8 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import { env } from '@/env'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
@@ -38,13 +38,9 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip,
     <FormField label={(
       <div className="mb-1 flex items-center">
         <span className="mr-0.5 system-sm-semibold">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
-        <Tooltip
-          popupContent={(
-            <div className="max-w-[200px]">
-              {tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
-            </div>
-          )}
-        />
+        <Infotip aria-label={tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
+          {tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
+        </Infotip>
       </div>
     )}
     >
@@ -76,12 +72,14 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip,
 }
 
 type CompoundNumberInputProps = Omit<NumberFieldRootProps, 'children' | 'className' | 'onValueChange'> & Omit<NumberFieldInputProps, 'children' | 'size' | 'onChange'> & {
+  label: string
   unit?: ReactNode
   size?: NumberFieldSize
   onChange: (value: number) => void
 }
 
 function CompoundNumberInput({
+  label,
   onChange,
   unit,
   size = 'large',
@@ -108,6 +106,7 @@ function CompoundNumberInput({
       <NumberFieldGroup size={size}>
         <NumberFieldInput
           {...inputProps}
+          aria-label={label}
           size={size}
           className={className}
           onBlur={onBlur}
@@ -126,18 +125,22 @@ function CompoundNumberInput({
   )
 }
 
-export const MaxLengthInput: FC<CompoundNumberInputProps> = (props) => {
+type LabeledCompoundNumberInputProps = Omit<CompoundNumberInputProps, 'label'>
+
+export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
   const { t } = useTranslation()
+  const label = t('stepTwo.maxLength', { ns: 'datasetCreation' })
   return (
     <FormField label={(
       <div className="mb-1 system-sm-semibold">
-        {t('stepTwo.maxLength', { ns: 'datasetCreation' })}
+        {label}
       </div>
     )}
     >
       <CompoundNumberInput
+        label={label}
         size="large"
         placeholder={`≤ ${maxValue}`}
         max={maxValue}
@@ -148,25 +151,23 @@ export const MaxLengthInput: FC<CompoundNumberInputProps> = (props) => {
   )
 }
 
-export const OverlapInput: FC<CompoundNumberInputProps> = (props) => {
+export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const { t } = useTranslation()
+  const label = t('stepTwo.overlap', { ns: 'datasetCreation' })
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
-        <span className="system-sm-semibold">{t('stepTwo.overlap', { ns: 'datasetCreation' })}</span>
-        <Tooltip
-          popupContent={(
-            <div className="max-w-[200px]">
-              {t('stepTwo.overlapTip', { ns: 'datasetCreation' })}
-            </div>
-          )}
-        />
+        <span className="system-sm-semibold">{label}</span>
+        <Infotip aria-label={t('stepTwo.overlapTip', { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
+          {t('stepTwo.overlapTip', { ns: 'datasetCreation' })}
+        </Infotip>
       </div>
     )}
     >
       <CompoundNumberInput
+        label={label}
         size="large"
-        placeholder={t('stepTwo.overlap', { ns: 'datasetCreation' }) || ''}
+        placeholder={label || ''}
         min={1}
         {...props}
       />

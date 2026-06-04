@@ -12,6 +12,7 @@ const mockAuthorizeMcp = vi.fn().mockResolvedValue({ result: 'success' })
 const mockUpdateMCP = vi.fn().mockResolvedValue({ result: 'success' })
 const mockDeleteMCP = vi.fn().mockResolvedValue({ result: 'success' })
 const mockInvalidateMCPTools = vi.fn()
+const mockInvalidateAllMCPTools = vi.fn()
 const mockOpenOAuthPopup = vi.fn()
 
 // Mutable mock state
@@ -33,6 +34,7 @@ vi.mock('@/service/use-tools', () => ({
     isFetching: mockIsFetching,
   }),
   useInvalidateMCPTools: () => mockInvalidateMCPTools,
+  useInvalidateAllMCPTools: () => mockInvalidateAllMCPTools,
   useUpdateMCPTools: () => ({
     mutateAsync: mockUpdateTools,
     isPending: mockIsUpdating,
@@ -180,6 +182,7 @@ describe('MCPDetailContent', () => {
     mockUpdateMCP.mockClear()
     mockDeleteMCP.mockClear()
     mockInvalidateMCPTools.mockClear()
+    mockInvalidateAllMCPTools.mockClear()
     mockOpenOAuthPopup.mockClear()
 
     // Reset mock return values
@@ -513,6 +516,7 @@ describe('MCPDetailContent', () => {
       await waitFor(() => {
         expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
         expect(mockInvalidateMCPTools).toHaveBeenCalledWith('mcp-1')
+        expect(mockInvalidateAllMCPTools).toHaveBeenCalled()
         expect(onUpdate).toHaveBeenCalled()
       })
     })
@@ -530,6 +534,7 @@ describe('MCPDetailContent', () => {
 
       await waitFor(() => {
         expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
+        expect(mockInvalidateAllMCPTools).toHaveBeenCalled()
       })
     })
   })
@@ -698,16 +703,9 @@ describe('MCPDetailContent', () => {
       const onHide = vi.fn()
       render(<MCPDetailContent {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      // Find the close button (ActionButton with RiCloseLine)
-      const buttons = screen.getAllByRole('button')
-      const closeButton = buttons.find(btn =>
-        btn.querySelector('svg.h-4.w-4'),
-      )
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-      if (closeButton) {
-        fireEvent.click(closeButton)
-        expect(onHide).toHaveBeenCalled()
-      }
+      expect(onHide).toHaveBeenCalled()
     })
   })
 

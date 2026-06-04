@@ -95,7 +95,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     if (!isParagraphMode)
       return null
     const Icon = collapsed ? RiArrowRightSLine : RiArrowDownSLine
-    return <Icon className={cn('mr-0.5 h-4 w-4 text-text-secondary', collapsed && 'opacity-50')} />
+    return <Icon className={cn('mr-0.5 size-4 text-text-secondary', collapsed && 'opacity-50')} />
   }
 
   const renderChildChunkItem = (childChunk: ChildChunkDetail) => {
@@ -138,7 +138,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     }
     if (inputValue !== '') {
       return (
-        <div className="h-full w-full">
+        <div className="size-full">
           <Empty onClearFilter={onClearFilter!} />
         </div>
       )

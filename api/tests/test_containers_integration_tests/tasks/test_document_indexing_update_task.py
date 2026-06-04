@@ -3,9 +3,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_update_task import document_indexing_update_task
@@ -33,7 +34,7 @@ class TestDocumentIndexingUpdateTask:
                 "runner_instance": runner_instance,
             }
 
-    def _create_dataset_document_with_segments(self, db_session_with_containers, *, segment_count: int = 2):
+    def _create_dataset_document_with_segments(self, db_session_with_containers: Session, *, segment_count: int = 2):
         fake = Faker()
 
         # Account and tenant
@@ -41,12 +42,12 @@ class TestDocumentIndexingUpdateTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
-        tenant = Tenant(name=fake.company(), status="normal")
+        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
 
@@ -114,7 +115,7 @@ class TestDocumentIndexingUpdateTask:
 
         return dataset, document, node_ids
 
-    def test_cleans_segments_and_reindexes(self, db_session_with_containers, mock_external_dependencies):
+    def test_cleans_segments_and_reindexes(self, db_session_with_containers: Session, mock_external_dependencies):
         dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
 
         # Act
@@ -153,7 +154,9 @@ class TestDocumentIndexingUpdateTask:
         first = run_docs[0]
         assert getattr(first, "id", None) == document.id
 
-    def test_clean_error_is_logged_and_indexing_continues(self, db_session_with_containers, mock_external_dependencies):
+    def test_clean_error_is_logged_and_indexing_continues(
+        self, db_session_with_containers: Session, mock_external_dependencies
+    ):
         dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
 
         # Force clean to raise; task should continue to indexing
@@ -173,7 +176,7 @@ class TestDocumentIndexingUpdateTask:
         )
         assert remaining > 0
 
-    def test_document_not_found_noop(self, db_session_with_containers, mock_external_dependencies):
+    def test_document_not_found_noop(self, db_session_with_containers: Session, mock_external_dependencies):
         fake = Faker()
         # Act with non-existent document id
         document_indexing_update_task(dataset_id=fake.uuid4(), document_id=fake.uuid4())

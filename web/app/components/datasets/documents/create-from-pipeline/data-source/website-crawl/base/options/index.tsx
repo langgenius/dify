@@ -88,7 +88,7 @@ const Options = ({
           <span className="system-sm-semibold-uppercase text-text-secondary">
             {t(`${I18N_PREFIX}.options`, { ns: 'datasetCreation' })}
           </span>
-          <ArrowDownRoundFill className={cn('h-4 w-4 shrink-0 text-text-quaternary', fold && '-rotate-90')} />
+          <ArrowDownRoundFill className={cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90')} />
         </div>
         <Button
           variant="primary"

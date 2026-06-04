@@ -27,12 +27,17 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       render,
     }: {
       children: React.ReactNode
-      render?: React.ReactElement
+      render?: React.ReactElement<{ children?: React.ReactNode }>
     }) => {
       const { open, setOpen } = useDropdownMenuContext()
 
-      if (render)
-        return React.cloneElement(render, { onClick: () => setOpen(!open) } as Record<string, unknown>, children)
+      if (render) {
+        return React.cloneElement(
+          render,
+          { onClick: () => setOpen(!open) } as Record<string, unknown>,
+          children ?? render.props.children,
+        )
+      }
 
       return <button type="button" onClick={() => setOpen(!open)}>{children}</button>
     },
@@ -61,10 +66,6 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     },
   }
 })
-
-vi.mock('../shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span>{keys.join('+')}</span>,
-}))
 
 const createOption = (overrides: Partial<TriggerOption> = {}): TriggerOption => ({
   id: 'user-input',

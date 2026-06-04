@@ -40,43 +40,24 @@ vi.mock('../../embedded-chatbot/theme/theme-context', () => ({
   })),
 }))
 
-// Mock PortalToFollowElem using React Context
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
-  const MockContext = React.createContext(false)
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
+vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
 
-  return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-      return (
-        <MockContext.Provider value={open}>
-          <div data-open={open}>{children}</div>
-        </MockContext.Provider>
-      )
-    },
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-      const open = React.useContext(MockContext)
-      if (!open)
-        return null
-      return <div>{children}</div>
-    },
-    PortalToFollowElemTrigger: ({ children, onClick, ...props }: { children: React.ReactNode, onClick: () => void } & React.HTMLAttributes<HTMLDivElement>) => (
-      <div onClick={onClick} {...props}>{children}</div>
-    ),
-  }
-})
-
-// Mock Modal to avoid Headless UI issues in tests
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
-    if (!isShow)
+// Mock Dialog to avoid Base UI focus/portal behavior in tests
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) => {
+    if (!open)
       return null
     return (
-      <div role="dialog" data-testid="modal">
-        {!!title && <div>{title}</div>}
+      <div data-testid="modal">
         {children}
       </div>
     )
   },
+  DialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div role="dialog" data-testid="modal-content">{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 // Sidebar mock removed to use real component
@@ -203,7 +184,7 @@ describe('HeaderInMobile', () => {
     render(<HeaderInMobile />)
 
     // Open dropdown (More button)
-    fireEvent.click(await screen.findByTestId('mobile-more-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
     // Find and click "View Chat Settings"
     await waitFor(() => {
@@ -232,7 +213,7 @@ describe('HeaderInMobile', () => {
     render(<HeaderInMobile />)
 
     // Open dropdown and chat settings
-    fireEvent.click(await screen.findByTestId('mobile-more-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
     await waitFor(() => {
       expect(screen.getByText(/share\.chat\.viewChatSettings/i))!.toBeInTheDocument()
     })
@@ -260,7 +241,7 @@ describe('HeaderInMobile', () => {
     render(<HeaderInMobile />)
 
     // Open dropdown
-    fireEvent.click(await screen.findByTestId('mobile-more-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
     // "View Chat Settings" should not be present
     await waitFor(() => {
@@ -278,7 +259,7 @@ describe('HeaderInMobile', () => {
     render(<HeaderInMobile />)
 
     // Open dropdown
-    fireEvent.click(await screen.findByTestId('mobile-more-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
     // Click "New Conversation" or "Reset Chat"
     await waitFor(() => {

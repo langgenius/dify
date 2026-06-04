@@ -1,5 +1,5 @@
 import type { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { ModelBar } from '../model-bar'
 
 type ModelProviderItem = {
@@ -31,8 +31,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <div>{`indicator:${color}`}</div>,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <div>{`indicator:${status}`}</div>,
 }))
 
 describe('agent/model-bar', () => {
@@ -52,27 +52,23 @@ describe('agent/model-bar', () => {
 
     const emptySelector = screen.getByText((_, element) => element?.textContent === 'no-model:0')
 
-    fireEvent.mouseEnter(emptySelector)
-
     expect(emptySelector).toBeInTheDocument()
-    expect(screen.getByText('indicator:red')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
+    expect(screen.getByText('indicator:error')).toBeInTheDocument()
+    expect(screen.getByLabelText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
   })
 
   it('should render the selected model without warning when it is installed', () => {
     render(<ModelBar provider="openai" model="gpt-4o" />)
 
     expect(screen.getByText('openai/gpt-4o:1')).toBeInTheDocument()
-    expect(screen.queryByText('indicator:red')).not.toBeInTheDocument()
+    expect(screen.queryByText('indicator:error')).not.toBeInTheDocument()
   })
 
   it('should show a warning tooltip when the selected model is not installed', () => {
     render(<ModelBar provider="openai" model="gpt-4.1" />)
 
-    fireEvent.mouseEnter(screen.getByText('openai/gpt-4.1:1'))
-
     expect(screen.getByText('openai/gpt-4.1:1')).toBeInTheDocument()
-    expect(screen.getByText('indicator:red')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
+    expect(screen.getByText('indicator:error')).toBeInTheDocument()
+    expect(screen.getByLabelText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
   })
 })

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ToolItem from '../tool-item'
 
@@ -23,21 +24,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button'
 vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version', () => ({
   SwitchPluginVersion: ({ onChange }: { onChange: () => void }) => (
     <button onClick={onChange}>switch version</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({
-    children,
-    popupContent,
-  }: {
-    children: React.ReactNode
-    popupContent: React.ReactNode
-  }) => (
-    <div>
-      {children}
-      <div>{popupContent}</div>
-    </div>
   ),
 }))
 
@@ -102,7 +88,7 @@ describe('ToolItem', () => {
     expect(onInstall).toHaveBeenCalledTimes(2)
   })
 
-  it('blocks unsupported MCP tools and still exposes error state', () => {
+  it('blocks unsupported MCP tools and still exposes error state', async () => {
     mcpAllowed = false
     const { rerender } = render(
       <ToolItem
@@ -125,6 +111,7 @@ describe('ToolItem', () => {
       />,
     )
 
-    expect(screen.getByText('tool failed')).toBeInTheDocument()
+    await userEvent.hover(screen.getByLabelText('tool failed'))
+    expect(await screen.findByText('tool failed')).toBeInTheDocument()
   })
 })

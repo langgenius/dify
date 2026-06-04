@@ -14,7 +14,11 @@ const mockHandleNodeSelect = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockCloseAllInputFieldPanels = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
-const mockRequestRestore = vi.fn()
+const mockRestoreWorkflow = vi.fn()
+const mockResetWorkflowVersionHistory = vi.fn()
+const mockEmitRestoreIntent = vi.fn()
+const mockEmitRestoreComplete = vi.fn()
+const mockEmitWorkflowUpdate = vi.fn()
 const mockNotify = vi.fn()
 const mockRunAndHistory = vi.fn()
 const mockViewHistory = vi.fn()
@@ -32,9 +36,6 @@ vi.mock('../../hooks', () => ({
   useWorkflowRun: () => ({
     handleBackupDraft: mockHandleBackupDraft,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
-  }),
-  useLeaderRestore: () => ({
-    requestRestore: mockRequestRestore,
   }),
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: vi.fn(),
@@ -58,6 +59,18 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
+  useRestoreWorkflow: () => ({
+    mutateAsync: mockRestoreWorkflow,
+  }),
+}))
+
+vi.mock('../../collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    emitRestoreIntent: mockEmitRestoreIntent,
+    emitRestoreComplete: mockEmitRestoreComplete,
+    emitWorkflowUpdate: mockEmitWorkflowUpdate,
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -166,13 +179,7 @@ describe('Header layout components', () => {
     mockNodesReadOnly = false
     mockTheme = 'light'
     mockUseNodes.mockReturnValue([])
-    mockRequestRestore.mockImplementation((_payload: unknown, callbacks?: {
-      onSuccess?: () => void
-      onSettled?: () => void
-    }) => {
-      callbacks?.onSuccess?.()
-      callbacks?.onSettled?.()
-    })
+    mockRestoreWorkflow.mockResolvedValue({})
   })
 
   describe('HeaderInNormal', () => {
@@ -277,7 +284,7 @@ describe('Header layout components', () => {
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRequestRestore).toHaveBeenCalledTimes(1)
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/flow-1/workflows/version-1/restore')
         expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
         expect(store.getState().isRestoring).toBe(false)
         expect(store.getState().backupDraft).toBeUndefined()
@@ -289,7 +296,52 @@ describe('Header layout components', () => {
           message: 'workflow.versionHistory.action.restoreSuccess',
         })
       })
+      expect(mockEmitRestoreIntent).toHaveBeenCalledWith({
+        versionId: currentVersion.id,
+        versionName: currentVersion.marked_name,
+        initiatorUserId: '',
+        initiatorName: '',
+      })
+      expect(mockEmitRestoreComplete).toHaveBeenCalledWith({
+        versionId: currentVersion.id,
+        success: true,
+      })
+      expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('flow-1')
+      expect(mockResetWorkflowVersionHistory).toHaveBeenCalledTimes(1)
       expect(onRestoreSettled).toHaveBeenCalledTimes(1)
+    })
+
+    it('should restore rag pipeline versions without emitting collaboration events', async () => {
+      const currentVersion = createCurrentVersion()
+
+      renderWorkflowComponent(
+        <HeaderInRestoring />,
+        {
+          initialStoreState: {
+            isRestoring: true,
+            showWorkflowVersionHistoryPanel: true,
+            backupDraft: createBackupDraft(),
+            currentVersion,
+          },
+          hooksStoreProps: {
+            configsMap: {
+              flowType: FlowType.ragPipeline,
+              flowId: 'pipeline-1',
+              fileSettings: {},
+            },
+          },
+        },
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+
+      await waitFor(() => {
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/rag/pipelines/pipeline-1/workflows/version-1/restore')
+        expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
+      })
+      expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
+      expect(mockEmitRestoreComplete).not.toHaveBeenCalled()
+      expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
     })
   })
 

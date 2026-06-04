@@ -19,6 +19,7 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
@@ -52,7 +53,7 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.tools.signature import sign_upload_file
+from core.tools.signature import sign_upload_file_preview_url
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.knowledge_retrieval import exc
@@ -326,6 +327,7 @@ class DatasetRetrieval:
                         if record.summary:
                             source.summary = record.summary
 
+                        grant_retriever_segment_access([str(segment.id)])
                         retrieval_resource_list.append(source)
 
         if retrieval_resource_list:
@@ -515,6 +517,9 @@ class DatasetRetrieval:
                             )
                         ).all()
                         if attachments_with_bindings:
+                            grant_upload_file_access(
+                                str(upload_file.id) for _, upload_file in attachments_with_bindings
+                            )
                             for _, upload_file in attachments_with_bindings:
                                 attachment_info = File(
                                     file_id=upload_file.id,
@@ -529,7 +534,7 @@ class DatasetRetrieval:
                                     ),
                                     size=upload_file.size,
                                     storage_key=upload_file.key,
-                                    url=sign_upload_file(upload_file.id, upload_file.extension),
+                                    url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
                                 )
                                 context_files.append(attachment_info)
                 if show_retrieve_source:
@@ -1520,16 +1525,18 @@ class DatasetRetrieval:
                 filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
 
             case "is" | "=":
-                if isinstance(value, str):
-                    filters.append(json_field == value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
+                match value:
+                    case str():
+                        filters.append(json_field == value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
 
             case "is not" | "≠":
-                if isinstance(value, str):
-                    filters.append(json_field != value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                match value:
+                    case str():
+                        filters.append(json_field != value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -1549,12 +1556,13 @@ class DatasetRetrieval:
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
             case "in" | "not in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
+                match value:
+                    case str():
+                        value_list = [v.strip() for v in value.split(",") if v.strip()]
+                    case list() | tuple():
+                        value_list = [str(v) for v in value if v is not None]
+                    case _:
+                        value_list = [str(value)] if value is not None else []
 
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
@@ -1701,12 +1709,13 @@ class DatasetRetrieval:
         usage = None
         for result in invoke_result:
             text = result.delta.message.content
-            if isinstance(text, str):
-                full_text += text
-            elif isinstance(text, list):
-                for i in text:
-                    if i.data:
-                        full_text += i.data
+            match text:
+                case str():
+                    full_text += text
+                case list():
+                    for i in text:
+                        if i.data:
+                            full_text += i.data
 
             if not model:
                 model = result.model

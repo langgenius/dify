@@ -75,7 +75,7 @@ export type AppTokenCostsResponse = {
 
 export type UpdateAppModelConfigResponse = { result: string }
 
-export type ApiKeyItemResponse = {
+type ApiKeyItemResponse = {
   id: string
   token: string
   last_used_at: string

@@ -1,9 +1,7 @@
 'use client'
-import type { FC } from 'react'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 
 type Props = {
   className?: string
@@ -12,31 +10,34 @@ type Props = {
   label: string
   labelClassName?: string
   tooltip?: string
-  testId?: string
 }
 
-const CheckboxWithLabel: FC<Props> = ({
+export default function CheckboxWithLabel({
   className = '',
   isChecked,
   onChange,
   label,
   labelClassName,
   tooltip,
-  testId,
-}) => {
+}: Props) {
   return (
-    <label className={cn(className, 'flex h-7 items-center space-x-2')}>
-      <Checkbox checked={isChecked} onCheck={() => onChange(!isChecked)} id={testId} />
-      <div className={cn('text-sm font-normal text-text-secondary', labelClassName)}>{label}</div>
-      {tooltip && (
-        <Tooltip
-          popupContent={
-            <div className="w-[200px]">{tooltip}</div>
-          }
-          triggerClassName="ml-0.5 w-4 h-4"
+    <div className={cn(className, 'flex h-7 items-center')}>
+      <label className="flex min-w-0 cursor-pointer items-center">
+        <Checkbox
+          checked={isChecked}
+          onCheckedChange={checked => onChange(checked)}
         />
-      )}
-    </label>
+        <span className={cn('ml-2 min-w-0 text-left text-sm font-normal text-text-secondary', labelClassName)}>
+          {label}
+        </span>
+      </label>
+      <div className="ml-1 flex min-w-0 items-center">
+        {tooltip && (
+          <Infotip aria-label={tooltip} popupClassName="w-[200px]">
+            {tooltip}
+          </Infotip>
+        )}
+      </div>
+    </div>
   )
 }
-export default React.memo(CheckboxWithLabel)

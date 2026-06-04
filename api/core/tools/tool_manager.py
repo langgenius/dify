@@ -264,9 +264,9 @@ class ToolManager:
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-                check_credential_policy_compliance(
+                runtime_check_credential_policy_compliance(
                     credential_id=builtin_provider.id,
                     provider=provider_id,
                     credential_type=PluginCredentialType.TOOL,
@@ -863,7 +863,7 @@ class ToolManager:
         return controller
 
     @classmethod
-    def user_get_api_provider(cls, provider: str, tenant_id: str):
+    def user_get_api_provider(cls, provider: str, tenant_id: str, mask: bool = True):
         """
         get api provider
         """
@@ -902,8 +902,10 @@ class ToolManager:
             tenant_id=tenant_id,
             controller=controller,
         )
-
-        masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
+        if mask:
+            masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
+        else:
+            masked_credentials = encrypter.decrypt(credentials)
 
         try:
             icon = emoji_icon_adapter.validate_json(provider_obj.icon)
@@ -960,34 +962,41 @@ class ToolManager:
     @classmethod
     def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            workflow_provider: WorkflowToolProvider | None = db.session.scalar(
-                select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .limit(1)
-            )
+            # Use a short-lived session to avoid holding a database transaction
+            # during long-running nested workflow execution.
+            # Fixes: idle in transaction when Workflow Tool runs (#36902)
+            with Session(db.engine, expire_on_commit=False) as session:
+                workflow_provider: WorkflowToolProvider | None = session.scalar(
+                    select(WorkflowToolProvider)
+                    .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
+                    .limit(1)
+                )
 
-            if workflow_provider is None:
-                raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
+                if workflow_provider is None:
+                    raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            icon = emoji_icon_adapter.validate_json(workflow_provider.icon)
-            return icon
+                icon = emoji_icon_adapter.validate_json(workflow_provider.icon)
+                return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
     def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            api_provider: ApiToolProvider | None = db.session.scalar(
-                select(ApiToolProvider)
-                .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
-                .limit(1)
-            )
+            # Use a short-lived session to avoid holding a database transaction
+            # during long-running tool execution.
+            with Session(db.engine, expire_on_commit=False) as session:
+                api_provider: ApiToolProvider | None = session.scalar(
+                    select(ApiToolProvider)
+                    .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
+                    .limit(1)
+                )
 
-            if api_provider is None:
-                raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
+                if api_provider is None:
+                    raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
-            icon = emoji_icon_adapter.validate_json(api_provider.icon)
-            return icon
+                icon = emoji_icon_adapter.validate_json(api_provider.icon)
+                return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
@@ -1078,6 +1087,13 @@ class ToolManager:
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
                 if variable_pool:
                     config = tool_configurations.get(parameter.name, {})
+
+                    selector_value = cls._extract_runtime_selector_value(parameter, config)
+                    if selector_value is not None:
+                        # Selector parameters carry structured dictionaries, not scalar ToolInput values.
+                        runtime_parameters[parameter.name] = selector_value
+                        continue
+
                     if not (config and isinstance(config, dict) and config.get("value") is not None):
                         continue
                     tool_input = ToolNodeData.ToolInput.model_validate(tool_configurations.get(parameter.name, {}))
@@ -1104,6 +1120,40 @@ class ToolManager:
                     value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
                     runtime_parameters[parameter.name] = value
         return runtime_parameters
+
+    @classmethod
+    def _extract_runtime_selector_value(cls, parameter: ToolParameter, config: Any) -> dict[str, Any] | None:
+        if parameter.type not in {
+            ToolParameter.ToolParameterType.MODEL_SELECTOR,
+            ToolParameter.ToolParameterType.APP_SELECTOR,
+        }:
+            return None
+        if not isinstance(config, dict):
+            return None
+
+        input_value = config.get("value")
+        if isinstance(input_value, dict) and cls._is_selector_value(parameter, input_value):
+            return cast("dict[str, Any]", parameter.init_frontend_parameter(input_value))
+
+        if cls._is_selector_value(parameter, config):
+            selector_value = dict(config)
+            selector_value.pop("type", None)
+            selector_value.pop("value", None)
+            return cast("dict[str, Any]", parameter.init_frontend_parameter(selector_value))
+
+        return None
+
+    @classmethod
+    def _is_selector_value(cls, parameter: ToolParameter, value: Mapping[str, Any]) -> bool:
+        if parameter.type == ToolParameter.ToolParameterType.MODEL_SELECTOR:
+            return (
+                isinstance(value.get("provider"), str)
+                and isinstance(value.get("model"), str)
+                and isinstance(value.get("model_type"), str)
+            )
+        if parameter.type == ToolParameter.ToolParameterType.APP_SELECTOR:
+            return isinstance(value.get("app_id"), str)
+        return False
 
 
 ToolManager.load_hardcoded_providers_cache()

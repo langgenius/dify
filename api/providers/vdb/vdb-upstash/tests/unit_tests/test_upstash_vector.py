@@ -36,7 +36,7 @@ def _build_fake_upstash_module():
 
 
 @pytest.fixture
-def upstash_module(monkeypatch):
+def upstash_module(monkeypatch: pytest.MonkeyPatch):
     # Remove patched modules if present
     for modname in ["upstash_vector", "dify_vdb_upstash.upstash_vector"]:
         if modname in sys.modules:
@@ -65,7 +65,7 @@ def test_upstash_config_validation(upstash_module, field, value, message):
         upstash_module.UpstashVectorConfig.model_validate(values)
 
 
-def test_init_get_type_and_dimension(upstash_module, monkeypatch):
+def test_init_get_type_and_dimension(upstash_module, monkeypatch: pytest.MonkeyPatch):
     vector = upstash_module.UpstashVector("collection_1", _config(upstash_module))
 
     assert vector.get_type() == upstash_module.VectorType.UPSTASH
@@ -162,7 +162,7 @@ def test_search_by_vector_filter_threshold_and_delete(upstash_module):
     vector.index.reset.assert_called_once()
 
 
-def test_upstash_factory_uses_existing_or_generated_collection(upstash_module, monkeypatch):
+def test_upstash_factory_uses_existing_or_generated_collection(upstash_module, monkeypatch: pytest.MonkeyPatch):
     factory = upstash_module.UpstashVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

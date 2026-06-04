@@ -64,7 +64,7 @@ const Recipient = ({
       <div className="rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs">
         <div className="flex h-10 items-center justify-between pr-1 pl-3">
           <div className="flex grow items-center gap-2">
-            <RiGroupLine className="h-4 w-4 text-text-secondary" />
+            <RiGroupLine className="size-4 text-text-secondary" />
             <div className="system-sm-medium text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`, { ns: 'workflow' })}</div>
           </div>
           <div className="w-[86px]">

@@ -1,6 +1,5 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useState } from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 
 import Conversion from '../conversion'
@@ -279,8 +278,6 @@ vi.mock('@/app/components/workflow/constants', () => ({
 vi.mock('@/app/components/workflow/utils', () => ({
   initialNodes: vi.fn(nodes => nodes),
   initialEdges: vi.fn(edges => edges),
-  getKeyboardKeyCodeBySystem: (key: string) => key,
-  getKeyboardKeyNameBySystem: (key: string) => key,
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
@@ -348,58 +345,6 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: function MockAppIconPicker({ onSelect, onClose }: {
-    onSelect?: (payload:
-      | { type: 'emoji', icon: string, background: string }
-      | { type: 'image', fileId: string, url: string },
-    ) => void
-    onClose?: () => void
-  }) {
-    const [activeTab, setActiveTab] = useState<'emoji' | 'image'>('emoji')
-    const [selectedEmoji, setSelectedEmoji] = useState({ icon: '😀', background: '#FFFFFF' })
-
-    return (
-      <div data-testid="app-icon-picker">
-        <button type="button" onClick={() => setActiveTab('emoji')}>iconPicker.emoji</button>
-        <button type="button" onClick={() => setActiveTab('image')}>iconPicker.image</button>
-        {activeTab === 'emoji' && (
-          <button
-            type="button"
-            data-testid="picker-emoji-option"
-            onClick={() => setSelectedEmoji({ icon: '🎯', background: '#FFAA00' })}
-          >
-            picker-emoji-option
-          </button>
-        )}
-        {activeTab === 'image' && <div data-testid="picker-image-panel">picker-image-panel</div>}
-        <button type="button" onClick={() => onClose?.()}>iconPicker.cancel</button>
-        <button
-          type="button"
-          onClick={() => {
-            if (activeTab === 'emoji') {
-              onSelect?.({
-                type: 'emoji',
-                icon: selectedEmoji.icon,
-                background: selectedEmoji.background,
-              })
-              return
-            }
-
-            onSelect?.({
-              type: 'image',
-              fileId: 'test-file-id',
-              url: 'https://example.com/icon.png',
-            })
-          }}
-        >
-          iconPicker.ok
-        </button>
-      </div>
-    )
-  },
-}))
-
 // Silence expected console.error from Dialog/Modal rendering
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -420,7 +365,7 @@ function getDescriptionTextarea() {
 }
 
 // Helper to find the AppIcon span in PublishAsKnowledgePipelineModal
-// HeadlessUI Dialog renders via portal to document.body, so we search the full document
+// The modal renders via portal to document.body, so we search the full document.
 function getAppIcon() {
   const emoji = document.querySelector('em-emoji')
   return emoji?.closest('span') as HTMLElement
@@ -687,7 +632,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
       // Real AppIcon renders an em-emoji custom element inside a span
-      // HeadlessUI Dialog renders via portal, so search the full document
+      // The modal renders via portal, so search the full document.
       expect(document.querySelector('em-emoji')).toBeInTheDocument()
     })
 
@@ -729,7 +674,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     it('should call onCancel when close icon is clicked', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('publish-modal-close-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })
@@ -767,7 +712,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
 
-      fireEvent.click(screen.getByTestId('picker-emoji-option'))
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
 
       // Click OK to confirm selection
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
@@ -845,7 +790,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const { rerender } = render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
       rerender(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-      // HeadlessUI Dialog renders via portal, so search the full document
+      // The modal renders via portal, so search the full document.
       expect(document.querySelector('em-emoji')).toBeInTheDocument()
     })
   })
@@ -1087,7 +1032,7 @@ describe('Integration Tests', () => {
       // Open picker and select an emoji
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
-      fireEvent.click(screen.getByTestId('picker-emoji-option'))
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.publish/i }))

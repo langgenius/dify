@@ -1,10 +1,11 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { useKeyPress } from 'ahooks'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
-import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
+import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
+
+const JSON_SCHEMA_CONFIRM_HOTKEY = 'Mod+Enter'
 
 type AdvancedActionsProps = {
   isConfirmDisabled: boolean
@@ -19,12 +20,11 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  useKeyPress([`${getKeyboardKeyCodeBySystem('ctrl')}.enter`], (e) => {
-    e.preventDefault()
+  useHotkey(JSON_SCHEMA_CONFIRM_HOTKEY, () => {
     onConfirm()
   }, {
-    exactMatch: true,
-    useCapture: true,
+    enabled: !isConfirmDisabled,
+    ignoreInputs: false,
   })
 
   return (
@@ -40,7 +40,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
         onClick={onConfirm}
       >
         <span>{t('operation.confirm', { ns: 'common' })}</span>
-        <ShortcutsName keys={['ctrl', '⏎']} bgColor="white" />
+        <ShortcutKbd hotkey={JSON_SCHEMA_CONFIRM_HOTKEY} bgColor="white" />
       </Button>
     </div>
   )

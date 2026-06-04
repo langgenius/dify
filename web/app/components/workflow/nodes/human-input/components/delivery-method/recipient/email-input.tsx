@@ -104,6 +104,8 @@ const EmailInput = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation()
+
     if (e.key === 'Enter' || e.key === 'Tab' || e.key === ' ' || e.key === ',') {
       e.preventDefault()
       handleEmailAdd()
@@ -155,12 +157,8 @@ const EmailInput = ({
               sideOffset={4}
               alignOffset={-40}
               popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-              positionerProps={{
-                anchor: inputRef,
-                style: {
-                  zIndex: 1000,
-                },
-              }}
+              popupProps={{ initialFocus: false, finalFocus: false }}
+              positionerProps={{ anchor: inputRef }}
             >
               <MemberList
                 searchValue={searchKey}

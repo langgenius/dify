@@ -22,9 +22,6 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import (
-    ToolParameter,
-)
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
@@ -150,43 +147,8 @@ class BaseAgentRunner(AppRunner):
         message_tool = PromptMessageTool(
             name=tool.tool_name,
             description=tool_entity.entity.description.llm,
-            parameters={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
+            parameters=tool_entity.get_llm_parameters_json_schema(),
         )
-
-        parameters = tool_entity.get_merged_runtime_parameters()
-        for parameter in parameters:
-            if parameter.form != ToolParameter.ToolParameterForm.LLM:
-                continue
-
-            parameter_type = parameter.type.as_normal_type()
-            if parameter.type in {
-                ToolParameter.ToolParameterType.SYSTEM_FILES,
-                ToolParameter.ToolParameterType.FILE,
-                ToolParameter.ToolParameterType.FILES,
-            }:
-                continue
-            enum = []
-            if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options] if parameter.options else []
-
-            message_tool.parameters["properties"][parameter.name] = (
-                {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or "",
-                }
-                if parameter.input_schema is None
-                else parameter.input_schema
-            )
-
-            if len(enum) > 0:
-                message_tool.parameters["properties"][parameter.name]["enum"] = enum
-
-            if parameter.required:
-                message_tool.parameters["required"].append(parameter.name)
 
         return message_tool, tool_entity
 
@@ -252,40 +214,7 @@ class BaseAgentRunner(AppRunner):
         """
         update prompt message tool
         """
-        # try to get tool runtime parameters
-        tool_runtime_parameters = tool.get_runtime_parameters()
-
-        for parameter in tool_runtime_parameters:
-            if parameter.form != ToolParameter.ToolParameterForm.LLM:
-                continue
-
-            parameter_type = parameter.type.as_normal_type()
-            if parameter.type in {
-                ToolParameter.ToolParameterType.SYSTEM_FILES,
-                ToolParameter.ToolParameterType.FILE,
-                ToolParameter.ToolParameterType.FILES,
-            }:
-                continue
-            enum = []
-            if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options] if parameter.options else []
-
-            prompt_tool.parameters["properties"][parameter.name] = (
-                {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or "",
-                }
-                if parameter.input_schema is None
-                else parameter.input_schema
-            )
-
-            if len(enum) > 0:
-                prompt_tool.parameters["properties"][parameter.name]["enum"] = enum
-
-            if parameter.required:
-                if parameter.name not in prompt_tool.parameters["required"]:
-                    prompt_tool.parameters["required"].append(parameter.name)
-
+        prompt_tool.parameters = tool.get_llm_parameters_json_schema()
         return prompt_tool
 
     def create_agent_thought(
@@ -532,7 +461,6 @@ class BaseAgentRunner(AppRunner):
         file_objs = file_factory.build_from_message_files(
             message_files=files,
             tenant_id=self.tenant_id,
-            config=file_extra_config,
             access_controller=_file_access_controller,
         )
         if not file_objs:

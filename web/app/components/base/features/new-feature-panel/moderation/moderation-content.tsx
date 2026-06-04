@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { ModerationContentConfig } from '@/models/debug'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 
 type ModerationContentProps = {
@@ -50,12 +51,14 @@ const ModerationContent: FC<ModerationContentProps> = ({
                 {t('feature.moderation.modal.content.preset', { ns: 'appDebug' })}
                 <span className="text-xs font-normal text-text-tertiary">{t('feature.moderation.modal.content.supportMarkdown', { ns: 'appDebug' })}</span>
               </div>
-              <div className="relative h-20 rounded-lg bg-components-input-bg-normal px-3 py-2">
-                <textarea
+              {/* Keep this counter composed locally; extract only if more textarea counter cases repeat. */}
+              <div className="relative h-20">
+                <Textarea
+                  aria-label={t('feature.moderation.modal.content.preset', { ns: 'appDebug' }) as string}
                   value={config.preset_response || ''}
-                  className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
+                  className="size-full resize-none pb-8"
                   placeholder={t('feature.moderation.modal.content.placeholder', { ns: 'appDebug' }) || ''}
-                  onChange={e => handleConfigChange('preset_response', e.target.value)}
+                  onValueChange={value => handleConfigChange('preset_response', value)}
                 />
                 <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
                   <span>{(config.preset_response || '').length}</span>

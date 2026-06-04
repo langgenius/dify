@@ -115,7 +115,7 @@ def test_weekday_tool():
         list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "day": 1}))
 
 
-def test_simple_code_valid_execution(monkeypatch):
+def test_simple_code_valid_execution(monkeypatch: pytest.MonkeyPatch):
     simple_code = _build_builtin_tool(SimpleCode)
 
     monkeypatch.setattr(
@@ -138,7 +138,7 @@ def test_simple_code_invalid_language():
         list(simple_code.invoke(user_id="u", tool_parameters={"language": "go", "code": "fmt.Println(1)"}))
 
 
-def test_simple_code_execution_error(monkeypatch):
+def test_simple_code_execution_error(monkeypatch: pytest.MonkeyPatch):
     simple_code = _build_builtin_tool(SimpleCode)
 
     monkeypatch.setattr(
@@ -155,14 +155,14 @@ def test_webscraper_empty_url():
     assert empty == "Please input url"
 
 
-def test_webscraper_fetch(monkeypatch):
+def test_webscraper_fetch(monkeypatch: pytest.MonkeyPatch):
     webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr("core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url", lambda *a, **k: "page")
     full = list(webscraper.invoke(user_id="u", tool_parameters={"url": "https://example.com"}))[0].message.text
     assert full == "page"
 
 
-def test_webscraper_summary(monkeypatch):
+def test_webscraper_summary(monkeypatch: pytest.MonkeyPatch):
     webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr("core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url", lambda *a, **k: "page")
     monkeypatch.setattr(webscraper, "summary", lambda user_id, content: "summary")
@@ -175,7 +175,7 @@ def test_webscraper_summary(monkeypatch):
     assert summarized == "summary"
 
 
-def test_webscraper_fetch_error(monkeypatch):
+def test_webscraper_fetch_error(monkeypatch: pytest.MonkeyPatch):
     webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url",
@@ -192,7 +192,7 @@ def test_asr_invalid_file():
     assert "not a valid audio file" in invalid_file
 
 
-def test_asr_valid_file_invocation(monkeypatch):
+def test_asr_valid_file_invocation(monkeypatch: pytest.MonkeyPatch):
     asr = _build_builtin_tool(ASRTool)
     model_instance = type("M", (), {"invoke_speech2text": lambda self, file: "transcript"})()
     model_manager = type("Mgr", (), {"get_model_instance": lambda *a, **k: model_instance})()
@@ -209,7 +209,7 @@ def test_asr_valid_file_invocation(monkeypatch):
     assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
 
 
-def test_asr_available_models_and_runtime_parameters(monkeypatch):
+def test_asr_available_models_and_runtime_parameters(monkeypatch: pytest.MonkeyPatch):
     asr = _build_builtin_tool(ASRTool)
     provider_model = type("PM", (), {"provider": "p", "models": [type("Model", (), {"model": "m"})()]})()
     monkeypatch.setattr(
@@ -220,7 +220,7 @@ def test_asr_available_models_and_runtime_parameters(monkeypatch):
     assert asr.get_runtime_parameters()[0].name == "model"
 
 
-def test_tts_invoke_returns_messages(monkeypatch):
+def test_tts_invoke_returns_messages(monkeypatch: pytest.MonkeyPatch):
     tts = _build_builtin_tool(TTSTool)
     captured_manager_kwargs = {}
     voices_model_instance = type(
@@ -280,7 +280,7 @@ def test_tts_tool_raises_when_voice_unavailable(monkeypatch, voices):
         list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
 
 
-def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch):
+def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch: pytest.MonkeyPatch):
     tts = _build_builtin_tool(TTSTool)
 
     model_1 = SimpleNamespace(
@@ -307,7 +307,7 @@ def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch):
     assert runtime_parameters[1].name == "voice#provider-a#model-a"
 
 
-def test_provider_classes_and_builtin_sort(monkeypatch):
+def test_provider_classes_and_builtin_sort(monkeypatch: pytest.MonkeyPatch):
     # Use object.__new__ to avoid YAML-loading __init__; only pass-through validation is exercised.
     # Ensure pass-through _validate_credentials methods are executed.
     AudioToolProvider._validate_credentials(object.__new__(AudioToolProvider), "u", {})

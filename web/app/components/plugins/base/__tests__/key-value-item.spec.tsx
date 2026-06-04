@@ -6,15 +6,13 @@ vi.mock('../../../base/icons/src/vender/line/files', () => ({
   CopyCheck: () => <span data-testid="copy-check-icon" />,
 }))
 
-vi.mock('../../../base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip" data-content={popupContent}>{children}</div>
-  ),
-}))
-
 vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <button data-testid="action-button" onClick={onClick}>{children}</button>
+  default: ({
+    children,
+    onClick,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button data-testid="action-button" onClick={onClick} {...props}>{children}</button>
   ),
 }))
 
@@ -54,6 +52,6 @@ describe('KeyValueItem', () => {
 
   it('renders copy tooltip', () => {
     render(<KeyValueItem label="ID" value="123" />)
-    expect(screen.getByTestId('tooltip')).toHaveAttribute('data-content', 'common.operation.copy')
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
   })
 })

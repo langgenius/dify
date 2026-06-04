@@ -179,7 +179,7 @@ describe('InputsFormContent', () => {
 
   it('should handle bool input changes', async () => {
     render(<InputsFormContent />)
-    const checkbox = screen.getByTestId(/checkbox-/i)
+    const checkbox = screen.getByRole('checkbox', { name: 'Bool Label' })
     await user.click(checkbox)
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
@@ -200,7 +200,7 @@ describe('InputsFormContent', () => {
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
   })
 
-  it('should render select dropdown above the settings dialog layer', async () => {
+  it('should render select dropdown on the shared dify-ui overlay layer', async () => {
     render(<InputsFormContent />)
     const selectTrigger = screen.getAllByText(/Select Label/i).find(el => el.tagName === 'SPAN')
     if (!selectTrigger)
@@ -208,7 +208,7 @@ describe('InputsFormContent', () => {
 
     await user.click(selectTrigger)
 
-    expect(screen.getByText('Option 1').closest('.z-\\[60\\]')).not.toBeNull()
+    expect(screen.getByText('Option 1').closest('.z-50')).not.toBeNull()
   })
 
   it('should handle single file upload change', async () => {

@@ -15,6 +15,7 @@ export class DifyWorld extends World {
   lastCreatedAppName: string | undefined
   createdAppIds: string[] = []
   capturedDownloads: Download[] = []
+  shareURL: string | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -27,6 +28,7 @@ export class DifyWorld extends World {
     this.lastCreatedAppName = undefined
     this.createdAppIds = []
     this.capturedDownloads = []
+    this.shareURL = undefined
   }
 
   async startSession(browser: Browser, authenticated: boolean) {

@@ -1,16 +1,16 @@
 'use client'
 import type { Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
-import { Description as DialogDescription, DialogTitle } from '@headlessui/react'
 import { Button } from '@langgenius/dify-ui/button'
+import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import useAccessControlStore from '../../../../context/access-control-store'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
@@ -79,7 +79,7 @@ export default function AccessControl(props: AccessControlProps) {
           <AccessControlItem type={AccessMode.ORGANIZATION}>
             <div className="flex items-center p-3">
               <div className="flex grow items-center gap-x-2">
-                <RiBuildingLine className="h-4 w-4 text-text-primary" />
+                <RiBuildingLine className="size-4 text-text-primary" />
                 <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.organization', { ns: 'app' })}</p>
               </div>
             </div>
@@ -90,7 +90,7 @@ export default function AccessControl(props: AccessControlProps) {
           <AccessControlItem type={AccessMode.EXTERNAL_MEMBERS}>
             <div className="flex items-center p-3">
               <div className="flex grow items-center gap-x-2">
-                <RiVerifiedBadgeLine className="h-4 w-4 text-text-primary" />
+                <RiVerifiedBadgeLine className="size-4 text-text-primary" />
                 <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.external', { ns: 'app' })}</p>
               </div>
               {!hideTip && <WebAppSSONotEnabledTip />}
@@ -98,7 +98,7 @@ export default function AccessControl(props: AccessControlProps) {
           </AccessControlItem>
           <AccessControlItem type={AccessMode.PUBLIC}>
             <div className="flex items-center gap-x-2 p-3">
-              <RiGlobalLine className="h-4 w-4 text-text-primary" />
+              <RiGlobalLine className="size-4 text-text-primary" />
               <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.anyone', { ns: 'app' })}</p>
             </div>
           </AccessControlItem>

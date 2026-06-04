@@ -1,6 +1,6 @@
 """Word (.docx) document extractor used for RAG ingestion.
 
-Supports local file paths and remote URLs (downloaded via `core.helper.ssrf_proxy`).
+Supports local file paths and remote URLs downloaded through the unified remote-file fetcher.
 """
 
 import inspect
@@ -10,6 +10,7 @@ import os
 import re
 import tempfile
 import uuid
+from typing import override
 from urllib.parse import urlparse
 
 from docx import Document as DocxDocument
@@ -17,7 +18,7 @@ from docx.oxml.ns import qn
 from docx.text.run import Run
 
 from configs import dify_config
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -51,7 +52,7 @@ class WordExtractor(BaseExtractor):
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            response = ssrf_proxy.get(self.file_path)
+            response = remote_fetcher.make_request("GET", self.file_path)
 
             if response.status_code != 200:
                 response.close()
@@ -91,6 +92,7 @@ class WordExtractor(BaseExtractor):
     def __del__(self):
         self.close()
 
+    @override
     def extract(self) -> list[Document]:
         """Load given path as single page."""
         content = self.parse_docx(self.file_path)
@@ -110,7 +112,7 @@ class WordExtractor(BaseExtractor):
     def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+        base_url = dify_config.FILES_URL
 
         for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:
@@ -120,7 +122,7 @@ class WordExtractor(BaseExtractor):
                     if not self._is_valid_url(url):
                         continue
                     try:
-                        response = ssrf_proxy.get(url)
+                        response = remote_fetcher.make_request("GET", url)
                     except Exception as e:
                         logger.warning("Failed to download image from URL: %s: %s", url, str(e))
                         continue

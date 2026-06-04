@@ -42,7 +42,6 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
         placement="bottom-start"
         sideOffset={4}
         popupClassName="w-max"
-        listClassName="no-scrollbar"
       >
         {supportedLanguages.map(({ prompt_name }) => (
           <SelectItem key={prompt_name} value={prompt_name}>

@@ -13,7 +13,7 @@ class ChromaVectorTest(AbstractVectorTest):
         self.vector = ChromaVector(
             collection_name=self.collection_name,
             config=ChromaConfig(
-                host="localhost",
+                host="127.0.0.1",
                 port=8000,
                 tenant=chromadb.DEFAULT_TENANT,
                 database=chromadb.DEFAULT_DATABASE,

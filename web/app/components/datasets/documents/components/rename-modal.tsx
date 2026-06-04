@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import { renameDocumentName } from '@/service/datasets'
 
 type Props = {
@@ -55,23 +55,31 @@ const RenameModal: FC<Props> = ({
   }
 
   return (
-    <Modal
-      title={t('list.table.rename', { ns: 'datasetDocuments' })}
-      isShow
-      onClose={onClose}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
     >
-      <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('list.table.name', { ns: 'datasetDocuments' })}</div>
-      <Input
-        className="mt-2 h-10"
-        value={newName}
-        onChange={e => setNewName(e.target.value)}
-      />
+      <DialogContent className="overflow-hidden! border-none text-left align-middle">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t('list.table.rename', { ns: 'datasetDocuments' })}
+        </DialogTitle>
 
-      <div className="mt-10 flex justify-end">
-        <Button className="mr-2 shrink-0" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button variant="primary" className="shrink-0" onClick={handleSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
-      </div>
-    </Modal>
+        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('list.table.name', { ns: 'datasetDocuments' })}</div>
+        <Input
+          className="mt-2 h-10"
+          value={newName}
+          onChange={e => setNewName(e.target.value)}
+        />
+
+        <div className="mt-10 flex justify-end">
+          <Button className="mr-2 shrink-0" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="primary" className="shrink-0" onClick={handleSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 export default React.memo(RenameModal)

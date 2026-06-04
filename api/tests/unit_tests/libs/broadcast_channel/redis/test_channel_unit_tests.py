@@ -673,7 +673,7 @@ class TestRedisShardedSubscription:
     """Test cases for the _RedisShardedSubscription class."""
 
     @pytest.fixture(autouse=True)
-    def patch_sharded_redis_type(self, monkeypatch):
+    def patch_sharded_redis_type(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.Redis", FakeRedisClient)
 
     @pytest.fixture
@@ -889,7 +889,9 @@ class TestRedisShardedSubscription:
         assert not sharded_subscription._queue.empty()
         assert sharded_subscription._queue.get_nowait() == b"test sharded payload"
 
-    def test_get_message_uses_target_node_for_cluster_client(self, mock_pubsub: MagicMock, monkeypatch):
+    def test_get_message_uses_target_node_for_cluster_client(
+        self, mock_pubsub: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ):
         """Test that cluster clients use target_node for sharded messages."""
 
         class DummyRedisCluster:
@@ -1177,7 +1179,7 @@ class TestRedisSubscriptionCommon:
         return request.param
 
     @pytest.fixture(autouse=True)
-    def patch_sharded_redis_type(self, monkeypatch):
+    def patch_sharded_redis_type(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.Redis", FakeRedisClient)
 
     @pytest.fixture

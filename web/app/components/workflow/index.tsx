@@ -13,6 +13,7 @@ import type {
   EnvironmentVariable,
   Node,
 } from './types'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
@@ -33,6 +34,7 @@ import { setAutoFreeze } from 'immer'
 import {
   Fragment,
   memo,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -77,18 +79,15 @@ import {
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
-import EdgeContextmenu from './edge-contextmenu'
 import HelpLine from './help-line'
 import {
   useEdgesInteractions,
-  useLeaderRestoreListener,
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
   usePanelInteractions,
   useSelectionInteractions,
   useSetWorkflowVarsWithValue,
-  useShortcuts,
   useWorkflow,
   useWorkflowReadOnly,
   useWorkflowRefreshDraft,
@@ -96,7 +95,6 @@ import {
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
-import NodeContextmenu from './node-contextmenu'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
@@ -109,21 +107,21 @@ import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import Control from './operator/control'
-import PanelContextmenu from './panel-contextmenu'
-import SelectionContextmenu from './selection-contextmenu'
+import { WorkflowLocalStorageBridge } from './persistence/local-storage-bridge'
+import { useWorkflowHotkeys } from './shortcuts/use-workflow-hotkeys'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import {
   useStore,
   useWorkflowStore,
-} from './store'
+} from './store/workflow'
 import SyncingDataModal from './syncing-data-modal'
 import {
   ControlMode,
   WorkflowRunningStatus,
 } from './types'
 import { setupScrollToNodeListener } from './utils/node-navigation'
-import { WorkflowHistoryProvider } from './workflow-history-store'
+import { WorkflowContextmenu } from './workflow-contextmenu'
 import 'reactflow/dist/style.css'
 import './style.css'
 
@@ -215,6 +213,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const bottomPanelHeight = useStore(s => s.bottomPanelHeight)
   const setWorkflowCanvasWidth = useStore(s => s.setWorkflowCanvasWidth)
   const setWorkflowCanvasHeight = useStore(s => s.setWorkflowCanvasHeight)
+  const workflowCanvasSizeRef = useRef<{ width?: number, height?: number }>({})
+  const workflowCanvasResizeFrameRef = useRef<number | undefined>(undefined)
   const controlHeight = useMemo(() => {
     if (!workflowCanvasHeight)
       return '100%'
@@ -224,15 +224,33 @@ export const Workflow: FC<WorkflowProps> = memo(({
   // update workflow Canvas width and height
   useEffect(() => {
     if (workflowContainerRef.current) {
+      const updateWorkflowCanvasSize = (width: number, height: number) => {
+        if (workflowCanvasSizeRef.current.width === width && workflowCanvasSizeRef.current.height === height)
+          return
+
+        workflowCanvasSizeRef.current = { width, height }
+        if (workflowCanvasResizeFrameRef.current)
+          cancelAnimationFrame(workflowCanvasResizeFrameRef.current)
+
+        workflowCanvasResizeFrameRef.current = requestAnimationFrame(() => {
+          workflowCanvasResizeFrameRef.current = undefined
+          setWorkflowCanvasWidth(width)
+          setWorkflowCanvasHeight(height)
+        })
+      }
+
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { inlineSize, blockSize } = entry.borderBoxSize[0]!
-          setWorkflowCanvasWidth(inlineSize)
-          setWorkflowCanvasHeight(blockSize)
+          updateWorkflowCanvasSize(inlineSize, blockSize)
         }
       })
       resizeContainerObserver.observe(workflowContainerRef.current)
       return () => {
+        if (workflowCanvasResizeFrameRef.current) {
+          cancelAnimationFrame(workflowCanvasResizeFrameRef.current)
+          workflowCanvasResizeFrameRef.current = undefined
+        }
         resizeContainerObserver.disconnect()
       }
     }
@@ -278,6 +296,17 @@ export const Workflow: FC<WorkflowProps> = memo(({
       toast.info(t('collaboration.historyAction.generic', { ns: 'workflow' }))
     })
   }, [t])
+
+  useEffect(() => {
+    return collaborationManager.onRestoreIntent((data) => {
+      toast.info(t('versionHistory.action.restoreInProgress', {
+        ns: 'workflow',
+        userName: data.initiatorName,
+        versionName: data.versionName || data.versionId,
+      }))
+    })
+  }, [t])
+
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -329,20 +358,21 @@ export const Workflow: FC<WorkflowProps> = memo(({
       handleCommentIconClick(target)
   }, [activeComment, handleCommentIconClick, visibleComments])
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === WORKFLOW_DATA_UPDATE) {
-      setNodes(v.payload.nodes)
-      store.getState().setNodes(v.payload.nodes)
-      setEdges(v.payload.edges)
-      workflowStore.setState({ edgeMenu: undefined })
+  eventEmitter?.useSubscription((v: EventEmitterValue) => {
+    if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
+      const payload = v.payload as WorkflowDataUpdatePayload
+      setNodes(payload.nodes)
+      store.getState().setNodes(payload.nodes)
+      setEdges(payload.edges)
+      workflowStore.setState({ contextMenuTarget: undefined })
 
-      if (v.payload.viewport)
-        reactflow.setViewport(v.payload.viewport)
+      if (payload.viewport)
+        reactflow.setViewport(payload.viewport)
 
-      if (v.payload.hash)
-        setSyncWorkflowDraftHash(v.payload.hash)
+      if (payload.hash)
+        setSyncWorkflowDraftHash(payload.hash)
 
-      onWorkflowDataUpdate?.(v.payload)
+      onWorkflowDataUpdate?.(payload)
 
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
@@ -530,11 +560,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useShortcuts()
+  useWorkflowHotkeys()
   // Initialize workflow node search functionality
   useWorkflowSearch()
-
-  useLeaderRestoreListener()
 
   // Set up scroll to node event listener using the utility function
   useEffect(() => {
@@ -606,10 +634,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
         <Control />
       </div>
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
-      <PanelContextmenu />
-      <NodeContextmenu />
-      <EdgeContextmenu />
-      <SelectionContextmenu />
       <HelpLine />
       <AlertDialog open={!!showConfirm} onOpenChange={open => !open && setShowConfirm(undefined)}>
         <AlertDialogContent>
@@ -699,66 +723,68 @@ export const Workflow: FC<WorkflowProps> = memo(({
           : null
       })}
       {children}
-      <ReactFlow
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        nodes={nodes}
-        edges={edges}
-        className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
-        onNodeDragStart={handleNodeDragStart}
-        onNodeDrag={handleNodeDrag}
-        onNodeDragStop={handleNodeDragStop}
-        onNodeMouseEnter={handleNodeEnter}
-        onNodeMouseLeave={handleNodeLeave}
-        onNodeClick={handleNodeClick}
-        onNodeContextMenu={handleNodeContextMenu}
-        onConnect={handleNodeConnect}
-        onConnectStart={handleNodeConnectStart}
-        onConnectEnd={handleNodeConnectEnd}
-        onEdgeMouseEnter={handleEdgeEnter}
-        onEdgeMouseLeave={handleEdgeLeave}
-        onEdgesChange={handleEdgesChange}
-        onEdgeContextMenu={handleEdgeContextMenu}
-        onSelectionStart={handleSelectionStart}
-        onSelectionChange={handleSelectionChange}
-        onSelectionDrag={handleSelectionDrag}
-        onPaneContextMenu={handlePaneContextMenu}
-        onSelectionContextMenu={handleSelectionContextMenu}
-        connectionLineComponent={CustomConnectionLine}
-        // NOTE: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
-        connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
-        defaultViewport={viewport}
-        multiSelectionKeyCode={null}
-        deleteKeyCode={null}
-        nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
-        nodesConnectable={!nodesReadOnly}
-        nodesFocusable={!nodesReadOnly}
-        edgesFocusable={!nodesReadOnly}
-        panOnScroll={controlMode === ControlMode.Pointer && !workflowReadOnly}
-        panOnDrag={controlMode === ControlMode.Hand || [1]}
-        zoomOnPinch={true}
-        zoomOnScroll={true}
-        zoomOnDoubleClick={true}
-        isValidConnection={isValidConnection}
-        selectionKeyCode={null}
-        selectionMode={SelectionMode.Partial}
-        selectionOnDrag={controlMode === ControlMode.Pointer && !workflowReadOnly}
-        minZoom={0.25}
-      >
-        <Background
-          gap={[14, 14]}
-          size={2}
-          className="bg-workflow-canvas-workflow-bg"
-          color="var(--color-workflow-canvas-workflow-dot-color)"
-        />
-        {showUserCursors && cursors && (
-          <UserCursors
-            cursors={cursors}
-            myUserId={myUserId || null}
-            onlineUsers={onlineUsers || []}
+      <WorkflowContextmenu>
+        <ReactFlow
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          nodes={nodes}
+          edges={edges}
+          className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragStop={handleNodeDragStop}
+          onNodeMouseEnter={handleNodeEnter}
+          onNodeMouseLeave={handleNodeLeave}
+          onNodeClick={handleNodeClick}
+          onNodeContextMenu={handleNodeContextMenu}
+          onConnect={handleNodeConnect}
+          onConnectStart={handleNodeConnectStart}
+          onConnectEnd={handleNodeConnectEnd}
+          onEdgeMouseEnter={handleEdgeEnter}
+          onEdgeMouseLeave={handleEdgeLeave}
+          onEdgesChange={handleEdgesChange}
+          onEdgeContextMenu={handleEdgeContextMenu}
+          onSelectionStart={handleSelectionStart}
+          onSelectionChange={handleSelectionChange}
+          onSelectionDrag={handleSelectionDrag}
+          onPaneContextMenu={handlePaneContextMenu}
+          onSelectionContextMenu={handleSelectionContextMenu}
+          connectionLineComponent={CustomConnectionLine}
+          // NOTE: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
+          connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
+          defaultViewport={viewport}
+          multiSelectionKeyCode={null}
+          deleteKeyCode={null}
+          nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
+          nodesConnectable={!nodesReadOnly}
+          nodesFocusable={!nodesReadOnly}
+          edgesFocusable={!nodesReadOnly}
+          panOnScroll={controlMode === ControlMode.Pointer && !workflowReadOnly}
+          panOnDrag={controlMode === ControlMode.Hand || [1]}
+          zoomOnPinch={true}
+          zoomOnScroll={true}
+          zoomOnDoubleClick={true}
+          isValidConnection={isValidConnection}
+          selectionKeyCode={null}
+          selectionMode={SelectionMode.Partial}
+          selectionOnDrag={controlMode === ControlMode.Pointer && !workflowReadOnly}
+          minZoom={0.25}
+        >
+          <Background
+            gap={[14, 14]}
+            size={2}
+            className="bg-workflow-canvas-workflow-bg"
+            color="var(--color-workflow-canvas-workflow-dot-color)"
           />
-        )}
-      </ReactFlow>
+          {showUserCursors && cursors && (
+            <UserCursors
+              cursors={cursors}
+              myUserId={myUserId || null}
+              onlineUsers={onlineUsers || []}
+            />
+          )}
+        </ReactFlow>
+      </WorkflowContextmenu>
     </div>
   )
 })
@@ -794,6 +820,30 @@ type WorkflowWithDefaultContextProps
       children: React.ReactNode
     }
 
+const WorkflowHistoryStoreInitializer = ({
+  nodes,
+  edges,
+  children,
+}: WorkflowWithDefaultContextProps) => {
+  const workflowStore = useWorkflowStore()
+  const initializedRef = useRef(false)
+
+  if (!initializedRef.current) {
+    workflowStore.temporal.getState().pause()
+    workflowStore.getState().setWorkflowHistory({
+      nodes,
+      edges,
+      workflowHistoryEvent: undefined,
+      workflowHistoryEventMeta: undefined,
+    })
+    workflowStore.temporal.getState().clear()
+    workflowStore.temporal.getState().resume()
+    initializedRef.current = true
+  }
+
+  return children
+}
+
 const WorkflowWithDefaultContext = ({
   nodes,
   edges,
@@ -801,14 +851,17 @@ const WorkflowWithDefaultContext = ({
 }: WorkflowWithDefaultContextProps) => {
   return (
     <ReactFlowProvider>
-      <WorkflowHistoryProvider
+      <WorkflowHistoryStoreInitializer
         nodes={nodes}
         edges={edges}
       >
+        <Suspense fallback={null}>
+          <WorkflowLocalStorageBridge />
+        </Suspense>
         <DatasetsDetailProvider nodes={nodes}>
           {children}
         </DatasetsDetailProvider>
-      </WorkflowHistoryProvider>
+      </WorkflowHistoryStoreInitializer>
     </ReactFlowProvider>
   )
 }

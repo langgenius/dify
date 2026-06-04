@@ -93,7 +93,7 @@ describe('StartPanel', () => {
     expect(screen.getByText('userinput.files')).toBeInTheDocument()
     expect(screen.queryByText('LEGACY')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('add-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.start.inputField' }))
 
     expect(showAddVarModal).toHaveBeenCalledTimes(1)
   })

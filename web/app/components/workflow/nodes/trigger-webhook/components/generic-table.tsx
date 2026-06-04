@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 // Tiny utility to judge whether a cell value is effectively present
@@ -16,9 +16,9 @@ const isPresent = (v: unknown): boolean => {
   return !(v === '' || v === null || v === undefined || v === false)
 }
 // Column configuration types for table components
-export type ColumnType = 'input' | 'select' | 'switch' | 'custom'
+type ColumnType = 'input' | 'select' | 'switch' | 'custom'
 
-export type SelectOption = {
+type SelectOption = {
   name: string
   value: string
 }
@@ -115,7 +115,7 @@ const renderInputCell = (
       disabled={readonly}
       wrapperClassName="w-full min-w-0"
       className={cn(
-        'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
+        'h-6 rounded-none border-0 bg-transparent p-0 shadow-none',
         'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
@@ -129,22 +129,33 @@ const renderSelectCell = (
   readonly: boolean,
   handleChange: (value: unknown) => void,
 ) => {
+  const options = column.options || []
+  const selectedOption = options.find(option => option.value === value) ?? null
+
   return (
-    <SimpleSelect
-      items={column.options || []}
-      defaultValue={value as string | undefined}
-      onSelect={item => handleChange(item.value)}
+    <Select
+      value={selectedOption?.value ?? null}
+      onValueChange={nextValue => nextValue && handleChange(nextValue)}
       disabled={readonly}
-      placeholder={column.placeholder}
-      hideChecked={false}
-      notClearable={true}
-      wrapperClassName="h-6 w-full min-w-0"
-      className={cn(
-        'h-6 rounded-none bg-transparent pr-6 pl-0 text-text-secondary',
-        'group-hover/simple-select:bg-transparent hover:bg-transparent focus-visible:bg-transparent',
-      )}
-      optionWrapClassName="w-26 min-w-26 z-60 -ml-3"
-    />
+    >
+      <SelectTrigger
+        size="small"
+        className={cn(
+          'h-6 w-full min-w-0 rounded-none bg-transparent py-0 pr-6 pl-0 text-text-secondary',
+          'hover:bg-transparent focus-visible:bg-transparent',
+        )}
+      >
+        {selectedOption?.name ?? column.placeholder}
+      </SelectTrigger>
+      <SelectContent className="-translate-x-3" popupClassName="w-26 min-w-26">
+        {options.map(option => (
+          <SelectItem key={option.value} value={option.value}>
+            <SelectItemText>{option.name}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -158,9 +169,9 @@ const renderSwitchCell = (
   return (
     <div className="flex h-7 items-center">
       <Checkbox
-        id={`${column.key}-${String(dataIndex ?? 'v')}`}
         checked={Boolean(value)}
-        onCheck={() => handleChange(!value)}
+        aria-label={column.title}
+        onCheckedChange={handleChange}
         disabled={readonly}
       />
     </div>
@@ -304,7 +315,7 @@ const GenericTable: FC<GenericTableProps> = ({
                       aria-label="Delete row"
                     >
                       {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
-                      <RiDeleteBinLine className="h-3.5 w-3.5 text-text-destructive" />
+                      <RiDeleteBinLine className="size-3.5 text-text-destructive" />
                     </button>
                   </div>
                 )}

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
@@ -55,7 +56,7 @@ def runner():
 
 
 class TestOrganizeSystemPrompt:
-    def test_organize_system_prompt_success(self, runner, mocker):
+    def test_organize_system_prompt_success(self, runner, mocker: MockerFixture):
         first_prompt = "Instruction: {{instruction}}, Tools: {{tools}}, Names: {{tool_names}}"
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt(first_prompt)))
 
@@ -154,7 +155,7 @@ class TestOrganizeUserQuery:
 
 
 class TestOrganizePromptMessages:
-    def test_no_scratchpad(self, runner, mocker):
+    def test_no_scratchpad(self, runner, mocker: MockerFixture):
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])
@@ -164,7 +165,7 @@ class TestOrganizePromptMessages:
         assert "query" in result
         runner._organize_historic_prompt_messages.assert_called_once()
 
-    def test_with_final_scratchpad(self, runner, mocker):
+    def test_with_final_scratchpad(self, runner, mocker: MockerFixture):
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])
@@ -177,7 +178,7 @@ class TestOrganizePromptMessages:
         combined = "".join([m.content for m in assistant_msgs if isinstance(m.content, str)])
         assert "Final Answer: done" in combined
 
-    def test_with_thought_action_observation(self, runner, mocker):
+    def test_with_thought_action_observation(self, runner, mocker: MockerFixture):
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])
@@ -197,7 +198,7 @@ class TestOrganizePromptMessages:
         assert "Action: action" in combined
         assert "Observation: observe" in combined
 
-    def test_multiple_units_mixed(self, runner, mocker):
+    def test_multiple_units_mixed(self, runner, mocker: MockerFixture):
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])

@@ -1,6 +1,7 @@
 /* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { AccountProfileQueryProvider, createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
@@ -82,23 +83,6 @@ vi.mock('@/app/components/app/store', () => ({
     showPromptLogModal: mockShowPromptLogModal,
     currentLogModalActiveTab: mockCurrentLogModalActiveTab,
   }),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
-vi.mock('@/app/components/base/drawer', () => ({
-  default: ({ children, isOpen, onClose }: { children: ReactNode, isOpen: boolean, onClose: () => void }) => (
-    isOpen
-      ? (
-          <div data-testid="drawer">
-            <button onClick={onClose}>close-drawer</button>
-            {children}
-          </div>
-        )
-      : null
-  ),
 }))
 
 vi.mock('@/app/components/base/loading', () => ({
@@ -251,12 +235,15 @@ const renderConversationList = ({
   logs?: any
   searchParams?: string
 } = {}) => {
+  const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
   return renderWithNuqs(
-    <ConversationList
-      appDetail={appDetail}
-      logs={logs}
-      onRefresh={mockOnRefresh}
-    />,
+    <AccountProfileQueryProvider queryClient={queryClient}>
+      <ConversationList
+        appDetail={appDetail}
+        logs={logs}
+        onRefresh={mockOnRefresh}
+      />
+    </AccountProfileQueryProvider>,
     { searchParams },
   )
 }
@@ -287,7 +274,7 @@ describe('ConversationList', () => {
 
     await waitFor(() => {
       expect(onUrlUpdate).toHaveBeenCalled()
-      expect(screen.getByTestId('drawer')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     const update = onUrlUpdate.mock.calls.at(-1)![0]
@@ -297,11 +284,26 @@ describe('ConversationList', () => {
   })
 
   it('should close the drawer, refresh, and clear modal flags', async () => {
+    mockChatConversationDetail = {
+      id: 'conversation-1',
+      created_at: 1710000000,
+      model_config: {
+        model: 'gpt-4o',
+        configs: {
+          introduction: 'Hello there',
+        },
+        user_input_form: [],
+      },
+      message: {
+        inputs: {},
+      },
+    }
+
     const { onUrlUpdate } = renderConversationList({
       searchParams: '?page=2&conversation_id=conversation-1',
     })
 
-    fireEvent.click(screen.getByText('close-drawer'))
+    fireEvent.click(await screen.findByRole('button', { name: 'operation.close' }))
 
     expect(mockOnRefresh).toHaveBeenCalledTimes(1)
     expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(false)

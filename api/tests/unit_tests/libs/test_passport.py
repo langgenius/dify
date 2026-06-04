@@ -143,28 +143,13 @@ class TestPassportService:
         assert str(exc_info.value) == "401 Unauthorized: Token has expired."
 
     # Configuration tests
-    def test_should_handle_empty_secret_key(self):
-        """Test behavior when SECRET_KEY is empty"""
+    def test_should_use_configured_secret_key_without_policy_validation(self):
+        """Test that policy decisions are owned by config, not PassportService."""
         with patch("libs.passport.dify_config") as mock_config:
-            mock_config.SECRET_KEY = ""
+            mock_config.SECRET_KEY = "configured"
             service = PassportService()
 
-            # Empty secret key should still work but is insecure
-            payload = {"test": "data"}
-            token = service.issue(payload)
-            decoded = service.verify(token)
-            assert decoded == payload
-
-    def test_should_handle_none_secret_key(self):
-        """Test behavior when SECRET_KEY is None"""
-        with patch("libs.passport.dify_config") as mock_config:
-            mock_config.SECRET_KEY = None
-            service = PassportService()
-
-            payload = {"test": "data"}
-            # JWT library will raise TypeError when secret is None
-            with pytest.raises((TypeError, jwt.exceptions.InvalidKeyError)):
-                service.issue(payload)
+        assert service.sk == "configured"
 
     # Boundary condition tests
     def test_should_handle_large_payload(self, passport_service):

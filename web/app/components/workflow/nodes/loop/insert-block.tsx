@@ -42,14 +42,13 @@ const InsertBlock = ({
     <div
       className={cn(
         'nopan nodrag',
-        'absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 group-hover/insert:block',
+        'absolute top-1/2 left-1/2 hidden -translate-1/2 group-hover/insert:block',
         open && 'block!',
       )}
     >
       <BlockSelector
         open={open}
         onOpenChange={handleOpenChange}
-        asChild
         onSelect={handleInsert}
         availableBlocksTypes={availableBlocksTypes}
         triggerClassName={() => 'hover:scale-125 transition-all'}

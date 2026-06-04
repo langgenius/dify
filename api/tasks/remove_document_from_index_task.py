@@ -61,7 +61,7 @@ def remove_document_from_index_task(document_id: str):
                 except Exception as e:
                     logger.warning("Failed to disable summaries for document %s: %s", document.id, str(e))
 
-            index_node_ids = [segment.index_node_id for segment in segments]
+            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             if index_node_ids:
                 try:
                     index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)

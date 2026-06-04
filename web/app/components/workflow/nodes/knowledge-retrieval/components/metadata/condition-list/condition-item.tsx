@@ -62,13 +62,16 @@ const ConditionItem = ({
   }, [onRemoveCondition, condition.id])
 
   const currentMetadata = useMemo(() => {
-    // Try to match by metadata_id first (reliable reference)
     if (condition.metadata_id) {
-      const found = metadataList.find(metadata => metadata.id === condition.metadata_id)
-      if (found)
-        return found
+      const foundByIdAndName = metadataList.find(metadata => metadata.id === condition.metadata_id && metadata.name === condition.name)
+      if (foundByIdAndName)
+        return foundByIdAndName
+
+      const foundById = metadataList.filter(metadata => metadata.id === condition.metadata_id)
+      if (foundById.length === 1)
+        return foundById[0]
     }
-    // Fallback to name matching for backward compatibility with old conditions
+
     return metadataList.find(metadata => metadata.name === condition.name)
   }, [metadataList, condition.metadata_id, condition.name])
 
@@ -135,7 +138,7 @@ const ConditionItem = ({
           <div className="w-0 grow">
             <div className="flex h-6 min-w-0 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-1 shadow-xs">
               <div className="mr-0.5 p-px">
-                <MetadataIcon type={currentMetadata?.type} className="h-3 w-3" />
+                <MetadataIcon type={currentMetadata?.type} className="size-3" />
               </div>
               <div className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary">{currentMetadata?.name}</div>
               <div className="system-xs-regular text-text-tertiary">{currentMetadata?.type}</div>
@@ -191,12 +194,12 @@ const ConditionItem = ({
         </div>
       </div>
       <div
-        className="mt-1 ml-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+        className="mt-1 ml-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className="h-4 w-4" />
+        <RiDeleteBinLine className="size-4" />
       </div>
     </div>
   )

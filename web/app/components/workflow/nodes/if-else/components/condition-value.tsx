@@ -93,7 +93,7 @@ const ConditionValue = ({
       </div>
       {
         !notHasValue && (
-          <div className="grow truncate px-1.5 text-xs leading-6 text-text-secondary" title={formatValue}>{isSelect ? selectName : formatValue}</div>
+          <div className="grow truncate px-1.5 text-xs/6 text-text-secondary" title={formatValue}>{isSelect ? selectName : formatValue}</div>
         )
       }
     </div>

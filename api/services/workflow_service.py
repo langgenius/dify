@@ -29,7 +29,11 @@ from core.workflow.node_factory import (
     get_node_type_classes_mapping,
     is_start_node_type,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    apply_dify_debug_email_recipient,
+)
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -55,7 +59,7 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from graphon.nodes.human_input.entities import HumanInputNodeData, validate_human_input_submission
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from graphon.nodes.human_input.enums import HumanInputFormKind
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
@@ -78,6 +82,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -136,14 +141,21 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+    def get_draft_workflow(
+        self, app_model: App, workflow_id: str | None = None, session: Session | None = None
+    ) -> Workflow | None:
         """
         Get draft workflow
+
+        When ``session`` is provided, reuse it so callers that already hold a
+        Session avoid checking out an extra request-scoped ``db.session``
+        connection. Falls back to ``db.session`` for backward compatibility.
         """
         if workflow_id:
-            return self.get_published_workflow_by_id(app_model, workflow_id)
+            return self.get_published_workflow_by_id(app_model, workflow_id, session=session)
         # fetch draft workflow by app_model
-        workflow = db.session.scalar(
+        bind = session if session is not None else db.session
+        workflow = bind.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -156,11 +168,18 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Workflow | None:
+    def get_published_workflow_by_id(
+        self, app_model: App, workflow_id: str, session: Session | None = None
+    ) -> Workflow | None:
         """
         fetch published workflow by workflow_id
+
+        When ``session`` is provided, reuse it so callers that already hold a
+        Session avoid checking out an extra request-scoped ``db.session``
+        connection. Falls back to ``db.session`` for backward compatibility.
         """
-        workflow = db.session.scalar(
+        bind = session if session is not None else db.session
+        workflow = bind.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -178,16 +197,20 @@ class WorkflowService:
             )
         return workflow
 
-    def get_published_workflow(self, app_model: App) -> Workflow | None:
+    def get_published_workflow(self, app_model: App, session: Session | None = None) -> Workflow | None:
         """
         Get published workflow
+
+        When ``session`` is provided, reuse it so callers that already hold a
+        Session avoid checking out an extra request-scoped ``db.session``
+        connection. Falls back to ``db.session`` for backward compatibility.
         """
 
         if not app_model.workflow_id:
             return None
 
-        # fetch published workflow by workflow_id
-        workflow = db.session.scalar(
+        bind = session if session is not None else db.session
+        workflow = bind.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -296,6 +319,13 @@ class WorkflowService:
             workflow.updated_at = naive_utc_now()
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
+
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+            session=cast(Session, db.session),
+            draft_workflow=workflow,
+        )
 
         # commit db session changes
         db.session.commit()
@@ -442,6 +472,13 @@ class WorkflowService:
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+            session=session,
+            draft_workflow=draft_workflow,
+        )
+
         # billing check
         if dify_config.BILLING_ENABLED:
             limit_info = BillingService.get_info(app_model.tenant_id)
@@ -475,6 +512,11 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+            session=session,
+            draft_workflow=draft_workflow,
+            published_workflow=workflow,
+        )
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
@@ -979,7 +1021,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1039,7 +1081,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1047,18 +1089,27 @@ class WorkflowService:
         )
         node_data = node.node_data
 
-        validate_human_input_submission(
-            inputs=node_data.inputs,
-            user_actions=node_data.user_actions,
+        human_input_service = HumanInputService(session_factory=sessionmaker(db.engine))
+        normalized_form_inputs = human_input_service.validate_and_normalize_submission(
+            tenant_id=app_model.tenant_id,
+            form_definition=node_data,
             selected_action_id=action,
             form_data=form_inputs,
         )
 
         rendered_content = node.render_form_content_before_submission()
-        outputs: dict[str, Any] = dict(form_inputs)
+        selected_action = next(
+            (user_action for user_action in node_data.user_actions if user_action.id == action),
+            None,
+        )
+        outputs: dict[str, Any] = dict(normalized_form_inputs)
         outputs["__action_id"] = action
+        outputs["__action_value"] = selected_action.title if selected_action else ""
         outputs["__rendered_content"] = node.render_form_content_with_outputs(
-            rendered_content, outputs, node_data.outputs_field_names()
+            rendered_content,
+            outputs,
+            node_data.outputs_field_names(),
+            node_data.inputs,
         )
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
@@ -1118,7 +1169,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1211,7 +1262,7 @@ class WorkflowService:
                 recipients_data.append(DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token))
         return recipients_data
 
-    def _build_human_input_node(
+    def _build_human_input_node_for_debugging(
         self,
         *,
         workflow: Workflow,
@@ -1240,10 +1291,11 @@ class WorkflowService:
         node_data = HumanInputNode.validate_node_data(adapt_human_input_node_data_for_graph(node_config["data"]))
         node = HumanInputNode(
             node_id=node_config["id"],
-            config=node_data,
+            data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             runtime=DifyHumanInputNodeRuntime(run_context),
+            file_reference_factory=DifyFileReferenceFactory(run_context),
         )
         return node
 

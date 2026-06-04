@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 import core.app.apps.completion.app_generator as module
 from core.app.apps.completion.app_generator import CompletionAppGenerator
@@ -15,7 +16,7 @@ from services.errors.message import MessageNotExistsError
 
 
 @pytest.fixture
-def generator(mocker):
+def generator(mocker: MockerFixture):
     gen = CompletionAppGenerator()
 
     mocker.patch.object(module, "copy_current_request_context", side_effect=lambda fn: fn)
@@ -29,7 +30,10 @@ def generator(mocker):
 
     mocker.patch.object(module, "MessageBasedAppQueueManager", return_value=MagicMock())
     mocker.patch.object(module, "TraceQueueManager", return_value=MagicMock())
-    mocker.patch.object(module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
+    generate_entity = mocker.patch.object(
+        module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs)
+    )
+    gen.generate_entity = generate_entity
 
     return gen
 
@@ -69,7 +73,7 @@ class TestCompletionAppGenerator:
                 streaming=False,
             )
 
-    def test_generate_success_no_file_config(self, generator, mocker):
+    def test_generate_success_no_file_config(self, generator, mocker: MockerFixture):
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
@@ -91,15 +95,16 @@ class TestCompletionAppGenerator:
         result = generator.generate(
             app_model=_build_app_model(),
             user=_build_user(),
-            args={"query": "q", "inputs": {"a": 1}, "files": []},
+            args={"query": "q", "inputs": {"a": 1}, "files": [], "trace_session_id": "session-1"},
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
 
         assert result == "converted"
+        assert generator.generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
         module.file_factory.build_from_mappings.assert_not_called()
 
-    def test_generate_success_with_files(self, generator, mocker):
+    def test_generate_success_with_files(self, generator, mocker: MockerFixture):
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
 
@@ -131,7 +136,7 @@ class TestCompletionAppGenerator:
         assert result == "converted"
         module.file_factory.build_from_mappings.assert_called_once()
 
-    def test_generate_override_model_config_debugger(self, generator, mocker):
+    def test_generate_override_model_config_debugger(self, generator, mocker: MockerFixture):
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
 
@@ -165,7 +170,7 @@ class TestCompletionAppGenerator:
 
         assert get_app_config.call_args.kwargs["override_config_dict"] == override_config
 
-    def test_generate_more_like_this_message_not_found(self, generator, mocker):
+    def test_generate_more_like_this_message_not_found(self, generator, mocker: MockerFixture):
         session = mocker.MagicMock()
         session.scalar.return_value = None
         mocker.patch.object(module.db, "session", session)
@@ -178,7 +183,7 @@ class TestCompletionAppGenerator:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_generate_more_like_this_disabled(self, generator, mocker):
+    def test_generate_more_like_this_disabled(self, generator, mocker: MockerFixture):
         app_model = _build_app_model()
         app_model.app_model_config = MagicMock(more_like_this=False, more_like_this_dict={"enabled": False})
 
@@ -195,7 +200,7 @@ class TestCompletionAppGenerator:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_generate_more_like_this_app_model_config_missing(self, generator, mocker):
+    def test_generate_more_like_this_app_model_config_missing(self, generator, mocker: MockerFixture):
         app_model = _build_app_model()
         app_model.app_model_config = None
 
@@ -212,7 +217,7 @@ class TestCompletionAppGenerator:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_generate_more_like_this_message_config_none(self, generator, mocker):
+    def test_generate_more_like_this_message_config_none(self, generator, mocker: MockerFixture):
         app_model = _build_app_model()
         app_model.app_model_config = MagicMock(more_like_this=True, more_like_this_dict={"enabled": True})
 
@@ -229,7 +234,7 @@ class TestCompletionAppGenerator:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_generate_more_like_this_success(self, generator, mocker):
+    def test_generate_more_like_this_success(self, generator, mocker: MockerFixture):
         app_model = _build_app_model()
         app_model.app_model_config = MagicMock(more_like_this=True, more_like_this_dict={"enabled": True})
 
@@ -297,7 +302,7 @@ class TestCompletionAppGenerator:
             (RuntimeError("boom"), True),
         ],
     )
-    def test_generate_worker_error_handling(self, generator, mocker, error, should_publish):
+    def test_generate_worker_error_handling(self, generator, mocker: MockerFixture, error, should_publish):
         flask_app = MagicMock()
         flask_app.app_context.return_value = contextlib.nullcontext()
 

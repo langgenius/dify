@@ -372,7 +372,7 @@ describe('SettingsModal', () => {
 
       // Act
       await renderSettingsModal(createDataset())
-      await user.click(screen.getByText('datasetSettings.form.embeddingModelTipLink'))
+      await user.click(screen.getByRole('button', { name: 'datasetSettings.form.embeddingModelTipLink' }))
 
       // Assert
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })

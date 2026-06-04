@@ -28,7 +28,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  // Memoize typeOptions to prevent unnecessary re-renders that cause SimpleSelect state resets
+  // Memoize typeOptions to prevent unnecessary re-renders that cause Select state resets
   const typeOptions = useMemo(() =>
     createParameterTypeOptions(contentType), [contentType])
 

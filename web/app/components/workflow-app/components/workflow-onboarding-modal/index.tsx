@@ -1,9 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'
 
@@ -44,15 +43,6 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
           />
         </div>
       </DialogContent>
-
-      {/* TODO: reduce z-1002 to match @langgenius/dify-ui primitives after legacy overlay migration completes */}
-      <DialogPortal>
-        <div className="pointer-events-none fixed top-1/2 left-1/2 z-1002 flex -translate-x-1/2 translate-y-[165px] items-center gap-1 body-xs-regular text-text-quaternary">
-          <span>{t('onboarding.escTip.press', { ns: 'workflow' })}</span>
-          <ShortcutsName keys={[t('onboarding.escTip.key', { ns: 'workflow' })]} textColor="secondary" />
-          <span>{t('onboarding.escTip.toDismiss', { ns: 'workflow' })}</span>
-        </div>
-      </DialogPortal>
     </Dialog>
   )
 }

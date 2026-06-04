@@ -228,6 +228,21 @@ describe('AppOperations', () => {
   })
 
   describe('Visible operations click', () => {
+    it('should keep focus ring inside visible operation buttons', () => {
+      const cleanup = setupDomMeasurements(500, 60, [80])
+      const editOp = createOperation('edit', 'Edit')
+
+      render(<AppOperations gap={4} operations={[editOp]} />)
+
+      const visibleButton = screen.getAllByText('Edit')
+        .map(label => label.closest('button'))
+        .find(button => button?.tabIndex !== -1)
+
+      expect(visibleButton).toHaveClass('focus-visible:ring-inset')
+
+      cleanup()
+    })
+
     it('should call onClick when a visible operation is clicked', async () => {
       const cleanup = setupDomMeasurements(500, 60, [80, 80])
       const user = userEvent.setup()

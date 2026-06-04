@@ -32,8 +32,8 @@ vi.mock('../../../../utils', async () => {
   }
 })
 
-vi.mock('../panel-operator', () => ({
-  default: ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => (
+vi.mock('@/app/components/workflow/node-actions-menu', () => ({
+  NodeActionsDropdown: ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => (
     <>
       <button type="button" onClick={() => onOpenChange(true)}>open panel</button>
       <button type="button" onClick={() => onOpenChange(false)}>close panel</button>

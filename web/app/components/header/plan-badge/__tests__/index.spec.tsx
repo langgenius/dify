@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../../../billing/type'
-import PlanBadge from '../index'
+import { PlanBadge } from '../index'
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -34,6 +34,20 @@ describe('PlanBadge', () => {
     expect(
       screen.getByText('billing.upgradeBtn.encourageShort'),
     ).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('should render upgrade action as a button when onClick is provided', () => {
+    const handleClick = vi.fn()
+    mockUseProviderContext.mockReturnValue(
+      createMockProviderContextValue({ isFetchedPlan: true }),
+    )
+
+    render(<PlanBadge plan={Plan.sandbox} sandboxAsUpgrade={true} onClick={handleClick} />)
+
+    const button = screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' })
+    fireEvent.click(button)
+    expect(handleClick).toHaveBeenCalledTimes(1)
   })
 
   it('should render sandbox badge when plan is sandbox and sandboxAsUpgrade is false', () => {
@@ -42,6 +56,7 @@ describe('PlanBadge', () => {
     )
     render(<PlanBadge plan={Plan.sandbox} sandboxAsUpgrade={false} />)
     expect(screen.getByText(Plan.sandbox)).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('should render professional badge when plan is professional', () => {
@@ -87,7 +102,7 @@ describe('PlanBadge', () => {
       createMockProviderContextValue({ isFetchedPlan: true }),
     )
     render(<PlanBadge plan={Plan.team} onClick={handleClick} />)
-    fireEvent.click(screen.getByText(Plan.team))
+    fireEvent.click(screen.getByRole('button', { name: Plan.team }))
     expect(handleClick).toHaveBeenCalledTimes(1)
   })
 

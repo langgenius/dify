@@ -6,6 +6,7 @@ import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
+import type { HumanInputFormSubmitData } from './human-input-content/type'
 import type { AppData } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -40,7 +41,7 @@ type AnswerProps = {
   noChatInput?: boolean
   switchSibling?: (siblingMessageId: string) => void
   hideAvatar?: boolean
-  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -143,7 +144,7 @@ const Answer: FC<AnswerProps> = ({
   return (
     <div className="mb-2 flex last:mb-0">
       {!hideAvatar && (
-        <div className="relative h-10 w-10 shrink-0">
+        <div className="relative size-10 shrink-0">
           {answerIcon || <AnswerIcon />}
           {responding && (
             <div className="absolute top-[-3px] left-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs">

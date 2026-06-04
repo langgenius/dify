@@ -32,7 +32,7 @@ class _MissingGraphBuilder:
 
 def _build_runtime_state() -> GraphRuntimeState:
     return GraphRuntimeState(
-        variable_pool=VariablePool(system_variables=default_system_variables(), user_inputs={}),
+        variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={}),
         start_at=0.0,
     )
 
@@ -46,7 +46,7 @@ def _build_iteration_node(
     init_params = build_test_graph_init_params(graph_config=graph_config)
     return IterationNode(
         node_id="iteration-node",
-        config=IterationNodeData(
+        data=IterationNodeData(
             type="iteration",
             title="Iteration",
             iterator_selector=["start", "items"],

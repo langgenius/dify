@@ -618,26 +618,27 @@ class RagPipelineService:
             for key, value in datasource_parameters.items():
                 param_value = value.get("value")
 
-                if not param_value:
-                    variables_map[key] = param_value
-                elif isinstance(param_value, str):
-                    # handle string type parameter value, check if it contains variable reference pattern
-                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
-                    match = re.match(pattern, param_value)
-                    if match:
-                        # extract variable path and try to get value from user inputs
-                        full_path = match.group(1)
-                        last_part = full_path.split(".")[-1]
-                        variables_map[key] = user_inputs.get(last_part, param_value)
-                    else:
+                match param_value:
+                    case None | "" | [] | {}:
                         variables_map[key] = param_value
-                elif isinstance(param_value, list) and param_value:
-                    # handle list type parameter value, check if the last element is in user inputs
-                    last_part = param_value[-1]
-                    variables_map[key] = user_inputs.get(last_part, param_value)
-                else:
-                    # other type directly use original value
-                    variables_map[key] = param_value
+                    case str():
+                        # handle string type parameter value, check if it contains variable reference pattern
+                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                        match_result = re.match(pattern, param_value)
+                        if match_result:
+                            # extract variable path and try to get value from user inputs
+                            full_path = match_result.group(1)
+                            last_part = full_path.split(".")[-1]
+                            variables_map[key] = user_inputs.get(last_part, param_value)
+                        else:
+                            variables_map[key] = param_value
+                    case list() if param_value:
+                        # handle list type parameter value, check if the last element is in user inputs
+                        last_part = param_value[-1]
+                        variables_map[key] = user_inputs.get(last_part, param_value)
+                    case _:
+                        # other type directly use original value
+                        variables_map[key] = param_value
 
             from core.datasource.datasource_manager import DatasourceManager
 
@@ -1350,6 +1351,12 @@ class RagPipelineService:
         )
         return workflow_node_execution_db_model
 
+    def _fetch_recommended_plugin_manifests(self, plugin_ids: list[str]) -> list[Any]:
+        if not dify_config.MARKETPLACE_ENABLED:
+            logger.info("Marketplace disabled; recommended-plugins list empty")
+            return []
+        return marketplace.batch_fetch_plugin_by_ids(plugin_ids)
+
     def get_recommended_plugins(self, type: str) -> dict[str, Any]:
         # Query active recommended plugins
         stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
@@ -1372,7 +1379,7 @@ class RagPipelineService:
         )
         providers_map = {provider.plugin_id: provider.to_dict() for provider in providers}
 
-        plugin_manifests = marketplace.batch_fetch_plugin_by_ids(plugin_ids)
+        plugin_manifests = self._fetch_recommended_plugin_manifests(plugin_ids)
         plugin_manifests_map = {manifest["plugin_id"]: manifest for manifest in plugin_manifests}
 
         installed_plugin_list = []

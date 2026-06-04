@@ -55,7 +55,7 @@ const ConditionVariableSelector = ({
             {!valueSelector.length && (
               <>
                 <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
-                  <Variable02 className="mr-1 h-4 w-4" />
+                  <Variable02 className="mr-1 size-4" />
                   {t('nodes.knowledgeRetrieval.metadata.panel.select', { ns: 'workflow' })}
                 </div>
                 <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] system-2xs-medium text-text-tertiary">
@@ -70,7 +70,6 @@ const ConditionVariableSelector = ({
         placement="bottom-start"
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 1000 } }}
       >
         <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars

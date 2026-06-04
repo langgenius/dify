@@ -11,31 +11,6 @@ vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
 }))
 
-// Mock the AppIconPicker component
-type IconPayload = {
-  type: string
-  icon: string
-  background: string
-}
-
-type AppIconPickerProps = {
-  onSelect: (payload: IconPayload) => void
-  onClose: () => void
-}
-
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: AppIconPickerProps) => (
-    <div data-testid="app-icon-picker">
-      <button data-testid="select-emoji-btn" onClick={() => onSelect({ type: 'emoji', icon: '🎉', background: '#FF0000' })}>
-        Select Emoji
-      </button>
-      <button data-testid="close-picker-btn" onClick={onClose}>
-        Close Picker
-      </button>
-    </div>
-  ),
-}))
-
 // Mock the plugins service to avoid React Query issues from TabSlider
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => ({
@@ -227,16 +202,8 @@ describe('MCPModal', () => {
       const onHide = vi.fn()
       render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      // Find the close button by its parent div with cursor-pointer class
-      const closeButtons = document.querySelectorAll('.cursor-pointer')
-      const closeButton = Array.from(closeButtons).find(el =>
-        el.querySelector('svg'),
-      )
-
-      if (closeButton) {
-        fireEvent.click(closeButton)
-        expect(onHide).toHaveBeenCalled()
-      }
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
+      expect(onHide).toHaveBeenCalled()
     })
 
     it('should have confirm button disabled when form is empty', () => {
@@ -703,9 +670,8 @@ describe('MCPModal', () => {
       if (appIconContainer) {
         fireEvent.click(appIconContainer)
 
-        // The mocked AppIconPicker should now be visible
         await waitFor(() => {
-          expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
         })
       }
     })
@@ -720,16 +686,14 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
         })
 
-        // Click the select emoji button
-        const selectBtn = screen.getByTestId('select-emoji-btn')
-        fireEvent.click(selectBtn)
+        fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
-        // The picker should be closed
         await waitFor(() => {
-          expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+          expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
         })
       }
     })
@@ -744,16 +708,13 @@ describe('MCPModal', () => {
         fireEvent.click(appIconContainer)
 
         await waitFor(() => {
-          expect(screen.getByTestId('app-icon-picker'))!.toBeInTheDocument()
+          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
         })
 
-        // Click the close button
-        const closeBtn = screen.getByTestId('close-picker-btn')
-        fireEvent.click(closeBtn)
+        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
-        // The picker should be closed
         await waitFor(() => {
-          expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+          expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
         })
       }
     })
