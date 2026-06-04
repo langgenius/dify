@@ -332,11 +332,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/app-publisher/features-wrapper.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/app/configuration/base/var-highlight/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -664,14 +659,6 @@
   },
   "web/app/components/app/workflow-log/trigger-by-display.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/apps/list.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3162,6 +3149,11 @@
       "count": 2
     }
   },
+  "web/app/components/signin/countdown.tsx": {
+    "no-restricted-globals": {
+      "count": 4
+    }
+  },
   "web/app/components/snippets/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -3170,11 +3162,6 @@
   "web/app/components/snippets/hooks/use-snippet-run.ts": {
     "no-restricted-imports": {
       "count": 2
-    }
-  },
-  "web/app/components/signin/countdown.tsx": {
-    "no-restricted-globals": {
-      "count": 4
     }
   },
   "web/app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
@@ -3344,11 +3331,6 @@
   },
   "web/app/components/workflow/block-selector/all-start-blocks.tsx": {
     "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/block-selector/blocks.tsx": {
-    "unused-imports/no-unused-imports": {
       "count": 1
     }
   },
@@ -5514,9 +5496,6 @@
     }
   },
   "web/types/app.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 9
-    },
     "ts/no-explicit-any": {
       "count": 1
     }

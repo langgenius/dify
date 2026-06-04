@@ -453,7 +453,7 @@ describe('FeaturesTrigger', () => {
       // Assert
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          url: '/apps/app-id/workflows/publish',
+          url: '/apps/app-1/workflows/publish',
           title: 'Test title',
           releaseNotes: 'Test notes',
         })

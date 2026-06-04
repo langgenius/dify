@@ -300,11 +300,13 @@ const Tabs: FC<TabsProps> = ({
         )
       }
       {
-        activeTab === TabsEnum.Snippets && snippetsElem && (
-          <div className="border-t border-divider-subtle">
-            {snippetsElem}
-          </div>
-        )
+        activeTab === TabsEnum.Snippets && Boolean(snippetsElem)
+          ? (
+              <div className="border-t border-divider-subtle">
+                {snippetsElem}
+              </div>
+            )
+          : null
       }
     </div>
   )

@@ -263,10 +263,16 @@ describe('SelectionContextmenu', () => {
         type: PipelineInputVarType.textInput,
         required: true,
       },
+      {
+        label: 'API_KEY',
+        variable: 'API_KEY',
+        type: PipelineInputVarType.textInput,
+        required: true,
+      },
     ])
     expect(dialogProps.selectedGraph.nodes[0].data.prompt_template).toBe('Use {{#start.topic#}} and {{#n2.answer#}}')
     expect(dialogProps.selectedGraph.nodes[0].data.query_variable_selector).toEqual(['start', 'topic'])
-    expect(dialogProps.selectedGraph.nodes[0].data.env_reference).toBe('{{#env.API_KEY#}}')
+    expect(dialogProps.selectedGraph.nodes[0].data.env_reference).toBe('{{#start.API_KEY#}}')
   })
 
   it.each([
