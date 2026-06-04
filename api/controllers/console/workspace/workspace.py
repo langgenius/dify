@@ -25,13 +25,15 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     only_edition_enterprise,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import TimestampField, dump_response, to_timestamp
-from libs.login import current_account_with_tenant, login_required
-from models.account import Tenant, TenantCustomConfigDict, TenantStatus
+from libs.login import login_required
+from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
@@ -153,8 +155,9 @@ class TenantListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
         tenants = TenantService.get_join_tenants(current_user)
         tenant_dicts = []
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
@@ -228,11 +231,11 @@ class TenantApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[TenantInfoResponse.__name__])
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
-        current_user, _ = current_account_with_tenant()
         tenant = current_user.current_tenant
         if not tenant:
             raise ValueError("No current tenant")
@@ -256,8 +259,8 @@ class SwitchWorkspaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
 
@@ -281,8 +284,8 @@ class CustomConfigWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
-    def post(self):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceCustomConfigPayload.model_validate(payload)
         tenant = db.get_or_404(Tenant, current_tenant_id)
@@ -308,8 +311,8 @@ class WebappLogoWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -349,8 +352,8 @@ class WorkspaceInfoApi(Resource):
     @login_required
     @account_initialization_required
     # Change workspace name
-    def post(self):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceInfoPayload.model_validate(payload)
 
@@ -372,13 +375,12 @@ class WorkspacePermissionApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_enterprise
-    def get(self):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         """
         Get workspace permission settings.
         Returns permission flags that control workspace features like member invitations and owner transfer.
         """
-        _, current_tenant_id = current_account_with_tenant()
-
         if not current_tenant_id:
             raise ValueError("No current tenant")
 
