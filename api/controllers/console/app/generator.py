@@ -19,7 +19,12 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
-from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
+from core.llm_generator.entities import (
+    RuleCodeGeneratePayload,
+    RuleGeneratePayload,
+    RuleStructuredOutputPayload,
+    WorkflowGeneratePayload,
+)
 from core.llm_generator.llm_generator import LLMGenerator
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -48,6 +53,7 @@ register_schema_models(
     RuleGeneratePayload,
     RuleCodeGeneratePayload,
     RuleStructuredOutputPayload,
+    WorkflowGeneratePayload,
     InstructionGeneratePayload,
     InstructionTemplatePayload,
     ModelConfig,
@@ -265,3 +271,35 @@ class InstructionGenerationTemplateApi(Resource):
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:
                 raise ValueError(f"Invalid type: {args.type}")
+
+
+@console_ns.route("/workflow-generate")
+class WorkflowGenerateApi(Resource):
+    @console_ns.doc("generate_workflow")
+    @console_ns.doc(description="Auto-generate a workflow or chatflow graph from a natural language description")
+    @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
+    @console_ns.response(200, "Workflow graph generated successfully")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(402, "Provider quota exceeded")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
+        args = WorkflowGeneratePayload.model_validate(console_ns.payload)
+
+        try:
+            result = LLMGenerator.generate_workflow(
+                tenant_id=current_tenant_id,
+                args=args,
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+
+        return result

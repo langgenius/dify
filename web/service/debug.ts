@@ -68,6 +68,20 @@ export const generateRule = (body: Record<string, any>) => {
   })
 }
 
+export type WorkflowGenerateRes = {
+  graph: {
+    nodes: any[]
+    edges: any[]
+  }
+  error?: string
+}
+
+export const generateWorkflow = (body: Record<string, any>) => {
+  return post<WorkflowGenerateRes>('/workflow-generate', {
+    body,
+  })
+}
+
 export const fetchPromptTemplate = ({
   appMode,
   mode,

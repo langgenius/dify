@@ -8,7 +8,12 @@ import json_repair
 from sqlalchemy import select
 
 from core.app.app_config.entities import ModelConfig
-from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
+from core.llm_generator.entities import (
+    RuleCodeGeneratePayload,
+    RuleGeneratePayload,
+    RuleStructuredOutputPayload,
+    WorkflowGeneratePayload,
+)
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
@@ -19,6 +24,8 @@ from core.llm_generator.prompts import (
     LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
+    WORKFLOW_GENERATE_PROMPT_SYSTEM,
+    WORKFLOW_GENERATE_PROMPT_USER,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
@@ -485,6 +492,82 @@ class LLMGenerator:
         except Exception as e:
             logger.exception("Failed to invoke LLM model, model: %s", args.model_config_data.name)
             return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}
+
+    @classmethod
+    def generate_workflow(
+        cls,
+        tenant_id: str,
+        args: WorkflowGeneratePayload,
+    ) -> dict[str, Any]:
+        """Generate a workflow graph from a natural language description.
+
+        Returns a dict with keys ``graph`` (the generated workflow graph) and ``error``.
+        """
+        prompt_template = PromptTemplateParser(WORKFLOW_GENERATE_PROMPT_USER)
+        app_mode_label = "chatflow (advanced-chat)" if args.app_mode == "advanced-chat" else "workflow"
+        prompt = prompt_template.format(
+            inputs={
+                "APP_MODE": app_mode_label,
+                "DESCRIPTION": args.description,
+            },
+            remove_template_variables=False,
+        )
+
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=args.model_config_data.provider,
+            model=args.model_config_data.name,
+        )
+
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=WORKFLOW_GENERATE_PROMPT_SYSTEM),
+            UserPromptMessage(content=prompt),
+        ]
+        model_parameters = {
+            **(args.model_config_data.completion_params or {}),
+            "temperature": 0.2,
+            "max_tokens": 4096,
+        }
+
+        try:
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
+            )
+
+            raw_content = response.message.get_text_content()
+
+            # Strip markdown code fences if present
+            cleaned = raw_content.strip()
+            if cleaned.startswith("```"):
+                # Remove opening fence (```json or ```)
+                first_newline = cleaned.index("\n")
+                cleaned = cleaned[first_newline + 1 :]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[: -len("```")]
+            cleaned = cleaned.strip()
+
+            try:
+                graph = json.loads(cleaned)
+            except json.JSONDecodeError:
+                graph = json_repair.loads(cleaned)
+
+            if not isinstance(graph, dict):
+                return {"graph": {}, "error": "LLM did not return a valid workflow graph object."}
+
+            # Basic validation
+            if "nodes" not in graph or "edges" not in graph:
+                return {"graph": {}, "error": "Generated graph is missing 'nodes' or 'edges'."}
+
+            return {"graph": graph, "error": ""}
+
+        except InvokeError as e:
+            error = str(e)
+            return {"graph": {}, "error": f"Failed to generate workflow. Error: {error}"}
+        except Exception as e:
+            logger.exception("Failed to generate workflow, model: %s", args.model_config_data.name)
+            return {"graph": {}, "error": f"An unexpected error occurred: {str(e)}"}
 
     @staticmethod
     def instruction_modify_legacy(
