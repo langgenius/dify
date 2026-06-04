@@ -290,9 +290,7 @@ def test_workflow_run_detail_raises_not_found_when_run_missing(app, monkeypatch:
             handler(api, snippet=snippet, run_id="run-1")
 
 
-def test_draft_node_last_run_raises_not_found_when_execution_missing(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_draft_node_last_run_raises_not_found_when_execution_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     draft_workflow = SimpleNamespace(id="workflow-1")
     monkeypatch.setattr(
