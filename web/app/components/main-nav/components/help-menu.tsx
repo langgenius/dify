@@ -15,6 +15,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import HelpQuestion from '@/app/components/base/icons/src/vender/line/general/HelpQuestion'
 import { useLearnDifyVisibleValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/atoms'
 import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
@@ -53,15 +54,16 @@ const HelpMenu = ({
           aria-label={t('mainNav.help.openMenu', { ns: 'common' })}
           data-learn-dify-help-target
           className={cn(
+            'flex items-center justify-center overflow-hidden rounded-full text-text-tertiary transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
             compact
-              ? 'text-components-main-nav-text flex size-8 items-center justify-center overflow-hidden rounded-lg border-0 bg-transparent p-1.5 shadow-none transition-colors hover:bg-state-base-hover hover:text-text-secondary'
-              : 'text-components-main-nav-text flex items-center justify-center overflow-hidden rounded-full border border-components-card-border bg-components-card-bg p-0.5 shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam)] transition-colors hover:bg-components-card-bg-alt hover:text-text-accent hover:shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
-            compact
-              ? open && 'bg-state-base-hover text-text-secondary'
-              : open && 'bg-components-card-bg-alt text-text-accent shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
+              ? 'mb-2 size-4 border border-text-tertiary bg-transparent p-1.5 hover:border-saas-dify-blue-inverted'
+              : 'border border-components-card-border bg-components-card-bg p-0.5 shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam)] hover:shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
+            open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
           )}
         >
-          <span aria-hidden className={cn('i-custom-vender-main-nav-help shrink-0', compact ? 'size-4' : 'size-6 rounded-full')} />
+          <span aria-hidden className="flex size-5 items-center justify-center">
+            <HelpQuestion className="size-4 shrink-0" />
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="top-end"
