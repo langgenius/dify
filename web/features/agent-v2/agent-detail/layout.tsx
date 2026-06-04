@@ -1,181 +1,39 @@
 'use client'
 
+import type {
+  AgentConfigSnapshotSummaryResponse,
+  AgentRosterResponse,
+} from '@dify/contracts/api/console/agents/types.gen'
 import type { ReactNode } from 'react'
-import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import VersionHistoryItem from '@/app/components/workflow/panel/version-history-panel/version-history-item'
-import { WorkflowVersion } from '@/app/components/workflow/types'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { consoleQuery } from '@/service/client'
 
 type AgentDetailLayoutProps = {
   agentId: string
   children: ReactNode
 }
 
-const createMockAgentVersion = ({
-  id,
-  version,
-  markedName,
-  markedComment,
-  createdAt,
-  createdBy,
-}: {
-  id: string
-  version: string
-  markedName: string
-  markedComment: string
-  createdAt: number
-  createdBy: string
-}): VersionHistory => ({
-  id,
-  graph: {
-    nodes: [],
-    edges: [],
-  },
-  created_at: createdAt,
-  created_by: {
-    id: createdBy.toLowerCase().replaceAll(' ', '-'),
-    name: createdBy,
-    email: '',
-  },
-  hash: id,
-  updated_at: createdAt,
-  updated_by: {
-    id: createdBy.toLowerCase().replaceAll(' ', '-'),
-    name: createdBy,
-    email: '',
-  },
-  tool_published: false,
-  version,
-  marked_name: markedName,
-  marked_comment: markedComment,
-})
-
-const mockAgentVersions: VersionHistory[] = [
-  createMockAgentVersion({
-    id: 'draft',
-    version: WorkflowVersion.Draft,
-    markedName: '',
-    markedComment: '',
-    createdAt: 1790467200,
-    createdBy: 'Joel',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-4',
-    version: '2026-09-25T13:00:00Z',
-    markedName: 'v1.4.0 Handoff rules',
-    markedComment: 'Aligned escalation handoff rules and response boundaries.',
-    createdAt: 1790254800,
-    createdBy: 'Emma Chen',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-3',
-    version: '2026-09-18T12:30:00Z',
-    markedName: 'v1.3.0 Tool routing',
-    markedComment: 'Added mock tool preference data for scheduling and knowledge lookup.',
-    createdAt: 1789648200,
-    createdBy: 'Noah Kim',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-2',
-    version: '2026-09-11T12:00:00Z',
-    markedName: 'v1.2.0 Prompt tuning',
-    markedComment: 'Refined task decomposition prompts for multi-step workflows.',
-    createdAt: 1789041600,
-    createdBy: 'Ava Smith',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-1',
-    version: '2026-09-05T12:00:00Z',
-    markedName: 'v1.0.0 Initial roster setup',
-    markedComment: 'Created the reusable agent profile and default workflow instructions.',
-    createdAt: 1788523200,
-    createdBy: 'Liam Wong',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-9',
-    version: '2026-08-29T12:00:00Z',
-    markedName: 'v0.9.0 Evaluation rubric',
-    markedComment: 'Added scoring criteria for answer completeness and escalation confidence.',
-    createdAt: 1787918400,
-    createdBy: 'Mia Patel',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-8',
-    version: '2026-08-22T12:00:00Z',
-    markedName: 'v0.8.0 Retrieval guardrails',
-    markedComment: 'Tightened knowledge lookup rules before drafting customer-facing responses.',
-    createdAt: 1787313600,
-    createdBy: 'Oliver Brown',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-7',
-    version: '2026-08-15T12:00:00Z',
-    markedName: 'v0.7.0 Memory cleanup',
-    markedComment: 'Removed stale context fields and simplified conversation state handling.',
-    createdAt: 1786708800,
-    createdBy: 'Sophia Garcia',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-6',
-    version: '2026-08-08T12:00:00Z',
-    markedName: 'v0.6.0 Safety pass',
-    markedComment: 'Added refusal boundaries for unsupported financial and legal decisions.',
-    createdAt: 1786104000,
-    createdBy: 'Ethan Davis',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-5',
-    version: '2026-08-01T12:00:00Z',
-    markedName: 'v0.5.0 Scheduling workflow',
-    markedComment: 'Introduced handoff hints for calendar availability and follow-up timing.',
-    createdAt: 1785499200,
-    createdBy: 'Isabella Lee',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-4',
-    version: '2026-07-25T12:00:00Z',
-    markedName: 'v0.4.0 Tone calibration',
-    markedComment: 'Adjusted response tone for concise operational updates.',
-    createdAt: 1784894400,
-    createdBy: 'Lucas Martin',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-3',
-    version: '2026-07-18T12:00:00Z',
-    markedName: 'v0.3.0 Fallback paths',
-    markedComment: 'Documented fallback behavior when required workflow inputs are missing.',
-    createdAt: 1784289600,
-    createdBy: 'Grace Miller',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-2',
-    version: '2026-07-11T12:00:00Z',
-    markedName: 'v0.2.0 Tool schema draft',
-    markedComment: 'Outlined first-pass tool input schemas for roster reuse.',
-    createdAt: 1783684800,
-    createdBy: 'Henry Wilson',
-  }),
-  createMockAgentVersion({
-    id: 'agent-version-0-1',
-    version: '2026-07-04T12:00:00Z',
-    markedName: 'v0.1.0 Prototype',
-    markedComment: 'Captured the initial prototype behavior and basic instruction set.',
-    createdAt: 1783080000,
-    createdBy: 'Chloe Anderson',
-  }),
-]
+function AgentIcon({ agent }: { agent?: AgentRosterResponse }) {
+  return (
+    <div
+      className={cn(
+        'flex size-10 shrink-0 items-center justify-center rounded-xl text-text-primary-on-surface shadow-xs',
+        !agent?.icon_background && 'bg-text-accent',
+      )}
+      style={agent?.icon_background ? { backgroundColor: agent.icon_background } : undefined}
+    >
+      {agent?.icon_type === 'emoji' && agent.icon
+        ? <span aria-hidden className="text-xl leading-none">{agent.icon}</span>
+        : <span aria-hidden className="i-custom-vender-solid-mediaAndDevices-robot size-5" />}
+    </div>
+  )
+}
 
 export function AgentDetailLayout({
   agentId,
@@ -183,24 +41,35 @@ export function AgentDetailLayout({
 }: AgentDetailLayoutProps) {
   const { t } = useTranslation('agentV2')
   const [showVersionHistory, setShowVersionHistory] = useState(false)
-  const [currentVersion, setCurrentVersion] = useState<VersionHistory>(mockAgentVersions[0]!)
+  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  }))
+  const versionsQuery = useQuery({
+    ...consoleQuery.agents.byAgentId.versions.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
+      },
+    }),
+    enabled: showVersionHistory,
+  })
+  const agent = agentQuery.data
 
-  useDocumentTitle(t('agentDetail.documentTitle'))
-
-  const handlePublishMenuAction = () => {
-    toast.success(t('api.success', { ns: 'common' }))
-  }
+  useDocumentTitle(agent?.name ?? t('agentDetail.documentTitle'))
 
   return (
     <main className="relative flex h-full min-w-0 flex-col overflow-hidden bg-components-panel-bg-blur">
       <header className="flex h-20 shrink-0 items-center justify-between border-b border-divider-subtle bg-components-panel-bg-blur px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-text-accent text-text-primary-on-surface shadow-xs">
-            <span aria-hidden className="i-custom-vender-solid-mediaAndDevices-robot size-5" />
-          </div>
+          <AgentIcon agent={agent} />
           <div className="min-w-0">
             <h1 className="truncate title-xl-semi-bold text-text-primary">
-              {t('agentDetail.title')}
+              {agent?.name ?? t('agentDetail.title')}
             </h1>
             <p className="mt-1 truncate system-xs-regular text-text-tertiary">
               {t('agentDetail.subtitle', { agentId })}
@@ -208,48 +77,19 @@ export function AgentDetailLayout({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={(
-                <Button variant="primary" className="grid min-w-40 grid-cols-[1rem_1fr_1rem] gap-2 py-2 pr-2 pl-3">
-                  <span aria-hidden className="i-ri-upload-cloud-2-line size-4" />
-                  <span className="text-center">
-                    {t('agentDetail.publish')}
-                  </span>
-                  <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-components-button-primary-text" />
-                </Button>
-              )}
-            />
-            <DropdownMenuContent
-              placement="bottom-end"
-              sideOffset={6}
-              popupClassName="w-65 p-1"
-            >
-              <DropdownMenuItem className="h-auto items-start gap-2 px-2 py-2" onClick={handlePublishMenuAction}>
-                <span aria-hidden className="mt-0.5 i-ri-upload-cloud-2-line size-4 shrink-0 text-text-accent" />
-                <span className="flex min-w-0 flex-col gap-0.5 text-left">
-                  <span className="system-sm-semibold text-text-primary">
-                    {t('agentDetail.publishMenu.publishUpdate')}
-                  </span>
-                  <span className="system-xs-regular text-text-tertiary">
-                    {t('agentDetail.publishMenu.publishUpdateDescription')}
-                  </span>
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="mx-2 my-1" />
-              <DropdownMenuItem className="h-auto items-start gap-2 px-2 py-2" onClick={handlePublishMenuAction}>
-                <span aria-hidden className="mt-0.5 i-ri-user-add-line size-4 shrink-0 text-text-accent" />
-                <span className="flex min-w-0 flex-col gap-0.5 text-left">
-                  <span className="system-sm-semibold text-text-primary">
-                    {t('agentDetail.publishMenu.saveAsNewAgent')}
-                  </span>
-                  <span className="system-xs-regular text-text-tertiary">
-                    {t('agentDetail.publishMenu.saveAsNewAgentDescription')}
-                  </span>
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="primary"
+            disabled
+            className="min-w-40 gap-2 py-2 pr-2 pl-3"
+          >
+            <span aria-hidden className="i-ri-upload-cloud-2-line size-4" />
+            <span>
+              {t('agentDetail.publish')}
+            </span>
+            <span className="rounded-[5px] bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+              {t('agentDetail.publishSoon')}
+            </span>
+          </Button>
           <Button
             variant="secondary"
             className={cn(
@@ -268,9 +108,9 @@ export function AgentDetailLayout({
       </div>
       {showVersionHistory && (
         <AgentVersionHistoryPanel
-          versions={mockAgentVersions}
-          currentVersion={currentVersion}
-          onSelectVersion={setCurrentVersion}
+          activeVersionId={agent?.active_config_snapshot_id}
+          isPending={versionsQuery.isPending}
+          versions={versionsQuery.data?.data ?? []}
           onClose={() => setShowVersionHistory(false)}
         />
       )}
@@ -279,18 +119,17 @@ export function AgentDetailLayout({
 }
 
 function AgentVersionHistoryPanel({
+  activeVersionId,
+  isPending,
   versions,
-  currentVersion,
-  onSelectVersion,
   onClose,
 }: {
-  versions: VersionHistory[]
-  currentVersion: VersionHistory
-  onSelectVersion: (version: VersionHistory) => void
+  activeVersionId?: string | null
+  isPending: boolean
+  versions: AgentConfigSnapshotSummaryResponse[]
   onClose: () => void
 }) {
   const { t } = useTranslation('agentV2')
-  const latestVersionId = versions.find(item => item.version !== WorkflowVersion.Draft)?.id ?? ''
 
   return (
     <aside className="absolute top-20 right-0 bottom-0 flex w-67 flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
@@ -301,26 +140,72 @@ function AgentVersionHistoryPanel({
         <button
           type="button"
           aria-label={t('operation.close', { ns: 'common' })}
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center p-0.5"
+          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md p-0.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           onClick={onClose}
         >
           <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
         </button>
       </div>
-      <div className="h-0 flex-1 overflow-y-auto px-3 py-2">
-        {versions.map((item, index) => (
-          <VersionHistoryItem
-            key={item.id}
-            item={item}
-            currentVersion={currentVersion}
-            latestVersionId={latestVersionId}
-            onClick={onSelectVersion}
-            handleClickActionMenuItem={() => {}}
-            isLast={index === versions.length - 1}
-            hideActionMenu
-          />
-        ))}
-      </div>
+      <ScrollArea
+        className="min-h-0 flex-1 overflow-hidden"
+        label={t('versionHistory.title', { ns: 'workflow' })}
+        slotClassNames={{
+          viewport: 'overscroll-contain',
+          content: 'min-h-full px-3 py-2',
+          scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
+        }}
+      >
+        <div className="space-y-2">
+          {isPending && (
+            <>
+              <div className="h-18 animate-pulse rounded-lg bg-state-base-hover" />
+              <div className="h-18 animate-pulse rounded-lg bg-state-base-hover" />
+              <div className="h-18 animate-pulse rounded-lg bg-state-base-hover" />
+            </>
+          )}
+          {!isPending && versions.length === 0 && (
+            <div className="rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 py-6 text-center system-sm-regular text-text-tertiary">
+              {t('agentDetail.versionHistory.empty')}
+            </div>
+          )}
+          {!isPending && versions.map(version => (
+            <div
+              key={version.id}
+              className={cn(
+                'rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 shadow-xs shadow-shadow-shadow-3',
+                version.id === activeVersionId && 'border-effects-highlight bg-state-accent-hover',
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                  v
+                  {version.version}
+                </div>
+                {version.id === activeVersionId && (
+                  <div className="shrink-0 rounded-[5px] bg-state-accent-solid px-1.5 py-0.5 system-2xs-medium-uppercase text-text-primary-on-surface">
+                    {t('agentDetail.versionHistory.active')}
+                  </div>
+                )}
+              </div>
+              {version.version_note && (
+                <div className="mt-2 line-clamp-2 system-sm-medium text-text-primary">
+                  {version.version_note}
+                </div>
+              )}
+              {version.summary && (
+                <div className="mt-1 line-clamp-2 system-xs-regular text-text-tertiary">
+                  {version.summary}
+                </div>
+              )}
+              {version.created_at && (
+                <div className="mt-2 truncate system-xs-regular text-text-tertiary">
+                  {version.created_at}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
     </aside>
   )
 }
