@@ -47,7 +47,8 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
@@ -408,6 +409,16 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.currency = usage.currency
         self._task_state.llm_result.usage.latency = message.provider_response_latency
         message.message_metadata = self._task_state.metadata.model_dump_json()
+
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.MESSAGE_TRACE,
+                    conversation_id=self._conversation_id,
+                    message_id=self._message_id,
+                    trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
+                )
+            )
 
         message_was_created.send(
             message,

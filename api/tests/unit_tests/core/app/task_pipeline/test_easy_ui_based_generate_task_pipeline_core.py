@@ -38,6 +38,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AudioTrunk
+from core.ops.entities.trace_entity import TraceTaskName
 from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
@@ -896,11 +897,13 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert list(pipeline._process_stream_response(publisher=None)) == []
 
-    def test_save_message_persists_fields(self, monkeypatch: pytest.MonkeyPatch):
+    def test_save_message_persists_fields_and_emits_trace(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
+        application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        application_generate_entity.extras = {"trace_session_id": "session-1"}
         pipeline = EasyUIBasedGenerateTaskPipeline(
-            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            application_generate_entity=application_generate_entity,
             queue_manager=SimpleNamespace(),
             conversation=conversation,
             message=message,
@@ -918,6 +921,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         conversation_obj = SimpleNamespace(id="conv")
         session = Mock()
         session.scalar.side_effect = [message_obj, conversation_obj]
+        trace_manager = SimpleNamespace(add_trace_task=Mock())
         sent_payloads: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
         monkeypatch.setattr(
@@ -940,11 +944,17 @@ class TestEasyUiBasedGenerateTaskPipeline:
             lambda *args, **kwargs: sent_payloads.append((args, kwargs)),
         )
 
-        pipeline._save_message(session=session)
+        pipeline._save_message(session=session, trace_manager=trace_manager)
 
         assert message_obj.message == "serialized-prompt"
         assert message_obj.answer == "hello"
         assert message_obj.provider_response_latency == 5.0
+        trace_manager.add_trace_task.assert_called_once()
+        trace_task = trace_manager.add_trace_task.call_args.args[0]
+        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
+        assert trace_task.conversation_id == "conv"
+        assert trace_task.message_id == "msg"
+        assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert len(sent_payloads) == 1
 
     def test_save_message_raises_when_message_not_found(self):
