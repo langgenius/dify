@@ -33,10 +33,10 @@ let mockWorkflowTools: ToolWithProvider[] | undefined = []
 let mockMcpTools: ToolWithProvider[] | undefined = []
 
 vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuildInTools }),
-  useAllCustomTools: () => ({ data: mockCustomTools }),
-  useAllWorkflowTools: () => ({ data: mockWorkflowTools }),
-  useAllMCPTools: () => ({ data: mockMcpTools }),
+  useAllBuiltInTools: () => ({ data: mockBuildInTools, isFetched: true }),
+  useAllCustomTools: () => ({ data: mockCustomTools, isFetched: true }),
+  useAllWorkflowTools: () => ({ data: mockWorkflowTools, isFetched: true }),
+  useAllMCPTools: () => ({ data: mockMcpTools, isFetched: true }),
   useInvalidateAllBuiltInTools: () => vi.fn(),
 }))
 
@@ -428,7 +428,7 @@ describe('usePluginInstalledCheck Hook', () => {
 
   it('should return inMarketPlace as false when manifest is null', () => {
     const { result } = renderHook(
-      () => usePluginInstalledCheck('test-provider/tool'),
+      () => usePluginInstalledCheck({}),
       { wrapper: createWrapper() },
     )
 
@@ -438,7 +438,7 @@ describe('usePluginInstalledCheck Hook', () => {
 
   it('should handle empty provider name', () => {
     const { result } = renderHook(
-      () => usePluginInstalledCheck(''),
+      () => usePluginInstalledCheck({}),
       { wrapper: createWrapper() },
     )
 
@@ -447,12 +447,12 @@ describe('usePluginInstalledCheck Hook', () => {
 
   it('should extract pluginID from provider name correctly', () => {
     const { result } = renderHook(
-      () => usePluginInstalledCheck('org/plugin/extra'),
+      () => usePluginInstalledCheck({ providerPluginId: 'org/plugin' }),
       { wrapper: createWrapper() },
     )
 
-    // The hook should parse "org/plugin" from "org/plugin/extra"
     expect(result.current.inMarketPlace).toBe(false)
+    expect(result.current.pluginID).toBe('org/plugin')
   })
 })
 

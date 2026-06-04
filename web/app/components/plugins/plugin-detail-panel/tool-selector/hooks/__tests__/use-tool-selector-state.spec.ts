@@ -1,6 +1,7 @@
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CollectionType } from '@/app/components/tools/types'
 import { useToolSelectorState } from '../use-tool-selector-state'
 
 const mockToolParams = [
@@ -13,6 +14,7 @@ const mockTools = [
     id: 'test-provider',
     name: 'Test Provider',
     plugin_id: 'org/test-plugin',
+    type: CollectionType.builtIn,
     tools: [
       {
         name: 'test-tool',
@@ -23,12 +25,13 @@ const mockTools = [
     ],
   },
 ]
+let areToolQueriesFetched = true
 
 vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockTools }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
+  useAllBuiltInTools: () => ({ data: mockTools, isFetched: areToolQueriesFetched }),
+  useAllCustomTools: () => ({ data: [], isFetched: areToolQueriesFetched }),
+  useAllWorkflowTools: () => ({ data: [], isFetched: areToolQueriesFetched }),
+  useAllMCPTools: () => ({ data: [], isFetched: areToolQueriesFetched }),
   useInvalidateAllBuiltInTools: () => vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -63,16 +66,19 @@ describe('useToolSelectorState', () => {
   const toolValue: ToolValue = {
     provider_name: 'test-provider',
     provider_show_name: 'Test Provider',
+    plugin_id: 'org/test-plugin',
     tool_name: 'test-tool',
     tool_label: 'Test Tool',
     tool_description: 'A test tool',
     settings: {},
     parameters: {},
     enabled: true,
+    type: CollectionType.builtIn,
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+    areToolQueriesFetched = true
     mockUsePluginInstalledCheck.mockReturnValue({
       inMarketPlace: false,
       manifest: null,
@@ -232,7 +238,6 @@ describe('useToolSelectorState', () => {
     )
 
     expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
-      providerName: 'test-provider',
       providerPluginId: 'org/test-plugin',
       enabled: false,
     })
@@ -247,8 +252,64 @@ describe('useToolSelectorState', () => {
     )
 
     expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
-      providerName: 'test-provider',
       providerPluginId: 'org/test-plugin',
+      enabled: true,
+    })
+  })
+
+  it('should keep marketplace fallback enabled after tool queries settle without resolving the provider', () => {
+    renderHook(() =>
+      useToolSelectorState({
+        value: {
+          ...toolValue,
+          provider_name: 'org/market-plugin/search',
+          plugin_id: 'org/market-plugin',
+        },
+        onSelect: mockOnSelect,
+      }),
+    )
+
+    expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
+      providerPluginId: 'org/market-plugin',
+      enabled: true,
+    })
+  })
+
+  it('should keep marketplace fallback enabled when legacy provider lists are still pending but plugin id is known', () => {
+    areToolQueriesFetched = false
+
+    renderHook(() =>
+      useToolSelectorState({
+        value: {
+          ...toolValue,
+          provider_name: 'org/market-plugin/search',
+          plugin_id: 'org/market-plugin',
+        },
+        onSelect: mockOnSelect,
+      }),
+    )
+
+    expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
+      providerPluginId: 'org/market-plugin',
+      enabled: true,
+    })
+  })
+
+  it('should skip marketplace checks for unresolved non-plugin workflow tools', () => {
+    renderHook(() =>
+      useToolSelectorState({
+        value: {
+          ...toolValue,
+          provider_name: 'author/tool-b',
+          plugin_id: undefined,
+          type: CollectionType.workflow,
+        },
+        onSelect: mockOnSelect,
+      }),
+    )
+
+    expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
+      providerPluginId: null,
       enabled: true,
     })
   })

@@ -5,6 +5,7 @@ import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/bloc
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { useCallback, useMemo, useState } from 'react'
 import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { CollectionType } from '@/app/components/tools/types'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import {
   useAllBuiltInTools,
@@ -39,10 +40,14 @@ export const useToolSelectorState = ({
   const [currType, setCurrType] = useState<TabType>('settings')
 
   // Fetch all tools data
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const buildInToolsQuery = useAllBuiltInTools()
+  const customToolsQuery = useAllCustomTools()
+  const workflowToolsQuery = useAllWorkflowTools()
+  const mcpToolsQuery = useAllMCPTools()
+  const { data: buildInTools } = buildInToolsQuery
+  const { data: customTools } = customToolsQuery
+  const { data: workflowTools } = workflowToolsQuery
+  const { data: mcpTools } = mcpToolsQuery
   const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
@@ -56,25 +61,51 @@ export const useToolSelectorState = ({
     ]
     return mergedTools.find(toolWithProvider => toolWithProvider.id === value?.provider_name)
   }, [value, buildInTools, customTools, workflowTools, mcpTools])
-  const areToolProvidersResolved = [
-    buildInTools,
-    customTools,
-    workflowTools,
-    mcpTools,
-  ].every(toolProviders => toolProviders !== undefined)
+  const areToolProvidersSettled = [
+    buildInToolsQuery,
+    customToolsQuery,
+    workflowToolsQuery,
+    mcpToolsQuery,
+  ].every(toolProvidersQuery => toolProvidersQuery.isFetched)
 
   // Current tool from provider
   const currentTool = useMemo(() => {
     return currentProvider?.tools.find(tool => tool.name === value?.tool_name)
   }, [currentProvider?.tools, value?.tool_name])
+  const providerPluginId = useMemo(() => {
+    if (currentProvider)
+      return currentProvider.plugin_id ?? value?.plugin_id ?? null
+
+    if (value?.plugin_id)
+      return value.plugin_id
+
+    if (!areToolProvidersSettled || !value?.provider_name)
+      return undefined
+
+    // Legacy tool values may only carry the built-in provider id, which remains
+    // enough to recover the underlying plugin id for marketplace-backed tools.
+    if (value.type && value.type !== CollectionType.builtIn)
+      return null
+
+    const providerNameSegments = value.provider_name.split('/')
+    if (providerNameSegments.length !== 3)
+      return null
+
+    return providerNameSegments.slice(0, 2).join('/')
+  }, [
+    areToolProvidersSettled,
+    currentProvider,
+    value?.plugin_id,
+    value?.provider_name,
+    value?.type,
+  ])
 
   // Plugin info check
   const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck({
-    providerName: value?.provider_name,
-    providerPluginId: currentProvider ? (currentProvider.plugin_id ?? null) : undefined,
+    providerPluginId,
     enabled: !!value?.provider_name
       && (!currentProvider || !currentTool)
-      && (currentProvider !== undefined || areToolProvidersResolved),
+      && (currentProvider !== undefined || areToolProvidersSettled || !!value?.plugin_id),
   })
 
   // Tool settings and params
@@ -132,6 +163,7 @@ export const useToolSelectorState = ({
     return {
       provider_name: tool.provider_id,
       provider_show_name: tool.provider_name,
+      plugin_id: tool.plugin_id,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
       tool_description: tool.tool_description,

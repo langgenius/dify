@@ -33,43 +33,28 @@ describe('usePluginInstalledCheck', () => {
     }))
   })
 
-  it('should extract pluginID from provider name', () => {
-    const { result } = renderHook(() => usePluginInstalledCheck('org/plugin/tool'))
+  it('should use the explicit pluginID', () => {
+    const { result } = renderHook(() => usePluginInstalledCheck({
+      providerPluginId: 'org/plugin',
+    }))
 
     expect(result.current.pluginID).toBe('org/plugin')
   })
 
   it('should detect plugin in marketplace when manifest exists', () => {
-    const { result } = renderHook(() => usePluginInstalledCheck('org/plugin/tool'))
+    const { result } = renderHook(() => usePluginInstalledCheck({
+      providerPluginId: 'org/plugin',
+    }))
 
     expect(result.current.inMarketPlace).toBe(true)
     expect(result.current.manifest).toEqual(mockManifest.data.plugin)
   })
 
-  it('should handle empty provider name', () => {
-    const { result } = renderHook(() => usePluginInstalledCheck(''))
-
-    expect(result.current.pluginID).toBe('')
-    expect(result.current.inMarketPlace).toBe(false)
-  })
-
-  it('should handle undefined provider name', () => {
+  it('should handle missing plugin id', () => {
     const { result } = renderHook(() => usePluginInstalledCheck())
 
     expect(result.current.pluginID).toBe('')
     expect(result.current.inMarketPlace).toBe(false)
-  })
-
-  it('should handle provider name with only one segment', () => {
-    const { result } = renderHook(() => usePluginInstalledCheck('single'))
-
-    expect(result.current.pluginID).toBe('single')
-  })
-
-  it('should handle provider name with two segments', () => {
-    const { result } = renderHook(() => usePluginInstalledCheck('org/plugin'))
-
-    expect(result.current.pluginID).toBe('org/plugin')
   })
 
   it('should skip marketplace lookup when installed plugin source is local', () => {
@@ -82,7 +67,6 @@ describe('usePluginInstalledCheck', () => {
     })
 
     const { result } = renderHook(() => usePluginInstalledCheck({
-      providerName: 'org/plugin/tool',
       providerPluginId: 'org/plugin',
       enabled: true,
     }))
@@ -93,7 +77,6 @@ describe('usePluginInstalledCheck', () => {
 
   it('should skip all plugin checks for non-plugin providers', () => {
     const { result } = renderHook(() => usePluginInstalledCheck({
-      providerName: 'time',
       providerPluginId: null,
       enabled: true,
     }))

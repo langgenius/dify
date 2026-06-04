@@ -5,21 +5,18 @@ import {
 } from '@/service/use-plugins'
 
 type UsePluginInstalledCheckOptions = {
-  providerName?: string
   providerPluginId?: string | null
   enabled?: boolean
 }
 
 export const usePluginInstalledCheck = (
-  input: string | UsePluginInstalledCheckOptions = '',
+  input: UsePluginInstalledCheckOptions = {},
 ) => {
-  const providerName = typeof input === 'string' ? input : (input.providerName ?? '')
-  const providerPluginId = typeof input === 'string' ? undefined : input.providerPluginId
-  const enabled = typeof input === 'string' ? true : (input.enabled ?? true)
-
-  const pluginID = providerPluginId === null
-    ? ''
-    : (providerPluginId || providerName?.split('/').splice(0, 2).join('/'))
+  const {
+    providerPluginId,
+    enabled = true,
+  } = input
+  const pluginID = providerPluginId ?? ''
 
   const { data: installedPluginData } = useCheckInstalled({
     pluginIds: pluginID ? [pluginID] : [],
