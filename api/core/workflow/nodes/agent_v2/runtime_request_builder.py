@@ -43,6 +43,15 @@ from models.provider_ids import ModelProviderID
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
+
+_DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
+_DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
+_DANGEROUS_ACK_KEYS = (
+    "dangerous_acknowledged",
+    "dangerous_accepted",
+    "risk_accepted",
+    "approved",
+)
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
@@ -424,7 +433,14 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
 
 def _cli_tool_enabled(item: object) -> bool:
     """A CLI tool is bootstrapped unless explicitly disabled (default is enabled)."""
-    return bool(_plain_mapping(item).get("enabled", True))
+    data = _plain_mapping(item)
+    if data.get("enabled") is False:
+        return False
+    if data.get("pre_authorized") is False or _permission_denied(data):
+        return False
+    if _dangerous_without_acknowledgement(data):
+        return False
+    return True
 
 
 def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
@@ -478,3 +494,30 @@ def _name_from_mapping(item: Mapping[str, Any]) -> str | None:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _permission_denied(data: Mapping[str, Any]) -> bool:
+    permission = data.get("permission")
+    if isinstance(permission, Mapping):
+        allowed = permission.get("allowed")
+        if allowed is False:
+            return True
+        status = permission.get("status") or permission.get("state")
+        if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+            return True
+
+    for key in ("authorization_status", "permission_status", "status"):
+        status = data.get(key)
+        if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+            return True
+    return False
+
+
+def _dangerous_without_acknowledgement(data: Mapping[str, Any]) -> bool:
+    dangerous = any(data.get(key) is True for key in _DANGEROUS_FLAG_KEYS)
+    risk_level = data.get("risk_level")
+    if isinstance(risk_level, str) and risk_level == "dangerous":
+        dangerous = True
+    if not dangerous:
+        return False
+    return not any(data.get(key) is True for key in _DANGEROUS_ACK_KEYS)

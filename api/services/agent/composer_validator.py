@@ -26,6 +26,14 @@ _PLAINTEXT_SECRET_KEYS = {
 _SHELL_ENV_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _CLI_TOOL_NAME_KEYS = ("name", "tool_name", "label")
 _CLI_TOOL_COMMAND_KEYS = ("command", "install_command", "install", "setup_command")
+_DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
+_DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
+_DANGEROUS_ACK_KEYS = (
+    "dangerous_acknowledged",
+    "dangerous_accepted",
+    "risk_accepted",
+    "approved",
+)
 
 
 class ComposerConfigValidator:
@@ -88,6 +96,8 @@ class ComposerConfigValidator:
                     raise InvalidComposerConfigError(
                         f"env/secret name '{name}' must be a valid shell identifier (^[A-Za-z_][A-Za-z0-9_]*$)."
                     )
+                if section == "secret_refs" and cls._permission_denied(entry):
+                    raise InvalidComposerConfigError(f"secret reference '{name}' is not authorized for this agent.")
                 if name in seen_env_names:
                     raise InvalidComposerConfigError(
                         f"duplicate env/secret name '{name}': environment variables and secret references "
@@ -102,11 +112,15 @@ class ComposerConfigValidator:
                 if not isinstance(entry, dict) or entry.get("enabled") is False:
                     continue
                 has_name = any(isinstance(entry.get(key), str) and entry[key].strip() for key in _CLI_TOOL_NAME_KEYS)
-                has_command = bool(entry.get("install_commands")) or any(
-                    isinstance(entry.get(key), str) and entry[key].strip() for key in _CLI_TOOL_COMMAND_KEYS
-                )
+                has_command = cls._has_install_command(entry)
                 if not has_name and not has_command:
                     raise InvalidComposerConfigError("an enabled CLI tool must declare a name or an install command.")
+                if cls._permission_denied(entry) or entry.get("pre_authorized") is False:
+                    raise InvalidComposerConfigError("an enabled CLI tool is not authorized for runtime bootstrap.")
+                if cls._dangerous_without_acknowledgement(entry):
+                    raise InvalidComposerConfigError(
+                        "a dangerous CLI tool command must be explicitly acknowledged before save."
+                    )
 
     @classmethod
     def _reject_plaintext_secrets(cls, value: Any, *, path: str) -> None:
@@ -120,3 +134,39 @@ class ComposerConfigValidator:
         elif isinstance(value, list):
             for index, nested in enumerate(value):
                 cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
+
+    @classmethod
+    def _has_install_command(cls, entry: dict[str, Any]) -> bool:
+        raw_commands = entry.get("install_commands")
+        if isinstance(raw_commands, list) and any(
+            isinstance(command, str) and command.strip() for command in raw_commands
+        ):
+            return True
+        return any(isinstance(entry.get(key), str) and entry[key].strip() for key in _CLI_TOOL_COMMAND_KEYS)
+
+    @classmethod
+    def _permission_denied(cls, entry: dict[str, Any]) -> bool:
+        permission = entry.get("permission")
+        if isinstance(permission, dict):
+            allowed = permission.get("allowed")
+            if allowed is False:
+                return True
+            status = permission.get("status") or permission.get("state")
+            if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+                return True
+
+        for key in ("authorization_status", "permission_status", "status"):
+            status = entry.get(key)
+            if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+                return True
+        return False
+
+    @classmethod
+    def _dangerous_without_acknowledgement(cls, entry: dict[str, Any]) -> bool:
+        dangerous = any(entry.get(key) is True for key in _DANGEROUS_FLAG_KEYS)
+        risk_level = entry.get("risk_level")
+        if isinstance(risk_level, str) and risk_level == "dangerous":
+            dangerous = True
+        if not dangerous:
+            return False
+        return not any(entry.get(key) is True for key in _DANGEROUS_ACK_KEYS)
