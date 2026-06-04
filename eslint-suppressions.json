@@ -2413,11 +2413,6 @@
       "count": 2
     }
   },
-  "web/app/components/explore/create-app-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/try-app/tab.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -2510,11 +2505,6 @@
   "web/app/components/goto-anything/hooks/use-goto-anything-results.ts": {
     "@tanstack/query/exhaustive-deps": {
       "count": 1
-    }
-  },
-  "web/app/components/header/account-dropdown/index.tsx": {
-    "no-restricted-globals": {
-      "count": 3
     }
   },
   "web/app/components/header/account-setting/data-source-page-new/card.tsx": {
@@ -4999,22 +4989,6 @@
   },
   "web/app/signin/check-code/page.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/signin/components/mail-and-password-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },

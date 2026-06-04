@@ -1400,7 +1400,18 @@ class TenantService:
         account_id: uuid.UUID | str | None,
         tenant_id: str,
     ) -> TenantAccountRole | None:
-        """Return the caller's role in ``tenant_id``, or ``None`` if not a member."""
+        """Return the caller's role in ``tenant_id``, or ``None`` if not a member.
+
+        Backs the openapi auth pipeline's ``load_workspace_role`` prepare step:
+        ``None`` is treated as non-member (the pipeline maps it to 404 — no
+        cross-tenant ID leak) and an out-of-set role to 403.
+
+        ``None``/empty ``account_id`` short-circuits to ``None`` so SSO
+        bearers (no account) collapse to the non-member path. Mirrors the
+        session-injection style of :meth:`account_belongs_to_tenant` rather
+        than :meth:`get_user_role`, which loads full ``Account``/``Tenant``
+        objects against the Flask-scoped ``db.session``.
+        """
         if not account_id:
             return None
 
