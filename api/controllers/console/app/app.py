@@ -530,7 +530,7 @@ class AppListApi(Resource):
             app_ids = [str(app.id) for app in app_pagination.items]
             permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
                 str(current_tenant_id),
-                current_user.id,
+                current_user_id,
                 app_ids,
             )
             for app in app_pagination.items:
