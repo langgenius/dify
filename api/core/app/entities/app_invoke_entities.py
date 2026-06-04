@@ -55,6 +55,7 @@ class DifyRunContext(BaseModel):
     user_from: UserFrom
     invoke_from: InvokeFrom
     trace_session_id: str | None = None
+    credential_overrides: dict[str, str] | None = None
 
 
 def build_dify_run_context(
@@ -65,6 +66,7 @@ def build_dify_run_context(
     user_from: UserFrom,
     invoke_from: InvokeFrom,
     trace_session_id: str | None = None,
+    credential_overrides: dict[str, str] | None = None,
     extra_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -81,6 +83,7 @@ def build_dify_run_context(
         user_from=user_from,
         invoke_from=invoke_from,
         trace_session_id=trace_session_id,
+        credential_overrides=credential_overrides,
     )
     return run_context
 
@@ -258,6 +261,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
+    credential_overrides: dict[str, str] | None = None
 
     class SingleIterationRunEntity(BaseModel):
         """

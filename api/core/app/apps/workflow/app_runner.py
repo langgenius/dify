@@ -89,6 +89,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 invoke_from=invoke_from,
                 root_node_id=self._root_node_id,
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                credential_overrides=self.application_generate_entity.credential_overrides,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
@@ -140,6 +141,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                credential_overrides=self.application_generate_entity.credential_overrides,
             )
 
         # RUN WORKFLOW

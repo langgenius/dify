@@ -222,6 +222,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 trace_manager=trace_manager,
                 workflow_execution_id=workflow_run_id,
                 extras=extras,
+                credential_overrides=args.get("credential_overrides"),
             )
 
             contexts.plugin_tool_providers.set({})

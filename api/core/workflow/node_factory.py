@@ -351,7 +351,10 @@ class DifyNodeFactory(NodeFactory):
             ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
         )
 
-        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context)
+        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(
+            self._dify_context,
+            credential_overrides=self._dify_context.credential_overrides,
+        )
         self._agent_strategy_resolver = PluginAgentStrategyResolver()
         self._agent_strategy_presentation_provider = PluginAgentStrategyPresentationProvider()
         self._agent_runtime_support = AgentRuntimeSupport()

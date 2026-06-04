@@ -57,6 +57,7 @@ class CompletionRequestPayload(BaseModel):
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="dev")
     trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+    credential_overrides: dict[str, str] | None = Field(default=None, description="Dynamic credential overrides")
 
 
 class ChatRequestPayload(BaseModel):
@@ -69,6 +70,7 @@ class ChatRequestPayload(BaseModel):
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
     trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+    credential_overrides: dict[str, str] | None = Field(default=None, description="Dynamic credential overrides")
 
     @field_validator("conversation_id", mode="before")
     @classmethod
