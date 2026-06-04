@@ -181,6 +181,37 @@ Children of iteration / loop containers additionally need
      "vision": {"enabled": false},
      "instruction": ""}
 
+- document-extractor:
+    {"variable_selector": ["<src>", "<file-var>"],   # a file / file-list input
+     "is_array_file": false}                          # true when the input is a
+                                                      # file-list (array of files)
+    Single output variable ``text``: a string when ``is_array_file`` is false,
+    an array of strings (one per file) when it is true. ``variable_selector``
+    MUST point at a ``start`` variable declared with type "file" / "file-list"
+    (or ``sys.files`` in Advanced-Chat mode).
+
+- variable-aggregator  (merge mutually-exclusive branches into one output):
+    {"output_type": "string",        # VarType of the merged value — one of
+                                     # string | number | object | array[string] |
+                                     # array[number] | array[object] | file |
+                                     # array[file] | any. Match the branch vars.
+     "variables": [["<branchA-node>", "<var>"],
+                   ["<branchB-node>", "<var>"]]}
+    Output variable: ``output`` (the first branch that actually ran). Place it
+    after an ``if-else`` / ``question-classifier`` to rejoin paths before the
+    ``end`` / ``answer`` node. Each entry of ``variables`` is a value_selector
+    array, NOT a placeholder string.
+
+- list-operator  (filter / sort / slice an array variable):
+    {"variable": ["<src>", "<array-var>"],
+     "filter_by": {"enabled": false, "conditions": []},
+     "extract_by": {"enabled": false, "serial": "1"},
+     "order_by": {"enabled": false, "key": "", "value": "asc"},
+     "limit": {"enabled": false, "size": 10}}
+    Enable only the sub-features you need; ``conditions`` reuse the if-else
+    condition shape (key / comparison_operator / value). Outputs: ``result``
+    (the processed array), ``first_record``, ``last_record``.
+
 ## Containers — iteration / loop
 
 These are SUBGRAPH nodes. To use one you MUST emit, in order:
@@ -313,6 +344,11 @@ correct.
        * ``code``   → a key in ``data.outputs``.
        * ``knowledge-retrieval`` → ``result`` (the standard array output).
        * ``parameter-extractor`` → one of the ``data.parameters[*].name``.
+       * ``document-extractor`` → ``text`` (extracted file text; an array of
+         strings when ``is_array_file`` is true).
+       * ``variable-aggregator`` → ``output``.
+       * ``list-operator`` → ``result`` (array), ``first_record``,
+         ``last_record``.
        * ``tool``   → any parameter declared by the tool — the run time
          validates these, so you can name them freely, but pick from the
          documented provider/tool.

@@ -799,6 +799,14 @@ class WorkflowGenerator:
             return var == "output"
         if node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
             return var in {"class_id", "class_name"}
+        if node_type == BuiltinNodeTypes.DOCUMENT_EXTRACTOR:
+            # Single ``text`` output: a string, or an array of strings when
+            # ``is_array_file`` is set.
+            return var == "text"
+        if node_type in (BuiltinNodeTypes.VARIABLE_AGGREGATOR, BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR):
+            return var == "output"
+        if node_type == BuiltinNodeTypes.LIST_OPERATOR:
+            return var in {"result", "first_record", "last_record"}
         # Other node types (if-else, iteration-start, loop-start, ...) don't
         # produce outputs of their own.
         return False

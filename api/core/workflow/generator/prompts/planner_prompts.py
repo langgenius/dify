@@ -31,6 +31,14 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
 - "loop"                — repeat a sub-pipeline until an exit condition is met.
 - "question-classifier" — route to a labelled branch based on free-text intent.
 - "parameter-extractor" — extract structured params from free text using LLM.
+- "document-extractor"  — extract plain text from uploaded files (PDF, Word, PPT,
+                          Markdown, etc.). Feed its "text" output into an "llm" /
+                          "code" node. Requires a "file" or "file-list" input.
+- "variable-aggregator" — merge several branch outputs into one "output" variable;
+                          use after "if-else" / "question-classifier" to rejoin
+                          mutually-exclusive paths before "end" / "answer".
+- "list-operator"       — filter / sort / slice an array variable (e.g. the items
+                          fed into or produced by an "iteration").
 
 # Rules
 
