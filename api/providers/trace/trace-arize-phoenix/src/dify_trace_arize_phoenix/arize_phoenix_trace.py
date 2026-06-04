@@ -1157,7 +1157,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             else:
                 outputs_str = str(trace_info.outputs)
 
-            llm_attributes = {
+            llm_attributes: dict[str, Any] = {
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
