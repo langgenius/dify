@@ -1,11 +1,13 @@
+import type { LexicalEditor } from 'lexical'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import {
+  $nodesOfType,
   COMMAND_PRIORITY_EDITOR,
 } from 'lexical'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   BlockEnum,
   InputVarType,
@@ -13,6 +15,7 @@ import {
 import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
+  readEditorStateValue,
   readRootTextContent,
   renderLexicalEditor,
   selectRootEnd,
@@ -75,6 +78,12 @@ const createInsertPayload = () => ({
   onFormInputItemRename: vi.fn(),
   onFormInputItemRemove: vi.fn(),
 })
+
+const readHITLReadonlyValues = (editor: LexicalEditor): boolean[] => {
+  return readEditorStateValue(editor, () => {
+    return $nodesOfType(HITLInputNode).map(node => node.getReadonly())
+  })
+}
 
 const renderHITLInputBlock = (props?: {
   onInsert?: () => void
@@ -167,6 +176,65 @@ describe('HITLInputBlock', () => {
         expect(readRootTextContent(editor)).toContain('{{#$output.user_name#}}')
       })
       expect(getNodeCount(editor, HITLInputNode)).toBe(1)
+    })
+
+    it('should update existing and newly inserted nodes when readonly changes', async () => {
+      let setReadonlyValue: ((readonly: boolean) => void) | undefined
+      const ReadonlyHarness = () => {
+        const [readonly, setReadonly] = useState(false)
+
+        useEffect(() => {
+          setReadonlyValue = setReadonly
+          return () => {
+            setReadonlyValue = undefined
+          }
+        }, [])
+
+        return (
+          <HITLInputBlock
+            nodeId="node-1"
+            formInputs={[createFormInput()]}
+            onFormInputItemRename={vi.fn()}
+            onFormInputItemRemove={vi.fn()}
+            workflowNodesMap={createWorkflowNodesMap('First Node')}
+            readonly={readonly}
+          />
+        )
+      }
+
+      const { getEditor } = renderLexicalEditor({
+        namespace: 'hitl-input-block-readonly-update-test',
+        nodes: [CustomTextNode, HITLInputNode],
+        children: <ReadonlyHarness />,
+      })
+
+      const editor = await waitForEditorReady(getEditor)
+
+      selectRootEnd(editor)
+      act(() => {
+        editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+      })
+
+      await waitFor(() => {
+        expect(readHITLReadonlyValues(editor)).toEqual([false])
+      })
+
+      act(() => {
+        setReadonlyValue?.(true)
+      })
+
+      await waitFor(() => {
+        expect(readHITLReadonlyValues(editor)).toEqual([true])
+      })
+
+      selectRootEnd(editor)
+      act(() => {
+        editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+      })
+
+      await waitFor(() => {
+        expect(readHITLReadonlyValues(editor)).toEqual([true, true])
+      })
     })
 
     it('should call onDelete when delete command is dispatched', async () => {

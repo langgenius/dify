@@ -3,10 +3,9 @@
 import type { InitialConfigType } from '@lexical/react/LexicalComposer'
 import type {
   EditorState,
-  LexicalCommand,
 } from 'lexical'
 import type { FC } from 'react'
-import type { Hotkey } from './plugins/shortcuts-popup-plugin'
+import type { Hotkey, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -20,7 +19,6 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
-import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
@@ -103,7 +101,7 @@ const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
 
   useEffect(() => {
     editor.setEditable(editable)
-  }, [editable, editor])
+  }, [editor, editable])
 
   return null
 }
@@ -133,7 +131,7 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
-  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: unknown[]) => void }> }>
+  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }> }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -202,18 +200,16 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }
 
   useEffect(() => {
-    const event: EventEmitterValue = {
+    eventEmitter?.emit({
       type: UPDATE_DATASETS_EVENT_EMITTER,
       payload: contextBlock?.datasets,
-    }
-    eventEmitter?.emit(event)
+    })
   }, [eventEmitter, contextBlock?.datasets])
   useEffect(() => {
-    const event: EventEmitterValue = {
+    eventEmitter?.emit({
       type: UPDATE_HISTORY_EVENT_EMITTER,
       payload: historyBlock?.history,
-    }
-    eventEmitter?.emit(event)
+    })
   }, [eventEmitter, historyBlock?.history])
 
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null)

@@ -9,6 +9,9 @@ const createFilledForm = (overrides: Partial<HumanInputFilledFormData> = {}): Hu
   rendered_content: 'Approved by Alice',
   action_id: 'approve',
   action_text: 'Approve',
+  submitted_data: {
+    summary: 'Approved by Alice',
+  },
   ...overrides,
 })
 
@@ -33,11 +36,13 @@ describe('HumanInputFilledFormList', () => {
 
     expect(screen.getByText('Approval'))!.toBeInTheDocument()
     expect(screen.getByText('Review'))!.toBeInTheDocument()
-    expect(screen.getAllByTestId('submitted-content')).toHaveLength(2)
+    expect(screen.getAllByTestId('submitted-field-values')).toHaveLength(2)
     expect(screen.getAllByTestId('executed-action')).toHaveLength(2)
+    expect(screen.getAllByTestId('submitted-field-summary')).toHaveLength(2)
+    expect(screen.getAllByTestId('submitted-field-summary')[0]).toHaveTextContent('Approved by Alice')
 
     await user.click(screen.getAllByTestId('expand-icon')[0]!)
 
-    expect(screen.getAllByTestId('submitted-content')).toHaveLength(1)
+    expect(screen.getAllByTestId('submitted-field-values')).toHaveLength(1)
   })
 })

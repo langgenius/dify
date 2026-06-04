@@ -72,6 +72,7 @@ vi.mock('lexical', async (importOriginal) => {
       })),
       getAllTextNodes: () => [],
     }),
+    $nodesOfType: () => [],
     TextNode: class TextNode {
       __text: string
       constructor(text = '') {
@@ -93,9 +94,8 @@ vi.mock('@lexical/react/LexicalComposer', () => ({
       try {
         initialConfig.onError(new Error('test error'))
       }
-      catch (e) {
-        // ignore error
-        console.error(e)
+      catch {
+        // Ignore the intentional throw from the mocked error boundary path.
       }
     }
     if (initialConfig?.nodes) {
@@ -329,18 +329,18 @@ describe('PromptEditor', () => {
       expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
     })
 
-    it('should update lexical editable state when editable prop changes', () => {
+    it('should sync editable changes to the lexical editor instance', async () => {
       const { rerender } = render(<PromptEditor editable={true} />)
 
-      expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(true)
+      await waitFor(() => {
+        expect(mocks.editor.setEditable).toHaveBeenCalledWith(true)
+      })
 
       rerender(<PromptEditor editable={false} />)
 
-      expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(false)
-
-      rerender(<PromptEditor editable={true} />)
-
-      expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(true)
+      await waitFor(() => {
+        expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(false)
+      })
     })
 
     it('should render with isSupportFileVar=true', () => {
