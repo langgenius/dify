@@ -43,7 +43,8 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
 ]
 
 export function AgentDetailTop() {
-  const { t } = useTranslation()
+  const { t: tApp } = useTranslation('app')
+  const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
@@ -53,7 +54,7 @@ export function AgentDetailTop() {
         <div className="flex shrink-0 items-center py-1 pr-1 pl-0.5">
           <button
             type="button"
-            aria-label={t('operation.back', { ns: 'common' })}
+            aria-label={tCommon('operation.back')}
             className="flex size-4 items-center justify-center rounded-sm text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => router.back()}
           >
@@ -61,7 +62,7 @@ export function AgentDetailTop() {
           </button>
           <Link
             href="/"
-            aria-label={t('mainNav.home', { ns: 'common' })}
+            aria-label={tCommon('mainNav.home')}
             className="flex size-4 items-center justify-center rounded-sm text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
@@ -71,12 +72,12 @@ export function AgentDetailTop() {
           /
         </span>
         <Link href="/roster" className="shrink-0 truncate rounded-sm system-sm-semibold-uppercase text-text-secondary hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden">
-          {t('menus.roster', { ns: 'common' })}
+          {tCommon('menus.roster')}
         </Link>
       </div>
       <button
         type="button"
-        aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
+        aria-label={tApp('gotoAnything.searchTitle')}
         className="flex shrink-0 items-center gap-1 overflow-hidden rounded-[10px] p-1 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         onClick={() => setGotoAnythingOpen(true)}
       >

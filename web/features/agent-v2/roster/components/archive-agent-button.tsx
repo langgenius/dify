@@ -26,8 +26,8 @@ export function ArchiveAgentButton({
   agentId,
   agentName,
 }: ArchiveAgentButtonProps) {
-  const { t } = useTranslation()
-  const { t: tAgentV2 } = useTranslation('agentV2')
+  const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
   const [open, setOpen] = useState(false)
   const archiveAgentMutation = useMutation(consoleQuery.agents.byAgentId.delete.mutationOptions())
 
@@ -41,11 +41,11 @@ export function ArchiveAgentButton({
       },
     }, {
       onSuccess: () => {
-        toast.success(tAgentV2('roster.archiveSuccess'))
+        toast.success(t('roster.archiveSuccess'))
         setOpen(false)
       },
       onError: () => {
-        toast.error(tAgentV2('roster.archiveFailed'))
+        toast.error(t('roster.archiveFailed'))
       },
     })
   }
@@ -59,31 +59,31 @@ export function ArchiveAgentButton({
             variant="secondary"
             tone="destructive"
             className="gap-1"
-            aria-label={tAgentV2('roster.archiveAgent', { name: agentName })}
+            aria-label={t('roster.archiveAgent', { name: agentName })}
           />
         )}
       >
         <span aria-hidden className="i-ri-archive-line size-3.5" />
-        {tAgentV2('roster.archive')}
+        {t('roster.archive')}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-            {tAgentV2('roster.archiveDialog.title', { name: agentName })}
+            {t('roster.archiveDialog.title', { name: agentName })}
           </AlertDialogTitle>
           <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-            {tAgentV2('roster.archiveDialog.description')}
+            {t('roster.archiveDialog.description')}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton disabled={archiveAgentMutation.isPending}>
-            {t('operation.cancel', { ns: 'common' })}
+            {tCommon('operation.cancel')}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
             loading={archiveAgentMutation.isPending}
             onClick={handleArchive}
           >
-            {t('operation.confirm', { ns: 'common' })}
+            {tCommon('operation.confirm')}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

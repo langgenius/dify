@@ -17,8 +17,8 @@ type AgentFormValues = {
 }
 
 export function CreateAgentDialog() {
-  const { t } = useTranslation()
-  const { t: tAgentV2 } = useTranslation('agentV2')
+  const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
   const [open, setOpen] = useState(false)
   const createAgentMutation = useMutation(consoleQuery.agents.post.mutationOptions())
 
@@ -34,11 +34,11 @@ export function CreateAgentDialog() {
       },
     }, {
       onSuccess: () => {
-        toast.success(tAgentV2('roster.createSuccess'))
+        toast.success(t('roster.createSuccess'))
         setOpen(false)
       },
       onError: () => {
-        toast.error(tAgentV2('roster.createFailed'))
+        toast.error(t('roster.createFailed'))
       },
     })
   }
@@ -47,15 +47,15 @@ export function CreateAgentDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button variant="primary" className="min-w-40 gap-1.5" />}>
         <span aria-hidden className="i-ri-add-line size-4" />
-        {tAgentV2('roster.createAgent')}
+        {t('roster.createAgent')}
       </DialogTrigger>
       <DialogContent>
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {tAgentV2('roster.createDialog.title')}
+          {t('roster.createDialog.title')}
         </DialogTitle>
         <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-          {tAgentV2('roster.createDialog.description')}
+          {t('roster.createDialog.description')}
         </DialogDescription>
         <Form<AgentFormValues>
           className="mt-5 space-y-4"
@@ -63,38 +63,38 @@ export function CreateAgentDialog() {
         >
           <FieldRoot name="name">
             <FieldLabel>
-              {tAgentV2('roster.createForm.nameLabel')}
+              {t('roster.createForm.nameLabel')}
             </FieldLabel>
             <FieldControl
               autoComplete="off"
               autoFocus
               maxLength={255}
-              placeholder={tAgentV2('roster.createForm.namePlaceholder')}
+              placeholder={t('roster.createForm.namePlaceholder')}
               required
             />
             <FieldError match="valueMissing">
-              {tAgentV2('roster.createForm.nameRequired')}
+              {t('roster.createForm.nameRequired')}
             </FieldError>
           </FieldRoot>
           <FieldRoot name="description">
             <FieldLabel>
-              {tAgentV2('roster.createForm.descriptionLabel')}
+              {t('roster.createForm.descriptionLabel')}
             </FieldLabel>
             <Textarea
               autoComplete="off"
-              placeholder={tAgentV2('roster.createForm.descriptionPlaceholder')}
+              placeholder={t('roster.createForm.descriptionPlaceholder')}
             />
           </FieldRoot>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" onClick={() => setOpen(false)} disabled={createAgentMutation.isPending}>
-              {t('operation.cancel', { ns: 'common' })}
+              {tCommon('operation.cancel')}
             </Button>
             <Button
               type="submit"
               variant="primary"
               loading={createAgentMutation.isPending}
             >
-              {t('operation.create', { ns: 'common' })}
+              {tCommon('operation.create')}
             </Button>
           </div>
         </Form>

@@ -14,8 +14,8 @@ import { RosterToolbar } from './components/roster-toolbar'
 const ROSTER_PAGE_SIZE = 30
 
 export default function RosterPage() {
-  const { t } = useTranslation()
-  const { t: tAgentV2 } = useTranslation('agentV2')
+  const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
   const [keyword, setKeyword] = useQueryState('keyword', parseAsString.withDefault('').withOptions({
     limitUrlUpdates: debounce(300),
   }))
@@ -51,7 +51,7 @@ export default function RosterPage() {
   const rosterItems = rosterPages?.pages.flatMap(page => page.data) ?? []
   const totalAgents = rosterPages?.pages[0]?.total ?? 0
 
-  useDocumentTitle(t('menus.roster', { ns: 'common' }))
+  useDocumentTitle(tCommon('menus.roster'))
 
   return (
     <main className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
@@ -59,7 +59,7 @@ export default function RosterPage() {
       <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
         <ScrollArea
           className="min-h-0 flex-1 overflow-hidden"
-          label={tAgentV2('roster.listLabel')}
+          label={t('roster.listLabel')}
           slotClassNames={{
             viewport: 'overscroll-contain',
             content: 'min-h-full',
@@ -70,7 +70,7 @@ export default function RosterPage() {
             <header className="flex min-w-0 flex-col gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <h1 className="truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-                  {tAgentV2('roster.title')}
+                  {t('roster.title')}
                 </h1>
                 <a
                   href="https://docs.dify.ai/"
@@ -78,12 +78,12 @@ export default function RosterPage() {
                   rel="noreferrer"
                   className="inline-flex shrink-0 items-center gap-1 rounded-md system-xs-semibold text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 >
-                  {tAgentV2('roster.learnMore')}
+                  {t('roster.learnMore')}
                   <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
                 </a>
               </div>
               <p className="max-w-3xl system-sm-regular text-text-tertiary">
-                {tAgentV2('roster.description')}
+                {t('roster.description')}
               </p>
             </header>
 

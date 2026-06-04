@@ -41,6 +41,7 @@ export function AgentDetailLayout({
   children,
 }: AgentDetailLayoutProps) {
   const { t } = useTranslation('agentV2')
+  const { t: tWorkflow } = useTranslation('workflow')
   const [showVersionHistory, setShowVersionHistory] = useState(false)
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
@@ -104,7 +105,7 @@ export function AgentDetailLayout({
               'size-8 px-0! text-text-tertiary hover:text-text-secondary',
               showVersionHistory && 'border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-text-secondary',
             )}
-            aria-label={t('common.versionHistory', { ns: 'workflow' })}
+            aria-label={tWorkflow('common.versionHistory')}
             onClick={() => setShowVersionHistory(true)}
           >
             <span aria-hidden className="i-ri-history-line size-4" />
@@ -138,16 +139,18 @@ function AgentVersionHistoryPanel({
   onClose: () => void
 }) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
+  const { t: tWorkflow } = useTranslation('workflow')
 
   return (
     <aside className="absolute top-20 right-0 bottom-0 flex w-67 flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
         <div className="flex-1 py-1 system-xl-semibold text-text-primary">
-          {t('versionHistory.title', { ns: 'workflow' })}
+          {tWorkflow('versionHistory.title')}
         </div>
         <button
           type="button"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={tCommon('operation.close')}
           className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md p-0.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           onClick={onClose}
         >
@@ -156,7 +159,7 @@ function AgentVersionHistoryPanel({
       </div>
       <ScrollArea
         className="min-h-0 flex-1 overflow-hidden"
-        label={t('versionHistory.title', { ns: 'workflow' })}
+        label={tWorkflow('versionHistory.title')}
         slotClassNames={{
           viewport: 'overscroll-contain',
           content: 'min-h-full px-3 py-2',
