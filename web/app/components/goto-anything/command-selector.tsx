@@ -15,6 +15,8 @@ type Props = {
 }
 
 const slashCommandDescriptionKeys = {
+  '/create': 'gotoAnything.actions.createCategoryDesc',
+  '/refine': 'gotoAnything.actions.refineCategoryDesc',
   '/theme': 'gotoAnything.actions.themeCategoryDesc',
   '/language': 'gotoAnything.actions.languageChangeDesc',
   '/account': 'gotoAnything.actions.accountDesc',

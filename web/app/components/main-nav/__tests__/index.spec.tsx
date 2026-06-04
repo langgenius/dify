@@ -586,9 +586,10 @@ describe('MainNav', () => {
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
-    expect(await screen.findByText('common.mainNav.help.learnDify')).toBeInTheDocument()
+    const learnDifyItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.learnDify' })
+    expect(learnDifyItem).toHaveAttribute('aria-checked', 'false')
 
-    fireEvent.click(screen.getByRole('switch', { name: 'common.mainNav.help.learnDify' }))
+    fireEvent.click(learnDifyItem)
 
     await waitFor(() => {
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('false')
@@ -695,7 +696,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  it('filters installed web apps and navigates to an installed app', () => {
+  it('filters installed web apps and renders installed app navigation link', () => {
     mockInstalledApps = [
       createInstalledApp({ id: 'installed-1', app: { ...createInstalledApp().app, name: 'Alpha App' } }),
       createInstalledApp({ id: 'installed-2', app: { ...createInstalledApp().app, name: 'Beta Tool' } }),
@@ -709,8 +710,7 @@ describe('MainNav', () => {
     })
 
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByText('Beta Tool'))
-    expect(mockPush).toHaveBeenCalledWith('/installed/installed-2')
+    expect(screen.getByRole('link', { name: 'Beta Tool' })).toHaveAttribute('href', '/installed/installed-2')
   })
 
   it('renders web app skeleton rows while installed apps are loading', () => {

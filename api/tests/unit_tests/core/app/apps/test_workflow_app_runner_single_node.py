@@ -51,6 +51,7 @@ def test_run_uses_single_node_execution_branch(
     app_generate_entity.task_id = "task-id"
     app_generate_entity.call_depth = 0
     app_generate_entity.trace_manager = None
+    app_generate_entity.extras = {"trace_session_id": "session-1"}
     app_generate_entity.single_iteration_run = single_iteration_run
     app_generate_entity.single_loop_run = single_loop_run
 
@@ -101,6 +102,7 @@ def test_run_uses_single_node_execution_branch(
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
         user_id="user",
+        trace_session_id="session-1",
     )
     init_graph.assert_not_called()
 

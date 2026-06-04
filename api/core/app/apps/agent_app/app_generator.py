@@ -113,7 +113,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=invoke_from,
-            extras={"auto_generate_conversation_name": args.get("auto_generate_name", True)},
+            extras={
+                "auto_generate_conversation_name": args.get("auto_generate_name", True),
+            },
             call_depth=0,
             trace_manager=trace_manager,
             agent_id=agent.id,

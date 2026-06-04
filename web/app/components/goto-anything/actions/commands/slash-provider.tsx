@@ -1,30 +1,33 @@
 'use client'
-import type { Locale } from '@/i18n-config'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
 import { setLocaleOnClient } from '@/i18n-config'
 import { accountCommand } from './account'
 import { communityCommand } from './community'
+import { createCommand } from './create'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
 import { goCommand } from './go'
 import { languageCommand } from './language'
+import { refineCommand } from './refine'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 
 type SlashCommandDeps = {
   setTheme: (theme: string) => void
-  setLocale: (locale: string) => Promise<void>
+  setLocale: typeof setLocaleOnClient
 }
 
 const registerSlashCommands = (deps: SlashCommandDeps) => {
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
-  slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale })
+  slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale as (locale: string) => Promise<void> })
   slashCommandRegistry.register(forumCommand, {})
   slashCommandRegistry.register(docsCommand, {})
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(goCommand, {})
+  slashCommandRegistry.register(createCommand, {})
+  slashCommandRegistry.register(refineCommand, {})
 }
 
 const unregisterSlashCommands = () => {
@@ -35,6 +38,8 @@ const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('go')
+  slashCommandRegistry.unregister('create')
+  slashCommandRegistry.unregister('refine')
 }
 
 export const SlashCommandProvider = () => {
@@ -42,7 +47,7 @@ export const SlashCommandProvider = () => {
   useEffect(() => {
     registerSlashCommands({
       setTheme: theme.setTheme,
-      setLocale: locale => setLocaleOnClient(locale as Locale),
+      setLocale: setLocaleOnClient,
     })
     return () => unregisterSlashCommands()
   }, [theme.setTheme])

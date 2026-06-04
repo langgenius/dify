@@ -3,6 +3,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -11,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -53,15 +53,20 @@ const HelpMenu = ({
           aria-label={t('mainNav.help.openMenu', { ns: 'common' })}
           data-learn-dify-help-target
           className={cn(
-            compact
-              ? 'text-components-main-nav-text flex size-8 items-center justify-center overflow-hidden rounded-lg border-0 bg-transparent p-1.5 shadow-none transition-colors hover:bg-state-base-hover hover:text-text-secondary'
-              : 'text-components-main-nav-text flex items-center justify-center overflow-hidden rounded-full border border-components-card-border bg-components-card-bg p-0.5 shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam)] transition-colors hover:bg-components-card-bg-alt hover:text-text-accent hover:shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
-            compact
-              ? open && 'bg-state-base-hover text-text-secondary'
-              : open && 'bg-components-card-bg-alt text-text-accent shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
+            'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
+            compact && 'mb-2',
+            open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
           )}
         >
-          <span aria-hidden className={cn('i-custom-vender-main-nav-help shrink-0', compact ? 'size-4' : 'size-6 rounded-full')} />
+          <svg
+            aria-hidden
+            className="size-6 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <path d="M11.9666 16.9985V17.011" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M11.9665 13.2485C11.9665 11.1995 14.4665 11.9134 14.4665 9.49854C14.4665 8.11782 13.3473 6.99854 11.9665 6.99854C11.0412 6.99854 10.2333 7.50129 9.80103 8.24854" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="top-end"
@@ -77,19 +82,31 @@ const HelpMenu = ({
                   trailing={<ExternalLinkIndicator />}
                 />
               </DropdownMenuLinkItem>
-              <div className="mx-0 flex h-8 items-center gap-1 rounded-lg py-1 pr-2 pl-3">
+              <DropdownMenuCheckboxItem
+                checked={learnDifyVisible}
+                closeOnClick={false}
+                className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                onCheckedChange={checked => setLearnDifyHidden(!checked)}
+              >
                 <span aria-hidden className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary" />
                 <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
                   {t('mainNav.help.learnDify', { ns: 'common' })}
                 </span>
-                <Switch
-                  size="md"
-                  checked={learnDifyVisible}
-                  aria-label={t('mainNav.help.learnDify', { ns: 'common' })}
-                  onClick={event => event.stopPropagation()}
-                  onCheckedChange={checked => setLearnDifyHidden(!checked)}
-                />
-              </div>
+                <span
+                  aria-hidden
+                  className={cn(
+                    'relative inline-flex h-4 w-7 shrink-0 items-center rounded-[5px] p-0.5 transition-colors',
+                    learnDifyVisible ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'block h-3 w-2.5 rounded-[3px] bg-components-toggle-knob shadow-sm transition-transform',
+                      learnDifyVisible && 'translate-x-3.5',
+                    )}
+                  />
+                </span>
+              </DropdownMenuCheckboxItem>
               <SupportMenu />
               {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
             </DropdownMenuGroup>

@@ -97,7 +97,7 @@ function WorkspaceCardTrigger({
       <DropdownMenuTrigger
         aria-label={t('mainNav.workspace.openMenu', { ns: 'common' })}
         className={cn(
-          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:ring-offset-1 focus-visible:outline-hidden',
+          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
           open && 'bg-linear-to-b from-background-section-burn to-background-section',
         )}
       >
@@ -114,7 +114,7 @@ function WorkspaceCardTrigger({
         <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
           <button
             type="button"
-            className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:ring-offset-1 focus-visible:outline-hidden"
+            className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset"
             aria-label={t('mainNav.workspace.credits', { ns: 'common', count: credits })}
             onClick={onCreditsClick}
           >
@@ -125,7 +125,7 @@ function WorkspaceCardTrigger({
           {showPlanAction && (
             <button
               type="button"
-              className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:ring-offset-1 focus-visible:outline-hidden"
+              className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset"
               title={planActionLabel}
               onClick={onPlanClick}
             >
