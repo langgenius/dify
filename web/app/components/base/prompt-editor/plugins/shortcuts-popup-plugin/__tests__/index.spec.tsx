@@ -149,6 +149,30 @@ describe('ShortcutsPopupPlugin', () => {
     })
   })
 
+  it('does not close on mousedown inside a Base UI portal overlay', async () => {
+    render(<MinimalEditor />)
+    const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
+    ce.focus()
+
+    fireEvent.keyDown(document, { key: '/', ctrlKey: true })
+    expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
+
+    const portal = document.createElement('div')
+    portal.setAttribute('data-base-ui-portal', '')
+    const portalChild = document.createElement('button')
+    portalChild.textContent = 'portal-child'
+    portal.appendChild(portalChild)
+    document.body.appendChild(portal)
+
+    fireEvent.mouseDown(portalChild)
+
+    await waitFor(() => {
+      expect(screen.getByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
+    })
+
+    portal.remove()
+  })
+
   // ─── Container / portal ───
   it('portals into provided container when container is set', async () => {
     render(<MinimalEditor withContainer />)
@@ -162,7 +186,10 @@ describe('ShortcutsPopupPlugin', () => {
     render(<MinimalEditor withContainer={false} />)
     focusAndTriggerHotkey('/')
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
+    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(document.body).toContainElement(portalContent)
+    expect(floatingDiv).toHaveStyle({ zIndex: '50' })
+    expect(floatingDiv).toHaveStyle({ overflow: 'visible' })
   })
 
   // ─── matchHotkey: string hotkey ───
@@ -407,8 +434,8 @@ describe('ShortcutsPopupPlugin', () => {
   it('applies custom className to floating popup', async () => {
     render(<MinimalEditor className="custom-popup-class" />)
     focusAndTriggerHotkey('/')
-    const content = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-    const floatingDiv = content.closest('div')
+    await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
+    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(floatingDiv).toHaveClass('custom-popup-class')
   })
 

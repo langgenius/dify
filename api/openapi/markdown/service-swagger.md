@@ -2923,7 +2923,7 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string |  | Yes |
-| inputs | object |  | Yes |
+| inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### IndexInfoResponse
 

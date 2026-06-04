@@ -1,7 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 import os
-from typing import TypedDict
+from typing import TypedDict, override
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -30,6 +30,7 @@ class ExcelExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
 
+    @override
     def extract(self) -> list[Document]:
         """Load from Excel file in xls or xlsx format using Pandas and openpyxl."""
         documents = []

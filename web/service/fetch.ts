@@ -60,7 +60,7 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async ({ response }) => {
-    if (!/^([23])\d{2}$/.test(String(response.status))) {
+    if (!/^[23]\d{2}$/.test(String(response.status))) {
       let errorData: ResponseError | null = null
       try {
         const data: unknown = await response.clone().json()
@@ -101,11 +101,13 @@ const resolveShareCode = () => {
 }
 
 const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
-  const accessToken = getWebAppAccessToken()
-  if (accessToken)
-    request.headers.set('Authorization', `Bearer ${accessToken}`)
-  else
-    request.headers.delete('Authorization')
+  if (!request.headers.has('Authorization')) {
+    const accessToken = getWebAppAccessToken()
+    if (accessToken)
+      request.headers.set('Authorization', `Bearer ${accessToken}`)
+    else
+      request.headers.delete('Authorization')
+  }
   const shareCode = resolveShareCode()
   if (!shareCode)
     return

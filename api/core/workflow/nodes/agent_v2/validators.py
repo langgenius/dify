@@ -303,8 +303,18 @@ class WorkflowAgentNodeValidator:
                     f"Workflow Agent node {binding.node_id} has duplicate Dify Plugin Tool name {exposed_name}."
                 )
             exposed_names.add(exposed_name)
-        # CLI tools remain saved-but-not-executed. They are allowed at publish
-        # time so existing Agent Soul drafts are not blocked by a reserved field.
+
+        cli_tool_names: set[str] = set()
+        for cli_tool in agent_soul.tools.cli_tools:
+            name = cli_tool.get("name") or cli_tool.get("tool_name") or cli_tool.get("label")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            normalized_name = name.strip()
+            if normalized_name in cli_tool_names:
+                raise WorkflowAgentNodeValidationError(
+                    f"Workflow Agent node {binding.node_id} has duplicate CLI Tool name {normalized_name}."
+                )
+            cli_tool_names.add(normalized_name)
 
     @staticmethod
     def _validate_file_ref(
