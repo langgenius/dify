@@ -34,7 +34,7 @@ const ModelList: FC<ModelListProps> = ({
   const { t } = useTranslation()
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageModelProviders = hasPermission(workspacePermissionKeys, 'model.manage')
+  const canManagePlugins = hasPermission(workspacePermissionKeys, 'plugin.manage')
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
   const setShowModelLoadBalancingModal = useModalContextSelector(state => state.setShowModelLoadBalancingModal)
   const onModifyLoadBalancing = useCallback((model: ModelItem, credential?: Credential) => {
@@ -67,7 +67,7 @@ const ModelList: FC<ModelListProps> = ({
             </span>
           </span>
           {
-            isConfigurable && canManageModelProviders && (
+            isConfigurable && canManagePlugins && (
               <div className="flex grow justify-end">
                 <ManageCustomModelCredentials
                   provider={provider}

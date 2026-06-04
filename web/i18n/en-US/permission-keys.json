@@ -33,7 +33,6 @@
   "dataset.external.connect": "Connect external knowledge bases",
   "dataset.tag.manage": "Manage knowledge base tags",
   "mcp.manage": "Manage MCP",
-  "model.manage": "Manage models",
   "plugin.debug": "Debug plugins",
   "plugin.install": "Install and update plugins",
   "plugin.manage": "Manage plugins",

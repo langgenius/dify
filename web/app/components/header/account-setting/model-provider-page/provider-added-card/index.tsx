@@ -63,10 +63,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const showCollapsedSection = !expanded || !hasFetchedModelList
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
-  const canManageModelProviders = hasPermission(workspacePermissionKeys, 'model.manage')
+  const canManagePlugins = hasPermission(workspacePermissionKeys, 'plugin.manage')
   const canUseCredentials = hasPermission(workspacePermissionKeys, ['credential.manage', 'credential.use'])
   const showCredential = supportsPredefinedModel && canUseCredentials
-  const showCustomModelActions = supportsCustomizableModel && canManageModelProviders
+  const showCustomModelActions = supportsCustomizableModel && canManagePlugins
 
   const refreshModelList = useCallback((targetProviderName: string) => {
     if (targetProviderName !== currentProviderName)

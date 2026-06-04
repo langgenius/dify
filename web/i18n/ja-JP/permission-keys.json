@@ -33,7 +33,6 @@
   "dataset.external.connect": "外部ナレッジベースに接続",
   "dataset.tag.manage": "ナレッジベースタグを管理",
   "mcp.manage": "MCPを管理",
-  "model.manage": "モデルを管理",
   "plugin.debug": "プラグインをデバッグ",
   "plugin.install": "プラグインのインストールと更新",
   "plugin.manage": "プラグインを管理",

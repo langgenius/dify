@@ -8,7 +8,7 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
-let mockWorkspacePermissionKeys: string[] = ['model.manage', 'credential.manage', 'credential.use']
+let mockWorkspacePermissionKeys: string[] = ['plugin.manage', 'credential.manage', 'credential.use']
 const mockFetchModelProviderModels = vi.fn()
 const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { provider: string } }, enabled?: boolean }) => ({
   queryKey: ['console', 'modelProviders', 'models', input.params.provider],
@@ -105,7 +105,7 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
-    mockWorkspacePermissionKeys = ['model.manage', 'credential.manage', 'credential.use']
+    mockWorkspacePermissionKeys = ['plugin.manage', 'credential.manage', 'credential.use']
   })
 
   it('should render provider added card component', () => {
@@ -201,7 +201,7 @@ describe('ProviderAddedCard', () => {
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
-  it('should render custom model actions for workspace managers', () => {
+  it('should render custom model actions when user can manage plugins', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
@@ -218,12 +218,12 @@ describe('ProviderAddedCard', () => {
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
   })
 
-  it('should render custom model actions when user can manage models without credential permissions', () => {
+  it('should render custom model actions when user can manage plugins without credential permissions', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
-    mockWorkspacePermissionKeys = ['model.manage']
+    mockWorkspacePermissionKeys = ['plugin.manage']
 
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 

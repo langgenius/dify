@@ -62,7 +62,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageModel = hasPermission(workspacePermissionKeys, 'model.manage')
+  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
@@ -180,7 +180,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTextGenerationDefaultModel}
                     modelList={textGenerationModelList}
-                    readonly={!canManageModel}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
                   />
                 </div>
@@ -191,7 +191,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentEmbeddingsDefaultModel}
                     modelList={embeddingModelList}
-                    readonly={!canManageModel}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
                   />
                 </div>
@@ -202,7 +202,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentRerankDefaultModel}
                     modelList={rerankModelList}
-                    readonly={!canManageModel}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
                   />
                 </div>
@@ -213,7 +213,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentSpeech2textDefaultModel}
                     modelList={speech2textModelList}
-                    readonly={!canManageModel}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
                   />
                 </div>
@@ -224,7 +224,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTTSDefaultModel}
                     modelList={ttsModelList}
-                    readonly={!canManageModel}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
                   />
                 </div>
@@ -242,7 +242,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               className="min-w-18"
               variant="primary"
               onClick={handleSave}
-              disabled={!canManageModel}
+              disabled={!canManagePlugin}
             >
               {t('operation.save', { ns: 'common' })}
             </Button>

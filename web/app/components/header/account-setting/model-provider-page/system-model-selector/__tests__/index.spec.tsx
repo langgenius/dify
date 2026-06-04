@@ -29,7 +29,7 @@ const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 
-let mockWorkspacePermissionKeys: string[] = ['model.manage']
+let mockWorkspacePermissionKeys: string[] = ['plugin.manage']
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => {
@@ -101,7 +101,7 @@ const defaultProps = {
 describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['model.manage']
+    mockWorkspacePermissionKeys = ['plugin.manage']
   })
 
   it('should render settings button', () => {
@@ -177,7 +177,7 @@ describe('SystemModel', () => {
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
-  it('should disable save without model.manage permission', async () => {
+  it('should disable save without plugin.manage permission', async () => {
     mockWorkspacePermissionKeys = []
     render(<SystemModel {...defaultProps} />)
 
@@ -187,7 +187,7 @@ describe('SystemModel', () => {
     })
   })
 
-  it('should disable model selectors without model.manage permission', async () => {
+  it('should disable model selectors without plugin.manage permission', async () => {
     mockWorkspacePermissionKeys = []
     render(<SystemModel {...defaultProps} />)
 
@@ -201,13 +201,13 @@ describe('SystemModel', () => {
     })
   })
 
-  it('should disable save when user only has plugin.manage permission', async () => {
+  it('should enable save when user has plugin.manage permission', async () => {
     mockWorkspacePermissionKeys = ['plugin.manage']
     render(<SystemModel {...defaultProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /save/i })).toBeEnabled()
     })
   })
 })

@@ -33,8 +33,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
   const { workspacePermissionKeys } = useAppContext()
-  const canManageLoadBalancing = hasPermission(workspacePermissionKeys, ['model.manage', 'plugin.manage'])
-  const canToggleModelStatus = hasPermission(workspacePermissionKeys, ['model.manage', 'plugin.manage'])
+  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
@@ -93,7 +92,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
           </Badge>
         )}
         {
-          (canManageLoadBalancing && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)) && (
+          (canManagePlugin && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)) && (
             <ConfigModel
               onClick={() => onModifyLoadBalancing?.(model)}
               loadBalancingEnabled={model.load_balancing_enabled}
@@ -112,7 +111,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
                   </PopoverContent>
                 </Popover>
               )
-            : (canToggleModelStatus && (
+            : (canManagePlugin && (
                 <Switch
                   className="ml-2"
                   checked={model?.status === ModelStatusEnum.active}

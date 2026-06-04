@@ -14,7 +14,7 @@ function createWrapper() {
 
 let mockModelLoadBalancingEnabled = false
 let mockPlanType: string = 'pro'
-let mockWorkspacePermissionKeys: string[] = ['model.manage']
+let mockWorkspacePermissionKeys: string[] = ['plugin.manage']
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -71,7 +71,7 @@ describe('ModelListItem', () => {
     vi.clearAllMocks()
     mockModelLoadBalancingEnabled = false
     mockPlanType = 'pro'
-    mockWorkspacePermissionKeys = ['model.manage']
+    mockWorkspacePermissionKeys = ['plugin.manage']
   })
 
   it('should render model item with icon and name', () => {
@@ -162,7 +162,7 @@ describe('ModelListItem', () => {
     expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
   })
 
-  it('should hide model status and load balancing controls without model.manage or plugin.manage', () => {
+  it('should hide model status and load balancing controls without plugin.manage', () => {
     mockWorkspacePermissionKeys = []
     mockModelLoadBalancingEnabled = true
 

@@ -33,7 +33,6 @@
   "dataset.external.connect": "連接外部知識庫",
   "dataset.tag.manage": "管理知識庫標籤",
   "mcp.manage": "管理MCP",
-  "model.manage": "管理模型",
   "plugin.debug": "調試插件",
   "plugin.install": "安裝與更新插件",
   "plugin.manage": "管理插件",
