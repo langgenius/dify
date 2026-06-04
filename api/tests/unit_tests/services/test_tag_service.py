@@ -58,6 +58,29 @@ def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(mocker, curren
     db_session.commit.assert_called_once()
 
 
+def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(mocker, current_user, db_session):
+    mocker.patch("services.tag_service.TagService.check_target_exists")
+    db_session.execute.return_value = SimpleNamespace(rowcount=0)
+
+    TagService.delete_tag_binding(
+        TagBindingDeletePayload(
+            tag_ids=["tag-1"],
+            target_id="snippet-1",
+            type=TagType.SNIPPET,
+        )
+    )
+
+    db_session.execute.assert_called_once()
+    db_session.commit.assert_not_called()
+
+
+def test_get_target_ids_by_tag_ids_returns_empty_without_query_for_empty_input(db_session):
+    result = TagService.get_target_ids_by_tag_ids(TagType.SNIPPET, "tenant-1", [])
+
+    assert result == []
+    db_session.scalars.assert_not_called()
+
+
 def test_check_target_exists_accepts_existing_snippet(current_user, db_session):
     db_session.scalar.return_value = SimpleNamespace(id="snippet-1")
 
@@ -71,3 +94,10 @@ def test_check_target_exists_raises_when_snippet_missing(current_user, db_sessio
 
     with pytest.raises(NotFound, match="Snippet not found"):
         TagService.check_target_exists("snippet", "missing-snippet")
+
+
+def test_check_target_exists_raises_for_invalid_binding_type(current_user, db_session):
+    with pytest.raises(NotFound, match="Invalid binding type"):
+        TagService.check_target_exists("unknown", "target-1")
+
+    db_session.scalar.assert_not_called()

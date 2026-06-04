@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -297,3 +299,83 @@ class TestWorkflowAppGeneratorResume:
         assert result.ok is True
         assert captured_entity is not None
         assert captured_entity.trace_manager is existing_trace_manager
+
+
+class TestWorkflowAppGeneratorWorker:
+    def test_generate_worker_uses_end_user_session_for_external_invocation(self, monkeypatch: pytest.MonkeyPatch):
+        generator = WorkflowAppGenerator()
+
+        workflow = SimpleNamespace(
+            id="workflow-id",
+            tenant_id="tenant",
+            app_id="app",
+            graph_dict={},
+            type="workflow",
+            version="1",
+        )
+        end_user = SimpleNamespace(id="end-user-id", session_id="session-id")
+        session = SimpleNamespace(scalar=Mock(side_effect=[workflow, end_user]))
+
+        class _SessionContext:
+            def __enter__(self):
+                return session
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        runner_kwargs = {}
+
+        class _Runner:
+            def __init__(self, **kwargs):
+                runner_kwargs.update(kwargs)
+
+            def run(self):
+                return None
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.preserve_flask_contexts",
+            lambda flask_app, context_vars: contextlib.nullcontext(),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.session_factory.create_session",
+            lambda: _SessionContext(),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.WorkflowAppGenerator._ensure_snippet_start_node_in_worker",
+            lambda self, *, session, workflow: workflow,
+        )
+        monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppRunner", _Runner)
+
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            additional_features=AppAdditionalFeatures(),
+            variables=[],
+            workflow_id="workflow-id",
+        )
+        application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+            task_id="task",
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id="end-user-id",
+            stream=False,
+            invoke_from=InvokeFrom.WEB_APP,
+            extras={},
+            trace_manager=None,
+            workflow_execution_id="run-id",
+            call_depth=0,
+        )
+
+        generator._generate_worker(
+            flask_app=SimpleNamespace(),
+            application_generate_entity=application_generate_entity,
+            queue_manager=SimpleNamespace(),
+            context=SimpleNamespace(),
+            variable_loader=SimpleNamespace(),
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+        )
+
+        assert runner_kwargs["system_user_id"] == "session-id"
