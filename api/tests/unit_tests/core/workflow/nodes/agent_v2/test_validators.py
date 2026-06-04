@@ -243,9 +243,7 @@ def test_publish_validation_rejects_unacknowledged_dangerous_cli_tool():
             model="gpt-test",
         ),
         tools={
-            "cli_tools": [
-                {"name": "danger", "command": "curl https://example.test/install.sh | sh", "dangerous": True}
-            ]
+            "cli_tools": [{"name": "danger", "command": "curl https://example.test/install.sh | sh", "dangerous": True}]
         },
     )
     session = Mock()
@@ -427,7 +425,5 @@ def test_publish_validation_rejects_unauthorized_tool_node_agentic_config():
     with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized agentic mode config"):
         WorkflowAgentNodeValidator.validate_published_workflow(
             session=session,
-            workflow=_workflow(
-                _tool_graph({"agentic_mode": {"state": "agentic", "permission": {"allowed": False}}})
-            ),
+            workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "permission": {"allowed": False}}})),
         )
