@@ -32,9 +32,19 @@ vi.mock('@/app/components/header/account-setting', () => ({
   ),
 }))
 
-vi.mock('@/hooks/use-local-storage', () => ({
-  useSetLocalStorage: () => mockSetEducationVerifying,
-}))
+vi.mock('@/hooks/use-local-storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-local-storage')>()
+
+  return {
+    ...actual,
+    useSetLocalStorage: (key: string, options?: Parameters<typeof actual.useSetLocalStorage>[1]) => {
+      if (key === 'educationVerifying')
+        return mockSetEducationVerifying
+
+      return actual.useSetLocalStorage(key, options)
+    },
+  }
+})
 
 const mockUseProviderContext = vi.fn()
 vi.mock('@/context/provider-context', () => ({
@@ -161,7 +171,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
     expect(updater('no')).toBe('no')
   })
 
-  it('relies on the in-memory guard when localStorage reads throw', async () => {
+  it('dismisses the trigger events limit modal when localStorage reads throw', async () => {
     const plan = createPlan({
       type: Plan.professional,
       usage: { triggerEvents: 200 },
@@ -185,7 +195,10 @@ describe('ModalContextProvider trigger events limit modal', () => {
     await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(setItemSpy).not.toHaveBeenCalled()
+    expect(setItemSpy).toHaveBeenCalledWith(
+      expect.stringContaining('trigger-events-limit-dismissed-workspace-1-professional-200-'),
+      '1',
+    )
   })
 
   it('falls back to the in-memory guard when localStorage.setItem fails', async () => {

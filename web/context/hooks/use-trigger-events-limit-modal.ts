@@ -1,10 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { ModalState } from '../modal-context'
 import dayjs from 'dayjs'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { IS_CLOUD_EDITION } from '@/config'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { isServer } from '@/utils/client'
 
 export type TriggerEventsLimitModalPayload = {
@@ -35,6 +36,8 @@ type UseTriggerEventsLimitModalResult = {
 }
 
 const TRIGGER_EVENTS_LOCALSTORAGE_PREFIX = 'trigger-events-limit-dismissed'
+const TRIGGER_EVENTS_LOCALSTORAGE_FALLBACK_KEY = `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-fallback`
+const rawStorageOptions = { raw: true } as const
 
 export const useTriggerEventsLimitModal = ({
   plan,
@@ -43,6 +46,45 @@ export const useTriggerEventsLimitModal = ({
 }: UseTriggerEventsLimitModalOptions): UseTriggerEventsLimitModalResult => {
   const [showTriggerEventsLimitModal, setShowTriggerEventsLimitModal] = useState<ModalState<TriggerEventsLimitModalPayload> | null>(null)
   const dismissedTriggerEventsLimitStorageKeysRef = useRef<Record<string, boolean>>({})
+  const triggerEventsLimitModalState = useMemo(() => {
+    if (!IS_CLOUD_EDITION)
+      return null
+    if (!currentWorkspaceId)
+      return null
+    if (!isFetchedPlan)
+      return null
+
+    const { type, usage, total, reset } = plan
+    const isUnlimited = total.triggerEvents === NUM_INFINITE
+    const reachedLimit = total.triggerEvents > 0 && usage.triggerEvents >= total.triggerEvents
+
+    if (type === Plan.team || isUnlimited || !reachedLimit)
+      return null
+
+    const resetInDays = type === Plan.professional && total.triggerEvents !== NUM_INFINITE
+      ? reset.triggerEvents ?? undefined
+      : undefined
+    const cycleTag = (() => {
+      if (typeof reset.triggerEvents === 'number')
+        return dayjs().startOf('day').add(reset.triggerEvents, 'day').format('YYYY-MM-DD')
+      if (type === Plan.sandbox)
+        return dayjs().endOf('month').format('YYYY-MM-DD')
+      return 'none'
+    })()
+
+    return {
+      resetInDays,
+      storageKey: `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${type}-${total.triggerEvents}-${cycleTag}`,
+    }
+  }, [plan, isFetchedPlan, currentWorkspaceId])
+  const [
+    persistedTriggerEventsLimitDismiss,
+    setPersistedTriggerEventsLimitDismiss,
+  ] = useLocalStorage<string>(
+    triggerEventsLimitModalState?.storageKey ?? TRIGGER_EVENTS_LOCALSTORAGE_FALLBACK_KEY,
+    undefined,
+    rawStorageOptions,
+  )
 
   useEffect(() => {
     if (!IS_CLOUD_EDITION)
@@ -56,40 +98,16 @@ export const useTriggerEventsLimitModal = ({
       return
     }
 
-    const { type, usage, total, reset } = plan
-    const isUnlimited = total.triggerEvents === NUM_INFINITE
-    const reachedLimit = total.triggerEvents > 0 && usage.triggerEvents >= total.triggerEvents
-
-    if (type === Plan.team || isUnlimited || !reachedLimit) {
+    if (!triggerEventsLimitModalState) {
       if (showTriggerEventsLimitModal)
         setShowTriggerEventsLimitModal(null)
       return
     }
 
-    const triggerResetInDays = type === Plan.professional && total.triggerEvents !== NUM_INFINITE
-      ? reset.triggerEvents ?? undefined
-      : undefined
-    const cycleTag = (() => {
-      if (typeof reset.triggerEvents === 'number')
-        return dayjs().startOf('day').add(reset.triggerEvents, 'day').format('YYYY-MM-DD')
-      if (type === Plan.sandbox)
-        return dayjs().endOf('month').format('YYYY-MM-DD')
-      return 'none'
-    })()
-    const storageKey = `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${type}-${total.triggerEvents}-${cycleTag}`
+    const { resetInDays, storageKey } = triggerEventsLimitModalState
     if (dismissedTriggerEventsLimitStorageKeysRef.current[storageKey])
       return
-
-    let persistDismiss = true
-    let hasDismissed = false
-    try {
-      if (localStorage.getItem(storageKey) === '1')
-        hasDismissed = true
-    }
-    catch {
-      persistDismiss = false
-    }
-    if (hasDismissed)
+    if (persistedTriggerEventsLimitDismiss === '1')
       return
 
     if (showTriggerEventsLimitModal?.payload.storageKey === storageKey)
@@ -97,30 +115,24 @@ export const useTriggerEventsLimitModal = ({
 
     setShowTriggerEventsLimitModal({
       payload: {
-        usage: usage.triggerEvents,
-        total: total.triggerEvents,
-        resetInDays: triggerResetInDays,
+        usage: plan.usage.triggerEvents,
+        total: plan.total.triggerEvents,
+        resetInDays,
         storageKey,
-        persistDismiss,
+        persistDismiss: true,
       },
     })
-  }, [plan, isFetchedPlan, showTriggerEventsLimitModal, currentWorkspaceId])
+  }, [plan, isFetchedPlan, showTriggerEventsLimitModal, currentWorkspaceId, triggerEventsLimitModalState, persistedTriggerEventsLimitDismiss])
 
   const persistTriggerEventsLimitModalDismiss = useCallback(() => {
     const storageKey = showTriggerEventsLimitModal?.payload.storageKey
     if (!storageKey)
       return
     if (showTriggerEventsLimitModal?.payload.persistDismiss) {
-      try {
-        localStorage.setItem(storageKey, '1')
-        return
-      }
-      catch {
-        // ignore error and fall back to in-memory guard
-      }
+      setPersistedTriggerEventsLimitDismiss('1')
     }
     dismissedTriggerEventsLimitStorageKeysRef.current[storageKey] = true
-  }, [showTriggerEventsLimitModal])
+  }, [showTriggerEventsLimitModal, setPersistedTriggerEventsLimitDismiss])
 
   return {
     showTriggerEventsLimitModal,
