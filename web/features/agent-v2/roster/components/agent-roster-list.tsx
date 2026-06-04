@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { ArchiveAgentButton } from './archive-agent-button'
 import { EditAgentDialog } from './edit-agent-dialog'
@@ -64,8 +65,12 @@ function AgentRosterItem({
 }: {
   agent: AgentRosterResponse
 }) {
-  const { t: tAgentV2 } = useTranslation('agentV2')
+  const { t } = useTranslation('agentV2')
+  const { formatTime } = useTimestamp()
   const version = agent.active_config_snapshot?.version
+  const updatedAt = agent.updated_at != null
+    ? formatTime(agent.updated_at, t('roster.dateTimeFormat'))
+    : null
 
   return (
     <article className="group flex min-h-20 min-w-0 flex-col gap-3 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 shadow-xs shadow-shadow-shadow-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover sm:flex-row sm:items-center">
@@ -104,14 +109,14 @@ function AgentRosterItem({
         <div className="hidden min-w-32 items-center gap-2 xl:flex">
           <span aria-hidden className="i-ri-git-branch-line size-3.5 text-text-tertiary" />
           <span className="rounded-md border-[0.5px] border-components-panel-border bg-components-badge-bg-dimm px-2 py-1 system-xs-medium text-text-secondary">
-            {tAgentV2(getSourceLabelKey(agent.source))}
+            {t(getSourceLabelKey(agent.source))}
           </span>
         </div>
         <div className="hidden w-40 shrink-0 text-right system-xs-regular text-text-tertiary lg:block">
           <span className={agent.status === 'active' ? 'text-text-success' : 'text-text-tertiary'}>
-            {tAgentV2(`roster.status.${agent.status}`)}
+            {t(`roster.status.${agent.status}`)}
           </span>
-          {agent.updated_at && <div className="truncate">{agent.updated_at}</div>}
+          {updatedAt && <div className="truncate">{updatedAt}</div>}
         </div>
       </Link>
       <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:pl-2">

@@ -101,6 +101,7 @@
   "roster.createForm.namePlaceholder": "Enter agent name…",
   "roster.createForm.nameRequired": "Name is required.",
   "roster.createSuccess": "Agent created.",
+  "roster.dateTimeFormat": "MM/DD/YYYY hh:mm:ss A",
   "roster.description": "Agents saved to this workspace are listed here. Create, search, edit, and archive roster agents from one place.",
   "roster.editAgent": "Edit {{name}}",
   "roster.editDialog.description": "Update the roster name and description for this agent.",

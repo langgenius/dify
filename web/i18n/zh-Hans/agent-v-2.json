@@ -101,6 +101,7 @@
   "roster.createForm.namePlaceholder": "输入智能体名称…",
   "roster.createForm.nameRequired": "请输入名称。",
   "roster.createSuccess": "智能体已创建。",
+  "roster.dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
   "roster.description": "这里列出保存在当前工作区的智能体。你可以在一个地方创建、搜索、编辑和归档 Roster 智能体。",
   "roster.editAgent": "编辑 {{name}}",
   "roster.editDialog.description": "更新此智能体在 Roster 中的名称和描述。",
