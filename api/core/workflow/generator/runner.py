@@ -26,6 +26,7 @@ single planner+builder pair shipped behind cmd+k `/create` is enough.
 import json
 import logging
 import re
+import time
 from typing import Any, ClassVar, cast
 
 import json_repair
@@ -55,6 +56,11 @@ from core.workflow.generator.types import (
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+from graphon.model_runtime.errors.invoke import (
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,15 +72,41 @@ _DEFAULT_VIEWPORT: GraphViewportDict = {"x": 0.0, "y": 0.0, "zoom": 0.7}
 _DEFAULT_NODE_WIDTH = 244
 _DEFAULT_NODE_HEIGHT = 100
 
+# Token ceiling for the planner call when the caller didn't pin one. The plan
+# is a short JSON node list (a handful of nodes with labels/purposes), so this
+# is generous headroom while still bounding a runaway response. The builder is
+# left on the caller's budget — it emits the full graph and genuinely needs it.
+_PLANNER_DEFAULT_MAX_TOKENS = 4096
 
-# Appended to the system prompt on the SECOND (and only) attempt when the
-# first response wasn't parseable as JSON. Keep this terse — the model
+
+# Appended as a trailing user message on the SECOND (and only) attempt when
+# the first response wasn't parseable as JSON. Keep this terse — the model
 # already has its full instructions in the original system message; this is
 # a corrective nudge, not a re-statement of the spec.
 _JSON_RETRY_HINT = (
     "Your previous response was not valid JSON. Return ONLY a single JSON object. "
     "Do not include any prose, markdown code fences, comments, or trailing commas."
 )
+
+
+# Provider hiccups we retry: a dropped connection, a 5xx, or a rate-limit are
+# all transient — the same request usually succeeds moments later. We do NOT
+# retry InvokeAuthorizationError / InvokeBadRequestError: those are permanent
+# misconfigurations where a retry only adds latency and burns quota.
+_TRANSIENT_INVOKE_ERRORS = (
+    InvokeConnectionError,
+    InvokeServerUnavailableError,
+    InvokeRateLimitError,
+)
+
+# Total invoke attempts per LLM call (1 original + retries) before we give up
+# and let the error surface as the stage's MODEL_ERROR envelope.
+_INVOKE_MAX_ATTEMPTS = 3
+
+# Backoff before each retry, indexed by retry number (the wait before attempt
+# 2, then before attempt 3). Short and bounded — generation is a foreground
+# request, so we trade a couple of seconds for resilience, not minutes.
+_INVOKE_BACKOFF_SECONDS = (0.5, 1.5)
 
 
 class _StageJSONError(ValueError):
@@ -301,6 +333,51 @@ class WorkflowGenerator:
     # Shared LLM call + JSON parse with one-shot retry
     # ------------------------------------------------------------------
     @classmethod
+    def _invoke_with_retry(
+        cls,
+        *,
+        model_instance,
+        prompt_messages,
+        model_parameters: dict[str, Any],
+        stage: str,
+    ) -> LLMResult:
+        """
+        Invoke the LLM, retrying transient provider errors with bounded backoff.
+
+        A single dropped connection, 503, or rate-limit used to fail the whole
+        two-call generation; one retry recovers the dominant transient case.
+        Permanent errors (auth, bad-request) are NOT in
+        ``_TRANSIENT_INVOKE_ERRORS`` so they propagate on the first attempt —
+        retrying a misconfigured model only adds latency and burns quota.
+        """
+        last_exc: Exception | None = None
+        for attempt in range(_INVOKE_MAX_ATTEMPTS):
+            try:
+                return model_instance.invoke_llm(
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    stream=False,
+                )
+            except _TRANSIENT_INVOKE_ERRORS as e:
+                last_exc = e
+                if attempt >= _INVOKE_MAX_ATTEMPTS - 1:
+                    break
+                delay = _INVOKE_BACKOFF_SECONDS[min(attempt, len(_INVOKE_BACKOFF_SECONDS) - 1)]
+                logger.info(
+                    "Workflow generator: %s transient invoke error (attempt %s/%s): %s; retrying in %ss",
+                    stage,
+                    attempt + 1,
+                    _INVOKE_MAX_ATTEMPTS,
+                    e,
+                    delay,
+                )
+                time.sleep(delay)
+        # Exhausted the retry budget — re-raise the last transient error so the
+        # surrounding stage maps it to a MODEL_ERROR envelope.
+        assert last_exc is not None
+        raise last_exc
+
+    @classmethod
     def _invoke_and_parse_json(
         cls,
         *,
@@ -324,11 +401,17 @@ class WorkflowGenerator:
         """
         last_detail = ""
         for attempt in range(2):
-            attempt_messages = messages if attempt == 0 else [*messages, SystemPromptMessage(content=_JSON_RETRY_HINT)]
-            response: LLMResult = model_instance.invoke_llm(
+            # The corrective nudge goes in as a trailing USER message, not a
+            # system one: a system message appended after the user turn is
+            # silently dropped or reordered by several providers (Anthropic,
+            # Gemini), so the retry hint would never reach the model. A user
+            # turn is always the latest instruction the model answers.
+            attempt_messages = messages if attempt == 0 else [*messages, UserPromptMessage(content=_JSON_RETRY_HINT)]
+            response = cls._invoke_with_retry(
+                model_instance=model_instance,
                 prompt_messages=attempt_messages,
                 model_parameters=model_parameters,
-                stream=False,
+                stage=stage,
             )
             text = response.message.get_text_content() or ""
             try:
@@ -1119,12 +1202,19 @@ class WorkflowGenerator:
 def _clamp_for_planner(params: dict[str, Any]) -> dict[str, Any]:
     """
     The planner needs only a tight, deterministic plan — clamp temperature
-    and max_tokens so we don't burn budget. Returns a copy.
+    and cap max_tokens so we don't burn budget. Returns a copy.
+
+    Temperature above 0.5 is pinned back to 0.2 (the planner's output is a
+    small node list; rambling only hurts). ``max_tokens`` gets a tight default
+    ONLY when the caller didn't pin one — an explicit value is always honoured.
+    Bounding it stops a model that ignores the JSON instruction from generating
+    until it hits the provider's (often huge) default ceiling.
     """
     out = dict(params)
     out.setdefault("temperature", 0.2)
     if "temperature" in out and isinstance(out["temperature"], (int, float)) and out["temperature"] > 0.5:
         out["temperature"] = 0.2
+    out.setdefault("max_tokens", _PLANNER_DEFAULT_MAX_TOKENS)
     return out
 
 

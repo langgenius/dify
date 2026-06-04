@@ -366,6 +366,136 @@ class TestWorkflowGeneratorFailurePaths:
         assert "ghost" in result["error"]
 
 
+class TestWorkflowGeneratorTransientRetry:
+    """
+    A single transient provider blip (connection drop, 503, rate-limit)
+    used to kill the whole two-call generation. The runner now retries
+    transient invoke errors with bounded backoff, while permanent errors
+    (auth, bad-request) still fail fast so the user isn't billed for
+    pointless retries against a misconfigured model.
+    """
+
+    @staticmethod
+    def _planner() -> str:
+        return json.dumps(
+            {
+                "title": "x",
+                "description": "x",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+
+    @staticmethod
+    def _builder() -> str:
+        return json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start"},
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End"},
+                    },
+                ],
+                "edges": [{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+
+    def test_retries_transient_invoke_error_then_succeeds(self, monkeypatch):
+        # The planner's first invoke raises a transient connection error; the
+        # retry succeeds and the pipeline completes normally. Sleep is patched
+        # out so the test doesn't actually wait for the backoff.
+        import core.workflow.generator.runner as _runner_mod
+        from graphon.model_runtime.errors.invoke import InvokeConnectionError
+
+        monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
+
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            InvokeConnectionError("connection reset"),
+            _llm_result(self._planner()),
+            _llm_result(self._builder()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["error"] == ""
+        # planner (failed once + retried) + builder = 3 invocations total.
+        assert model_instance.invoke_llm.call_count == 3
+
+    def test_gives_up_after_exhausting_transient_retries(self, monkeypatch):
+        # Every attempt hits the transient error — once we exhaust the retry
+        # budget the failure surfaces as a normal error envelope rather than
+        # hanging or looping forever.
+        import core.workflow.generator.runner as _runner_mod
+        from graphon.model_runtime.errors.invoke import InvokeServerUnavailableError
+
+        monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
+
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = InvokeServerUnavailableError("503 from upstream")
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["error"]
+        # Bounded: planner attempts == the retry budget, nothing more.
+        from core.workflow.generator.runner import _INVOKE_MAX_ATTEMPTS
+
+        assert model_instance.invoke_llm.call_count == _INVOKE_MAX_ATTEMPTS
+
+    def test_does_not_retry_permanent_invoke_error(self, monkeypatch):
+        # An auth error is permanent — retrying just burns latency and quota.
+        # The runner must fail on the first attempt.
+        # If the code wrongly slept here we'd want the test to still be fast;
+        # patch sleep defensively so a regression can't hang CI.
+        import core.workflow.generator.runner as _runner_mod
+        from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+
+        monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
+
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = InvokeAuthorizationError("bad key")
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["error"]
+        assert model_instance.invoke_llm.call_count == 1
+
+
 class TestWorkflowGeneratorEdgeCases:
     """
     Smaller behaviours that aren't part of the happy path but matter for
@@ -399,6 +529,24 @@ class TestWorkflowGeneratorEdgeCases:
 
         out = _clamp_for_planner({})
         assert out["temperature"] == 0.2
+
+    def test_clamp_for_planner_caps_max_tokens_when_missing(self):
+        # The planner only emits a small node list, so when the caller didn't
+        # pin max_tokens we inject a tight default. This bounds latency/cost
+        # and stops a model that ignores the JSON instruction from rambling
+        # until it hits the provider's (often huge) default ceiling.
+        from core.workflow.generator.runner import _PLANNER_DEFAULT_MAX_TOKENS, _clamp_for_planner
+
+        out = _clamp_for_planner({})
+        assert out["max_tokens"] == _PLANNER_DEFAULT_MAX_TOKENS
+
+    def test_clamp_for_planner_preserves_caller_max_tokens(self):
+        # A caller who explicitly asked for a budget keeps it — we only fill
+        # the default in when it's absent, never override an intentional value.
+        from core.workflow.generator.runner import _clamp_for_planner
+
+        out = _clamp_for_planner({"max_tokens": 8192})
+        assert out["max_tokens"] == 8192
 
     def test_planner_no_nodes_surfaces_clear_error(self):
         # The planner returned a malformed plan (empty nodes list). The runner
