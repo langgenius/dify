@@ -1,8 +1,8 @@
 import type { Tag } from '@/contract/console/tags'
 
-export type SnippetType = 'node' | 'group'
+type SnippetType = 'node' | 'group'
 
-export type SnippetInputField = Record<string, unknown>
+type SnippetInputField = Record<string, unknown>
 
 export type Snippet = {
   id: string

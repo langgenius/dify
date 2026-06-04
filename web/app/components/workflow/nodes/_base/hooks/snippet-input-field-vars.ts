@@ -28,7 +28,7 @@ export const filterSnippetSystemVars = (availableVars: NodeOutPutVar[], isSnippe
 
 const toWorkflowInputType = (type: SnippetInputField['type']) => type as unknown as InputVarType
 
-export const buildSnippetInputFieldNode = (
+const buildSnippetInputFieldNode = (
   fields: SnippetInputField[],
   title: string,
 ): Node | undefined => {
@@ -65,7 +65,7 @@ export const buildSnippetInputFieldNode = (
   } as Node
 }
 
-export const buildSnippetInputFieldVars = (
+const buildSnippetInputFieldVars = (
   fields: SnippetInputField[],
   title: string,
 ): NodeOutPutVar | undefined => {
