@@ -4,8 +4,8 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { useCallback, useMemo, useState } from 'react'
-import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { CollectionType } from '@/app/components/tools/types'
+import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import {
   useAllBuiltInTools,
