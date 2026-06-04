@@ -58,16 +58,25 @@ import {
   zDeploymentServiceUndeployResponse,
   zEnvironmentServiceListDeployableEnvironmentsQuery,
   zEnvironmentServiceListDeployableEnvironmentsResponse,
+  zReleaseServiceCheckReleaseContentFromDslBody,
+  zReleaseServiceCheckReleaseContentFromDslResponse,
+  zReleaseServiceCheckReleaseContentFromSourceAppBody,
+  zReleaseServiceCheckReleaseContentFromSourceAppResponse,
   zReleaseServiceCreateReleaseFromDslBody,
   zReleaseServiceCreateReleaseFromDslResponse,
   zReleaseServiceCreateReleaseFromSourceAppBody,
   zReleaseServiceCreateReleaseFromSourceAppResponse,
   zReleaseServiceDeleteReleasePath,
   zReleaseServiceDeleteReleaseResponse,
+  zReleaseServiceExportReleaseDslPath,
+  zReleaseServiceExportReleaseDslResponse,
   zReleaseServiceGetDeploymentOptionsFromDslBody,
   zReleaseServiceGetDeploymentOptionsFromDslResponse,
   zReleaseServiceGetDeploymentOptionsFromSourceAppBody,
   zReleaseServiceGetDeploymentOptionsFromSourceAppResponse,
+  zReleaseServiceGetReleaseDeploymentOptionsPath,
+  zReleaseServiceGetReleaseDeploymentOptionsQuery,
+  zReleaseServiceGetReleaseDeploymentOptionsResponse,
   zReleaseServiceGetReleasePath,
   zReleaseServiceGetReleaseResponse,
   zReleaseServiceListReleaseCredentialCandidatesPath,
@@ -404,6 +413,28 @@ export const getDeploymentOptionsFromSourceApp = oc
   .input(z.object({ body: zReleaseServiceGetDeploymentOptionsFromSourceAppBody }))
   .output(zReleaseServiceGetDeploymentOptionsFromSourceAppResponse)
 
+export const checkReleaseContentFromDsl = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ReleaseService_CheckReleaseContentFromDSL',
+    path: '/enterprise/app-deploy/release-content-checks/dsl',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ body: zReleaseServiceCheckReleaseContentFromDslBody }))
+  .output(zReleaseServiceCheckReleaseContentFromDslResponse)
+
+export const checkReleaseContentFromSourceApp = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ReleaseService_CheckReleaseContentFromSourceApp',
+    path: '/enterprise/app-deploy/release-content-checks/source-app',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ body: zReleaseServiceCheckReleaseContentFromSourceAppBody }))
+  .output(zReleaseServiceCheckReleaseContentFromSourceAppResponse)
+
 export const createReleaseFromDsl = oc
   .route({
     inputStructure: 'detailed',
@@ -472,16 +503,47 @@ export const listReleaseCredentialCandidates = oc
   .input(z.object({ params: zReleaseServiceListReleaseCredentialCandidatesPath }))
   .output(zReleaseServiceListReleaseCredentialCandidatesResponse)
 
+export const getReleaseDeploymentOptions = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ReleaseService_GetReleaseDeploymentOptions',
+    path: '/enterprise/app-deploy/releases/{releaseId}/deployment-options',
+    tags: ['ReleaseService'],
+  })
+  .input(
+    z.object({
+      params: zReleaseServiceGetReleaseDeploymentOptionsPath,
+      query: zReleaseServiceGetReleaseDeploymentOptionsQuery.optional(),
+    }),
+  )
+  .output(zReleaseServiceGetReleaseDeploymentOptionsResponse)
+
+export const exportReleaseDsl = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ReleaseService_ExportReleaseDSL',
+    path: '/enterprise/app-deploy/releases/{releaseId}/dsl',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ params: zReleaseServiceExportReleaseDslPath }))
+  .output(zReleaseServiceExportReleaseDslResponse)
+
 export const releaseService = {
   listReleases,
   getDeploymentOptionsFromDsl,
   getDeploymentOptionsFromSourceApp,
+  checkReleaseContentFromDsl,
+  checkReleaseContentFromSourceApp,
   createReleaseFromDsl,
   createReleaseFromSourceApp,
   deleteRelease,
   getRelease,
   updateRelease,
   listReleaseCredentialCandidates,
+  getReleaseDeploymentOptions,
+  exportReleaseDsl,
 }
 
 export const listDeployableEnvironments = oc

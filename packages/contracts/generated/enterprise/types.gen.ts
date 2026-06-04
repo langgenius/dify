@@ -119,6 +119,21 @@ export type CancelDeploymentReq = {
   environmentId?: string
 }
 
+export type CheckReleaseContentFromDslReq = {
+  appInstanceId?: string
+  dsl?: string
+}
+
+export type CheckReleaseContentFromSourceAppReq = {
+  appInstanceId?: string
+  sourceAppId?: string
+}
+
+export type CheckReleaseContentReply = {
+  gateCommitId?: string
+  matchedRelease?: ReleaseContentMatch
+}
+
 export type CreateApiKeyReply = {
   apiKey?: ApiKey
   token?: string
@@ -356,6 +371,10 @@ export type Error = {
   atUnix?: string
 }
 
+export type ExportReleaseDslReply = {
+  data?: string
+}
+
 export type GetAccessChannelsReply = {
   accessChannels?: AccessChannels
 }
@@ -487,6 +506,12 @@ export type Release = {
   gateCommitId?: string
   requiredSlots?: Array<RequiredSlot>
   createdBy?: Actor
+  createdAt?: string
+}
+
+export type ReleaseContentMatch = {
+  releaseId?: string
+  name?: string
   createdAt?: string
 }
 
@@ -1047,6 +1072,34 @@ export type DeploymentServiceCreateInitialDeploymentFromSourceAppResponses = {
 export type DeploymentServiceCreateInitialDeploymentFromSourceAppResponse
   = DeploymentServiceCreateInitialDeploymentFromSourceAppResponses[keyof DeploymentServiceCreateInitialDeploymentFromSourceAppResponses]
 
+export type ReleaseServiceCheckReleaseContentFromDslData = {
+  body: CheckReleaseContentFromDslReq
+  path?: never
+  query?: never
+  url: '/enterprise/app-deploy/release-content-checks/dsl'
+}
+
+export type ReleaseServiceCheckReleaseContentFromDslResponses = {
+  200: CheckReleaseContentReply
+}
+
+export type ReleaseServiceCheckReleaseContentFromDslResponse
+  = ReleaseServiceCheckReleaseContentFromDslResponses[keyof ReleaseServiceCheckReleaseContentFromDslResponses]
+
+export type ReleaseServiceCheckReleaseContentFromSourceAppData = {
+  body: CheckReleaseContentFromSourceAppReq
+  path?: never
+  query?: never
+  url: '/enterprise/app-deploy/release-content-checks/source-app'
+}
+
+export type ReleaseServiceCheckReleaseContentFromSourceAppResponses = {
+  200: CheckReleaseContentReply
+}
+
+export type ReleaseServiceCheckReleaseContentFromSourceAppResponse
+  = ReleaseServiceCheckReleaseContentFromSourceAppResponses[keyof ReleaseServiceCheckReleaseContentFromSourceAppResponses]
+
 export type ReleaseServiceCreateReleaseFromDslData = {
   body: CreateReleaseFromDslReq
   path?: never
@@ -1138,3 +1191,37 @@ export type ReleaseServiceListReleaseCredentialCandidatesResponses = {
 
 export type ReleaseServiceListReleaseCredentialCandidatesResponse
   = ReleaseServiceListReleaseCredentialCandidatesResponses[keyof ReleaseServiceListReleaseCredentialCandidatesResponses]
+
+export type ReleaseServiceGetReleaseDeploymentOptionsData = {
+  body?: never
+  path: {
+    releaseId: string
+  }
+  query?: {
+    environmentId?: string
+  }
+  url: '/enterprise/app-deploy/releases/{releaseId}/deployment-options'
+}
+
+export type ReleaseServiceGetReleaseDeploymentOptionsResponses = {
+  200: GetDeploymentOptionsReply
+}
+
+export type ReleaseServiceGetReleaseDeploymentOptionsResponse
+  = ReleaseServiceGetReleaseDeploymentOptionsResponses[keyof ReleaseServiceGetReleaseDeploymentOptionsResponses]
+
+export type ReleaseServiceExportReleaseDslData = {
+  body?: never
+  path: {
+    releaseId: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/releases/{releaseId}/dsl'
+}
+
+export type ReleaseServiceExportReleaseDslResponses = {
+  200: ExportReleaseDslReply
+}
+
+export type ReleaseServiceExportReleaseDslResponse
+  = ReleaseServiceExportReleaseDslResponses[keyof ReleaseServiceExportReleaseDslResponses]

@@ -66,6 +66,12 @@ export function envVarValueSelectionForSlot(
   if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT && hasEnvVarLastValue(slot))
     return selection
 
+  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT && hasEnvVarLastValue(slot)) {
+    return {
+      valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+    }
+  }
+
   if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT && hasEnvVarDefaultValue(slot))
     return selection
 

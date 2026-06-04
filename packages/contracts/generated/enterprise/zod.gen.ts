@@ -94,6 +94,16 @@ export const zCancelDeploymentReq = z.object({
   environmentId: z.string().optional(),
 })
 
+export const zCheckReleaseContentFromDslReq = z.object({
+  appInstanceId: z.string().optional(),
+  dsl: z.string().optional(),
+})
+
+export const zCheckReleaseContentFromSourceAppReq = z.object({
+  appInstanceId: z.string().optional(),
+  sourceAppId: z.string().optional(),
+})
+
 export const zCreateApiKeyReply = z.object({
   apiKey: zApiKey.optional(),
   token: z.string().optional(),
@@ -315,6 +325,10 @@ export const zError = z.object({
   atUnix: z.string().optional(),
 })
 
+export const zExportReleaseDslReply = z.object({
+  data: z.string().optional(),
+})
+
 export const zGetAccessChannelsReply = z.object({
   accessChannels: zAccessChannels.optional(),
 })
@@ -429,6 +443,21 @@ export const zPutAccessPolicyReq = z.object({
     ])
     .optional(),
   subjects: z.array(zAccessSubject).optional(),
+})
+
+/**
+ * ReleaseContentMatch identifies an existing release whose DSL content is
+ * identical to the checked content.
+ */
+export const zReleaseContentMatch = z.object({
+  releaseId: z.string().optional(),
+  name: z.string().optional(),
+  createdAt: z.string().optional(),
+})
+
+export const zCheckReleaseContentReply = z.object({
+  gateCommitId: z.string().optional(),
+  matchedRelease: zReleaseContentMatch.optional(),
 })
 
 export const zReportRuntimeAssignmentStatusReply = z.object({
@@ -1019,6 +1048,21 @@ export const zDeploymentServiceCreateInitialDeploymentFromSourceAppBody
 export const zDeploymentServiceCreateInitialDeploymentFromSourceAppResponse
   = zCreateInitialDeploymentReply
 
+export const zReleaseServiceCheckReleaseContentFromDslBody = zCheckReleaseContentFromDslReq
+
+/**
+ * OK
+ */
+export const zReleaseServiceCheckReleaseContentFromDslResponse = zCheckReleaseContentReply
+
+export const zReleaseServiceCheckReleaseContentFromSourceAppBody
+  = zCheckReleaseContentFromSourceAppReq
+
+/**
+ * OK
+ */
+export const zReleaseServiceCheckReleaseContentFromSourceAppResponse = zCheckReleaseContentReply
+
 export const zReleaseServiceCreateReleaseFromDslBody = zCreateReleaseFromDslReq
 
 /**
@@ -1071,3 +1115,25 @@ export const zReleaseServiceListReleaseCredentialCandidatesPath = z.object({
  */
 export const zReleaseServiceListReleaseCredentialCandidatesResponse
   = zListReleaseCredentialCandidatesReply
+
+export const zReleaseServiceGetReleaseDeploymentOptionsPath = z.object({
+  releaseId: z.string(),
+})
+
+export const zReleaseServiceGetReleaseDeploymentOptionsQuery = z.object({
+  environmentId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zReleaseServiceGetReleaseDeploymentOptionsResponse = zGetDeploymentOptionsReply
+
+export const zReleaseServiceExportReleaseDslPath = z.object({
+  releaseId: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zReleaseServiceExportReleaseDslResponse = zExportReleaseDslReply

@@ -67,17 +67,19 @@ function envVarValueSourceOptions(slot: DeploymentEnvVarSlot, labels: {
     },
   ]
 
-  if (hasEnvVarDefaultValue(slot)) {
-    options.push({
-      value: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
-      label: labels.defaultValue,
-    })
-  }
-
   if (hasEnvVarLastValue(slot)) {
     options.push({
       value: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
       label: labels.lastDeployment,
+    })
+
+    return options
+  }
+
+  if (hasEnvVarDefaultValue(slot)) {
+    options.push({
+      value: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+      label: labels.defaultValue,
     })
   }
 

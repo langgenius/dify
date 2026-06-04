@@ -1,6 +1,6 @@
 import type { Release } from '@dify/contracts/enterprise/types.gen'
 import { downloadBlob } from '@/utils/download'
-import { fetchReleaseDslResponse } from '../../release-dsl'
+import { fetchReleaseDsl } from '../../release-dsl'
 
 const YAML_EXTENSION_PATTERN = /\.ya?ml$/i
 const INVALID_FILENAME_CHARS_PATTERN = /[\\/:*?"<>|]+/g
@@ -30,8 +30,9 @@ export async function exportReleaseDsl({ release, appInstanceName }: {
   release: Release & { id: string }
   appInstanceName?: string
 }) {
-  const response = await fetchReleaseDslResponse(release.id)
-  const data = await response.blob()
+  const data = new Blob([await fetchReleaseDsl(release.id)], {
+    type: 'application/x-yaml;charset=utf-8',
+  })
   downloadBlob({
     data,
     fileName: releaseDslFileName({ release, appInstanceName }),

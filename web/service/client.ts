@@ -87,6 +87,7 @@ function shouldUseLocalDeploymentErrorToast(url: string, method?: string) {
   const normalizedMethod = method?.toUpperCase()
 
   return pathname.includes('/enterprise/app-deploy/initial-deployments/')
+    || /\/enterprise\/app-deploy\/releases\/[^/]+\/deployment-options$/.test(pathname)
     || (
       normalizedMethod === 'POST'
       && (

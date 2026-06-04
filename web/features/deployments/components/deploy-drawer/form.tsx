@@ -17,9 +17,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { DEPLOYMENT_PAGE_SIZE } from '../../data'
-import { encodeDslContent } from '../../dsl'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
-import { fetchReleaseDsl } from '../../release-dsl'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
 import {
@@ -100,25 +98,20 @@ function DeployReadyForm({
         }
       : skipToken,
   }))
-  const releaseDslQuery = useQuery({
-    queryKey: ['deployment-release-dsl', targetReleaseId],
-    queryFn: () => fetchReleaseDsl(targetReleaseId),
-    enabled: Boolean(targetReleaseId),
-    retry: false,
-  })
-  const encodedReleaseDsl = releaseDslQuery.data ? encodeDslContent(releaseDslQuery.data) : ''
-  const shouldLoadDeploymentOptions = Boolean(appInstanceId && selectedEnvironmentId && encodedReleaseDsl)
+  const shouldLoadDeploymentOptions = Boolean(targetReleaseId && selectedEnvironmentId && hasSelectedEnvironment)
   const deploymentOptionsQuery = useQuery({
-    ...consoleQuery.enterprise.releaseService.getDeploymentOptionsFromDsl.queryOptions({
-      input: {
-        body: {
-          dsl: encodedReleaseDsl,
-          appInstanceId,
-          environmentId: selectedEnvironmentId,
-        },
-      },
+    ...consoleQuery.enterprise.releaseService.getReleaseDeploymentOptions.queryOptions({
+      input: shouldLoadDeploymentOptions
+        ? {
+            params: {
+              releaseId: targetReleaseId,
+            },
+            query: {
+              environmentId: selectedEnvironmentId,
+            },
+          }
+        : skipToken,
     }),
-    enabled: shouldLoadDeploymentOptions,
     retry: false,
   })
   const deploymentOptionCredentialSlots = useMemo(() => {
@@ -146,12 +139,11 @@ function DeployReadyForm({
     && (
       bindingOptions.isLoading
       || bindingOptions.isFetching
-      || releaseDslQuery.isLoading
       || deploymentOptionsQuery.isLoading
       || deploymentOptionsQuery.isFetching
     ),
   )
-  const bindingOptionsError = Boolean(bindingOptions.isError || releaseDslQuery.isError || deploymentOptionsQuery.isError)
+  const bindingOptionsError = Boolean(bindingOptions.isError || deploymentOptionsQuery.isError)
   const bindingOptionsReady = Boolean(
     targetReleaseId
     && hasSelectedEnvironment
