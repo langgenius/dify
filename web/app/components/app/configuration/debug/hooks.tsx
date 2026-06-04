@@ -9,13 +9,13 @@ import type {
 import { cloneDeep } from 'es-toolkit/object'
 import {
   useCallback,
-  useRef,
   useState,
 } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import {
   AgentStrategy,
 } from '@/types/app'
@@ -23,28 +23,17 @@ import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { ORCHESTRATE_CHANGED } from './types'
 
 export const useDebugWithSingleOrMultipleModel = (appId: string) => {
-  const localeDebugWithSingleOrMultipleModelConfigs = localStorage.getItem('app-debug-with-single-or-multiple-models')
-
-  const debugWithSingleOrMultipleModelConfigs = useRef<DebugWithSingleOrMultipleModelConfigs>({})
-
-  if (localeDebugWithSingleOrMultipleModelConfigs) {
-    try {
-      debugWithSingleOrMultipleModelConfigs.current = JSON.parse(localeDebugWithSingleOrMultipleModelConfigs) || {}
-    }
-    catch (e) {
-      console.error(e)
-    }
-  }
+  const [debugWithSingleOrMultipleModelConfigs, setDebugWithSingleOrMultipleModelConfigs] = useLocalStorage<DebugWithSingleOrMultipleModelConfigs>('app-debug-with-single-or-multiple-models', {})
 
   const [
     debugWithMultipleModel,
     setDebugWithMultipleModel,
-  ] = useState(debugWithSingleOrMultipleModelConfigs.current[appId]?.multiple || false)
+  ] = useState(debugWithSingleOrMultipleModelConfigs[appId]?.multiple || false)
 
   const [
     multipleModelConfigs,
     setMultipleModelConfigs,
-  ] = useState(debugWithSingleOrMultipleModelConfigs.current[appId]?.configs || [])
+  ] = useState(debugWithSingleOrMultipleModelConfigs[appId]?.configs || [])
 
   const handleMultipleModelConfigsChange = useCallback((
     multiple: boolean,
@@ -54,11 +43,13 @@ export const useDebugWithSingleOrMultipleModel = (appId: string) => {
       multiple,
       configs: modelConfigs,
     }
-    debugWithSingleOrMultipleModelConfigs.current[appId] = value
-    localStorage.setItem('app-debug-with-single-or-multiple-models', JSON.stringify(debugWithSingleOrMultipleModelConfigs.current))
+    setDebugWithSingleOrMultipleModelConfigs(prev => ({
+      ...prev,
+      [appId]: value,
+    }))
     setDebugWithMultipleModel(value.multiple)
     setMultipleModelConfigs(value.configs)
-  }, [appId])
+  }, [appId, setDebugWithSingleOrMultipleModelConfigs])
 
   return {
     debugWithMultipleModel,
