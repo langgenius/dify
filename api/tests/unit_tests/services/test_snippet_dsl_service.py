@@ -100,6 +100,62 @@ workflow:
     assert pending.description == "Override description"
 
 
+def test_import_snippet_returns_failed_when_update_target_missing():
+    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
+    yaml_content = """
+version: 0.1.0
+kind: snippet
+snippet:
+  name: Existing Snippet
+workflow:
+  graph:
+    nodes: []
+    edges: []
+"""
+
+    result = service.import_snippet(
+        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content=yaml_content,
+        snippet_id="missing-snippet",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "Snippet not found"
+
+
+def test_import_snippet_passes_dependencies_to_create_or_update(monkeypatch):
+    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
+    snippet = SimpleNamespace(id="snippet-1")
+    create_or_update = Mock(return_value=snippet)
+    monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
+    yaml_content = """
+version: 0.1.0
+kind: snippet
+snippet:
+  name: Dependency Snippet
+dependencies:
+  - type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/openai:0.0.1
+workflow:
+  graph:
+    nodes: []
+    edges: []
+"""
+
+    result = service.import_snippet(
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content=yaml_content,
+    )
+
+    assert result.status == ImportStatus.COMPLETED
+    assert result.snippet_id == "snippet-1"
+    dependencies = create_or_update.call_args.kwargs["dependencies"]
+    assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
+
+
 def test_confirm_import_returns_failed_when_pending_data_missing(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=None))

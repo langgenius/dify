@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from werkzeug.exceptions import HTTPException, NotFound
@@ -130,3 +131,66 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_invalid_gra
 
     assert exc.value.code == 400
     assert exc.value.description == "invalid snippet workflow graph"
+
+
+def test_workflow_run_detail_raises_not_found_when_run_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "SnippetService",
+        lambda: SimpleNamespace(get_snippet_workflow_run=Mock(return_value=None)),
+    )
+
+    api = snippet_workflow_module.SnippetWorkflowRunDetailApi()
+    handler = _unwrap(api.get)
+
+    with app.test_request_context("/snippets/snippet-1/workflow-runs/run-1"):
+        with pytest.raises(NotFound, match="Workflow run not found"):
+            handler(api, snippet=snippet, run_id="run-1")
+
+
+def test_draft_node_last_run_raises_not_found_when_execution_missing(
+    app, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    draft_workflow = SimpleNamespace(id="workflow-1")
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "SnippetService",
+        lambda: SimpleNamespace(
+            get_draft_workflow=Mock(return_value=draft_workflow),
+            get_snippet_node_last_run=Mock(return_value=None),
+        ),
+    )
+
+    api = snippet_workflow_module.SnippetDraftNodeLastRunApi()
+    handler = _unwrap(api.get)
+
+    with app.test_request_context("/snippets/snippet-1/workflows/draft/nodes/llm-1/last-run"):
+        with pytest.raises(NotFound, match="Node last run not found"):
+            handler(api, snippet=snippet, node_id="llm-1")
+
+
+def test_workflow_task_stop_uses_queue_flag_and_graph_command(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    set_stop_flag = Mock()
+    send_stop_command = Mock()
+    monkeypatch.setattr(
+        snippet_workflow_module.AppQueueManager,
+        "set_stop_flag_no_user_check",
+        set_stop_flag,
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "GraphEngineManager",
+        Mock(return_value=SimpleNamespace(send_stop_command=send_stop_command)),
+    )
+
+    api = snippet_workflow_module.SnippetWorkflowTaskStopApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context("/snippets/snippet-1/workflow-runs/tasks/task-1/stop", method="POST"):
+        result = handler(api, snippet=SimpleNamespace(id="snippet-1"), task_id="task-1")
+
+    assert result == {"result": "success"}
+    set_stop_flag.assert_called_once_with("task-1")
+    send_stop_command.assert_called_once_with("task-1")

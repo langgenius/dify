@@ -138,3 +138,48 @@ def test_generate_raises_when_draft_workflow_missing(monkeypatch):
             args={"inputs": {}},
             invoke_from="debugger",
         )
+
+
+def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch):
+    workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", input_fields_list=[])
+    user = SimpleNamespace(id="user-1")
+    generator = SimpleNamespace(generate=Mock(return_value={"data": {"outputs": {"answer": "ok"}}}))
+
+    monkeypatch.setattr(
+        "services.snippet_generate_service.SnippetService",
+        lambda: SimpleNamespace(get_published_workflow=Mock(return_value=workflow)),
+    )
+    ensure_start_node = Mock(return_value=workflow)
+    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", Mock(return_value=generator))
+
+    result = SnippetGenerateService.run_published(
+        snippet=snippet,
+        user=user,
+        args={"inputs": {"query": "hello"}},
+        invoke_from="service-api",
+    )
+
+    assert result == {"data": {"outputs": {"answer": "ok"}}}
+    ensure_start_node.assert_called_once_with(workflow, snippet)
+    generator.generate.assert_called_once()
+    kwargs = generator.generate.call_args.kwargs
+    assert kwargs["app_model"].id == "snippet-1"
+    assert kwargs["streaming"] is False
+    assert kwargs["call_depth"] == 0
+
+
+def test_run_published_raises_when_published_workflow_missing(monkeypatch):
+    monkeypatch.setattr(
+        "services.snippet_generate_service.SnippetService",
+        lambda: SimpleNamespace(get_published_workflow=Mock(return_value=None)),
+    )
+
+    with pytest.raises(ValueError, match="No published workflow found"):
+        SnippetGenerateService.run_published(
+            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+            user=SimpleNamespace(id="user-1"),
+            args={"inputs": {}},
+            invoke_from="service-api",
+        )
