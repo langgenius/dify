@@ -78,7 +78,7 @@ const RoleTag = ({
   const canOpenMenu = canShowRemove || canChangeLockStatus
 
   const chipClassName = cn(
-    'inline-flex h-6 max-w-full items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-section p-1 system-xs-regular text-text-primary transition-colors outline-none',
+    'inline-flex h-6 max-w-full items-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-section p-1 system-xs-regular text-text-primary transition-colors outline-none',
     canOpenMenu && 'cursor-pointer hover:bg-background-section-burn focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
     open && 'bg-background-section-burn',
     className,
@@ -96,7 +96,7 @@ const RoleTag = ({
       {isLocked && (
         <span
           aria-hidden
-          className="i-ri-lock-line size-3.5 shrink-0 text-text-tertiary"
+          className="i-ri-lock-line size-3 shrink-0 text-text-tertiary"
         />
       )}
     </>
