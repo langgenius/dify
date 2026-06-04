@@ -2,7 +2,7 @@
 import type { ToolsContentInset } from '../content-inset'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
 import {
   useAllToolProviders,
@@ -15,11 +15,17 @@ import MCPCard from './provider-card'
 type Props = {
   searchText: string
   contentInset?: ToolsContentInset
+  createdProviderId?: string
+  onCreatedProviderHandled?: () => void
+  showCreateCard?: boolean
 }
 
 const MCPList = ({
   searchText,
   contentInset = 'default',
+  createdProviderId,
+  onCreatedProviderHandled,
+  showCreateCard = true,
 }: Props) => {
   const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
@@ -46,6 +52,34 @@ const MCPList = ({
     setIsTriggerAuthorize(true)
   }
 
+  useEffect(() => {
+    if (!createdProviderId)
+      return
+
+    let isActive = true
+
+    const openCreatedProvider = async () => {
+      try {
+        await refetch()
+        if (!isActive)
+          return
+
+        setCurrentProviderID(createdProviderId)
+        setIsTriggerAuthorize(true)
+      }
+      finally {
+        if (isActive)
+          onCreatedProviderHandled?.()
+      }
+    }
+
+    void openCreatedProvider()
+
+    return () => {
+      isActive = false
+    }
+  }, [createdProviderId, onCreatedProviderHandled, refetch])
+
   const handleUpdate = async (providerID: string) => {
     await refetch() // update list
     setCurrentProviderID(providerID)
@@ -62,7 +96,7 @@ const MCPList = ({
           isLoading && 'h-[calc(100vh-136px)] overflow-hidden',
         )}
       >
-        <NewMCPCard handleCreate={handleCreate} />
+        {showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
         {isLoading
           ? <ToolCardSkeletonGrid />
           : filteredList.map(provider => (

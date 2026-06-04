@@ -10,6 +10,7 @@ import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
   GitHubItemAndMarketPlaceDependency,
+  InstalledPluginCategoryListResponse,
   InstalledPluginListWithTotalResponse,
   InstallPackageResponse,
   InstallStatusResponse,
@@ -132,15 +133,21 @@ export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15)
 }
 
 type UseInstalledPluginListOptions = {
+  category?: PluginCategoryEnum
   refetchOnMount?: boolean | 'always'
 }
 
 export const useInstalledPluginList = (disable?: boolean, pageSize = 100, options?: UseInstalledPluginListOptions) => {
+  const category = options?.category
   const fetchPlugins = async ({ pageParam = 1 }) => {
-    const response = await get<InstalledPluginListWithTotalResponse>(
-      `/workspaces/current/plugin/list?page=${pageParam}&page_size=${pageSize}`,
-    )
-    return response
+    const path = category
+      ? `/workspaces/current/plugin/${category}/list`
+      : '/workspaces/current/plugin/list'
+
+    if (category)
+      return get<InstalledPluginCategoryListResponse>(`${path}?page=${pageParam}&page_size=${pageSize}`)
+
+    return get<InstalledPluginListWithTotalResponse>(`${path}?page=${pageParam}&page_size=${pageSize}`)
   }
 
   const {
@@ -153,10 +160,13 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100, option
     isSuccess,
   } = useInfiniteQuery({
     enabled: !disable,
-    queryKey: useInstalledPluginListKey,
+    queryKey: category ? [...useInstalledPluginListKey, category] : useInstalledPluginListKey,
     queryFn: fetchPlugins,
     getNextPageParam: (lastPage, pages) => {
-      const totalItems = lastPage.total
+      if (category)
+        return 'has_more' in lastPage && lastPage.has_more ? pages.length + 1 : undefined
+
+      const totalItems = 'total' in lastPage ? lastPage.total : 0
       const currentPage = pages.length
       const itemsLoaded = currentPage * pageSize
 
@@ -170,13 +180,16 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100, option
   })
 
   const plugins = data?.pages.flatMap(page => page.plugins) ?? []
-  const total = data?.pages[0]!.total ?? 0
+  const firstPage = data?.pages[0]
+  const builtinTools = firstPage && 'builtin_tools' in firstPage ? firstPage.builtin_tools : []
+  const total = data?.pages[0] && 'total' in data.pages[0] ? data.pages[0].total : plugins.length
 
   return {
     data: disable
       ? undefined
       : {
           plugins,
+          builtin_tools: builtinTools,
           total,
         },
     isLastPage: !hasNextPage,

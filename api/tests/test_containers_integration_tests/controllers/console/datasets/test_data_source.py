@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -11,12 +12,14 @@ from werkzeug.exceptions import NotFound
 from controllers.console.datasets import data_source
 from controllers.console.datasets.data_source import (
     DataSourceApi,
-    DataSourceNotionApi,
     DataSourceNotionDatasetSyncApi,
     DataSourceNotionDocumentSyncApi,
+    DataSourceNotionIndexingEstimateApi,
     DataSourceNotionListApi,
+    DataSourceNotionPreviewApi,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from models import DataSourceOauthBinding
 
 
 def unwrap(func):
@@ -59,13 +62,29 @@ class TestDataSourceApi:
         api = DataSourceApi()
         method = unwrap(api.get)
 
-        binding = MagicMock(
-            id="b1",
+        binding = DataSourceOauthBinding(
+            tenant_id="tenant-1",
+            access_token="token",
             provider="notion",
-            created_at="now",
-            disabled=False,
-            source_info={},
+            source_info={
+                "workspace_name": "Workspace",
+                "workspace_id": "workspace-1",
+                "workspace_icon": None,
+                "total": 1,
+                "pages": [
+                    {
+                        "page_id": "page-1",
+                        "page_name": "Page",
+                        "page_icon": {"type": "emoji", "emoji": "P", "url": None},
+                        "parent_id": "parent-1",
+                        "type": "page",
+                    }
+                ],
+            },
         )
+        binding.id = "b1"
+        binding.created_at = datetime(2026, 5, 25, 1, 2, 3, tzinfo=UTC)
+        binding.disabled = False
 
         with (
             app.test_request_context("/"),
@@ -77,7 +96,29 @@ class TestDataSourceApi:
             response, status = method(api)
 
         assert status == 200
-        assert response["data"][0]["is_bound"] is True
+        assert response["data"][0] == {
+            "id": "b1",
+            "provider": "notion",
+            "created_at": 1779670923,
+            "is_bound": True,
+            "disabled": False,
+            "source_info": {
+                "workspace_name": "Workspace",
+                "workspace_id": "workspace-1",
+                "workspace_icon": None,
+                "pages": [
+                    {
+                        "page_name": "Page",
+                        "page_id": "page-1",
+                        "page_icon": {"type": "emoji", "url": None, "emoji": "P"},
+                        "parent_id": "parent-1",
+                        "type": "page",
+                    }
+                ],
+                "total": 1,
+            },
+            "link": "http://localhost/console/api/oauth/data-source/notion",
+        }
 
     def test_get_no_bindings(self, app: Flask, patch_tenant):
         api = DataSourceApi()
@@ -322,13 +363,13 @@ class TestDataSourceNotionListApi:
                 method(api)
 
 
-class TestDataSourceNotionApi:
+class TestDataSourceNotionPreviewApi:
     @pytest.fixture
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_preview_success(self, app: Flask, patch_tenant):
-        api = DataSourceNotionApi()
+        api = DataSourceNotionPreviewApi()
         method = unwrap(api.get)
 
         extractor = MagicMock(extract=lambda: [MagicMock(page_content="hello")])
@@ -348,8 +389,14 @@ class TestDataSourceNotionApi:
 
         assert status == 200
 
+
+class TestDataSourceNotionIndexingEstimateApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers: Flask):
+        return flask_app_with_containers
+
     def test_post_indexing_estimate_success(self, app: Flask, patch_tenant):
-        api = DataSourceNotionApi()
+        api = DataSourceNotionIndexingEstimateApi()
         method = unwrap(api.post)
 
         payload = {

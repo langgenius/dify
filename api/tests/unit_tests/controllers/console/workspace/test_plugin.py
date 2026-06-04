@@ -1,4 +1,6 @@
 import io
+from datetime import datetime
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +11,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.console.workspace.plugin import (
     PluginAssetApi,
     PluginAutoUpgradeExcludePluginApi,
+    PluginCategoryListApi,
     PluginChangeAutoUpgradeApi,
     PluginChangePermissionApi,
     PluginDebuggingKeyApi,
@@ -40,6 +43,68 @@ from controllers.console.workspace.plugin import (
 )
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+
+
+def _plugin_category_list_item() -> dict[str, Any]:
+    now = datetime(2023, 1, 1, 0, 0, 0)
+    return {
+        "id": "entity-1",
+        "created_at": now,
+        "updated_at": now,
+        "tenant_id": "t1",
+        "endpoints_setups": 0,
+        "endpoints_active": 0,
+        "runtime_type": "remote",
+        "source": "marketplace",
+        "meta": {},
+        "plugin_id": "test-author/test-plugin",
+        "plugin_unique_identifier": "test-author/test-plugin:1.0.0@checksum",
+        "version": "1.0.0",
+        "checksum": "checksum",
+        "name": "test-plugin",
+        "installation_id": "entity-1",
+        "declaration": {
+            "version": "1.0.0",
+            "author": "test-author",
+            "name": "test-plugin",
+            "description": {"en_US": "Test plugin"},
+            "icon": "icon.svg",
+            "label": {"en_US": "Test Plugin"},
+            "created_at": now,
+            "resource": {"memory": 268435456, "permission": None},
+            "plugins": {"tools": ["provider/test.yaml"]},
+            "meta": {"version": "1.0.0"},
+            "tool": {
+                "identity": {
+                    "author": "test-author",
+                    "name": "test-plugin",
+                    "description": {"en_US": "Test plugin"},
+                    "icon": "icon.svg",
+                    "label": {"en_US": "Test Plugin"},
+                }
+            },
+        },
+    }
+
+
+def _builtin_tool_provider_item() -> dict[str, Any]:
+    return {
+        "id": "builtin",
+        "author": "dify",
+        "name": "builtin",
+        "plugin_id": "",
+        "plugin_unique_identifier": "",
+        "description": {"en_US": "Builtin tool provider"},
+        "icon": "icon.svg",
+        "icon_dark": "",
+        "label": {"en_US": "Builtin"},
+        "type": "builtin",
+        "team_credentials": {},
+        "is_team_authorization": False,
+        "allow_delete": True,
+        "tools": [],
+        "labels": [],
+    }
 
 
 def unwrap(func):
@@ -140,6 +205,87 @@ class TestPluginListApi:
             result = method(api)
 
         assert result["total"] == 1
+
+
+class TestPluginCategoryListApi:
+    def test_plugin_category_list(self, app: Flask):
+        api = PluginCategoryListApi()
+        method = unwrap(api.get)
+        plugin_item = _plugin_category_list_item()
+        builtin_item = _builtin_tool_provider_item()
+        mock_list = MagicMock(list=[plugin_item], has_more=True)
+
+        with (
+            app.test_request_context("/?page=2&page_size=10"),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_by_category", return_value=mock_list
+            ) as list_mock,
+            patch(
+                "controllers.console.workspace.plugin._list_hardcoded_builtin_tool_providers",
+                return_value=[builtin_item],
+            ) as builtin_mock,
+        ):
+            result = method(api, "tool")
+
+        list_mock.assert_called_once()
+        assert list_mock.call_args.args[0] == "t1"
+        assert list_mock.call_args.args[1] == "tool"
+        assert list_mock.call_args.args[2] == 2
+        assert list_mock.call_args.args[3] == 10
+        assert result["plugins"][0]["id"] == "entity-1"
+        assert result["plugins"][0]["plugin_unique_identifier"] == "test-author/test-plugin:1.0.0@checksum"
+        assert result["builtin_tools"][0]["id"] == "builtin"
+        assert result["builtin_tools"][0]["type"] == "builtin"
+        assert result["has_more"] is True
+        assert "total" not in result
+        builtin_mock.assert_called_once_with("t1")
+
+    def test_non_tool_category_does_not_include_builtin_tools(self, app: Flask):
+        api = PluginCategoryListApi()
+        method = unwrap(api.get)
+        mock_list = MagicMock(list=[_plugin_category_list_item()], has_more=False)
+
+        with (
+            app.test_request_context("/?page=1&page_size=10"),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
+            patch("controllers.console.workspace.plugin.PluginService.list_by_category", return_value=mock_list),
+            patch("controllers.console.workspace.plugin._list_hardcoded_builtin_tool_providers") as builtin_mock,
+        ):
+            result = method(api, "datasource")
+
+        assert result["plugins"][0]["id"] == "entity-1"
+        assert result["builtin_tools"] == []
+        assert result["has_more"] is False
+        builtin_mock.assert_not_called()
+
+    def test_invalid_category(self, app: Flask):
+        api = PluginCategoryListApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?page=1&page_size=10"),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
+        ):
+            result = method(api, "unknown")
+
+        assert result == ({"code": "invalid_param", "message": "invalid plugin category"}, 400)
+
+    def test_daemon_error(self, app: Flask):
+        api = PluginCategoryListApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?page=1&page_size=10"),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_by_category",
+                side_effect=PluginDaemonClientSideError("error"),
+            ),
+        ):
+            result = method(api, "tool")
+
+        assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginIconApi:

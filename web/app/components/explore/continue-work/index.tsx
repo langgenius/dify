@@ -22,7 +22,7 @@ const ContinueWork = ({
     return null
 
   return (
-    <section className={cn('px-8 pb-6', className)} aria-labelledby="continue-work-title">
+    <section className={cn('px-8 pb-5', className)} aria-labelledby="continue-work-title">
       <div className="flex items-center justify-between pt-2">
         <h2 id="continue-work-title" className="min-w-0 truncate system-xl-medium text-text-primary">
           {t('continueWork.title', { ns: 'explore' })}

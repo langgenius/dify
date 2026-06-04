@@ -12,7 +12,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
 import { useTags } from '@/app/components/plugins/hooks'
@@ -29,6 +29,7 @@ import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/u
 import { useAllToolProviders } from '@/service/use-tools'
 import { useToolMarketplacePanel } from './hooks/use-tool-marketplace-panel'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
+import ToolProviderCreateAction from './tool-provider-create-action'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
 
 type ProviderListProps = {
@@ -111,10 +112,23 @@ const ProviderList = ({
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
   }
+  const [createdMCPProviderId, setCreatedMCPProviderId] = useState<string>()
+  const handleMCPProviderCreated = useCallback((providerId: string) => {
+    setCreatedMCPProviderId(providerId)
+  }, [])
+  const handleCreatedMCPProviderHandled = useCallback(() => {
+    setCreatedMCPProviderId(undefined)
+  }, [])
   const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders()
   const activeTabCollectionList = useMemo(() => {
     return collectionList.filter(collection => collection.type === activeTab)
   }, [activeTab, collectionList])
+  const hasCategoryCollections = activeTabCollectionList.length > 0
+  const shouldShowCustomToolCreateCard = !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
+  const shouldShowMCPCreateCard = !(activeTab === 'mcp' && hasCategoryCollections)
+  const shouldShowToolbarCreateAction
+    = (activeTab === 'mcp' && hasCategoryCollections)
+      || (activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
   const filteredCollectionList = useMemo(() => {
     return activeTabCollectionList.filter((collection) => {
       if (showLabelFilter && tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
@@ -157,6 +171,17 @@ const ProviderList = ({
       showLabelFilter={showLabelFilter}
       showToolsUpdateSetting={showToolsUpdateSetting}
       tagFilterValue={tagFilterValue}
+      toolbarAction={shouldShowToolbarCreateAction
+        ? (
+            <ToolProviderCreateAction
+              activeTab={activeTab}
+              hasCategoryCollections={hasCategoryCollections}
+              isCollectionListLoading={isCollectionListLoading}
+              onCustomToolCreated={refetch}
+              onMCPProviderCreated={handleMCPProviderCreated}
+            />
+          )
+        : undefined}
       onCategoryChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
       onKeywordsChange={handleKeywordsChange}
       onTagsChange={handleTagsChange}
@@ -185,6 +210,7 @@ const ProviderList = ({
                   isLoading={isCollectionListLoading}
                   useIntegrationsCard={contentInset === 'compact'}
                   isSearchResultEmpty={isCollectionSearchEmpty}
+                  showCreateCard={shouldShowCustomToolCreateCard}
                   onRefreshData={refetch}
                   onSelectProvider={setCurrentProviderId}
                 />
@@ -204,7 +230,13 @@ const ProviderList = ({
                 />
               )}
               {activeTab === 'mcp' && (
-                <MCPList searchText={keywords} contentInset={contentInset} />
+                <MCPList
+                  searchText={keywords}
+                  contentInset={contentInset}
+                  createdProviderId={createdMCPProviderId}
+                  showCreateCard={shouldShowMCPCreateCard}
+                  onCreatedProviderHandled={handleCreatedMCPProviderHandled}
+                />
               )}
             </ScrollAreaContent>
           </ScrollAreaViewport>

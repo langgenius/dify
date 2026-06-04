@@ -167,6 +167,27 @@ def test_publish_validation_rejects_missing_agent_soul_model():
         )
 
 
+def test_publish_validation_rejects_duplicate_cli_tool_names():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={"cli_tools": [{"name": "pytest"}, {"tool_name": "pytest"}]},
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate CLI Tool name pytest"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
 def test_publish_validation_rejects_missing_previous_node():
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "missing-node", "output": "text"}]}

@@ -8,7 +8,7 @@ import { IndicatorButton } from './indicator-button'
 
 type BannerItemProps = {
   banner: Banner
-  autoplayDelay: number
+  autoplayDelay?: number
   sort: number
   language: string
   accountId?: string
@@ -130,68 +130,68 @@ export function BannerItem({
 
   return (
     <div
-      className="flex min-h-[168px] w-full cursor-pointer items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-xs"
+      className="flex h-[184px] w-full cursor-pointer items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-xs"
       onClick={handleBannerClick}
     >
-      <div className="flex min-w-px flex-1 flex-col items-end gap-3 self-stretch rounded-2xl py-6 pl-8">
-        <div className="flex min-h-24 w-full flex-wrap items-end gap-1 py-1">
-          <div
-            ref={textAreaRef}
-            className="flex max-w-[680px] min-w-[480px] flex-[1_1_480px] flex-col pr-4 max-xl:min-w-0"
-            style={responsiveStyle}
-          >
-            <p className="line-clamp-1 title-4xl-semi-bold text-dify-logo-blue">
-              {category}
-            </p>
-            <p className="line-clamp-2 title-4xl-semi-bold text-dify-logo-black">
-              {title}
-            </p>
-          </div>
-          <div
-            className="max-w-[600px] min-w-0 flex-[1_1_240px] self-end overflow-hidden py-1 pr-4"
-            style={responsiveStyle}
-          >
-            <p className="line-clamp-4 overflow-hidden body-sm-regular text-text-tertiary">
-              {description}
-            </p>
-          </div>
+      <div className="flex min-w-px flex-1 flex-col items-end self-stretch rounded-2xl py-6 pl-8">
+        <div className="w-full min-w-0 pr-4" style={responsiveStyle}>
+          <p className="line-clamp-1 h-[1.8rem] w-full title-4xl-semi-bold wrap-break-word text-dify-logo-blue">
+            {category}
+          </p>
         </div>
 
-        {/* Actions section */}
-        <div className="flex w-full flex-wrap items-center gap-1">
-          {/* View more button */}
+        <div className="flex w-full flex-col gap-3 py-1">
           <div
-            className="flex max-w-[680px] min-w-[480px] flex-[1_1_480px] items-center gap-[6px] py-1 max-xl:min-w-0"
-            style={viewMoreStyle}
+            ref={textAreaRef}
+            className="grid w-full grid-cols-[minmax(0,680px)_minmax(240px,600px)] gap-x-1 max-xl:grid-cols-1"
+            style={responsiveStyle}
           >
-            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
-              <span className="i-ri-arrow-right-line h-3 w-3 text-text-primary-on-surface" />
+            <div className="flex min-w-0 flex-col pr-4">
+              <p className="line-clamp-2 min-h-[3.6rem] w-full title-4xl-semi-bold wrap-break-word text-dify-logo-black">
+                {title}
+              </p>
             </div>
-            <span className="system-sm-semibold-uppercase text-text-accent">
-              {t('banner.viewMore', { ns: 'explore' })}
-            </span>
+            <div className="min-w-0 overflow-hidden pr-4">
+              <p className="line-clamp-3 overflow-hidden body-sm-regular text-text-tertiary">
+                {description}
+              </p>
+            </div>
           </div>
 
           <div
-            className="flex max-w-[600px] min-w-60 flex-[1_1_240px] items-center gap-2 py-1 pr-10 max-xl:min-w-0"
+            className="grid w-full grid-cols-[minmax(0,680px)_minmax(240px,600px)] gap-x-1 max-xl:grid-cols-1"
             style={responsiveStyle}
           >
-            {/* Slide navigation indicators */}
-            <div className="flex items-center gap-1">
-              {indicatorItems.map(({ id, index }) => (
-                <IndicatorButton
-                  key={id}
-                  index={index}
-                  selectedIndex={selectedIndex}
-                  isNextSlide={index === slideInfo.nextIndex}
-                  autoplayDelay={autoplayDelay}
-                  resetKey={resetKey}
-                  isPaused={isPaused}
-                  onClick={() => handleIndicatorClick(index)}
-                />
-              ))}
+            <div
+              className="flex min-w-0 items-center gap-[6px] py-1"
+              style={viewMoreStyle}
+            >
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
+                <span className="i-ri-arrow-right-line h-3 w-3 text-text-primary-on-surface" />
+              </div>
+              <span className="system-sm-semibold-uppercase text-text-accent">
+                {t('banner.viewMore', { ns: 'explore' })}
+              </span>
             </div>
-            <div className="hidden h-px flex-1 bg-divider-regular min-[1380px]:block" />
+
+            <div className="flex min-w-0 items-center gap-2 py-1 pr-10">
+              {/* Slide navigation indicators */}
+              <div className="flex items-center gap-1">
+                {indicatorItems.map(({ id, index }) => (
+                  <IndicatorButton
+                    key={id}
+                    index={index}
+                    selectedIndex={selectedIndex}
+                    isNextSlide={index === slideInfo.nextIndex}
+                    autoplayDelay={autoplayDelay}
+                    resetKey={resetKey}
+                    isPaused={isPaused}
+                    onClick={() => handleIndicatorClick(index)}
+                  />
+                ))}
+              </div>
+              <div className="hidden h-px flex-1 bg-divider-regular min-[1380px]:block" />
+            </div>
           </div>
         </div>
       </div>

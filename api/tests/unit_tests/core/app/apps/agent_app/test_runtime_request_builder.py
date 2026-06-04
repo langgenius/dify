@@ -14,6 +14,7 @@ from clients.agent_backend import (
     AgentBackendModelConfig,
     AgentBackendRunRequestBuilder,
 )
+from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequestBuilder,
@@ -142,3 +143,37 @@ class TestAgentAppRuntimeRequestBuilder:
         with pytest.raises(AgentAppRuntimeRequestBuildError) as exc:
             builder.build(_ctx(AgentSoulConfig()))
         assert exc.value.error_code == "agent_model_not_configured"
+
+    def test_build_maps_agent_soul_shell_settings_to_shell_layer(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+        soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "langgenius/openai/openai",
+                    "model": "gpt-4o-mini",
+                },
+                "tools": {"cli_tools": [{"name": "ripgrep", "install_command": "apt-get install -y ripgrep"}]},
+                "env": {"variables": [{"name": "PROJECT_NAME", "value": "demo"}]},
+                "sandbox": {"provider": "independent", "config": {"cpu": 2}},
+            }
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        dumped = result.request.model_dump(mode="json")
+        shell_config = {layer["name"]: layer for layer in dumped["composition"]["layers"]}[DIFY_SHELL_LAYER_ID][
+            "config"
+        ]
+        assert shell_config["cli_tools"][0]["install_commands"] == ["apt-get install -y ripgrep"]
+        assert shell_config["env"][0] == {"name": "PROJECT_NAME", "value": "demo"}
+        assert shell_config["sandbox"] == {"provider": "independent", "config": {"cpu": 2}}
+        assert result.metadata["agent_tools"] == {
+            "dify_tool_count": 0,
+            "dify_tool_names": [],
+            "cli_tool_count": 1,
+        }

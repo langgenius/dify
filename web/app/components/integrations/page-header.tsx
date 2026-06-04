@@ -30,7 +30,7 @@ export function IntegrationPageHeader({
       )}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="system-xl-semibold text-text-primary">
+          <div className="title-2xl-semi-bold text-text-primary">
             {title}
           </div>
           {showDescription && (

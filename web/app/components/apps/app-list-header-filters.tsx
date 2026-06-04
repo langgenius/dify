@@ -76,7 +76,7 @@ function AppListHeaderFilters({
           onChange={onKeywordsChange}
         />
         <div className="h-3.5 w-px bg-divider-regular" />
-        <label className="flex h-8 items-center gap-2 rounded-lg bg-components-input-bg-normal px-2 text-text-secondary">
+        <label className="flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-components-input-bg-normal px-2 text-text-secondary">
           <Checkbox checked={isCreatedByMe} onCheckedChange={onCreatedByMeChange} />
           <span className="system-sm-regular whitespace-nowrap">
             {t('showMyCreatedAppsOnly', { ns: 'app' })}

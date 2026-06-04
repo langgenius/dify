@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import SearchInput from '@/app/components/base/search-input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
@@ -22,6 +23,7 @@ export function ToolProviderToolbar({
   showLabelFilter,
   showToolsUpdateSetting,
   tagFilterValue,
+  toolbarAction,
   onCategoryChange,
   onKeywordsChange,
   onTagsChange,
@@ -35,6 +37,7 @@ export function ToolProviderToolbar({
   showLabelFilter: boolean
   showToolsUpdateSetting: boolean
   tagFilterValue: string[]
+  toolbarAction?: ReactNode
   onCategoryChange: (category: string) => void
   onKeywordsChange: (keywords: string) => void
   onTagsChange: (tags: string[]) => void
@@ -66,7 +69,8 @@ export function ToolProviderToolbar({
             onChange={onKeywordsChange}
           />
         </div>
-        {showToolsUpdateSetting && (
+        {toolbarAction}
+        {!toolbarAction && showToolsUpdateSetting && (
           <UpdateSettingDialog
             category={PluginCategoryEnum.tool}
           />

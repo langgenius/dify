@@ -2,7 +2,7 @@ import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
-import type { ToolCredential } from '@/app/components/tools/types'
+import type { Collection, ToolCredential } from '@/app/components/tools/types'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { Locale } from '@/i18n-config'
 
@@ -36,7 +36,7 @@ type PluginToolDeclaration = {
 
 type PluginEndpointDeclaration = {
   settings: ToolCredential[]
-  endpoints: EndpointItem[]
+  endpoints?: EndpointItem[] | null
 }
 
 type EndpointItem = {
@@ -80,7 +80,7 @@ export type PluginDeclaration = {
   resource: any // useless in frontend
   plugins: any // useless in frontend
   verified: boolean
-  endpoint: PluginEndpointDeclaration
+  endpoint?: PluginEndpointDeclaration | null
   tool?: PluginToolDeclaration
   datasource?: PluginToolDeclaration
   model: any
@@ -436,6 +436,12 @@ export type MetaData = {
 export type InstalledPluginListWithTotalResponse = {
   plugins: PluginDetail[]
   total: number
+}
+
+export type InstalledPluginCategoryListResponse = {
+  plugins: PluginDetail[]
+  builtin_tools: Collection[]
+  has_more: boolean
 }
 
 export type InstalledLatestVersionResponse = {

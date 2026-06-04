@@ -98,6 +98,17 @@ describe('MCPList', () => {
       expect(screen.getByTestId('create-card')).toBeInTheDocument()
     })
 
+    it('should hide create card when parent moves creation into the toolbar', () => {
+      mockProviders = [
+        { id: '1', name: 'Provider 1', type: 'mcp' },
+      ]
+
+      render(<MCPList searchText="" showCreateCard={false} />)
+
+      expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
+      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
+    })
+
     it('should render card skeletons while tool providers are loading', () => {
       mockIsLoadingToolProviders = true
       render(<MCPList searchText="" />)
@@ -271,6 +282,29 @@ describe('MCPList', () => {
       })
 
       expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('false')
+    })
+
+    it('should refetch and open detail when provider is created from the toolbar', async () => {
+      mockProviders = [{ id: 'toolbar-id', name: 'Toolbar Provider', type: 'mcp' }]
+      const onCreatedProviderHandled = vi.fn()
+
+      await act(async () => {
+        render(
+          <MCPList
+            searchText=""
+            createdProviderId="toolbar-id"
+            showCreateCard={false}
+            onCreatedProviderHandled={onCreatedProviderHandled}
+          />,
+        )
+        await Promise.resolve()
+      })
+
+      expect(mockRefetch).toHaveBeenCalled()
+      expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('detail-name')).toHaveTextContent('Toolbar Provider')
+      expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
+      expect(onCreatedProviderHandled).toHaveBeenCalled()
     })
   })
 

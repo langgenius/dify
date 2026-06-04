@@ -44,7 +44,7 @@ const Marketplace = ({
   } = marketplaceContext
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const marketplaceFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
-  const cardContainerClassName = 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+  const cardContainerClassName = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'
   const handleCollectionMoreClick = (searchParams?: SearchParamsFromCollection) => {
     const params = new URLSearchParams({ category: 'tool' })
 

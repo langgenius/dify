@@ -1,5 +1,11 @@
-import type * as React from 'react'
-import type { FormInputItemDefault } from '../types'
+/* eslint-disable react-refresh/only-export-components */
+import type { FormInputItem } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import { TransferMethod } from '@/types/app'
+import { isFileFormInput, isFileListFormInput, isSelectFormInput } from '../types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
 const noteRegex = /\{\{#\$(.+?)#\}\}/g
@@ -87,6 +93,17 @@ const formatVariablePath = (path: string) => {
     .replace('#}}', '}}')
 }
 
+const sourceToVariablePath = (
+  source: { selector: string[] },
+  nodeName: (nodeId: string) => string,
+) => {
+  if (!source.selector.length)
+    return ''
+
+  const path = `{{#${source.selector.join('.')}#}}`
+  return replaceNodeIdsWithNames(path, nodeName)
+}
+
 export function rehypeVariable() {
   return (tree: MarkdownNode) => {
     visitTextNodes(tree, (value) => {
@@ -132,13 +149,98 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
   )
 }
 
-export const Note: React.FC<{ defaultInput: FormInputItemDefault, nodeName: (nodeId: string) => string }> = ({ defaultInput, nodeName }) => {
-  const isVariable = defaultInput.type === 'variable'
-  const path = `{{#${defaultInput.selector.join('.')}#}}`
-  const newPath = path ? replaceNodeIdsWithNames(path, nodeName) : path
+const SelectPreview: React.FC<{ label: string, options: string[] }> = ({ label, options }) => {
+  const [value, setValue] = React.useState(options[0] || label)
+
+  return (
+    <div data-testid="human-input-note-select-preview" className="my-3">
+      <Select value={value} onValueChange={nextValue => nextValue && setValue(nextValue)}>
+        <SelectTrigger size="large" className="w-full rounded-[10px]" aria-label="human-input-note-select">
+          {value}
+        </SelectTrigger>
+        <SelectContent listClassName="max-h-[140px] overflow-y-auto">
+          {options.map(option => (
+            <SelectItem key={option} value={option}>
+              <SelectItemText>{option}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+const FileUploadPreview: React.FC<{ methods: TransferMethod[], t: (key: string, options?: Record<string, unknown>) => string }> = ({ methods, t }) => {
+  const normalizedMethods = methods.length
+    ? methods
+    : [TransferMethod.local_file, TransferMethod.remote_url]
+  const actions = [
+    normalizedMethods.includes(TransferMethod.local_file) && {
+      iconClassName: 'i-ri-upload-cloud-2-line',
+      label: t('fileUploader.uploadFromComputer', { ns: 'common' }),
+    },
+    normalizedMethods.includes(TransferMethod.remote_url) && {
+      iconClassName: 'i-ri-link',
+      label: t('fileUploader.pasteFileLink', { ns: 'common' }),
+    },
+  ].filter(Boolean) as Array<{ iconClassName: string, label: string }>
+
+  return (
+    <div
+      data-testid="human-input-note-file-preview"
+      className={cn(
+        'my-3 grid gap-2',
+        actions.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
+      )}
+    >
+      {actions.map(action => (
+        <div
+          key={action.label}
+          className="flex h-10 items-center justify-center rounded-xl bg-components-input-bg-normal px-3"
+        >
+          <span className={cn('mr-2 size-5 shrink-0 text-text-tertiary', action.iconClassName)} />
+          <span className="truncate system-sm-medium text-text-tertiary">
+            {action.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export const Note: React.FC<{ input: FormInputItem, nodeName: (nodeId: string) => string }> = ({ input, nodeName }) => {
+  const { t } = useTranslation()
+  if (isSelectFormInput(input)) {
+    const isVariable = input.option_source.type === 'variable'
+    if (isVariable) {
+      const variablePath = sourceToVariablePath(input.option_source, nodeName)
+      return (
+        <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
+          {variablePath
+            ? <Variable path={variablePath} />
+            : <span>{t('nodes.humanInput.insertInputField.variable', { ns: 'workflow' })}</span>}
+        </div>
+      )
+    }
+
+    const label = input.option_source.value[0] || t('variableConfig.select', { ns: 'appDebug' })
+    return <SelectPreview label={label} options={input.option_source.value} />
+  }
+
+  if (isFileFormInput(input)) {
+    return <FileUploadPreview methods={input.allowed_file_upload_methods} t={t} />
+  }
+
+  if (isFileListFormInput(input)) {
+    return <FileUploadPreview methods={input.allowed_file_upload_methods} t={t} />
+  }
+
+  const isVariable = input.default.type === 'variable'
+  const newPath = sourceToVariablePath(input.default, nodeName)
   return (
     <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
-      {isVariable ? <Variable path={newPath} /> : <span>{defaultInput.value}</span>}
+      {isVariable ? <Variable path={newPath} /> : <span>{input.default.value}</span>}
     </div>
   )
 }

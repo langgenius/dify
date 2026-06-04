@@ -398,6 +398,24 @@ const removeNullDefaults = (value: unknown, visited = new WeakSet<object>()) => 
   Object.values(schema).forEach(item => removeNullDefaults(item, visited))
 }
 
+const normalizeRegexPatterns = (value: unknown, visited = new WeakSet<object>()) => {
+  if (!value || typeof value !== 'object' || visited.has(value))
+    return
+
+  visited.add(value)
+
+  if (Array.isArray(value)) {
+    value.forEach(item => normalizeRegexPatterns(item, visited))
+    return
+  }
+
+  const schema = value as SwaggerSchema
+  if (typeof schema.pattern === 'string')
+    schema.pattern = schema.pattern.replace(/^\^\(\?!\^/, '^(?!')
+
+  Object.values(schema).forEach(item => normalizeRegexPatterns(item, visited))
+}
+
 const isNullSchema = (schema: SwaggerSchema) => {
   return schema.type === 'null'
 }
@@ -791,6 +809,7 @@ const normalizeApiSwagger = (document: SwaggerDocument, surface: string) => {
   ensureReferencedDefinitions(document)
   normalizeNullableAnyOf(document)
   removeNullDefaults(document)
+  normalizeRegexPatterns(document)
   normalizeOperations(document, surface)
 
   return document

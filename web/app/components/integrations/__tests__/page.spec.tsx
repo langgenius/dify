@@ -173,7 +173,15 @@ vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page', () => ({
   __esModule: true,
-  ApiBasedExtensionPage: () => <div data-testid="api-extension-page" />,
+  ApiBasedExtensionPage: ({ layout }: { layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode }) => {
+    const toolbar = <div data-testid="api-extension-toolbar" />
+    const body = <div data-testid="api-extension-page" />
+
+    if (layout)
+      return layout({ body, toolbar })
+
+    return body
+  },
 }))
 
 vi.mock('../tool-provider-list', async () => {
@@ -257,6 +265,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
     expect(screen.getByTestId('model-provider-toolbar').closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6', 'pt-3', 'pb-2')
+    expect(within(screen.getByTestId('model-provider-toolbar').closest('section')!).getByText('common.settings.provider')).toHaveClass('title-2xl-semi-bold')
     expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6')
     expect(screen.getByTestId('model-provider-page').parentElement).not.toHaveClass('pt-2')
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
@@ -290,6 +299,13 @@ describe('IntegrationsPage', () => {
   })
 
   it('renders plugin category sections from the section query', () => {
+    const toolView = renderIntegrationsPage({ section: 'builtin' })
+
+    expect(screen.getByTestId('plugin-category-tool')).toBeInTheDocument()
+    expect(screen.getByTestId('plugin-category-tool').parentElement).toHaveClass('flex', 'flex-col', 'overflow-hidden')
+    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toHaveAttribute('href', '/integrations/tools/built-in')
+
+    toolView.unmount()
     const triggerView = renderIntegrationsPage({ section: 'trigger' })
 
     expect(screen.getByTestId('plugin-category-trigger')).toBeInTheDocument()
@@ -359,7 +375,7 @@ describe('IntegrationsPage', () => {
   it('remounts the tools section content when the route section changes', () => {
     const view = renderIntegrationsPage(undefined, 'builtin')
 
-    expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'builtin')
+    expect(screen.getByTestId('plugin-category-tool')).toBeInTheDocument()
 
     view.rerender(<IntegrationsPage section="mcp" />)
 
@@ -380,6 +396,11 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'common.settings.customTool' })).toHaveAttribute('href', '/integrations/tool/api')
     expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' })).toHaveAttribute('href', '/integrations/tools/workflow')
+    const workflowToolIcon = screen.getByRole('link', { name: 'workflow.common.workflowAsTool' }).querySelector('.i-custom-vender-integrations-workflow-as-tool')
+    expect(workflowToolIcon).toBeInTheDocument()
+    expect(workflowToolIcon).toHaveClass('size-4')
+    expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' }).querySelector('.i-ri-node-tree')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' }).compareDocumentPosition(screen.getByRole('link', { name: 'common.settings.customTool' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('uses hover-only arrows for the tools parent icon', () => {
@@ -477,9 +498,10 @@ describe('IntegrationsPage', () => {
   it('renders the tools header for tool sections', () => {
     renderIntegrationsPage({ section: 'builtin' })
 
-    expect(screen.getAllByText('common.menus.tools')).toHaveLength(2)
+    expect(screen.getAllByText('common.toolsPage.toolPlugin')).toHaveLength(2)
     expect(screen.getByText('common.toolsPage.description')).toBeInTheDocument()
-    expect(screen.getByText('common.toolsPage.description').parentElement?.parentElement).toHaveClass('max-w-[1600px]', 'px-6')
+    expect(screen.getByText('common.toolsPage.description').closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools')
   })
 
   it('aligns model provider headers to the unified content frame', () => {
@@ -493,7 +515,7 @@ describe('IntegrationsPage', () => {
   it('aligns plugin category headers to the unified content frame', () => {
     renderIntegrationsPage({ section: 'trigger' })
 
-    expect(screen.getByText('common.triggerPage.description').parentElement?.parentElement).toHaveClass('max-w-[1600px]', 'px-6')
+    expect(screen.getByText('common.triggerPage.description').closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6')
   })
 
   it('renders the mcp header for the mcp section', () => {
@@ -501,6 +523,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('MCP')).toHaveLength(2)
     expect(screen.getByText('common.mcpPage.description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/build/mcp')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
@@ -509,21 +532,49 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('common.settings.customTool')).toHaveLength(2)
     expect(screen.getByText('common.swaggerAPIAsToolPage.description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
   it.each([
-    ['workflow-tool', 'workflow.common.workflowAsTool', 'common.workflowAsToolPage.description'],
-    ['custom-endpoint', 'common.settings.customEndpoint', 'common.apiBasedExtensionPage.description'],
     ['data-source', 'common.settings.dataSource', 'common.dataSourcePage.description'],
-    ['trigger', 'plugin.categorySingle.trigger', 'common.triggerPage.description'],
-    ['extension', 'plugin.categorySingle.extension', 'common.extensionPage.description'],
-    ['agent-strategy', 'plugin.categorySingle.agent', 'common.agentStrategyPage.description'],
   ] as const)('renders the %s header', (section, title, description) => {
     renderIntegrationsPage({ section })
 
     expect(screen.getAllByText(title)).toHaveLength(2)
     expect(screen.getByText(description)).toBeInTheDocument()
+    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+  })
+
+  it('renders the custom endpoint header with toolbar and docs link', () => {
+    renderIntegrationsPage({ section: 'custom-endpoint' })
+
+    expect(screen.getAllByText('common.settings.customEndpoint')).toHaveLength(2)
+    expect(screen.getByText('common.apiBasedExtensionPage.description')).toBeInTheDocument()
+    expect(screen.getByTestId('api-extension-toolbar')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/api-extension/api-extension')
+    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['trigger', 'plugin.categorySingle.trigger', 'common.triggerPage.description', 'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin'],
+    ['extension', 'plugin.categorySingle.extension', 'common.extensionPage.description', 'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/endpoint'],
+    ['agent-strategy', 'plugin.categorySingle.agent', 'common.agentStrategyPage.description', 'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin'],
+  ] as const)('renders the %s header with a docs link', (section, title, description, href) => {
+    renderIntegrationsPage({ section })
+
+    expect(screen.getAllByText(title)).toHaveLength(2)
+    expect(screen.getByText(description)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', href)
+    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+  })
+
+  it('renders the workflow as tool header with a docs link', () => {
+    renderIntegrationsPage({ section: 'workflow-tool' })
+
+    expect(screen.getAllByText('workflow.common.workflowAsTool')).toHaveLength(2)
+    expect(screen.getByText('common.workflowAsToolPage.description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#workflow-tool')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
@@ -543,7 +594,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getByText(description).parentElement?.parentElement?.parentElement).not.toHaveClass('border-b', 'border-divider-subtle')
   })
 
-  it.each(['trigger', 'extension', 'agent-strategy'] as const)('renders plugin update settings action in the category toolbar for %s', (section) => {
+  it.each(['builtin', 'trigger', 'extension', 'agent-strategy'] as const)('renders plugin update settings action in the category toolbar for %s', (section) => {
     renderIntegrationsPage({ section })
 
     expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()

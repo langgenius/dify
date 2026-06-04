@@ -2,7 +2,7 @@ import type { CustomCollectionBackend } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType } from '../../types'
-import CustomCreateCard from '../custom-create-card'
+import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
 
 // Mock workspace manager state
 let mockIsWorkspaceManager = true
@@ -131,6 +131,8 @@ describe('CustomCreateCard', () => {
       const card = screen.getByText('tools.createSwaggerAPIAsTool').closest('.col-span-1')
       expect(card).toBeInTheDocument()
       expect(card).toHaveClass('h-[120px]', 'border-[0.5px]', 'border-components-panel-border', 'shadow-md')
+      expect(card).toHaveClass('min-w-0')
+      expect(card).not.toHaveClass('flex-1')
     })
 
     it('should render documentation link with Swagger API as Tool text', () => {
@@ -140,6 +142,22 @@ describe('CustomCreateCard', () => {
       expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool')
       expect(docLink).toHaveAttribute('target', '_blank')
       expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+  })
+
+  describe('Toolbar Button Rendering', () => {
+    it('should render toolbar add button for workspace managers', () => {
+      render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
+
+      expect(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i })).toBeInTheDocument()
+    })
+
+    it('should open modal when toolbar add button is clicked', () => {
+      render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i }))
+
+      expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
     })
   })
 

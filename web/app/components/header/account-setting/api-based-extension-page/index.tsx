@@ -1,8 +1,10 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SearchInput from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { Empty } from './empty'
@@ -15,6 +17,10 @@ type ApiBasedExtensionDialogState = {
   mode: 'edit'
   apiBasedExtension: ApiBasedExtensionResponse
 } | null
+
+type ApiBasedExtensionPageProps = {
+  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+}
 
 function ApiBasedExtensionListSkeleton() {
   const { t } = useTranslation()
@@ -39,10 +45,26 @@ function ApiBasedExtensionListSkeleton() {
   )
 }
 
-export function ApiBasedExtensionPage() {
+export function ApiBasedExtensionPage({
+  layout,
+}: ApiBasedExtensionPageProps = {}) {
   const { t } = useTranslation()
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
+  const [keywords, setKeywords] = useState('')
+
+  const filteredApiBasedExtensions = useMemo(() => {
+    const query = keywords.trim().toLowerCase()
+    if (!query)
+      return apiBasedExtensions
+
+    return apiBasedExtensions.filter((apiBasedExtension) => {
+      return apiBasedExtension.name.toLowerCase().includes(query)
+        || apiBasedExtension.api_endpoint.toLowerCase().includes(query)
+    })
+  }, [apiBasedExtensions, keywords])
+  const hasApiBasedExtensions = apiBasedExtensions.length > 0
+  const hasSearchKeywords = keywords.trim().length > 0
 
   const handleOpenApiBasedExtensionModal = () => {
     setDialogState({
@@ -63,21 +85,45 @@ export function ApiBasedExtensionPage() {
       setDialogState(null)
   }
 
-  return (
-    <div>
+  const toolbar = (
+    <div className="flex w-full items-center justify-between gap-2">
+      <SearchInput
+        className="w-[200px]"
+        value={keywords}
+        onChange={setKeywords}
+      />
+      <Button
+        variant="secondary"
+        onClick={handleOpenApiBasedExtensionModal}
+      >
+        <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
+        {t('apiBasedExtension.add', { ns: 'common' })}
+      </Button>
+    </div>
+  )
+
+  const body = (
+    <>
       {
         isLoading && (
           <ApiBasedExtensionListSkeleton />
         )
       }
       {
-        !isLoading && !apiBasedExtensions.length && (
+        !isLoading && !hasApiBasedExtensions && (
           <Empty />
         )
       }
       {
-        !isLoading && !!apiBasedExtensions.length && (
-          apiBasedExtensions.map(item => (
+        !isLoading && hasApiBasedExtensions && hasSearchKeywords && !filteredApiBasedExtensions.length && (
+          <div className="py-10 text-center system-sm-regular text-text-tertiary">
+            {t('dataSource.notion.selector.noSearchResult', { ns: 'common' })}
+          </div>
+        )
+      }
+      {
+        !isLoading && !!filteredApiBasedExtensions.length && (
+          filteredApiBasedExtensions.map(item => (
             <Item
               key={item.id}
               apiBasedExtension={item}
@@ -86,14 +132,6 @@ export function ApiBasedExtensionPage() {
           ))
         )
       }
-      <Button
-        variant="secondary"
-        className="w-full"
-        onClick={handleOpenApiBasedExtensionModal}
-      >
-        <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
-        {t('apiBasedExtension.add', { ns: 'common' })}
-      </Button>
       {
         dialogState?.mode === 'create' && (
           <ApiBasedExtensionModal
@@ -115,6 +153,16 @@ export function ApiBasedExtensionPage() {
           />
         )
       }
-    </div>
+    </>
+  )
+
+  if (layout)
+    return layout({ body, toolbar })
+
+  return (
+    <>
+      <div className="mb-3">{toolbar}</div>
+      {body}
+    </>
   )
 }

@@ -67,6 +67,7 @@ describe('PluginCategoryPage', () => {
   })
 
   it.each([
+    [PluginCategoryEnum.tool, true],
     [PluginCategoryEnum.trigger, true],
     [PluginCategoryEnum.agent, true],
     [PluginCategoryEnum.extension, true],
@@ -112,15 +113,15 @@ describe('PluginCategoryPage', () => {
   })
 
   it('opens the local package installer for supported dropped files', () => {
-    render(<PluginCategoryPage category={PluginCategoryEnum.agent} />)
+    render(<PluginCategoryPage category={PluginCategoryEnum.tool} />)
 
     const uploaderOptions = mockUseUploader.mock.calls[0]![0] as UploaderOptions
     act(() => {
-      uploaderOptions.onFileChange(new File(['test'], 'agent.difybndl'))
+      uploaderOptions.onFileChange(new File(['test'], 'tool.difypkg'))
     })
 
-    expect(screen.getByTestId('install-from-local-package')).toHaveAttribute('data-file-name', 'agent.difybndl')
-    expect(screen.getByTestId('install-from-local-package')).toHaveAttribute('data-install-context-category', PluginCategoryEnum.agent)
+    expect(screen.getByTestId('install-from-local-package')).toHaveAttribute('data-file-name', 'tool.difypkg')
+    expect(screen.getByTestId('install-from-local-package')).toHaveAttribute('data-install-context-category', PluginCategoryEnum.tool)
   })
 
   it('ignores dropped files when install permission is unavailable', () => {

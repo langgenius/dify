@@ -9,7 +9,13 @@ from sqlalchemy.orm import Session
 
 from graphon.enums import BuiltinNodeTypes
 from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import (
+    AgentFileRefConfig,
+    AgentHumanContactConfig,
+    AgentSoulConfig,
+    WorkflowNodeJobConfig,
+    WorkflowPreviousNodeOutputRef,
+)
 from models.model import UploadFile
 from models.workflow import Workflow
 
@@ -183,16 +189,15 @@ class WorkflowAgentNodeValidator:
         for human_ref in node_job.human_contacts:
             cls._validate_human_ref(binding=binding, human_ref=human_ref)
 
-        file_refs = node_job.metadata.get("file_refs")
+        file_refs = node_job.metadata.file_refs
         if isinstance(file_refs, list):
             for file_ref in file_refs:
-                if isinstance(file_ref, Mapping):
-                    cls._validate_file_ref(
-                        session=session,
-                        binding=binding,
-                        file_ref=file_ref,
-                        ref_context="metadata file ref",
-                    )
+                cls._validate_file_ref(
+                    session=session,
+                    binding=binding,
+                    file_ref=file_ref,
+                    ref_context="metadata file ref",
+                )
 
     @staticmethod
     def iter_agent_v2_nodes(graph_dict: Mapping[str, Any]) -> Iterator[tuple[str, Mapping[str, Any]]]:
@@ -210,7 +215,7 @@ class WorkflowAgentNodeValidator:
                 yield node_id, node_data
 
     @staticmethod
-    def selector_from_ref(ref: Mapping[str, Any]) -> list[str] | None:
+    def selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> list[str] | None:
         for key in ("selector", "variable_selector", "value_selector"):
             value = ref.get(key)
             if isinstance(value, list) and all(isinstance(item, str) for item in value):
@@ -237,7 +242,7 @@ class WorkflowAgentNodeValidator:
         binding: WorkflowAgentNodeBinding,
         node_job: WorkflowNodeJobConfig,
     ) -> None:
-        forbidden_paths = cls._find_locked_agent_soul_paths(node_job.metadata)
+        forbidden_paths = cls._find_locked_agent_soul_paths(node_job.metadata.model_dump(mode="python"))
         if forbidden_paths:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} cannot override locked Agent Soul fields: "
@@ -261,7 +266,7 @@ class WorkflowAgentNodeValidator:
         cls,
         *,
         binding: WorkflowAgentNodeBinding,
-        human_ref: Mapping[str, Any],
+        human_ref: AgentHumanContactConfig,
     ) -> None:
         contact_id = human_ref.get("contact_id") or human_ref.get("human_id") or human_ref.get("id")
         if not isinstance(contact_id, str) or not contact_id:
@@ -298,15 +303,25 @@ class WorkflowAgentNodeValidator:
                     f"Workflow Agent node {binding.node_id} has duplicate Dify Plugin Tool name {exposed_name}."
                 )
             exposed_names.add(exposed_name)
-        # CLI tools remain saved-but-not-executed. They are allowed at publish
-        # time so existing Agent Soul drafts are not blocked by a reserved field.
+
+        cli_tool_names: set[str] = set()
+        for cli_tool in agent_soul.tools.cli_tools:
+            name = cli_tool.get("name") or cli_tool.get("tool_name") or cli_tool.get("label")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            normalized_name = name.strip()
+            if normalized_name in cli_tool_names:
+                raise WorkflowAgentNodeValidationError(
+                    f"Workflow Agent node {binding.node_id} has duplicate CLI Tool name {normalized_name}."
+                )
+            cli_tool_names.add(normalized_name)
 
     @staticmethod
     def _validate_file_ref(
         *,
         session: Session,
         binding: WorkflowAgentNodeBinding,
-        file_ref: Mapping[str, Any],
+        file_ref: AgentFileRefConfig,
         ref_context: str,
     ) -> None:
         tenant_id = file_ref.get("tenant_id")

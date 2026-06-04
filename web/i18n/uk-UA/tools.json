@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "Додано",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Немає доступної стратегії агента",

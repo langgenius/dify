@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { getToolType } from '@/app/components/tools/utils'
@@ -193,6 +193,7 @@ vi.mock('@/app/components/tools/labels/filter', () => ({
 
 vi.mock('@/app/components/tools/provider/custom-create-card', () => ({
   default: () => <div data-testid="custom-create-card">Create Custom Tool</div>,
+  NewCustomToolButton: () => <button type="button" data-testid="toolbar-add-custom-tool">tools.addSwaggerAPIAsTool</button>,
 }))
 
 vi.mock('@/app/components/tools/provider/detail', () => ({
@@ -260,11 +261,23 @@ vi.mock('@/app/components/tools/marketplace/hooks', () => ({
 }))
 
 vi.mock('@/app/components/tools/mcp', () => ({
-  default: ({ searchText, contentInset }: { searchText: string, contentInset?: string }) => (
-    <div data-testid="mcp-list" data-content-inset={contentInset}>
+  default: ({ searchText, contentInset, showCreateCard }: { searchText: string, contentInset?: string, showCreateCard?: boolean }) => (
+    <div data-testid="mcp-list" data-content-inset={contentInset} data-show-create-card={String(showCreateCard)}>
       MCP List:
       {searchText}
     </div>
+  ),
+}))
+
+vi.mock('@/app/components/tools/mcp/create-card', () => ({
+  NewMCPButton: ({ handleCreate }: { handleCreate: (provider: { id: string, name: string, type: string }) => void }) => (
+    <button
+      type="button"
+      data-testid="toolbar-add-mcp"
+      onClick={() => handleCreate({ id: 'new-mcp', name: 'New MCP', type: 'mcp' })}
+    >
+      tools.mcp.create.cardTitle
+    </button>
   ),
 }))
 
@@ -337,7 +350,8 @@ describe('ProviderList', () => {
     it('switches tab when clicked', () => {
       renderProviderList()
       fireEvent.click(screen.getByText('tools.type.custom'))
-      expect(screen.getByTestId('custom-create-card')).toBeInTheDocument()
+      expect(screen.getByTestId('toolbar-add-custom-tool')).toBeInTheDocument()
+      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
     })
 
     it('hides category tabs when controlled by route category', () => {
@@ -392,12 +406,13 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('tool-provider-grid')).toHaveClass('max-w-[1600px]')
     })
 
-    it('uses the Figma two-column wrapping layout in compact integrations pages', () => {
+    it('uses a two-column grid in compact integrations pages', () => {
       renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('flex', 'flex-wrap')
-      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('grid-cols-1', 'md:grid-cols-3')
-      expect(screen.getByTestId('card-google-search')).toHaveClass('min-w-[min(100%,496px)]', 'flex-1')
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('grid', 'grid-cols-1', 'lg:grid-cols-2')
+      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap', 'md:grid-cols-3')
+      expect(screen.getByTestId('card-google-search').parentElement).toHaveClass('min-w-0')
+      expect(screen.getByTestId('card-google-search').parentElement).not.toHaveClass('flex-1')
     })
 
     it('keeps the default plugin card border visible until a card is selected', () => {
@@ -529,9 +544,28 @@ describe('ProviderList', () => {
   })
 
   describe('Custom Tab', () => {
-    it('shows custom create card when on api tab', () => {
+    it('keeps custom creation in the empty card when there are no API tools', () => {
+      mockCollectionData = createDefaultCollections().filter(c => c.type !== 'api')
       renderProviderList({ category: 'api' })
+
       expect(screen.getByTestId('custom-create-card')).toBeInTheDocument()
+      expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
+    })
+
+    it('moves custom creation into the toolbar when API tools exist', () => {
+      renderProviderList({ category: 'api' })
+
+      expect(screen.getByTestId('toolbar-add-custom-tool')).toBeInTheDocument()
+      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
+    })
+
+    it('uses responsive grid columns for custom tool cards', () => {
+      renderProviderList({ category: 'api' })
+
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3', 'gap-2.5', 'pt-1')
+      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap')
+      expect(screen.getByTestId('card-my-api').parentElement).toHaveClass('min-w-0')
+      expect(screen.getByTestId('card-my-api').parentElement).not.toHaveClass('flex-1')
     })
 
     it('shows card skeletons instead of custom create card while tool providers are loading', () => {
@@ -539,6 +573,7 @@ describe('ProviderList', () => {
       renderProviderList({ category: 'api' })
       expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
       expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
     })
   })
 
@@ -618,6 +653,15 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('card-google-search')).toHaveAttribute('data-from', 'package')
     })
 
+    it('shows only the built-in source label on integrations tool cards', () => {
+      renderProviderList(undefined, 'builtin', 'compact')
+
+      expect(within(screen.getByTestId('card-google-search')).getByText('dataset.metadata.datasetMetadata.builtIn')).toBeInTheDocument()
+      expect(within(screen.getByTestId('card-google-search')).queryByText('plugin.from')).not.toBeInTheDocument()
+      expect(within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.from')).not.toBeInTheDocument()
+      expect(within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
+    })
+
     it('falls back to the collection name when plugin_id has no package segment', () => {
       mockCollectionData = [{
         id: 'builtin-plugin-with-short-id',
@@ -644,6 +688,37 @@ describe('ProviderList', () => {
     it('renders MCPList component', () => {
       renderProviderList({ category: 'mcp' })
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
+    })
+
+    it('keeps MCP creation in the empty card when there are no MCP servers', () => {
+      renderProviderList({ category: 'mcp' })
+
+      expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()
+      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'true')
+    })
+
+    it('moves MCP creation into the toolbar when MCP servers exist', () => {
+      mockCollectionData = [
+        ...createDefaultCollections(),
+        {
+          id: 'mcp-1',
+          name: 'mcp-server',
+          author: 'User',
+          description: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
+          icon: { background: '#fff', content: 'M' },
+          label: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
+          type: 'mcp',
+          team_credentials: {},
+          is_team_authorization: false,
+          allow_delete: true,
+          labels: [],
+        },
+      ]
+
+      renderProviderList({ category: 'mcp' })
+
+      expect(screen.getByTestId('toolbar-add-mcp')).toBeInTheDocument()
+      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
     })
 
     it('passes compact content inset to MCPList when rendered by integrations layout', () => {

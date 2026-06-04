@@ -1,7 +1,8 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { IntegrationSection } from '@/app/components/integrations/routes'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useState } from 'react'
@@ -33,6 +34,43 @@ type IntegrationsPageProps = {
   onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
 }
+
+const headerDescriptionDocPaths: Partial<Record<IntegrationSection, string>> = {
+  'provider': '/use-dify/workspace/model-providers',
+  'builtin': '/use-dify/workspace/tools',
+  'custom-tool': '/use-dify/workspace/tools#custom-tool',
+  'workflow-tool': '/use-dify/workspace/tools#workflow-tool',
+  'mcp': '/use-dify/build/mcp',
+  'custom-endpoint': '/use-dify/workspace/api-extension/api-extension',
+  'trigger': '/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin',
+  'extension': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
+  'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
+}
+
+type DescriptionWithLearnMoreProps = {
+  children: ReactNode
+  href: string
+  label: string
+}
+
+const DescriptionWithLearnMore = ({
+  children,
+  href,
+  label,
+}: DescriptionWithLearnMoreProps) => (
+  <span className="inline-flex min-w-0 items-center gap-0.5">
+    <span className="truncate">{children}</span>
+    <Link
+      className="inline-flex shrink-0 items-center text-text-accent"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {label}
+      <span aria-hidden className="i-ri-external-link-line size-3" />
+    </Link>
+  </span>
+)
 
 function ToolsDisclosureIcon({ className }: { className?: string }) {
   return (
@@ -98,20 +136,18 @@ export default function IntegrationsPage({
       )
     : undefined
   const marketplacePath = buildMarketplacePathByIntegrationSection(section)
-  const modelProviderDescription = (
-    <span className="inline-flex min-w-0 items-center gap-0.5">
-      <span className="truncate">{t('modelProvider.pageDesc', { ns: 'common' })}</span>
-      <Link
-        className="inline-flex shrink-0 items-center text-text-accent"
-        href={docLink('/use-dify/workspace/model-providers')}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {t('modelProvider.learnMore', { ns: 'common' })}
-        <span aria-hidden className="i-ri-external-link-line size-3" />
-      </Link>
-    </span>
-  )
+  const headerDescription = integrationHeader?.description ?? (section === 'provider' ? t('modelProvider.pageDesc', { ns: 'common' }) : undefined)
+  const headerDescriptionDocPath = headerDescriptionDocPaths[section]
+  const headerDescriptionWithLink = headerDescription && headerDescriptionDocPath
+    ? (
+        <DescriptionWithLearnMore
+          href={docLink(headerDescriptionDocPath as DocPathWithoutLang)}
+          label={t('modelProvider.learnMore', { ns: 'common' })}
+        >
+          {headerDescription}
+        </DescriptionWithLearnMore>
+      )
+    : headerDescription
   const handleSwitchToMarketplace = () => {
     if (onSwitchToMarketplace) {
       onSwitchToMarketplace(marketplacePath)
@@ -235,7 +271,7 @@ export default function IntegrationsPage({
                   key={section}
                   section={section}
                   title={integrationHeader?.title ?? activeItem?.label}
-                  description={integrationHeader?.description ?? (section === 'provider' ? modelProviderDescription : undefined)}
+                  description={headerDescriptionWithLink}
                   scrollAreaLabel={scrollAreaLabel}
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
@@ -259,7 +295,7 @@ export default function IntegrationsPage({
                   key={section}
                   section={section}
                   title={integrationHeader?.title ?? activeItem?.label}
-                  description={integrationHeader?.description}
+                  description={headerDescriptionWithLink}
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}

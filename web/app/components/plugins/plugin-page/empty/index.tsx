@@ -120,6 +120,7 @@ const Empty = ({
   const isIntegrationsExtension = variant === 'integrationsExtension'
   const isIntegrationsCategory = isIntegrationsTrigger || isIntegrationsAgentStrategy || isIntegrationsExtension
   const supportsDropInstall = isIntegrationsCategory
+  const showDropInstallTip = supportsDropInstall && canInstallLocalPackage
   const contentFrameClassName = cn(
     pluginPageContentFrameClassNames[contentInset],
     contentPaddingClassName,
@@ -151,82 +152,95 @@ const Empty = ({
       </div>
       {/* mask */}
       <div className="absolute z-20 size-full bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
-      <div className="relative z-30 flex h-full items-center justify-center">
-        <div className={cn(
-          'flex flex-col items-center',
-          isIntegrationsCategory ? 'gap-y-6' : 'gap-y-3',
-        )}
-        >
-          <div className="flex flex-col items-center gap-y-3">
-            <div className={cn(
-              'relative -z-10 flex items-center justify-center border-dashed bg-components-card-bg',
-              isIntegrationsCategory
-                ? 'size-[60px] rounded-[13px] border-[0.667px] border-divider-deep shadow-xl shadow-shadow-shadow-5'
-                : 'size-14 rounded-xl border border-divider-deep shadow-xl shadow-shadow-shadow-5',
-            )}
-            >
-              {isIntegrationsCategory
-                ? (
-                    <span className="text-text-tertiary">
-                      {isIntegrationsAgentStrategy
-                        ? <AgentStrategyEmptyIcon />
-                        : isIntegrationsExtension
-                          ? <ExtensionEmptyIcon />
-                          : <TriggerEmptyIcon />}
-                    </span>
-                  )
-                : <Group className="size-5 text-text-tertiary" />}
-              {!isIntegrationsCategory && (
-                <>
-                  <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
-                  <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
-                  <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
-                  <Line className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
-                </>
-              )}
-            </div>
-            <div className={cn(isIntegrationsCategory ? 'system-sm-regular text-text-primary' : 'system-md-regular text-text-tertiary')}>
-              {emptyText}
-            </div>
-          </div>
-          <div className={cn('flex flex-col', isIntegrationsCategory ? 'w-[200px]' : 'w-[236px]')}>
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleFileChange}
-              accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
-            />
-            <div className="flex w-full flex-col gap-y-1">
-              {installMethods.map(({ icon: Icon, integrationIcon: IntegrationIcon, text, action }) => (
-                <Button
-                  key={action}
-                  variant="secondary"
-                  className="h-8 w-full justify-start gap-x-0.5 px-3 py-2 system-sm-medium"
-                  onClick={() => {
-                    if (action === 'local')
-                      fileInputRef.current?.click()
-                    else if (action === 'marketplace')
-                      onSwitchToMarketplace ? onSwitchToMarketplace() : setActiveTab('discover')
-                    else
-                      setSelectedAction(action)
-                  }}
-                >
-                  {isIntegrationsCategory
-                    ? <IntegrationIcon />
-                    : <Icon className="size-4 text-components-button-secondary-text" />}
-                  <span className="px-0.5">{text}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-          {supportsDropInstall && canInstallLocalPackage && (
-            <div className="flex h-8 w-[243px] items-start gap-0.5 px-3 py-2 text-text-tertiary">
-              <DropHintInstallSourceIcon />
-              <span className="px-0.5 system-xs-regular">{t('installModal.dropIntegrationToInstall', { ns: 'plugin' })}</span>
-            </div>
+      <div className={cn(
+        'relative z-30 flex h-full',
+        showDropInstallTip ? 'flex-col' : 'items-center justify-center',
+      )}
+      >
+        <div
+          className={cn(
+            'flex items-center justify-center',
+            showDropInstallTip ? 'min-h-0 flex-1' : 'h-full w-full',
           )}
+        >
+          <div className={cn(
+            'flex flex-col items-center',
+            isIntegrationsCategory ? 'gap-y-6' : 'gap-y-3',
+          )}
+          >
+            <div className="flex flex-col items-center gap-y-3">
+              <div className={cn(
+                'relative -z-10 flex items-center justify-center border-dashed bg-components-card-bg',
+                isIntegrationsCategory
+                  ? 'size-[60px] rounded-[13px] border-[0.667px] border-divider-deep shadow-xl shadow-shadow-shadow-5'
+                  : 'size-14 rounded-xl border border-divider-deep shadow-xl shadow-shadow-shadow-5',
+              )}
+              >
+                {isIntegrationsCategory
+                  ? (
+                      <span className="text-text-tertiary">
+                        {isIntegrationsAgentStrategy
+                          ? <AgentStrategyEmptyIcon />
+                          : isIntegrationsExtension
+                            ? <ExtensionEmptyIcon />
+                            : <TriggerEmptyIcon />}
+                      </span>
+                    )
+                  : <Group className="size-5 text-text-tertiary" />}
+                {!isIntegrationsCategory && (
+                  <>
+                    <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
+                    <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
+                    <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+                    <Line className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+                  </>
+                )}
+              </div>
+              <div className={cn(isIntegrationsCategory ? 'system-sm-regular text-text-primary' : 'system-md-regular text-text-tertiary')}>
+                {emptyText}
+              </div>
+            </div>
+            <div className={cn('flex flex-col', isIntegrationsCategory ? 'w-[200px]' : 'w-[236px]')}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+                accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
+              />
+              <div className="flex w-full flex-col gap-y-1">
+                {installMethods.map(({ icon: Icon, integrationIcon: IntegrationIcon, text, action }) => (
+                  <Button
+                    key={action}
+                    variant="secondary"
+                    className="h-8 w-full justify-start gap-x-0.5 px-3 py-2 system-sm-medium"
+                    onClick={() => {
+                      if (action === 'local')
+                        fileInputRef.current?.click()
+                      else if (action === 'marketplace')
+                        onSwitchToMarketplace ? onSwitchToMarketplace() : setActiveTab('discover')
+                      else
+                        setSelectedAction(action)
+                    }}
+                  >
+                    {isIntegrationsCategory
+                      ? <IntegrationIcon />
+                      : <Icon className="size-4 text-components-button-secondary-text" />}
+                    <span className="px-0.5">{text}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
+        {showDropInstallTip && (
+          <div
+            className="flex shrink-0 items-center justify-center gap-2 px-6 py-4 text-text-quaternary"
+          >
+            <DropHintInstallSourceIcon />
+            <span className="system-xs-regular">{t('installModal.dropIntegrationToInstall', { ns: 'plugin' })}</span>
+          </div>
+        )}
         {selectedAction === 'github' && (
           <InstallFromGitHub
             installContextCategory={installContextCategory}

@@ -1,24 +1,24 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
-
-const CUSTOM_TOOL_DOC_URL = 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool'
 
 type Props = {
   onRefreshData: () => void
 }
 
-const Contribute = ({ onRefreshData }: Props) => {
+function useCustomToolCreateAction({ onRefreshData }: Props) {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
+
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
     toast.success(t('api.actionSuccess', { ns: 'common' }))
@@ -26,13 +26,65 @@ const Contribute = ({ onRefreshData }: Props) => {
     onRefreshData()
   }
 
+  return {
+    doCreateCustomToolCollection,
+    isCurrentWorkspaceManager,
+    isShowEditCollectionToolModal,
+    setIsShowEditCustomCollectionModal,
+  }
+}
+
+export const NewCustomToolButton = ({ onRefreshData }: Props) => {
+  const { t } = useTranslation()
+  const {
+    doCreateCustomToolCollection,
+    isCurrentWorkspaceManager,
+    isShowEditCollectionToolModal,
+    setIsShowEditCustomCollectionModal,
+  } = useCustomToolCreateAction({ onRefreshData })
+
+  if (!isCurrentWorkspaceManager)
+    return null
+
+  return (
+    <>
+      <Button
+        variant="secondary"
+        className="gap-0.5 px-3!"
+        onClick={() => setIsShowEditCustomCollectionModal(true)}
+      >
+        <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+        {t('addSwaggerAPIAsTool', { ns: 'tools' })}
+      </Button>
+      {isShowEditCollectionToolModal && (
+        <EditCustomToolModal
+          payload={null}
+          onHide={() => setIsShowEditCustomCollectionModal(false)}
+          onAdd={doCreateCustomToolCollection}
+        />
+      )}
+    </>
+  )
+}
+
+const Contribute = ({ onRefreshData }: Props) => {
+  const { t } = useTranslation()
+  const docLink = useDocLink()
+  const {
+    doCreateCustomToolCollection,
+    isCurrentWorkspaceManager,
+    isShowEditCollectionToolModal,
+    setIsShowEditCustomCollectionModal,
+  } = useCustomToolCreateAction({ onRefreshData })
+
   return (
     <>
       {isCurrentWorkspaceManager && (
         <CreateEntryCard
+          className="min-w-0"
           title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
           linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
-          linkUrl={CUSTOM_TOOL_DOC_URL}
+          linkUrl={docLink('/use-dify/workspace/tools#custom-tool')}
           onCreate={() => setIsShowEditCustomCollectionModal(true)}
         />
       )}

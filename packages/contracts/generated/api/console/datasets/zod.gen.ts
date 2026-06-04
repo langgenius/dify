@@ -82,13 +82,6 @@ export const zIndexingEstimatePayload = z.object({
 })
 
 /**
- * TextContentResponse
- */
-export const zTextContentResponse = z.object({
-  content: z.string(),
-})
-
-/**
  * NotionEstimatePayload
  */
 export const zNotionEstimatePayload = z.object({
@@ -481,6 +474,32 @@ export const zDatasetMetadataBuiltInFieldResponse = z.object({
  */
 export const zDatasetMetadataBuiltInFieldsResponse = z.object({
   fields: z.array(zDatasetMetadataBuiltInFieldResponse),
+})
+
+/**
+ * PreviewDetail
+ */
+export const zPreviewDetail = z.object({
+  child_chunks: z.array(z.string()).nullish(),
+  content: z.string(),
+  summary: z.string().nullish(),
+})
+
+/**
+ * QAPreviewDetail
+ */
+export const zQaPreviewDetail = z.object({
+  answer: z.string(),
+  question: z.string(),
+})
+
+/**
+ * IndexingEstimate
+ */
+export const zIndexingEstimate = z.object({
+  preview: z.array(zPreviewDetail),
+  qa_preview: z.array(zQaPreviewDetail).nullish(),
+  total_segments: z.int(),
 })
 
 /**
@@ -1530,17 +1549,12 @@ export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
  */
 export const zGetDatasetsMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
-/**
- * Success
- */
-export const zGetDatasetsNotionIndexingEstimateResponse = zTextContentResponse
-
 export const zPostDatasetsNotionIndexingEstimateBody = zNotionEstimatePayload
 
 /**
  * Success
  */
-export const zPostDatasetsNotionIndexingEstimateResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsNotionIndexingEstimateResponse = zIndexingEstimate
 
 export const zGetDatasetsProcessRuleQuery = z.object({
   document_id: z.string().optional(),

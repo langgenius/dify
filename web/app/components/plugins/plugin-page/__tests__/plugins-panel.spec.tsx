@@ -1,4 +1,5 @@
 import type { PluginDetail } from '../../types'
+import type { Collection } from '@/app/components/tools/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '../../types'
@@ -20,6 +21,11 @@ const mockInvalidateInstalledPluginList = vi.fn()
 const mockUseInstalledPluginList = vi.fn()
 const mockPluginListWithLatestVersion = vi.fn<() => PluginDetail[]>(() => [])
 
+vi.mock('@tanstack/react-query', () => ({
+  queryOptions: (options: unknown) => options,
+  useSuspenseQuery: () => ({ data: true }),
+}))
+
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
@@ -35,6 +41,9 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('../../hooks', () => ({
   usePluginsWithLatestVersion: () => mockPluginListWithLatestVersion(),
+  useTags: () => ({
+    getTagLabel: (label: string) => label,
+  }),
 }))
 
 vi.mock('../context', () => ({
@@ -83,7 +92,44 @@ vi.mock('../empty', () => ({
 }))
 
 vi.mock('../list', () => ({
-  default: ({ pluginList }: { pluginList: PluginDetail[] }) => <div data-testid="plugin-list">{pluginList.map(plugin => plugin.plugin_id).join(',')}</div>,
+  default: ({ children, pluginList }: { children?: React.ReactNode, pluginList: PluginDetail[] }) => (
+    <div data-testid="plugin-list">
+      {pluginList.map(plugin => <div key={plugin.plugin_id} data-testid="plugin-list-item">{plugin.plugin_id}</div>)}
+      {children}
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/integrations/tool-provider-card', () => ({
+  default: ({ collection }: { collection: Collection }) => (
+    <div data-testid="builtin-tool-card">
+      {collection.id}
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/integrations/hooks/use-tool-marketplace-panel', () => ({
+  useToolMarketplacePanel: () => ({
+    isMarketplaceArrowVisible: true,
+    marketplaceContext: {},
+    showMarketplacePanel: vi.fn(),
+    toolListTailRef: { current: null },
+  }),
+}))
+
+vi.mock('@/app/components/tools/marketplace', () => ({
+  default: ({ searchPluginText }: { searchPluginText: string }) => (
+    <div data-search-plugin-text={searchPluginText} data-testid="tool-marketplace" />
+  ),
+}))
+
+vi.mock('@/app/components/tools/provider/detail', () => ({
+  default: ({ collection, onHide }: { collection: Collection, onHide: () => void }) => (
+    <div data-testid="builtin-tool-detail">
+      <span>{collection.id}</span>
+      <button type="button" onClick={onHide}>hide builtin detail</button>
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
@@ -126,6 +172,20 @@ const createPlugin = (pluginId: string, label: string, tags: string[] = [], cate
   deprecated_reason: '',
   alternative_plugin_id: '',
 }) as PluginDetail
+
+const createBuiltinTool = (id: string, label: string): Collection => ({
+  id,
+  name: id,
+  author: 'Dify',
+  description: { en_US: `${label} description`, zh_Hans: `${label} description` },
+  icon: '',
+  label: { en_US: label, zh_Hans: label },
+  type: 'builtin',
+  team_credentials: {},
+  is_team_authorization: false,
+  allow_delete: false,
+  labels: [],
+})
 
 describe('PluginsPanel', () => {
   beforeEach(() => {
@@ -192,10 +252,110 @@ describe('PluginsPanel', () => {
     expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('tool-plugin')
   })
 
-  it('refetches installed plugins whenever an integrations category panel mounts', () => {
+  it('loads the scoped plugin category list whenever an integrations category panel mounts', () => {
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
 
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(undefined, 100, { refetchOnMount: 'always' })
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(undefined, 100, {
+      category: PluginCategoryEnum.trigger,
+      refetchOnMount: 'always',
+    })
+  })
+
+  it('loads the scoped tool plugin category list when fixed to tool plugins', () => {
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
+
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(undefined, 100, {
+      category: PluginCategoryEnum.tool,
+      refetchOnMount: 'always',
+    })
+  })
+
+  it('renders builtin tools after plugin tools on the tool integrations page', () => {
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin('tool-plugin', 'Tool Plugin', [], PluginCategoryEnum.tool),
+    ])
+    mockUseInstalledPluginList.mockReturnValue({
+      data: {
+        plugins: [],
+        builtin_tools: [
+          createBuiltinTool('builtin-tool', 'Builtin Tool'),
+        ],
+      },
+      isLoading: false,
+      isFetching: false,
+      isLastPage: true,
+      loadNextPage: mockLoadNextPage,
+    })
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
+
+    const pluginList = screen.getByTestId('plugin-list')
+    const pluginItem = screen.getByTestId('plugin-list-item')
+    const builtinToolCard = screen.getByTestId('builtin-tool-card')
+
+    expect(pluginList).toHaveTextContent('tool-plugin')
+    expect(builtinToolCard).toHaveTextContent('builtin-tool')
+    expect(pluginList).toContainElement(builtinToolCard)
+    expect(screen.getByRole('button', { name: 'builtin-tool' })).toHaveAttribute('aria-pressed', 'false')
+    expect(pluginItem.compareDocumentPosition(builtinToolCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('opens the builtin tool detail from the builtin tools list', () => {
+    mockUseInstalledPluginList.mockReturnValue({
+      data: {
+        plugins: [],
+        builtin_tools: [
+          createBuiltinTool('builtin-tool', 'Builtin Tool'),
+        ],
+      },
+      isLoading: false,
+      isFetching: false,
+      isLastPage: true,
+      loadNextPage: mockLoadNextPage,
+    })
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
+
+    fireEvent.click(screen.getByTestId('builtin-tool-card'))
+
+    expect(screen.getByTestId('builtin-tool-detail')).toHaveTextContent('builtin-tool')
+
+    fireEvent.click(screen.getByText('hide builtin detail'))
+
+    expect(screen.queryByTestId('builtin-tool-detail')).not.toBeInTheDocument()
+  })
+
+  it('filters builtin tools with the tool integrations search query', () => {
+    mockState.filters.searchQuery = 'alpha'
+    mockUseInstalledPluginList.mockReturnValue({
+      data: {
+        plugins: [],
+        builtin_tools: [
+          createBuiltinTool('alpha-builtin-tool', 'Alpha Builtin Tool'),
+          createBuiltinTool('beta-builtin-tool', 'Beta Builtin Tool'),
+        ],
+      },
+      isLoading: false,
+      isFetching: false,
+      isLastPage: true,
+      loadNextPage: mockLoadNextPage,
+    })
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
+
+    expect(screen.getByTestId('builtin-tool-card')).toHaveTextContent('alpha-builtin-tool')
+    expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('beta-builtin-tool')
+  })
+
+  it('keeps the tool marketplace below the tool plugin list', () => {
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin('tool-plugin', 'Tool Plugin', [], PluginCategoryEnum.tool),
+    ])
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
+
+    expect(screen.getByTestId('tool-marketplace')).toBeInTheDocument()
+    expect(screen.getByTestId('plugin-list').compareDocumentPosition(screen.getByTestId('tool-marketplace')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('uses the Figma trigger toolbar frame and renders the toolbar action', () => {

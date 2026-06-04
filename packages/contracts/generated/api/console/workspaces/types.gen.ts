@@ -307,6 +307,12 @@ export type ParserGithubUpload = {
   version: string
 }
 
+export type PluginCategoryListResponse = {
+  builtin_tools: Array<PluginCategoryBuiltinToolProviderResponse>
+  has_more: boolean
+  plugins: Array<PluginCategoryInstalledPluginResponse>
+}
+
 export type ApiToolProviderAddPayload = {
   credentials: {
     [key: string]: unknown
@@ -572,6 +578,48 @@ export type DebugPermission = 'admins' | 'everyone' | 'noone'
 
 export type InstallPermission = 'admins' | 'everyone' | 'noone'
 
+export type PluginCategoryBuiltinToolProviderResponse = {
+  allow_delete: boolean
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon: unknown
+  icon_dark: unknown
+  id: string
+  is_team_authorization: boolean
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  labels: Array<string>
+  name: string
+  plugin_id: string | null
+  plugin_unique_identifier: string | null
+  team_credentials: {
+    [key: string]: unknown
+  }
+  tools: Array<PluginCategoryBuiltinToolResponse>
+  type: ToolProviderType
+  [key: string]: unknown
+}
+
+export type PluginCategoryInstalledPluginResponse = {
+  checksum: string
+  created_at: string
+  declaration: PluginDeclaration
+  endpoints_active: number
+  endpoints_setups: number
+  id: string
+  installation_id: string
+  meta: {
+    [key: string]: unknown
+  }
+  name: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  runtime_type: string
+  source: PluginInstallationSource
+  tenant_id: string
+  updated_at: string
+  version: string
+}
+
 export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
 
 export type CredentialType = 'api-key' | 'oauth2' | 'unauthorized'
@@ -586,7 +634,466 @@ export type StrategySetting = 'disabled' | 'fix_only' | 'latest'
 
 export type UpgradeMode = 'all' | 'exclude' | 'partial'
 
+export type CoreToolsEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type PluginCategoryBuiltinToolResponse = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  labels: Array<string>
+  name: string
+  output_schema: {
+    [key: string]: unknown
+  }
+  parameters?: Array<{
+    [key: string]: unknown
+  }> | null
+  [key: string]: unknown
+}
+
+export type ToolProviderType
+  = | 'api'
+    | 'app'
+    | 'builtin'
+    | 'dataset-retrieval'
+    | 'mcp'
+    | 'plugin'
+    | 'workflow'
+
+export type PluginDeclaration = {
+  agent_strategy?: AgentStrategyProviderEntity
+  author: string | null
+  category: PluginCategory
+  created_at: string
+  datasource?: DatasourceProviderEntity
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  endpoint?: EndpointProviderDeclaration
+  icon: string
+  icon_dark?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  meta: Meta
+  model?: ProviderEntity
+  name: string
+  plugins: Plugins
+  repo?: string | null
+  resource: PluginResourceRequirements
+  tags?: Array<string>
+  tool?: ToolProviderEntity
+  trigger?: TriggerProviderEntity
+  verified?: boolean
+  version: string
+}
+
+export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
+
 export type ToolParameterForm = 'form' | 'llm' | 'schema'
+
+export type AgentStrategyProviderEntity = {
+  identity: AgentStrategyProviderIdentity
+  plugin_id?: string | null
+}
+
+export type DatasourceProviderEntity = {
+  credentials_schema?: Array<ProviderConfig>
+  identity: DatasourceProviderIdentity
+  oauth_schema?: OAuthSchema
+  provider_type: DatasourceProviderType
+}
+
+export type EndpointProviderDeclaration = {
+  endpoints?: Array<EndpointDeclaration> | null
+  settings?: Array<ProviderConfig>
+}
+
+export type Meta = {
+  minimum_dify_version?: string | null
+  version?: string | null
+}
+
+export type ProviderEntity = {
+  background?: string | null
+  configurate_methods: Array<ConfigurateMethod>
+  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  help?: ProviderHelpEntity
+  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  model_credential_schema?: ModelCredentialSchema
+  models?: Array<AiModelEntity>
+  position?: {
+    [key: string]: Array<string>
+  } | null
+  provider: string
+  provider_credential_schema?: ProviderCredentialSchema
+  provider_name?: string
+  supported_model_types: Array<ModelType>
+}
+
+export type Plugins = {
+  datasources?: Array<string> | null
+  endpoints?: Array<string> | null
+  models?: Array<string> | null
+  tools?: Array<string> | null
+  triggers?: Array<string> | null
+}
+
+export type PluginResourceRequirements = {
+  memory: number
+  permission?: Permission
+}
+
+export type ToolProviderEntity = {
+  credentials_schema?: Array<ProviderConfig>
+  identity: ToolProviderIdentity
+  oauth_schema?: OAuthSchema
+  plugin_id?: string | null
+}
+
+export type TriggerProviderEntity = {
+  events?: Array<EventEntity>
+  identity: TriggerProviderIdentity
+  subscription_constructor?: SubscriptionConstructor
+  subscription_schema?: Array<ProviderConfig>
+}
+
+export type AgentStrategyProviderIdentity = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon: string
+  icon_dark?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  name: string
+  tags?: Array<ToolLabelEnum> | null
+}
+
+export type ProviderConfig = {
+  default?: unknown
+  help?: CoreToolsEntitiesCommonEntitiesI18nObject
+  label?: CoreToolsEntitiesCommonEntitiesI18nObject
+  multiple?: boolean | null
+  name: string
+  options?: Array<Option> | null
+  placeholder?: CoreToolsEntitiesCommonEntitiesI18nObject
+  required?: boolean
+  scope?: unknown
+  type: CoreEntitiesProviderEntitiesBasicProviderConfigType
+  url?: string | null
+}
+
+export type DatasourceProviderIdentity = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon: string
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  name: string
+  tags?: Array<ToolLabelEnum> | null
+}
+
+export type OAuthSchema = {
+  client_schema?: Array<ProviderConfig>
+  credentials_schema?: Array<ProviderConfig>
+}
+
+export type DatasourceProviderType
+  = | 'local_file'
+    | 'online_document'
+    | 'online_drive'
+    | 'website_crawl'
+
+export type EndpointDeclaration = {
+  hidden?: boolean
+  method: string
+  path: string
+}
+
+export type ConfigurateMethod = 'customizable-model' | 'predefined-model'
+
+export type GraphonModelRuntimeEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  zh_Hans?: string | null
+}
+
+export type ProviderHelpEntity = {
+  title: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  url: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+}
+
+export type ModelCredentialSchema = {
+  credential_form_schemas: Array<CredentialFormSchema>
+  model: FieldModelSchema
+}
+
+export type AiModelEntity = {
+  deprecated?: boolean
+  features?: Array<ModelFeature> | null
+  fetch_from: FetchFrom
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  model: string
+  model_properties: {
+    [key: string]: unknown
+  }
+  model_type: ModelType
+  parameter_rules?: Array<ParameterRule>
+  pricing?: PriceConfig
+}
+
+export type ProviderCredentialSchema = {
+  credential_form_schemas: Array<CredentialFormSchema>
+}
+
+export type Permission = {
+  endpoint?: Endpoint
+  model?: Model
+  node?: Node
+  storage?: Storage
+  tool?: Tool
+}
+
+export type ToolProviderIdentity = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon: string
+  icon_dark?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  name: string
+  tags?: Array<ToolLabelEnum> | null
+}
+
+export type EventEntity = {
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  identity: EventIdentity
+  output_schema?: {
+    [key: string]: unknown
+  } | null
+  parameters?: Array<EventParameter>
+}
+
+export type TriggerProviderIdentity = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon?: string | null
+  icon_dark?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  name: string
+  tags?: Array<string>
+}
+
+export type SubscriptionConstructor = {
+  credentials_schema?: Array<ProviderConfig>
+  oauth_schema?: OAuthSchema
+  parameters?: Array<EventParameter>
+}
+
+export type ToolLabelEnum
+  = | 'business'
+    | 'design'
+    | 'education'
+    | 'entertainment'
+    | 'finance'
+    | 'image'
+    | 'medical'
+    | 'news'
+    | 'other'
+    | 'productivity'
+    | 'rag'
+    | 'search'
+    | 'social'
+    | 'travel'
+    | 'utilities'
+    | 'videos'
+    | 'weather'
+
+export type Option = {
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  value: string
+}
+
+export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
+
+export type ModelSelectorScope
+  = | 'llm'
+    | 'moderation'
+    | 'rerank'
+    | 'speech2text'
+    | 'text-embedding'
+    | 'tts'
+    | 'vision'
+
+export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
+
+export type CoreEntitiesProviderEntitiesBasicProviderConfigType
+  = | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
+
+export type CredentialFormSchema = {
+  default?: string | null
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  max_length?: number
+  options?: Array<FormOption> | null
+  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  required?: boolean
+  show_on?: Array<FormShowOnObject>
+  type: FormType
+  variable: string
+}
+
+export type FieldModelSchema = {
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+}
+
+export type ModelFeature
+  = | 'agent-thought'
+    | 'audio'
+    | 'document'
+    | 'multi-tool-call'
+    | 'stream-tool-call'
+    | 'structured-output'
+    | 'tool-call'
+    | 'video'
+    | 'vision'
+
+export type FetchFrom = 'customizable-model' | 'predefined-model'
+
+export type ModelPropertyKey
+  = | 'audio_type'
+    | 'context_size'
+    | 'default_voice'
+    | 'file_upload_limit'
+    | 'max_characters_per_chunk'
+    | 'max_chunks'
+    | 'max_workers'
+    | 'mode'
+    | 'supported_file_extensions'
+    | 'voices'
+    | 'word_limit'
+
+export type ParameterRule = {
+  default?: unknown
+  help?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  max?: number | null
+  min?: number | null
+  name: string
+  options?: Array<string>
+  precision?: number | null
+  required?: boolean
+  type: ParameterType
+  use_template?: string | null
+}
+
+export type PriceConfig = {
+  currency: string
+  input: string
+  output?: string | null
+  unit: string
+}
+
+export type Endpoint = {
+  enabled?: boolean | null
+}
+
+export type Model = {
+  enabled?: boolean | null
+  llm?: boolean | null
+  moderation?: boolean | null
+  rerank?: boolean | null
+  speech2text?: boolean | null
+  text_embedding?: boolean | null
+  tts?: boolean | null
+}
+
+export type Node = {
+  enabled?: boolean | null
+}
+
+export type Storage = {
+  enabled?: boolean | null
+  size?: number
+}
+
+export type Tool = {
+  enabled?: boolean | null
+}
+
+export type EventIdentity = {
+  author: string
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  name: string
+  provider?: string | null
+}
+
+export type EventParameter = {
+  auto_generate?: PluginParameterAutoGenerate
+  default?: unknown
+  description?: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  max?: unknown
+  min?: unknown
+  multiple?: boolean | null
+  name: string
+  options?: Array<PluginParameterOption> | null
+  precision?: number | null
+  required?: boolean | null
+  scope?: string | null
+  template?: PluginParameterTemplate
+  type: EventParameterType
+}
+
+export type FormOption = {
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  show_on?: Array<FormShowOnObject>
+  value: string
+}
+
+export type FormShowOnObject = {
+  value: string
+  variable: string
+}
+
+export type FormType = 'radio' | 'secret-input' | 'select' | 'switch' | 'text-input'
+
+export type ParameterType = 'boolean' | 'float' | 'int' | 'string' | 'text'
+
+export type PluginParameterAutoGenerate = {
+  type: CorePluginEntitiesParametersPluginParameterAutoGenerateType
+}
+
+export type PluginParameterOption = {
+  icon?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  value: string
+}
+
+export type PluginParameterTemplate = {
+  enabled?: boolean
+}
+
+export type EventParameterType
+  = | 'app-selector'
+    | 'array'
+    | 'boolean'
+    | 'checkbox'
+    | 'dynamic-select'
+    | 'file'
+    | 'files'
+    | 'model-selector'
+    | 'number'
+    | 'object'
+    | 'select'
+    | 'string'
+
+export type CorePluginEntitiesParametersPluginParameterAutoGenerateType = 'prompt_instruction'
 
 export type GetWorkspacesData = {
   body?: never
@@ -1978,6 +2485,25 @@ export type PostWorkspacesCurrentPluginUploadPkgResponses = {
 
 export type PostWorkspacesCurrentPluginUploadPkgResponse
   = PostWorkspacesCurrentPluginUploadPkgResponses[keyof PostWorkspacesCurrentPluginUploadPkgResponses]
+
+export type GetWorkspacesCurrentPluginByCategoryListData = {
+  body?: never
+  path: {
+    category: string
+  }
+  query?: {
+    page?: number
+    page_size?: number
+  }
+  url: '/workspaces/current/plugin/{category}/list'
+}
+
+export type GetWorkspacesCurrentPluginByCategoryListResponses = {
+  200: PluginCategoryListResponse
+}
+
+export type GetWorkspacesCurrentPluginByCategoryListResponse
+  = GetWorkspacesCurrentPluginByCategoryListResponses[keyof GetWorkspacesCurrentPluginByCategoryListResponses]
 
 export type GetWorkspacesCurrentToolLabelsData = {
   body?: never

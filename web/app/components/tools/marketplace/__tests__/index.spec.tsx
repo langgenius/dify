@@ -149,7 +149,7 @@ describe('Marketplace', () => {
       // Assert
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
       expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
-        cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
+        cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3',
         onCollectionMoreClick: expect.any(Function),
         showInstallButton: true,
       }))

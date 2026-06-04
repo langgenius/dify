@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "添加 Swagger API 作为工具",
   "addToolModal.added": "已添加",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "没有可用的 agent 策略",
@@ -147,7 +148,7 @@
   "mcp.modal.timeoutPlaceholder": "30",
   "mcp.modal.title": "添加 MCP 服务 (HTTP)",
   "mcp.modal.useDynamicClientRegistration": "使用动态客户端注册",
-  "mcp.noConfigured": "未配置",
+  "mcp.noConfigured": "未配置服务",
   "mcp.noTools": "没有可用的工具",
   "mcp.onlyTool": "包含 1 个工具",
   "mcp.operation.edit": "修改",

@@ -21,7 +21,7 @@ export function ExploreRecommendations({
 }) {
   return (
     <>
-      <ContinueWork apps={continueWorkApps} className="pb-4" />
+      <ContinueWork apps={continueWorkApps} />
       <LearnDify
         canCreate={canCreate}
         className="pb-0"

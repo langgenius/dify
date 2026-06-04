@@ -59,7 +59,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
         >
           <div className="flex min-w-0 items-center p-1">
             <div className="min-w-0 truncate text-[13px] leading-4 text-text-tertiary">
-              {!value.length && t('tag.placeholder', { ns: 'common' })}
+              {!value.length && t('tag.tags', { ns: 'common' })}
               {!!value.length && currentLabel?.label}
             </div>
           </div>

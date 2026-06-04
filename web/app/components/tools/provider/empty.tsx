@@ -3,6 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import { useDocLink } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
 import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
@@ -34,6 +35,7 @@ const Empty = ({
   isAgent,
 }: Props) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { theme } = useTheme()
 
   const hasLink = type && [ToolTypeEnum.Custom, ToolTypeEnum.MCP].includes(type)
@@ -92,7 +94,7 @@ const Empty = ({
           </Link>
         </div>
         <Link
-          href="https://docs.dify.ai/en/use-dify/workspace/tools"
+          href={docLink('/use-dify/workspace/tools#workflow-tool')}
           target="_blank"
           rel="noreferrer"
           className="rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary hover:text-text-accent"
