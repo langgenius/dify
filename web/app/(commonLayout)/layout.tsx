@@ -9,6 +9,7 @@ import { GotoAnything } from '@/app/components/goto-anything'
 import MainNavLayout from '@/app/components/main-nav/layout'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
+import WorkflowGeneratorMount from '@/app/components/workflow/workflow-generator/mount'
 import { AppContextProvider } from '@/context/app-context-provider'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
@@ -38,6 +39,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
                 <PartnerStack />
                 <ReadmePanel />
                 <GotoAnything />
+                <WorkflowGeneratorMount />
               </ModalContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>

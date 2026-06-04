@@ -87,6 +87,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=self._root_node_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
@@ -94,6 +95,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -128,6 +130,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
 
         # RUN WORKFLOW

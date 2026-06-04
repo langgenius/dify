@@ -134,6 +134,42 @@ class TestGenerateSuccess:
 
         get_conv.assert_called_once()
 
+    def test_generate_does_not_include_trace_session_id_in_extras(self, generator, mocker: MockerFixture):
+        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
+        user = DummyAccount("user")
+
+        generator._resolve_agent = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="agent1"), mocker.MagicMock(id="snap1"), mocker.MagicMock())
+        )
+        generator._prepare_user_inputs = mocker.MagicMock(return_value={})
+        generator._init_generate_records = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="conv", mode="agent"), mocker.MagicMock(id="msg"))
+        )
+        generator._handle_response = mocker.MagicMock(return_value="raw-response")
+
+        mocker.patch(
+            f"{MODULE}.AgentAppConfigManager.get_app_config",
+            return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
+        )
+        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
+        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        generate_entity = mocker.patch(
+            f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
+        )
+        mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
+
+        generator.generate(
+            app_model=app_model,
+            user=user,
+            args={"query": "hello", "inputs": {}, "trace_session_id": "session-1"},
+            invoke_from=InvokeFrom.WEB_APP,
+            streaming=True,
+        )
+
+        assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
+
 
 class TestGenerateWorker:
     @pytest.fixture(autouse=True)
