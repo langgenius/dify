@@ -15,29 +15,19 @@ import { fetchAppDetail } from '@/service/explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import List from './list'
 
-export type StudioPageType = 'apps' | 'snippets'
-
-type AppsProps = {
-  pageType?: StudioPageType
-}
-
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), { ssr: false })
 const CreateAppModal = dynamic(() => import('../explore/create-app-modal'), { ssr: false })
 const TryApp = dynamic(() => import('../explore/try-app'), { ssr: false })
 const ImportFromMarketplaceTemplateModal = dynamic(() => import('./import-from-marketplace-template-modal'), { ssr: false })
 
-const Apps = ({
-  pageType = 'apps',
-}: AppsProps) => {
+const Apps = () => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const templateId = searchParams.get('template-id')
   const templateDismissedRef = useRef(false)
 
-  useDocumentTitle(pageType === 'apps'
-    ? t('menus.apps', { ns: 'common' })
-    : t('tabs.snippets', { ns: 'workflow' }))
+  useDocumentTitle(t('menus.apps', { ns: 'common' }))
   useEducationInit()
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(undefined)
@@ -175,7 +165,7 @@ const Apps = ({
     }}
     >
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-        <List controlRefreshList={controlRefreshList} pageType={pageType} />
+        <List controlRefreshList={controlRefreshList} />
         {isShowTryAppPanel && (
           <TryApp
             appId={currentTryAppParams?.appId || ''}

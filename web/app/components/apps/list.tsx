@@ -1,7 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
-import type { StudioPageType } from '.'
 import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -41,12 +39,10 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 
 type Props = {
   controlRefreshList?: number
-  pageType?: StudioPageType
 }
-const List: FC<Props> = ({
+const List = ({
   controlRefreshList = 0,
-  pageType = 'apps',
-}) => {
+}: Props) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
@@ -232,14 +228,12 @@ const List: FC<Props> = ({
               )}
             </div>
           </div>
-          {pageType === 'apps' && (
-            <Link
-              href="/snippets"
-              className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
-            >
-              {t('studio.viewSnippets', { ns: 'app' })}
-            </Link>
-          )}
+          <Link
+            href="/snippets"
+            className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
+          >
+            {t('studio.viewSnippets', { ns: 'app' })}
+          </Link>
         </div>
         <div className={cn(
           'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
@@ -267,7 +261,7 @@ const List: FC<Props> = ({
                     onOpenTagManagement={() => setShowTagManagementModal(true)}
                   />
                 ))
-              : <Empty message={pageType === 'snippets' ? t('tabs.noSnippetsFound', { ns: 'workflow' }) : undefined} />}
+              : <Empty />}
           {isFetchingNextPage && (
             <AppCardSkeleton count={3} />
           )}
