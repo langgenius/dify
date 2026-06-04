@@ -1,7 +1,7 @@
 """normalize legacy end user type
 
 Revision ID: 4f7b2c8d9a10
-Revises: 121e7346074d
+Revises: 8d4c2a1b9f03
 Create Date: 2026-06-02 20:50:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "4f7b2c8d9a10"
-down_revision = "121e7346074d"
+down_revision = "8d4c2a1b9f03"
 branch_labels = None
 depends_on = None
 
