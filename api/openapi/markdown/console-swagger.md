@@ -10940,14 +10940,41 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
 
+#### AgentCliToolAuthorizationStatus
+
+Authorization state for Agent-scoped CLI tools.
+
+Missing status keeps backward compatibility with draft rows and CLI tools that
+do not need pre-authorization. Explicit denied-like states are blocked by the
+composer/publish validators and skipped by runtime request builders.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentCliToolAuthorizationStatus | string | Authorization state for Agent-scoped CLI tools.  Missing status keeps backward compatibility with draft rows and CLI tools that do not need pre-authorization. Explicit denied-like states are blocked by the composer/publish validators and skipped by runtime request builders. |  |
+
 #### AgentCliToolConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| authorization_status | [AgentCliToolAuthorizationStatus](#agentclitoolauthorizationstatus) |  | No |
 | command | string |  | No |
+| dangerous | boolean |  | No |
+| dangerous_acknowledged | boolean |  | No |
 | description | string |  | No |
 | enabled | boolean |  | No |
+| invoke_metadata | object |  | No |
 | name | string |  | No |
+| permission | object |  | No |
+| pre_authorized | boolean |  | No |
+| risk_level | [AgentCliToolRiskLevel](#agentclitoolrisklevel) |  | No |
+
+#### AgentCliToolRiskLevel
+
+Risk marker for CLI tool bootstrap commands.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentCliToolRiskLevel | string | Risk marker for CLI tool bootstrap commands. |  |
 
 #### AgentComposerAgentResponse
 
@@ -11345,6 +11372,8 @@ Visibility and lifecycle scope of an Agent record.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | No |
 | name | string |  | No |
+| permission | object |  | No |
+| permission_status | string |  | No |
 | provider | string |  | No |
 | type | string |  | No |
 
