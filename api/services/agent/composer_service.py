@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from extensions.ext_database import db
+from libs.helper import to_timestamp
 from models.agent import (
     Agent,
     AgentConfigRevision,
@@ -802,7 +803,7 @@ class AgentComposerService:
             "version": version.version,
             "version_note": version.version_note,
             "created_by": version.created_by,
-            "created_at": version.created_at.isoformat() if version.created_at else None,
+            "created_at": to_timestamp(version.created_at),
         }
 
     @staticmethod

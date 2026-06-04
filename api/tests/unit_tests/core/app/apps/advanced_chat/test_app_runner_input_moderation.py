@@ -63,6 +63,7 @@ def build_runner():
     gen.call_depth = 0
     gen.single_iteration_run = None
     gen.single_loop_run = None
+    gen.extras = {}
     gen.trace_manager = None
 
     runner = AdvancedChatAppRunner(
