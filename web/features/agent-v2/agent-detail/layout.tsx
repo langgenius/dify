@@ -11,6 +11,7 @@ import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 
@@ -59,6 +60,7 @@ export function AgentDetailLayout({
     enabled: showVersionHistory,
   })
   const agent = agentQuery.data
+  const isAgentPending = agentQuery.isPending
 
   useDocumentTitle(agent?.name ?? t('agentDetail.documentTitle'))
 
@@ -68,9 +70,13 @@ export function AgentDetailLayout({
         <div className="flex min-w-0 items-center gap-3">
           <AgentIcon agent={agent} />
           <div className="min-w-0">
-            <h1 className="truncate title-xl-semi-bold text-text-primary">
-              {agent?.name ?? t('agentDetail.title')}
-            </h1>
+            {isAgentPending
+              ? <SkeletonRectangle className="my-0 h-5 w-32 animate-pulse rounded-md" />
+              : (
+                  <h1 className="truncate title-xl-semi-bold text-text-primary">
+                    {agent?.name ?? t('agentDetail.title')}
+                  </h1>
+                )}
             <p className="mt-1 truncate system-xs-regular text-text-tertiary">
               {t('agentDetail.subtitle', { agentId })}
             </p>
