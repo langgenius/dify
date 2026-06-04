@@ -315,6 +315,35 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     assert config["sandbox"] is None
 
 
+def test_build_shell_layer_config_maps_typed_command_field():
+    """ENG-367: the typed AgentCliToolConfig.command field feeds the shell bootstrap."""
+    agent_soul = AgentSoulConfig.model_validate(
+        {"tools": {"cli_tools": [{"name": "jq", "command": "apt-get install -y jq"}]}}
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+
+
+def test_build_shell_layer_config_skips_disabled_cli_tools():
+    """ENG-367: a CLI tool with enabled=False is not bootstrapped into the sandbox."""
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "cli_tools": [
+                    {"name": "jq", "command": "apt-get install -y jq"},
+                    {"name": "ripgrep", "command": "apt-get install -y ripgrep", "enabled": False},
+                ]
+            }
+        }
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+
+
 def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     context = _context()
     snapshot = AgentConfigSnapshot(

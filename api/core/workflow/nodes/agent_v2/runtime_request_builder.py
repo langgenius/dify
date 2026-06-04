@@ -404,7 +404,11 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
     sandbox_config = _plain_mapping(agent_soul.sandbox.config)
     return DifyShellLayerConfig(
-        cli_tools=[tool for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools) if tool is not None],
+        cli_tools=[
+            tool
+            for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools if _cli_tool_enabled(item))
+            if tool is not None
+        ],
         env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
         secret_refs=[
             secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
@@ -418,13 +422,19 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     )
 
 
+def _cli_tool_enabled(item: object) -> bool:
+    """A CLI tool is bootstrapped unless explicitly disabled (default is enabled)."""
+    return bool(_plain_mapping(item).get("enabled", True))
+
+
 def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
     data = _plain_mapping(item)
     commands: list[str] = []
     raw_commands = data.get("install_commands")
     if isinstance(raw_commands, list):
         commands.extend(str(command) for command in raw_commands if str(command).strip())
-    for key in ("install_command", "install", "setup_command"):
+    # ``command`` is the typed AgentCliToolConfig field; the rest are accepted aliases.
+    for key in ("install_command", "install", "setup_command", "command"):
         raw_command = data.get(key)
         if isinstance(raw_command, str) and raw_command.strip():
             commands.append(raw_command)
