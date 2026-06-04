@@ -2,7 +2,7 @@ import type { CommandTree } from './registry'
 import { BaseError } from '@/errors/base'
 import { formatErrorForCli } from '@/errors/format'
 import { findTopic } from '@/help/topics'
-import { formatHelp, formatTopic, formatTopLevelHelp, renderCommandRows } from './help'
+import { formatCommandList, formatHelp, formatTopic, formatTopLevelHelp } from './help'
 import { stringifyOutput } from './output'
 import { collectCommands, findSuggestions, resolveCommand } from './registry'
 
@@ -52,7 +52,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       )
 
       if (subtree.length > 0) {
-        process.stdout.write(`COMMANDS\n${renderCommandRows(subtree)}\n`)
+        process.stdout.write(formatCommandList(subtree, format))
 
         return
       }

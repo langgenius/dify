@@ -188,6 +188,18 @@ export function renderCommandRows(commands: Array<{ command: CommandConstructor,
   return lines.join('\n')
 }
 
+// Renders a command list (a namespace subtree for `<group> --help`) in the
+// requested format: structured formats serialize per-command descriptors — the
+// same shape as the top-level site map's `commands` — while text renders the
+// aligned rows. Keeps `<group> --help -o json` machine-readable like every
+// other help surface.
+export function formatCommandList(commands: Array<{ command: CommandConstructor, path: string[] }>, format: string): string {
+  if (isStructured(format))
+    return serialize({ commands: commands.map(({ command, path }) => describeCommand(command, path.join(' '))) }, format)
+
+  return `COMMANDS\n${renderCommandRows(commands)}\n`
+}
+
 // Curated onboarding examples for the top-level overview (gh-style): the
 // shortest path from zero to a structured app run. Editorial, not an exhaustive
 // dump — per-command examples live in each command's own `--help`.

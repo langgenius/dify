@@ -487,6 +487,18 @@ describe('run() help routing', () => {
     expect(result.exit).toBe(1)
   })
 
+  it('serializes the subtree as JSON for `<group> --help -o json`', async () => {
+    const result = await captureRun(groupTree, ['auth', '--help', '-o', 'json'])
+    expect(result.exit).toBeUndefined()
+    expect(result.stdout).not.toContain('COMMANDS')
+    const parsed = JSON.parse(result.stdout) as { commands: Array<{ command: string }> }
+    expect(parsed.commands.map(c => c.command)).toEqual([
+      'auth login',
+      'auth devices list',
+      'auth devices revoke',
+    ])
+  })
+
   it('renders full-depth leaves at the top level (third-level commands visible)', async () => {
     const result = await captureRun(groupTree, [])
     expect(result.stdout).toContain('auth login')
