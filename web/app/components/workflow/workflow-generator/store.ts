@@ -1,14 +1,17 @@
 'use client'
-import type { WorkflowGeneratorMode } from './types'
+import type { WorkflowGeneratorIntent, WorkflowGeneratorMode } from './types'
 import { create } from 'zustand'
 
 type WorkflowGeneratorStore = {
   isOpen: boolean
   mode: WorkflowGeneratorMode
+  /** `create` = build a new app; `refine` = amend the current Studio draft. */
+  intent: WorkflowGeneratorIntent
   currentAppId: string | null
   currentAppMode: WorkflowGeneratorMode | null
   openGenerator: (params: {
     mode: WorkflowGeneratorMode
+    intent?: WorkflowGeneratorIntent
     currentAppId?: string | null
     currentAppMode?: WorkflowGeneratorMode | null
   }) => void
@@ -43,12 +46,13 @@ const resetNewAppHistory = (mode: WorkflowGeneratorMode) => {
 export const useWorkflowGeneratorStore = create<WorkflowGeneratorStore>(set => ({
   isOpen: false,
   mode: 'workflow',
+  intent: 'create',
   currentAppId: null,
   currentAppMode: null,
-  openGenerator: ({ mode, currentAppId = null, currentAppMode = null }) => {
+  openGenerator: ({ mode, intent = 'create', currentAppId = null, currentAppMode = null }) => {
     if (!currentAppId)
       resetNewAppHistory(mode)
-    set({ isOpen: true, mode, currentAppId, currentAppMode })
+    set({ isOpen: true, mode, intent, currentAppId, currentAppMode })
   },
   closeGenerator: () => set({ isOpen: false }),
 }))

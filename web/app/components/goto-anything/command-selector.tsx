@@ -110,6 +110,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                     (() => {
                       const slashKeyMap = {
                         '/create': 'gotoAnything.actions.createCategoryDesc',
+                        '/refine': 'gotoAnything.actions.refineCategoryDesc',
                         '/theme': 'gotoAnything.actions.themeCategoryDesc',
                         '/language': 'gotoAnything.actions.languageChangeDesc',
                         '/account': 'gotoAnything.actions.accountDesc',

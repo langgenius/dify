@@ -29,6 +29,7 @@ import { useAppContext } from '@/context/app-context'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
+import { fetchWorkflowDraft } from '@/service/workflow'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from './apply'
 import ExamplePrompts from './example-prompts'
@@ -105,9 +106,12 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const isOpen = useWorkflowGeneratorStore(s => s.isOpen)
   const mode = useWorkflowGeneratorStore(s => s.mode)
+  const intent = useWorkflowGeneratorStore(s => s.intent)
   const currentAppId = useWorkflowGeneratorStore(s => s.currentAppId)
   const currentAppMode = useWorkflowGeneratorStore(s => s.currentAppMode)
   const closeGenerator = useWorkflowGeneratorStore(s => s.closeGenerator)
+
+  const isRefine = intent === 'refine' && !!currentAppId
 
   // Persisted model selection. ``useLocalStorage`` is the storage boundary
   // mandated for client-only preferences — the empty model is the SSR/seed
@@ -255,11 +259,29 @@ const WorkflowGeneratorModal: React.FC = () => {
     }, FE_TIMEOUT_MS)
 
     try {
+      // Refine mode: pull the current draft graph so the backend amends it
+      // instead of starting from scratch. The modal mounts outside the Studio's
+      // ReactFlow provider, so we read the persisted draft rather than the live
+      // canvas. A fetch failure (no draft saved yet) degrades gracefully to a
+      // from-scratch generation — better than blocking the user entirely.
+      let currentGraph: Awaited<ReturnType<typeof fetchWorkflowDraft>>['graph'] | undefined
+      if (isRefine && currentAppId) {
+        try {
+          const draft = await fetchWorkflowDraft(`apps/${currentAppId}/workflows/draft`)
+          if (draft?.graph?.nodes?.length)
+            currentGraph = draft.graph
+        }
+        catch {
+          currentGraph = undefined
+        }
+      }
+
       const res = await generateWorkflow({
         mode,
         instruction,
         ideal_output: ideaOutput,
         model_config: model,
+        ...(currentGraph ? { current_graph: currentGraph } : {}),
       }, {
         getAbortController: (c) => { abortRef.current = c },
       })
@@ -396,10 +418,12 @@ const WorkflowGeneratorModal: React.FC = () => {
           <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
               <div className="text-lg leading-[28px] font-bold text-text-primary">
-                {t('workflowGenerator.title', { mode: modeLabel })}
+                {isRefine
+                  ? t('workflowGenerator.refineTitle', { mode: modeLabel })
+                  : t('workflowGenerator.title', { mode: modeLabel })}
               </div>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
-                {t('workflowGenerator.description')}
+                {isRefine ? t('workflowGenerator.refineDescription') : t('workflowGenerator.description')}
               </div>
             </div>
 
@@ -422,12 +446,17 @@ const WorkflowGeneratorModal: React.FC = () => {
               </div>
               <Textarea
                 className="h-[160px]"
-                placeholder={t('workflowGenerator.instructionPlaceholder')}
+                placeholder={isRefine
+                  ? t('workflowGenerator.refineInstructionPlaceholder')
+                  : t('workflowGenerator.instructionPlaceholder')}
                 value={instruction}
                 onValueChange={setInstruction}
               />
 
-              <ExamplePrompts mode={mode} onSelect={setInstruction} />
+              {/* Example prompts are create-from-scratch starters ("Summarize a
+                  URL"); they don't fit a refine-the-current-graph task, so hide
+                  them in refine mode. */}
+              {!isRefine && <ExamplePrompts mode={mode} onSelect={setInstruction} />}
 
               <IdeaOutput
                 value={ideaOutput}

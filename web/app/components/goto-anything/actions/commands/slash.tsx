@@ -12,6 +12,7 @@ import { docsCommand } from './docs'
 import { forumCommand } from './forum'
 import { goCommand } from './go'
 import { languageCommand } from './language'
+import { refineCommand } from './refine'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 import { zenCommand } from './zen'
@@ -52,6 +53,7 @@ const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(zenCommand, {})
   slashCommandRegistry.register(goCommand, {})
   slashCommandRegistry.register(createCommand, {})
+  slashCommandRegistry.register(refineCommand, {})
 }
 
 const unregisterSlashCommands = () => {
@@ -65,6 +67,7 @@ const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('zen')
   slashCommandRegistry.unregister('go')
   slashCommandRegistry.unregister('create')
+  slashCommandRegistry.unregister('refine')
 }
 
 export const SlashCommandProvider = () => {

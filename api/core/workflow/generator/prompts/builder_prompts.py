@@ -11,6 +11,7 @@ prompt that needs to know the concrete shape of each node type — keep its
 examples accurate or the LLM will invent fields.
 """
 
+import json
 from typing import Any
 
 # Per-node-type configuration cheatsheet.
@@ -387,6 +388,7 @@ BUILDER_USER_PROMPT = """# User instruction
 {instruction}
 
 {ideal_output_section}\
+{existing_graph_section}\
 # Selected model (use for all LLM-based nodes)
 
 provider={provider}, name={name}, mode={mode_label}
@@ -399,6 +401,33 @@ provider={provider}, name={name}, mode={mode_label}
 
 Now emit the complete workflow graph JSON.
 """
+
+
+def format_builder_existing_graph_section(current_graph: dict | None) -> str:
+    """
+    Refine mode: give the builder the FULL existing graph JSON so it can keep
+    every node and edge the user's change does not touch byte-for-byte — same
+    ids, same config, same prompt templates. Without the full config the
+    builder would regenerate untouched nodes from scratch and silently drop
+    the user's hand-tuned settings.
+
+    Returns an empty string in create mode (no ``current_graph``); the builder
+    then behaves exactly as before, constructing the graph purely from the
+    planner's node plan.
+    """
+    if not current_graph:
+        return ""
+    graph_json = json.dumps(current_graph, ensure_ascii=False, separators=(",", ":"))
+    return (
+        "# Existing graph to refine (JSON)\n\n"
+        "You are REFINING this existing graph, NOT building from scratch. Apply "
+        "ONLY the change the user instruction describes. Every node and edge the "
+        "change does not affect MUST be preserved verbatim — keep the same node "
+        "ids, the same `data` config, and the same prompt templates. The node "
+        "plan below is the target node set after your change; use the existing "
+        "graph as the source of truth for the config of nodes that carry over.\n\n"
+        f"```json\n{graph_json}\n```\n\n"
+    )
 
 
 def format_start_inputs_section(start_inputs: list[dict[str, Any]]) -> str:

@@ -113,9 +113,52 @@ PLANNER_USER_PROMPT = """# Mode
 
 {instruction}
 
-{ideal_output_section}{tool_catalogue_section}\
+{existing_graph_section}{ideal_output_section}{tool_catalogue_section}\
 Return the JSON plan now.
 """
+
+
+def format_existing_graph_section(current_graph: dict | None) -> str:
+    """
+    Refine mode: surface a compact summary of the graph the user is editing so
+    the planner amends the existing node set rather than inventing one from
+    scratch. Returns an empty string in create mode (no ``current_graph``), in
+    which case the planner behaves exactly as before.
+
+    We pass only ids / node-types / titles + edge endpoints here — the planner
+    decides *which nodes* exist, so it needs the shape, not the per-node config.
+    The builder gets the full graph JSON to preserve untouched node config.
+    """
+    if not current_graph:
+        return ""
+    nodes = current_graph.get("nodes") or []
+    edges = current_graph.get("edges") or []
+    node_lines = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        data = node.get("data") or {}
+        node_lines.append(
+            f"- id={node.get('id', '')!r} type={data.get('type', '')!r} title={data.get('title', '')!r}"
+        )
+    edge_lines = []
+    for edge in edges:
+        if not isinstance(edge, dict):
+            continue
+        edge_lines.append(f"- {edge.get('source', '')} -> {edge.get('target', '')}")
+    nodes_block = "\n".join(node_lines) or "(none)"
+    edges_block = "\n".join(edge_lines) or "(none)"
+    return (
+        "# Existing graph to refine\n\n"
+        "You are REFINING an existing workflow, NOT building one from scratch. "
+        "The user instruction above describes the change they want. Re-plan the "
+        "node list to reflect that change while keeping everything the "
+        "instruction does not mention — preserve existing nodes, their order, "
+        "and their labels wherever the change leaves them untouched. Only add, "
+        "remove, or rename nodes the requested change actually requires.\n\n"
+        f"Current nodes:\n{nodes_block}\n\n"
+        f"Current edges:\n{edges_block}\n\n"
+    )
 
 
 def format_ideal_output_section(ideal_output: str) -> str:

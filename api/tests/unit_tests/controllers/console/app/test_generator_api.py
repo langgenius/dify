@@ -402,3 +402,60 @@ def test_workflow_generate_accepts_advanced_chat_mode(app, monkeypatch: pytest.M
     assert captured["mode"] == "advanced-chat"
     assert captured["instruction"] == "Summarize a URL"
     assert captured["ideal_output"] == "A 3-sentence summary."
+
+
+def test_workflow_generate_forwards_current_graph_for_refine(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    """cmd+k `/refine`: the optional current_graph field reaches the service."""
+    api = generator_module.WorkflowGenerateApi()
+    method = _unwrap(api.post)
+
+    captured: dict = {}
+
+    def _capture(**kwargs):
+        captured.update(kwargs)
+        return {
+            "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+            "message": "",
+            "error": "",
+        }
+
+    monkeypatch.setattr(generator_module.WorkflowGeneratorService, "generate_workflow_graph", _capture)
+
+    graph = {"nodes": [{"id": "node1"}], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}}
+    payload = _workflow_generate_payload()
+    payload["current_graph"] = graph
+    with app.test_request_context(
+        "/console/api/workflow-generate",
+        method="POST",
+        json=payload,
+    ):
+        method("t1")
+
+    assert captured["current_graph"] == graph
+
+
+def test_workflow_generate_current_graph_defaults_to_none(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Omitting current_graph (the `/create` path) forwards None to the service."""
+    api = generator_module.WorkflowGenerateApi()
+    method = _unwrap(api.post)
+
+    captured: dict = {}
+
+    def _capture(**kwargs):
+        captured.update(kwargs)
+        return {
+            "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+            "message": "",
+            "error": "",
+        }
+
+    monkeypatch.setattr(generator_module.WorkflowGeneratorService, "generate_workflow_graph", _capture)
+
+    with app.test_request_context(
+        "/console/api/workflow-generate",
+        method="POST",
+        json=_workflow_generate_payload(),
+    ):
+        method("t1")
+
+    assert captured["current_graph"] is None

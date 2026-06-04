@@ -135,3 +135,67 @@ class TestWorkflowGeneratorService:
         call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
         assert call_kwargs["ideal_output"] == ""
         assert call_kwargs["mode"] == "advanced-chat"
+
+    @patch("services.workflow_generator_service.WorkflowGenerator")
+    @patch("services.workflow_generator_service.ModelManager")
+    @patch("services.workflow_generator_service.build_tool_catalogue")
+    @patch("services.workflow_generator_service.format_tool_catalogue")
+    def test_forwards_current_graph_for_refine(
+        self,
+        mock_format_catalogue,
+        mock_build_catalogue,
+        mock_model_manager,
+        mock_workflow_generator,
+    ):
+        """The cmd+k `/refine` path passes the existing draft graph through to the runner."""
+        mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
+        mock_build_catalogue.return_value = []
+        mock_format_catalogue.return_value = ""
+        mock_workflow_generator.generate_workflow_graph.return_value = {
+            "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+            "message": "",
+            "error": "",
+        }
+        current_graph = {"nodes": [{"id": "node1"}], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}}
+
+        WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id="t-1",
+            mode="workflow",
+            instruction="Add a translation step",
+            model_config=_model_config(),
+            current_graph=current_graph,
+        )
+
+        call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
+        assert call_kwargs["current_graph"] is current_graph
+
+    @patch("services.workflow_generator_service.WorkflowGenerator")
+    @patch("services.workflow_generator_service.ModelManager")
+    @patch("services.workflow_generator_service.build_tool_catalogue")
+    @patch("services.workflow_generator_service.format_tool_catalogue")
+    def test_defaults_current_graph_to_none_for_create(
+        self,
+        mock_format_catalogue,
+        mock_build_catalogue,
+        mock_model_manager,
+        mock_workflow_generator,
+    ):
+        """Omitting current_graph (the `/create` path) forwards None to the runner."""
+        mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
+        mock_build_catalogue.return_value = []
+        mock_format_catalogue.return_value = ""
+        mock_workflow_generator.generate_workflow_graph.return_value = {
+            "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+            "message": "",
+            "error": "",
+        }
+
+        WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id="t-1",
+            mode="workflow",
+            instruction="Summarize a URL",
+            model_config=_model_config(),
+        )
+
+        call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
+        assert call_kwargs["current_graph"] is None

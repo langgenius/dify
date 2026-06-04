@@ -33,6 +33,7 @@ import json_repair
 
 from core.workflow.generator.prompts.builder_prompts import (
     BUILDER_USER_PROMPT,
+    format_builder_existing_graph_section,
     format_builder_tool_catalogue_section,
     format_plan_block,
     format_start_inputs_section,
@@ -41,6 +42,7 @@ from core.workflow.generator.prompts.builder_prompts import (
 from core.workflow.generator.prompts.planner_prompts import (
     PLANNER_SYSTEM_PROMPT,
     PLANNER_USER_PROMPT,
+    format_existing_graph_section,
     format_ideal_output_section,
     format_tool_catalogue_section,
 )
@@ -196,9 +198,16 @@ class WorkflowGenerator:
         ideal_output: str = "",
         tool_catalogue_text: str = "",
         installed_tools: set[tuple[str, str]] | None = None,
+        current_graph: dict[str, Any] | None = None,
     ) -> WorkflowGenerateResultDict:
         """
         Run planner → builder → postprocess and return a graph payload.
+
+        ``current_graph`` switches the pipeline from create mode to REFINE
+        mode: the existing draft graph is injected into both the planner
+        (compact node/edge summary) and the builder (full JSON) so the LLM
+        amends the graph the user is editing instead of inventing a new one.
+        ``None`` (the default) is plain create-from-scratch behaviour.
 
         ``tool_catalogue_text`` is the formatted list of installed tools for
         the calling tenant (see ``tool_catalogue.build_tool_catalogue`` /
@@ -233,6 +242,7 @@ class WorkflowGenerator:
                 instruction=instruction,
                 ideal_output=ideal_output,
                 tool_catalogue_text=tool_catalogue_text,
+                current_graph=current_graph,
             ),
         )
         if plan_err is not None:
@@ -273,6 +283,7 @@ class WorkflowGenerator:
                 plan_nodes=plan_nodes,
                 tool_catalogue_text=tool_catalogue_text,
                 start_inputs=start_inputs,
+                current_graph=current_graph,
             ),
         )
         if build_err is not None:
@@ -441,10 +452,12 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str,
         tool_catalogue_text: str,
+        current_graph: dict[str, Any] | None = None,
     ) -> PlannerResultDict:
         user_prompt = PLANNER_USER_PROMPT.format(
             mode=mode,
             instruction=instruction.strip(),
+            existing_graph_section=format_existing_graph_section(current_graph),
             ideal_output_section=format_ideal_output_section(ideal_output),
             tool_catalogue_section=format_tool_catalogue_section(tool_catalogue_text),
         )
@@ -486,10 +499,12 @@ class WorkflowGenerator:
         plan_nodes: list[dict[str, Any]],
         tool_catalogue_text: str,
         start_inputs: list[dict[str, Any]] | None = None,
+        current_graph: dict[str, Any] | None = None,
     ) -> GraphDict:
         user_prompt = BUILDER_USER_PROMPT.format(
             instruction=instruction.strip(),
             ideal_output_section=format_ideal_output_section(ideal_output),
+            existing_graph_section=format_builder_existing_graph_section(current_graph),
             provider=provider,
             name=model_name,
             mode_label=model_mode,

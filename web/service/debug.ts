@@ -133,6 +133,16 @@ export type GenerateWorkflowBody = {
   instruction: string
   ideal_output?: string
   model_config: { provider: string, name: string, mode: string, completion_params?: Record<string, unknown> }
+  /**
+   * Existing draft graph for the cmd+k `/refine` flow. When present the
+   * backend refines this graph instead of generating from scratch. Omitted
+   * for `/create`.
+   */
+  current_graph?: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport?: Viewport
+  }
 }
 
 export type GenerateWorkflowOptions = {

@@ -2110,3 +2110,162 @@ class TestWorkflowGeneratorStructuredErrors:
         # response" copy.
         codes = [e["code"] for e in result["errors"]]
         assert any(c in {"INVALID_JSON", "INVALID_SCHEMA", "MODEL_ERROR"} for c in codes)
+
+
+class TestWorkflowGeneratorRefine:
+    """
+    Refine mode (cmd+k `/refine`): when ``current_graph`` is passed, the
+    existing draft must be injected into BOTH stage prompts so the LLM amends
+    the user's graph rather than inventing a new one. ``current_graph=None``
+    (the default) keeps the create-from-scratch behaviour untouched.
+    """
+
+    def _current_graph(self) -> dict:
+        return {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "llm",
+                        "title": "Summarize",
+                        "prompt_template": [{"role": "user", "text": "Summarize {{#node1.url#}}"}],
+                    },
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End", "outputs": []},
+                },
+            ],
+            "edges": [
+                {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+
+    def _planner(self) -> str:
+        return json.dumps(
+            {
+                "title": "Summarizer",
+                "description": "x",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "Summarize", "node_type": "llm", "purpose": "x"},
+                    {"label": "Translate", "node_type": "llm", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+
+    def _builder(self) -> str:
+        return json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "llm", "title": "Summarize"},
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End"},
+                    },
+                ],
+                "edges": [
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+
+    def test_existing_graph_is_injected_into_both_prompts(self):
+        # The planner must see a compact node/edge summary; the builder must see
+        # the full graph JSON so it can preserve untouched node config.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(self._planner()), _llm_result(self._builder())]
+
+        WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Also translate the summary",
+            current_graph=self._current_graph(),
+        )
+
+        planner_user_prompt = str(model_instance.invoke_llm.call_args_list[0].kwargs["prompt_messages"][1].content)
+        builder_user_prompt = str(model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"][1].content)
+
+        # Planner: refine framing + compact summary (node ids/types).
+        assert "Existing graph to refine" in planner_user_prompt
+        assert "REFINING" in planner_user_prompt
+        assert "type='llm'" in planner_user_prompt
+        assert "node1 -> node2" in planner_user_prompt
+
+        # Builder: full JSON including a preserved prompt template the summary omits.
+        assert "Existing graph to refine (JSON)" in builder_user_prompt
+        assert "{{#node1.url#}}" in builder_user_prompt
+
+    def test_create_mode_injects_no_existing_graph_section(self):
+        # With no current_graph the prompts must be byte-for-byte the create
+        # flow — no stray "refine" framing leaks into a from-scratch generation.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(self._planner()), _llm_result(self._builder())]
+
+        WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize and translate a URL",
+        )
+
+        planner_user_prompt = str(model_instance.invoke_llm.call_args_list[0].kwargs["prompt_messages"][1].content)
+        builder_user_prompt = str(model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"][1].content)
+        assert "Existing graph to refine" not in planner_user_prompt
+        assert "Existing graph to refine" not in builder_user_prompt
+
+    def test_refine_still_returns_a_valid_graph(self):
+        # End-to-end: refine runs the same postprocess/validate path and yields
+        # a clean graph envelope.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(self._planner()), _llm_result(self._builder())]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Also translate the summary",
+            current_graph=self._current_graph(),
+        )
+
+        assert result["error"] == ""
+        types = [n["data"]["type"] for n in result["graph"]["nodes"]]
+        assert types == ["start", "llm", "end"]

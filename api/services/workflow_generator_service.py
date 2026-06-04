@@ -41,9 +41,14 @@ class WorkflowGeneratorService:
         instruction: str,
         model_config: ModelConfig,
         ideal_output: str = "",
+        current_graph: dict[str, Any] | None = None,
     ) -> WorkflowGenerateResultDict:
         """
         Resolve a model instance for the tenant and run the generator.
+
+        ``current_graph`` is the existing draft graph for the cmd+k `/refine`
+        flow — when present the generator refines it instead of creating a new
+        graph from scratch. ``None`` is the `/create` path.
 
         Errors from the LLM call (auth, quota, invoke) propagate so the
         controller can map them to existing HTTP error envelopes (same
@@ -87,4 +92,5 @@ class WorkflowGeneratorService:
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
             installed_tools=installed_tools,
+            current_graph=current_graph,
         )

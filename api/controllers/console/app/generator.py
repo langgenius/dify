@@ -45,7 +45,7 @@ class InstructionTemplatePayload(BaseModel):
 
 
 class WorkflowGeneratePayload(BaseModel):
-    """Payload for the cmd+k `/create` workflow generator endpoint.
+    """Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
 
     See ``services/workflow_generator_service.py`` for behaviour. Errors are
     surfaced through the same envelope as ``/rule-generate`` so the frontend
@@ -56,6 +56,10 @@ class WorkflowGeneratePayload(BaseModel):
     instruction: str = Field(..., description="Natural-language workflow description")
     ideal_output: str = Field(default="", description="Optional sample output for grounding")
     model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
+    current_graph: dict | None = Field(
+        default=None,
+        description="Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch",
+    )
 
 
 register_enum_models(console_ns, LLMMode)
@@ -323,6 +327,7 @@ class WorkflowGenerateApi(Resource):
                 instruction=args.instruction,
                 model_config=args.model_config_data,
                 ideal_output=args.ideal_output,
+                current_graph=args.current_graph,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
