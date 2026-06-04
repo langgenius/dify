@@ -22,8 +22,10 @@ const ACCOUNT_HELP_TEXT = `difyctl: account-bearer onboarding
        difyctl run app <id> "hello" -o json
 
 Tips:
-  * Pass --workspace <id> when you need to target a non-default workspace.
-  * Use --stream for long-running workflow calls (post-v1.0 milestone).
+  * 'difyctl auth list' shows your authenticated contexts; 'difyctl use host'
+    and 'difyctl use account' switch between them.
+  * Pass --workspace <id> to target a non-default workspace.
+  * Pass --stream to 'difyctl run app' for live token/event output.
   * 'difyctl env list' shows every env var difyctl reads.
 `
 
