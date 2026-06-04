@@ -150,6 +150,30 @@ function releasesQueryKey(query: ConsoleQueryUtils, appInstanceId: string) {
   })
 }
 
+function releaseContentFromDslQueryKey(query: ConsoleQueryUtils, appInstanceId: string, dsl: string) {
+  return query.enterprise.releaseService.checkReleaseContentFromDsl.key({
+    type: 'query',
+    input: {
+      body: {
+        appInstanceId,
+        dsl,
+      },
+    },
+  })
+}
+
+function releaseContentFromSourceAppQueryKey(query: ConsoleQueryUtils, appInstanceId: string, sourceAppId: string) {
+  return query.enterprise.releaseService.checkReleaseContentFromSourceApp.key({
+    type: 'query',
+    input: {
+      body: {
+        appInstanceId,
+        sourceAppId,
+      },
+    },
+  })
+}
+
 function accessChannelsQueryKey(query: ConsoleQueryUtils, appInstanceId: string) {
   return query.enterprise.accessService.getAccessChannels.key({
     type: 'query',
@@ -381,16 +405,26 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           mutationOptions: {
             onSuccess: (data, variables, _result, context) => {
               const appInstanceId = data.release?.appInstanceId ?? data.appInstance?.id ?? variables.body.appInstanceId
+              const dsl = variables.body.dsl
               if (!appInstanceId) {
                 return context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 })
               }
 
-              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
+              const appDeployInvalidation = invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
                 environmentDeployments: false,
                 accessChannels: false,
               })
+              if (!dsl)
+                return appDeployInvalidation
+
+              return Promise.all([
+                appDeployInvalidation,
+                context.client.invalidateQueries({
+                  queryKey: releaseContentFromDslQueryKey(consoleQuery, appInstanceId, dsl),
+                }),
+              ])
             },
           },
         },
@@ -398,16 +432,26 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           mutationOptions: {
             onSuccess: (data, variables, _result, context) => {
               const appInstanceId = data.release?.appInstanceId ?? data.appInstance?.id ?? variables.body.appInstanceId
+              const sourceAppId = variables.body.sourceAppId
               if (!appInstanceId) {
                 return context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 })
               }
 
-              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
+              const appDeployInvalidation = invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
                 environmentDeployments: false,
                 accessChannels: false,
               })
+              if (!sourceAppId)
+                return appDeployInvalidation
+
+              return Promise.all([
+                appDeployInvalidation,
+                context.client.invalidateQueries({
+                  queryKey: releaseContentFromSourceAppQueryKey(consoleQuery, appInstanceId, sourceAppId),
+                }),
+              ])
             },
           },
         },
