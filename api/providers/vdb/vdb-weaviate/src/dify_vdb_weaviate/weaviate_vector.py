@@ -470,6 +470,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
+                return_metadata=MetadataQuery(score=True),
                 include_vector=True,
                 filters=where,
             )
@@ -480,6 +481,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
+                return_metadata=MetadataQuery(score=True),
                 include_vector=True,
                 filters=where,
             )
@@ -492,6 +494,9 @@ class WeaviateVector(BaseVector):
             vec = obj.vector
             if isinstance(vec, dict):
                 vec = vec.get("default") or next(iter(vec.values()), None)
+
+            if obj.metadata and obj.metadata.score is not None:
+                properties["score"] = obj.metadata.score
 
             docs.append(Document(page_content=text, vector=vec, metadata=properties))
         return docs
