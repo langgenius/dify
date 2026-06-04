@@ -12,6 +12,7 @@ NON-INTERACTIVE
   'difyctl help account' and 'difyctl help external'.
 
 AFTER LOGIN
-  difyctl auth status      check the active session
+  difyctl auth whoami      check the active session
+  difyctl auth list        list every authenticated context
   difyctl get app          list apps
 `
