@@ -16,12 +16,8 @@ channel=$(node -p "require('./package.json').difyctl.channel")
 min_dify=$(node -p "require('./package.json').difyctl.compat.minDify")
 max_dify=$(node -p "require('./package.json').difyctl.compat.maxDify")
 
-[[ "$version" =~ $SEMVER_RE ]] || die "invalid version: ${version}"
-
-case "$channel" in
-    rc|stable) ;;
-    *) die "invalid difyctl.channel: ${channel} (expected rc | stable)" ;;
-esac
+# Version form (per channel) and channel validity are enforced by
+# release-naming.mjs validate below — the single source for those rules.
 
 [[ "$min_dify" =~ $SEMVER_RE ]] || die "invalid difyctl.compat.minDify: ${min_dify}"
 [[ "$max_dify" =~ $SEMVER_RE ]] || die "invalid difyctl.compat.maxDify: ${max_dify}"

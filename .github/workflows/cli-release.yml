@@ -32,6 +32,7 @@ jobs:
       minDify: ${{ steps.manifest.outputs.minDify }}
       maxDify: ${{ steps.manifest.outputs.maxDify }}
       tagPrefix: ${{ steps.manifest.outputs.tagPrefix }}
+      prerelease: ${{ steps.manifest.outputs.prerelease }}
       already_exists: ${{ steps.guard.outputs.already_exists }}
     steps:
       - name: Checkout
@@ -47,12 +48,14 @@ jobs:
           minDify=$(node -p "require('./package.json').difyctl.compat.minDify")
           maxDify=$(node -p "require('./package.json').difyctl.compat.maxDify")
           tagPrefix=$(node -p "require('./package.json').difyctl.release.tagPrefix")
+          prerelease=$(node scripts/release-naming.mjs prerelease "$channel")
           {
               echo "version=$version"
               echo "channel=$channel"
               echo "minDify=$minDify"
               echo "maxDify=$maxDify"
               echo "tagPrefix=$tagPrefix"
+              echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
 
       - name: Validate manifest
@@ -135,7 +138,7 @@ jobs:
         with:
           tag_name: ${{ needs.validate.outputs.tagPrefix }}${{ needs.validate.outputs.version }}
           name: difyctl ${{ needs.validate.outputs.version }}
-          prerelease: ${{ needs.validate.outputs.channel != 'stable' }}
+          prerelease: ${{ needs.validate.outputs.prerelease }}
           generate_release_notes: false
           fail_on_unmatched_files: true
           body: |
