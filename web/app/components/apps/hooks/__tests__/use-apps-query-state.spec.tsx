@@ -21,7 +21,6 @@ describe('useAppsQueryState', () => {
       category: 'all',
       keywords: '',
       isCreatedByMe: false,
-      emptyAppList: false,
     })
     expect(typeof result.current.setCategory).toBe('function')
     expect(typeof result.current.setKeywords).toBe('function')
@@ -30,14 +29,13 @@ describe('useAppsQueryState', () => {
 
   it('should parse app list filters from URL', () => {
     const { result } = renderWithAdapter(
-      '?category=workflow&tagIDs=tag1;tag2&keywords=search+term&isCreatedByMe=true&emptyAppList=true',
+      '?category=workflow&tagIDs=tag1;tag2&keywords=search+term&isCreatedByMe=true',
     )
 
     expect(result.current.query).toEqual({
       category: AppModeEnum.WORKFLOW,
       keywords: 'search term',
       isCreatedByMe: true,
-      emptyAppList: true,
     })
   })
 

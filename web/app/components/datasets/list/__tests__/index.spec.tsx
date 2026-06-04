@@ -11,13 +11,11 @@ const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-let mockSearchParams = new URLSearchParams()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,
   }),
-  useSearchParams: () => mockSearchParams,
 }))
 
 // Mock app context
@@ -137,7 +135,6 @@ describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     mockBrandingEnabled = false
-    mockSearchParams = new URLSearchParams()
     const { useDatasetList } = await import('@/service/knowledge/use-dataset')
     vi.mocked(useDatasetList).mockReturnValue({
       data: { pages: [{ data: [], total: 1 }] },
@@ -172,24 +169,6 @@ describe('List', () => {
     it('should render dataset footer when branding is disabled', () => {
       render(<List />)
       expect(screen.getByTestId('dataset-footer')).toBeInTheDocument()
-    })
-
-    it('should render first empty state when emptyDataList URL preview is enabled', () => {
-      mockSearchParams = new URLSearchParams('emptyDataList=true')
-
-      render(<List />)
-
-      expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
-      expect(screen.getByText('dataset.externalAPIPanelTitle')).toBeInTheDocument()
-      expect(screen.getByText('dataset.serviceApi.title')).toBeInTheDocument()
-      expect(screen.getByText('dataset.firstEmpty.createTitle')).toBeInTheDocument()
-      expect(screen.getByText('dataset.firstEmpty.pipelineTitle')).toBeInTheDocument()
-      expect(screen.getByText('dataset.connectDataset')).toBeInTheDocument()
-      expect(screen.getByText('dataset.firstEmpty.or')).toBeInTheDocument()
-      expect(screen.getByText('dataset.firstEmpty.recommended')).toBeInTheDocument()
-      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('dataset-footer')).not.toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 

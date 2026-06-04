@@ -69,7 +69,6 @@ const mockQueryState = {
   category: 'all',
   keywords: '',
   isCreatedByMe: false,
-  emptyAppList: false,
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
   isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
@@ -302,7 +301,6 @@ describe('List', () => {
     mockQueryState.category = 'all'
     mockQueryState.keywords = ''
     mockQueryState.isCreatedByMe = false
-    mockQueryState.emptyAppList = false
     mockAppData = defaultAppData
     mockUseWorkflowOnlineUsers.mockClear()
     intersectionCallback = null
@@ -390,17 +388,6 @@ describe('List', () => {
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
       expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
-    })
-
-    it('should render first empty state when emptyAppList URL preview is enabled', () => {
-      mockQueryState.emptyAppList = true
-
-      renderList()
-
-      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
-      expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
-      expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
     })
 
     it('should keep the regular empty state for empty filtered results', () => {

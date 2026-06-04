@@ -40,7 +40,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { category, keywords, isCreatedByMe, emptyAppList },
+    query: { category, keywords, isCreatedByMe },
     setCategory,
     setKeywords,
     setIsCreatedByMe,
@@ -171,7 +171,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
     setCategory(nextValue)
   }, [setCategory])
 
-  const pages = useMemo(() => emptyAppList ? [{ data: [], total: 0 }] : data?.pages ?? [], [data?.pages, emptyAppList])
+  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
 
   const workflowOnlineUserAppIds = useMemo(() => {
@@ -193,8 +193,8 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || isCreatedByMe
-  const showSkeleton = !emptyAppList && (isLoading || (isFetching && pages.length === 0))
-  const showFirstEmptyState = !showSkeleton && !hasAnyApp && isCurrentWorkspaceEditor && (emptyAppList || (hasResolvedFirstPage && !hasActiveFilters))
+  const showSkeleton = isLoading || (isFetching && pages.length === 0)
+  const showFirstEmptyState = !showSkeleton && !hasAnyApp && isCurrentWorkspaceEditor && hasResolvedFirstPage && !hasActiveFilters
 
   return (
     <>

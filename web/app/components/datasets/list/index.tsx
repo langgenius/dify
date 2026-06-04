@@ -4,14 +4,14 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 
 // Libraries
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useRouter, useSearchParams } from '@/next/navigation'
+import { useRouter } from '@/next/navigation'
 import { useDatasetApiBaseUrl, useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
@@ -24,7 +24,6 @@ import DatasetListHeader from './header'
 const List = () => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const searchParams = useSearchParams()
   const { push } = useRouter()
   const { isCurrentWorkspaceOwner } = useAppContext()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
@@ -55,7 +54,6 @@ const List = () => {
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
   const isCurrentWorkspaceEditor = useAppContextSelector(state => state.isCurrentWorkspaceEditor)
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
-  const emptyDataList = searchParams.get('emptyDataList') === 'true'
   const datasetListQuery = useDatasetList({
     initialPage: 1,
     tag_ids: tagIDs,
@@ -63,11 +61,11 @@ const List = () => {
     include_all: includeAll,
     keyword: searchKeywords,
   })
-  const pages = useMemo(() => emptyDataList ? [{ data: [], total: 0 }] : datasetListQuery.data?.pages ?? [], [datasetListQuery.data?.pages, emptyDataList])
+  const pages = datasetListQuery.data?.pages ?? []
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyDataset = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters = tagIDs.length > 0 || keywords.trim().length > 0 || searchKeywords.trim().length > 0 || includeAll
-  const showEmptyDataList = !hasAnyDataset && isCurrentWorkspaceEditor && (emptyDataList || (hasResolvedFirstPage && !hasActiveFilters))
+  const showEmptyDataList = !hasAnyDataset && isCurrentWorkspaceEditor && hasResolvedFirstPage && !hasActiveFilters
   const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
 
   return (
