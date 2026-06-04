@@ -6,8 +6,8 @@ import Loading from '@/app/components/base/loading'
 import Header from '@/app/signin/_header'
 import { AppContextProvider } from '@/context/app-context-provider'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 export default function SignInLayout({ children }: any) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

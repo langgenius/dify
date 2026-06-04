@@ -11,7 +11,7 @@ When('I sign in as the default E2E admin', async function (this: DifyWorld) {
   const page = this.getPage()
 
   await page.getByLabel('Email address').fill(adminCredentials.email)
-  await page.getByLabel('Password').fill(adminCredentials.password)
+  await page.getByLabel('Password', { exact: true }).fill(adminCredentials.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
 })
 

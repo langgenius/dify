@@ -6,7 +6,8 @@ route wiring, and a process-local scheduler. Run execution happens in background
 cancel the agent runtime. Redis persists run records and per-run event streams
 with configured retention only; it is not used as a job queue. Agenton layers and
 providers stay state-only: they borrow the lifespan-owned plugin daemon client
-through the runner and never create or close it themselves.
+through the runner and receive shell-layer server settings through provider
+construction rather than reading environment variables themselves.
 """
 
 from collections.abc import AsyncGenerator
@@ -19,7 +20,9 @@ from redis.asyncio import Redis
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.routes.runs import create_runs_router
+from dify_agent.server.routes.workspace_files import create_workspace_files_router
 from dify_agent.server.settings import ServerSettings
+from dify_agent.server.workspace_files import WorkspaceFileService
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
@@ -29,6 +32,16 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
+        shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
+        shellctl_auth_token=resolved_settings.shellctl_auth_token,
+    )
+    workspace_file_service = (
+        WorkspaceFileService(
+            shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
+            shellctl_auth_token=resolved_settings.shellctl_auth_token,
+        )
+        if resolved_settings.shellctl_entrypoint
+        else None
     )
     state: dict[str, object] = {}
 
@@ -65,6 +78,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
     app.include_router(create_runs_router(get_store, get_scheduler))
+    app.include_router(create_workspace_files_router(lambda: workspace_file_service))
     return app
 
 

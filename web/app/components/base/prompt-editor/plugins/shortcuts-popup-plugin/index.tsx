@@ -158,10 +158,9 @@ export default function ShortcutsPopupPlugin({
       size({
         apply({ availableWidth, availableHeight, elements }) {
           Object.assign(elements.floating.style, {
-            maxWidth: `${Math.min(400, availableWidth)}px`,
-            maxHeight: `${Math.max(0, availableHeight)}px`,
-            overflowX: 'hidden',
-            overflowY: 'auto',
+            '--shortcut-popup-max-width': `${Math.min(400, availableWidth)}px`,
+            '--shortcut-popup-max-height': `${Math.max(0, availableHeight)}px`,
+            'overflow': 'visible',
           })
         },
         padding: 8,
@@ -275,6 +274,9 @@ export default function ShortcutsPopupPlugin({
       /* v8 ignore next 2 -- outside-click listener can race with ref cleanup during close/unmount; null-ref path is a safety guard. @preserve */
       if (!portalRef.current)
         return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('[data-base-ui-portal]'))
+        return
       if (!portalRef.current.contains(e.target as Node))
         closePortal()
     }
@@ -292,21 +294,25 @@ export default function ShortcutsPopupPlugin({
 
   return createPortal(
     <div
+      data-testid="shortcuts-popup"
       ref={(node) => {
         portalRef.current = node
         refs.setFloating(node)
       }}
       className={cn(
-        useContainer ? '' : 'z-999999',
         'absolute rounded-xl bg-components-panel-bg-blur shadow-lg',
         className,
       )}
       style={{
         ...floatingStyles,
+        zIndex: useContainer ? undefined : 50,
+        overflow: 'visible',
         visibility: isPositioned ? 'visible' : 'hidden',
       }}
     >
-      {typeof children === 'function' ? children(closePortal, handleInsert) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
+      <div className="max-h-(--shortcut-popup-max-height) max-w-(--shortcut-popup-max-width) overflow-x-hidden overflow-y-auto rounded-xl">
+        {typeof children === 'function' ? children(closePortal, handleInsert) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
+      </div>
     </div>,
     containerEl,
   )

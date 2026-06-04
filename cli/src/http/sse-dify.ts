@@ -1,4 +1,4 @@
-import type { SseEvent } from './sse.js'
+import type { SseEvent } from './sse'
 
 const dec = new TextDecoder()
 

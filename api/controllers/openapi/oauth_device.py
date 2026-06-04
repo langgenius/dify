@@ -26,7 +26,12 @@ from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
 from controllers.common.schema import query_params_from_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
     AccountPayload,
@@ -42,7 +47,6 @@ from controllers.openapi._models import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import extract_remote_ip
-from libs.login import current_account_with_tenant
 from libs.oauth_bearer import MINTABLE_PROFILES, SubjectType, bearer_feature_required
 from libs.rate_limit import (
     LIMIT_APPROVE_CONSOLE,
@@ -50,6 +54,7 @@ from libs.rate_limit import (
     LIMIT_LOOKUP_PUBLIC,
     rate_limit,
 )
+from models import Account
 from services.account_service import TenantService
 from services.oauth_device_flow import (
     ACCOUNT_ISSUER_SENTINEL,
@@ -206,11 +211,12 @@ class DeviceApproveApi(Resource):
     @account_initialization_required
     @bearer_feature_required
     @rate_limit(LIMIT_APPROVE_CONSOLE)
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant: str, account: Account):
         payload = _validate_json(DeviceMutateRequest)
         user_code = payload.user_code.strip().upper()
 
-        account, tenant = current_account_with_tenant()
         store = DeviceFlowRedis(redis_client)
 
         found = store.load_by_user_code(user_code)

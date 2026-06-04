@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import TracingPanel from '../tracing-panel'
 
 type Props = {
-  list: NodeTracing[]
-  onBack: () => void
+  readonly list: NodeTracing[]
+  readonly onBack: () => void
 }
 
 const RetryResultPanel: FC<Props> = ({
