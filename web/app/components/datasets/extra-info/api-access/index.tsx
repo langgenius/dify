@@ -20,7 +20,7 @@ const ApiAccess = ({
   const [open, setOpen] = useState(false)
 
   return (
-    <div className={cn(expand ? 'px-3 py-2' : 'flex justify-center px-3 py-2')}>
+    <div className={cn(expand ? 'px-1 py-2' : 'flex justify-center px-3 py-2')}>
       <Popover
         open={open}
         onOpenChange={setOpen}

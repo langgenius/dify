@@ -23,8 +23,8 @@ const Statistics = ({
   const hasRelatedApps = relatedApps?.data && relatedApps.data.length > 0
 
   return (
-    <div className="flex items-start gap-x-0.5 px-2 pt-2">
-      <div className="flex min-w-0 flex-1 flex-col rounded-lg px-2 pt-1 pb-1.5">
+    <div className="flex items-start gap-x-0.5 px-1 pt-2">
+      <div className="flex min-w-0 flex-col rounded-lg px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
           {documentCount ?? '--'}
         </div>
@@ -35,7 +35,7 @@ const Statistics = ({
       <div className="flex h-[42px] w-[15px] shrink-0 items-center justify-center">
         <div className="h-7 w-px rotate-[15deg] bg-divider-subtle" />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col rounded-lg px-2 pt-1 pb-1.5">
+      <div className="flex min-w-0 flex-col rounded-lg px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
           {relatedAppsTotal ?? '--'}
         </div>
