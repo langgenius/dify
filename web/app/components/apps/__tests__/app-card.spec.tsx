@@ -120,6 +120,7 @@ const { mockGetRedirection } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
+  getRedirectionPath: (_isCurrentWorkspaceEditor: boolean, app: { id: string }) => `/app/${app.id}/configuration`,
   getRedirection: mockGetRedirection,
 }))
 
@@ -460,17 +461,19 @@ describe('AppCard', () => {
   })
 
   describe('Card Interaction', () => {
-    it('should handle card click', () => {
+    it('should render card navigation as a link', () => {
       render(<AppCard app={mockApp} />)
-      const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')
-      expect(card).toBeInTheDocument()
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
+
+      expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
     })
 
-    it('should call getRedirection on card click', () => {
+    it('should expose a visible focus ring on the card link', () => {
       render(<AppCard app={mockApp} />)
-      const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')!
-      fireEvent.click(card)
-      expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush)
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
+
+      expect(cardLink).toHaveClass('focus-visible:ring-1')
+      expect(cardLink).toHaveClass('focus-visible:ring-components-input-border-hover')
     })
   })
 
@@ -489,11 +492,13 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
       const operationsTriggerWrapper = screen.getByTestId('dropdown-menu-trigger').closest('.absolute')
 
-      expect(operationsTriggerWrapper).toHaveClass('top-[-0.5px]')
-      expect(operationsTriggerWrapper).toHaveClass('right-[-0.5px]')
+      expect(operationsTriggerWrapper).toHaveClass('top-2')
+      expect(operationsTriggerWrapper).toHaveClass('right-2')
       expect(operationsTriggerWrapper).toHaveClass('group-focus-within:pointer-events-auto')
       expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
+      expect(operationsTriggerWrapper).not.toHaveClass('w-[120px]')
       expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-1')
+      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-components-input-border-hover')
     })
 
     it('should show edit option when dropdown menu is opened', async () => {

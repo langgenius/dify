@@ -31,7 +31,7 @@ import {
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
@@ -46,6 +46,7 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
+import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
@@ -53,7 +54,7 @@ import { fetchInstalledAppList } from '@/service/explore'
 import { useDeleteAppMutation } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
-import { getRedirection } from '@/utils/app-redirection'
+import { getRedirection, getRedirectionPath } from '@/utils/app-redirection'
 import { downloadBlob } from '@/utils/download'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
@@ -481,77 +482,83 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       })
       .filter(user => Boolean(user.id))
   }, [app.id, onlineUsers])
+  const appNameId = useId()
+  const appDescriptionId = useId()
+  const appHref = getRedirectionPath(isCurrentWorkspaceEditor, app)
 
   return (
     <>
       <div
-        onClick={(e) => {
-          e.preventDefault()
-          getRedirection(isCurrentWorkspaceEditor, app, push)
-        }}
-        className="group relative col-span-1 inline-flex h-41.5 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs transition-shadow duration-200 ease-in-out hover:shadow-lg"
+        className="group relative col-span-1 h-41.5"
       >
-        <div className="flex shrink-0 items-center gap-3 pt-4 pb-2 pl-4">
-          <div className="relative shrink-0">
-            <AppIcon
-              size="large"
-              iconType={app.icon_type}
-              icon={app.icon}
-              background={app.icon_background}
-              imageUrl={app.icon_url}
-            />
-            <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="size-3" />
-          </div>
-          <div className="flex w-0 grow flex-col gap-1 py-px">
-            <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-              <div className="truncate" title={app.name}>{app.name}</div>
-            </div>
-            <div className="truncate system-2xs-medium-uppercase text-text-tertiary" title={appModeLabel}>{appModeLabel}</div>
-          </div>
-          {onlinePresenceUsers.length > 0 && (
-            <div className="ml-3 flex shrink-0 items-start">
-              <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
-            </div>
-          )}
-        </div>
-        <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
-          <div
-            className="line-clamp-2 min-h-8"
-            title={app.description}
-          >
-            {app.description}
-          </div>
-        </div>
-        <div className="flex h-[26px] shrink-0 items-start px-3">
-          {isCurrentWorkspaceEditor && (
-            <div
-              className="w-full min-w-0"
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-              }}
-            >
-              <AppCardTags
-                appId={app.id}
-                tags={app.tags}
-                onOpenTagManagement={onOpenTagManagement}
-                onTagsChange={onRefresh}
+        <Link
+          href={appHref}
+          aria-labelledby={appNameId}
+          aria-describedby={app.description ? appDescriptionId : undefined}
+          className="inline-flex h-full w-full cursor-pointer touch-manipulation flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs outline-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset"
+        >
+          <div className="flex shrink-0 items-center gap-3 pt-4 pb-2 pl-4">
+            <div className="relative shrink-0">
+              <AppIcon
+                size="large"
+                iconType={app.icon_type}
+                icon={app.icon}
+                background={app.icon_background}
+                imageUrl={app.icon_url}
               />
+              <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="size-3" />
             </div>
-          )}
-        </div>
-        <div className="flex min-w-0 shrink-0 items-center pt-2 pr-12 pb-3 pl-4 system-xs-regular text-text-tertiary">
-          <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
-            <div className="truncate" title={app.author_name}>{app.author_name}</div>
-            <div className="shrink-0">·</div>
-            <div className="truncate" title={editTimeText}>{editTimeText}</div>
+            <div className="flex w-0 grow flex-col gap-1 py-px">
+              <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
+                <div id={appNameId} className="truncate" title={app.name}>{app.name}</div>
+              </div>
+              <div className="truncate system-2xs-medium-uppercase text-text-tertiary" title={appModeLabel}>{appModeLabel}</div>
+            </div>
+            {onlinePresenceUsers.length > 0 && (
+              <div className="ml-3 flex shrink-0 items-start">
+                <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
+              </div>
+            )}
           </div>
-        </div>
+          <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
+            <div
+              id={appDescriptionId}
+              className="line-clamp-2 min-h-8"
+              title={app.description}
+            >
+              {app.description}
+            </div>
+          </div>
+          <div className="flex h-[26px] shrink-0 items-start px-3" />
+          <div className="flex min-w-0 shrink-0 items-center pt-2 pr-12 pb-3 pl-4 system-xs-regular text-text-tertiary">
+            <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
+              <div className="truncate" title={app.author_name}>{app.author_name}</div>
+              <div className="shrink-0">·</div>
+              <div className="truncate" title={editTimeText}>{editTimeText}</div>
+            </div>
+          </div>
+        </Link>
+        {isCurrentWorkspaceEditor && (
+          <div
+            className="absolute top-[104px] right-3 left-3 flex h-[26px] min-w-0 items-start"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+            }}
+          >
+            <AppCardTags
+              appId={app.id}
+              tags={app.tags}
+              onOpenTagManagement={onOpenTagManagement}
+              onTagsChange={onRefresh}
+            />
+          </div>
+        )}
         <AppAccessModeIcon accessMode={app.access_mode} />
         {isCurrentWorkspaceEditor && (
           <div
             className={cn(
-              'absolute top-[-0.5px] right-[-0.5px] flex h-16 w-[120px] items-start justify-end bg-linear-to-r from-components-card-bg-alt-transparent to-components-card-bg-alt p-2 transition-opacity',
+              'absolute top-2 right-2 flex items-start justify-end transition-opacity',
               isOperationsMenuOpen
                 ? 'pointer-events-auto opacity-100'
                 : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
@@ -562,7 +569,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                 aria-label={t('operation.more', { ns: 'common' })}
                 className={cn(
                   isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
-                  'flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 backdrop-blur-xs hover:bg-components-actionbar-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+                  'flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 backdrop-blur-xs hover:bg-components-actionbar-bg focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
                   isOperationsMenuOpen ? 'shadow-none' : 'shadow-lg',
                 )}
                 onClick={(e) => {

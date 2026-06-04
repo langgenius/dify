@@ -15,7 +15,6 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import HelpQuestion from '@/app/components/base/icons/src/vender/line/general/HelpQuestion'
 import { useLearnDifyVisibleValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/atoms'
 import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
@@ -54,16 +53,20 @@ const HelpMenu = ({
           aria-label={t('mainNav.help.openMenu', { ns: 'common' })}
           data-learn-dify-help-target
           className={cn(
-            'flex items-center justify-center overflow-hidden rounded-full text-text-tertiary transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-            compact
-              ? 'mb-2 size-4 border border-text-tertiary bg-transparent p-1.5 hover:border-saas-dify-blue-inverted'
-              : 'border border-components-card-border bg-components-card-bg p-0.5 shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam)] hover:shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
+            'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-quaternary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
+            compact && 'mb-2',
             open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
           )}
         >
-          <span aria-hidden className="flex size-5 items-center justify-center">
-            <HelpQuestion className="size-4 shrink-0" />
-          </span>
+          <svg
+            aria-hidden
+            className="size-6 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <path d="M11.9666 16.9985V17.011" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M11.9665 13.2485C11.9665 11.1995 14.4665 11.9134 14.4665 9.49854C14.4665 8.11782 13.3473 6.99854 11.9665 6.99854C11.0412 6.99854 10.2333 7.50129 9.80103 8.24854" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="top-end"

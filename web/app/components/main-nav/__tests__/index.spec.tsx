@@ -663,7 +663,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  it('filters installed web apps and navigates to an installed app', () => {
+  it('filters installed web apps and renders installed app navigation link', () => {
     mockInstalledApps = [
       createInstalledApp({ id: 'installed-1', app: { ...createInstalledApp().app, name: 'Alpha App' } }),
       createInstalledApp({ id: 'installed-2', app: { ...createInstalledApp().app, name: 'Beta Tool' } }),
@@ -677,8 +677,7 @@ describe('MainNav', () => {
     })
 
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByText('Beta Tool'))
-    expect(mockPush).toHaveBeenCalledWith('/installed/installed-2')
+    expect(screen.getByRole('link', { name: 'Beta Tool' })).toHaveAttribute('href', '/installed/installed-2')
   })
 
   it('renders web app skeleton rows while installed apps are loading', () => {
