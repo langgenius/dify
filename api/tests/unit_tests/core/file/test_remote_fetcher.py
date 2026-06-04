@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import socket
 import urllib.parse
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -10,6 +11,7 @@ import pytest
 
 from core.datasource.datasource_file_manager import DatasourceFileManager
 from core.file import remote_fetcher
+from core.tools.errors import ToolSSRFError
 from core.tools.signature import sign_tool_file, sign_upload_file_preview_url
 from core.tools.tool_file_manager import ToolFileManager
 
@@ -57,6 +59,25 @@ def _patch_ssrf_make_request(monkeypatch, response=None):
     make_request = MagicMock(return_value=response) if response is not None else MagicMock()
     monkeypatch.setattr(remote_fetcher.ssrf_proxy, "make_request", make_request)
     return make_request
+
+
+def _patch_dns(monkeypatch, host_ips: dict[str, list[str]]) -> None:
+    def _fake_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        ips = host_ips.get(host)
+        if not ips:
+            raise socket.gaierror(f"test host {host} is not resolvable")
+        return [
+            (
+                socket.AF_INET6 if ":" in ip else socket.AF_INET,
+                socket.SOCK_STREAM,
+                proto,
+                "",
+                (ip, port or 443),
+            )
+            for ip in ips
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", _fake_getaddrinfo)
 
 
 def _patch_signer_times(monkeypatch):
@@ -522,25 +543,120 @@ def test_host_mismatch_delegates_to_ssrf_proxy(monkeypatch):
     )
 
 
-def test_unsupported_dify_path_delegates_to_ssrf_proxy(monkeypatch):
+def test_unsupported_dify_path_with_redirects_is_blocked_before_local_request(monkeypatch):
     _patch_file_fetcher_config(monkeypatch)
     url = _signed_url(
         base_url="http://localhost:5001",
         path=f"/files/{UPLOAD_FILE_ID}/not-preview",
         payload=f"file-preview|{UPLOAD_FILE_ID}",
     )
-    proxy_response = httpx.Response(404, request=httpx.Request("HEAD", url))
-    ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
+    ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
 
-    response = remote_fetcher.make_request("HEAD", url, follow_redirects=True)
+    with pytest.raises(ToolSSRFError, match="private or local network"):
+        remote_fetcher.make_request("HEAD", url, follow_redirects=True)
 
-    assert response is proxy_response
-    ssrf_make_request.assert_called_once_with(
-        method="HEAD",
-        url=url,
-        max_retries=remote_fetcher.SSRF_DEFAULT_MAX_RETRIES,
-        follow_redirects=True,
+    ssrf_make_request.assert_not_called()
+
+
+def test_make_request_blocks_redirect_to_private_ip(monkeypatch):
+    initial_url = "https://public.example/file.txt"
+    _patch_dns(monkeypatch, {"public.example": ["93.184.216.34"]})
+
+    def _fake_make_request(method: str, url: str, max_retries: int, **kwargs):
+        assert kwargs["follow_redirects"] is False
+        if url == initial_url:
+            return httpx.Response(
+                302,
+                headers={"Location": "http://169.254.169.254/latest/meta-data"},
+                request=httpx.Request(method, url),
+            )
+        raise AssertionError(f"unsafe redirect target was requested: {url}")
+
+    ssrf_make_request = MagicMock(side_effect=_fake_make_request)
+    monkeypatch.setattr(remote_fetcher.ssrf_proxy, "make_request", ssrf_make_request)
+
+    with pytest.raises(ToolSSRFError, match="private or local network"):
+        remote_fetcher.make_request("GET", initial_url, follow_redirects=True)
+
+    ssrf_make_request.assert_called_once()
+
+
+def test_make_request_blocks_redirect_to_encoded_loopback_ip(monkeypatch):
+    initial_url = "https://public.example/file.txt"
+    _patch_dns(monkeypatch, {"public.example": ["93.184.216.34"]})
+
+    def _fake_make_request(method: str, url: str, max_retries: int, **kwargs):
+        if url == initial_url:
+            return httpx.Response(
+                302,
+                headers={"Location": "http://2130706433/admin"},
+                request=httpx.Request(method, url),
+            )
+        raise AssertionError(f"unsafe redirect target was requested: {url}")
+
+    ssrf_make_request = MagicMock(side_effect=_fake_make_request)
+    monkeypatch.setattr(remote_fetcher.ssrf_proxy, "make_request", ssrf_make_request)
+
+    with pytest.raises(ToolSSRFError, match="private or local network"):
+        remote_fetcher.make_request("GET", initial_url, follow_redirects=True)
+
+    ssrf_make_request.assert_called_once()
+
+
+def test_make_request_blocks_redirect_to_dns_rebinding_host(monkeypatch):
+    initial_url = "https://public.example/file.txt"
+    _patch_dns(
+        monkeypatch,
+        {
+            "public.example": ["93.184.216.34"],
+            "rebind.example": ["10.0.0.8"],
+        },
     )
+
+    def _fake_make_request(method: str, url: str, max_retries: int, **kwargs):
+        if url == initial_url:
+            return httpx.Response(
+                302,
+                headers={"Location": "https://rebind.example/private"},
+                request=httpx.Request(method, url),
+            )
+        raise AssertionError(f"unsafe redirect target was requested: {url}")
+
+    ssrf_make_request = MagicMock(side_effect=_fake_make_request)
+    monkeypatch.setattr(remote_fetcher.ssrf_proxy, "make_request", ssrf_make_request)
+
+    with pytest.raises(ToolSSRFError, match="private or local network"):
+        remote_fetcher.make_request("GET", initial_url, follow_redirects=True)
+
+    ssrf_make_request.assert_called_once()
+
+
+def test_make_request_follows_safe_relative_redirect(monkeypatch):
+    initial_url = "https://public.example/file.txt"
+    redirected_url = "https://public.example/files/safe.txt"
+    _patch_dns(monkeypatch, {"public.example": ["93.184.216.34"]})
+
+    final_response = httpx.Response(200, request=httpx.Request("GET", redirected_url), content=b"ok")
+
+    def _fake_make_request(method: str, url: str, max_retries: int, **kwargs):
+        assert kwargs["follow_redirects"] is False
+        if url == initial_url:
+            return httpx.Response(
+                302,
+                headers={"Location": "/files/safe.txt"},
+                request=httpx.Request(method, url),
+            )
+        if url == redirected_url:
+            return final_response
+        raise AssertionError(f"unexpected URL: {url}")
+
+    ssrf_make_request = MagicMock(side_effect=_fake_make_request)
+    monkeypatch.setattr(remote_fetcher.ssrf_proxy, "make_request", ssrf_make_request)
+
+    response = remote_fetcher.make_request("GET", initial_url, follow_redirects=True)
+
+    assert response is final_response
+    assert ssrf_make_request.call_count == 2
 
 
 def test_invalid_url_scheme_delegates_to_ssrf_proxy(monkeypatch):

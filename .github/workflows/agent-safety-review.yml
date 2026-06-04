@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "api/services/agent_safety_review_service.py"
+      - "api/core/file/remote_fetcher.py"
       - "api/services/workflow_service.py"
       - "api/services/rag_pipeline/rag_pipeline.py"
       - "api/controllers/console/app/workflow.py"
       - "api/controllers/console/datasets/rag_pipeline/rag_pipeline_workflow.py"
       - "api/tests/unit_tests/services/test_agent_safety_review_service.py"
+      - "api/tests/unit_tests/core/file/test_remote_fetcher.py"
       - "api/tests/unit_tests/services/rag_pipeline/test_rag_pipeline_service.py"
       - "api/tests/unit_tests/controllers/console/app/test_workflow.py"
       - "api/tests/unit_tests/controllers/console/datasets/rag_pipeline/test_rag_pipeline_workflow.py"
@@ -51,11 +53,13 @@ jobs:
         run: |
           uv run --with ruff ruff check \
             services/agent_safety_review_service.py \
+            core/file/remote_fetcher.py \
             services/workflow_service.py \
             services/rag_pipeline/rag_pipeline.py \
             controllers/console/app/workflow.py \
             controllers/console/datasets/rag_pipeline/rag_pipeline_workflow.py \
             tests/unit_tests/services/test_agent_safety_review_service.py \
+            tests/unit_tests/core/file/test_remote_fetcher.py \
             tests/unit_tests/services/rag_pipeline/test_rag_pipeline_service.py \
             tests/unit_tests/controllers/console/app/test_workflow.py \
             tests/unit_tests/controllers/console/datasets/rag_pipeline/test_rag_pipeline_workflow.py
@@ -65,6 +69,7 @@ jobs:
         run: |
           uv run --with pytest-mock pytest -o addopts='' \
             tests/unit_tests/services/test_agent_safety_review_service.py \
+            tests/unit_tests/core/file/test_remote_fetcher.py \
             tests/unit_tests/services/rag_pipeline/test_rag_pipeline_service.py \
             tests/unit_tests/controllers/console/app/test_workflow.py \
             tests/unit_tests/controllers/console/datasets/rag_pipeline/test_rag_pipeline_workflow.py \

@@ -18,7 +18,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import ipaddress
 import re
+import socket
+import string
 import time
 import urllib.parse
 from dataclasses import dataclass
@@ -36,6 +39,7 @@ from core.helper.ssrf_proxy import (
     max_retries_exceeded_error,
     request_error,
 )
+from core.tools.errors import ToolSSRFError
 from extensions.ext_storage import storage
 from models import ToolFile, UploadFile
 
@@ -44,6 +48,8 @@ _UPLOAD_FILE_PATH_PATTERN = re.compile(
 )
 _TOOL_FILE_PATH_PATTERN = re.compile(r"^/files/tools/(?P<file_id>[a-fA-F0-9-]+)(?P<extension>\.[^/]*)?$")
 _DATASOURCE_FILE_PATH_PATTERN = re.compile(r"^/files/datasources/(?P<file_id>[a-fA-F0-9-]+)(?P<extension>\.[^/]*)?$")
+_REMOTE_FILE_REDIRECT_STATUS_CODES = {301, 302, 303, 307, 308}
+_REMOTE_FILE_MAX_REDIRECTS = 5
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -71,7 +77,189 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
         response = _resolve_dify_signed_file_url("HEAD", url)
         if response is not None:
             return response
+    _normalize_redirect_kwargs(kwargs)
+    if normalized_method in {"GET", "HEAD"} and kwargs.get("follow_redirects") is True:
+        return _make_request_following_safe_redirects(
+            method=normalized_method,
+            url=url,
+            max_retries=max_retries,
+            **kwargs,
+        )
     return ssrf_proxy.make_request(method=method, url=url, max_retries=max_retries, **kwargs)
+
+
+def _normalize_redirect_kwargs(kwargs: dict[str, Any]) -> None:
+    if "allow_redirects" not in kwargs:
+        return
+
+    allow_redirects = kwargs.pop("allow_redirects")
+    if "follow_redirects" not in kwargs:
+        kwargs["follow_redirects"] = allow_redirects
+
+
+def _make_request_following_safe_redirects(
+    *,
+    method: Literal["GET", "HEAD"],
+    url: str,
+    max_retries: int,
+    **kwargs: Any,
+) -> httpx.Response:
+    current_url = url
+    redirect_count = 0
+    request_kwargs = dict(kwargs)
+    request_kwargs["follow_redirects"] = False
+
+    while True:
+        _assert_public_remote_file_url(current_url)
+        response = ssrf_proxy.make_request(
+            method=method,
+            url=current_url,
+            max_retries=max_retries,
+            **request_kwargs,
+        )
+        if response.status_code not in _REMOTE_FILE_REDIRECT_STATUS_CODES:
+            return response
+
+        location = response.headers.get("Location")
+        if not location:
+            return response
+        if redirect_count >= _REMOTE_FILE_MAX_REDIRECTS:
+            raise ToolSSRFError("Access to the remote file was blocked because it redirected too many times.")
+
+        next_url = urllib.parse.urljoin(_response_request_url(response=response, fallback=current_url), location)
+        _assert_public_remote_file_url(next_url)
+        current_url = next_url
+        redirect_count += 1
+
+
+def _response_request_url(*, response: httpx.Response, fallback: str) -> str:
+    try:
+        return str(response.request.url)
+    except RuntimeError:
+        return fallback
+
+
+def _assert_public_remote_file_url(url: str) -> None:
+    parsed_url = urllib.parse.urlparse(url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
+        raise ToolSSRFError("Access to the remote file was blocked because the URL must use HTTP or HTTPS.")
+
+    try:
+        port = parsed_url.port or _default_port(parsed_url.scheme)
+    except ValueError as exc:
+        raise ToolSSRFError("Access to the remote file was blocked because the URL port is invalid.") from exc
+
+    host = _normalize_remote_file_host(parsed_url.hostname)
+    ip_literal = _parse_ip_literal(host)
+    if ip_literal is not None:
+        _assert_public_ip(ip_literal)
+        return
+
+    _assert_public_dns_resolution(host=host, port=port)
+
+
+def _normalize_remote_file_host(host: str) -> str:
+    normalized = host.strip()
+    for _ in range(3):
+        decoded = urllib.parse.unquote(normalized)
+        if decoded == normalized:
+            break
+        normalized = decoded
+
+    normalized = normalized.rstrip(".").lower()
+    if normalized.startswith("[") and normalized.endswith("]"):
+        normalized = normalized[1:-1]
+    return normalized
+
+
+def _parse_ip_literal(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    try:
+        return ipaddress.ip_address(host)
+    except ValueError:
+        pass
+
+    if ":" in host:
+        return None
+    return _parse_obscured_ipv4(host)
+
+
+def _parse_obscured_ipv4(host: str) -> ipaddress.IPv4Address | None:
+    parts = host.split(".")
+    if not 1 <= len(parts) <= 4:
+        return None
+
+    values: list[int] = []
+    for part in parts:
+        value = _parse_ipv4_number(part)
+        if value is None:
+            return None
+        values.append(value)
+
+    if len(values) == 1:
+        if values[0] > 0xFFFFFFFF:
+            return None
+        return ipaddress.IPv4Address(values[0])
+    if len(values) == 2:
+        if values[0] > 0xFF or values[1] > 0xFFFFFF:
+            return None
+        return ipaddress.IPv4Address((values[0] << 24) + values[1])
+    if len(values) == 3:
+        if values[0] > 0xFF or values[1] > 0xFF or values[2] > 0xFFFF:
+            return None
+        return ipaddress.IPv4Address((values[0] << 24) + (values[1] << 16) + values[2])
+    if any(value > 0xFF for value in values):
+        return None
+    return ipaddress.IPv4Address((values[0] << 24) + (values[1] << 16) + (values[2] << 8) + values[3])
+
+
+def _parse_ipv4_number(value: str) -> int | None:
+    if not value:
+        return None
+
+    lowered = value.lower()
+    try:
+        if lowered.startswith("0x"):
+            return int(lowered, 0)
+        if len(lowered) > 1 and lowered.startswith("0") and all(char in string.octdigits for char in lowered):
+            return int(lowered, 8)
+        if lowered.isdigit():
+            return int(lowered, 10)
+    except ValueError:
+        return None
+    return None
+
+
+def _assert_public_dns_resolution(*, host: str, port: int) -> None:
+    try:
+        addr_infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise ToolSSRFError("Access to the remote file was blocked because the host could not be resolved.") from exc
+
+    resolved_ips: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
+    for addr_info in addr_infos:
+        sockaddr = addr_info[4]
+        if not sockaddr:
+            continue
+        try:
+            resolved_ips.add(ipaddress.ip_address(sockaddr[0]))
+        except ValueError as exc:
+            raise ToolSSRFError(
+                "Access to the remote file was blocked because DNS returned an invalid address."
+            ) from exc
+
+    if not resolved_ips:
+        raise ToolSSRFError("Access to the remote file was blocked because DNS returned no addresses.")
+
+    for resolved_ip in resolved_ips:
+        _assert_public_ip(resolved_ip)
+
+
+def _assert_public_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> None:
+    if not ip.is_global or ip.is_multicast:
+        raise ToolSSRFError(
+            "Access to the remote file was blocked by SSRF protection. "
+            "The URL may point to a private or local network address."
+        )
 
 
 class GraphonRemoteFileFetcher:
