@@ -29,6 +29,8 @@ type PermissionSetModalState = {
   initialValues?: PermissionSetFormValues
 }
 
+const RULES_PER_PAGE = 20
+
 const AppAccessRuleSection = ({
   className,
 }: AppAccessRuleSectionProps) => {
@@ -46,7 +48,7 @@ const AppAccessRuleSection = ({
     error,
   } = useInfiniteWorkspaceAppAccessRules({
     page: 1,
-    limit: 5,
+    limit: RULES_PER_PAGE,
   })
   const { mutate: lockBinding } = useBindingLock()
   const { mutate: unlockBinding } = useBindingUnlock()
