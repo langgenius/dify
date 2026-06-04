@@ -85,7 +85,7 @@ const IntegrationSectionRenderer = ({
         />
       )
     case 'builtin':
-      return <ToolProviderList category="builtin" contentInset="compact" layout={renderDirectLayout} />
+      return <PluginCategoryPage canInstall={canInstallPlugin} category={PluginCategoryEnum.tool} layout={renderDirectLayout} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
     case 'mcp':
       return <ToolProviderList category="mcp" contentInset="compact" layout={renderDirectLayout} />
     case 'custom-tool':

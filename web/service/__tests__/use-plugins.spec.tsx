@@ -7,6 +7,7 @@ import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '@/app/components/plugins
 import { PermissionType, PluginCategoryEnum } from '@/app/components/plugins/types'
 import { get, post } from '../base'
 import {
+  useInstalledPluginList,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
@@ -269,6 +270,161 @@ describe('use-plugins mutations', () => {
       expect(queryClient.getQueryData(queryKey)).toEqual(previousPermission)
     })
     await mutation
+  })
+})
+
+describe('useInstalledPluginList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('fetches the default installed plugin list when no category is provided', async () => {
+    const queryClient = createQueryClient()
+    vi.mocked(get).mockResolvedValue({ plugins: [], total: 0 })
+
+    renderHook(
+      () => useInstalledPluginList(false, 100),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(get).toHaveBeenCalledWith('/workspaces/current/plugin/list?page=1&page_size=100')
+    })
+  })
+
+  it('fetches the scoped installed plugin category list when category is provided', async () => {
+    const queryClient = createQueryClient()
+    vi.mocked(get).mockResolvedValue({ plugins: [], has_more: false })
+
+    renderHook(
+      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.trigger }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(get).toHaveBeenCalledWith('/workspaces/current/plugin/trigger/list?page=1&page_size=100')
+    })
+  })
+
+  it('keeps builtin tools from the scoped tool plugin category response', async () => {
+    const queryClient = createQueryClient()
+    const builtinTools = [
+      {
+        id: 'builtin-tool',
+        name: 'builtin-tool',
+        label: { en_US: 'Builtin Tool', zh_Hans: 'Builtin Tool' },
+        description: { en_US: 'Builtin Tool description', zh_Hans: 'Builtin Tool description' },
+        author: 'Dify',
+        icon: '',
+        type: 'builtin',
+        team_credentials: {},
+        is_team_authorization: false,
+        allow_delete: false,
+        labels: [],
+      },
+    ]
+    vi.mocked(get).mockResolvedValue({ plugins: [], builtin_tools: builtinTools, has_more: false })
+
+    const { result } = renderHook(
+      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.tool }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(result.current.data?.builtin_tools).toEqual(builtinTools)
+    })
+  })
+
+  it('uses has_more to load the next scoped plugin category page', async () => {
+    const queryClient = createQueryClient()
+    vi.mocked(get)
+      .mockResolvedValueOnce({
+        plugins: [
+          { plugin_id: 'trigger-plugin-1' },
+        ],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        plugins: [
+          { plugin_id: 'trigger-plugin-2' },
+        ],
+        has_more: false,
+      })
+
+    const { result } = renderHook(
+      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.trigger }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(result.current.isLastPage).toBe(false)
+    })
+
+    act(() => {
+      result.current.loadNextPage()
+    })
+
+    await waitFor(() => {
+      expect(get).toHaveBeenCalledWith('/workspaces/current/plugin/trigger/list?page=2&page_size=100')
+    })
+    await waitFor(() => {
+      expect(result.current.isLastPage).toBe(true)
+    })
+  })
+
+  it('keeps builtin tools from the first scoped tool plugin page when loading more pages', async () => {
+    const queryClient = createQueryClient()
+    const builtinTools = [
+      {
+        id: 'builtin-tool',
+        name: 'builtin-tool',
+        label: { en_US: 'Builtin Tool', zh_Hans: 'Builtin Tool' },
+        description: { en_US: 'Builtin Tool description', zh_Hans: 'Builtin Tool description' },
+        author: 'Dify',
+        icon: '',
+        type: 'builtin',
+        team_credentials: {},
+        is_team_authorization: false,
+        allow_delete: false,
+        labels: [],
+      },
+    ]
+    vi.mocked(get)
+      .mockResolvedValueOnce({
+        plugins: [
+          { plugin_id: 'tool-plugin-1' },
+        ],
+        builtin_tools: builtinTools,
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        plugins: [
+          { plugin_id: 'tool-plugin-2' },
+        ],
+        builtin_tools: builtinTools,
+        has_more: false,
+      })
+
+    const { result } = renderHook(
+      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.tool }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(result.current.isLastPage).toBe(false)
+    })
+
+    act(() => {
+      result.current.loadNextPage()
+    })
+
+    await waitFor(() => {
+      expect(result.current.data?.plugins).toEqual([
+        { plugin_id: 'tool-plugin-1' },
+        { plugin_id: 'tool-plugin-2' },
+      ])
+    })
+    expect(result.current.data?.builtin_tools).toEqual(builtinTools)
   })
 })
 

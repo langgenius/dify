@@ -129,7 +129,7 @@ describe('PluginList', () => {
       expect(outerDiv)!.toHaveClass('pb-3')
 
       const gridDiv = outerDiv.firstChild as HTMLElement
-      expect(gridDiv)!.toHaveClass('grid', 'grid-cols-2', 'gap-3')
+      expect(gridDiv)!.toHaveClass('grid', 'grid-cols-1', 'gap-3', 'lg:grid-cols-2')
     })
 
     it('should render single plugin correctly', () => {
@@ -375,7 +375,7 @@ describe('PluginList', () => {
 
   // ==================== Grid Layout Tests ====================
   describe('Grid Layout', () => {
-    it('should render with 2-column grid', () => {
+    it('should render with responsive 2-column max grid', () => {
       // Arrange
       const pluginList = createPluginList(4)
 
@@ -384,7 +384,7 @@ describe('PluginList', () => {
 
       // Assert
       const gridDiv = container.querySelector('.grid')
-      expect(gridDiv)!.toHaveClass('grid-cols-2')
+      expect(gridDiv)!.toHaveClass('grid-cols-1', 'lg:grid-cols-2')
     })
 
     it('should have proper gap between items', () => {

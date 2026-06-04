@@ -36,7 +36,7 @@ const PluginCategoryPageContent = ({
     ...systemFeaturesQueryOptions(),
     select: s => s.plugin_installation_permission,
   })
-  const supportsDropInstall = category === PluginCategoryEnum.trigger || category === PluginCategoryEnum.agent || category === PluginCategoryEnum.extension
+  const supportsDropInstall = category === PluginCategoryEnum.tool || category === PluginCategoryEnum.trigger || category === PluginCategoryEnum.agent || category === PluginCategoryEnum.extension
   const canDropLocalPackage = canInstall && supportsDropInstall && !pluginInstallationPermission.restrict_to_marketplace_only
 
   const handleFileChange = (file: File | null) => {
