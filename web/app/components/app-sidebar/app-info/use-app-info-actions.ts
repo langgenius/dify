@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter } from '@/next/navigation'
@@ -54,6 +55,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
   const { t } = useTranslation()
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const invalidateAppList = useInvalidateAppList()
@@ -249,7 +251,9 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
-      if (list.length === 0) {
+      // Only workspace managers (owner/admin) may export secret values; non-managers
+      // export without secrets, matching the backend include_secret restriction.
+      if (list.length === 0 || !isCurrentWorkspaceManager) {
         onExport()
         return
       }
@@ -261,7 +265,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     finally {
       closeModal()
     }
-  }, [appDetail, closeModal, onExport, setSecretEnvList, t])
+  }, [appDetail, closeModal, onExport, setSecretEnvList, t, isCurrentWorkspaceManager])
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail)

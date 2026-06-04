@@ -721,6 +721,13 @@ class AppExportApi(Resource):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
+        # Exporting with secret values included is the only path that returns plaintext
+        # workflow secrets to the caller, so restrict it to workspace owners/admins.
+        # Regular editors can still build and run workflows that use the secret, but
+        # cannot extract its value via DSL export.
+        current_user, _ = current_account_with_tenant()
+        AppDslService.assert_secret_export_allowed(include_secret=args.include_secret, account=current_user)
+
         payload = AppExportResponse(
             data=AppDslService.export_dsl(
                 app_model=app_model,

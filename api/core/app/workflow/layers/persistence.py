@@ -12,13 +12,20 @@ state.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union, override
+from typing import Any, Union, cast, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.secret_redaction import (
+    collect_sensitive_string_values,
+    contains_sensitive_value,
+    is_code_node_type,
+    mask_sensitive_value,
+    redact_sensitive_values,
+)
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
@@ -63,6 +70,7 @@ class PersistenceWorkflowInfo:
     workflow_type: WorkflowType
     version: str
     graph_data: Mapping[str, Any]
+    secret_values: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)
@@ -100,6 +108,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
         self._node_snapshots: dict[str, _NodeRuntimeSnapshot] = {}
         self._node_sequence: int = 0
+        self._tainted_code_output_values: tuple[str, ...] = ()
 
     # ------------------------------------------------------------------
     # GraphEngineLayer lifecycle
@@ -110,6 +119,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._node_execution_cache.clear()
         self._node_snapshots.clear()
         self._node_sequence = 0
+        self._tainted_code_output_values = ()
 
     @override
     def on_event(self, event: GraphEngineEvent) -> None:
@@ -163,7 +173,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
         execution = self._get_workflow_execution()
-        execution.outputs = event.outputs
+        execution.outputs = cast(Mapping[str, Any], self._redact_for_persistence(event.outputs))
         execution.status = WorkflowExecutionStatus.SUCCEEDED
         self._populate_completion_statistics(execution)
 
@@ -173,7 +183,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_graph_run_partial_succeeded(self, event: GraphRunPartialSucceededEvent) -> None:
         execution = self._get_workflow_execution()
-        execution.outputs = event.outputs
+        execution.outputs = cast(Mapping[str, Any], self._redact_for_persistence(event.outputs))
         execution.status = WorkflowExecutionStatus.PARTIAL_SUCCEEDED
         execution.exceptions_count = event.exceptions_count
         self._populate_completion_statistics(execution)
@@ -208,7 +218,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_graph_run_paused(self, event: GraphRunPausedEvent) -> None:
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.PAUSED
-        execution.outputs = event.outputs
+        execution.outputs = cast(Mapping[str, Any], self._redact_for_persistence(event.outputs))
         self._populate_completion_statistics(execution, update_finished=False)
 
         self._workflow_execution_repository.save(execution)
@@ -362,7 +372,9 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         runtime_state = self.graph_runtime_state
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps
-        execution.outputs = execution.outputs or runtime_state.outputs
+        execution.outputs = execution.outputs or cast(
+            Mapping[str, Any], self._redact_for_persistence(runtime_state.outputs)
+        )
         execution.exceptions_count = max(execution.exceptions_count, runtime_state.exceptions_count)
 
     def _update_node_execution(
@@ -386,17 +398,29 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             domain_execution.error = error
 
         if update_outputs:
+            inputs = cast(Mapping[str, Any], self._redact_for_persistence(node_result.inputs))
+            process_data = cast(Mapping[str, Any], self._redact_for_persistence(node_result.process_data))
+            metadata = cast(Mapping[str, Any], self._redact_for_persistence(node_result.metadata))
             projected_outputs = project_node_outputs_for_workflow_run(
                 node_type=domain_execution.node_type,
                 inputs=node_result.inputs,
                 outputs=node_result.outputs,
             )
+            outputs = cast(Mapping[str, Any], self._redact_for_persistence(projected_outputs))
+            if self._should_mask_code_outputs(
+                domain_execution.node_type, node_result.inputs, node_result.process_data
+            ):
+                outputs = cast(Mapping[str, Any], mask_sensitive_value(projected_outputs))
+                self._register_tainted_code_outputs(projected_outputs)
             domain_execution.update_from_mapping(
-                inputs=node_result.inputs,
-                process_data=node_result.process_data,
-                outputs=projected_outputs,
-                metadata=node_result.metadata,
+                inputs=inputs,
+                process_data=process_data,
+                outputs=outputs,
+                metadata=metadata,
             )
+
+        if domain_execution.error:
+            domain_execution.error = cast(str, self._redact_for_persistence(domain_execution.error))
 
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
@@ -438,3 +462,25 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _system_variables(self) -> Mapping[str, Any]:
         runtime_state = self.graph_runtime_state
         return runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
+
+    def _redact_for_persistence(self, value: object) -> object:
+        return redact_sensitive_values(
+            value,
+            self._workflow_info.secret_values,
+            self._tainted_code_output_values,
+        )
+
+    def _should_mask_code_outputs(self, node_type: object, inputs: object, process_data: object) -> bool:
+        if not is_code_node_type(node_type):
+            return False
+        secret_values = self._workflow_info.secret_values
+        tainted_values = self._tainted_code_output_values
+        return contains_sensitive_value(inputs, secret_values, tainted_values) or contains_sensitive_value(
+            process_data, secret_values, tainted_values
+        )
+
+    def _register_tainted_code_outputs(self, outputs: object) -> None:
+        values = collect_sensitive_string_values(outputs)
+        if not values:
+            return
+        self._tainted_code_output_values = tuple(dict.fromkeys((*self._tainted_code_output_values, *values)))

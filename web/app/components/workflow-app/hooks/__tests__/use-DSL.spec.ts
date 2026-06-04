@@ -25,6 +25,7 @@ const mockDoSyncWorkflowDraft = vi.fn()
 const mockExportAppConfig = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
 const mockDownloadBlob = vi.fn()
+let mockIsCurrentWorkspaceManager = true
 
 let appStoreState: {
   appDetail?: {
@@ -39,6 +40,10 @@ vi.mock('@/context/event-emitter', () => ({
       emit: mockEmit,
     },
   }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({ isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager }),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -74,6 +79,7 @@ const createDeferred = <T>() => {
 describe('useDSL', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsCurrentWorkspaceManager = true
     appStoreState = {
       appDetail: {
         id: 'app-1',
@@ -119,7 +125,8 @@ describe('useDSL', () => {
     })
   })
 
-  it('should emit DSL_EXPORT_CHECK when secret environment variables exist', async () => {
+  it('should emit DSL_EXPORT_CHECK when secret environment variables exist and the user is a workspace manager', async () => {
+    mockIsCurrentWorkspaceManager = true
     const secretVars = [{ id: 'env-1', value_type: 'secret', value: 'secret-token' }]
     mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: secretVars })
 
@@ -136,6 +143,26 @@ describe('useDSL', () => {
       },
     })
     expect(mockExportAppConfig).not.toHaveBeenCalled()
+  })
+
+  it('should export without secrets and skip the secret prompt when a non-manager has secret env vars', async () => {
+    mockIsCurrentWorkspaceManager = false
+    const secretVars = [{ id: 'env-1', value_type: 'secret', value: 'secret-token' }]
+    mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: secretVars })
+
+    const { result } = renderHook(() => useDSL())
+
+    await act(async () => {
+      await result.current.exportCheck()
+    })
+
+    // Non-managers never reach the include-secret prompt; export proceeds without secrets.
+    expect(mockEmit).not.toHaveBeenCalled()
+    expect(mockExportAppConfig).toHaveBeenCalledWith({
+      appID: 'app-1',
+      include: false,
+      workflowID: undefined,
+    })
   })
 
   it('should return early when app detail is unavailable', async () => {

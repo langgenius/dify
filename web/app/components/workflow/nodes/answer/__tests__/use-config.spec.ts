@@ -66,12 +66,16 @@ describe('answer/use-config', () => {
     expect(result.current.readOnly).toBe(false)
   })
 
-  it('should filter out array-object variables from the prompt editor picker', () => {
+  it('should filter out array-object and secret variables from the prompt editor picker', () => {
     const { result } = renderHook(() => useConfig('answer-node', currentInputs))
 
     expect(result.current.filterVar({
       variable: 'items',
       type: VarType.arrayObject,
+    })).toBe(false)
+    expect(result.current.filterVar({
+      variable: 'api_key',
+      type: VarType.secret,
     })).toBe(false)
     expect(result.current.filterVar({
       variable: 'message',

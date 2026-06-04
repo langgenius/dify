@@ -1,6 +1,6 @@
 import type { EndNodeType } from '../types'
 import { act, renderHook } from '@testing-library/react'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import useConfig from '../use-config'
 
 const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
@@ -58,6 +58,7 @@ describe('end/use-config', () => {
       inputs: currentInputs,
       setInputs: expect.any(Function),
       varKey: 'outputs',
+      filterVar: expect.any(Function),
     }))
     expect(result.current.readOnly).toBe(true)
     expect(result.current.handleVarListChange).toBe(mockHandleVarListChange)
@@ -72,5 +73,18 @@ describe('end/use-config', () => {
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
       outputs: currentInputs.outputs,
     }))
+  })
+
+  it('should filter out secret variables from end outputs', () => {
+    const { result } = renderHook(() => useConfig('end-node', currentInputs))
+
+    expect(result.current.filterVar({
+      variable: 'api_key',
+      type: VarType.secret,
+    })).toBe(false)
+    expect(result.current.filterVar({
+      variable: 'message',
+      type: VarType.string,
+    })).toBe(true)
   })
 })

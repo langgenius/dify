@@ -8,6 +8,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'
+import { useAppContext } from '@/context/app-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -21,6 +22,7 @@ export const useDSL = () => {
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   const appDetail = useAppStore(s => s.appDetail)
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const handleExportDSL = useCallback(async (include = false, workflowId?: string) => {
     if (!appDetail)
@@ -54,7 +56,10 @@ export const useDSL = () => {
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail?.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
-      if (list.length === 0) {
+      // Only workspace managers (owner/admin) may export secret values. For everyone else
+      // skip the include-secret prompt and export without secrets, matching the backend
+      // which rejects include_secret=true from non-managers.
+      if (list.length === 0 || !isCurrentWorkspaceManager) {
         handleExportDSL()
         return
       }
@@ -68,7 +73,7 @@ export const useDSL = () => {
     catch {
       toast.error(t('exportFailed', { ns: 'app' }))
     }
-  }, [appDetail, eventEmitter, handleExportDSL, t])
+  }, [appDetail, eventEmitter, handleExportDSL, t, isCurrentWorkspaceManager])
 
   return {
     exportCheck,

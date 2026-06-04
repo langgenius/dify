@@ -25,6 +25,7 @@ const mockFetchWorkflowDraft = vi.fn()
 const mockDownloadBlob = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
+let mockIsCurrentWorkspaceManager = true
 
 let mockAppDetail: Record<string, unknown> | undefined = {
   id: 'app-1',
@@ -41,6 +42,10 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({ onPlanInfoChanged: mockOnPlanInfoChanged }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({ isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager }),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -105,6 +110,7 @@ vi.mock('@/config', () => ({
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsCurrentWorkspaceManager = true
     mockOnAppMetaUpdate.mockReturnValue(() => {})
     mockGetSocket.mockReturnValue(null)
     mockAppDetail = {
@@ -480,6 +486,25 @@ describe('useAppInfoActions', () => {
       })
 
       expect(result.current.secretEnvList).toEqual(secretVars)
+    })
+
+    it('should export without secrets and not surface the secret env list for a non-manager', async () => {
+      mockIsCurrentWorkspaceManager = false
+      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
+      const secretVars = [{ value_type: 'secret', key: 'API_KEY' }]
+      mockFetchWorkflowDraft.mockResolvedValue({
+        environment_variables: secretVars,
+      })
+      mockExportAppConfig.mockResolvedValue({ data: 'yaml' })
+
+      const { result } = renderHook(() => useAppInfoActions({}))
+
+      await act(async () => {
+        await result.current.handleConfirmExport()
+      })
+
+      expect(result.current.secretEnvList).toEqual([])
+      expect(mockExportAppConfig).toHaveBeenCalled()
     })
 
     it('should notify error on workflow draft fetch failure', async () => {

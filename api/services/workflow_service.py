@@ -34,6 +34,13 @@ from core.workflow.node_runtime import (
     DifyHumanInputNodeRuntime,
     apply_dify_debug_email_recipient,
 )
+from core.workflow.secret_redaction import (
+    collect_secret_values,
+    contains_sensitive_value,
+    is_code_node_type,
+    mask_sensitive_value,
+    redact_sensitive_values,
+)
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -945,6 +952,7 @@ class WorkflowService:
             invoke_node_fn=lambda: run,
             start_at=start_at,
             node_id=node_id,
+            secret_values=collect_secret_values(draft_workflow.environment_variables),
         )
 
         # Set workflow_id on the NodeExecution
@@ -1376,6 +1384,7 @@ class WorkflowService:
         invoke_node_fn: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
         start_at: float,
         node_id: str,
+        secret_values: tuple[str, ...] = (),
     ) -> WorkflowNodeExecution:
         """
         Handle single step execution and return WorkflowNodeExecution.
@@ -1404,7 +1413,7 @@ class WorkflowService:
         )
 
         # Populate execution result data
-        self._populate_execution_result(node_execution, node_run_result, run_succeeded, error)
+        self._populate_execution_result(node_execution, node_run_result, run_succeeded, error, secret_values)
 
         return node_execution
 
@@ -1474,27 +1483,43 @@ class WorkflowService:
         node_run_result: NodeRunResult | None,
         run_succeeded: bool,
         error: str | None,
+        secret_values: tuple[str, ...] = (),
     ) -> None:
         """Populate node execution with result data."""
         if run_succeeded and node_run_result:
-            node_execution.inputs = (
-                WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
-            )
-            node_execution.process_data = (
+            inputs = WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
+            process_data = (
                 WorkflowEntry.handle_special_values(node_run_result.process_data)
                 if node_run_result.process_data
                 else None
             )
-            node_execution.outputs = node_run_result.outputs
-            node_execution.metadata = node_run_result.metadata
+            outputs: object = node_run_result.outputs
+            if is_code_node_type(node_execution.node_type) and (
+                contains_sensitive_value(inputs, secret_values)
+                or contains_sensitive_value(process_data, secret_values)
+            ):
+                outputs = mask_sensitive_value(outputs)
+            else:
+                outputs = redact_sensitive_values(outputs, secret_values)
+
+            node_execution.inputs = (
+                cast(Mapping[str, Any], redact_sensitive_values(inputs, secret_values)) if inputs else None
+            )
+            node_execution.process_data = (
+                cast(Mapping[str, Any], redact_sensitive_values(process_data, secret_values)) if process_data else None
+            )
+            node_execution.outputs = cast(Mapping[str, Any], outputs)
+            node_execution.metadata = cast(
+                Mapping[str, Any], redact_sensitive_values(node_run_result.metadata, secret_values)
+            )
 
             # Set status and error based on result
             node_execution.status = node_run_result.status
             if node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
-                node_execution.error = node_run_result.error
+                node_execution.error = cast(str, redact_sensitive_values(node_run_result.error, secret_values))
         else:
             node_execution.status = WorkflowNodeExecutionStatus.FAILED
-            node_execution.error = error
+            node_execution.error = cast(str, redact_sensitive_values(error, secret_values))
 
     def convert_to_workflow(self, app_model: App, account: Account, args: dict[str, Any]) -> App:
         """
