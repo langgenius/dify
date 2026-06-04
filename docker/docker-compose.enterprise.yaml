@@ -64,3 +64,10 @@ services:
         COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
     environment:
       DIFY_INTERNAL_API_URL: ${DIFY_INTERNAL_API_URL:-http://api:5001}
+
+  plugin_daemon:
+    environment:
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+      PIP_INDEX_URL: ${PIP_MIRROR_URL:-}
+      UV_INDEX_URL: ${PIP_MIRROR_URL:-}
+      PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-1200}

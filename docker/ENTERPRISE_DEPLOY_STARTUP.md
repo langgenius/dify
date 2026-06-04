@@ -28,6 +28,17 @@ COMPOSE_PROFILES=${VECTOR_STORE:-weaviate},${DB_TYPE:-postgresql},collaboration
 
 `collaboration` starts `api_websocket`, which is required by the 1.15.0 compose runtime.
 
+4. If this is an offline or restricted-network deployment, set the PyPI mirror in `.env`:
+
+```bash
+PIP_MIRROR_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+The enterprise compose overlay maps `PIP_MIRROR_URL` to `UV_INDEX_URL` and `PIP_INDEX_URL`
+for the `plugin_daemon` service, so that `uv` (used internally by the plugin daemon to install
+plugin Python dependencies) can find the mirror. Without this, plugin installation will fail
+with "operation timed out" when `uv` tries to reach `files.pythonhosted.org` directly.
+
 ## Startup
 
 Run from the directory that contains `docker-compose.yaml`, `docker-compose.enterprise.yaml`, and `.env`:
