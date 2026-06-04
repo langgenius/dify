@@ -51,6 +51,7 @@ def test_run_uses_single_node_execution_branch(
     app_generate_entity.task_id = "task-id"
     app_generate_entity.call_depth = 0
     app_generate_entity.trace_manager = None
+    app_generate_entity.extras = {}
     app_generate_entity.single_iteration_run = single_iteration_run
     app_generate_entity.single_loop_run = single_loop_run
 
@@ -181,6 +182,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     app_generate_entity.task_id = "task-id"
     app_generate_entity.call_depth = 0
     app_generate_entity.trace_manager = None
+    app_generate_entity.extras = {}
     app_generate_entity.single_iteration_run = None
     app_generate_entity.single_loop_run = None
 
