@@ -59,7 +59,7 @@ const AppCard = ({
   return (
     <div
       className={cn(
-        'relative col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-left shadow-xs shadow-shadow-shadow-3',
+        'group relative col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-left shadow-xs shadow-shadow-shadow-3',
         isClickable && 'cursor-pointer',
       )}
       role={isClickable ? 'button' : undefined}
@@ -110,7 +110,7 @@ const AppCard = ({
             </div>
           ))}
         </div>
-        <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-linear-to-r from-components-card-bg-alt-transparent to-components-card-bg-alt" />
+        <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-linear-to-r from-components-card-bg-alt-transparent to-components-card-bg-alt group-focus-visible:hidden" />
       </div>
     </div>
   )
