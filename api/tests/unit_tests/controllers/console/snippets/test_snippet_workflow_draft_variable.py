@@ -1,3 +1,4 @@
+import importlib
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -7,6 +8,8 @@ from flask import Flask
 from controllers.console.snippets import snippet_workflow_draft_variable as module
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
+
+app_workflow_draft_variable_module = importlib.import_module("controllers.console.app.workflow_draft_variable")
 
 
 def _unwrap(func):
@@ -156,7 +159,7 @@ def test_variable_patch_returns_variable_when_no_changes(app, monkeypatch):
     db_session.return_value = SimpleNamespace()
     monkeypatch.setattr(module.db, "session", db_session)
     monkeypatch.setattr(module, "current_user", SimpleNamespace(id="user-1"))
-    monkeypatch.setattr("controllers.console.app.workflow_draft_variable.current_user", SimpleNamespace(id="user-1"))
+    monkeypatch.setattr(app_workflow_draft_variable_module, "current_user", SimpleNamespace(id="user-1"))
     monkeypatch.setattr(module, "WorkflowDraftVariableService", Mock(return_value=draft_var_service))
 
     api = module.SnippetVariableApi()
@@ -178,7 +181,7 @@ def test_variable_delete_deletes_variable(app, monkeypatch):
     db_session.return_value = SimpleNamespace()
     monkeypatch.setattr(module.db, "session", db_session)
     monkeypatch.setattr(module, "current_user", SimpleNamespace(id="user-1"))
-    monkeypatch.setattr("controllers.console.app.workflow_draft_variable.current_user", SimpleNamespace(id="user-1"))
+    monkeypatch.setattr(app_workflow_draft_variable_module, "current_user", SimpleNamespace(id="user-1"))
     monkeypatch.setattr(module, "WorkflowDraftVariableService", Mock(return_value=draft_var_service))
 
     api = module.SnippetVariableApi()
@@ -203,7 +206,7 @@ def test_variable_reset_returns_no_content_when_reset_result_is_none(app, monkey
     db_session.return_value = SimpleNamespace()
     monkeypatch.setattr(module.db, "session", db_session)
     monkeypatch.setattr(module, "current_user", SimpleNamespace(id="user-1"))
-    monkeypatch.setattr("controllers.console.app.workflow_draft_variable.current_user", SimpleNamespace(id="user-1"))
+    monkeypatch.setattr(app_workflow_draft_variable_module, "current_user", SimpleNamespace(id="user-1"))
     monkeypatch.setattr(module, "WorkflowDraftVariableService", Mock(return_value=draft_var_service))
     monkeypatch.setattr(
         module,
