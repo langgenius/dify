@@ -510,11 +510,14 @@ def test_workflow_run_queries_delegate_to_repositories() -> None:
     assert service.get_snippet_workflow_run_node_executions(snippet=snippet, run_id="run-1")[0].id == (
         "node-execution-1"
     )
-    assert service.get_snippet_node_last_run(
-        snippet=snippet,
-        workflow=SimpleNamespace(id="workflow-1"),
-        node_id="llm-1",
-    ).id == "last-run-1"
+    assert (
+        service.get_snippet_node_last_run(
+            snippet=snippet,
+            workflow=SimpleNamespace(id="workflow-1"),
+            node_id="llm-1",
+        ).id
+        == "last-run-1"
+    )
     workflow_run_repo.get_paginated_workflow_runs.assert_called_once()
     workflow_run_repo.get_workflow_run_by_id.assert_called_with(
         tenant_id="tenant-1",
