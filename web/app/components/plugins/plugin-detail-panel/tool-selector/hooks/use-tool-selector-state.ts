@@ -46,9 +46,6 @@ export const useToolSelectorState = ({
   const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
-  // Plugin info check
-  const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck(value?.provider_name)
-
   // Merge all tools and find current provider
   const currentProvider = useMemo(() => {
     const mergedTools = [
@@ -59,6 +56,19 @@ export const useToolSelectorState = ({
     ]
     return mergedTools.find(toolWithProvider => toolWithProvider.id === value?.provider_name)
   }, [value, buildInTools, customTools, workflowTools, mcpTools])
+  const areToolProvidersResolved = [
+    buildInTools,
+    customTools,
+    workflowTools,
+    mcpTools,
+  ].every(toolProviders => toolProviders !== undefined)
+
+  // Plugin info check
+  const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck({
+    providerName: value?.provider_name,
+    providerPluginId: currentProvider ? (currentProvider.plugin_id ?? null) : undefined,
+    enabled: !!value?.provider_name && (currentProvider !== undefined || areToolProvidersResolved),
+  })
 
   // Current tool from provider
   const currentTool = useMemo(() => {

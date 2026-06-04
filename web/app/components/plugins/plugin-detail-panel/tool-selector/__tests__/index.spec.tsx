@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
+import { PluginSource } from '@/app/components/plugins/types'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import {
@@ -41,8 +42,14 @@ vi.mock('@/service/use-tools', () => ({
 
 // Track manifest mock state
 let mockManifestData: Record<string, unknown> | null = null
+let mockInstalledPlugins: Array<{ source: PluginSource }> = []
 
 vi.mock('@/service/use-plugins', () => ({
+  useCheckInstalled: ({ pluginIds, enabled }: { pluginIds: string[], enabled: boolean }) => ({
+    data: enabled && pluginIds.length > 0
+      ? { plugins: mockInstalledPlugins }
+      : undefined,
+  }),
   usePluginManifestInfo: () => ({ data: mockManifestData }),
   useInvalidateInstalledPluginList: () => vi.fn(),
 }))
@@ -416,6 +423,7 @@ const defaultProps = {
 describe('usePluginInstalledCheck Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockInstalledPlugins = []
   })
 
   it('should return inMarketPlace as false when manifest is null', () => {

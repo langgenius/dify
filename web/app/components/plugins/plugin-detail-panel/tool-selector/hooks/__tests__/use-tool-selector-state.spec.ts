@@ -12,6 +12,7 @@ const mockTools = [
   {
     id: 'test-provider',
     name: 'Test Provider',
+    plugin_id: 'org/test-plugin',
     tools: [
       {
         name: 'test-tool',
@@ -35,12 +36,10 @@ vi.mock('@/service/use-plugins', () => ({
   useInvalidateInstalledPluginList: () => vi.fn().mockResolvedValue(undefined),
 }))
 
+const mockUsePluginInstalledCheck = vi.fn()
+
 vi.mock('../use-plugin-installed-check', () => ({
-  usePluginInstalledCheck: () => ({
-    inMarketPlace: false,
-    manifest: null,
-    pluginID: '',
-  }),
+  usePluginInstalledCheck: (...args: unknown[]) => mockUsePluginInstalledCheck(...args),
 }))
 
 vi.mock('@/utils/get-icon', () => ({
@@ -74,6 +73,11 @@ describe('useToolSelectorState', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUsePluginInstalledCheck.mockReturnValue({
+      inMarketPlace: false,
+      manifest: null,
+      pluginID: '',
+    })
   })
 
   it('should initialize with default panel states', () => {
@@ -220,5 +224,17 @@ describe('useToolSelectorState', () => {
     expect(result.current.currentTool).toBeUndefined()
     expect(result.current.currentToolSettings).toEqual([])
     expect(result.current.currentToolParams).toEqual([])
+  })
+
+  it('should pass the installed provider plugin id to plugin checks', () => {
+    renderHook(() =>
+      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
+    )
+
+    expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
+      providerName: 'test-provider',
+      providerPluginId: 'org/test-plugin',
+      enabled: true,
+    })
   })
 })
