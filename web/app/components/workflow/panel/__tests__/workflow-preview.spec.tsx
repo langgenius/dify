@@ -1,4 +1,5 @@
 import type { Shape } from '../../store/workflow'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -84,11 +85,11 @@ vi.mock('@/app/components/workflow/panel/human-input-form-list', () => ({
     onHumanInputFormSubmit,
   }: {
     humanInputFormDataList: unknown[]
-    onHumanInputFormSubmit?: (token: string, formData: Record<string, string>) => Promise<void>
+    onHumanInputFormSubmit?: (token: string, formData: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
   }) => (
     <div>
       <div data-testid="human-form-list">{humanInputFormDataList.length}</div>
-      <button type="button" onClick={() => onHumanInputFormSubmit?.('form-token', { answer: 'ok' })}>
+      <button type="button" onClick={() => onHumanInputFormSubmit?.('form-token', { inputs: { answer: 'ok' }, action: 'approve' })}>
         submit-human-form
       </button>
     </div>
@@ -236,7 +237,7 @@ describe('WorkflowPreview', () => {
     expect(screen.getByTestId('filled-form-list')).toHaveTextContent('1')
 
     await user.click(screen.getByRole('button', { name: 'submit-human-form' }))
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('form-token', { answer: 'ok' })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
   })
 
   it('should copy successful string output and show a success toast', async () => {

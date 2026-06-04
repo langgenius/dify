@@ -1076,6 +1076,10 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFormDataList).toHaveLength(1)
+      expect(answerNode?.workflow_run_id).toBe('wf-run-1')
     })
 
     it('should set workflow_run_id for normal messages with submitted human_input', async () => {
@@ -1114,6 +1118,75 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
+    })
+
+    it('should parse human input payloads regardless of message status', async () => {
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1' })],
+      })
+      const chatListData = {
+        data: [
+          {
+            id: 'msg-status-agnostic',
+            query: 'Needs review',
+            answer: 'Pending follow-up',
+            message_files: [],
+            feedback: null,
+            retriever_resources: [],
+            agent_thoughts: null,
+            parent_message_id: null,
+            inputs: {},
+            status: 'error',
+            extra_contents: [
+              {
+                type: 'human_input',
+                submitted: true,
+                form_definition: {
+                  form_id: 'form-1',
+                  node_id: 'node-1',
+                  node_title: 'Human Input',
+                  form_content: '{{#$output.summary#}}',
+                  inputs: [],
+                  actions: [],
+                  form_token: 'token-1',
+                  resolved_default_values: {},
+                  display_in_ui: true,
+                  expiration_time: 0,
+                },
+                workflow_run_id: 'wf-run-status-agnostic',
+                form_submission_data: {
+                  node_id: 'node-1',
+                  node_title: 'Human Input',
+                  rendered_content: 'Submitted summary',
+                  action_id: 'submit',
+                  action_text: 'Submit',
+                  submitted_data: {
+                    summary: 'approved',
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      }
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue(chatListData)
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+      })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFormDataList).toHaveLength(0)
+      expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
+      expect(answerNode?.humanInputFilledFormDataList?.[0]?.form_content).toBe('{{#$output.summary#}}')
+      expect(answerNode?.humanInputFilledFormDataList?.[0]?.inputs).toEqual([])
+      expect(answerNode?.workflow_run_id).toBe('wf-run-status-agnostic')
     })
 
     it('should return empty appPrevChatTree when there is no currentConversationId', async () => {
@@ -1835,6 +1908,15 @@ describe('useChatWithHistory', () => {
       expect(messageWithFiles?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.agent_thoughts?.[0]?.message_files).toHaveLength(1)
+
+      const normalAnswerNode = messageWithFiles?.children?.[0]
+      const pausedAnswerNode = result!.current.appPrevChatTree.find(item => item.id === 'question-msg-paused-branch')?.children?.[0]
+
+      expect(normalAnswerNode?.humanInputFilledFormDataList).toHaveLength(1)
+      expect(normalAnswerNode?.humanInputFormDataList).toHaveLength(0)
+      expect(pausedAnswerNode?.humanInputFormDataList).toHaveLength(1)
+      expect(pausedAnswerNode?.humanInputFilledFormDataList).toHaveLength(0)
+      expect(pausedAnswerNode?.workflow_run_id).toBe('wf-run-branch')
     })
   })
 

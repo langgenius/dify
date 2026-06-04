@@ -139,6 +139,8 @@ describe('workflow-stream-handlers helpers', () => {
     expect(workflowProcessData.humanInputFilledFormDataList).toEqual([
       expect.objectContaining({
         action_text: 'Submit',
+        form_content: 'content',
+        inputs: [],
       }),
     ])
     expect(workflowProcessData.tracing[0]).toEqual(expect.objectContaining({

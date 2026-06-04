@@ -60,7 +60,7 @@ from .enums import (
     WorkflowTriggerStatus,
 )
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
-from .human_input import HumanInputForm
+from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .model import (
     AccountTrialAppRecord,
     ApiRequest,
@@ -202,6 +202,8 @@ __all__ = [
     "ExternalKnowledgeBindings",
     "HumanInputContent",
     "HumanInputForm",
+    "HumanInputFormUploadFile",
+    "HumanInputFormUploadToken",
     "IconType",
     "InstalledApp",
     "InvitationCode",

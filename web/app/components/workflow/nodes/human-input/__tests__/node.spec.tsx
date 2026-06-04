@@ -23,7 +23,7 @@ const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNode
   }],
   form_content: 'Please review this request',
   inputs: [{
-    type: InputVarType.textInput,
+    type: InputVarType.paragraph,
     output_variable_name: 'review_result',
     default: {
       selector: [],

@@ -784,7 +784,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
@@ -801,7 +801,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
@@ -862,13 +862,13 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputFormFilled({
-          data: { node_id: 'human-node', form_data: { answer: 'yes' } },
+          data: { node_id: 'human-node', submitted_data: { answer: 'yes' } },
         })
       })
 
@@ -876,7 +876,11 @@ describe('useChat – handleSend SSE callbacks', () => {
       expect(answer!.humanInputFormDataList).toHaveLength(0)
       expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
       expect(answer!.humanInputFilledFormDataList![0]!.node_id).toBe('human-node')
-      expect((answer!.humanInputFilledFormDataList![0] as any).form_data).toEqual({ answer: 'yes' })
+      expect(answer!.humanInputFilledFormDataList![0]!.submitted_data).toEqual({ answer: 'yes' })
+      expect(answer!.humanInputFilledFormDataList![0]).toEqual(expect.objectContaining({
+        form_content: '{{#$output.answer#}}',
+        inputs: [],
+      }))
     })
   })
 

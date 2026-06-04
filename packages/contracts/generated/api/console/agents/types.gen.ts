@@ -27,9 +27,9 @@ export type AgentRosterResponse = {
   active_config_snapshot_id?: string | null
   agent_kind: AgentKind
   app_id?: string | null
-  archived_at?: string | null
+  archived_at?: number | null
   archived_by?: string | null
-  created_at?: string | null
+  created_at?: number | null
   created_by?: string | null
   description: string
   icon?: string | null
@@ -40,7 +40,7 @@ export type AgentRosterResponse = {
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
-  updated_at?: string | null
+  updated_at?: number | null
   updated_by?: string | null
   workflow_id?: string | null
   workflow_node_id?: string | null
@@ -69,7 +69,7 @@ export type AgentConfigSnapshotListResponse = {
 export type AgentConfigSnapshotDetailResponse = {
   agent_id?: string | null
   config_snapshot: AgentSoulConfig
-  created_at?: string | null
+  created_at?: number | null
   created_by?: string | null
   id: string
   revisions?: Array<AgentConfigRevisionResponse>
@@ -98,7 +98,7 @@ export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type AgentConfigSnapshotSummaryResponse = {
   agent_id?: string | null
-  created_at?: string | null
+  created_at?: number | null
   created_by?: string | null
   id: string
   summary?: string | null
@@ -119,9 +119,9 @@ export type AgentInviteOptionResponse = {
   active_config_snapshot_id?: string | null
   agent_kind: AgentKind
   app_id?: string | null
-  archived_at?: string | null
+  archived_at?: number | null
   archived_by?: string | null
-  created_at?: string | null
+  created_at?: number | null
   created_by?: string | null
   description: string
   existing_node_ids?: Array<string>
@@ -135,14 +135,14 @@ export type AgentInviteOptionResponse = {
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
-  updated_at?: string | null
+  updated_at?: number | null
   updated_by?: string | null
   workflow_id?: string | null
   workflow_node_id?: string | null
 }
 
 export type AgentConfigRevisionResponse = {
-  created_at?: string | null
+  created_at?: number | null
   created_by?: string | null
   current_snapshot_id: string
   id: string
@@ -257,6 +257,10 @@ export type AgentTextToSpeechFeatureConfig = {
 export type AgentSecretRefConfig = {
   id?: string | null
   name?: string | null
+  permission?: {
+    [key: string]: unknown
+  }
+  permission_status?: string | null
   provider?: string | null
   type?: string | null
   [key: string]: unknown
@@ -354,10 +358,21 @@ export type AgentSkillRefConfig = {
 }
 
 export type AgentCliToolConfig = {
+  authorization_status?: AgentCliToolAuthorizationStatus
   command?: string | null
+  dangerous?: boolean
+  dangerous_acknowledged?: boolean
   description?: string | null
   enabled?: boolean
+  invoke_metadata?: {
+    [key: string]: unknown
+  }
   name?: string | null
+  permission?: {
+    [key: string]: unknown
+  }
+  pre_authorized?: boolean | null
+  risk_level?: AgentCliToolRiskLevel
   [key: string]: unknown
 }
 
@@ -389,6 +404,18 @@ export type AgentModelResponseFormatConfig = {
   type?: string | null
   [key: string]: unknown
 }
+
+export type AgentCliToolAuthorizationStatus
+  = | 'allowed'
+    | 'authorized'
+    | 'denied'
+    | 'forbidden'
+    | 'not_required'
+    | 'pending'
+    | 'pre_authorized'
+    | 'unauthorized'
+
+export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
 
 export type AgentSoulDifyToolCredentialRef = {
   id?: string | null
