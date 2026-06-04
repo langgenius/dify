@@ -2,7 +2,6 @@
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
@@ -26,9 +25,6 @@ const DatasetInfo = ({
     icon_url: '',
   }
   const isExternalProvider = dataset.provider === 'external'
-  const isPipelinePublished = useMemo(() => {
-    return dataset.runtime_mode === 'rag_pipeline' && dataset.is_published
-  }, [dataset.runtime_mode, dataset.is_published])
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
   return (
@@ -51,7 +47,7 @@ const DatasetInfo = ({
         </div>
         {expand && (
           <>
-            <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
+            <div className="flex min-w-0 flex-1 flex-col items-start justify-start gap-0.5">
               <div className="flex w-full min-w-0 items-center gap-2 pr-1">
                 <div
                   className="min-w-0 flex-1 truncate system-md-semibold text-text-secondary"
@@ -64,7 +60,7 @@ const DatasetInfo = ({
                 {isExternalProvider && (
                   <span className="truncate">{t('externalTag', { ns: 'dataset' })}</span>
                 )}
-                {!!(!isExternalProvider && isPipelinePublished && dataset.doc_form && dataset.indexing_technique) && (
+                {!!(!isExternalProvider && dataset.doc_form && dataset.indexing_technique) && (
                   <>
                     <span className="shrink-0 truncate">{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
                     <span className="min-w-0 truncate">{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>

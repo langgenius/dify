@@ -168,7 +168,7 @@ describe('DatasetInfo', () => {
   describe('Rendering', () => {
     it('should show dataset details when expanded', () => {
       // Arrange
-      mockDataset = createDataset({ is_published: true })
+      mockDataset = createDataset({ is_published: false })
       render(<DatasetInfo expand />)
 
       // Assert
