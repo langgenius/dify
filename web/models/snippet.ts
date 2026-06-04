@@ -35,7 +35,7 @@ export type SnippetCanvasData = {
 
 export type SnippetInputField = InputVar
 
-export type SnippetDetailUIModel = {
+type SnippetDetailUIModel = {
   inputFieldCount: number
   checklistCount: number
   autoSavedAt: string

@@ -49,7 +49,10 @@ const renderNodeSelector = (ui: ReactElement) => {
   return renderWorkflowComponent(ui, {
     hooksStoreProps: {
       configsMap: {
+        flowId: 'app-1',
         flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+
       },
     },
   })

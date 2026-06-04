@@ -63,18 +63,6 @@ export const AppModeEnum = {
 } as const
 export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
 
-export type AppTypeEnum
-  = | 'workflow'
-    | 'chat'
-    | 'rag-pipeline'
-    | 'snippet'
-export const AppTypeEnum = {
-  WORKFLOW: 'workflow' as AppTypeEnum,
-  CHAT: 'chat' as AppTypeEnum,
-  RAG_PIPELINE: 'rag-pipeline' as AppTypeEnum,
-  SNIPPET: 'snippet' as AppTypeEnum,
-} as const
-
 /**
  * Variable type
  */
