@@ -1,7 +1,7 @@
 """add customized snippets
 
 Revision ID: 2b3c4d5e6f70
-Revises: 121e7346074d
+Revises: 8d4c2a1b9f03
 Create Date: 2026-06-03 11:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models.types
 
 # revision identifiers, used by Alembic.
 revision = "2b3c4d5e6f70"
-down_revision = "121e7346074d"
+down_revision = "8d4c2a1b9f03"
 branch_labels = None
 depends_on = None
 

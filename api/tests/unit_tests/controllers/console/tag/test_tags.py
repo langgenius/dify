@@ -112,10 +112,6 @@ class TestTagListApi:
         with app.test_request_context("/?type=snippet"):
             with (
                 patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(MagicMock(), "tenant-1"),
-                ),
-                patch(
                     "controllers.console.tag.tags.TagService.get_tags",
                     return_value=[
                         SimpleNamespace(
@@ -127,7 +123,7 @@ class TestTagListApi:
                     ],
                 ) as get_tags_mock,
             ):
-                result, status = method(api)
+                result, status = method(api, "tenant-1")
 
         get_tags_mock.assert_called_once_with("snippet", "tenant-1", None)
         assert status == 200
@@ -255,14 +251,10 @@ class TestTagBindingCollectionApi:
 
         with app.test_request_context("/", json=payload):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(admin_user, None),
-                ),
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
             ):
-                result, status = method(api)
+                result, status = method(api, admin_user)
 
         save_mock.assert_called_once()
         binding_payload = save_mock.call_args.args[0]
