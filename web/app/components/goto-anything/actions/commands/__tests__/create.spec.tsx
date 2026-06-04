@@ -7,6 +7,12 @@ vi.mock('@remixicon/react', () => ({
   RiNodeTree: () => null,
 }))
 
+// search() localises its labels via getI18n(); echo the key back so the
+// filtering/payload assertions stay deterministic without a real i18n init.
+vi.mock('react-i18next', () => ({
+  getI18n: () => ({ t: (key: string) => key }),
+}))
+
 // We spy on the store at module scope so the `create.open` handler that
 // register() pushes into the command bus can be observed by the tests.
 const mockOpenGenerator = vi.fn()
@@ -65,6 +71,24 @@ describe('/create slash command', () => {
     it('should return an empty list when the query matches nothing', async () => {
       const results = await createCommand.search('zzz-no-match')
       expect(results).toEqual([])
+    })
+
+    // Labels/descriptions must be localised through i18n (ns: 'app') rather
+    // than hardcoded English, so the palette renders in the user's language.
+    it('should source titles and descriptions from i18n keys', async () => {
+      const results = await createCommand.search('')
+      expect(results[0]!.title).toBe('gotoAnything.actions.createWorkflow')
+      expect(results[0]!.description).toBe('gotoAnything.actions.createWorkflowDesc')
+      expect(results[1]!.title).toBe('gotoAnything.actions.createChatflow')
+      expect(results[1]!.description).toBe('gotoAnything.actions.createChatflowDesc')
+    })
+
+    // The localised label is also searchable, not just the id — a token that
+    // appears only in the (mocked) title key still narrows the list, proving
+    // the filter consults the translated label.
+    it('should filter by the localised label, not just the id', async () => {
+      const results = await createCommand.search('createChatflow')
+      expect(results.map(r => r.id)).toEqual(['create-chatflow'])
     })
   })
 
