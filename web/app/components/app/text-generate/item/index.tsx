@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
@@ -178,7 +179,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     // eslint-disable-next-line react/set-state-in-effect
     setCurrentTab(getDefaultGenerationTab(workflowProcessData))
   }, [workflowProcessData])
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: { inputs: Record<string, string>, action: string }) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
     if (appSourceType === AppSourceType.installedApp)
       await submitHumanInputFormService(formToken, formData)
     else

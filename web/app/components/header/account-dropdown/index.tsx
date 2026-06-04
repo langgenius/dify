@@ -18,6 +18,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
@@ -26,6 +27,10 @@ import GithubStar from '../github-star'
 import Compliance from './compliance'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 import Support from './support'
+
+const EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY = 'education-reverify-prev-expire-at'
+const EDUCATION_REVERIFY_HAS_NOTICED_KEY = 'education-reverify-has-noticed'
+const EDUCATION_EXPIRED_HAS_NOTICED_KEY = 'education-expired-has-noticed'
 
 type AccountMenuRouteItemProps = {
   href: string
@@ -116,6 +121,9 @@ export default function AppSelector() {
   const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
+  const clearEducationReverifyPrevExpireAt = useSetLocalStorage<number>(EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY)
+  const clearEducationReverifyHasNoticed = useSetLocalStorage<boolean>(EDUCATION_REVERIFY_HAS_NOTICED_KEY)
+  const clearEducationExpiredHasNoticed = useSetLocalStorage<boolean>(EDUCATION_EXPIRED_HAS_NOTICED_KEY)
 
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
@@ -124,9 +132,9 @@ export default function AppSelector() {
     // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info
-    localStorage.removeItem('education-reverify-prev-expire-at')
-    localStorage.removeItem('education-reverify-has-noticed')
-    localStorage.removeItem('education-expired-has-noticed')
+    clearEducationReverifyPrevExpireAt(null)
+    clearEducationReverifyHasNoticed(null)
+    clearEducationExpiredHasNoticed(null)
 
     router.push('/signin')
   }

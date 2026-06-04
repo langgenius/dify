@@ -136,6 +136,40 @@ describe('human-input/delivery-method/recipient/email-input', () => {
     expect(handleSelect).toHaveBeenCalledTimes(1)
   })
 
+  it('should keep typing focused and stop keyboard events from reaching workflow listeners', () => {
+    const handleParentKeyDown = vi.fn()
+    const handleWindowKeyDown = vi.fn()
+    window.addEventListener('keydown', handleWindowKeyDown)
+
+    try {
+      render(
+        <div onKeyDown={handleParentKeyDown}>
+          <EmailInput
+            email="owner@example.com"
+            value={[]}
+            list={members}
+            onDelete={vi.fn()}
+            onSelect={vi.fn()}
+            onAdd={vi.fn()}
+          />
+        </div>,
+      )
+
+      const input = screen.getByRole('textbox')
+      input.focus()
+
+      fireEvent.change(input, { target: { value: 'a' } })
+      fireEvent.keyDown(input, { key: 'a', code: 'KeyA' })
+
+      expect(document.activeElement).toBe(input)
+      expect(handleParentKeyDown).not.toHaveBeenCalled()
+      expect(handleWindowKeyDown).not.toHaveBeenCalled()
+    }
+    finally {
+      window.removeEventListener('keydown', handleWindowKeyDown)
+    }
+  })
+
   it('should delete the last recipient with backspace, flag missing members as errors, and stop focusing when disabled', () => {
     const handleDelete = vi.fn()
     const { container, rerender } = render(
