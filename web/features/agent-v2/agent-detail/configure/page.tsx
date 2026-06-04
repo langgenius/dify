@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { MemorySettings } from './components/memory-settings'
@@ -21,17 +21,16 @@ export function AgentConfigurePage({
     },
   }))
   const activeVersionId = agentQuery.data?.active_config_snapshot_id
-  const versionDetailQuery = useQuery({
-    ...consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-          version_id: activeVersionId ?? agentId,
-        },
-      },
-    }),
-    enabled: !!activeVersionId,
-  })
+  const versionDetailQuery = useQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
+    input: activeVersionId
+      ? {
+          params: {
+            agent_id: agentId,
+            version_id: activeVersionId,
+          },
+        }
+      : skipToken,
+  }))
 
   return (
     <section

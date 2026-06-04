@@ -4,6 +4,7 @@ import type { AgentSoulMemoryConfig } from '@dify/contracts/api/console/agents/t
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 
 type MemorySettingsProps = {
   isPending: boolean
@@ -46,7 +47,7 @@ function MemoryConfigValue({
           {label}
         </div>
         {isPending
-          ? <div className="mt-2 h-4 w-28 animate-pulse rounded bg-state-base-hover" />
+          ? <SkeletonRectangle className="mt-2 h-4 w-28 animate-pulse rounded-md" />
           : (
               <div
                 className={cn(

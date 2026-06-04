@@ -4,6 +4,7 @@ import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/typ
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { ArchiveAgentButton } from './archive-agent-button'
 import { EditAgentDialog } from './edit-agent-dialog'
@@ -27,13 +28,13 @@ function AgentRosterSkeleton() {
   return (
     <>
       {skeletonRows.map(row => (
-        <div key={row} className="flex min-h-20 animate-pulse flex-col gap-3 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 shadow-xs shadow-shadow-shadow-3 sm:flex-row sm:items-center">
-          <div className="size-10 rounded-lg bg-state-base-hover" />
+        <div key={row} className="flex min-h-20 flex-col gap-3 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 shadow-xs shadow-shadow-shadow-3 sm:flex-row sm:items-center">
+          <SkeletonRectangle className="my-0 size-10 shrink-0 animate-pulse rounded-lg" />
           <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-4 w-56 rounded bg-state-base-hover" />
-            <div className="h-3 w-96 max-w-full rounded bg-state-base-hover" />
+            <SkeletonRectangle className="my-0 h-4 w-56 max-w-full animate-pulse rounded-md" />
+            <SkeletonRectangle className="my-0 h-3 w-96 max-w-full animate-pulse rounded-md" />
           </div>
-          <div className="h-7 w-36 rounded bg-state-base-hover" />
+          <SkeletonRectangle className="my-0 h-7 w-36 animate-pulse rounded-md" />
         </div>
       ))}
     </>
