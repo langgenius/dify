@@ -7,6 +7,7 @@ import type {
 import type { CommonResponse } from '@/models/common'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { del, get, post, put } from '../base'
+import { commonQueryKeys } from '../use-common'
 
 const NAME_SPACE = 'rbac-role-management'
 
@@ -70,9 +71,10 @@ export const useDeleteWorkspaceRole = () => {
     mutationKey: [NAME_SPACE, 'delete-workspace-role'],
     mutationFn: (id: string) =>
       del<CommonResponse>(`/workspaces/current/rbac/roles/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'workspace-role-list'] })
-    },
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'workspace-role-list'] }),
+      queryClient.invalidateQueries({ queryKey: commonQueryKeys.members }),
+    ]),
   })
 }
 
