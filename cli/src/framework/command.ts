@@ -3,6 +3,11 @@ import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags, Op
 import { setVerbose } from './context'
 import { hasBooleanFlag, parseArgv, VERBOSE_CHAR, VERBOSE_FLAG } from './flags'
 
+// What invoking a command does to remote/persistent state. Drives the skill's
+// safety section and the `effect` bit in machine-readable help. Defaults to
+// `read`; write/destructive commands must opt in explicitly.
+export type CommandEffect = 'read' | 'write' | 'destructive'
+
 export type CommandConstructor = {
   new(): Command
   description?: string
@@ -11,6 +16,7 @@ export type CommandConstructor = {
   examples?: string[]
   hidden?: boolean
   deprecated?: string
+  effect?: CommandEffect
 }
 
 type InferCommandArgs<C extends CommandConstructor> = C['args'] extends Record<string, ArgDefinition<string | undefined>>
@@ -32,6 +38,7 @@ export abstract class Command implements ICommand {
 
   static args: Record<string, ArgDefinition<string | undefined>> = {}
   static examples: string[] = []
+  static effect: CommandEffect = 'read'
 
   abstract run(argv: string[]): Promise<CommandOutput | void>
 

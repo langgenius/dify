@@ -26,6 +26,32 @@ class DeclaredOutputType(StrEnum):
     FILE = "file"
 
 
+class AgentCliToolAuthorizationStatus(StrEnum):
+    """Authorization state for Agent-scoped CLI tools.
+
+    Missing status keeps backward compatibility with draft rows and CLI tools that
+    do not need pre-authorization. Explicit denied-like states are blocked by the
+    composer/publish validators and skipped by runtime request builders.
+    """
+
+    AUTHORIZED = "authorized"
+    PRE_AUTHORIZED = "pre_authorized"
+    ALLOWED = "allowed"
+    NOT_REQUIRED = "not_required"
+    UNAUTHORIZED = "unauthorized"
+    PENDING = "pending"
+    DENIED = "denied"
+    FORBIDDEN = "forbidden"
+
+
+class AgentCliToolRiskLevel(StrEnum):
+    """Risk marker for CLI tool bootstrap commands."""
+
+    SAFE = "safe"
+    DANGEROUS = "dangerous"
+    UNKNOWN = "unknown"
+
+
 class OutputErrorStrategy(StrEnum):
     """Per-output failure handling strategy.
 
@@ -80,6 +106,13 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     name: str | None = Field(default=None, max_length=255)
     description: str | None = None
     command: str | None = None
+    invoke_metadata: dict[str, Any] = Field(default_factory=dict)
+    pre_authorized: bool | None = None
+    authorization_status: AgentCliToolAuthorizationStatus | None = None
+    permission: dict[str, Any] = Field(default_factory=dict)
+    dangerous: bool = False
+    dangerous_acknowledged: bool = False
+    risk_level: AgentCliToolRiskLevel | None = None
 
 
 class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):
@@ -121,6 +154,8 @@ class AgentSecretRefConfig(AgentFlexibleConfig):
     type: str | None = Field(default=None, max_length=64)
     id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
+    permission: dict[str, Any] = Field(default_factory=dict)
+    permission_status: str | None = Field(default=None, max_length=64)
 
 
 class AgentSandboxProviderConfig(AgentFlexibleConfig):
