@@ -5,8 +5,10 @@ import builtins
 import pytest
 from flask import Flask
 from flask.views import MethodView
+from pydantic import ValidationError
 
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._models import MAX_PAGE_LIMIT, AccountSessionsQuery
 from controllers.openapi.account import (
     AccountApi,
     AccountSessionByIdApi,
@@ -69,6 +71,44 @@ def test_sessions_list_dispatches_to_sessions_api(openapi_app: Flask):
     rule = _rule(openapi_app, "/openapi/v1/account/sessions")
     assert openapi_app.view_functions[rule.endpoint].view_class is AccountSessionsApi
     assert "GET" in rule.methods
+
+
+def test_account_sessions_query_defaults():
+    query = AccountSessionsQuery.model_validate({})
+
+    assert query.page == 1
+    assert query.limit == 100
+
+
+@pytest.mark.parametrize("value", [0, -1, "abc"])
+def test_account_sessions_query_rejects_invalid_page(value):
+    with pytest.raises(ValidationError):
+        AccountSessionsQuery.model_validate({"page": value})
+
+
+@pytest.mark.parametrize("value", [0, -1, MAX_PAGE_LIMIT + 1, "abc"])
+def test_account_sessions_query_rejects_invalid_limit(value):
+    with pytest.raises(ValidationError):
+        AccountSessionsQuery.model_validate({"limit": value})
+
+
+def test_account_sessions_query_accepts_max_limit():
+    query = AccountSessionsQuery.model_validate({"limit": MAX_PAGE_LIMIT})
+
+    assert query.limit == MAX_PAGE_LIMIT
+
+
+def test_account_sessions_query_ignores_unrelated_params():
+    query = AccountSessionsQuery.model_validate({"page": 2, "limit": 50, "unused": "ignored"})
+
+    assert query.page == 2
+    assert query.limit == 50
+
+
+def test_sessions_list_rejects_malformed_query(openapi_app: Flask, bypass_pipeline):
+    response = openapi_app.test_client().get("/openapi/v1/account/sessions?page=abc")
+
+    assert response.status_code == 422
 
 
 def test_session_by_id_route_registered(openapi_app: Flask):

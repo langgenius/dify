@@ -173,6 +173,11 @@ class SessionListResponse(BaseModel):
     data: list[SessionRow]
 
 
+class AccountSessionsQuery(BaseModel):
+    page: int = Field(1, ge=1)
+    limit: int = Field(100, ge=1, le=MAX_PAGE_LIMIT)
+
+
 class RevokeResponse(BaseModel):
     status: str
 
