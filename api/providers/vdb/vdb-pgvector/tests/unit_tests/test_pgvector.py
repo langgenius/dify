@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import dify_vdb_pgvector.pgvector as pgvector_module
@@ -7,6 +8,7 @@ import pytest
 from dify_vdb_pgvector.pgvector import PGVector, PGVectorConfig
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 class TestPGVector:
@@ -514,10 +516,10 @@ def test_add_texts_uses_execute_values_and_returns_ids(monkeypatch: pytest.Monke
     execute_values = MagicMock()
     monkeypatch.setattr(pgvector_module.psycopg2.extras, "execute_values", execute_values)
 
-    docs = [
+    docs: list[Document] = [
         Document(page_content="a", metadata={"doc_id": "doc-a"}),
         Document(page_content="b", metadata={"document_id": "doc-b"}),
-        SimpleNamespace(page_content="c", metadata=None),
+        cast(Document, SimpleNamespace(page_content="c", metadata=None)),
     ]
     ids = vector.add_texts(docs, [[0.1], [0.2], [0.3]])
 
@@ -649,8 +651,8 @@ def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pyte
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_DISKANN_EXTENSION", "vectorscale")
 
     with patch.object(pgvector_module, "PGVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(cast(Dataset, dataset_with_index), attributes=[], embeddings=MagicMock())
+        result_2 = factory.init_vector(cast(Dataset, dataset_without_index), attributes=[], embeddings=MagicMock())
 
     assert result_1 == "vector"
     assert result_2 == "vector"

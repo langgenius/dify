@@ -44,8 +44,8 @@ class PGVectorConfig(BaseModel):
     min_connection: int
     max_connection: int
     pg_bigm: bool = False
-    index_type: PGVectorIndexType = PGVectorIndexType.HNSW
-    diskann_extension: PGVectorDiskannExtension = PGVectorDiskannExtension.PG_DISKANN
+    index_type: PGVectorIndexType | str = PGVectorIndexType.HNSW
+    diskann_extension: PGVectorDiskannExtension | str = PGVectorDiskannExtension.PG_DISKANN
 
     @model_validator(mode="before")
     @classmethod
@@ -105,14 +105,17 @@ USING gin (text gin_bigm_ops);
 
 
 class PGVector(BaseVector):
+    index_type: PGVectorIndexType
+    diskann_extension: PGVectorDiskannExtension
+
     def __init__(self, collection_name: str, config: PGVectorConfig):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
         self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
         self.pg_bigm = config.pg_bigm
-        self.index_type = config.index_type
-        self.diskann_extension = config.diskann_extension
+        self.index_type = PGVectorIndexType(config.index_type)
+        self.diskann_extension = PGVectorDiskannExtension(config.diskann_extension)
 
     def get_type(self) -> str:
         return VectorType.PGVECTOR
