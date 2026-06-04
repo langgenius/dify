@@ -66,13 +66,6 @@ const IntegrationSectionRenderer = ({
       {body}
     </>
   )
-  const renderHeaderOnlyLayout = (body: ReactNode) => (
-    <>
-      {renderHeader()}
-      {renderScrollBody(body)}
-    </>
-  )
-
   switch (section) {
     case 'provider':
       return (
@@ -97,11 +90,7 @@ const IntegrationSectionRenderer = ({
         <DataSourcePage stickyToolbar layout={renderScrollableLayout} />
       )
     case 'custom-endpoint':
-      return renderHeaderOnlyLayout(
-        <div>
-          <ApiBasedExtensionPage />
-        </div>,
-      )
+      return <ApiBasedExtensionPage layout={renderScrollableLayout} />
     case 'trigger':
       return <PluginCategoryPage canInstall={canInstallPlugin} category={PluginCategoryEnum.trigger} layout={renderDirectLayout} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
     case 'agent-strategy':
