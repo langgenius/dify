@@ -1,10 +1,8 @@
 'use client'
+import type { KeyboardEvent } from 'react'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
-import { PlusIcon } from '@heroicons/react/20/solid'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiInformation2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
@@ -30,6 +28,7 @@ const AppCard = ({
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
   const canViewApp = IS_CLOUD_EDITION
+  const isClickable = isExplore && (canViewApp || canCreate)
   const handleTryApp = () => {
     trackEvent('preview_template', {
       template_id: app.app_id,
@@ -40,9 +39,35 @@ const AppCard = ({
     })
     onTry({ appId: app.app_id, app })
   }
+  const handleCardClick = () => {
+    if (IS_CLOUD_EDITION) {
+      handleTryApp()
+      return
+    }
+
+    if (canCreate)
+      onCreate()
+  }
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ')
+      return
+
+    event.preventDefault()
+    handleCardClick()
+  }
 
   return (
-    <div className="group relative col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
+    <div
+      className={cn(
+        'relative col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-left shadow-xs shadow-shadow-shadow-3',
+        isClickable && 'cursor-pointer',
+      )}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      aria-label={isClickable ? appBasicInfo.name : undefined}
+      onClick={isClickable ? handleCardClick : undefined}
+      onKeyDown={isClickable ? handleCardKeyDown : undefined}
+    >
       <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
         <div className="relative shrink-0">
           <AppIcon
@@ -87,26 +112,6 @@ const AppCard = ({
         </div>
         <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-linear-to-r from-components-card-bg-alt-transparent to-components-card-bg-alt" />
       </div>
-      {isExplore && (canCreate || canViewApp) && (
-        <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canCreate && canViewApp && 'grid-cols-2')}>
-            {
-              canCreate && (
-                <Button variant="primary" className="h-7" onClick={() => onCreate()}>
-                  <PlusIcon className="mr-1 size-4" />
-                  <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
-                </Button>
-              )
-            }
-            {canViewApp && (
-              <Button className="h-7" onClick={handleTryApp}>
-                <RiInformation2Line className="mr-1 size-4" />
-                <span>{t('appCard.try', { ns: 'explore' })}</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -236,7 +236,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
             )
           : (
               <div className={cn(
-                'relative grid grow grid-cols-1 content-start gap-3 px-6 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+                'relative grid grow grid-cols-1 content-start gap-2.5 px-8 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
                 !hasAnyApp && 'overflow-hidden',
               )}
               >

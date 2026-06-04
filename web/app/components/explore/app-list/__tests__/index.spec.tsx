@@ -5,7 +5,7 @@ import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { Provider as JotaiProvider } from 'jotai'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
@@ -267,11 +267,6 @@ const mockMemberRole = (hasEditPermission: boolean) => {
   })
 }
 
-const getLastByText = (text: string) => {
-  const elements = screen.getAllByText(text)
-  return elements[elements.length - 1]!
-}
-
 type RenderOptions = {
   enableExploreBanner?: boolean
   isCloudEdition?: boolean
@@ -299,6 +294,7 @@ const renderAppList = (
 
   const mockFetchAppList = fetchAppList as unknown as Mock
   const mockFetchBanners = fetchBanners as unknown as Mock
+  const jotaiStore = createStore()
 
   if (mockIsLoading) {
     mockFetchAppList.mockImplementation(() => new Promise(() => {}))
@@ -321,7 +317,7 @@ const renderAppList = (
   }
 
   const Wrapped = ({ children }: { children: ReactNode }) => (
-    <JotaiProvider>
+    <JotaiProvider store={jotaiStore}>
       <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
     </JotaiProvider>
   )
@@ -577,7 +573,7 @@ describe('AppList', () => {
       expect(screen.getByText('Gamma')).toBeInTheDocument()
     })
 
-    it('should handle create flow and confirm DSL when pending', async () => {
+    it('should handle create flow from app card when outside cloud edition and confirm DSL when pending', async () => {
       vi.useRealTimers()
       const onSuccess = vi.fn()
       mockExploreData = {
@@ -593,7 +589,7 @@ describe('AppList', () => {
       })
 
       renderAppList(true, onSuccess)
-      fireEvent.click(getLastByText('explore.appCard.addToWorkspace'))
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
@@ -614,7 +610,7 @@ describe('AppList', () => {
       })
     })
 
-    it('should open create flow from learn dify item hover actions', async () => {
+    it('should open create flow from learn dify item card click', async () => {
       vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
@@ -626,7 +622,7 @@ describe('AppList', () => {
       })
 
       renderAppList(true)
-      fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
@@ -689,7 +685,7 @@ describe('AppList', () => {
       (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
 
       renderAppList(true)
-      fireEvent.click(getLastByText('explore.appCard.addToWorkspace'))
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('hide-create'))
@@ -711,7 +707,7 @@ describe('AppList', () => {
       })
 
       renderAppList(true)
-      fireEvent.click(getLastByText('explore.appCard.addToWorkspace'))
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
@@ -731,7 +727,7 @@ describe('AppList', () => {
       })
 
       renderAppList(true)
-      fireEvent.click(getLastByText('explore.appCard.addToWorkspace'))
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
@@ -755,7 +751,7 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(getLastByText('explore.appCard.try'))
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('try-app-create'))
@@ -778,7 +774,7 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(getLastByText('explore.appCard.try'))
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       await screen.findByTestId('try-app-panel')
       fireEvent.click(screen.getByTestId('try-app-create'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
@@ -801,7 +797,7 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
-      fireEvent.click(getLastByText('explore.appCard.try'))
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('try-app-close'))

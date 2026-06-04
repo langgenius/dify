@@ -117,30 +117,35 @@ describe('AppCard', () => {
   })
 
   describe('User Interactions', () => {
-    it('should show create button in explore mode and trigger action', () => {
+    it('should make the app card clickable in explore mode on cloud edition', () => {
       renderComponent({
         app: createApp({ app: { ...createApp().app, mode: AppModeEnum.WORKFLOW } }),
         canCreate: true,
         isExplore: true,
       })
 
-      const button = screen.getByText('explore.appCard.addToWorkspace')
-      expect(button).toBeInTheDocument()
-      fireEvent.click(button)
-      expect(onCreate).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
     })
 
-    it('should render try button in explore mode', () => {
+    it('should not render hover action buttons in explore mode', () => {
       renderComponent({ canCreate: true, isExplore: true })
 
-      expect(screen.getByText('explore.appCard.try')).toBeInTheDocument()
+      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
     })
 
-    it('should hide try button outside cloud edition', () => {
+    it('should make the app card clickable outside cloud edition when create is allowed', () => {
       mockConfig.isCloudEdition = false
       renderComponent({ canCreate: true, isExplore: true })
 
-      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
+    })
+
+    it('should not make the app card clickable outside cloud edition when create is not allowed', () => {
+      mockConfig.isCloudEdition = false
+      renderComponent({ canCreate: false, isExplore: true })
+
+      expect(screen.queryByRole('button', { name: 'Sample App' })).not.toBeInTheDocument()
     })
   })
 
@@ -175,22 +180,45 @@ describe('AppCard', () => {
       expect(screen.getByText('Sample App')).toBeInTheDocument()
     })
 
-    it('should call onTry when try button is clicked', () => {
+    it('should call onTry when app card is clicked on cloud edition', () => {
       const app = createApp()
 
       renderComponent({ app, canCreate: true, isExplore: true })
 
-      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+
+      expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
+      expect(onCreate).not.toHaveBeenCalled()
+    })
+
+    it('should call onCreate when app card is clicked outside cloud edition', () => {
+      mockConfig.isCloudEdition = false
+
+      renderComponent({ canCreate: true, isExplore: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+
+      expect(onCreate).toHaveBeenCalledTimes(1)
+      expect(onTry).not.toHaveBeenCalled()
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+    })
+
+    it('should call the card action when Enter is pressed on app card', () => {
+      const app = createApp()
+
+      renderComponent({ app, canCreate: true, isExplore: true })
+
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Sample App' }), { key: 'Enter' })
 
       expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
     })
 
-    it('should track preview event when detail button is clicked', () => {
+    it('should track preview event when app card is clicked', () => {
       const app = createApp()
 
       renderComponent({ app, canCreate: true, isExplore: true })
 
-      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
 
       expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
         template_id: app.app_id,
