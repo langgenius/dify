@@ -1710,6 +1710,9 @@ export type HumanInputFormSubmissionData = {
   node_id: string
   node_title: string
   rendered_content: string
+  submitted_data?: {
+    [key: string]: JsonValue2
+  } | null
 }
 
 export type ExecutionContentType = 'human_input'
@@ -1864,6 +1867,8 @@ export type UserActionConfig = {
 }
 
 export type FormInputConfig = unknown
+
+export type JsonValue2 = unknown
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
 

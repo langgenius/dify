@@ -18,6 +18,7 @@ import { AppSourceType, delConversation, pinConversation, renameConversation, un
 import { useInvalidateShareConversations, useShareChatList, useShareConversationName, useShareConversations } from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
+import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
 import { CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 
@@ -39,21 +40,30 @@ function getFormattedChatList(messages: any[]) {
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
     let workflowRunId = ''
-    if (item.status === 'paused') {
-      item.extra_contents?.forEach((content: ExtraContent) => {
-        if (content.type === 'human_input' && !content.submitted) {
-          humanInputFormDataList.push(content.form_definition)
-          workflowRunId = content.workflow_run_id
-        }
-      })
-    }
-    else if (item.status === 'normal') {
-      item.extra_contents?.forEach((content: ExtraContent) => {
-        if (content.type === 'human_input' && content.submitted) {
-          humanInputFilledFormDataList.push(content.form_submission_data)
-        }
-      })
-    }
+    item.extra_contents?.forEach((content: ExtraContent) => {
+      if (content.type !== 'human_input')
+        return
+
+      const formDefinition = 'form_definition' in content ? content.form_definition : undefined
+      if (!content.submitted) {
+        if (!formDefinition)
+          return
+        humanInputFormDataList.push(formDefinition)
+        workflowRunId = content.workflow_run_id || workflowRunId
+        return
+      }
+
+      if (!('form_submission_data' in content) || !content.form_submission_data)
+        return
+      const currentFormIndex = humanInputFormDataList.findIndex(item => item.node_id === content.form_submission_data.node_id)
+      const requiredFormData = formDefinition || (currentFormIndex > -1
+        ? humanInputFormDataList[currentFormIndex]
+        : undefined)
+      if (currentFormIndex > -1)
+        humanInputFormDataList.splice(currentFormIndex, 1)
+      workflowRunId = content.workflow_run_id || workflowRunId
+      humanInputFilledFormDataList.push(enrichSubmittedHumanInputFormData(content.form_submission_data, requiredFormData))
+    })
     newChatList.push({
       id: item.id,
       content: item.answer,
