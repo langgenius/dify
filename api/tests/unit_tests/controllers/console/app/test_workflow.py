@@ -168,6 +168,68 @@ def test_sync_draft_workflow_success(app, monkeypatch: pytest.MonkeyPatch) -> No
     assert response["result"] == "success"
 
 
+def test_draft_workflow_security_review_returns_report(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        id="workflow-1",
+        app_id="app-1",
+        version="draft",
+        graph_dict={"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []},
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    service = SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow)
+    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+
+    api = workflow_module.DraftWorkflowSecurityReviewApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context("/apps/app/workflows/draft/security-review", method="POST"):
+        response = handler(api, app_model=SimpleNamespace(id="app-1"))
+
+    assert response["plugin"] == "agent-safety-review"
+    assert response["decision"] == "approved"
+
+
+def test_publish_workflow_returns_security_review_when_blocked(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.agent_safety_review_service import AgentSafetyReviewBlockedError
+
+    report = {
+        "plugin": "agent-safety-review",
+        "decision": "blocked",
+        "findings": [{"rule_id": "http.dynamic_url", "severity": "high"}],
+        "summary": {"blocking_findings": 1},
+    }
+
+    def _publish_workflow(**_kwargs):
+        raise AgentSafetyReviewBlockedError(report)
+
+    class _SessionContext:
+        def __enter__(self):
+            return SimpleNamespace()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class _SessionMaker:
+        def begin(self):
+            return _SessionContext()
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="user-1"), "t1"))
+    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: SimpleNamespace(publish_workflow=_publish_workflow))
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(workflow_module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
+
+    api = workflow_module.PublishedWorkflowApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context("/apps/app/workflows/publish", method="POST", json={}):
+        response, status = handler(api, app_model=SimpleNamespace(id="app-1"))
+
+    assert status == 400
+    assert response["result"] == "blocked"
+    assert response["security_review"] == report
+
+
 def test_sync_draft_workflow_hash_mismatch(app, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
 

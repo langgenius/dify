@@ -991,28 +991,60 @@ class PublishedWorkflowApi(Resource):
         args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
-            workflow = workflow_service.publish_workflow(
-                session=session,
-                app_model=app_model,
-                account=current_user,
-                marked_name=args.marked_name or "",
-                marked_comment=args.marked_comment or "",
-            )
+        from services.agent_safety_review_service import AgentSafetyReviewBlockedError
 
-            # Update app_model within the same session to ensure atomicity
-            app_model_in_session = session.get(App, app_model.id)
-            if app_model_in_session:
-                app_model_in_session.workflow_id = workflow.id
-                app_model_in_session.updated_by = current_user.id
-                app_model_in_session.updated_at = naive_utc_now()
+        try:
+            with sessionmaker(db.engine).begin() as session:
+                workflow = workflow_service.publish_workflow(
+                    session=session,
+                    app_model=app_model,
+                    account=current_user,
+                    marked_name=args.marked_name or "",
+                    marked_comment=args.marked_comment or "",
+                )
 
-            workflow_created_at = TimestampField().format(workflow.created_at)
+                # Update app_model within the same session to ensure atomicity
+                app_model_in_session = session.get(App, app_model.id)
+                if app_model_in_session:
+                    app_model_in_session.workflow_id = workflow.id
+                    app_model_in_session.updated_by = current_user.id
+                    app_model_in_session.updated_at = naive_utc_now()
+
+                workflow_created_at = TimestampField().format(workflow.created_at)
+        except AgentSafetyReviewBlockedError as exc:
+            return {
+                "result": "blocked",
+                "security_review": exc.report,
+            }, 400
 
         return {
             "result": "success",
             "created_at": workflow_created_at,
         }
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/security-review")
+class DraftWorkflowSecurityReviewApi(Resource):
+    @console_ns.doc("review_draft_workflow_security")
+    @console_ns.doc(description="Run pre-publish security review for a draft workflow")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App):
+        """
+        Review draft workflow before publish.
+        """
+        workflow_service = WorkflowService()
+        workflow = workflow_service.get_draft_workflow(app_model=app_model)
+        if not workflow:
+            raise DraftWorkflowNotExist()
+
+        from services.agent_safety_review_service import AgentSafetyReviewService
+
+        return AgentSafetyReviewService.review_workflow(workflow=workflow, app_id=app_model.id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")

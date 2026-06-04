@@ -479,6 +479,13 @@ class WorkflowService:
             draft_workflow=draft_workflow,
         )
 
+        from services.agent_safety_review_service import AgentSafetyReviewService
+
+        AgentSafetyReviewService.assert_workflow_safe_for_publish(
+            workflow=draft_workflow,
+            app_id=app_model.id,
+        )
+
         # billing check
         if dify_config.BILLING_ENABLED:
             limit_info = BillingService.get_info(app_model.tenant_id)

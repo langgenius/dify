@@ -540,11 +540,20 @@ class PublishedRagPipelineApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
         rag_pipeline_service = RagPipelineService()
-        workflow = rag_pipeline_service.publish_workflow(
-            session=db.session,  # type: ignore[reportArgumentType,arg-type]
-            pipeline=pipeline,
-            account=current_user,
-        )
+        from services.agent_safety_review_service import AgentSafetyReviewBlockedError
+
+        try:
+            workflow = rag_pipeline_service.publish_workflow(
+                session=db.session,  # type: ignore[reportArgumentType,arg-type]
+                pipeline=pipeline,
+                account=current_user,
+            )
+        except AgentSafetyReviewBlockedError as exc:
+            return {
+                "result": "blocked",
+                "security_review": exc.report,
+            }, 400
+
         pipeline.is_published = True
         pipeline.workflow_id = workflow.id
         db.session.commit()

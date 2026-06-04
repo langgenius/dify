@@ -400,6 +400,13 @@ class RagPipelineService:
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
 
+        from services.agent_safety_review_service import AgentSafetyReviewService
+
+        AgentSafetyReviewService.assert_workflow_safe_for_publish(
+            workflow=draft_workflow,
+            app_id=pipeline.id,
+        )
+
         # create new workflow
         workflow = Workflow.new(
             tenant_id=pipeline.tenant_id,

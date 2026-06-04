@@ -392,6 +392,45 @@ def test_publish_workflow_success(mocker, rag_pipeline_service) -> None:
     mock_dataset_service_class.update_rag_pipeline_dataset_settings.assert_called_once()
 
 
+def test_publish_workflow_blocked_by_agent_safety_review(mocker, rag_pipeline_service) -> None:
+    from services.agent_safety_review_service import AgentSafetyReviewBlockedError
+
+    mocker.patch("services.rag_pipeline.rag_pipeline.select")
+
+    draft_wf = SimpleNamespace(
+        id="wf-draft",
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "agent-1",
+                    "data": {
+                        "type": "agent",
+                        "tools": [{"provider_id": "slack", "tool_name": "send_message"}],
+                    },
+                }
+            ],
+            "edges": [],
+        },
+        graph={},
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+        type="workflow",
+        features={},
+    )
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    account = SimpleNamespace(id="u1")
+    session = mocker.Mock()
+    session.scalar.return_value = draft_wf
+
+    with pytest.raises(AgentSafetyReviewBlockedError) as exc:
+        rag_pipeline_service.publish_workflow(session=session, pipeline=pipeline, account=account)
+
+    assert exc.value.report["decision"] == "blocked"
+    assert exc.value.report["summary"]["blocking_findings"] == 1
+    session.add.assert_not_called()
+
+
 # --- run_datasource_workflow_node ---
 
 

@@ -108,6 +108,34 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
     assert response["has_more"] is False
 
 
+def test_publish_rag_pipeline_returns_security_review_when_blocked(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.agent_safety_review_service import AgentSafetyReviewBlockedError
+
+    report = {
+        "plugin": "agent-safety-review",
+        "decision": "blocked",
+        "findings": [{"rule_id": "agent.tools.require_review", "severity": "high"}],
+        "summary": {"blocking_findings": 1},
+    }
+
+    def _publish_workflow(**_kwargs):
+        raise AgentSafetyReviewBlockedError(report)
+
+    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (SimpleNamespace(id="user-1"), "tenant-1"))
+    monkeypatch.setattr(module, "db", SimpleNamespace(session=SimpleNamespace()))
+    monkeypatch.setattr(module, "RagPipelineService", lambda: SimpleNamespace(publish_workflow=_publish_workflow))
+
+    api = module.PublishedRagPipelineApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context("/rag/pipelines/pipeline-1/workflows/publish", method="POST"):
+        response, status = handler(api, pipeline=SimpleNamespace(id="pipeline-1"))
+
+    assert status == 400
+    assert response["result"] == "blocked"
+    assert response["security_review"] == report
+
+
 def test_rag_pipeline_workflow_patch_serializes_response_model(app, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow(marked_name="Updated release")
     monkeypatch.setattr(module, "current_account_with_tenant", lambda: (SimpleNamespace(id="user-1"), "tenant-1"))
