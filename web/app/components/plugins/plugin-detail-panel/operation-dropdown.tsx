@@ -26,6 +26,7 @@ type Props = {
   alignOffset?: number
   popupClassName?: string
   triggerSize?: 'm' | 'xs'
+  destructiveRemove?: boolean
 }
 
 const operationMenuPopupClassName = 'w-[192px] py-1'
@@ -43,6 +44,7 @@ const OperationDropdown: FC<Props> = ({
   alignOffset = 0,
   popupClassName,
   triggerSize = 'm',
+  destructiveRemove = false,
 }) => {
   const { t } = useTranslation()
   const { data: enable_marketplace } = useSuspenseQuery({
@@ -82,8 +84,16 @@ const OperationDropdown: FC<Props> = ({
         {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
           <DropdownMenuSeparator className="my-0" />
         )}
-        <DropdownMenuItem className={operationMenuItemClassName} onClick={onRemove}>
-          <span className={operationMenuLabelClassName}>{t('detailPanel.operation.remove', { ns: 'plugin' })}</span>
+        <DropdownMenuItem
+          className={cn(
+            operationMenuItemClassName,
+            destructiveRemove && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
+          )}
+          onClick={onRemove}
+        >
+          <span className={cn(operationMenuLabelClassName, destructiveRemove && 'text-inherit')}>
+            {t('detailPanel.operation.remove', { ns: 'plugin' })}
+          </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

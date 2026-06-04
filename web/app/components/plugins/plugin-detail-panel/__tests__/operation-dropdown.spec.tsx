@@ -105,6 +105,15 @@ describe('OperationDropdown', () => {
       expect(screen.getByText('plugin.detailPanel.operation.remove').closest('[data-testid="dropdown-item"]')).not.toHaveAttribute('data-variant', 'destructive')
     })
 
+    it('should render destructive hover styles for remove option when requested', () => {
+      render(<OperationDropdown {...defaultProps} destructiveRemove />)
+
+      expect(screen.getByText('plugin.detailPanel.operation.remove').closest('[data-testid="dropdown-item"]')).toHaveClass(
+        'data-highlighted:bg-state-destructive-hover',
+        'data-highlighted:text-text-destructive',
+      )
+    })
+
     it('should not render info option for marketplace source', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.marketplace} />)
 

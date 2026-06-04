@@ -165,6 +165,7 @@ describe('Empty Component', () => {
       // Assert
       expect(screen.getByText('plugin.list.noTriggerFound')).toBeInTheDocument()
       expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
       expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
       expect(container.querySelector('.i-custom-vender-integrations-trigger-active')).toBeInTheDocument()
       expect(container.querySelector('.i-custom-vender-integrations-trigger')).not.toBeInTheDocument()
@@ -187,6 +188,7 @@ describe('Empty Component', () => {
       // Assert
       expect(screen.getByText('plugin.list.noAgentStrategyFound')).toBeInTheDocument()
       expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
       expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
 
       const skeletonGrid = container.querySelector('.grid')
@@ -204,6 +206,7 @@ describe('Empty Component', () => {
       // Assert
       expect(screen.getByText('plugin.list.noExtensionFound')).toBeInTheDocument()
       expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
 
       const skeletonGrid = container.querySelector('.grid')
       expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
