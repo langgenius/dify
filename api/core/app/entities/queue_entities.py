@@ -11,6 +11,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import PauseReason
 from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from graphon.variables.segments import Segment
 
 
 class QueueEvent(StrEnum):
@@ -507,6 +508,10 @@ class QueueHumanInputFormFilledEvent(AppQueueEvent):
     rendered_content: str
     action_id: str
     action_text: str
+
+    # Keep the field name aligned with Graphon so the app-layer bridge does not
+    # need to translate between two equivalent payload names.
+    submitted_data: Mapping[str, Segment] | None = None
 
 
 class QueueHumanInputFormTimeoutEvent(AppQueueEvent):

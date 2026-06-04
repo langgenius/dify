@@ -11,6 +11,7 @@ import pytest
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
+from dify_agent.client import _client as client_module
 from dify_agent.client import (
     Client,
     DifyAgentHTTPError,
@@ -64,6 +65,23 @@ def _run_status_json(status: str) -> dict[str, object]:
     return {"run_id": "run-1", "status": status, "created_at": now, "updated_at": now, "error": None}
 
 
+def _function_tool_result_payload(key: str) -> dict[str, object]:
+    return {
+        "type": "pydantic_ai_event",
+        "run_id": "run-1",
+        "created_at": datetime(2026, 5, 11, tzinfo=UTC).isoformat(),
+        "data": {
+            "event_kind": "function_tool_result",
+            key: {
+                "tool_name": "shell_run",
+                "content": "ok",
+                "tool_call_id": "call-1",
+                "part_kind": "tool-return",
+            },
+        },
+    }
+
+
 class DisconnectingSyncStream(httpx.SyncByteStream):
     chunks: list[bytes]
 
@@ -74,6 +92,32 @@ class DisconnectingSyncStream(httpx.SyncByteStream):
     def __iter__(self) -> Iterator[bytes]:
         yield from self.chunks
         raise httpx.ReadError("stream disconnected")
+
+
+def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "result")
+    decoder = client_module._SSEDecoder()
+    payload = _function_tool_result_payload("part")
+
+    assert decoder.feed_line(f"data: {json.dumps(payload)}") is None
+    event = decoder.feed_line("")
+
+    assert event is not None
+    assert event.type == "pydantic_ai_event"
+    assert event.data.event_kind == "function_tool_result"
+    assert event.data.result.tool_name == "shell_run"
+
+
+def test_function_tool_result_payload_normalization_supports_old_part_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "part")
+    payload = _function_tool_result_payload("result")
+
+    normalized = client_module._normalize_run_event_payload_for_local_pydantic_ai(payload)
+
+    assert normalized["data"]["part"]["tool_name"] == "shell_run"
+    assert "result" not in normalized["data"]
 
 
 def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:

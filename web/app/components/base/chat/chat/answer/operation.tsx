@@ -41,6 +41,8 @@ type FeedbackTooltipProps = {
 }
 
 const feedbackTooltipClassName = 'max-w-[260px]'
+const answerActiveFlexClassName = 'group-hover:flex group-has-[[data-popup-open]]:flex'
+const answerActiveBlockClassName = 'group-hover:block group-has-[[data-popup-open]]:block'
 
 const FeedbackTooltip = ({ content, children }: FeedbackTooltipProps) => {
   return (
@@ -199,7 +201,7 @@ function Operation({
         {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
             'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
-            hasUserFeedback ? 'flex' : 'hidden group-hover:flex',
+            hasUserFeedback ? 'flex' : `hidden ${answerActiveFlexClassName}`,
           )}
           >
             {hasUserFeedback
@@ -241,7 +243,7 @@ function Operation({
         {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
             'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
-            (hasAdminFeedback || hasUserFeedback) ? 'flex' : 'hidden group-hover:flex',
+            (hasAdminFeedback || hasUserFeedback) ? 'flex' : `hidden ${answerActiveFlexClassName}`,
           )}
           >
             {displayUserFeedback?.rating && (
@@ -308,12 +310,12 @@ function Operation({
           </div>
         )}
         {showPromptLog && !isOpeningStatement && (
-          <div className="hidden group-hover:block">
+          <div className={cn('hidden', answerActiveBlockClassName)}>
             <Log logItem={item} />
           </div>
         )}
         {!isOpeningStatement && (
-          <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex" data-testid="operation-actions">
+          <div className={cn('ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs', answerActiveFlexClassName)} data-testid="operation-actions">
             {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (
               <NewAudioButton
                 id={id}

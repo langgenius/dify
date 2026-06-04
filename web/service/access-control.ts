@@ -1,7 +1,7 @@
 import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { get, post } from './base'
 import { getUserCanAccess } from './share'
 

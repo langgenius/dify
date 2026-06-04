@@ -37,7 +37,7 @@ export default class GetMember extends DifyCommand {
         limitRaw: flags.limit,
         format,
       },
-      { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
+      { active: ctx.active, http: ctx.http, io: ctx.io },
     )
     return table({ format, data: result.data })
   }

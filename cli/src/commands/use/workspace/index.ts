@@ -1,3 +1,4 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args } from '@/framework/flags'
@@ -5,6 +6,8 @@ import { runUseWorkspace } from './use'
 
 export default class UseWorkspace extends DifyCommand {
   static override description = 'Switch the active workspace on the server and refresh hosts.yml'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> use workspace ws-abc123',
@@ -22,7 +25,8 @@ export default class UseWorkspace extends DifyCommand {
     const { args, flags } = this.parse(UseWorkspace, argv)
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     await runUseWorkspace({ workspaceId: args.workspaceId }, {
-      bundle: ctx.bundle,
+      reg: ctx.reg,
+      active: ctx.active,
       http: ctx.http,
       io: ctx.io,
     })

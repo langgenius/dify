@@ -1,4 +1,4 @@
-import type { KyInstance } from 'ky'
+import type { HttpClient } from '@/http/types'
 import { readFile } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 
@@ -51,9 +51,9 @@ function mimeFromFilename(filename: string): string {
 }
 
 export class FileUploadClient {
-  private readonly http: KyInstance
+  private readonly http: HttpClient
 
-  constructor(http: KyInstance) {
+  constructor(http: HttpClient) {
     this.http = http
   }
 
@@ -64,9 +64,9 @@ export class FileUploadClient {
     const form = new FormData()
     form.append('file', blob, filename)
 
-    return this.http.post(
+    return this.http.post<UploadedFile>(
       `apps/${encodeURIComponent(appId)}/files/upload`,
-      { body: form, timeout: 60_000 },
-    ).json<UploadedFile>()
+      { body: form, timeoutMs: 60_000 },
+    )
   }
 }

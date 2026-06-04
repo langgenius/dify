@@ -55,6 +55,100 @@ class TestWorkflowAppGeneratorValidation:
                 streaming=False,
             )
 
+    def test_single_iteration_generate_includes_trace_session_id_in_extras(self, monkeypatch: pytest.MonkeyPatch):
+        generator = WorkflowAppGenerator()
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            additional_features=AppAdditionalFeatures(),
+            variables=[],
+            workflow_id="workflow-id",
+        )
+        captured: dict[str, object] = {}
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
+            lambda **kwargs: app_config,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            lambda **kwargs: SimpleNamespace(),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            lambda **kwargs: SimpleNamespace(),
+        )
+        monkeypatch.setattr("core.app.apps.workflow.app_generator.DraftVarLoader", lambda **kwargs: SimpleNamespace())
+        monkeypatch.setattr("core.app.apps.workflow.app_generator.sessionmaker", lambda **kwargs: SimpleNamespace())
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.db",
+            SimpleNamespace(engine=object(), session=lambda: SimpleNamespace()),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.WorkflowDraftVariableService",
+            lambda session: SimpleNamespace(prefill_conversation_variable_default_values=lambda *args, **kwargs: None),
+        )
+        monkeypatch.setattr(generator, "_generate", lambda **kwargs: captured.update(kwargs) or {"ok": True})
+
+        generator.single_iteration_generate(
+            app_model=SimpleNamespace(id="app", tenant_id="tenant"),
+            workflow=SimpleNamespace(id="workflow-id"),
+            node_id="node-1",
+            user=SimpleNamespace(id="user-id"),
+            args={"inputs": {"foo": "bar"}, "trace_session_id": "session-1"},
+            streaming=False,
+        )
+
+        assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
+
+    def test_single_loop_generate_includes_trace_session_id_in_extras(self, monkeypatch: pytest.MonkeyPatch):
+        generator = WorkflowAppGenerator()
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            additional_features=AppAdditionalFeatures(),
+            variables=[],
+            workflow_id="workflow-id",
+        )
+        captured: dict[str, object] = {}
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
+            lambda **kwargs: app_config,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            lambda **kwargs: SimpleNamespace(),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            lambda **kwargs: SimpleNamespace(),
+        )
+        monkeypatch.setattr("core.app.apps.workflow.app_generator.DraftVarLoader", lambda **kwargs: SimpleNamespace())
+        monkeypatch.setattr("core.app.apps.workflow.app_generator.sessionmaker", lambda **kwargs: SimpleNamespace())
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.db",
+            SimpleNamespace(engine=object(), session=lambda: SimpleNamespace()),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.WorkflowDraftVariableService",
+            lambda session: SimpleNamespace(prefill_conversation_variable_default_values=lambda *args, **kwargs: None),
+        )
+        monkeypatch.setattr(generator, "_generate", lambda **kwargs: captured.update(kwargs) or {"ok": True})
+
+        generator.single_loop_generate(
+            app_model=SimpleNamespace(id="app", tenant_id="tenant"),
+            workflow=SimpleNamespace(id="workflow-id"),
+            node_id="node-2",
+            user=SimpleNamespace(id="user-id"),
+            args=SimpleNamespace(inputs={"foo": "bar"}, trace_session_id="session-1"),
+            streaming=False,
+        )
+
+        assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
+
         with pytest.raises(ValueError, match="inputs is required"):
             generator.single_loop_generate(
                 app_model=SimpleNamespace(),

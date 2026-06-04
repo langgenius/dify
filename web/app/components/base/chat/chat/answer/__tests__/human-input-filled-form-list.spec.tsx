@@ -1,5 +1,6 @@
 import type { HumanInputFilledFormData } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import HumanInputFilledFormList from '../human-input-filled-form-list'
 
@@ -12,13 +13,15 @@ const createFormData = (
 ): HumanInputFilledFormData => ({
   node_id: 'node-1',
   node_title: 'Node Title',
+  rendered_content: 'fallback content',
+  action_id: 'approve',
+  action_text: 'Approve',
+  submitted_data: {
+    summary: 'Approved',
+  },
 
-  // 👇 IMPORTANT
-  // DO NOT guess properties like `inputs`
-  // Only include fields that actually exist in your project type.
-  // Leave everything else empty via spread.
   ...overrides,
-} as HumanInputFilledFormData)
+})
 
 describe('HumanInputFilledFormList', () => {
   it('renders nothing when list is empty', () => {
@@ -27,12 +30,15 @@ describe('HumanInputFilledFormList', () => {
     expect(screen.queryByText('Node Title')).not.toBeInTheDocument()
   })
 
-  it('renders one form item', () => {
+  it('renders one form item', async () => {
+    const user = userEvent.setup()
     const data = [createFormData()]
 
     render(<HumanInputFilledFormList humanInputFilledFormDataList={data} />)
 
     expect(screen.getByText('Node Title')).toBeInTheDocument()
+    await user.click(screen.getByTestId('expand-icon'))
+    expect(screen.getByTestId('submitted-field-summary')).toHaveTextContent('Approved')
   })
 
   it('renders multiple form items', () => {

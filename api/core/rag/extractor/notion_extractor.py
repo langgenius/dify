@@ -1,7 +1,7 @@
 import json
 import logging
 import operator
-from typing import Any, cast
+from typing import Any, cast, override
 
 import httpx
 from sqlalchemy import update
@@ -67,6 +67,7 @@ class NotionExtractor(BaseExtractor):
 
                 self._notion_access_token = integration_token
 
+    @override
     def extract(self) -> list[Document]:
         self.update_last_edited_time(self._document_model)
 

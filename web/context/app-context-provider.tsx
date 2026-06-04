@@ -1,8 +1,9 @@
 'use client'
 
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC, ReactNode } from 'react'
-import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
@@ -18,8 +19,8 @@ import {
 } from '@/context/app-context'
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useLangGeniusVersion,
 } from '@/service/use-common'
@@ -72,7 +73,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     !systemFeatures.branding.enabled,
   )
 
-  const userProfile = useMemo<UserProfileResponse>(() => userProfileResp?.profile || userProfilePlaceholder, [userProfileResp?.profile])
+  const userProfile = useMemo<GetAccountProfileResponse>(() => userProfileResp?.profile || userProfilePlaceholder, [userProfileResp?.profile])
   const currentWorkspace = useMemo<ICurrentWorkspace>(() => normalizeCurrentWorkspace(currentWorkspaceResp), [currentWorkspaceResp])
   const langGeniusVersionInfo = useMemo<LangGeniusVersionResponse>(() => {
     if (!userProfileResp?.meta?.currentVersion || !langGeniusVersionQuery.data)

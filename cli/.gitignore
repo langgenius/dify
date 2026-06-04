@@ -11,3 +11,7 @@ context/
 oclif.manifest.json
 npm-shrinkwrap.json
 tmp/
+test/**/*.ts.map
+test/**/*.js.map
+test/**/*.js
+test/**/*.d.ts

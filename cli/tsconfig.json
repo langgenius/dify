@@ -11,11 +11,10 @@
       ]
     },
     "types": ["node"],
-    "declaration": true,
-    "declarationMap": true,
-    "noEmit": false,
+    "noEmit": true, // we already have bundlers to handle this.
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"], // tests must be included for typechecking
+  "exclude": ["node_modules", "dist"]
 }

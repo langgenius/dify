@@ -1,5 +1,4 @@
 import type { AppRunClient } from '@/api/app-run'
-import type { AppRunPrintFlags } from '@/commands/run/app/print-flags'
 import type { RunAppDeps, RunAppOptions } from '@/commands/run/app/run'
 import { StreamingStructuredStrategy } from './streaming-structured'
 import { StreamingTextStrategy } from './streaming-text'
@@ -12,7 +11,6 @@ export type RunContext = {
   readonly isText: boolean
   readonly livePrint: boolean
   readonly runClient: AppRunClient
-  readonly printFlags: AppRunPrintFlags
   readonly exit: (code: number) => never
   readonly think: boolean
 }

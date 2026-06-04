@@ -15,6 +15,9 @@ from .agent import (
     AgentConfigSnapshot,
     AgentIconType,
     AgentKind,
+    AgentRuntimeSession,
+    AgentRuntimeSessionOwnerType,
+    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -57,7 +60,7 @@ from .enums import (
     WorkflowTriggerStatus,
 )
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
-from .human_input import HumanInputForm
+from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .model import (
     AccountTrialAppRecord,
     ApiRequest,
@@ -149,6 +152,9 @@ __all__ = [
     "AgentConfigSnapshot",
     "AgentIconType",
     "AgentKind",
+    "AgentRuntimeSession",
+    "AgentRuntimeSessionOwnerType",
+    "AgentRuntimeSessionStatus",
     "AgentScope",
     "AgentSource",
     "AgentStatus",
@@ -196,6 +202,8 @@ __all__ = [
     "ExternalKnowledgeBindings",
     "HumanInputContent",
     "HumanInputForm",
+    "HumanInputFormUploadFile",
+    "HumanInputFormUploadToken",
     "IconType",
     "InstalledApp",
     "InvitationCode",

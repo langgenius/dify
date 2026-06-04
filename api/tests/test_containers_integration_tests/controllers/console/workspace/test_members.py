@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import inspect
+from collections.abc import Callable
+from typing import cast
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 import services
@@ -12,16 +17,33 @@ from controllers.console.workspace import members as members_module
 from controllers.console.workspace.members import MemberCancelInviteApi, MemberUpdateRoleApi, OwnerTransfer
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 
+JsonResponse = dict[str, object]
+StatusResponse = tuple[JsonResponse, int]
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+
+def unwrap(func: Callable[..., object]) -> Callable[..., object]:
+    return cast(Callable[..., object], inspect.unwrap(func))
+
+
+def unwrap_status_response(func: Callable[..., object]) -> Callable[..., StatusResponse]:
+    return cast(Callable[..., StatusResponse], inspect.unwrap(func))
+
+
+def unwrap_json_response(func: Callable[..., object]) -> Callable[..., JsonResponse]:
+    return cast(Callable[..., JsonResponse], inspect.unwrap(func))
+
+
+def unwrap_json_or_status_response(func: Callable[..., object]) -> Callable[..., JsonResponse | StatusResponse]:
+    return cast(Callable[..., JsonResponse | StatusResponse], inspect.unwrap(func))
+
+
+def unwrap_raises(func: Callable[..., object]) -> Callable[..., object]:
+    return unwrap(func)
 
 
 class WorkspaceMembersIntegrationFactory:
     @staticmethod
-    def create_tenant(db_session_with_containers) -> Tenant:
+    def create_tenant(db_session_with_containers: Session) -> Tenant:
         tenant = Tenant(name=f"Tenant {uuid4()}", plan="basic", status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -29,7 +51,7 @@ class WorkspaceMembersIntegrationFactory:
 
     @staticmethod
     def create_account(
-        db_session_with_containers,
+        db_session_with_containers: Session,
         *,
         email_prefix: str,
         tenant: Tenant | None = None,
@@ -60,7 +82,7 @@ class WorkspaceMembersIntegrationFactory:
         return account
 
     @staticmethod
-    def create_owner_workspace(db_session_with_containers) -> tuple[Tenant, Account]:
+    def create_owner_workspace(db_session_with_containers: Session) -> tuple[Tenant, Account]:
         tenant = WorkspaceMembersIntegrationFactory.create_tenant(db_session_with_containers)
         owner = WorkspaceMembersIntegrationFactory.create_account(
             db_session_with_containers,
@@ -82,7 +104,7 @@ class WorkspaceMembersIntegrationFactory:
         return token
 
     @staticmethod
-    def get_join(db_session_with_containers, *, tenant: Tenant, account: Account) -> TenantAccountJoin:
+    def get_join(db_session_with_containers: Session, *, tenant: Tenant, account: Account) -> TenantAccountJoin:
         tenant_id = tenant.id
         account_id = account.id
         db_session_with_containers.expire_all()
@@ -95,9 +117,9 @@ class WorkspaceMembersIntegrationFactory:
 
 
 class TestMemberCancelInviteApiWithContainers:
-    def test_cancel_success(self, flask_app_with_containers, db_session_with_containers):
+    def test_cancel_success(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
+        method = unwrap_status_response(api.delete)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         member = factory.create_account(db_session_with_containers, email_prefix="member")
@@ -116,9 +138,9 @@ class TestMemberCancelInviteApiWithContainers:
         assert called_member.id == member.id
         assert called_current_user.id == current_user.id
 
-    def test_cancel_not_found(self, flask_app_with_containers, db_session_with_containers):
+    def test_cancel_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
+        method = unwrap_raises(api.delete)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
 
@@ -126,9 +148,11 @@ class TestMemberCancelInviteApiWithContainers:
             with pytest.raises(HTTPException):
                 method(api, current_user, str(uuid4()))
 
-    def test_cancel_cannot_operate_self(self, flask_app_with_containers, db_session_with_containers):
+    def test_cancel_cannot_operate_self(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ) -> None:
         api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
+        method = unwrap_status_response(api.delete)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         member = factory.create_account(db_session_with_containers, email_prefix="member")
@@ -146,9 +170,9 @@ class TestMemberCancelInviteApiWithContainers:
         assert status == 400
         assert result["code"] == "cannot-operate-self"
 
-    def test_cancel_no_permission(self, flask_app_with_containers, db_session_with_containers):
+    def test_cancel_no_permission(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
+        method = unwrap_status_response(api.delete)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         member = factory.create_account(db_session_with_containers, email_prefix="member")
@@ -166,9 +190,11 @@ class TestMemberCancelInviteApiWithContainers:
         assert status == 403
         assert result["code"] == "forbidden"
 
-    def test_cancel_member_not_in_tenant(self, flask_app_with_containers, db_session_with_containers):
+    def test_cancel_member_not_in_tenant(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ) -> None:
         api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
+        method = unwrap_status_response(api.delete)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         member = factory.create_account(db_session_with_containers, email_prefix="member")
@@ -188,9 +214,9 @@ class TestMemberCancelInviteApiWithContainers:
 
 
 class TestMemberUpdateRoleApiWithContainers:
-    def test_update_success(self, flask_app_with_containers, db_session_with_containers):
+    def test_update_success(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberUpdateRoleApi()
-        method = unwrap(api.put)
+        method = unwrap_json_or_status_response(api.put)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         member = factory.create_account(
@@ -211,9 +237,11 @@ class TestMemberUpdateRoleApiWithContainers:
             factory.get_join(db_session_with_containers, tenant=tenant, account=member).role == TenantAccountRole.NORMAL
         )
 
-    def test_update_member_not_found(self, flask_app_with_containers, db_session_with_containers):
+    def test_update_member_not_found(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ) -> None:
         api = MemberUpdateRoleApi()
-        method = unwrap(api.put)
+        method = unwrap_raises(api.put)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
 
@@ -223,9 +251,9 @@ class TestMemberUpdateRoleApiWithContainers:
 
 
 class TestOwnerTransferApiWithContainers:
-    def test_member_not_in_tenant(self, flask_app_with_containers, db_session_with_containers):
+    def test_member_not_in_tenant(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
-        method = unwrap(api.post)
+        method = unwrap_raises(api.post)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         member = factory.create_account(db_session_with_containers, email_prefix="member")
@@ -235,9 +263,9 @@ class TestOwnerTransferApiWithContainers:
             with pytest.raises(MemberNotInTenantError):
                 method(api, current_user, member.id)
 
-    def test_member_not_found(self, flask_app_with_containers, db_session_with_containers):
+    def test_member_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
-        method = unwrap(api.post)
+        method = unwrap_raises(api.post)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         token = factory.create_owner_transfer_token(current_user)
@@ -246,9 +274,9 @@ class TestOwnerTransferApiWithContainers:
             with pytest.raises(HTTPException):
                 method(api, current_user, str(uuid4()))
 
-    def test_transfer_success(self, flask_app_with_containers, db_session_with_containers):
+    def test_transfer_success(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
-        method = unwrap(api.post)
+        method = unwrap_json_response(api.post)
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         member = factory.create_account(

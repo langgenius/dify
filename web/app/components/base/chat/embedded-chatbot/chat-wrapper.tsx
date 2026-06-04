@@ -1,4 +1,5 @@
 import type { FileEntity } from '../../file-uploader/types'
+import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type {
   ChatConfig,
   ChatItem,
@@ -232,7 +233,7 @@ const ChatWrapper = () => {
     }
   }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
 
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
     if (isInstalledApp)
       await submitHumanInputFormService(formToken, formData)
     else
