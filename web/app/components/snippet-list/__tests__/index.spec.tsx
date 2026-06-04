@@ -97,10 +97,34 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/next/dynamic', () => ({
   default: () => {
-    return function MockDynamicComponent() {
-      return React.createElement('div', { 'data-testid': 'tag-management-modal' })
+    return function MockDynamicComponent(props: {
+      show: boolean
+      onClose: () => void
+      onTagsChange: () => void
+    }) {
+      return React.createElement(
+        'div',
+        {
+          'data-testid': 'tag-management-modal',
+          'data-show': String(props.show),
+        },
+        React.createElement('button', { type: 'button', onClick: props.onClose }, 'close tag modal'),
+        React.createElement('button', { type: 'button', onClick: props.onTagsChange }, 'refresh tags'),
+      )
     }
   },
+}))
+
+vi.mock('@/features/tag-management/components/tag-filter', () => ({
+  TagFilter: ({
+    onOpenTagManagement,
+  }: {
+    onOpenTagManagement: () => void
+  }) => (
+    <button type="button" onClick={onOpenTagManagement}>
+      common.tag.placeholder
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
@@ -108,19 +132,33 @@ vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
 }))
 
 vi.mock('@/features/tag-management/components/tag-selector', () => ({
-  TagSelector: () => <div data-testid="snippet-card-tags" />,
+  TagSelector: ({
+    onOpenTagManagement,
+    onTagsChange,
+  }: {
+    onOpenTagManagement: () => void
+    onTagsChange: () => void
+  }) => (
+    <div data-testid="snippet-card-tags">
+      <button type="button" onClick={onOpenTagManagement}>open card tags</button>
+      <button type="button" onClick={onTagsChange}>refresh card tags</button>
+    </div>
+  ),
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
+let intersectionCallback: IntersectionObserverCallback | undefined
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
 beforeAll(() => {
   globalThis.IntersectionObserver = class MockIntersectionObserver {
-    constructor(_callback: IntersectionObserverCallback) {}
+    constructor(callback: IntersectionObserverCallback) {
+      intersectionCallback = callback
+    }
 
     observe = mockObserve
     disconnect = mockDisconnect
@@ -166,9 +204,13 @@ const mockSnippetListState = {
   error: null as Error | null,
 }
 
-const renderList = () => {
+const renderList = ({
+  brandingEnabled = false,
+}: {
+  brandingEnabled?: boolean
+} = {}) => {
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
-    systemFeatures: { branding: { enabled: false } },
+    systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 
   return renderWithNuqs(
@@ -191,6 +233,7 @@ describe('SnippetList', () => {
       refetch: mockRefetch,
       fetchNextPage: mockFetchNextPage,
     })
+    intersectionCallback = undefined
   })
 
   it('renders the dedicated snippets list layout', () => {
@@ -276,5 +319,78 @@ describe('SnippetList', () => {
     renderList()
 
     expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+  })
+
+  it('renders loading and next-page skeleton cards', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      isLoading: true,
+      isFetchingNextPage: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    const { container } = renderList()
+
+    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(9)
+  })
+
+  it('fetches the next page when the scroll anchor intersects', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      hasNextPage: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    renderList()
+
+    intersectionCallback?.([
+      { isIntersecting: true } as IntersectionObserverEntry,
+    ], {} as IntersectionObserver)
+
+    expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not fetch snippets or register infinite scroll for dataset operators', () => {
+    mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(true)
+
+    renderList()
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
+      enabled: false,
+    })
+    intersectionCallback?.([
+      { isIntersecting: true } as IntersectionObserverEntry,
+    ], {} as IntersectionObserver)
+    expect(mockFetchNextPage).not.toHaveBeenCalled()
+  })
+
+  it('hides the community footer when branding is enabled', () => {
+    renderList({ brandingEnabled: true })
+
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+  })
+
+  it('opens tag management from filters and snippet cards and forwards tag refreshes', () => {
+    renderList()
+
+    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.tag.placeholder' }))
+
+    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'close tag modal' }))
+
+    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'open card tags' }))
+    fireEvent.click(screen.getByRole('button', { name: 'refresh card tags' }))
+    fireEvent.click(screen.getByRole('button', { name: 'refresh tags' }))
+
+    expect(mockRefetch).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'true')
   })
 })

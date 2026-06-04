@@ -4,6 +4,14 @@ import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
 import CreateSnippetDialog from '../create-snippet-dialog'
 
+let capturedKeyPressHandler: (() => void) | undefined
+
+vi.mock('ahooks', () => ({
+  useKeyPress: (_keys: string[], handler: () => void) => {
+    capturedKeyPressHandler = handler
+  },
+}))
+
 const selectedGraph: SnippetCanvasData = {
   nodes: [],
   edges: [],
@@ -20,6 +28,11 @@ const inputFields: SnippetInputField[] = [
 ]
 
 describe('CreateSnippetDialog', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedKeyPressHandler = undefined
+  })
+
   it('should submit trimmed snippet values with the selected graph and input fields', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
@@ -77,5 +90,98 @@ describe('CreateSnippetDialog', () => {
       expect(screen.getByPlaceholderText('workflow.snippet.namePlaceholder')).toHaveValue('')
       expect(screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder')).toHaveValue('')
     })
+  })
+
+  it('should use default graph and custom dialog labels when optional values are omitted', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+
+    render(
+      <CreateSnippetDialog
+        isOpen
+        title="Save as snippet"
+        confirmText="Create now"
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    expect(screen.getByText('Save as snippet')).toBeInTheDocument()
+
+    await user.type(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), 'Simple snippet')
+    await user.click(screen.getByRole('button', { name: 'Create now' }))
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      name: 'Simple snippet',
+      description: '',
+      graph: {
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+      input_fields: undefined,
+    })
+  })
+
+  it('should submit from keyboard shortcuts only while open and not submitting', async () => {
+    const onConfirm = vi.fn()
+    const { rerender } = render(
+      <CreateSnippetDialog
+        isOpen={false}
+        initialValue={{ name: 'Keyboard snippet' }}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    capturedKeyPressHandler?.()
+
+    expect(onConfirm).not.toHaveBeenCalled()
+
+    rerender(
+      <CreateSnippetDialog
+        isOpen
+        isSubmitting
+        initialValue={{ name: 'Keyboard snippet' }}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    capturedKeyPressHandler?.()
+
+    expect(onConfirm).not.toHaveBeenCalled()
+
+    rerender(
+      <CreateSnippetDialog
+        isOpen
+        initialValue={{ name: 'Keyboard snippet' }}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    capturedKeyPressHandler?.()
+
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Keyboard snippet',
+    }))
+  })
+
+  it('should disable form controls while submitting', () => {
+    render(
+      <CreateSnippetDialog
+        isOpen
+        isSubmitting
+        initialValue={{ name: 'Submitting snippet' }}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByPlaceholderText('workflow.snippet.namePlaceholder')).toBeDisabled()
+    expect(screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.snippet.confirm' })).toBeDisabled()
   })
 })

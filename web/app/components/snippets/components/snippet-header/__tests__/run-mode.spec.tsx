@@ -14,6 +14,13 @@ const eventEmitterState = vi.hoisted(() => ({
   subscription: null as null | ((payload: unknown) => void),
 }))
 
+const runningResult = {
+  status: WorkflowRunningStatus.Running,
+  inputs_truncated: false,
+  process_data_truncated: false,
+  outputs_truncated: false,
+}
+
 vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowStartRun: () => ({
     handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
@@ -59,9 +66,7 @@ describe('RunMode', () => {
         initialStoreState: {
           workflowRunningData: {
             task_id: 'task-1',
-            result: {
-              status: WorkflowRunningStatus.Running,
-            },
+            result: runningResult,
           },
         },
       },
@@ -69,12 +74,46 @@ describe('RunMode', () => {
 
     expect(screen.getByRole('button', { name: /workflow\.common\.running/i })).toBeDisabled()
 
-    await user.click(screen.getAllByRole('button')[1])
+    await user.click(screen.getAllByRole('button')[1]!)
 
     expect(workflowHookMocks.handleStopRun).toHaveBeenCalledWith('task-1')
 
     eventEmitterState.subscription?.({ type: EVENT_WORKFLOW_STOP })
 
     expect(workflowHookMocks.handleStopRun).toHaveBeenCalledTimes(2)
+  })
+
+  it('should use the default run label and ignore unrelated workflow events while idle', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(<RunMode />)
+
+    expect(screen.getByRole('button', { name: /workflow\.common\.run/i })).toBeInTheDocument()
+
+    eventEmitterState.subscription?.({ type: 'unrelated-event' })
+    eventEmitterState.subscription?.('plain-message')
+    await user.click(screen.getByRole('button', { name: /workflow\.common\.run/i }))
+
+    expect(workflowHookMocks.handleStopRun).not.toHaveBeenCalled()
+    expect(workflowHookMocks.handleWorkflowStartRunInWorkflow).toHaveBeenCalledTimes(1)
+  })
+
+  it('should stop with an empty task id when running data has no task id', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
+      <RunMode />,
+      {
+        initialStoreState: {
+          workflowRunningData: {
+            result: runningResult,
+          },
+        },
+      },
+    )
+
+    await user.click(screen.getAllByRole('button')[1]!)
+
+    expect(workflowHookMocks.handleStopRun).toHaveBeenCalledWith('')
   })
 })

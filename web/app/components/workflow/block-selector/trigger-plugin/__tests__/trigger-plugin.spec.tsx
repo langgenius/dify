@@ -87,7 +87,7 @@ describe('trigger plugin selector components', () => {
     vi.clearAllMocks()
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
-    mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as ReturnType<typeof useAllTriggerPlugins>)
+    mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as unknown as ReturnType<typeof useAllTriggerPlugins>)
   })
 
   it('should select trigger plugin action items with default params and preview details', async () => {
