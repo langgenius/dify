@@ -9,6 +9,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname } from '@/next/navigation'
 import Divider from '../base/divider'
 import AppInfo, { AppInfoView } from './app-info'
@@ -45,6 +46,7 @@ const AppDetailNav = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const expand = appSidebarExpand === 'expand'
+  const setStoredAppSidebarMode = useSetLocalStorage<string>('app-detail-collapse-or-expand', { raw: true })
 
   const handleToggle = useCallback(() => {
     setAppSidebarExpand(appSidebarExpand === 'expand' ? 'collapse' : 'expand')
@@ -67,10 +69,10 @@ const AppDetailNav = ({
 
   useEffect(() => {
     if (appSidebarExpand) {
-      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
+      setStoredAppSidebarMode(appSidebarExpand)
       setAppSidebarExpand(appSidebarExpand)
     }
-  }, [appSidebarExpand, setAppSidebarExpand])
+  }, [appSidebarExpand, setAppSidebarExpand, setStoredAppSidebarMode])
 
   useHotkey('Mod+B', (e) => {
     e.preventDefault()

@@ -5,6 +5,7 @@ import AppDetailNav from '..'
 
 let mockAppSidebarExpand = 'expand'
 const mockSetAppSidebarExpand = vi.fn()
+const mockSetStoredAppSidebarMode = vi.fn()
 let mockPathname = '/app/123/overview'
 
 vi.mock('@/app/components/app/store', () => ({
@@ -39,6 +40,10 @@ vi.mock('@tanstack/react-hotkeys', () => ({
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => 'desktop',
   MediaType: { mobile: 'mobile', desktop: 'desktop' },
+}))
+
+vi.mock('@/hooks/use-local-storage', () => ({
+  useSetLocalStorage: () => mockSetStoredAppSidebarMode,
 }))
 
 let mockSubscriptionCallback: ((v: unknown) => void) | null = null
@@ -239,9 +244,9 @@ describe('AppDetailNav', () => {
   })
 
   describe('Sidebar persistence', () => {
-    it('should persist expand state to localStorage', () => {
+    it('should persist expand state with the storage hook', () => {
       render(<AppDetailNav navigation={navigation} />)
-      expect(localStorage.setItem).toHaveBeenCalledWith('app-detail-collapse-or-expand', 'expand')
+      expect(mockSetStoredAppSidebarMode).toHaveBeenCalledWith('expand')
     })
   })
 
