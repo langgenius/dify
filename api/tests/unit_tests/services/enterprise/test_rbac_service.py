@@ -14,6 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from services.enterprise import rbac_service as svc
 
@@ -379,6 +380,15 @@ class TestWorkspaceAccess:
         assert call.endpoint == "/rbac/workspace/datasets/access-policy/bindings"
         assert call.params == {"policy_id": "policy-1"}
         assert call.json == {"role_ids": ["workspace.editor"], "account_ids": ["acct-2"]}
+
+    def test_workspace_app_matrix_forwards_language_query_param(self, mock_send: MagicMock):
+        mock_send.return_value = {"items": [], "pagination": None}
+        app = Flask(__name__)
+        with app.test_request_context("/?language=en"):
+            svc.RBACService.WorkspaceAccess.app_matrix("tenant-1")
+
+        call = _call_args(mock_send)
+        assert call.params == {"language": "en"}
 
 
 class TestMyPermissions:

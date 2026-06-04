@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
+from flask import has_request_context, request
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel, ConfigDict, Field, AliasChoices, field_validator
@@ -533,6 +534,15 @@ class ListOption(_RBACModel):
 _INNER_PREFIX = "/rbac"
 
 
+def _request_language_param() -> str | None:
+    if not has_request_context():
+        return None
+    language = (request.args.get("language") or "").strip().lower()
+    if language in {"en", "ja", "zh"}:
+        return language
+    return None
+
+
 def _inner_call(
     method: str,
     endpoint: str,
@@ -548,6 +558,10 @@ def _inner_call(
     unit tests can monkey-patch this single entry point instead of every
     individual `Roles.*`, `AccessPolicies.*`, … method.
     """
+    language = _request_language_param()
+    if language and (not params or "language" not in params):
+        params = dict(params or {})
+        params["language"] = language
     return EnterpriseRequest.send_inner_rbac_request(
         method,
         endpoint,
