@@ -342,13 +342,14 @@ class TestConversationAppModeValidation:
         [
             AppMode.CHAT,
             AppMode.AGENT_CHAT.value,
+            AppMode.AGENT.value,
             AppMode.ADVANCED_CHAT.value,
         ],
     )
     def test_chat_modes_are_valid_for_conversation_endpoints(self, mode):
         """Test that all chat modes are valid for conversation endpoints.
 
-        Verifies that CHAT, AGENT_CHAT, and ADVANCED_CHAT modes pass
+        Verifies that CHAT, AGENT_CHAT, AGENT, and ADVANCED_CHAT modes pass
         validation without raising NotChatAppError.
         """
         app = Mock(spec=App)
@@ -356,7 +357,7 @@ class TestConversationAppModeValidation:
 
         # Validation should pass without raising for chat modes
         app_mode = AppMode.value_of(app.mode)
-        assert app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        assert app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
 
     def test_completion_mode_is_invalid_for_conversation_endpoints(self):
         """Test that COMPLETION mode is invalid for conversation endpoints.
@@ -368,7 +369,7 @@ class TestConversationAppModeValidation:
         app.mode = AppMode.COMPLETION
 
         app_mode = AppMode.value_of(app.mode)
-        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         with pytest.raises(NotChatAppError):
             raise NotChatAppError()
 
@@ -382,7 +383,7 @@ class TestConversationAppModeValidation:
         app.mode = AppMode.WORKFLOW.value
 
         app_mode = AppMode.value_of(app.mode)
-        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         with pytest.raises(NotChatAppError):
             raise NotChatAppError()
 

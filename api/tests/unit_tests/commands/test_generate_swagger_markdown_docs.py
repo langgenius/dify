@@ -188,6 +188,45 @@ def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path
     assert "| allowed_file_types | [ [FileType](#filetype) ] |  | No |" in patched
 
 
+def test_patch_union_schema_markdown_fills_regular_definition_union_property(tmp_path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "service-swagger.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "definitions": {
+                    "DocumentMetadataResponse": {
+                        "properties": {
+                            "id": {"type": "string"},
+                            "value": {
+                                "anyOf": [
+                                    {"type": "string"},
+                                    {"type": "integer"},
+                                    {"type": "number"},
+                                    {"type": "boolean"},
+                                    {"type": "null"},
+                                ],
+                            },
+                        },
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    markdown = """#### DocumentMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| value | string |  | No |
+"""
+
+    patched = module._patch_union_schema_markdown(markdown, spec_path)
+
+    assert "| value | string<br>integer<br>number<br>boolean |  | No |" in patched
+
+
 def test_patch_union_schema_markdown_ignores_specs_without_definitions(tmp_path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-swagger.json"
@@ -236,7 +275,7 @@ def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
         == "#### Definition\n| field |"
     )
 
-    assert module._patch_union_schema_markdown("#### BrokenUnion\n", spec_path) == "#### BrokenUnion"
+    assert module._patch_union_schema_markdown("#### BrokenUnion\n", spec_path) == "#### BrokenUnion\n"
 
 
 def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monkeypatch):

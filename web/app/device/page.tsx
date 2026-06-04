@@ -1,16 +1,14 @@
 'use client'
 
-import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import Divider from '@/app/components/base/divider'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import { post } from '@/service/base'
+import { consoleQuery } from '@/service/client'
 import { deviceLookup } from '@/service/device-flow'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { commonQueryKeys } from '@/service/use-common'
 import AuthorizeAccount from './components/authorize-account'
 import AuthorizeSSO from './components/authorize-sso'
 import Chooser from './components/chooser'
@@ -52,9 +50,8 @@ export default function DevicePage() {
     refetchOnMount: false,
   })
   const account = userResp?.profile
-  const { data: currentWorkspace } = useQuery<ICurrentWorkspace>({
-    queryKey: commonQueryKeys.currentWorkspace,
-    queryFn: () => post<ICurrentWorkspace>('/workspaces/current'),
+  const { data: currentWorkspace } = useQuery({
+    ...consoleQuery.workspaces.current.post.queryOptions(),
     enabled: !!account && !profileErr,
     retry: false,
     refetchOnWindowFocus: false,
@@ -174,7 +171,7 @@ export default function DevicePage() {
           accountEmail={account?.email}
           accountName={account?.name}
           accountAvatarUrl={account?.avatar_url ?? null}
-          defaultWorkspace={currentWorkspace?.name}
+          defaultWorkspace={currentWorkspace?.name ?? undefined}
           onApproved={() => setView({ kind: 'success' })}
           onDenied={() => setView({ kind: 'error_expired' })}
           onError={e => setErrMsg(e)}
@@ -196,7 +193,7 @@ export default function DevicePage() {
           <h1 className="text-xl font-semibold text-text-primary">You&apos;re signed in</h1>
           <p className="text-sm text-text-secondary">Return to your terminal to continue.</p>
           <Divider className="my-3" />
-          <Button variant="ghost" className="w-full" onClick={() => router.push('/apps')}>
+          <Button variant="ghost" className="w-full" onClick={() => router.push('/')}>
             Go to Dify console →
           </Button>
         </div>

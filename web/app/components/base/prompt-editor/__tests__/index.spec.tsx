@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => {
       })),
       parseEditorState: vi.fn(() => ({ state: 'parsed' })),
       setEditorState: vi.fn(),
+      setEditable: vi.fn(),
       focus: vi.fn(),
       update: vi.fn((fn: () => void) => fn()),
     },
@@ -71,6 +72,7 @@ vi.mock('lexical', async (importOriginal) => {
       })),
       getAllTextNodes: () => [],
     }),
+    $nodesOfType: () => [],
     TextNode: class TextNode {
       __text: string
       constructor(text = '') {
@@ -92,9 +94,8 @@ vi.mock('@lexical/react/LexicalComposer', () => ({
       try {
         initialConfig.onError(new Error('test error'))
       }
-      catch (e) {
-        // ignore error
-        console.error(e)
+      catch {
+        // Ignore the intentional throw from the mocked error boundary path.
       }
     }
     if (initialConfig?.nodes) {
@@ -326,6 +327,20 @@ describe('PromptEditor', () => {
     it('should render with editable=false', () => {
       render(<PromptEditor editable={false} placeholder="read only" />)
       expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should sync editable changes to the lexical editor instance', async () => {
+      const { rerender } = render(<PromptEditor editable={true} />)
+
+      await waitFor(() => {
+        expect(mocks.editor.setEditable).toHaveBeenCalledWith(true)
+      })
+
+      rerender(<PromptEditor editable={false} />)
+
+      await waitFor(() => {
+        expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(false)
+      })
     })
 
     it('should render with isSupportFileVar=true', () => {

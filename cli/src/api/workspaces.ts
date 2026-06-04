@@ -1,15 +1,15 @@
 import type { WorkspaceDetailResponse, WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
+import type { HttpClient } from '@/http/types'
 
 export class WorkspacesClient {
-  private readonly http: KyInstance
+  private readonly http: HttpClient
 
-  constructor(http: KyInstance) {
+  constructor(http: HttpClient) {
     this.http = http
   }
 
   async list(): Promise<WorkspaceListResponse> {
-    return this.http.get('workspaces').json<WorkspaceListResponse>()
+    return this.http.get<WorkspaceListResponse>('workspaces')
   }
 
   /**
@@ -22,8 +22,6 @@ export class WorkspacesClient {
    * server's state.
    */
   async switch(workspaceId: string): Promise<WorkspaceDetailResponse> {
-    return this.http
-      .post(`workspaces/${encodeURIComponent(workspaceId)}/switch`)
-      .json<WorkspaceDetailResponse>()
+    return this.http.post<WorkspaceDetailResponse>(`workspaces/${encodeURIComponent(workspaceId)}/switch`)
   }
 }

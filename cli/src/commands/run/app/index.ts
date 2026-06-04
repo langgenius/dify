@@ -1,9 +1,9 @@
-import { Args, Flags } from '../../../framework/flags.js'
-import { OutputFormat } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { agentGuide } from './guide.js'
-import { runApp } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Args, Flags } from '@/framework/flags'
+import { OutputFormat } from '@/framework/output'
+import { agentGuide } from './guide'
+import { runApp } from './run'
 
 export default class RunApp extends DifyCommand {
   static override description = 'Run an app and print the response'
@@ -54,7 +54,7 @@ export default class RunApp extends DifyCommand {
         stream: flags.stream,
         think: flags.think,
       },
-      { bundle: ctx.bundle, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
+      { active: ctx.active, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )
   }
 

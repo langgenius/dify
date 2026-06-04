@@ -21,6 +21,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -40,7 +41,7 @@ import CopyIcon from '@/app/components/base/copy-icon'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { useAppContext } from '@/context/app-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
@@ -158,7 +159,10 @@ type IDetailPanel = {
 function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const MIN_ITEMS_FOR_SCROLL_LOADING = 8
   const SCROLL_DEBOUNCE_MS = 200
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({

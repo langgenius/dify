@@ -586,6 +586,73 @@ def test_mark_submitted_updates_and_raises_when_missing(monkeypatch: pytest.Monk
     assert record.submitted_data == {"k": "v"}
 
 
+def test_mark_submitted_serializes_select_and_file_payloads(monkeypatch: pytest.MonkeyPatch) -> None:
+    fixed_now = datetime(2024, 1, 1, 0, 0, 0)
+    monkeypatch.setattr("core.repositories.human_input_repository.naive_utc_now", lambda: fixed_now)
+
+    form = _DummyForm(
+        id="f-complex",
+        workflow_run_id=None,
+        node_id="node",
+        tenant_id="tenant",
+        app_id="app",
+        form_definition=_make_form_definition_json(include_expiration_time=True),
+        rendered_content="<p>x</p>",
+        expiration_time=fixed_now,
+    )
+    recipient = _DummyRecipient(
+        id="r-complex",
+        form_id=form.id,
+        recipient_type=RecipientType.CONSOLE,
+        access_token="tok",
+    )
+    session = _FakeSession(forms={form.id: form}, recipients={recipient.id: recipient})
+    _patch_session_factory(monkeypatch, session)
+
+    payload = {
+        "decision": "approve",
+        "attachment": {
+            "type": "document",
+            "transfer_method": "remote_url",
+            "remote_url": "https://example.com/file.txt",
+            "filename": "file.txt",
+            "extension": ".txt",
+            "mime_type": "text/plain",
+        },
+        "attachments": [
+            {
+                "type": "document",
+                "transfer_method": "remote_url",
+                "remote_url": "https://example.com/first.txt",
+                "filename": "first.txt",
+                "extension": ".txt",
+                "mime_type": "text/plain",
+            },
+            {
+                "type": "document",
+                "transfer_method": "remote_url",
+                "remote_url": "https://example.com/second.txt",
+                "filename": "second.txt",
+                "extension": ".txt",
+                "mime_type": "text/plain",
+            },
+        ],
+    }
+
+    repo = HumanInputFormSubmissionRepository()
+    record = repo.mark_submitted(
+        form_id=form.id,
+        recipient_id=recipient.id,
+        selected_action_id="approve",
+        form_data=payload,
+        submission_user_id="user-1",
+        submission_end_user_id="end-user-1",
+    )
+
+    assert json.loads(form.submitted_data or "") == payload
+    assert record.submitted_data == payload
+
+
 def test_mark_timeout_invalid_status_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     form = _DummyForm(
         id="f",

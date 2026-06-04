@@ -1,6 +1,7 @@
-import type { SseEvent } from '../../../http/sse.js'
+import type { HttpClientError } from '@/errors/base'
+import type { SseEvent } from '@/http/sse'
 import { describe, expect, it } from 'vitest'
-import { collect, collectorFor, decodeStreamError, HitlPauseError } from './sse-collector.js'
+import { collect, collectorFor, decodeStreamError, HitlPauseError } from './sse-collector'
 
 const enc = new TextEncoder()
 function ev(name: string, data: object): SseEvent {
@@ -130,7 +131,7 @@ describe('decodeStreamError', () => {
     const err = decodeStreamError(enc.encode(JSON.stringify(env)))
     expect(err.message).toBe(inner.args.description)
     expect(err.code).toBe('server_4xx_other')
-    expect(err.httpStatus).toBe(400)
+    expect((err as HttpClientError).httpStatus).toBe(400)
   })
 
   it('unwraps openapi-v1 invoke-error: falls back to inner.message when no args.description', () => {

@@ -7,6 +7,7 @@ paused human input forms in workflow/chatflow runs.
 
 import json
 import logging
+from collections.abc import Sequence
 
 from flask import Response
 from flask_restx import Resource
@@ -18,6 +19,7 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
+from graphon.nodes.human_input.entities import FormInputConfig
 from libs.helper import to_timestamp
 from models.model import App, EndUser
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
@@ -28,11 +30,11 @@ logger = logging.getLogger(__name__)
 register_schema_models(service_api_ns, HumanInputFormSubmitPayload)
 
 
-def _jsonify_form_definition(form: Form) -> Response:
-    definition_payload = form.get_definition().model_dump()
+def _jsonify_form_definition(form: Form, *, inputs: Sequence[FormInputConfig] = ()) -> Response:
+    definition_payload = form.get_definition().model_dump(mode="json")
     payload = {
         "form_content": definition_payload["rendered_content"],
-        "inputs": definition_payload["inputs"],
+        "inputs": [form_input.model_dump(mode="json") for form_input in inputs],
         "resolved_default_values": stringify_form_default_values(definition_payload["default_values"]),
         "user_actions": definition_payload["user_actions"],
         "expiration_time": to_timestamp(form.expiration_time),
@@ -75,7 +77,8 @@ class WorkflowHumanInputFormApi(Resource):
         _ensure_form_belongs_to_app(form, app_model)
         _ensure_form_is_allowed_for_service_api(form)
         service.ensure_form_active(form)
-        return _jsonify_form_definition(form)
+        inputs = service.resolve_form_inputs(form)
+        return _jsonify_form_definition(form, inputs=inputs)
 
     @service_api_ns.expect(service_api_ns.models[HumanInputFormSubmitPayload.__name__])
     @service_api_ns.doc("submit_human_input_form")

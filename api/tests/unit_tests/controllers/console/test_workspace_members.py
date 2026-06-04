@@ -1,6 +1,6 @@
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask, g
@@ -39,24 +39,14 @@ class TestMemberInviteEmailApi:
 
     @patch("controllers.console.workspace.members.FeatureService.get_features")
     @patch("controllers.console.workspace.members.RegisterService.invite_new_member")
-    @patch("controllers.console.workspace.members.current_account_with_tenant")
     @patch("controllers.console.wraps.db")
     @patch("libs.login.check_csrf_token", return_value=None)
-    def test_invite_normalizes_emails(
-        self,
-        mock_csrf,
-        mock_db,
-        mock_current_account,
-        mock_invite_member,
-        mock_get_features,
-        app: Flask,
-    ):
+    def test_invite_normalizes_emails(self, mock_csrf, mock_db, mock_invite_member, mock_get_features, app: Flask):
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "token-abc"
 
         tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
         inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status="active")
-        mock_current_account.return_value = (inviter, tenant.id)
 
         with (
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"),
@@ -84,5 +74,5 @@ class TestMemberInviteEmailApi:
         assert call_args.kwargs["email"] == "user@example.com"
         assert call_args.kwargs["language"] == "en-US"
         assert call_args.kwargs["role"] == TenantAccountRole.EDITOR
-        assert call_args.kwargs["inviter"] == inviter
-        mock_csrf.assert_called_once()
+        assert call_args.kwargs["inviter"] == account
+        mock_csrf.assert_called_once_with(ANY, account.id)

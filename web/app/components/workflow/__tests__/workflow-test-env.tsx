@@ -69,7 +69,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
-import { seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { seedAppDslVersion, seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { WorkflowContext } from '../context'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
@@ -168,6 +168,8 @@ function createWorkflowWrapper(
   })
   if (!externalQueryClient)
     seedSystemFeatures(queryClient)
+  if (!externalQueryClient)
+    seedAppDslVersion(queryClient)
 
   return ({ children }: { children: React.ReactNode }) => {
     let inner: React.ReactNode = children

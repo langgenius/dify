@@ -5,7 +5,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 
 type UseInstallMultiStateParams = {

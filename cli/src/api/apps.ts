@@ -1,5 +1,5 @@
 import type { AppDescribeResponse, AppListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
+import type { HttpClient } from '@/http/types'
 
 export type ListQuery = {
   readonly workspaceId: string
@@ -11,31 +11,31 @@ export type ListQuery = {
 }
 
 export class AppsClient {
-  private readonly http: KyInstance
+  private readonly http: HttpClient
 
-  constructor(http: KyInstance) {
+  constructor(http: HttpClient) {
     this.http = http
   }
 
   async list(q: ListQuery): Promise<AppListResponse> {
-    const params = new URLSearchParams()
-    params.set('workspace_id', q.workspaceId)
-    params.set('page', String(q.page ?? 1))
-    params.set('limit', String(q.limit ?? 20))
-    if (q.mode !== undefined && q.mode !== '')
-      params.set('mode', q.mode)
-    if (q.name !== undefined && q.name !== '')
-      params.set('name', q.name)
-    if (q.tag !== undefined && q.tag !== '')
-      params.set('tag', q.tag)
-    return this.http.get('apps', { searchParams: params }).json<AppListResponse>()
+    return this.http.get<AppListResponse>('apps', {
+      searchParams: {
+        workspace_id: q.workspaceId,
+        page: q.page ?? 1,
+        limit: q.limit ?? 20,
+        mode: q.mode !== undefined && q.mode !== '' ? q.mode : undefined,
+        name: q.name !== undefined && q.name !== '' ? q.name : undefined,
+        tag: q.tag !== undefined && q.tag !== '' ? q.tag : undefined,
+      },
+    })
   }
 
   async describe(appId: string, workspaceId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
-    const params = new URLSearchParams()
-    params.set('workspace_id', workspaceId)
-    if (fields !== undefined && fields.length > 0)
-      params.set('fields', fields.join(','))
-    return this.http.get(`apps/${encodeURIComponent(appId)}/describe`, { searchParams: params }).json<AppDescribeResponse>()
+    return this.http.get<AppDescribeResponse>(`apps/${encodeURIComponent(appId)}/describe`, {
+      searchParams: {
+        workspace_id: workspaceId,
+        fields: fields !== undefined && fields.length > 0 ? fields.join(',') : undefined,
+      },
+    })
   }
 }

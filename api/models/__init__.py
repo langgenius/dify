@@ -15,6 +15,9 @@ from .agent import (
     AgentConfigSnapshot,
     AgentIconType,
     AgentKind,
+    AgentRuntimeSession,
+    AgentRuntimeSessionOwnerType,
+    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -29,6 +32,8 @@ from .comment import (
     WorkflowCommentMention,
     WorkflowCommentReply,
 )
+from .credential_permission import CredentialPermission
+from .credential_permission import CredentialType as CredentialPermissionType
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -50,11 +55,12 @@ from .enums import (
     AppTriggerStatus,
     AppTriggerType,
     CreatorUserRole,
+    PermissionEnum,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
-from .human_input import HumanInputForm
+from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .model import (
     AccountTrialAppRecord,
     ApiRequest,
@@ -146,6 +152,9 @@ __all__ = [
     "AgentConfigSnapshot",
     "AgentIconType",
     "AgentKind",
+    "AgentRuntimeSession",
+    "AgentRuntimeSessionOwnerType",
+    "AgentRuntimeSessionStatus",
     "AgentScope",
     "AgentSource",
     "AgentStatus",
@@ -168,6 +177,8 @@ __all__ = [
     "Conversation",
     "ConversationVariable",
     "CreatorUserRole",
+    "CredentialPermission",
+    "CredentialPermissionType",
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
@@ -191,6 +202,8 @@ __all__ = [
     "ExternalKnowledgeBindings",
     "HumanInputContent",
     "HumanInputForm",
+    "HumanInputFormUploadFile",
+    "HumanInputFormUploadToken",
     "IconType",
     "InstalledApp",
     "InvitationCode",
@@ -203,6 +216,7 @@ __all__ = [
     "MessageFile",
     "OAuthAccessToken",
     "OperationLog",
+    "PermissionEnum",
     "PinnedConversation",
     "Provider",
     "ProviderModel",

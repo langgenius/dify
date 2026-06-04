@@ -8,7 +8,13 @@ from sqlalchemy.orm import Session
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import with_session
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user_id,
+)
 from fields.agent_fields import (
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
@@ -17,7 +23,7 @@ from fields.agent_fields import (
     AgentRosterResponse,
 )
 from libs.helper import dump_response
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from services.agent.roster_service import AgentRosterService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload, RosterListQuery
 
@@ -60,8 +66,8 @@ class AgentRosterListApi(Resource):
     @login_required
     @account_initialization_required
     @with_session(write=False)
-    def get(self, session: Session):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, session: Session):
         query = RosterListQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             AgentRosterListResponse,
@@ -77,11 +83,12 @@ class AgentRosterListApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_session
-    def post(self, session: Session):
-        account, tenant_id = current_account_with_tenant()
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str, account_id: str, session: Session):
         payload = RosterAgentCreatePayload.model_validate(console_ns.payload or {})
         service = _agent_roster_service(session)
-        agent = service.create_roster_agent(tenant_id=tenant_id, account_id=account.id, payload=payload)
+        agent = service.create_roster_agent(tenant_id=tenant_id, account_id=account_id, payload=payload)
         return dump_response(
             AgentRosterResponse,
             service.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent.id),
@@ -96,8 +103,8 @@ class AgentInviteOptionsApi(Resource):
     @login_required
     @account_initialization_required
     @with_session(write=False)
-    def get(self, session: Session):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, session: Session):
         query = AgentInviteOptionsQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             AgentInviteOptionsResponse,
@@ -118,8 +125,8 @@ class AgentRosterDetailApi(Resource):
     @login_required
     @account_initialization_required
     @with_session(write=False)
-    def get(self, session: Session, agent_id: UUID):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID, session: Session):
         return dump_response(
             AgentRosterResponse,
             _agent_roster_service(session).get_roster_agent_detail(tenant_id=tenant_id, agent_id=str(agent_id)),
@@ -132,13 +139,14 @@ class AgentRosterDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_session
-    def patch(self, session: Session, agent_id: UUID):
-        account, tenant_id = current_account_with_tenant()
+    @with_current_user_id
+    @with_current_tenant_id
+    def patch(self, tenant_id: str, account_id: str, agent_id: UUID, session: Session):
         payload = RosterAgentUpdatePayload.model_validate(console_ns.payload or {})
         return dump_response(
             AgentRosterResponse,
             _agent_roster_service(session).update_roster_agent(
-                tenant_id=tenant_id, agent_id=str(agent_id), account_id=account.id, payload=payload
+                tenant_id=tenant_id, agent_id=str(agent_id), account_id=account_id, payload=payload
             ),
         )
 
@@ -148,10 +156,11 @@ class AgentRosterDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_session
-    def delete(self, session: Session, agent_id: UUID):
-        account, tenant_id = current_account_with_tenant()
+    @with_current_user_id
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, account_id: str, agent_id: UUID, session: Session):
         _agent_roster_service(session).archive_roster_agent(
-            tenant_id=tenant_id, agent_id=str(agent_id), account_id=account.id
+            tenant_id=tenant_id, agent_id=str(agent_id), account_id=account_id
         )
         return "", 204
 
@@ -163,8 +172,8 @@ class AgentRosterVersionsApi(Resource):
     @login_required
     @account_initialization_required
     @with_session(write=False)
-    def get(self, session: Session, agent_id: UUID):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID, session: Session):
         return dump_response(
             AgentConfigSnapshotListResponse,
             {"data": _agent_roster_service(session).list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))},
@@ -178,8 +187,8 @@ class AgentRosterVersionDetailApi(Resource):
     @login_required
     @account_initialization_required
     @with_session(write=False)
-    def get(self, session: Session, agent_id: UUID, version_id: UUID):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID, version_id: UUID, session: Session):
         return dump_response(
             AgentConfigSnapshotDetailResponse,
             _agent_roster_service(session).get_agent_version_detail(
