@@ -85,6 +85,7 @@ export function EditAgentDialog({
             </FieldLabel>
             <FieldControl
               autoComplete="off"
+              autoFocus
               defaultValue={agent.name}
               maxLength={255}
               placeholder={tAgentV2('roster.createForm.namePlaceholder')}
