@@ -36,10 +36,10 @@ const DatasetNav = () => {
     return {
       id: currentDataset.id,
       name: currentDataset.name,
-      icon: currentDataset.icon_info.icon,
-      icon_type: currentDataset.icon_info.icon_type,
-      icon_background: currentDataset.icon_info.icon_background,
-      icon_url: currentDataset.icon_info.icon_url,
+      icon: currentDataset.icon_info?.icon ?? '',
+      icon_type: currentDataset.icon_info?.icon_type ?? 'emoji',
+      icon_background: currentDataset.icon_info?.icon_background ?? '',
+      icon_url: currentDataset.icon_info?.icon_url ?? '',
     } as Omit<NavItem, 'link'>
   }, [currentDataset?.id, currentDataset?.name, currentDataset?.icon_info])
 
@@ -60,10 +60,10 @@ const DatasetNav = () => {
         id: dataset.id,
         name: dataset.name,
         link,
-        icon: dataset.icon_info.icon,
-        icon_type: dataset.icon_info.icon_type,
-        icon_background: dataset.icon_info.icon_background,
-        icon_url: dataset.icon_info.icon_url,
+        icon: dataset.icon_info?.icon ?? '',
+        icon_type: dataset.icon_info?.icon_type ?? 'emoji',
+        icon_background: dataset.icon_info?.icon_background ?? '',
+        icon_url: dataset.icon_info?.icon_url ?? '',
       }
     }) as NavItem[]
   }, [datasetItems, getDatasetLink])
