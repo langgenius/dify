@@ -553,7 +553,7 @@ class AppService:
                 provider_id = tool.get("provider_id", "")
                 tool_name = tool.get("tool_name", "")
                 if provider_type == "builtin":
-                    meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
+                    meta["tool_icons"][tool_name] = f"{url_prefix}{provider_id}/icon"
                 elif provider_type == "api":
                     try:
                         provider: ApiToolProvider | None = db.session.get(ApiToolProvider, provider_id)

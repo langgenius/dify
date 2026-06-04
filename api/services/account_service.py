@@ -1414,7 +1414,7 @@ class TenantService:
             .limit(1)
         )
         if ta:
-            tenant.role = ta.role
+            tenant.role = ta.role  # type: ignore
         else:
             raise TenantNotFoundError("Tenant not found for the account.")
         return tenant
