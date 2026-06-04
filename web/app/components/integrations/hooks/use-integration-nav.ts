@@ -10,6 +10,8 @@ export type IntegrationHeader = {
 }
 
 export const getPluginCategoryBySection = (section: IntegrationSection) => {
+  if (section === 'builtin')
+    return PluginCategoryEnum.tool
   if (section === 'trigger')
     return PluginCategoryEnum.trigger
   if (section === 'agent-strategy')
@@ -53,17 +55,17 @@ export function useIntegrationNav(section: IntegrationSection) {
       className: 'pl-8',
     },
     {
+      section: 'workflow-tool',
+      label: t('common.workflowAsTool', { ns: 'workflow' }),
+      icon: 'i-custom-vender-integrations-workflow-as-tool',
+      iconClassName: 'size-4',
+      className: 'pl-8',
+    },
+    {
       section: 'custom-tool',
       label: t('settings.customTool', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-custom-tool',
       iconClassName: 'h-[14.5px] w-[12.5px]',
-      className: 'pl-8',
-    },
-    {
-      section: 'workflow-tool',
-      label: t('common.workflowAsTool', { ns: 'workflow' }),
-      icon: 'i-custom-vender-integrations-workflow-as-tool',
-      iconClassName: 'h-3 w-[12.5px]',
       className: 'pl-8',
     },
   ], [t])
@@ -92,7 +94,7 @@ export function useIntegrationNav(section: IntegrationSection) {
     switch (section) {
       case 'builtin':
         return {
-          title: t('menus.tools', { ns: 'common' }),
+          title: t('toolsPage.toolPlugin', { ns: 'common' }),
           description: t('toolsPage.description', { ns: 'common' }),
         }
       case 'mcp':

@@ -4,7 +4,7 @@ import type { PermissionType } from '@/app/components/plugins/types'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 
 const isPluginCategorySection = (section: IntegrationSection) => {
-  return section === 'trigger' || section === 'agent-strategy' || section === 'extension'
+  return section === 'builtin' || section === 'trigger' || section === 'agent-strategy' || section === 'extension'
 }
 
 export function useIntegrationPermissions(section: IntegrationSection) {
