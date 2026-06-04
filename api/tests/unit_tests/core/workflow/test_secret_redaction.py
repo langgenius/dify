@@ -67,9 +67,9 @@ def test_tainted_values_match_exactly_not_as_substring() -> None:
         "Operation completed successfully!"
     )
     # An exact reappearance of the tainted string is redacted.
-    assert redact_sensitive_values(
-        {"echo": "Operation completed successfully"}, (), tainted
-    ) == {"echo": SECRET_REDACTION_PLACEHOLDER}
+    assert redact_sensitive_values({"echo": "Operation completed successfully"}, (), tainted) == {
+        "echo": SECRET_REDACTION_PLACEHOLDER
+    }
     assert contains_sensitive_value("Operation completed successfully!", (), tainted) is False
     assert contains_sensitive_value("Operation completed successfully", (), tainted) is True
 

@@ -1495,8 +1495,7 @@ class WorkflowService:
             )
             outputs: object = node_run_result.outputs
             if is_code_node_type(node_execution.node_type) and (
-                contains_sensitive_value(inputs, secret_values)
-                or contains_sensitive_value(process_data, secret_values)
+                contains_sensitive_value(inputs, secret_values) or contains_sensitive_value(process_data, secret_values)
             ):
                 outputs = mask_sensitive_value(outputs)
             else:

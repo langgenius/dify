@@ -407,9 +407,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 outputs=node_result.outputs,
             )
             outputs = cast(Mapping[str, Any], self._redact_for_persistence(projected_outputs))
-            if self._should_mask_code_outputs(
-                domain_execution.node_type, node_result.inputs, node_result.process_data
-            ):
+            if self._should_mask_code_outputs(domain_execution.node_type, node_result.inputs, node_result.process_data):
                 outputs = cast(Mapping[str, Any], mask_sensitive_value(projected_outputs))
                 self._register_tainted_code_outputs(projected_outputs)
             domain_execution.update_from_mapping(
