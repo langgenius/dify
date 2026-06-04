@@ -498,7 +498,7 @@ export type ChildNodeTypeCount = {
   [key: string]: number
 }
 
-const TRIGGER_NODE_TYPES = [
+export const TRIGGER_NODE_TYPES = [
   BlockEnum.TriggerSchedule,
   BlockEnum.TriggerWebhook,
   BlockEnum.TriggerPlugin,

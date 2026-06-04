@@ -15,6 +15,7 @@ import type {
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
+import type { FlowType } from '@/types/common'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
@@ -53,6 +54,7 @@ import {
   useGetToolIcon,
   useNodesMetaData,
 } from '../hooks'
+import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '../nodes/llm/utils'
@@ -84,6 +86,18 @@ export type ChecklistItem = {
   pluginUniqueIdentifier?: string
 }
 
+type CheckValidExtraData = Record<string, unknown> | undefined
+
+const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: FlowType) => {
+  if (!flowType)
+    return moreDataForCheckValid
+
+  return {
+    ...(moreDataForCheckValid ?? {}),
+    flowType,
+  }
+}
+
 const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.Start,
   BlockEnum.TriggerSchedule,
@@ -91,7 +105,7 @@ const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.TriggerPlugin,
 ]
 
-export const useChecklist = (nodes: Node[], edges: Edge[]) => {
+export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?: FlowType }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
@@ -184,7 +198,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
-      let moreDataForCheckValid
+      let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
 
       if (node!.data.type === BlockEnum.Tool)
@@ -235,7 +249,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           }
 
           if (validator) {
-            const validationError = validator(checkData, t, moreDataForCheckValid).errorMessage
+            const validationError = validator(checkData, t, withFlowType(moreDataForCheckValid, options?.flowType)).errorMessage
             if (validationError)
               errorMessages.push(validationError)
           }
@@ -309,7 +323,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders])
+  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders, options?.flowType])
 
   useEffect(() => {
     const currentChecklistItems = workflowStore.getState().checklistItems
@@ -339,6 +353,7 @@ export const useChecklistBeforePublish = () => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
@@ -456,7 +471,7 @@ export const useChecklistBeforePublish = () => {
     const map = getNodesAvailableVarList(nodes)
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
-      let moreDataForCheckValid
+      let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
       if (node!.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node!.data as ToolNodeType, buildInTools || [], customTools || [], workflowTools || [], language)
@@ -493,7 +508,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![node!.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
+      const { errorMessage } = nodesExtraData![node!.data.type as BlockEnum].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
 
       if (errorMessage) {
         toast.error(`[${node!.data.title}] ${errorMessage}`)
@@ -550,7 +565,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, queryClient, strategyProviders, modelProviders])
+  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, queryClient, strategyProviders, modelProviders, flowType])
 
   return {
     handleCheckBeforePublish,
@@ -561,7 +576,8 @@ export const useWorkflowRunValidation = () => {
   const { t } = useTranslation()
   const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
-  const needWarningNodes = useChecklist(nodes, edges)
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
+  const needWarningNodes = useChecklist(nodes, edges, { flowType })
 
   const validateBeforeRun = useCallback(() => {
     if (needWarningNodes.length > 0) {

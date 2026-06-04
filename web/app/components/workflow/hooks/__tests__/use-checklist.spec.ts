@@ -3,6 +3,7 @@ import type { ChecklistItem } from '../use-checklist'
 import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -218,6 +219,31 @@ describe('useChecklist', () => {
     expect(warning!.errorMessages).toContain('Model not configured')
   })
 
+  it('should pass flow type to node validators', () => {
+    const checkValid = vi.fn(() => ({ errorMessage: '' }))
+    mockNodesMap[BlockEnum.LLM] = {
+      checkValid,
+      metaData: { isStart: false, isRequired: false },
+    }
+
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const llmNode = createNode({ id: 'llm', data: { type: BlockEnum.LLM, title: 'LLM' } })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'llm' }),
+    ]
+
+    renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
+    )
+
+    expect(checkValid).toHaveBeenCalledWith(
+      expect.objectContaining({ type: BlockEnum.LLM }),
+      expect.any(Function),
+      expect.objectContaining({ flowType: FlowType.snippet }),
+    )
+  })
+
   it('should report missing start node in workflow mode', () => {
     const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
 
@@ -423,6 +449,7 @@ describe('useWorkflowRunValidation', () => {
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
       initialStoreState: { nodes: nodes as Node[] },
+      hooksStoreProps: {},
     })
 
     expect(result.current.hasValidationErrors).toBe(false)
@@ -435,6 +462,7 @@ describe('useWorkflowRunValidation', () => {
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
       initialStoreState: { nodes: nodes as Node[] },
+      hooksStoreProps: {},
     })
 
     expect(typeof result.current.validateBeforeRun).toBe('function')

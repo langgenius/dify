@@ -145,6 +145,11 @@
       "count": 1
     }
   },
+  "web/app/(commonLayout)/snippets/[snippetId]/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/(shareLayout)/components/splash.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -248,6 +253,11 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "web/app/components/app-sidebar/nav-link/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
     }
   },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
@@ -3152,6 +3162,16 @@
       "count": 2
     }
   },
+  "web/app/components/snippets/hooks/use-nodes-sync-draft.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/snippets/hooks/use-snippet-run.ts": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
   "web/app/components/signin/countdown.tsx": {
     "no-restricted-globals": {
       "count": 4
@@ -3324,6 +3344,11 @@
   },
   "web/app/components/workflow/block-selector/all-start-blocks.tsx": {
     "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/blocks.tsx": {
+    "unused-imports/no-unused-imports": {
       "count": 1
     }
   },
@@ -5164,6 +5189,11 @@
       "count": 1
     }
   },
+  "web/service/__tests__/use-snippet-workflows.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/service/access-control.ts": {
     "@tanstack/query/exhaustive-deps": {
       "count": 1
@@ -5429,6 +5459,11 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "web/service/use-snippet-workflows.ts": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/service/use-tools.ts": {

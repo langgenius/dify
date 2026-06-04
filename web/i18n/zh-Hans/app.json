@@ -228,6 +228,7 @@
   "structOutput.required": "必填",
   "structOutput.structured": "结构化输出",
   "structOutput.structuredTip": "结构化输出是一项功能，可确保模型始终生成符合您提供的 JSON 模式的响应",
+  "studio.viewSnippets": "查看 Snippets",
   "switch": "迁移为工作流编排",
   "switchLabel": "新应用创建为",
   "switchStart": "开始迁移",
