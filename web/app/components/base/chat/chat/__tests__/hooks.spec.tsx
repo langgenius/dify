@@ -411,7 +411,7 @@ describe('useChat', () => {
 
         // Human input required
         callbacks.onHumanInputRequired({ data: { node_id: 'n-human' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'n-human', updated: true } }) // update existing
+        callbacks.onHumanInputRequired({ data: { node_id: 'n-human', updated: true, form_content: '{{#$output.answer#}}', inputs: [] } }) // update existing
 
         // setTimeout for timeout form
         callbacks.onHumanInputFormTimeout({ data: { node_id: 'n-human', expiration_time: 123456 } })
@@ -437,6 +437,10 @@ describe('useChat', () => {
       const lastResponse = result.current.chatList[1]
       expect(lastResponse!.humanInputFormDataList).toHaveLength(0) // Removed when filled
       expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(2)
+      expect(lastResponse!.humanInputFilledFormDataList![0]).toEqual(expect.objectContaining({
+        form_content: '{{#$output.answer#}}',
+        inputs: [],
+      }))
       expect(sseGet).toHaveBeenCalled() // from workflowPaused
       expect(lastResponse!.annotation?.id).toBe('anno-1')
       expect(lastResponse!.content).toBe('Replaced content')

@@ -36,6 +36,8 @@ QueryParamDoc = TypedDict(
     },
 )
 
+JsonResponseWithStatus = tuple[dict[str, Any], int]
+
 
 class QueryArgs(Protocol):
     def to_dict(self, flat: bool = True) -> dict[str, str]: ...

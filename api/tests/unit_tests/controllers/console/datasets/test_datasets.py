@@ -294,6 +294,39 @@ class TestDatasetList:
         assert status == 200
         assert resp["data"][0]["retrieval_model_dict"]["weights"]["weight_type"] is None
 
+    def test_get_merges_partial_retrieval_model_defaults(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+
+        current_user = self._mock_user()
+        datasets = [make_dataset(retrieval_model={"top_k": 4, "score_threshold_enabled": False})]
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch(
+                    "controllers.console.datasets.datasets.current_account_with_tenant",
+                    return_value=(current_user, "tenant-1"),
+                ),
+                patch.object(
+                    DatasetService,
+                    "get_datasets",
+                    return_value=(datasets, 1),
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                resp, status = method(api)
+
+        assert status == 200
+        retrieval_model = resp["data"][0]["retrieval_model_dict"]
+        assert retrieval_model["search_method"] == "semantic_search"
+        assert retrieval_model["reranking_enable"] is False
+        assert retrieval_model["top_k"] == 4
+        assert retrieval_model["score_threshold_enabled"] is False
+
     def test_embedding_available_false(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)

@@ -9,7 +9,18 @@ from controllers.openapi.auth.pipeline import PipelineRouter
 from libs.oauth_bearer import Scope, TokenType
 
 
-def _stub_execute(self, args, kwargs, view, *, scope=None, allowed_token_types=None, edition=None):
+def _stub_execute(
+    self,
+    args,
+    kwargs,
+    view,
+    *,
+    scope=None,
+    allowed_token_types=None,
+    edition=None,
+    workspace_membership=False,
+    allowed_roles=None,
+):
     """Bypass all auth logic; inject minimal AuthData and call the view directly."""
     kwargs["auth_data"] = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
@@ -18,6 +29,7 @@ def _stub_execute(self, args, kwargs, view, *, scope=None, allowed_token_types=N
         token_id=uuid.uuid4(),
         scopes=frozenset({Scope.FULL}),
         required_scope=scope,
+        allowed_roles=allowed_roles,
     )
     return view(*args, **kwargs)
 

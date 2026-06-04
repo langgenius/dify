@@ -25,6 +25,9 @@ from controllers.console.wraps import (
     enterprise_license_required,
     is_admin_or_owner_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
+    with_current_user_id,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
@@ -34,8 +37,8 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url, to_timestamp
-from libs.login import current_account_with_tenant, login_required
-from models import App, DatasetPermissionEnum, Workflow
+from libs.login import login_required
+from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
 from services.app_service import AppListParams, AppService, CreateAppParams
@@ -472,10 +475,10 @@ class AppListApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @with_session(write=False)
-    def get(self, session: Session):
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user_id: str, session: Session):
         """Get app list"""
-        current_user, current_tenant_id = current_account_with_tenant()
-
         args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
         params = AppListParams(
             page=args.page,
@@ -488,7 +491,7 @@ class AppListApi(Resource):
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, params)
+        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
@@ -548,9 +551,10 @@ class AppListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
         """Create app"""
-        current_user, current_tenant_id = current_account_with_tenant()
         args = CreateAppPayload.model_validate(console_ns.payload)
         params = CreateAppParams(
             name=args.name,
@@ -653,11 +657,10 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model: App):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -736,7 +739,8 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model: App):
+    @with_current_user_id
+    def post(self, current_user_id: str, app_model: App):
         """Publish app to Creators Platform"""
         from configs import dify_config
         from core.helper.creators import get_redirect_url, upload_dsl
@@ -744,13 +748,11 @@ class AppPublishToCreatorsPlatformApi(Resource):
         if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
             return {"error": "Creators Platform features are not enabled"}, 403
 
-        current_user, _ = current_account_with_tenant()
-
         dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)
-        redirect_url = get_redirect_url(str(current_user.id), claim_code)
+        redirect_url = get_redirect_url(current_user_id, claim_code)
 
         return {"redirect_url": redirect_url}
 

@@ -14,8 +14,14 @@ from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.graph_events import GraphRunPausedEvent
-from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
-from graphon.nodes.human_input.enums import FormInputType
+from graphon.nodes.human_input.entities import (
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
+from graphon.nodes.human_input.enums import ValueSourceType
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.human_input import RecipientType
 
@@ -156,9 +162,7 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     reason = HumanInputRequired(
         form_id="form-1",
         form_content="Rendered",
-        inputs=[
-            ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="field", default=None),
-        ],
+        inputs=[ParagraphInputConfig(output_variable_name="field")],
         actions=[UserActionConfig(id="approve", title="Approve")],
         node_id="node-id",
         node_title="Human Step",
@@ -169,7 +173,7 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
         paused_nodes=["node-id"],
     )
 
-    runtime_state = SimpleNamespace(total_tokens=0, node_run_steps=0)
+    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
     responses = converter.workflow_pause_to_stream_response(
         event=queue_event,
         task_id="task",
@@ -193,3 +197,70 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     assert hi_resp.data.display_in_ui is True
     assert hi_resp.data.form_token == "backstage-token"
     assert hi_resp.data.expiration_time == int(expiration_time.timestamp())
+
+
+def test_queue_workflow_paused_event_resolves_variable_select_options(monkeypatch: pytest.MonkeyPatch):
+    converter = _build_converter()
+    converter.workflow_start_to_stream_response(
+        task_id="task",
+        workflow_run_id="run-id",
+        workflow_id="workflow-id",
+        reason=WorkflowStartReason.INITIAL,
+    )
+
+    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
+
+    class _FakeSession:
+        def execute(self, _stmt):
+            return [("form-1", expiration_time, '{"display_in_ui": true}')]
+
+        def scalars(self, _stmt):
+            return []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: _FakeSession())
+    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
+
+    reason = HumanInputRequired(
+        form_id="form-1",
+        form_content="Rendered",
+        inputs=[
+            SelectInputConfig(
+                output_variable_name="decision",
+                option_source=StringListSource(
+                    type=ValueSourceType.VARIABLE,
+                    selector=["start", "options"],
+                    value=[],
+                ),
+            )
+        ],
+        actions=[UserActionConfig(id="approve", title="Approve")],
+        node_id="node-id",
+        node_title="Human Step",
+    )
+    queue_event = QueueWorkflowPausedEvent(
+        reasons=[reason],
+        outputs={},
+        paused_nodes=["node-id"],
+    )
+
+    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state.variable_pool.add(("start", "options"), ["approve", "reject"])
+    responses = converter.workflow_pause_to_stream_response(
+        event=queue_event,
+        task_id="task",
+        graph_runtime_state=runtime_state,
+    )
+
+    assert isinstance(responses[0], HumanInputRequiredResponse)
+    hi_resp = responses[0]
+    assert hi_resp.data.inputs[0].option_source.value == ["approve", "reject"]
+
+    assert isinstance(responses[-1], WorkflowPauseStreamResponse)
+    pause_resp = responses[-1]
+    assert pause_resp.data.reasons[0]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]

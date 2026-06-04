@@ -3,6 +3,7 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormTimeoutData, NodeTracing, WorkflowFinishedResponse } from '@/types/workflow'
 import { produce } from 'immer'
+import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { sseGet } from '@/service/base'
@@ -204,16 +205,20 @@ const updateHumanInputFilled = (
   data: NonNullable<WorkflowProcess['humanInputFilledFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
+    let requiredFormData: NonNullable<WorkflowProcess['humanInputFormDataList']>[number] | undefined
     if (draft.humanInputFormDataList?.length) {
       const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
-      if (currentFormIndex > -1)
+      if (currentFormIndex > -1) {
+        requiredFormData = draft.humanInputFormDataList[currentFormIndex]
         draft.humanInputFormDataList.splice(currentFormIndex, 1)
+      }
     }
 
+    const enrichedData = enrichSubmittedHumanInputFormData(data, requiredFormData)
     if (!draft.humanInputFilledFormDataList)
-      draft.humanInputFilledFormDataList = [data]
+      draft.humanInputFilledFormDataList = [enrichedData]
     else
-      draft.humanInputFilledFormDataList.push(data)
+      draft.humanInputFilledFormDataList.push(enrichedData)
   })
 }
 
