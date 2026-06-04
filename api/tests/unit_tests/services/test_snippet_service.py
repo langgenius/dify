@@ -8,7 +8,7 @@ import pytest
 
 from models.snippet import SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowType
-from services.errors.app import WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.snippet_service import SnippetService
 
 
@@ -85,6 +85,39 @@ def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(monkeypatch: 
     assert result == ([], 0, False)
 
 
+def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPatch) -> None:
+    snippets = [
+        SimpleNamespace(id="snippet-1"),
+        SimpleNamespace(id="snippet-2"),
+        SimpleNamespace(id="snippet-3"),
+    ]
+    session = SimpleNamespace(
+        scalar=Mock(return_value=3),
+        scalars=Mock(return_value=SimpleNamespace(all=Mock(return_value=snippets))),
+    )
+    monkeypatch.setattr("services.snippet_service.db.session", session)
+    monkeypatch.setattr(
+        "services.snippet_service.TagService.get_target_ids_by_tag_ids",
+        Mock(return_value=["snippet-1", "snippet-2", "snippet-3"]),
+    )
+
+    result, total, has_more = SnippetService.get_snippets(
+        tenant_id="tenant-1",
+        page=2,
+        limit=2,
+        keyword="search",
+        is_published=True,
+        creators=["account-1"],
+        tag_ids=["tag-1"],
+    )
+
+    assert result == snippets[:2]
+    assert total == 3
+    assert has_more is True
+    session.scalar.assert_called_once()
+    session.scalars.assert_called_once()
+
+
 def test_update_snippet_allows_duplicate_names() -> None:
     session = _SessionWithoutNameLookup()
     snippet = SimpleNamespace(
@@ -104,6 +137,30 @@ def test_update_snippet_allows_duplicate_names() -> None:
 
     assert result is snippet
     assert snippet.name == "shared name"
+    session.add.assert_called_once_with(snippet)
+
+
+def test_update_snippet_updates_optional_fields() -> None:
+    session = _SessionWithoutNameLookup()
+    snippet = SimpleNamespace(
+        id="snippet-1",
+        tenant_id="tenant-1",
+        name="old name",
+        description="old description",
+        icon_info=None,
+    )
+
+    result = SnippetService.update_snippet(
+        session=session,
+        snippet=snippet,
+        account_id="account-1",
+        data={"description": "new description", "icon_info": {"icon": "star"}},
+    )
+
+    assert result is snippet
+    assert snippet.description == "new description"
+    assert snippet.icon_info == {"icon": "star"}
+    assert snippet.updated_by == "account-1"
     session.add.assert_called_once_with(snippet)
 
 
@@ -148,6 +205,47 @@ def test_sync_draft_workflow_raises_when_hash_mismatches() -> None:
             unique_hash="client-hash",
             account=SimpleNamespace(id="account-1"),
         )
+
+
+def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = SnippetService.__new__(SnippetService)
+    workflow = _create_workflow(
+        workflow_id="workflow-1",
+        version=Workflow.VERSION_DRAFT,
+        graph={"nodes": [], "edges": []},
+        features={},
+    )
+    unique_hash = workflow.unique_hash
+    snippet = SimpleNamespace(
+        id="snippet-1",
+        tenant_id="tenant-1",
+        input_fields=None,
+        updated_by=None,
+        updated_at=None,
+    )
+    account = SimpleNamespace(id="account-1")
+    session = SimpleNamespace(commit=Mock())
+
+    monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=workflow))
+    monkeypatch.setattr("services.snippet_service.db.session", session)
+
+    result = service.sync_draft_workflow(
+        snippet=snippet,
+        graph={"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []},
+        unique_hash=unique_hash,
+        account=account,
+        input_fields=[{"variable": "query"}],
+    )
+
+    assert result is workflow
+    assert workflow.graph_dict["nodes"][0]["id"] == "llm-1"
+    assert workflow.type == WorkflowType.WORKFLOW
+    assert workflow.kind == WorkflowKind.SNIPPET
+    assert workflow.updated_by == account.id
+    assert workflow.environment_variables == []
+    assert workflow.conversation_variables == []
+    assert json.loads(snippet.input_fields) == [{"variable": "query"}]
+    session.commit.assert_called_once()
 
 
 def test_get_default_block_configs_skips_empty_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -249,6 +347,139 @@ def test_restore_published_snippet_workflow_to_draft_raises_when_source_missing(
         )
 
 
+def test_restore_published_snippet_workflow_to_draft_adds_new_draft(monkeypatch: pytest.MonkeyPatch) -> None:
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    account = SimpleNamespace(id="account-2")
+    source_workflow = _create_workflow(
+        workflow_id="published-workflow",
+        version="2026-04-28 00:00:00",
+        graph={"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []},
+        features={},
+    )
+    new_draft_workflow = _create_workflow(
+        workflow_id="draft-workflow",
+        version=Workflow.VERSION_DRAFT,
+        graph={"nodes": [], "edges": []},
+        features={},
+    )
+    service = SnippetService.__new__(SnippetService)
+    session = SimpleNamespace(add=Mock(), commit=Mock())
+
+    monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=source_workflow))
+    monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=None))
+    monkeypatch.setattr(
+        "services.snippet_service.apply_published_workflow_snapshot_to_draft",
+        Mock(return_value=(new_draft_workflow, True)),
+    )
+    monkeypatch.setattr("services.snippet_service.db.session", session)
+
+    result = service.restore_published_workflow_to_draft(
+        snippet=snippet,
+        workflow_id=source_workflow.id,
+        account=account,
+    )
+
+    assert result is new_draft_workflow
+    session.add.assert_called_once_with(new_draft_workflow)
+    session.commit.assert_called_once()
+
+
+def test_get_published_workflow_returns_none_without_workflow_id() -> None:
+    service = SnippetService.__new__(SnippetService)
+
+    result = service.get_published_workflow(SimpleNamespace(id="snippet-1", tenant_id="tenant-1", workflow_id=None))
+
+    assert result is None
+
+
+def test_get_published_workflow_by_id_raises_for_draft(monkeypatch: pytest.MonkeyPatch) -> None:
+    draft_workflow = SimpleNamespace(version=Workflow.VERSION_DRAFT)
+    query = SimpleNamespace(where=Mock(return_value=SimpleNamespace(first=Mock(return_value=draft_workflow))))
+    session = SimpleNamespace(query=Mock(return_value=query))
+    monkeypatch.setattr("services.snippet_service.db.session", session)
+    service = SnippetService.__new__(SnippetService)
+
+    with pytest.raises(IsDraftWorkflowError):
+        service.get_published_workflow_by_id(
+            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+            workflow_id="workflow-1",
+        )
+
+
+def test_publish_workflow_raises_when_draft_missing() -> None:
+    service = SnippetService.__new__(SnippetService)
+    session = SimpleNamespace(scalar=Mock(return_value=None))
+
+    with pytest.raises(ValueError, match="No valid workflow found"):
+        service.publish_workflow(
+            session=session,
+            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+            account=SimpleNamespace(id="account-1"),
+        )
+
+
+def test_publish_workflow_creates_snapshot_and_updates_snippet(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = SnippetService.__new__(SnippetService)
+    draft_workflow = _create_workflow(
+        workflow_id="draft-workflow",
+        version=Workflow.VERSION_DRAFT,
+        graph={"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []},
+        features={"opening_statement": "hello"},
+    )
+    snippet = SimpleNamespace(
+        id="snippet-1",
+        tenant_id="tenant-1",
+        version=1,
+        is_published=False,
+        workflow_id=None,
+        updated_by=None,
+    )
+    session = SimpleNamespace(scalar=Mock(return_value=draft_workflow), add=Mock())
+
+    result = service.publish_workflow(
+        session=session,
+        snippet=snippet,
+        account=SimpleNamespace(id="account-1"),
+    )
+
+    assert result.kind == WorkflowKind.SNIPPET
+    assert snippet.version == 2
+    assert snippet.is_published is True
+    assert snippet.workflow_id == result.id
+    assert snippet.updated_by == "account-1"
+    assert session.add.call_args_list[-1].args == (snippet,)
+
+
+def test_get_all_published_workflows_returns_empty_without_current_workflow() -> None:
+    service = SnippetService.__new__(SnippetService)
+
+    result = service.get_all_published_workflows(
+        session=SimpleNamespace(),
+        snippet=SimpleNamespace(id="snippet-1", workflow_id=None),
+        page=1,
+        limit=20,
+    )
+
+    assert result == ([], False)
+
+
+def test_get_all_published_workflows_paginates() -> None:
+    service = SnippetService.__new__(SnippetService)
+    workflows = [SimpleNamespace(id="workflow-1"), SimpleNamespace(id="workflow-2"), SimpleNamespace(id="workflow-3")]
+    session = SimpleNamespace(scalars=Mock(return_value=SimpleNamespace(all=Mock(return_value=workflows))))
+
+    result, has_more = service.get_all_published_workflows(
+        session=session,
+        snippet=SimpleNamespace(id="snippet-1", workflow_id="workflow-current"),
+        page=1,
+        limit=2,
+    )
+
+    assert result == workflows[:2]
+    assert has_more is True
+    session.scalars.assert_called_once()
+
+
 def test_delete_snippet_removes_tag_bindings() -> None:
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     session = SimpleNamespace(execute=Mock(), delete=Mock())
@@ -258,3 +489,70 @@ def test_delete_snippet_removes_tag_bindings() -> None:
     assert result is True
     session.execute.assert_called_once()
     session.delete.assert_called_once_with(snippet)
+
+
+def test_workflow_run_queries_delegate_to_repositories() -> None:
+    service = SnippetService.__new__(SnippetService)
+    workflow_run_repo = SimpleNamespace(
+        get_paginated_workflow_runs=Mock(return_value=SimpleNamespace(data=[])),
+        get_workflow_run_by_id=Mock(return_value=SimpleNamespace(id="run-1")),
+    )
+    node_execution_repo = SimpleNamespace(
+        get_executions_by_workflow_run=Mock(return_value=[SimpleNamespace(id="node-execution-1")]),
+        get_node_last_execution=Mock(return_value=SimpleNamespace(id="last-run-1")),
+    )
+    service._workflow_run_repo = workflow_run_repo
+    service._node_execution_service_repo = node_execution_repo
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+
+    assert service.get_snippet_workflow_runs(snippet=snippet, args={"limit": "5", "last_id": "run-0"}).data == []
+    assert service.get_snippet_workflow_run(snippet=snippet, run_id="run-1").id == "run-1"
+    assert service.get_snippet_workflow_run_node_executions(snippet=snippet, run_id="run-1")[0].id == (
+        "node-execution-1"
+    )
+    assert service.get_snippet_node_last_run(
+        snippet=snippet,
+        workflow=SimpleNamespace(id="workflow-1"),
+        node_id="llm-1",
+    ).id == "last-run-1"
+    workflow_run_repo.get_paginated_workflow_runs.assert_called_once()
+    workflow_run_repo.get_workflow_run_by_id.assert_called_with(
+        tenant_id="tenant-1",
+        app_id="snippet-1",
+        run_id="run-1",
+    )
+    node_execution_repo.get_executions_by_workflow_run.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="snippet-1",
+        workflow_run_id="run-1",
+    )
+    node_execution_repo.get_node_last_execution.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="snippet-1",
+        workflow_id="workflow-1",
+        node_id="llm-1",
+    )
+
+
+def test_workflow_run_node_executions_returns_empty_when_run_missing() -> None:
+    service = SnippetService.__new__(SnippetService)
+    service._node_execution_service_repo = SimpleNamespace(get_executions_by_workflow_run=Mock())
+    service.get_snippet_workflow_run = Mock(return_value=None)
+
+    result = service.get_snippet_workflow_run_node_executions(
+        snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+        run_id="missing-run",
+    )
+
+    assert result == []
+    service._node_execution_service_repo.get_executions_by_workflow_run.assert_not_called()
+
+
+def test_increment_use_count_adds_updated_snippet() -> None:
+    snippet = SimpleNamespace(use_count=2)
+    session = SimpleNamespace(add=Mock())
+
+    SnippetService.increment_use_count(session=session, snippet=snippet)
+
+    assert snippet.use_count == 3
+    session.add.assert_called_once_with(snippet)
