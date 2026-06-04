@@ -58,14 +58,24 @@ mutate, or persist the workflow.
 The first version is intentionally local and deterministic. It does not call an
 LLM, so production publishing behavior is repeatable and easy to test.
 
+The engine is schema-aware: it reads Dify node fields such as HTTP `url`,
+`authorization`, `headers`, `params`, `body`, agent `tools`, agent `strategy`,
+code node configuration, and prompt-bearing fields such as `prompt_template`.
+It does not treat every label or title string as an agent prompt.
+
 Blocking rules include:
 
 - Suspicious prompt-injection text, such as jailbreak or bypass instructions.
 - Internal, local, file, or metadata-service targets.
+- Private, loopback, link-local, reserved, or metadata-service IP targets.
+- Encoded IP targets, including decimal, hexadecimal, and octal forms.
+- DNS rebinding signals where a hostname resolves to both public and private addresses.
+- Redirect targets that point at private or metadata-service addresses.
+- HTTP hosts outside the configured `agent_safety_review.allowed_domains` allowlist.
 - Dynamic outbound HTTP URLs influenced by runtime variables.
 - HTTP nodes that appear to send secrets or credentials.
-- Tool-using agent nodes without a detected human review step.
-- Code execution nodes without a detected human review step.
+- Tool-using agent nodes without a proven graph path through approval before action.
+- Code execution nodes without a proven graph path through approval before action.
 - Sensitive variables combined with risky nodes and no human review step.
 
 Warnings include:
@@ -75,12 +85,20 @@ Warnings include:
 - Tool-using agents or code nodes protected by a human review step.
 - Sensitive variables in otherwise low-risk drafts.
 
+## CI Evidence
+
+This fork adds a focused GitHub Actions workflow at
+`.github/workflows/agent-safety-review.yml`. It runs the safety review unit
+tests and lint checks on pull requests, so the PR page shows visible CI evidence
+instead of relying on a verbal "tests passed" claim.
+
 ## Interview Demo Flow
 
 1. Create or edit a Dify workflow with an agent node and tool access.
 2. Call the manual review API and show the structured scorecard.
 3. Try to publish the risky draft and show the `blocked` response.
-4. Add a human approval/review node or remove the risky target.
+4. Add a human approval/review node on every risky path, add an allowlist entry,
+   or remove the risky target.
 5. Review again, then publish once the decision becomes `approved`.
 
 This demonstrates a real Dify backend extension: it is not just an external

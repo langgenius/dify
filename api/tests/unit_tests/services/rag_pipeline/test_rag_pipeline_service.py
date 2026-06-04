@@ -427,7 +427,8 @@ def test_publish_workflow_blocked_by_agent_safety_review(mocker, rag_pipeline_se
         rag_pipeline_service.publish_workflow(session=session, pipeline=pipeline, account=account)
 
     assert exc.value.report["decision"] == "blocked"
-    assert exc.value.report["summary"]["blocking_findings"] == 1
+    assert exc.value.report["summary"]["blocking_findings"] >= 1
+    assert any(finding["rule_id"] == "approval.path.missing" for finding in exc.value.report["findings"])
     session.add.assert_not_called()
 
 

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import re
+import socket
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 from models.workflow import Workflow
 
@@ -62,10 +65,6 @@ class AgentSafetyReviewService:
         r"(ignore (all )?(previous|above) instructions|bypass|jailbreak|reveal.*system prompt|developer message)",
         re.IGNORECASE,
     )
-    INTERNAL_TARGET_RE = re.compile(
-        r"(169\.254\.169\.254|127\.0\.0\.1|localhost|0\.0\.0\.0|::1|file://|/etc/passwd|/proc/self)",
-        re.IGNORECASE,
-    )
 
     @classmethod
     def review_workflow(cls, *, workflow: Workflow, app_id: str | None = None) -> dict[str, Any]:
@@ -85,16 +84,15 @@ class AgentSafetyReviewService:
 
         findings: list[SafetyFinding] = []
         node_types = {_node_type(node) for node in nodes}
-        has_human_review = any(_is_human_review_node(node) for node in nodes)
+        approval_graph = ApprovalPathAnalyzer(graph=graph, nodes=nodes)
+        allowlist = _agent_safety_allowed_domains(workflow=workflow, graph=graph)
 
         for node in nodes:
             node_id = str(node.get("id") or node.get("node_id") or "unknown")
             data = node.get("data") if isinstance(node.get("data"), dict) else {}
             node_type = _node_type(node)
-            serialized = json.dumps(node, ensure_ascii=False, default=str)
 
-            findings.extend(cls._review_prompt_text(node_id=node_id, node_type=node_type, serialized=serialized))
-            findings.extend(cls._review_internal_targets(node_id=node_id, node_type=node_type, serialized=serialized))
+            findings.extend(cls._review_prompt_text(node_id=node_id, node_type=node_type, data=data))
 
             if node_type in {"http-request", "http"}:
                 findings.extend(
@@ -102,14 +100,17 @@ class AgentSafetyReviewService:
                         node_id=node_id,
                         node_type=node_type,
                         data=data,
-                        serialized=serialized,
+                        allowed_domains=allowlist,
                     )
                 )
             elif node_type == "code":
+                has_required_approval = approval_graph.has_approval_before_downstream_action(node_id) or (
+                    approval_graph.has_approval_before_node(node_id)
+                )
                 findings.append(
                     SafetyFinding(
                         rule_id="code.execution.requires_review",
-                        severity=SafetySeverity.HIGH if not has_human_review else SafetySeverity.MEDIUM,
+                        severity=SafetySeverity.MEDIUM if has_required_approval else SafetySeverity.HIGH,
                         title="Code execution before publish",
                         message=(
                             "Code nodes can transform data or call external services "
@@ -120,14 +121,15 @@ class AgentSafetyReviewService:
                         remediation="Add a human review node before production output, or remove the code node.",
                     )
                 )
+                if not has_required_approval:
+                    findings.append(_missing_approval_finding(node_id=node_id, node_type=node_type))
             elif "agent" in node_type:
                 findings.extend(
                     cls._review_agent_node(
                         node_id=node_id,
                         node_type=node_type,
                         data=data,
-                        serialized=serialized,
-                        has_human_review=has_human_review,
+                        has_required_approval=approval_graph.has_approval_before_node(node_id),
                     )
                 )
 
@@ -135,7 +137,7 @@ class AgentSafetyReviewService:
             cls._review_variables(
                 workflow=workflow,
                 node_types=node_types,
-                has_human_review=has_human_review,
+                has_human_review=approval_graph.has_any_approval,
             )
         )
         return cls._build_report(workflow=workflow, app_id=app_id, findings=findings)
@@ -148,46 +150,29 @@ class AgentSafetyReviewService:
         return report
 
     @classmethod
-    def _review_prompt_text(cls, *, node_id: str, node_type: str, serialized: str) -> list[SafetyFinding]:
-        if not cls.PROMPT_INJECTION_RE.search(serialized):
-            return []
-        return [
-            SafetyFinding(
-                rule_id="prompt.injection.suspicious_text",
-                severity=SafetySeverity.HIGH,
-                title="Suspicious prompt-injection wording",
-                message="The draft contains wording commonly used to bypass higher-priority instructions.",
-                node_id=node_id,
-                node_type=node_type,
-                remediation=(
-                    "Remove jailbreak/bypass wording or isolate it as test data "
-                    "that cannot reach the agent prompt."
-                ),
-            )
-        ]
-
-    @classmethod
-    def _review_internal_targets(cls, *, node_id: str, node_type: str, serialized: str) -> list[SafetyFinding]:
-        if not cls.INTERNAL_TARGET_RE.search(serialized):
-            return []
-        return [
-            SafetyFinding(
-                rule_id="network.internal_target",
-                severity=SafetySeverity.CRITICAL,
-                title="Internal or local network target",
-                message="The workflow references an internal, local, file, or metadata-service target.",
-                node_id=node_id,
-                node_type=node_type,
-                remediation=(
-                    "Remove internal targets or route access through an approved "
-                    "connector with SSRF protection."
-                ),
-            )
-        ]
+    def _review_prompt_text(cls, *, node_id: str, node_type: str, data: dict[str, Any]) -> list[SafetyFinding]:
+        findings: list[SafetyFinding] = []
+        for prompt_text in _iter_prompt_texts(data):
+            if cls.PROMPT_INJECTION_RE.search(prompt_text):
+                findings.append(
+                    SafetyFinding(
+                        rule_id="prompt.injection.suspicious_text",
+                        severity=SafetySeverity.HIGH,
+                        title="Suspicious prompt-injection wording",
+                        message="The draft contains wording commonly used to bypass higher-priority instructions.",
+                        node_id=node_id,
+                        node_type=node_type,
+                        remediation=(
+                            "Remove jailbreak/bypass wording or isolate it as test data "
+                            "that cannot reach the agent prompt."
+                        ),
+                    )
+                )
+        return findings
 
     @classmethod
     def _review_http_node(
-        cls, *, node_id: str, node_type: str, data: dict[str, Any], serialized: str
+        cls, *, node_id: str, node_type: str, data: dict[str, Any], allowed_domains: set[str]
     ) -> list[SafetyFinding]:
         findings = [
             SafetyFinding(
@@ -200,8 +185,8 @@ class AgentSafetyReviewService:
                 remediation="Use an allowlisted connector and avoid sending secrets or raw conversation content.",
             )
         ]
-        url_like = json.dumps(data.get("url") or data.get("url_template") or data, ensure_ascii=False, default=str)
-        if "{{" in url_like or "#sys." in url_like or "#conversation." in url_like or "#context." in url_like:
+        url_text = _string_value(data.get("url") or data.get("url_template") or "")
+        if _is_dynamic_value(url_text):
             findings.append(
                 SafetyFinding(
                     rule_id="http.dynamic_url",
@@ -213,7 +198,23 @@ class AgentSafetyReviewService:
                     remediation="Constrain the domain with an allowlist before publishing.",
                 )
             )
-        if cls.SECRET_NAME_RE.search(serialized):
+
+        url_review = UrlSafetyAnalyzer.review(url_text=url_text, allowed_domains=allowed_domains)
+        findings.extend(_url_findings_to_safety_findings(node_id=node_id, node_type=node_type, reviews=url_review))
+
+        redirect_reviews = UrlSafetyAnalyzer.review_redirects(
+            redirect_urls=_extract_redirect_urls(data),
+            allowed_domains=allowed_domains,
+        )
+        findings.extend(
+            _url_findings_to_safety_findings(
+                node_id=node_id,
+                node_type=node_type,
+                reviews=redirect_reviews,
+            )
+        )
+
+        if cls.SECRET_NAME_RE.search(json.dumps(_http_sensitive_fields(data), ensure_ascii=False, default=str)):
             findings.append(
                 SafetyFinding(
                     rule_id="http.secret_reference",
@@ -232,21 +233,23 @@ class AgentSafetyReviewService:
 
     @classmethod
     def _review_agent_node(
-        cls, *, node_id: str, node_type: str, data: dict[str, Any], serialized: str, has_human_review: bool
+        cls, *, node_id: str, node_type: str, data: dict[str, Any], has_required_approval: bool
     ) -> list[SafetyFinding]:
         findings: list[SafetyFinding] = []
-        if "tool" in serialized.lower():
+        if _agent_has_tools(data):
             findings.append(
                 SafetyFinding(
                     rule_id="agent.tools.require_review",
-                    severity=SafetySeverity.HIGH if not has_human_review else SafetySeverity.MEDIUM,
+                    severity=SafetySeverity.MEDIUM if has_required_approval else SafetySeverity.HIGH,
                     title="Agent tool use needs release review",
-                    message="The agent can call tools after publish, but no human review step was detected.",
+                    message="The agent can call tools after publish, but no proven approval path was detected.",
                     node_id=node_id,
                     node_type=node_type,
                     remediation="Add a human review/approval node for tool-using agent flows before external action.",
                 )
             )
+            if not has_required_approval:
+                findings.append(_missing_approval_finding(node_id=node_id, node_type=node_type))
         strategy = data.get("agent_strategy") or data.get("strategy")
         if isinstance(strategy, str) and strategy.lower() in {"react", "function_calling"}:
             findings.append(
@@ -338,9 +341,418 @@ def _workflow_graph_dict(workflow: Workflow) -> dict[str, Any]:
     return {"nodes": "invalid"}
 
 
+@dataclass(frozen=True)
+class UrlReviewFinding:
+    rule_id: str
+    severity: SafetySeverity
+    title: str
+    message: str
+    remediation: str
+
+
+class UrlSafetyAnalyzer:
+    DYNAMIC_MARKERS = ("{{", "#sys.", "#conversation.", "#context.", "#env.")
+
+    @classmethod
+    def review(cls, *, url_text: str, allowed_domains: set[str]) -> list[UrlReviewFinding]:
+        if not url_text or _is_dynamic_value(url_text):
+            return []
+
+        normalized = _repeated_unquote(url_text.strip())
+        parsed = urlsplit(normalized)
+        if parsed.scheme not in {"http", "https"}:
+            if parsed.scheme:
+                return [
+                    UrlReviewFinding(
+                        rule_id="url.disallowed_scheme",
+                        severity=SafetySeverity.CRITICAL,
+                        title="Disallowed URL scheme",
+                        message=f"URL scheme `{parsed.scheme}` is not allowed for HTTP request nodes.",
+                        remediation="Use HTTPS endpoints or an approved connector for non-HTTP resources.",
+                    )
+                ]
+            return []
+
+        host = (parsed.hostname or "").strip().lower().rstrip(".")
+        if not host:
+            return []
+
+        findings: list[UrlReviewFinding] = []
+        if allowed_domains and not _host_allowed(host=host, allowed_domains=allowed_domains):
+            findings.append(
+                UrlReviewFinding(
+                    rule_id="http.host_not_allowlisted",
+                    severity=SafetySeverity.HIGH,
+                    title="HTTP host is not allowlisted",
+                    message=f"Host `{host}` is not in the configured agent safety allowlist.",
+                    remediation="Add the domain to the allowlist or route this call through an approved connector.",
+                )
+            )
+
+        literal_ip = _parse_ip_literal(host)
+        if literal_ip is not None:
+            if _is_unsafe_ip(literal_ip):
+                findings.append(_private_url_finding(host))
+            return findings
+
+        resolved_ips = _resolve_hostname(host)
+        if not resolved_ips:
+            return findings
+
+        unsafe_ips = [ip for ip in resolved_ips if _is_unsafe_ip(ip)]
+        public_ips = [ip for ip in resolved_ips if not _is_unsafe_ip(ip)]
+        if unsafe_ips and public_ips:
+            findings.append(
+                UrlReviewFinding(
+                    rule_id="url.dns_rebinding",
+                    severity=SafetySeverity.CRITICAL,
+                    title="DNS rebinding risk",
+                    message=f"Host `{host}` resolves to both public and private/local addresses.",
+                    remediation="Pin this integration to an allowlisted connector with DNS rebinding protection.",
+                )
+            )
+        elif unsafe_ips:
+            findings.append(_private_url_finding(host))
+
+        return findings
+
+    @classmethod
+    def review_redirects(cls, *, redirect_urls: list[str], allowed_domains: set[str]) -> list[UrlReviewFinding]:
+        findings: list[UrlReviewFinding] = []
+        for redirect_url in redirect_urls:
+            for finding in cls.review(url_text=redirect_url, allowed_domains=allowed_domains):
+                if finding.rule_id == "url.private_target":
+                    findings.append(
+                        UrlReviewFinding(
+                            rule_id="url.redirect_private_target",
+                            severity=finding.severity,
+                            title="Redirect targets a private/internal address",
+                            message=f"Redirect URL `{redirect_url}` points to a private, local, or metadata target.",
+                            remediation="Disable redirects or constrain redirects to approved public domains.",
+                        )
+                    )
+                else:
+                    findings.append(finding)
+        return findings
+
+
+class ApprovalPathAnalyzer:
+    def __init__(self, *, graph: dict[str, Any], nodes: list[dict[str, Any]]) -> None:
+        self.node_types = {_node_id(node): _node_type(node) for node in nodes}
+        self.approval_nodes = {_node_id(node) for node in nodes if _is_human_review_node(node)}
+        self.has_any_approval = bool(self.approval_nodes)
+        self.adjacency: dict[str, list[str]] = {node_id: [] for node_id in self.node_types}
+        self.incoming: dict[str, set[str]] = {node_id: set() for node_id in self.node_types}
+
+        for edge in graph.get("edges", []) if isinstance(graph.get("edges", []), list) else []:
+            if not isinstance(edge, dict):
+                continue
+            source = edge.get("source") or edge.get("source_node_id")
+            target = edge.get("target") or edge.get("target_node_id")
+            if not source or not target:
+                continue
+            source_id = str(source)
+            target_id = str(target)
+            self.adjacency.setdefault(source_id, []).append(target_id)
+            self.incoming.setdefault(target_id, set()).add(source_id)
+
+    def has_approval_before_node(self, node_id: str) -> bool:
+        if not self.has_any_approval:
+            return False
+
+        starts = [candidate for candidate in self.node_types if not self.incoming.get(candidate)]
+        if not starts:
+            starts = list(self.node_types)
+
+        stack = [(start, start in self.approval_nodes) for start in starts]
+        visited: set[tuple[str, bool]] = set()
+        while stack:
+            current, approval_seen = stack.pop()
+            state = (current, approval_seen)
+            if state in visited:
+                continue
+            visited.add(state)
+            if current == node_id:
+                if not approval_seen:
+                    return False
+                continue
+            next_approval_seen = approval_seen or current in self.approval_nodes
+            for neighbor in self.adjacency.get(current, []):
+                stack.append((neighbor, next_approval_seen or neighbor in self.approval_nodes))
+
+        return True
+
+    def has_approval_before_downstream_action(self, node_id: str) -> bool:
+        if not self.has_any_approval:
+            return False
+
+        stack = [(neighbor, neighbor in self.approval_nodes) for neighbor in self.adjacency.get(node_id, [])]
+        if not stack:
+            return False
+
+        visited: set[tuple[str, bool]] = set()
+        action_reached = False
+        while stack:
+            current, approval_seen = stack.pop()
+            state = (current, approval_seen)
+            if state in visited:
+                continue
+            visited.add(state)
+            next_approval_seen = approval_seen or current in self.approval_nodes
+            if _is_external_action_node_type(self.node_types.get(current, "")):
+                action_reached = True
+                if not next_approval_seen:
+                    return False
+                continue
+            for neighbor in self.adjacency.get(current, []):
+                stack.append((neighbor, next_approval_seen or neighbor in self.approval_nodes))
+
+        return action_reached
+
+
 def _is_human_review_node(node: dict[str, Any]) -> bool:
     node_type = _node_type(node)
     if node_type in {"human-input", "human_input", "approval", "review"}:
         return True
     serialized = json.dumps(node, ensure_ascii=False, default=str).lower()
     return "human" in serialized and ("approval" in serialized or "review" in serialized)
+
+
+def _node_id(node: dict[str, Any]) -> str:
+    return str(node.get("id") or node.get("node_id") or "unknown")
+
+
+def _missing_approval_finding(*, node_id: str, node_type: str) -> SafetyFinding:
+    return SafetyFinding(
+        rule_id="approval.path.missing",
+        severity=SafetySeverity.HIGH,
+        title="Approval path is not proven",
+        message="A risky node can reach production output or external action without passing approval.",
+        node_id=node_id,
+        node_type=node_type,
+        remediation="Route every path from the risky node through a human approval node before external action.",
+    )
+
+
+def _url_findings_to_safety_findings(
+    *, node_id: str, node_type: str, reviews: list[UrlReviewFinding]
+) -> list[SafetyFinding]:
+    return [
+        SafetyFinding(
+            rule_id=review.rule_id,
+            severity=review.severity,
+            title=review.title,
+            message=review.message,
+            node_id=node_id,
+            node_type=node_type,
+            remediation=review.remediation,
+        )
+        for review in reviews
+    ]
+
+
+def _private_url_finding(host: str) -> UrlReviewFinding:
+    return UrlReviewFinding(
+        rule_id="url.private_target",
+        severity=SafetySeverity.CRITICAL,
+        title="Private or internal URL target",
+        message=f"Host `{host}` resolves to a private, local, reserved, or metadata-service address.",
+        remediation="Use an approved public endpoint or an SSRF-protected connector.",
+    )
+
+
+def _iter_prompt_texts(data: dict[str, Any]) -> list[str]:
+    prompt_fields = (
+        "prompt",
+        "prompt_template",
+        "system_prompt",
+        "instruction",
+        "instructions",
+        "pre_prompt",
+        "query",
+        "context",
+    )
+    texts: list[str] = []
+    for field in prompt_fields:
+        if field in data:
+            texts.extend(_collect_strings(data[field]))
+
+    model_config = data.get("model_config")
+    if isinstance(model_config, dict):
+        for field in prompt_fields:
+            if field in model_config:
+                texts.extend(_collect_strings(model_config[field]))
+
+    return texts
+
+
+def _collect_strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        texts: list[str] = []
+        for nested_value in value.values():
+            texts.extend(_collect_strings(nested_value))
+        return texts
+    if isinstance(value, list):
+        texts = []
+        for item in value:
+            texts.extend(_collect_strings(item))
+        return texts
+    return []
+
+
+def _http_sensitive_fields(data: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "authorization": data.get("authorization"),
+        "headers": data.get("headers"),
+        "params": data.get("params"),
+        "body": data.get("body"),
+    }
+
+
+def _agent_has_tools(data: dict[str, Any]) -> bool:
+    tools = data.get("tools")
+    if isinstance(tools, list):
+        return len(tools) > 0
+    if isinstance(tools, dict):
+        return bool(tools)
+    tool_configs = data.get("tool_configs") or data.get("agent_tools")
+    if isinstance(tool_configs, (list, dict)):
+        return bool(tool_configs)
+    return False
+
+
+def _is_external_action_node_type(node_type: str) -> bool:
+    return node_type in {"http-request", "http", "tool", "end", "answer"} or "agent" in node_type
+
+
+def _string_value(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        if isinstance(value.get("value"), str):
+            return value["value"]
+        if isinstance(value.get("text"), str):
+            return value["text"]
+    return ""
+
+
+def _is_dynamic_value(value: str) -> bool:
+    return any(marker in value for marker in UrlSafetyAnalyzer.DYNAMIC_MARKERS)
+
+
+def _extract_redirect_urls(data: dict[str, Any]) -> list[str]:
+    redirect_values: list[Any] = []
+    for key in ("redirect_url", "redirect_urls", "redirects", "allowed_redirects"):
+        if key in data:
+            redirect_values.append(data[key])
+
+    urls: list[str] = []
+    for value in redirect_values:
+        if isinstance(value, str):
+            urls.append(value)
+        elif isinstance(value, list):
+            urls.extend(item for item in value if isinstance(item, str))
+        elif isinstance(value, dict):
+            urls.extend(item for item in value.values() if isinstance(item, str))
+    return urls
+
+
+def _agent_safety_allowed_domains(*, workflow: Workflow, graph: dict[str, Any]) -> set[str]:
+    candidates: list[Any] = []
+    for container in (
+        getattr(workflow, "features_dict", None),
+        getattr(workflow, "features", None),
+        graph,
+    ):
+        if isinstance(container, dict):
+            candidates.append(container.get("agent_safety_review"))
+            candidates.append(container.get("agentSafetyReview"))
+
+    domains: set[str] = set()
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        raw_domains = candidate.get("allowed_domains") or candidate.get("allowlist") or candidate.get("allowed_hosts")
+        if isinstance(raw_domains, str):
+            raw_domains = [raw_domains]
+        if isinstance(raw_domains, list):
+            for domain in raw_domains:
+                if isinstance(domain, str) and domain.strip():
+                    domains.add(domain.strip().lower().rstrip("."))
+    return domains
+
+
+def _host_allowed(*, host: str, allowed_domains: set[str]) -> bool:
+    for domain in allowed_domains:
+        if domain.startswith("*.") and host.endswith(domain[1:]):
+            return True
+        if domain.startswith(".") and host.endswith(domain):
+            return True
+        if host == domain:
+            return True
+    return False
+
+
+def _repeated_unquote(value: str) -> str:
+    decoded = value
+    for _ in range(3):
+        next_decoded = unquote(decoded)
+        if next_decoded == decoded:
+            break
+        decoded = next_decoded
+    return decoded
+
+
+def _parse_ip_literal(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    normalized = host.strip("[]")
+    try:
+        return ipaddress.ip_address(normalized)
+    except ValueError:
+        pass
+
+    if re.fullmatch(r"(0x[0-9a-f]+|\d+)", normalized, re.IGNORECASE):
+        try:
+            value = int(normalized, 16) if normalized.lower().startswith("0x") else int(normalized, 10)
+            return ipaddress.IPv4Address(value)
+        except ValueError:
+            return None
+
+    if re.fullmatch(r"[0-9a-fxA-F.]+", normalized):
+        try:
+            packed = socket.inet_aton(normalized)
+            return ipaddress.IPv4Address(packed)
+        except OSError:
+            return None
+
+    return None
+
+
+def _resolve_hostname(host: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    try:
+        records = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except OSError:
+        return []
+
+    resolved: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
+    for record in records:
+        sockaddr = record[4]
+        if not sockaddr:
+            continue
+        try:
+            resolved.append(ipaddress.ip_address(sockaddr[0]))
+        except ValueError:
+            continue
+    return resolved
+
+
+def _is_unsafe_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_unspecified
+        or ip.is_multicast
+    )

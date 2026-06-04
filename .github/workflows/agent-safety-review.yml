@@ -1,0 +1,71 @@
+name: Agent Safety Review
+
+on:
+  pull_request:
+    paths:
+      - "api/services/agent_safety_review_service.py"
+      - "api/services/workflow_service.py"
+      - "api/services/rag_pipeline/rag_pipeline.py"
+      - "api/controllers/console/app/workflow.py"
+      - "api/controllers/console/datasets/rag_pipeline/rag_pipeline_workflow.py"
+      - "api/tests/unit_tests/services/test_agent_safety_review_service.py"
+      - "api/tests/unit_tests/services/rag_pipeline/test_rag_pipeline_service.py"
+      - "api/tests/unit_tests/controllers/console/app/test_workflow.py"
+      - "api/tests/unit_tests/controllers/console/datasets/rag_pipeline/test_rag_pipeline_workflow.py"
+      - ".github/workflows/agent-safety-review.yml"
+  push:
+    branches:
+      - codex/agent-safety-review-gate
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-safety-review-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  backend-safety-gate:
+    name: Backend safety gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+
+      - name: Setup Python
+        run: uv python install 3.12
+
+      - name: Install targeted test tools
+        working-directory: api
+        run: uv sync --dev
+
+      - name: Lint safety review changes
+        working-directory: api
+        run: |
+          uv run --with ruff ruff check \
+            services/agent_safety_review_service.py \
+            services/workflow_service.py \
+            services/rag_pipeline/rag_pipeline.py \
+            controllers/console/app/workflow.py \
+            controllers/console/datasets/rag_pipeline/rag_pipeline_workflow.py \
+            tests/unit_tests/services/test_agent_safety_review_service.py \
+            tests/unit_tests/services/rag_pipeline/test_rag_pipeline_service.py \
+            tests/unit_tests/controllers/console/app/test_workflow.py \
+            tests/unit_tests/controllers/console/datasets/rag_pipeline/test_rag_pipeline_workflow.py
+
+      - name: Run safety review tests
+        working-directory: api
+        run: |
+          uv run --with pytest-mock pytest -o addopts='' \
+            tests/unit_tests/services/test_agent_safety_review_service.py \
+            tests/unit_tests/services/rag_pipeline/test_rag_pipeline_service.py \
+            tests/unit_tests/controllers/console/app/test_workflow.py \
+            tests/unit_tests/controllers/console/datasets/rag_pipeline/test_rag_pipeline_workflow.py \
+            -q
