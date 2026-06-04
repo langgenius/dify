@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "新增 Swagger API 作為工具",
   "addToolModal.added": "新增",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "沒有可用的代理策略",
@@ -151,7 +152,7 @@
   "mcp.noTools": "沒有可用的工具",
   "mcp.onlyTool": "包含 1 個工具",
   "mcp.operation.edit": "編輯",
-  "mcp.operation.remove": "移除",
+  "mcp.operation.remove": "刪除",
   "mcp.server.addDescription": "新增描述",
   "mcp.server.edit": "編輯描述",
   "mcp.server.modal.addTitle": "新增描述以啟用 MCP 伺服器",

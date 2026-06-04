@@ -1,10 +1,12 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiArrowRightUpLine,
 } from '@remixicon/react'
 
 type CreateEntryCardProps = {
+  className?: string
   linkText: string
   linkUrl: string
   onCreate: () => void
@@ -12,13 +14,14 @@ type CreateEntryCardProps = {
 }
 
 const CreateEntryCard = ({
+  className,
   linkText,
   linkUrl,
   onCreate,
   title,
 }: CreateEntryCardProps) => {
   return (
-    <div className="col-span-1 flex h-[120px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md">
+    <div className={cn('col-span-1 flex h-[120px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md', className)}>
       <button
         type="button"
         className="group flex h-[84px] w-full cursor-pointer items-center gap-3 p-4 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"

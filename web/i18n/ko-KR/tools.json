@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "추가됨",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "에이전트 전략 없음",

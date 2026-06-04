@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "追加済",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Agent strategy は利用できません",

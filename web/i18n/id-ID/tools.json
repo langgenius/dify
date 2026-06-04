@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "Ditambahkan",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Tidak ada strategi agen yang tersedia",
