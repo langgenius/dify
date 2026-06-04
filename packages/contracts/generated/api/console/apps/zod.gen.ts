@@ -754,7 +754,7 @@ export const zSite = z.object({
  */
 export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   summary: z.string().nullish(),

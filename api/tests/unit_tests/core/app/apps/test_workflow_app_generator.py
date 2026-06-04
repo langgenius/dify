@@ -119,6 +119,7 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
                 "parent_workflow_run_id": "outer-workflow-run-1",
                 "parent_node_execution_id": "outer-node-execution-1",
             },
+            "trace_session_id": "session-1",
         },
         invoke_from="service-api",
         streaming=False,
@@ -132,6 +133,7 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
         "parent_workflow_run_id": "outer-workflow-run-1",
         "parent_node_execution_id": "outer-node-execution-1",
     }
+    assert extras["trace_session_id"] == "session-1"
 
 
 def test_resume_delegates_to_generate(mocker: MockerFixture):

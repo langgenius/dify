@@ -11878,7 +11878,7 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | current_snapshot_id | string |  | Yes |
 | id | string |  | Yes |
@@ -11894,7 +11894,7 @@ Audit operation recorded for Agent Soul version/revision changes.
 | ---- | ---- | ----------- | -------- |
 | agent_id | string |  | No |
 | config_snapshot | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | id | string |  | Yes |
 | revisions | [ [AgentConfigRevisionResponse](#agentconfigrevisionresponse) ] |  | No |
@@ -11913,7 +11913,7 @@ Audit operation recorded for Agent Soul version/revision changes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | agent_id | string |  | No |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | id | string |  | Yes |
 | summary | string |  | No |
@@ -11985,9 +11985,9 @@ Supported icon storage formats for Agent roster entries.
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
 | app_id | string |  | No |
-| archived_at | string |  | No |
+| archived_at | integer |  | No |
 | archived_by | string |  | No |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | Yes |
 | existing_node_ids | [ string ] |  | No |
@@ -12001,7 +12001,7 @@ Supported icon storage formats for Agent roster entries.
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
-| updated_at | string |  | No |
+| updated_at | integer |  | No |
 | updated_by | string |  | No |
 | workflow_id | string |  | No |
 | workflow_node_id | string |  | No |
@@ -12131,9 +12131,9 @@ the current roster/workflow APIs scoped to Dify Agent.
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
 | app_id | string |  | No |
-| archived_at | string |  | No |
+| archived_at | integer |  | No |
 | archived_by | string |  | No |
-| created_at | string |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | Yes |
 | icon | string |  | No |
@@ -12144,7 +12144,7 @@ the current roster/workflow APIs scoped to Dify Agent.
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
-| updated_at | string |  | No |
+| updated_at | integer |  | No |
 | updated_by | string |  | No |
 | workflow_id | string |  | No |
 | workflow_node_id | string |  | No |

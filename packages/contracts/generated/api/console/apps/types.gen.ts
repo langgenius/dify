@@ -1035,7 +1035,7 @@ export type AdvancedChatWorkflowRunForListResponse = {
 
 export type AgentConfigSnapshotSummaryResponse = {
   agent_id?: string | null
-  created_at?: string | null
+  created_at?: number | null
   created_by?: string | null
   id: string
   summary?: string | null
