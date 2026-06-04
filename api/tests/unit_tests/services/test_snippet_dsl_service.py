@@ -14,13 +14,13 @@ from services.snippet_dsl_service import (
 
 
 @pytest.mark.parametrize(
-        ("version", "expected"),
-        [
-            ("not-a-version", ImportStatus.FAILED),
-            ("999.0.0", ImportStatus.PENDING),
-            ("0.1.0", ImportStatus.COMPLETED),
-        ],
-    )
+    ("version", "expected"),
+    [
+        ("not-a-version", ImportStatus.FAILED),
+        ("999.0.0", ImportStatus.PENDING),
+        ("0.1.0", ImportStatus.COMPLETED),
+    ],
+)
 def test_check_version_compatibility_special_cases(version, expected):
     assert _check_version_compatibility(version) == expected
 

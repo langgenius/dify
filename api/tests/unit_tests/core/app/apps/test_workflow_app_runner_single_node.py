@@ -217,7 +217,9 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
         patch("core.app.apps.workflow.app_runner.build_bootstrap_variables", return_value=[]),
         patch("core.app.apps.workflow.app_runner.add_variables_to_pool"),
         patch("core.app.apps.workflow.app_runner.get_default_root_node_id", return_value="root-node"),
-        patch("core.app.apps.workflow.app_runner.get_compatible_start_aliases", return_value=("legacy-start",)) as aliases,
+        patch(
+            "core.app.apps.workflow.app_runner.get_compatible_start_aliases", return_value=("legacy-start",)
+        ) as aliases,
         patch("core.app.apps.workflow.app_runner.add_node_inputs_to_pool") as add_inputs,
         patch.object(runner, "_init_graph", return_value=MagicMock()),
     ):
