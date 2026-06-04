@@ -664,6 +664,54 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
         )
 
 
+def test_composer_validator_rejects_invalid_shell_env_and_cli():
+    """ENG-367/368: env/secret names must be valid shell identifiers (no collisions),
+    and an enabled CLI tool must declare a name or install command — caught at composer
+    save instead of failing later in the agent backend shell layer."""
+    # env var name is not a valid shell identifier
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict({"env": {"variables": [{"name": "bad-name"}]}})
+
+    # secret ref name is not a valid shell identifier
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict({"env": {"secret_refs": [{"name": "1TOKEN"}]}})
+
+    # env var and secret ref share the shell namespace -> collision
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict(
+            {
+                "env": {
+                    "variables": [{"name": "TOKEN", "value": "v"}],
+                    "secret_refs": [{"name": "TOKEN", "id": "credential-1"}],
+                }
+            }
+        )
+
+    # an enabled CLI tool with neither a name nor a command is meaningless
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict({"tools": {"cli_tools": [{"enabled": True}]}})
+
+
+def test_composer_validator_accepts_valid_shell_env_and_cli():
+    """Valid shell identifiers + a disabled empty CLI tool pass validation."""
+    config = ComposerConfigValidator.validate_agent_soul_dict(
+        {
+            "env": {
+                "variables": [{"name": "MY_VAR", "value": "v"}],
+                "secret_refs": [{"name": "API_TOKEN", "id": "credential-1"}],
+            },
+            "tools": {
+                "cli_tools": [
+                    {"name": "jq", "command": "apt-get install -y jq"},
+                    {"enabled": False},  # disabled empty rows are tolerated
+                ]
+            },
+        }
+    )
+    assert {variable.name for variable in config.env.variables} == {"MY_VAR"}
+    assert {secret.name for secret in config.env.secret_refs} == {"API_TOKEN"}
+
+
 class TestAgentAppBackingAgent:
     """S1: an Agent App (mode=agent) is backed 1:1 by a roster Agent linked via
     ``Agent.app_id``. ``AppService.create_app`` builds the backing agent inside
