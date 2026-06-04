@@ -1,5 +1,6 @@
 import io
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any, Literal, TypedDict
 
 from flask import request, send_file
@@ -20,13 +21,16 @@ from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.helper.position_helper import is_filtered
-from core.plugin.entities.plugin import PluginCategory
+from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginInstallationSource
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 from models.provider_ids import ToolProviderID
@@ -45,6 +49,11 @@ class AutoUpgradeSettingsResponse(TypedDict):
 
 
 class ParserList(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
+
+
+class PluginCategoryListQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
@@ -191,9 +200,67 @@ class PluginDebuggingKeyResponse(ResponseModel):
     port: int
 
 
+class PluginCategoryInstalledPluginResponse(ResponseModel):
+    id: str
+    name: str
+    tenant_id: str
+    plugin_id: str
+    plugin_unique_identifier: str
+    endpoints_active: int
+    endpoints_setups: int
+    installation_id: str
+    declaration: PluginDeclaration
+    runtime_type: str
+    version: str
+    created_at: datetime
+    updated_at: datetime
+    source: PluginInstallationSource
+    checksum: str
+    meta: Mapping[str, Any]
+
+
+class PluginCategoryBuiltinToolResponse(ResponseModel):
+    model_config = ConfigDict(extra="allow")
+
+    author: str
+    name: str
+    label: I18nObject
+    description: I18nObject
+    parameters: list[Mapping[str, Any]] | None = None
+    labels: list[str]
+    output_schema: Mapping[str, object]
+
+
+class PluginCategoryBuiltinToolProviderResponse(ResponseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    author: str
+    name: str
+    plugin_id: str | None
+    plugin_unique_identifier: str | None
+    description: I18nObject
+    icon: str | Mapping[str, str]
+    icon_dark: str | Mapping[str, str] | None
+    label: I18nObject
+    type: ToolProviderType
+    team_credentials: Mapping[str, object]
+    is_team_authorization: bool
+    allow_delete: bool
+    tools: list[PluginCategoryBuiltinToolResponse]
+    labels: list[str]
+
+
+class PluginCategoryListResponse(ResponseModel):
+    plugins: list[PluginCategoryInstalledPluginResponse]
+    builtin_tools: list[PluginCategoryBuiltinToolProviderResponse]
+    has_more: bool
+
+
 register_schema_models(
     console_ns,
     ParserList,
+    PluginCategoryListQuery,
     PluginAutoUpgradeSettingsPayload,
     PluginPermissionSettingsPayload,
     ParserLatest,
@@ -221,6 +288,10 @@ register_response_schema_models(
     PluginAutoUpgradeFetchResponse,
     PluginAutoUpgradeSettingsResponseModel,
     PluginDebuggingKeyResponse,
+    PluginCategoryInstalledPluginResponse,
+    PluginCategoryBuiltinToolResponse,
+    PluginCategoryBuiltinToolProviderResponse,
+    PluginCategoryListResponse,
     SuccessResponse,
 )
 
@@ -337,13 +408,14 @@ class PluginListApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/<string:category>/list")
 class PluginCategoryListApi(Resource):
-    @console_ns.expect(console_ns.models[ParserList.__name__])
+    @console_ns.doc(params=query_params_from_model(PluginCategoryListQuery))
+    @console_ns.response(200, "Success", console_ns.models[PluginCategoryListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, category: str):
         _, tenant_id = current_account_with_tenant()
-        args = ParserList.model_validate(request.args.to_dict(flat=True))
+        args = PluginCategoryListQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             plugin_category = PluginCategory(category)
@@ -359,7 +431,14 @@ class PluginCategoryListApi(Resource):
         if plugin_category == PluginCategory.Tool:
             builtin_tools = _list_hardcoded_builtin_tool_providers(tenant_id)
 
-        return jsonable_encoder({"plugins": plugins.list, "builtin_tools": builtin_tools, "has_more": plugins.has_more})
+        return dump_response(
+            PluginCategoryListResponse,
+            {
+                "plugins": jsonable_encoder(plugins.list),
+                "builtin_tools": builtin_tools,
+                "has_more": plugins.has_more,
+            },
+        )
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
