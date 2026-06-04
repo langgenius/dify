@@ -807,6 +807,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                     SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.workflow_run_outputs),
                     SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                    SpanAttributes.SESSION_ID: workflow_session_id or "",
                 },
             }
             if trace_info.error:

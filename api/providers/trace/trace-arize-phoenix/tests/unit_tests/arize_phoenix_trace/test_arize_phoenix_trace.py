@@ -817,7 +817,11 @@ def test_workflow_trace_uses_canonical_root_context_for_top_level_workflow(
     mock_sessionmaker, mock_repo_factory, mock_db, trace_instance
 ):
     mock_db.engine = MagicMock()
-    info = _make_workflow_info(message_id="message-1", workflow_run_id="workflow-run-1")
+    info = _make_workflow_info(
+        message_id="message-1",
+        workflow_run_id="workflow-run-1",
+        metadata={"app_id": "app1", "trace_session_id": "trace-session-1"},
+    )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
     mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
@@ -840,6 +844,7 @@ def test_workflow_trace_uses_canonical_root_context_for_top_level_workflow(
             SpanAttributes.INPUT_MIME_TYPE: "application/json",
             SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
             SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+            SpanAttributes.SESSION_ID: "trace-session-1",
         },
     )
     mock_extract.assert_called_once_with(carrier=root_carrier)
@@ -977,6 +982,7 @@ def test_workflow_trace_reuses_upstream_parent_workflow_context_when_no_parent_n
             SpanAttributes.INPUT_MIME_TYPE: "application/json",
             SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
             SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+            SpanAttributes.SESSION_ID: "outer-workflow-run-1",
         },
     )
     mock_extract.assert_called_once_with(carrier=parent_carrier)
@@ -1122,6 +1128,7 @@ def test_workflow_trace_falls_back_when_parent_app_tracing_cannot_publish_parent
             SpanAttributes.INPUT_MIME_TYPE: "application/json",
             SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
             SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+            SpanAttributes.SESSION_ID: "outer-workflow-run-1",
         },
     )
     mock_extract.assert_called_once_with(carrier=parent_carrier)
@@ -1324,6 +1331,7 @@ def test_workflow_trace_keeps_nested_conversation_session_while_reusing_parent_r
             SpanAttributes.INPUT_MIME_TYPE: "application/json",
             SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
             SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+            SpanAttributes.SESSION_ID: "conversation-1",
         },
     )
     mock_extract.assert_called_once_with(carrier=parent_carrier)
