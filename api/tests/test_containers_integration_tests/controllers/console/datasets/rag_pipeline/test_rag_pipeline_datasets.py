@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Protocol, cast
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -17,17 +17,9 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
     CreateEmptyRagPipelineDatasetApi,
     CreateRagPipelineDatasetApi,
 )
-
-
-class _WrappedCallable(Protocol):
-    __wrapped__: Callable[..., object]
-
-
-def unwrap(func: Callable[..., object]) -> Callable[..., object]:
-    current: Callable[..., object] | _WrappedCallable = func
-    while hasattr(current, "__wrapped__"):
-        current = cast(_WrappedCallable, current).__wrapped__
-    return cast(Callable[..., object], current)
+from models.dataset import Dataset, DatasetPermissionEnum, DatasetRuntimeMode, Pipeline
+from services.entities.dsl_entities import ImportStatus
+from tests.test_containers_integration_tests.controllers.console.helpers import unwrap
 
 
 class TestCreateRagPipelineDatasetApi:
@@ -44,7 +36,15 @@ class TestCreateRagPipelineDatasetApi:
 
         payload = self._valid_payload()
         user = MagicMock(is_dataset_editor=True)
-        import_info = {"dataset_id": "ds-1"}
+        import_info = {
+            "id": "import-1",
+            "status": ImportStatus.COMPLETED,
+            "dataset_id": "ds-1",
+            "pipeline_id": "pipeline-1",
+            "current_dsl_version": "0.1.0",
+            "imported_dsl_version": "0.1.0",
+            "error": "",
+        }
 
         mock_service = MagicMock()
         mock_service.create_rag_pipeline_dataset.return_value = import_info
@@ -57,10 +57,18 @@ class TestCreateRagPipelineDatasetApi:
                 return_value=mock_service,
             ),
         ):
-            response, status = cast(tuple[dict[str, str], int], method(api, "tenant-1", user))
+            response, status = method(api, "tenant-1", user)
 
         assert status == 201
-        assert response == import_info
+        assert response == {
+            "id": "import-1",
+            "status": "completed",
+            "dataset_id": "ds-1",
+            "pipeline_id": "pipeline-1",
+            "current_dsl_version": "0.1.0",
+            "imported_dsl_version": "0.1.0",
+            "error": "",
+        }
 
     def test_post_forbidden_non_editor(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
@@ -117,12 +125,35 @@ class TestCreateEmptyRagPipelineDatasetApi:
     def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def test_post_success(self, app: Flask) -> None:
+    def test_post_success(self, app: Flask, db_session_with_containers: Session) -> None:
         api = CreateEmptyRagPipelineDatasetApi()
         method = unwrap(api.post)
 
         user = MagicMock(is_dataset_editor=True)
-        dataset = MagicMock()
+        tenant_id = str(uuid4())
+        account_id = str(uuid4())
+        pipeline = Pipeline(
+            tenant_id=tenant_id,
+            name="Pipeline dataset",
+            description="",
+            created_by=account_id,
+        )
+        db_session_with_containers.add(pipeline)
+        db_session_with_containers.flush()
+        dataset = Dataset(
+            tenant_id=tenant_id,
+            name="Pipeline dataset",
+            description="",
+            permission=DatasetPermissionEnum.ONLY_ME,
+            provider="vendor",
+            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
+            icon_info={"icon": "📙", "icon_background": "#FFF4ED", "icon_type": "emoji"},
+            created_by=account_id,
+            pipeline_id=pipeline.id,
+        )
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
+        db_session_with_containers.expire_all()
 
         with (
             app.test_request_context("/"),
@@ -130,15 +161,20 @@ class TestCreateEmptyRagPipelineDatasetApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.DatasetService.create_empty_rag_pipeline_dataset",
                 return_value=dataset,
             ),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.marshal",
-                return_value={"id": "ds-1"},
-            ),
         ):
-            response, status = cast(tuple[dict[str, str], int], method(api, "tenant-1", user))
+            response, status = method(api, tenant_id, user)
 
         assert status == 201
-        assert response == {"id": "ds-1"}
+        assert response["id"] == dataset.id
+        assert response["name"] == "Pipeline dataset"
+        assert response["pipeline_id"] == pipeline.id
+        assert response["runtime_mode"] == "rag_pipeline"
+        assert response["icon_info"] == {
+            "icon": "📙",
+            "icon_background": "#FFF4ED",
+            "icon_type": "emoji",
+            "icon_url": None,
+        }
 
     def test_post_forbidden_non_editor(self, app: Flask) -> None:
         api = CreateEmptyRagPipelineDatasetApi()

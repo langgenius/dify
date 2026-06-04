@@ -1,9 +1,6 @@
-import type {
-  EditorState,
-  LexicalCommand,
-} from 'lexical'
+import type { EditorState } from 'lexical'
 import type { FC } from 'react'
-import type { Hotkey } from './plugins/shortcuts-popup-plugin'
+import type { Hotkey, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -71,7 +68,7 @@ import {
 
 type ShortcutPopup = {
   hotkey: Hotkey
-  Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: unknown[]) => void }>
+  Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>
 }
 
 type PromptEditorContentProps = {

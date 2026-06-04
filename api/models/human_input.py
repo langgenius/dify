@@ -251,3 +251,55 @@ class HumanInputFormRecipient(DefaultFieldsMixin, Base):
             access_token=_generate_token(),
         )
         return recipient_model
+
+
+class HumanInputFormUploadToken(DefaultFieldsMixin, Base):
+    """Upload authorization token bound to one human input form recipient.
+
+    HITL upload tokens are intentionally separate from app/service bearer tokens.
+    The token is stored as an opaque random value so upload endpoints can perform
+    a direct lookup without entering the normal Web App authentication chain.
+    Upload ownership is resolved from the form's workflow run initiator instead
+    of being persisted on the token row itself.
+    """
+
+    __tablename__ = "human_input_form_upload_tokens"
+    __table_args__ = (
+        sa.UniqueConstraint("token", name="human_input_form_upload_tokens_token_key"),
+        sa.Index("human_input_form_upload_tokens_form_id_idx", "form_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    recipient_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    token: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+
+    form: Mapped[HumanInputForm] = relationship(
+        "HumanInputForm",
+        uselist=False,
+        foreign_keys=[form_id],
+        primaryjoin="foreign(HumanInputFormUploadToken.form_id) == HumanInputForm.id",
+        lazy="raise",
+    )
+
+
+class HumanInputFormUploadFile(DefaultFieldsMixin, Base):
+    """Association between a human input form and a file uploaded through its token.
+
+    Ownership remains on ``UploadFile`` itself; this table only records the
+    durable form/token/file linkage needed by Human Input flows.
+    """
+
+    __tablename__ = "human_input_form_upload_files"
+    __table_args__ = (
+        sa.UniqueConstraint("upload_file_id", name="human_input_form_upload_files_upload_file_id_key"),
+        sa.Index("human_input_form_upload_files_form_id_idx", "form_id"),
+        sa.Index("human_input_form_upload_files_upload_token_id_idx", "upload_token_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_token_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
