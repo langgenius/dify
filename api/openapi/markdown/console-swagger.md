@@ -16681,7 +16681,7 @@ How a workflow node is bound to an Agent.
 
 #### WorkflowGeneratePayload
 
-Payload for the cmd+k `/create` workflow generator endpoint.
+Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
 
 See ``services/workflow_generator_service.py`` for behaviour. Errors are
 surfaced through the same envelope as ``/rule-generate`` so the frontend
@@ -16689,6 +16689,7 @@ can reuse its existing handler.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| current_graph | object | Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch | No |
 | ideal_output | string | Optional sample output for grounding | No |
 | instruction | string | Natural-language workflow description | Yes |
 | mode | string | Target app mode for the generated graph<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |

@@ -22,13 +22,14 @@ export const zModelConfig = z.object({
 /**
  * WorkflowGeneratePayload
  *
- * Payload for the cmd+k `/create` workflow generator endpoint.
+ * Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
  *
  * See ``services/workflow_generator_service.py`` for behaviour. Errors are
  * surfaced through the same envelope as ``/rule-generate`` so the frontend
  * can reuse its existing handler.
  */
 export const zWorkflowGeneratePayload = z.object({
+  current_graph: z.record(z.string(), z.unknown()).nullish(),
   ideal_output: z.string().optional().default(''),
   instruction: z.string(),
   mode: z.enum(['advanced-chat', 'workflow']),

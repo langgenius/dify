@@ -5,6 +5,9 @@ export type ClientOptions = {
 }
 
 export type WorkflowGeneratePayload = {
+  current_graph?: {
+    [key: string]: unknown
+  } | null
   ideal_output?: string
   instruction: string
   mode: 'advanced-chat' | 'workflow'

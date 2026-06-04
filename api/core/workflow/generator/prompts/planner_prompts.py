@@ -138,9 +138,7 @@ def format_existing_graph_section(current_graph: dict | None) -> str:
         if not isinstance(node, dict):
             continue
         data = node.get("data") or {}
-        node_lines.append(
-            f"- id={node.get('id', '')!r} type={data.get('type', '')!r} title={data.get('title', '')!r}"
-        )
+        node_lines.append(f"- id={node.get('id', '')!r} type={data.get('type', '')!r} title={data.get('title', '')!r}")
     edge_lines = []
     for edge in edges:
         if not isinstance(edge, dict):
