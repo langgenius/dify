@@ -368,9 +368,7 @@ class TestWorkflowDraftVariableService:
 
         stmt = mock_session.scalars.call_args.args[0]
         compiled = stmt.compile()
-        excluded_node_ids = next(
-            value for value in compiled.params.values() if isinstance(value, (list, tuple))
-        )
+        excluded_node_ids = next(value for value in compiled.params.values() if isinstance(value, (list, tuple)))
         assert set(excluded_node_ids) == {SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
 
     def test_reset_conversation_variable(self, mock_session):

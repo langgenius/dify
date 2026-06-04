@@ -255,12 +255,12 @@ beforeAll(() => {
 
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
-const renderList = (searchParams = '', pageType: 'apps' | 'snippets' = 'apps') => {
+const renderList = (searchParams = '') => {
   mockSearchParams = new URLSearchParams(searchParams)
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { branding: { enabled: false } },
   })
-  return renderWithNuqs(<SystemFeaturesWrapper><List pageType={pageType} /></SystemFeaturesWrapper>, { searchParams })
+  return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
 }
 
 const openTypeFilter = () => {
@@ -328,12 +328,6 @@ describe('List', () => {
       renderList()
 
       expect(screen.getByRole('link', { name: 'app.studio.viewSnippets' })).toHaveAttribute('href', '/snippets')
-    })
-
-    it('should not render link to snippets on snippets page', () => {
-      renderList('', 'snippets')
-
-      expect(screen.queryByRole('link', { name: 'app.studio.viewSnippets' })).not.toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {

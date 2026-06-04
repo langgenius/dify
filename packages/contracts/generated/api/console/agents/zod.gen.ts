@@ -218,6 +218,8 @@ export const zAgentTextToSpeechFeatureConfig = z.object({
 export const zAgentSecretRefConfig = z.object({
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  permission_status: z.string().max(64).nullish(),
   provider: z.string().max(255).nullish(),
   type: z.string().max(64).nullish(),
 })
@@ -379,16 +381,6 @@ export const zAgentSoulSkillsFilesConfig = z.object({
 })
 
 /**
- * AgentCliToolConfig
- */
-export const zAgentCliToolConfig = z.object({
-  command: z.string().nullish(),
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  name: z.string().max(255).nullish(),
-})
-
-/**
  * AgentModelResponseFormatConfig
  */
 export const zAgentModelResponseFormatConfig = z.object({
@@ -428,6 +420,50 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
   enabled: z.boolean().optional().default(false),
   model: zAgentSoulModelConfig.optional(),
   prompt: z.string().nullish(),
+})
+
+/**
+ * AgentCliToolAuthorizationStatus
+ *
+ * Authorization state for Agent-scoped CLI tools.
+ *
+ * Missing status keeps backward compatibility with draft rows and CLI tools that
+ * do not need pre-authorization. Explicit denied-like states are blocked by the
+ * composer/publish validators and skipped by runtime request builders.
+ */
+export const zAgentCliToolAuthorizationStatus = z.enum([
+  'allowed',
+  'authorized',
+  'denied',
+  'forbidden',
+  'not_required',
+  'pending',
+  'pre_authorized',
+  'unauthorized',
+])
+
+/**
+ * AgentCliToolRiskLevel
+ *
+ * Risk marker for CLI tool bootstrap commands.
+ */
+export const zAgentCliToolRiskLevel = z.enum(['dangerous', 'safe', 'unknown'])
+
+/**
+ * AgentCliToolConfig
+ */
+export const zAgentCliToolConfig = z.object({
+  authorization_status: zAgentCliToolAuthorizationStatus.optional(),
+  command: z.string().nullish(),
+  dangerous: z.boolean().optional().default(false),
+  dangerous_acknowledged: z.boolean().optional().default(false),
+  description: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  invoke_metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  pre_authorized: z.boolean().nullish(),
+  risk_level: zAgentCliToolRiskLevel.optional(),
 })
 
 /**

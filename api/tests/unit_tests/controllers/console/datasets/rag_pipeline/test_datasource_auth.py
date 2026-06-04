@@ -1,3 +1,4 @@
+import inspect
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,25 +24,15 @@ from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
-
 class TestDatasourcePluginOAuthAuthorizationUrl:
     def test_get_success(self, app: Flask):
         api = DatasourcePluginOAuthAuthorizationUrl()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/?credential_id=cred-1"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
@@ -58,20 +49,17 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
                 return_value={"url": "http://auth"},
             ),
         ):
-            response = method(api, "notion")
+            response = method(api, "tenant-1", user, "notion")
 
         assert response.status_code == 200
 
     def test_get_no_oauth_config(self, app: Flask):
         api = DatasourcePluginOAuthAuthorizationUrl()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
+        user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
@@ -79,20 +67,16 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, "notion")
+                method(api, "tenant-1", user, "notion")
 
     def test_get_without_credential_id_sets_cookie(self, app: Flask):
         api = DatasourcePluginOAuthAuthorizationUrl()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
@@ -109,7 +93,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
                 return_value={"url": "http://auth"},
             ),
         ):
-            response = method(api, "notion")
+            response = method(api, "tenant-1", user, "notion")
 
         assert response.status_code == 200
         assert "context_id" in response.headers.get("Set-Cookie")
@@ -118,7 +102,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
 class TestDatasourceOAuthCallback:
     def test_callback_success_new_credential(self, app: Flask):
         api = DatasourceOAuthCallback()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         oauth_response = MagicMock()
         oauth_response.credentials = {"token": "abc"}
@@ -160,7 +144,7 @@ class TestDatasourceOAuthCallback:
 
     def test_callback_missing_context(self, app: Flask):
         api = DatasourceOAuthCallback()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
@@ -168,7 +152,7 @@ class TestDatasourceOAuthCallback:
 
     def test_callback_invalid_context(self, app: Flask):
         api = DatasourceOAuthCallback()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/?context_id=bad"),
@@ -183,7 +167,7 @@ class TestDatasourceOAuthCallback:
 
     def test_callback_oauth_config_not_found(self, app: Flask):
         api = DatasourceOAuthCallback()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         context = {"user_id": "u", "tenant_id": "t"}
 
@@ -205,7 +189,7 @@ class TestDatasourceOAuthCallback:
 
     def test_callback_reauthorize_existing_credential(self, app: Flask):
         api = DatasourceOAuthCallback()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         oauth_response = MagicMock()
         oauth_response.credentials = {"token": "abc"}
@@ -248,7 +232,7 @@ class TestDatasourceOAuthCallback:
 
     def test_callback_context_id_from_cookie(self, app: Flask):
         api = DatasourceOAuthCallback()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         oauth_response = MagicMock()
         oauth_response.credentials = {"token": "abc"}
@@ -292,40 +276,32 @@ class TestDatasourceOAuthCallback:
 class TestDatasourceAuth:
     def test_post_success(self, app: Flask):
         api = DatasourceAuth()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"credentials": {"key": "val"}}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "add_datasource_api_key_provider",
                 return_value=None,
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", "notion")
 
         assert status == 200
 
     def test_post_invalid_credentials(self, app: Flask):
         api = DatasourceAuth()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"credentials": {"key": "bad"}}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "add_datasource_api_key_provider",
@@ -333,63 +309,53 @@ class TestDatasourceAuth:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, "notion")
+                method(api, "tenant-1", "notion")
 
     def test_get_success(self, app: Flask):
         api = DatasourceAuth()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
+        user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "list_datasource_credentials",
                 return_value=[{"id": "1"}],
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", user, "notion")
 
         assert status == 200
         assert response["result"]
 
     def test_post_missing_credentials(self, app: Flask):
         api = DatasourceAuth()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
         ):
             with pytest.raises(ValueError):
-                method(api, "notion")
+                method(api, "tenant-1", "notion")
 
     def test_get_empty_list(self, app: Flask):
         api = DatasourceAuth()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
+        user = MagicMock(id="user-1")
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "list_datasource_credentials",
                 return_value=[],
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", user, "notion")
 
         assert status == 200
         assert response["result"] == []
@@ -398,136 +364,112 @@ class TestDatasourceAuth:
 class TestDatasourceAuthDeleteApi:
     def test_delete_success(self, app: Flask):
         api = DatasourceAuthDeleteApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"credential_id": "cred-1"}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "remove_datasource_credentials",
                 return_value=None,
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", "notion")
 
         assert status == 200
 
     def test_delete_missing_credential_id(self, app: Flask):
         api = DatasourceAuthDeleteApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
         ):
             with pytest.raises(ValueError):
-                method(api, "notion")
+                method(api, "tenant-1", "notion")
 
 
 class TestDatasourceAuthUpdateApi:
     def test_update_success(self, app: Flask):
         api = DatasourceAuthUpdateApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"credential_id": "id", "credentials": {"k": "v"}}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "update_datasource_credentials",
                 return_value=None,
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", "notion")
 
         assert status == 201
 
     def test_update_with_credentials_none(self, app: Flask):
         api = DatasourceAuthUpdateApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"credential_id": "id", "credentials": None}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "update_datasource_credentials",
                 return_value=None,
             ) as update_mock,
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", "notion")
 
         update_mock.assert_called_once()
         assert status == 201
 
     def test_update_name_only(self, app: Flask):
         api = DatasourceAuthUpdateApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"credential_id": "id", "name": "New Name"}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "update_datasource_credentials",
                 return_value=None,
             ),
         ):
-            _, status = method(api, "notion")
+            _, status = method(api, "tenant-1", "notion")
 
         assert status == 201
 
     def test_update_with_empty_credentials_dict(self, app: Flask):
         api = DatasourceAuthUpdateApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"credential_id": "id", "credentials": {}}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "update_datasource_credentials",
                 return_value=None,
             ) as update_mock,
         ):
-            _, status = method(api, "notion")
+            _, status = method(api, "tenant-1", "notion")
 
         update_mock.assert_called_once()
         assert status == 201
@@ -536,62 +478,50 @@ class TestDatasourceAuthUpdateApi:
 class TestDatasourceAuthListApi:
     def test_list_success(self, app: Flask):
         api = DatasourceAuthListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "get_all_datasource_credentials",
                 return_value=[{"id": "1"}],
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, "tenant-1")
 
         assert status == 200
 
     def test_auth_list_empty(self, app: Flask):
         api = DatasourceAuthListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "get_all_datasource_credentials",
                 return_value=[],
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, "tenant-1")
 
         assert status == 200
         assert response["result"] == []
 
     def test_hardcode_list_empty(self, app: Flask):
         api = DatasourceHardCodeAuthListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "get_hard_code_datasource_credentials",
                 return_value=[],
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, "tenant-1")
 
         assert status == 200
         assert response["result"] == []
@@ -600,21 +530,17 @@ class TestDatasourceAuthListApi:
 class TestDatasourceHardCodeAuthListApi:
     def test_list_success(self, app: Flask):
         api = DatasourceHardCodeAuthListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "get_hard_code_datasource_credentials",
                 return_value=[{"id": "1"}],
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, "tenant-1")
 
         assert status == 200
 
@@ -622,73 +548,61 @@ class TestDatasourceHardCodeAuthListApi:
 class TestDatasourceAuthOauthCustomClient:
     def test_post_success(self, app: Flask):
         api = DatasourceAuthOauthCustomClient()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"client_params": {}, "enable_oauth_custom_client": True}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "setup_oauth_custom_client_params",
                 return_value=None,
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", "notion")
 
         assert status == 200
 
     def test_delete_success(self, app: Flask):
         api = DatasourceAuthOauthCustomClient()
-        method = unwrap(api.delete)
+        method = inspect.unwrap(api.delete)
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "remove_oauth_custom_client_params",
                 return_value=None,
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", "notion")
 
         assert status == 200
 
     def test_post_empty_payload(self, app: Flask):
         api = DatasourceAuthOauthCustomClient()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "setup_oauth_custom_client_params",
                 return_value=None,
             ),
         ):
-            _, status = method(api, "notion")
+            _, status = method(api, "tenant-1", "notion")
 
         assert status == 200
 
     def test_post_disabled_flag(self, app: Flask):
         api = DatasourceAuthOauthCustomClient()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {
             "client_params": {"a": 1},
@@ -698,17 +612,13 @@ class TestDatasourceAuthOauthCustomClient:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "setup_oauth_custom_client_params",
                 return_value=None,
             ) as setup_mock,
         ):
-            _, status = method(api, "notion")
+            _, status = method(api, "tenant-1", "notion")
 
         setup_mock.assert_called_once()
         assert status == 200
@@ -717,72 +627,60 @@ class TestDatasourceAuthOauthCustomClient:
 class TestDatasourceAuthDefaultApi:
     def test_set_default_success(self, app: Flask):
         api = DatasourceAuthDefaultApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"id": "cred-1"}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "set_default_datasource_provider",
                 return_value=None,
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", "notion")
 
         assert status == 200
 
     def test_default_missing_id(self, app: Flask):
         api = DatasourceAuthDefaultApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
         ):
             with pytest.raises(ValueError):
-                method(api, "notion")
+                method(api, "tenant-1", "notion")
 
 
 class TestDatasourceUpdateProviderNameApi:
     def test_update_name_success(self, app: Flask):
         api = DatasourceUpdateProviderNameApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"credential_id": "id", "name": "New Name"}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
             patch.object(
                 DatasourceProviderService,
                 "update_datasource_provider_name",
                 return_value=None,
             ),
         ):
-            response, status = method(api, "notion")
+            response, status = method(api, "tenant-1", "notion")
 
         assert status == 200
 
     def test_update_name_too_long(self, app: Flask):
         api = DatasourceUpdateProviderNameApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {
             "credential_id": "id",
@@ -792,27 +690,19 @@ class TestDatasourceUpdateProviderNameApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
         ):
             with pytest.raises(ValueError):
-                method(api, "notion")
+                method(api, "tenant-1", "notion")
 
     def test_update_name_missing_credential_id(self, app: Flask):
         api = DatasourceUpdateProviderNameApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"name": "Valid"}
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
         ):
             with pytest.raises(ValueError):
-                method(api, "notion")
+                method(api, "tenant-1", "notion")
