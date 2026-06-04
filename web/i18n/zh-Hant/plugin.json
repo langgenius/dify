@@ -149,7 +149,7 @@
   "detailPanel.toolSelector.unsupportedMCPTool": "目前選定的代理策略集成版本不支持 MCP 工具。",
   "detailPanel.toolSelector.unsupportedTitle": "不支援的作",
   "difyVersionNotCompatible": "當前的 Dify 版本與此集成不兼容，請升級至所需的最低版本：{{minimalDifyVersion}}",
-  "endpointsEnabled": "{{num}} 組已啟用端點",
+  "endpointsEnabled": "{{num}} 個已啟用端點",
   "error.fetchReleasesError": "無法檢索發行版。請稍後重試。",
   "error.inValidGitHubUrl": "GitHub URL 無效。請輸入有效的 URL，格式為：https://github.com/owner/repo",
   "error.noReleasesFound": "未找到版本。請檢查 GitHub 儲存庫或輸入 URL。",
