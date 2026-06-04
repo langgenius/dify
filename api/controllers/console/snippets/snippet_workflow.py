@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar
 
 from flask import request
 from flask_restx import Resource
@@ -53,10 +52,9 @@ from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
 
-P = ParamSpec("P")
-R = TypeVar("R")
-
 # Register Pydantic models with Swagger
+
+
 class SnippetWorkflowResponse(WorkflowResponse):
     input_fields: list[dict] = Field(default_factory=list)
 
@@ -89,11 +87,11 @@ class SnippetNotFoundError(Exception):
     pass
 
 
-def get_snippet(view_func: Callable[P, R]):
+def get_snippet[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
     """Decorator to fetch and validate snippet access."""
 
     @wraps(view_func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         if not kwargs.get("snippet_id"):
             raise ValueError("missing snippet_id in path parameters")
 
@@ -120,7 +118,11 @@ def get_snippet(view_func: Callable[P, R]):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft")
 class SnippetDraftWorkflowApi(Resource):
     @console_ns.doc("get_snippet_draft_workflow")
-    @console_ns.response(200, "Draft workflow retrieved successfully", console_ns.models[SnippetWorkflowResponse.__name__])
+    @console_ns.response(
+        200,
+        "Draft workflow retrieved successfully",
+        console_ns.models[SnippetWorkflowResponse.__name__],
+    )
     @console_ns.response(404, "Snippet or draft workflow not found")
     @setup_required
     @login_required
@@ -196,7 +198,11 @@ class SnippetDraftConfigApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/publish")
 class SnippetPublishedWorkflowApi(Resource):
     @console_ns.doc("get_snippet_published_workflow")
-    @console_ns.response(200, "Published workflow retrieved successfully", console_ns.models[SnippetWorkflowResponse.__name__])
+    @console_ns.response(
+        200,
+        "Published workflow retrieved successfully",
+        console_ns.models[SnippetWorkflowResponse.__name__],
+    )
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
@@ -272,7 +278,11 @@ class SnippetPublishedAllWorkflowApi(Resource):
     @console_ns.doc("get_all_snippet_published_workflows")
     @console_ns.doc(description="Get all published workflows for a snippet")
     @console_ns.doc(params={"snippet_id": "Snippet ID"})
-    @console_ns.response(200, "Published workflows retrieved successfully", console_ns.models[WorkflowPaginationResponse.__name__])
+    @console_ns.response(
+        200,
+        "Published workflows retrieved successfully",
+        console_ns.models[WorkflowPaginationResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -343,7 +353,11 @@ class SnippetDraftWorkflowRestoreApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
 class SnippetWorkflowRunsApi(Resource):
     @console_ns.doc("list_snippet_workflow_runs")
-    @console_ns.response(200, "Workflow runs retrieved successfully", console_ns.models[WorkflowRunPaginationResponse.__name__])
+    @console_ns.response(
+        200,
+        "Workflow runs retrieved successfully",
+        console_ns.models[WorkflowRunPaginationResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -370,7 +384,11 @@ class SnippetWorkflowRunsApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/<uuid:run_id>")
 class SnippetWorkflowRunDetailApi(Resource):
     @console_ns.doc("get_snippet_workflow_run_detail")
-    @console_ns.response(200, "Workflow run detail retrieved successfully", console_ns.models[WorkflowRunDetailResponse.__name__])
+    @console_ns.response(
+        200,
+        "Workflow run detail retrieved successfully",
+        console_ns.models[WorkflowRunDetailResponse.__name__],
+    )
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
