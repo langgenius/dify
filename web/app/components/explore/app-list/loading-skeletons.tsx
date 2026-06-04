@@ -192,7 +192,7 @@ export function ExploreHomeSkeleton({
   return (
     <div role="status" aria-label={t('loading', { ns: 'common' })} className="contents">
       {showBanner && <BannerSkeletonBody />}
-      <section className="px-8 pb-4">
+      <section className="px-8 pb-5">
         <RecommendationSectionSkeletonBody />
       </section>
       <ExploreHeaderSkeletonBody />
