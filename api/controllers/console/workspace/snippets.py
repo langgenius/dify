@@ -279,14 +279,14 @@ class CustomizedSnippetExportApi(Resource):
         # Set filename with .snippet extension
         filename = f"{snippet.name}.snippet"
         encoded_filename = quote(filename)
-        
+
         response = Response(
             result,
             mimetype="application/x-yaml",
         )
         response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
         response.headers["Content-Type"] = "application/x-yaml"
-        
+
         return response
 
 

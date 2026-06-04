@@ -227,7 +227,7 @@ class SnippetDslService:
                     node_type = node_data.get("type", "")
                     if node_type in SNIPPET_FORBIDDEN_NODE_TYPES:
                         forbidden_nodes_found.append(node_type)
-                
+
                 if forbidden_nodes_found:
                     forbidden_types_str = ", ".join(set(forbidden_nodes_found))
                     return SnippetImportInfo(
