@@ -1,19 +1,48 @@
 'use client'
 
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
+import ToggleButton from './toggle-button'
 
-const DatasetDetailTop = () => {
+type DatasetDetailTopProps = {
+  expand?: boolean
+  onToggle?: () => void
+}
+
+const SEARCH_SHORTCUT = ['Mod', 'K']
+
+const DatasetDetailTop = ({
+  expand = true,
+  onToggle,
+}: DatasetDetailTopProps) => {
   const { t } = useTranslation()
   const router = useRouter()
   const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
+  if (!expand) {
+    return (
+      <div className="flex w-full items-center justify-center px-3 pt-2 pb-1">
+        {onToggle && (
+          <ToggleButton
+            expand={expand}
+            handleToggle={onToggle}
+            iconClassName="i-custom-vender-integrations-panel-left"
+            className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className="flex items-center py-3 pr-3 pl-1">
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        <div className="flex shrink-0 items-center py-1 pr-1 pl-0.5">
+    <div className="flex items-center py-2 pr-2 pl-1">
+      <div className="flex min-w-0 flex-1 items-center gap-px">
+        <div className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-background-default-hover">
           <button
             type="button"
             aria-label={t('operation.back', { ns: 'common' })}
@@ -30,24 +59,52 @@ const DatasetDetailTop = () => {
             <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
           </Link>
         </div>
-        <span className="mx-1.5 shrink-0 system-md-regular text-text-quaternary">
-          /
-        </span>
-        <span className="shrink-0 truncate system-sm-semibold-uppercase text-text-secondary">
-          {t('menus.datasets', { ns: 'common' })}
-        </span>
+        {expand && (
+          <>
+            <span className="shrink-0 system-md-regular text-text-quaternary">
+              /
+            </span>
+            <Link
+              href="/datasets"
+              className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary"
+            >
+              {t('menus.datasets', { ns: 'common' })}
+            </Link>
+          </>
+        )}
       </div>
-      <button
-        type="button"
-        aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
-        className="flex shrink-0 items-center gap-1 overflow-hidden rounded-[10px] p-1 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={() => setGotoAnythingOpen(true)}
-      >
-        <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-        <span className="rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-          ⌘K
-        </span>
-      </button>
+      {expand && (
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <button
+                type="button"
+                aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
+                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
+                onClick={() => setGotoAnythingOpen(true)}
+              >
+                <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+              </button>
+            )}
+          />
+          <TooltipContent placement="bottom" className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]">
+            <span className="px-0.5">{t('gotoAnything.quickAction', { ns: 'app' })}</span>
+            <KbdGroup>
+              {SEARCH_SHORTCUT.map(key => (
+                <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+              ))}
+            </KbdGroup>
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {onToggle && (
+        <ToggleButton
+          expand={expand}
+          handleToggle={onToggle}
+          iconClassName="i-custom-vender-integrations-panel-left"
+          className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
+        />
+      )}
     </div>
   )
 }

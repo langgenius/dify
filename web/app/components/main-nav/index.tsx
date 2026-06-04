@@ -30,7 +30,7 @@ import { WorkspaceCard } from './components/workspace-card'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
-const APP_DETAIL_SIDEBAR_STORAGE_KEY = 'app-detail-collapse-or-expand'
+const DETAIL_SIDEBAR_STORAGE_KEY = 'app-detail-collapse-or-expand'
 
 const isDatasetDetailPathname = (pathname: string) => {
   const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
@@ -69,28 +69,27 @@ const MainNav = ({
     appSidebarExpand: state.appSidebarExpand,
     setAppSidebarExpand: state.setAppSidebarExpand,
   })))
-  const [storedAppSidebarExpand, setStoredAppSidebarExpand] = useLocalStorage<string>(APP_DETAIL_SIDEBAR_STORAGE_KEY, 'expand', { raw: true })
-  const appDetailNavigationMode = appSidebarExpand === 'collapse' || (!appSidebarExpand && storedAppSidebarExpand === 'collapse') ? 'collapse' : 'expand'
-  const appDetailNavigationExpanded = appDetailNavigationMode === 'expand'
-  const isCollapsedAppDetailNavigation = showAppDetailNavigation && !appDetailNavigationExpanded
-  const isAppDetailNavigation = showAppDetailNavigation
-  const handleToggleAppDetailNavigation = useCallback(() => {
-    setAppSidebarExpand(appDetailNavigationExpanded ? 'collapse' : 'expand')
-  }, [appDetailNavigationExpanded, setAppSidebarExpand])
+  const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useLocalStorage<string>(DETAIL_SIDEBAR_STORAGE_KEY, 'expand', { raw: true })
+  const detailNavigationMode = appSidebarExpand === 'collapse' || (!appSidebarExpand && storedDetailSidebarExpand === 'collapse') ? 'collapse' : 'expand'
+  const detailNavigationExpanded = detailNavigationMode === 'expand'
+  const isCollapsedDetailNavigation = showDetailNavigation && !detailNavigationExpanded
+  const handleToggleDetailNavigation = useCallback(() => {
+    setAppSidebarExpand(detailNavigationExpanded ? 'collapse' : 'expand')
+  }, [detailNavigationExpanded, setAppSidebarExpand])
 
   useEffect(() => {
-    if (!showAppDetailNavigation)
+    if (!showDetailNavigation)
       return
 
-    setStoredAppSidebarExpand(appDetailNavigationMode)
-  }, [appDetailNavigationMode, setStoredAppSidebarExpand, showAppDetailNavigation])
+    setStoredDetailSidebarExpand(detailNavigationMode)
+  }, [detailNavigationMode, setStoredDetailSidebarExpand, showDetailNavigation])
 
   useHotkey('Mod+B', (e) => {
-    if (!showAppDetailNavigation)
+    if (!showDetailNavigation)
       return
 
     e.preventDefault()
-    handleToggleAppDetailNavigation()
+    handleToggleDetailNavigation()
   }, {
     ignoreInputs: true,
   })
@@ -178,20 +177,20 @@ const MainNav = ({
     <aside
       className={cn(
         'flex h-full shrink-0 overflow-hidden transition-all',
-        isAppDetailNavigation
-          ? appDetailNavigationExpanded
+        showDetailNavigation
+          ? detailNavigationExpanded
             ? 'w-[248px] bg-background-body p-1'
             : 'w-16 bg-background-body p-1'
           : 'w-60 flex-col',
-        showDetailNavigation && !isAppDetailNavigation ? 'bg-components-panel-bg-blur' : 'bg-background-body',
+        'bg-background-body',
         className,
       )}
     >
       <div
         className={cn(
           'flex min-h-0 flex-1 flex-col',
-          isAppDetailNavigation && 'overflow-hidden rounded-lg bg-components-panel-bg',
-          isCollapsedAppDetailNavigation ? 'w-14' : isAppDetailNavigation && 'w-60',
+          showDetailNavigation && 'overflow-hidden rounded-lg bg-components-panel-bg',
+          isCollapsedDetailNavigation ? 'w-14' : showDetailNavigation && 'w-60',
         )}
       >
         <div className="flex min-h-0 flex-1 flex-col">
@@ -199,13 +198,18 @@ const MainNav = ({
             ? showAppDetailNavigation
               ? (
                   <AppDetailTop
-                    expand={appDetailNavigationExpanded}
-                    onToggle={handleToggleAppDetailNavigation}
+                    expand={detailNavigationExpanded}
+                    onToggle={handleToggleDetailNavigation}
                   />
                 )
               : showAgentDetailNavigation
                 ? <AgentDetailTop />
-                : <DatasetDetailTop />
+                : (
+                    <DatasetDetailTop
+                      expand={detailNavigationExpanded}
+                      onToggle={handleToggleDetailNavigation}
+                    />
+                  )
             : (
                 <>
                   <div className="flex items-center justify-between px-2 pt-4 pb-2">
@@ -219,10 +223,10 @@ const MainNav = ({
               )}
           {showDetailNavigation
             ? showAppDetailNavigation
-              ? <AppDetailSection expand={appDetailNavigationExpanded} />
+              ? <AppDetailSection expand={detailNavigationExpanded} />
               : showAgentDetailNavigation
                 ? <AgentDetailSection />
-                : <DatasetDetailSection />
+                : <DatasetDetailSection expand={detailNavigationExpanded} />
             : (
                 <>
                   <nav className="space-y-1 p-2">
@@ -233,24 +237,24 @@ const MainNav = ({
                   {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
                 </>
               )}
-          {showEnvTag && !isCollapsedAppDetailNavigation && (
+          {showEnvTag && !isCollapsedDetailNavigation && (
             <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
               <EnvNav />
             </div>
           )}
         </div>
         <div className={cn(
-          isCollapsedAppDetailNavigation
+          isCollapsedDetailNavigation
             ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'
             : cn(
                 'flex w-60 items-center justify-between py-3 pr-1 pl-3',
-                isAppDetailNavigation
+                showDetailNavigation
                   ? 'bg-components-panel-bg'
                   : 'bg-gradient-to-b from-background-body-transparent to-background-body to-50% backdrop-blur-[2px]',
               ),
         )}
         >
-          {isCollapsedAppDetailNavigation
+          {isCollapsedDetailNavigation
             ? (
                 <>
                   <HelpMenu compact />
@@ -262,7 +266,7 @@ const MainNav = ({
                   <div className="flex min-w-0 items-center gap-1 overflow-hidden">
                     <AccountSection />
                   </div>
-                  {(!showAppDetailNavigation || appDetailNavigationExpanded) && <HelpMenu />}
+                  {(!showDetailNavigation || detailNavigationExpanded) && <HelpMenu />}
                 </>
               )}
         </div>

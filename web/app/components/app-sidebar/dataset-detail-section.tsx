@@ -1,6 +1,7 @@
 'use client'
 
 import type { RemixiconComponentType } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -26,7 +27,13 @@ const getDatasetIdFromPathname = (pathname: string) => {
   return section === 'datasets' ? datasetId : undefined
 }
 
-const DatasetDetailSection = () => {
+type DatasetDetailSectionProps = {
+  expand?: boolean
+}
+
+const DatasetDetailSection = ({
+  expand = true,
+}: DatasetDetailSectionProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
@@ -95,22 +102,24 @@ const DatasetDetailSection = () => {
       mutateDatasetRes,
     }}
     >
-      <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
+      <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
+        {!expand && (
+          <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-[3px]">
+            <Divider
+              type="horizontal"
+              bgStyle="solid"
+              className="my-0 h-px w-[27px] bg-divider-subtle"
+            />
+          </div>
+        )}
         <div className="py-2">
-          <DatasetInfo expand />
+          <DatasetInfo expand={expand} />
         </div>
-        <div className="px-2 py-2">
-          <Divider
-            type="horizontal"
-            bgStyle="gradient"
-            className="my-0 h-px bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent"
-          />
-        </div>
-        <nav className="flex flex-col gap-y-0.5 px-1 py-2">
+        <nav className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}>
           {navigation.map(item => (
             <NavLink
               key={item.href}
-              mode="expand"
+              mode={expand ? 'expand' : 'collapse'}
               iconMap={{ selected: item.selectedIcon, normal: item.icon }}
               name={item.name}
               href={item.href}
@@ -120,11 +129,13 @@ const DatasetDetailSection = () => {
           ))}
         </nav>
         {!isCurrentWorkspaceDatasetOperator && (
-          <ExtraInfo
-            relatedApps={relatedApps}
-            expand
-            documentCount={datasetRes.document_count}
-          />
+          <div className="mt-auto shrink-0">
+            <ExtraInfo
+              relatedApps={relatedApps}
+              expand={expand}
+              documentCount={datasetRes.document_count}
+            />
+          </div>
         )}
       </div>
     </DatasetDetailContext.Provider>

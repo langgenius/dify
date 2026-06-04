@@ -130,11 +130,15 @@ vi.mock('@/app/components/app-sidebar/app-detail-top', () => ({
 }))
 
 vi.mock('@/app/components/app-sidebar/dataset-detail-section', () => ({
-  default: () => <div data-testid="dataset-detail-section" />,
+  default: ({ expand }: { expand: boolean }) => <div data-testid="dataset-detail-section" data-expand={expand} />,
 }))
 
 vi.mock('@/app/components/app-sidebar/dataset-detail-top', () => ({
-  default: () => <div data-testid="dataset-detail-top" />,
+  default: ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => (
+    <div data-testid="dataset-detail-top" data-expand={expand}>
+      <button type="button" data-testid="dataset-detail-toggle" onClick={onToggle}>Toggle</button>
+    </div>
+  ),
 }))
 
 vi.mock('@/features/agent-v2/agent-detail/navigation', () => ({
@@ -463,10 +467,27 @@ describe('MainNav', () => {
 
     expect(screen.getByTestId('dataset-detail-top')).toBeInTheDocument()
     expect(screen.getByTestId('dataset-detail-section')).toBeInTheDocument()
-    expect(screen.getByRole('complementary')).toHaveClass('bg-components-panel-bg-blur')
+    expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
+  })
+
+  it('collapses dataset detail navigation from the top-right toggle', () => {
+    mockPathname = '/datasets/dataset-1/documents'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('dataset-detail-toggle'))
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
   })
 
   it('replaces global navigation with agent detail navigation on roster detail routes', () => {
@@ -476,7 +497,9 @@ describe('MainNav', () => {
 
     expect(screen.getByTestId('agent-detail-top')).toBeInTheDocument()
     expect(screen.getByTestId('agent-detail-section')).toBeInTheDocument()
-    expect(screen.getByRole('complementary')).toHaveClass('bg-components-panel-bg-blur')
+    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
   })
