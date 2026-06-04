@@ -2,40 +2,41 @@ name: CLI Release
 
 on:
   workflow_dispatch:
+  workflow_call:
+  repository_dispatch:
+    types: [difyctl-release]
   push:
     tags:
       - 'difyctl-v*'
 
 concurrency:
-  group: cli-release-${{ github.ref }}
-  cancel-in-progress: true
+  group: difyctl-release
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: build standalone binaries (all targets)
+  validate:
+    name: validate manifest + idempotency guard
     runs-on: depot-ubuntu-24.04
+    # Releases may be cut from any branch (tag pushes and dispatches alike); the
+    # tag-vs-manifest guard below still prevents a dangling/mismatched tag.
     if: github.repository == 'langgenius/dify'
     permissions:
-      contents: write
+      contents: read
     defaults:
       run:
         shell: bash
         working-directory: ./cli
-
+    outputs:
+      version: ${{ steps.manifest.outputs.version }}
+      channel: ${{ steps.manifest.outputs.channel }}
+      minDify: ${{ steps.manifest.outputs.minDify }}
+      maxDify: ${{ steps.manifest.outputs.maxDify }}
+      already_exists: ${{ steps.guard.outputs.already_exists }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-          fetch-depth: 0
-
-      - name: Setup web environment
-        uses: ./.github/actions/setup-web
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
-        with:
-          bun-version: latest
 
       - name: Read cli/package.json
         id: manifest
@@ -54,6 +55,56 @@ jobs:
       - name: Validate manifest
         run: scripts/release-validate-manifest.sh
 
+      - name: Tag matches manifest version
+        # On a tag push the version is still sourced from cli/package.json; the
+        # pushed tag must match it, else the tag would dangle with no release.
+        if: github.ref_type == 'tag'
+        run: |
+          expected="difyctl-v${{ steps.manifest.outputs.version }}"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+              echo "::error::pushed tag ${GITHUB_REF_NAME} does not match manifest version (${expected}); bump cli/package.json or push the matching tag"
+              exit 1
+          fi
+
+      - name: Idempotency guard
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="difyctl-v${{ steps.manifest.outputs.version }}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "already_exists=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::release ${tag} already exists; release job will skip"
+          else
+              echo "already_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    name: build standalone binaries (all targets)
+    needs: validate
+    if: needs.validate.outputs.already_exists == 'false'
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        with:
+          bun-version-file: cli/.bun-version
+
       - name: Install cross-arch native prebuilds
         # Re-installs node_modules with every @napi-rs/keyring platform variant
         # so `bun build --compile` can embed the right .node into each target.
@@ -62,10 +113,10 @@ jobs:
 
       - name: Compile standalone binaries (all targets)
         env:
-          CLI_VERSION: ${{ steps.manifest.outputs.version }}
-          DIFYCTL_CHANNEL: ${{ steps.manifest.outputs.channel }}
-          DIFYCTL_MIN_DIFY: ${{ steps.manifest.outputs.minDify }}
-          DIFYCTL_MAX_DIFY: ${{ steps.manifest.outputs.maxDify }}
+          CLI_VERSION: ${{ needs.validate.outputs.version }}
+          DIFYCTL_CHANNEL: ${{ needs.validate.outputs.channel }}
+          DIFYCTL_MIN_DIFY: ${{ needs.validate.outputs.minDify }}
+          DIFYCTL_MAX_DIFY: ${{ needs.validate.outputs.maxDify }}
         run: |
           DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
@@ -73,16 +124,34 @@ jobs:
 
       - name: Generate sha256 checksum file
         env:
-          CLI_VERSION: ${{ steps.manifest.outputs.version }}
+          CLI_VERSION: ${{ needs.validate.outputs.version }}
         run: scripts/release-write-checksums.sh
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
-          tag_name: difyctl-v${{ steps.manifest.outputs.version }}
-          name: difyctl ${{ steps.manifest.outputs.version }}
-          prerelease: ${{ steps.manifest.outputs.channel != 'stable' }}
-          generate_release_notes: true
+          tag_name: difyctl-v${{ needs.validate.outputs.version }}
+          name: difyctl ${{ needs.validate.outputs.version }}
+          prerelease: ${{ needs.validate.outputs.channel != 'stable' }}
+          generate_release_notes: false
           fail_on_unmatched_files: true
+          body: |
+            difyctl ${{ needs.validate.outputs.version }} (${{ needs.validate.outputs.channel }})
+
+            **Compatible with Dify** ${{ needs.validate.outputs.minDify }} – ${{ needs.validate.outputs.maxDify }}
+
+            ### Install
+
+            macOS / Linux:
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
+            ```
+
+            Windows (PowerShell):
+            ```powershell
+            irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install.ps1 | iex
+            ```
+
+            [Changes in `cli/`](https://github.com/langgenius/dify/commits/difyctl-v${{ needs.validate.outputs.version }}/cli)
           files: |
             cli/dist/bin/difyctl-v*
