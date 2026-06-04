@@ -7,15 +7,16 @@ import { join } from 'node:path'
 //
 // Detection is config-DIRECTORY existence only — no PATH probe, no subprocess.
 // difyctl spawns nothing at runtime, and a tool's config dir (`~/.claude`,
-// `~/.codex`, `~/.config/opencode`) is the reliable "this agent is set up here"
-// signal; agents themselves discover each other's skills by reading these dirs,
-// not by locating executables. The narrow "installed but never launched, so no
-// config dir yet" case is served by `difyctl skills install <dir>`.
+// `~/.codex`, `~/.config/opencode`, `~/.cursor`, `~/.pi`) is the reliable "this
+// agent is set up here" signal; agents themselves discover each other's skills
+// by reading these dirs, not by locating executables. The narrow "installed but
+// never launched, so no config dir yet" case is served by `skills install <dir>`.
 //
 // `probeDir` (the detection signal) and `skillDir` (the install target) are kept
-// separate because they differ for Codex: it is configured under `~/.codex` but
-// reads user skills from `~/.agents/skills` (OpenAI's documented location).
-// Adding an agent is one entry; paths are verified against each tool's docs.
+// separate because they diverge for some agents: Codex is configured under
+// `~/.codex` but reads user skills from `~/.agents/skills`, and pi is configured
+// under `~/.pi` but reads them from `~/.pi/agent/skills` (each tool's documented
+// location). Adding an agent is one entry; paths are verified against its docs.
 export type AgentEntry = {
   readonly name: string
   readonly probeDir: (home: string) => string
@@ -37,6 +38,16 @@ export const AGENTS: readonly AgentEntry[] = [
     name: 'opencode',
     probeDir: home => join(home, '.config', 'opencode'),
     skillDir: home => join(home, '.config', 'opencode', 'skills', 'difyctl'),
+  },
+  {
+    name: 'cursor',
+    probeDir: home => join(home, '.cursor'),
+    skillDir: home => join(home, '.cursor', 'skills', 'difyctl'),
+  },
+  {
+    name: 'pi',
+    probeDir: home => join(home, '.pi'),
+    skillDir: home => join(home, '.pi', 'agent', 'skills', 'difyctl'),
   },
 ]
 

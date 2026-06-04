@@ -42,10 +42,29 @@ describe('runSkillsInstall', () => {
     expect(result.kind).toBe('ok')
     if (result.kind !== 'ok')
       return
+    expect(result.text).toContain('Detected 1 agent: claude-code')
     expect(result.text).toContain(`would write to claude-code: ${claudeTarget()}`)
     expect(result.text).toContain('Re-run with --yes')
+    // A single detected agent: hint the manual-directory escape hatch, but not
+    // the subset selector (nothing to subset).
+    expect(result.text).toContain('skills install <dir>')
+    expect(result.text).not.toContain('--agent')
     expect(result.wrote).toEqual([])
     expect(existsSync(claudeTarget())).toBe(false)
+  })
+
+  it('dry-run summarizes detected agents and enumerates --agent names', async () => {
+    await mkdir(join(home, '.claude'))
+    await mkdir(join(home, '.codex'))
+    const result = await runSkillsInstall(opts({}))
+    expect(result.kind).toBe('ok')
+    if (result.kind !== 'ok')
+      return
+    expect(result.text).toContain('Detected 2 agents: claude-code, codex')
+    // The --agent hint spells out the actual selectable (detected) names.
+    expect(result.text).toContain('--agent <name>[,<name>] to pick some: claude-code, codex')
+    expect(result.text).toContain('skills install <dir>')
+    expect(result.wrote).toEqual([])
   })
 
   it('--yes writes the skill and reports the actual path', async () => {
@@ -116,5 +135,19 @@ describe('runSkillsInstall', () => {
     if (result.kind !== 'ok')
       return
     expect(result.wrote).toEqual([join(home, '.agents', 'skills', 'difyctl', 'SKILL.md')])
+  })
+
+  it('writes cursor and pi to their documented dirs (pi under agent/skills)', async () => {
+    await mkdir(join(home, '.cursor'))
+    await mkdir(join(home, '.pi'))
+    const result = await runSkillsInstall(opts({ write: true }))
+    expect(result.kind).toBe('ok')
+    if (result.kind !== 'ok')
+      return
+    expect(result.wrote).toEqual([
+      join(home, '.cursor', 'skills', 'difyctl', 'SKILL.md'),
+      join(home, '.pi', 'agent', 'skills', 'difyctl', 'SKILL.md'),
+    ])
+    expect(await readFile(join(home, '.pi', 'agent', 'skills', 'difyctl', 'SKILL.md'), 'utf8')).toBe(SKILL)
   })
 })

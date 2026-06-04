@@ -28,7 +28,15 @@ describe('detectAgents', () => {
     await mkdir(join(home, '.claude'))
     await mkdir(join(home, '.codex'))
     await mkdir(join(home, '.config', 'opencode'), { recursive: true })
-    expect(detectAgents(home).map(a => a.name)).toEqual(['claude-code', 'codex', 'opencode'])
+    await mkdir(join(home, '.cursor'))
+    await mkdir(join(home, '.pi'))
+    expect(detectAgents(home).map(a => a.name)).toEqual(['claude-code', 'codex', 'opencode', 'cursor', 'pi'])
+  })
+
+  it('detects cursor and pi by their config dirs', async () => {
+    await mkdir(join(home, '.cursor'))
+    await mkdir(join(home, '.pi'))
+    expect(detectAgents(home).map(a => a.name)).toEqual(['cursor', 'pi'])
   })
 })
 
@@ -44,5 +52,17 @@ describe('agent registry paths', () => {
     const opencode = AGENTS.find(a => a.name === 'opencode')
     expect(claude?.skillDir('/home/dev')).toBe('/home/dev/.claude/skills/difyctl')
     expect(opencode?.skillDir('/home/dev')).toBe('/home/dev/.config/opencode/skills/difyctl')
+  })
+
+  it('installs Cursor under ~/.cursor/skills, detected via ~/.cursor', () => {
+    const cursor = AGENTS.find(a => a.name === 'cursor')
+    expect(cursor?.probeDir('/home/dev')).toBe('/home/dev/.cursor')
+    expect(cursor?.skillDir('/home/dev')).toBe('/home/dev/.cursor/skills/difyctl')
+  })
+
+  it('installs pi under ~/.pi/agent/skills, detected via ~/.pi', () => {
+    const pi = AGENTS.find(a => a.name === 'pi')
+    expect(pi?.probeDir('/home/dev')).toBe('/home/dev/.pi')
+    expect(pi?.skillDir('/home/dev')).toBe('/home/dev/.pi/agent/skills/difyctl')
   })
 })

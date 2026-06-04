@@ -3,7 +3,7 @@ import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { renderSkill } from '@/help/skill'
-import { detectAgents } from './registry'
+import { AGENTS, detectAgents } from './registry'
 
 export type SkillsInstallOptions = {
   readonly version: string
@@ -63,11 +63,12 @@ function resolveTargets(opts: SkillsInstallOptions, home: string): InstallTarget
 
   // No --agent and nothing detected: not an error — guide the user, write nothing.
   if (detected.length === 0) {
+    const lookedFor = AGENTS.map(a => a.probeDir(home).replace(home, '~')).join(', ')
     return {
       kind: 'ok',
-      text: 'No agents detected (looked for ~/.claude, ~/.codex, ~/.config/opencode).\n'
-        + 'Force a directory with `difyctl skills install <dir>`, or print the skill with\n'
-        + '`difyctl skills install --stdout`.\n',
+      text: `No agents detected (looked for ${lookedFor}).\n`
+        + 'Install into a directory manually with `difyctl skills install <dir>`, or\n'
+        + 'print the skill with `difyctl skills install --stdout`.\n',
       wrote: [],
     }
   }
@@ -91,7 +92,21 @@ export async function runSkillsInstall(opts: SkillsInstallOptions): Promise<Skil
   // Dry-run: list where the skill would land, write nothing.
   if (!opts.write) {
     const lines = targets.map(t => `would write to ${t.name}: ${t.path}`).join('\n')
-    return { kind: 'ok', text: `${lines}\n\nRe-run with --yes to write.\n`, wrote: [] }
+
+    // Explicit <dir>: no detection happened, so no agent summary / selectors.
+    if (opts.dir !== undefined && opts.dir !== '')
+      return { kind: 'ok', text: `${lines}\n\nRe-run with --yes to write.\n`, wrote: [] }
+
+    const names = targets.map(t => t.name)
+    const selected = opts.agents.length > 0
+    const header = `${selected ? 'Selected' : 'Detected'} ${names.length} agent${names.length === 1 ? '' : 's'}: ${names.join(', ')}`
+    // Only suggest --agent when the user hasn't already used it and there is more
+    // than one to choose from; spell out the actual selectable (detected) names.
+    const pick = (!selected && names.length > 1)
+      ? `Re-run with --yes to write all, or --agent <name>[,<name>] to pick some: ${names.join(', ')}.`
+      : 'Re-run with --yes to write.'
+    const footer = `${pick}\nAgent not listed? Install into its directory with \`difyctl skills install <dir>\`.`
+    return { kind: 'ok', text: `${header}\n\n${lines}\n\n${footer}\n`, wrote: [] }
   }
 
   const wrote: string[] = []
