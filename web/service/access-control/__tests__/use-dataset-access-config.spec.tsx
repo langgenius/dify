@@ -32,10 +32,12 @@ describe('use-dataset-access-config', () => {
   // Queries load dataset-specific access policies from the RBAC dataset route.
   describe('Queries', () => {
     it('should fetch access rules for a dataset id', async () => {
-      renderHook(() => useDatasetAccessRules('dataset-1'), { wrapper: createWrapper() })
+      renderHook(() => useDatasetAccessRules('dataset-1', 'ja'), { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/datasets/dataset-1/access-policy')
+        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/datasets/dataset-1/access-policy', {
+          params: { language: 'ja' },
+        })
       })
     })
   })

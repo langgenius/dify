@@ -9,6 +9,8 @@ import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '@/context/i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type WorkspaceRoleCheckboxListProps = {
@@ -41,9 +43,11 @@ const WorkspaceRoleCheckboxList = ({
   onSelectedRolesChange,
 }: WorkspaceRoleCheckboxListProps) => {
   const { t } = useTranslation()
+  const locale = useLocale()
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
+  const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const {
     data: rolesData,
@@ -56,6 +60,7 @@ const WorkspaceRoleCheckboxList = ({
     page: 1,
     limit: PAGE_SIZE,
     include_owner: 1,
+    language,
   })
 
   useEffect(() => {

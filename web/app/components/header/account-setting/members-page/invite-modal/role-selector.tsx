@@ -9,6 +9,8 @@ import {
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '@/context/i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type RoleSelectorProps = {
@@ -20,10 +22,12 @@ const PAGE_SIZE = 20
 
 const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const { t } = useTranslation()
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const [observerReadyKey, setObserverReadyKey] = useState(0)
+  const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const {
     data: rolesData,
@@ -35,6 +39,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   } = useWorkspaceRoleList({
     page: 1,
     limit: PAGE_SIZE,
+    language,
   })
 
   useEffect(() => {

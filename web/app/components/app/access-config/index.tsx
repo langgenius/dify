@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useLocale } from '@/context/i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useAppAccessRules } from '@/service/access-control/use-app-access-config'
 import { getAppACLCapabilities } from '@/utils/permission'
 
@@ -15,7 +17,9 @@ type AppAccessConfigPageProps = {
 
 const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   const { t } = useTranslation()
-  const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId)
+  const locale = useLocale()
+  const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
+  const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId, language)
   const appDetail = useAppStore(state => state.appDetail)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)

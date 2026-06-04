@@ -47,21 +47,21 @@ describe('use-workspace-access-rules', () => {
   // Queries load workspace-level app and dataset access policies from separate endpoints.
   describe('Queries', () => {
     it('should fetch workspace app access rules', async () => {
-      renderHook(() => useInfiniteWorkspaceAppAccessRules({ page: 1, limit: 20 }), { wrapper: createWrapper() })
+      renderHook(() => useInfiniteWorkspaceAppAccessRules({ page: 1, limit: 20, language: 'zh' }), { wrapper: createWrapper() })
 
       await waitFor(() => {
         expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/workspace/apps/access-policy', {
-          params: { page: 1, limit: 20 },
+          params: { page: 1, limit: 20, language: 'zh' },
         })
       })
     })
 
     it('should fetch workspace dataset access rules', async () => {
-      renderHook(() => useInfiniteWorkspaceDatasetAccessRules({ page: 1, limit: 20 }), { wrapper: createWrapper() })
+      renderHook(() => useInfiniteWorkspaceDatasetAccessRules({ page: 1, limit: 20, language: 'ja' }), { wrapper: createWrapper() })
 
       await waitFor(() => {
         expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/workspace/datasets/access-policy', {
-          params: { page: 1, limit: 20 },
+          params: { page: 1, limit: 20, language: 'ja' },
         })
       })
     })

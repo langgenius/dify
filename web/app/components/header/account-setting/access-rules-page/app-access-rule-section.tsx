@@ -5,6 +5,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '@/context/i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useBindingLock,
   useBindingUnlock,
@@ -35,9 +37,11 @@ const AppAccessRuleSection = ({
   className,
 }: AppAccessRuleSectionProps) => {
   const { t } = useTranslation()
+  const locale = useLocale()
   const queryClient = useQueryClient()
   const [addingRule, setAddingRule] = useState<AccessPolicyWithBindings | null>(null)
   const [permissionSetModalState, setPermissionSetModalState] = useState<PermissionSetModalState | null>(null)
+  const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const {
     data: appAccessRulesResponse,
@@ -49,6 +53,7 @@ const AppAccessRuleSection = ({
   } = useInfiniteWorkspaceAppAccessRules({
     page: 1,
     limit: RULES_PER_PAGE,
+    language,
   })
   const { mutate: lockBinding } = useBindingLock()
   const { mutate: unlockBinding } = useBindingUnlock()

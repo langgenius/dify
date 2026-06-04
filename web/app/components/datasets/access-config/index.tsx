@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useLocale } from '@/context/i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useDatasetAccessRules } from '@/service/access-control/use-dataset-access-config'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
@@ -15,7 +17,9 @@ type DatasetAccessConfigPageProps = {
 
 const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) => {
   const { t } = useTranslation()
-  const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId)
+  const locale = useLocale()
+  const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
+  const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)

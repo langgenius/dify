@@ -1,3 +1,4 @@
+import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type { BindingsPayload, GetAppAccessPolicyByAppIdResponse } from '@/models/access-control'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
@@ -6,10 +7,14 @@ import { get, put } from '../base'
 
 const NAME_SPACE = 'app-access-config'
 
-export const useAppAccessRules = (appId: string) => {
+export const useAppAccessRules = (appId: string, language: AccessControlTemplateLanguage) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'app-access-rules', appId],
-    queryFn: () => get<GetAppAccessPolicyByAppIdResponse>(`/workspaces/current/rbac/apps/${appId}/access-policy`),
+    queryKey: [NAME_SPACE, 'app-access-rules', appId, language],
+    queryFn: () => get<GetAppAccessPolicyByAppIdResponse>(`/workspaces/current/rbac/apps/${appId}/access-policy`, {
+      params: {
+        language,
+      },
+    }),
   })
 }
 

@@ -1,3 +1,4 @@
+import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type { BindingsPayload, GetAppAccessPolicyByAppIdResponse } from '@/models/access-control'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { datasetDetailQueryKeyPrefix, datasetListQueryKey } from '@/service/knowledge/use-dataset'
@@ -5,10 +6,14 @@ import { get, put } from '../base'
 
 const NAME_SPACE = 'dataset-access-config'
 
-export const useDatasetAccessRules = (datasetId: string) => {
+export const useDatasetAccessRules = (datasetId: string, language: AccessControlTemplateLanguage) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'dataset-access-rules', datasetId],
-    queryFn: () => get<GetAppAccessPolicyByAppIdResponse>(`/workspaces/current/rbac/datasets/${datasetId}/access-policy`),
+    queryKey: [NAME_SPACE, 'dataset-access-rules', datasetId, language],
+    queryFn: () => get<GetAppAccessPolicyByAppIdResponse>(`/workspaces/current/rbac/datasets/${datasetId}/access-policy`, {
+      params: {
+        language,
+      },
+    }),
   })
 }
 

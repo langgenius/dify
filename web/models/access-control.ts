@@ -1,3 +1,5 @@
+import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+
 export const SubjectType = {
   GROUP: 'group',
   ACCOUNT: 'account',
@@ -82,6 +84,7 @@ export type PaginationParameters = {
 
 export type RoleListRequest = PaginationParameters & {
   include_owner?: number
+  language?: AccessControlTemplateLanguage
 }
 
 export type RoleListResponse = {
@@ -101,6 +104,10 @@ export type UpdateRolesRequest = {
   description?: string
   permission_keys?: PermissionKey[]
 }
+
+export type WorkspaceAccessRulesRequest = {
+  language?: AccessControlTemplateLanguage
+} & PaginationParameters
 
 export type AccessPolicyResourceType = 'app' | 'dataset'
 

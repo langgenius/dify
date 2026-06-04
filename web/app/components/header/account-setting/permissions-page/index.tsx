@@ -4,9 +4,11 @@ import type { RoleModalMode, submitRoleData } from './role-modal'
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useLocale } from '@/context/i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useCreateWorkspaceRole, useUpdateWorkspaceRole } from '@/service/access-control/use-workspace-roles'
 import { hasPermission } from '@/utils/permission'
 import { useRoleGroups } from './hooks'
@@ -26,10 +28,13 @@ const PAGE_SIZE = 20
 
 const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const { t } = useTranslation()
+  const locale = useLocale()
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
 
   const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
+
+  const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const {
     roleGroups,
@@ -42,6 +47,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
     page: 1,
     limit: PAGE_SIZE,
     include_owner: 1,
+    language,
   })
 
   const { mutateAsync: createWorkspaceRole } = useCreateWorkspaceRole()

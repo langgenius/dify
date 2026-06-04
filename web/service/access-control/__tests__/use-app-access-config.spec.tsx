@@ -32,10 +32,12 @@ describe('use-app-access-config', () => {
   // Queries load app-specific access policies from the RBAC app route.
   describe('Queries', () => {
     it('should fetch access rules for an app id', async () => {
-      renderHook(() => useAppAccessRules('app-1'), { wrapper: createWrapper() })
+      renderHook(() => useAppAccessRules('app-1', 'zh'), { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/apps/app-1/access-policy')
+        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/apps/app-1/access-policy', {
+          params: { language: 'zh' },
+        })
       })
     })
   })

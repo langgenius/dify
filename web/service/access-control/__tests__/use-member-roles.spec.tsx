@@ -32,10 +32,12 @@ describe('use-member-roles', () => {
   // Queries load roles for one workspace member.
   describe('Queries', () => {
     it('should fetch roles for a member id', async () => {
-      renderHook(() => useRolesOfMember('member-1'), { wrapper: createWrapper() })
+      renderHook(() => useRolesOfMember('member-1', 'en'), { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/members/member-1/rbac-roles')
+        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/members/member-1/rbac-roles', {
+          params: { language: 'en' },
+        })
       })
     })
   })

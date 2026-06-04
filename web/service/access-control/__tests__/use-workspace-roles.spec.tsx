@@ -72,12 +72,13 @@ describe('use-workspace-roles', () => {
   // Role list pagination starts from the provided page and passes query params through.
   describe('Queries', () => {
     it('should fetch workspace roles with pagination params', async () => {
-      renderHook(() => useWorkspaceRoleList({ page: 2, limit: 20 }), { wrapper: createWrapper() })
+      renderHook(() => useWorkspaceRoleList({ page: 2, limit: 20, language: 'zh' }), { wrapper: createWrapper() })
 
       await waitFor(() => {
         expect(mockServiceBase.get).toHaveBeenCalledWith('/workspaces/current/rbac/roles', {
           params: {
             limit: 20,
+            language: 'zh',
             page: 2,
           },
         })

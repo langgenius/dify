@@ -12,6 +12,8 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '@/context/i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import AssignRolesModal from '../assign-roles-modal'
 import PermissionRoleChip from './permission-role-chip'
@@ -32,9 +34,11 @@ const MemberDetailsModal = ({
   onAssignSubmit,
 }: MemberDetailsModalProps) => {
   const { t } = useTranslation()
+  const locale = useLocale()
   const [assignOpen, setAssignOpen] = useState(false)
+  const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
-  const { data: rolesOfMember } = useRolesOfMember(member.id)
+  const { data: rolesOfMember } = useRolesOfMember(member.id, language)
   const [pendingRoles, setPendingRoles] = useState<Role[]>()
 
   const roles = useMemo(() => rolesOfMember?.roles ?? [], [rolesOfMember?.roles])
