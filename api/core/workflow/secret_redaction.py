@@ -80,8 +80,11 @@ def _build_matcher(
 
 def _rebuild_tuple(original: tuple, values: list[object]) -> tuple:
     # Preserve NamedTuple subclasses instead of flattening them into a bare tuple.
-    if hasattr(original, "_fields"):
-        return type(original)(*values)
+    # ``_make`` is the canonical NamedTuple constructor and only exists on NamedTuples,
+    # so its presence doubles as the subclass check.
+    make = getattr(original, "_make", None)
+    if make is not None:
+        return make(values)
     return tuple(values)
 
 

@@ -400,7 +400,9 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         if update_outputs:
             inputs = cast(Mapping[str, Any], self._redact_for_persistence(node_result.inputs))
             process_data = cast(Mapping[str, Any], self._redact_for_persistence(node_result.process_data))
-            metadata = cast(Mapping[str, Any], self._redact_for_persistence(node_result.metadata))
+            metadata = cast(
+                Mapping[WorkflowNodeExecutionMetadataKey, Any], self._redact_for_persistence(node_result.metadata)
+            )
             projected_outputs = project_node_outputs_for_workflow_run(
                 node_type=domain_execution.node_type,
                 inputs=node_result.inputs,

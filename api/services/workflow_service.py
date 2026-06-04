@@ -1509,7 +1509,8 @@ class WorkflowService:
             )
             node_execution.outputs = cast(Mapping[str, Any], outputs)
             node_execution.metadata = cast(
-                Mapping[str, Any], redact_sensitive_values(node_run_result.metadata, secret_values)
+                Mapping[WorkflowNodeExecutionMetadataKey, Any],
+                redact_sensitive_values(node_run_result.metadata, secret_values),
             )
 
             # Set status and error based on result

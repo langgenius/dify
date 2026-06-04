@@ -1,13 +1,17 @@
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from werkzeug.exceptions import Forbidden
 
+from models import Account
 from services.app_dsl_service import AppDslService
 
 
-def _account(*, is_admin_or_owner: bool) -> SimpleNamespace:
-    return SimpleNamespace(is_admin_or_owner=is_admin_or_owner)
+def _account(*, is_admin_or_owner: bool) -> Account:
+    # assert_secret_export_allowed only reads ``is_admin_or_owner``; a lightweight stub
+    # avoids constructing a full ORM-backed Account in this unit test.
+    return cast(Account, SimpleNamespace(is_admin_or_owner=is_admin_or_owner))
 
 
 def test_assert_secret_export_allowed_blocks_non_privileged_with_secret() -> None:
