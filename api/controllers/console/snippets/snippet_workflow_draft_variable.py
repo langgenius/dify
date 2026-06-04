@@ -62,7 +62,7 @@ def _ensure_snippet_draft_variable_row_allowed(
         raise NotFoundError(description=f"variable not found, id={variable_id}")
 
 
-def _snippet_draft_var_prerequisite(f: Callable[P, R]) -> Callable[P, R]:
+def _snippet_draft_var_prerequisite(f: Callable[P, R]) -> Callable[P, R | Response]:
     """Setup, auth, snippet resolution, and tenant edit permission (same stack as snippet workflow APIs)."""
 
     @setup_required
@@ -71,7 +71,7 @@ def _snippet_draft_var_prerequisite(f: Callable[P, R]) -> Callable[P, R]:
     @get_snippet
     @edit_permission_required
     @wraps(f)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
         return f(*args, **kwargs)
 
     return wrapper

@@ -359,8 +359,8 @@ class SnippetService:
                 tenant_id=snippet.tenant_id,
                 app_id=snippet.id,
                 features="{}",
-                type=WorkflowType.WORKFLOW.value,
-                kind=WorkflowKind.SNIPPET.value,
+                type=WorkflowType.WORKFLOW,
+                kind=WorkflowKind.SNIPPET,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
@@ -372,7 +372,7 @@ class SnippetService:
         else:
             # Update existing draft workflow
             workflow.graph = json.dumps(graph)
-            workflow.type = WorkflowType.WORKFLOW.value
+            workflow.type = WorkflowType.WORKFLOW
             workflow.kind = WorkflowKind.SNIPPET
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
@@ -547,7 +547,7 @@ class SnippetService:
         :param filters: Optional filters
         :return: Default configuration or None
         """
-        node_type_enum = NodeType(node_type)
+        node_type_enum: NodeType = node_type
 
         if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
             return None

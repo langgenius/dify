@@ -21,24 +21,26 @@ Supported execution modes:
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Union
+from typing import Any, Union, cast
 
 from sqlalchemy.orm import make_transient
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from factories import file_factory
 from graphon.file.models import File
 from models import Account
-from models.model import AppMode, EndUser
+from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class _SnippetAsApp:
@@ -133,7 +135,7 @@ class SnippetGenerateService:
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a snippet's draft workflow.
 
@@ -162,10 +164,10 @@ class SnippetGenerateService:
         workflow = cls._ensure_start_node(workflow, snippet)
 
         # Adapt snippet to App-like interface for WorkflowAppGenerator
-        app_proxy = _SnippetAsApp(snippet)
+        app_proxy = cast(App, _SnippetAsApp(snippet))
 
         response = WorkflowAppGenerator().generate(
-            app_model=app_proxy,  # type: ignore[arg-type]
+            app_model=app_proxy,
             workflow=workflow,
             user=user,
             args=args,
@@ -174,9 +176,7 @@ class SnippetGenerateService:
             call_depth=0,
         )
 
-        return WorkflowAppGenerator.convert_to_event_stream(
-            cls._filter_virtual_start_events(response)
-        )
+        return WorkflowAppGenerator.convert_to_event_stream(cls._filter_virtual_start_events(response))
 
     @classmethod
     def run_published(
@@ -208,15 +208,16 @@ class SnippetGenerateService:
         # Inject a virtual Start node when the graph doesn't have one.
         workflow = cls._ensure_start_node(workflow, snippet)
 
-        app_proxy = _SnippetAsApp(snippet)
+        app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response: Mapping[str, Any] = WorkflowAppGenerator().generate(
-            app_model=app_proxy,  # type: ignore[arg-type]
+        response = WorkflowAppGenerator().generate(
+            app_model=app_proxy,
             workflow=workflow,
             user=user,
             args=args,
             invoke_from=invoke_from,
             streaming=False,
+            call_depth=0,
         )
         return response
 
@@ -351,11 +352,11 @@ class SnippetGenerateService:
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
 
-        app_proxy = _SnippetAsApp(snippet)
+        app_proxy = cast(App, _SnippetAsApp(snippet))
 
         workflow_service = WorkflowService()
         return workflow_service.run_draft_workflow_node(
-            app_model=app_proxy,  # type: ignore[arg-type]
+            app_model=app_proxy,
             draft_workflow=draft_workflow,
             node_id=node_id,
             user_inputs=user_inputs,
@@ -372,7 +373,7 @@ class SnippetGenerateService:
         node_id: str,
         args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a single iteration node in a snippet's draft workflow.
 
@@ -393,11 +394,11 @@ class SnippetGenerateService:
         if not workflow:
             raise ValueError("Workflow not initialized")
 
-        app_proxy = _SnippetAsApp(snippet)
+        app_proxy = cast(App, _SnippetAsApp(snippet))
 
         return WorkflowAppGenerator.convert_to_event_stream(
             WorkflowAppGenerator().single_iteration_generate(
-                app_model=app_proxy,  # type: ignore[arg-type]
+                app_model=app_proxy,
                 workflow=workflow,
                 node_id=node_id,
                 user=user,
@@ -414,7 +415,7 @@ class SnippetGenerateService:
         node_id: str,
         args: Any,
         streaming: bool = True,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a single loop node in a snippet's draft workflow.
 
@@ -435,11 +436,11 @@ class SnippetGenerateService:
         if not workflow:
             raise ValueError("Workflow not initialized")
 
-        app_proxy = _SnippetAsApp(snippet)
+        app_proxy = cast(App, _SnippetAsApp(snippet))
 
         return WorkflowAppGenerator.convert_to_event_stream(
             WorkflowAppGenerator().single_loop_generate(
-                app_model=app_proxy,  # type: ignore[arg-type]
+                app_model=app_proxy,
                 workflow=workflow,
                 node_id=node_id,
                 user=user,
@@ -465,4 +466,5 @@ class SnippetGenerateService:
             mappings=files,
             tenant_id=workflow.tenant_id,
             config=file_extra_config,
+            access_controller=_file_access_controller,
         )

@@ -137,8 +137,9 @@ class SnippetDraftWorkflowApi(Resource):
 
         db.session.expunge(workflow)
         workflow.conversation_variables = []
-        workflow.input_fields = snippet.input_fields_list
-        return SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["input_fields"] = snippet.input_fields_list
+        return response
 
     @console_ns.doc("sync_snippet_draft_workflow")
     @console_ns.expect(console_ns.models.get(SnippetDraftSyncPayload.__name__))
@@ -213,8 +214,9 @@ class SnippetPublishedWorkflowApi(Resource):
         if not workflow:
             return None
 
-        workflow.input_fields = snippet.input_fields_list
-        return SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["input_fields"] = snippet.input_fields_list
+        return response
 
     @console_ns.doc("publish_snippet_workflow")
     @console_ns.expect(console_ns.models.get(PublishWorkflowPayload.__name__))
