@@ -1,7 +1,8 @@
 'use client'
 
-import type { CreateReleaseReply } from '@dify/contracts/enterprise/types.gen'
+import type { CreateReleaseReply, ReleaseContentMatch } from '@dify/contracts/enterprise/types.gen'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
 import type { SourceAppPickerValue } from '../../components/create-instance-modal'
 import type { UnsupportedDslNode } from '../../error'
 import type { App } from '@/types/app'
@@ -12,7 +13,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { consoleQuery } from '@/service/client'
@@ -51,6 +52,10 @@ function workflowSourceAppPickerValue(value: unknown, fallbackId: string): Sourc
     name,
     mode,
   }
+}
+
+function releaseContentMatchLabel(release?: ReleaseContentMatch) {
+  return release?.name || release?.releaseId || '—'
 }
 
 export function CreateReleaseControl({ appInstanceId, variant = 'primary', size = 'small', label, className }: {
@@ -99,7 +104,47 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   const selectedSourceApp = sourceApp ?? defaultSourceApp
   const selectedSourceAppId = selectedSourceApp && isWorkflowApp(selectedSourceApp) ? selectedSourceApp.id : undefined
 
+  const hasDslContent = Boolean(dslContent.trim())
+  const hasUnsupportedDslMode = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError && !isWorkflowDsl(dslContent)
+  const canCheckSourceAppReleaseContent = isCreating && releaseSourceMode === 'sourceApp' && Boolean(selectedSourceAppId)
+  const canCheckDslReleaseContent = isCreating && releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError && !hasUnsupportedDslMode
+  const encodedDslContent = useMemo(() => {
+    return canCheckDslReleaseContent ? encodeDslContent(dslContent) : ''
+  }, [canCheckDslReleaseContent, dslContent])
+  const sourceAppReleaseContentQuery = useQuery({
+    ...consoleQuery.enterprise.releaseService.checkReleaseContentFromSourceApp.queryOptions({
+      input: canCheckSourceAppReleaseContent
+        ? {
+            body: {
+              appInstanceId,
+              sourceAppId: selectedSourceAppId!,
+            },
+          }
+        : skipToken,
+    }),
+    retry: false,
+  })
+  const dslReleaseContentQuery = useQuery({
+    ...consoleQuery.enterprise.releaseService.checkReleaseContentFromDsl.queryOptions({
+      input: canCheckDslReleaseContent
+        ? {
+            body: {
+              appInstanceId,
+              dsl: encodedDslContent,
+            },
+          }
+        : skipToken,
+    }),
+    retry: false,
+  })
+  const activeReleaseContentQuery = releaseSourceMode === 'dsl' ? dslReleaseContentQuery : sourceAppReleaseContentQuery
+  const canCheckReleaseContent = releaseSourceMode === 'dsl' ? canCheckDslReleaseContent : canCheckSourceAppReleaseContent
+  const matchedRelease = canCheckReleaseContent ? activeReleaseContentQuery.data?.matchedRelease : undefined
+  const isCheckingReleaseContent = canCheckReleaseContent && (activeReleaseContentQuery.isLoading || activeReleaseContentQuery.isFetching)
+  const releaseContentCheckFailed = canCheckReleaseContent && activeReleaseContentQuery.isError
+  const releaseContentReady = canCheckReleaseContent && activeReleaseContentQuery.isSuccess && !matchedRelease && !releaseContentCheckFailed
   const isCreatePending = createReleaseFromSourceApp.isPending || createReleaseFromDsl.isPending
+  const isBusy = isCheckingReleaseContent || isCreatePending
 
   function resetDslState() {
     dslReadTokenRef.current += 1
@@ -122,6 +167,18 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
     setReleaseNameTouched(false)
     setDescription('')
     clearCreateError()
+  }
+
+  function handleClosePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    closeDialog()
+  }
+
+  function handleCloseClick(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    closeDialog()
   }
 
   function handleReleaseSourceModeChange(nextMode: ReleaseSourceMode) {
@@ -167,8 +224,8 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       })
   }
 
-  function handleCreateRelease(form: HTMLFormElement) {
-    if (isCreatePending)
+  async function handleCreateRelease(form: HTMLFormElement) {
+    if (isBusy)
       return
 
     const submittedReleaseName = releaseName.trim()
@@ -189,68 +246,67 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       form.reset()
       closeDialog()
     }
-    const handleError = (error: unknown) => {
-      void (async () => {
-        const unsupportedError = await unsupportedDslNodeError(error)
-        if (unsupportedError?.nodes.length) {
-          setUnsupportedDslNodes(unsupportedError.nodes)
-          return
-        }
-
-        const message = await deploymentErrorMessage(error)
-        toast.error(message || t('versions.createFailed'))
-      })()
-    }
-
-    if (releaseSourceMode === 'dsl') {
-      if (!dslContent.trim() || isReadingDsl || dslReadError)
-        return
-      if (!isWorkflowDsl(dslContent)) {
-        toast.error(t('versions.dslUnsupportedMode'))
+    const handleError = async (error: unknown) => {
+      const unsupportedError = await unsupportedDslNodeError(error)
+      if (unsupportedError?.nodes.length) {
+        setUnsupportedDslNodes(unsupportedError.nodes)
         return
       }
 
-      createReleaseFromDsl.mutate({
+      const message = await deploymentErrorMessage(error)
+      toast.error(message || t('versions.createFailed'))
+    }
+
+    try {
+      if (releaseSourceMode === 'dsl') {
+        if (!dslContent.trim() || isReadingDsl || dslReadError || !releaseContentReady)
+          return
+        if (!isWorkflowDsl(dslContent)) {
+          toast.error(t('versions.dslUnsupportedMode'))
+          return
+        }
+
+        const response = await createReleaseFromDsl.mutateAsync({
+          body: {
+            appInstanceId,
+            dsl: encodedDslContent,
+            name: submittedReleaseName,
+            description: releaseDescription || undefined,
+            createAppInstance: false,
+          },
+        })
+        handleSuccess(response)
+        return
+      }
+
+      if (!selectedSourceAppId)
+        return
+      if (!releaseContentReady)
+        return
+
+      const response = await createReleaseFromSourceApp.mutateAsync({
         body: {
           appInstanceId,
-          dsl: encodeDslContent(dslContent),
+          sourceAppId: selectedSourceAppId,
           name: submittedReleaseName,
           description: releaseDescription || undefined,
           createAppInstance: false,
         },
-      }, {
-        onSuccess: handleSuccess,
-        onError: handleError,
       })
-      return
+      handleSuccess(response)
     }
-
-    if (!selectedSourceAppId)
-      return
-
-    createReleaseFromSourceApp.mutate({
-      body: {
-        appInstanceId,
-        sourceAppId: selectedSourceAppId,
-        name: submittedReleaseName,
-        description: releaseDescription || undefined,
-        createAppInstance: false,
-      },
-    }, {
-      onSuccess: handleSuccess,
-      onError: handleError,
-    })
+    catch (error) {
+      await handleError(error)
+    }
   }
 
   const descriptionLength = description.length
   const isNearLimit = descriptionLength >= DESCRIPTION_WARN_THRESHOLD
   const hasReleaseName = Boolean(releaseName.trim())
   const releaseNameRequired = releaseNameTouched && !hasReleaseName
-  const hasDslContent = Boolean(dslContent.trim())
-  const hasUnsupportedDslMode = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError && !isWorkflowDsl(dslContent)
   const canCreateFromSourceApp = releaseSourceMode === 'sourceApp' && Boolean(selectedSourceAppId)
   const canCreateFromDsl = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError && !hasUnsupportedDslMode
-  const canCreate = Boolean(hasReleaseName && !isCreatePending && (canCreateFromSourceApp || canCreateFromDsl))
+  const canCreate = Boolean(hasReleaseName && releaseContentReady && !isBusy && (canCreateFromSourceApp || canCreateFromDsl))
 
   return (
     <>
@@ -273,15 +329,19 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
             setIsCreating(true)
         }}
       >
-        <DialogContent className="w-140 max-w-[calc(100vw-32px)] overflow-hidden p-0">
-          <DialogCloseButton />
+        <DialogContent className="top-[18dvh] w-140 max-w-[calc(100vw-32px)] translate-y-0 overflow-hidden p-0">
+          <DialogCloseButton
+            type="button"
+            onPointerDown={handleClosePointerDown}
+            onClick={handleCloseClick}
+          />
           {isCreating && (
             <form
               noValidate
               autoComplete="off"
               onSubmit={(event) => {
                 event.preventDefault()
-                handleCreateRelease(event.currentTarget)
+                void handleCreateRelease(event.currentTarget)
               }}
             >
               <div className="border-b border-divider-subtle px-6 py-5 pr-14">
@@ -365,6 +425,24 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
 
                 <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />
 
+                {isCheckingReleaseContent && (
+                  <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-2 system-sm-regular text-text-tertiary">
+                    {t('versions.checkingReleaseContent')}
+                  </div>
+                )}
+
+                {matchedRelease && (
+                  <div role="alert" className="rounded-lg border border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 px-3 py-2 system-sm-regular text-util-colors-warning-warning-700">
+                    {t('versions.releaseAlreadyExists', { name: releaseContentMatchLabel(matchedRelease) })}
+                  </div>
+                )}
+
+                {releaseContentCheckFailed && (
+                  <div role="alert" className="rounded-lg border border-util-colors-red-red-200 bg-util-colors-red-red-50 px-3 py-2 system-sm-regular text-util-colors-red-red-700">
+                    {t('versions.releaseContentCheckFailed')}
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-2">
                   <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-name">
                     {t('versions.releaseNameLabel')}
@@ -434,7 +512,8 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                     type="button"
                     variant="secondary"
                     disabled={isCreatePending}
-                    onClick={closeDialog}
+                    onPointerDown={handleClosePointerDown}
+                    onClick={handleCloseClick}
                   >
                     {t('versions.cancelCreate')}
                   </Button>
@@ -444,7 +523,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                     className="min-w-22"
                     disabled={!canCreate}
                   >
-                    {isCreatePending ? t('versions.creating') : t('versions.create')}
+                    {isCreatePending ? t('versions.creating') : isCheckingReleaseContent ? t('versions.checkingReleaseContent') : t('versions.create')}
                   </Button>
                 </div>
               </div>

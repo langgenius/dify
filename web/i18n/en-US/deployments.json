@@ -589,6 +589,9 @@
   "versions.releaseNameLabel": "Release Name",
   "versions.releaseNamePlaceholder": "Release Name",
   "versions.releaseNameRequired": "Enter a release name.",
+  "versions.releaseAlreadyExists": "A release with the same content already exists: {{name}}.",
+  "versions.checkingReleaseContent": "Checking release content...",
+  "versions.releaseContentCheckFailed": "Failed to check release content.",
   "versions.releaseSourceLabel": "Release Source",
   "versions.rollbackTo": "Deploy to {{name}}",
   "versions.sourceAppOption": "Workflow App"

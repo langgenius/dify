@@ -589,6 +589,9 @@
   "versions.releaseNameLabel": "版本名称",
   "versions.releaseNamePlaceholder": "版本名称",
   "versions.releaseNameRequired": "请输入版本名称。",
+  "versions.releaseAlreadyExists": "相同内容的版本已存在：{{name}}。",
+  "versions.checkingReleaseContent": "正在检查版本内容…",
+  "versions.releaseContentCheckFailed": "检查版本内容失败。",
   "versions.releaseSourceLabel": "版本来源",
   "versions.rollbackTo": "部署到 {{name}}",
   "versions.sourceAppOption": "工作流应用"

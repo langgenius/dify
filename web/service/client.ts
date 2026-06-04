@@ -94,6 +94,8 @@ function shouldUseLocalDeploymentErrorToast(url: string, method?: string) {
         pathname.endsWith('/enterprise/app-deploy/app-instances')
         || pathname.endsWith('/enterprise/app-deploy/deployment-options/dsl')
         || pathname.endsWith('/enterprise/app-deploy/deployment-options/source-app')
+        || pathname.endsWith('/enterprise/app-deploy/release-content-checks/dsl')
+        || pathname.endsWith('/enterprise/app-deploy/release-content-checks/source-app')
         || pathname.endsWith('/enterprise/app-deploy/releases/dsl')
         || pathname.endsWith('/enterprise/app-deploy/releases/source-app')
       )
