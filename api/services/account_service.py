@@ -1499,14 +1499,25 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: str | None = None):
-        """Switch the current workspace for the account"""
+    def switch_tenant(
+        account: Account,
+        tenant_id: str | None = None,
+        session: Session | scoped_session | None = None,
+    ):
+        """Switch the current workspace for the account.
+
+        When a controller owns the request transaction, pass its session so the
+        membership update commits with the outer handler. Legacy callers keep
+        using the Flask-scoped session and commit here.
+        """
 
         # Ensure tenant_id is provided
         if tenant_id is None:
             raise ValueError("Tenant ID must be provided.")
 
-        tenant_account_join = db.session.scalar(
+        active_session = session if session is not None else db.session
+
+        tenant_account_join = active_session.scalar(
             select(TenantAccountJoin)
             .join(Tenant, TenantAccountJoin.tenant_id == Tenant.id)
             .where(
@@ -1520,7 +1531,7 @@ class TenantService:
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else:
-            db.session.execute(
+            active_session.execute(
                 update(TenantAccountJoin)
                 .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id)
                 .values(current=False)
@@ -1529,7 +1540,8 @@ class TenantService:
             tenant_account_join.last_opened_at = naive_utc_now()
             # Set the current tenant for the account
             account.set_tenant_id(tenant_account_join.tenant_id)
-            db.session.commit()
+            if session is None:
+                db.session.commit()
 
     @staticmethod
     def get_tenant_members(tenant: Tenant) -> list[Account]:

@@ -941,6 +941,23 @@ class TestTenantService:
             assert mock_tenant_join.last_opened_at == mock_now
             self._assert_database_operations_called(mock_db)
 
+    def test_switch_tenant_uses_injected_session_without_commit(self):
+        """Injected request sessions should leave commit ownership to the caller."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        mock_tenant_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="user-123", current=False
+        )
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = mock_tenant_join
+
+        TenantService.switch_tenant(mock_account, "tenant-456", session=mock_session)
+
+        assert mock_tenant_join.current is True
+        mock_session.scalar.assert_called_once()
+        mock_session.execute.assert_called_once()
+        mock_session.commit.assert_not_called()
+        mock_account.set_tenant_id.assert_called_once_with("tenant-456")
+
     def test_switch_tenant_no_tenant_id(self):
         """Test tenant switching without providing tenant ID."""
         # Setup test data
