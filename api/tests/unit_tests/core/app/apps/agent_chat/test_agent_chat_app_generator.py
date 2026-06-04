@@ -125,7 +125,7 @@ class TestAgentChatAppGeneratorGenerate:
             return_value={"result": "ok"},
         )
         app_entity = mocker.MagicMock(task_id="task", user_id="user", invoke_from=invoke_from)
-        mocker.patch(
+        generate_entity = mocker.patch(
             "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateEntity",
             return_value=app_entity,
         )
@@ -136,11 +136,13 @@ class TestAgentChatAppGeneratorGenerate:
             "conversation_id": "conv",
             "model_config": {"model": {"provider": "p"}},
             "files": [{"id": "f1"}],
+            "trace_session_id": "session-1",
         }
 
         result = generator.generate(app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=True)
 
         assert result == {"result": "ok"}
+        assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
         thread_obj.start.assert_called_once()
 
     def test_generate_without_file_config(self, generator, mocker: MockerFixture):

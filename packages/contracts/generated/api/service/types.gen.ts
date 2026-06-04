@@ -57,6 +57,7 @@ export type ChatRequestPayload = {
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
+  trace_session_id?: string | null
   workflow_id?: string | null
 }
 
@@ -107,6 +108,7 @@ export type CompletionRequestPayload = {
   query?: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
+  trace_session_id?: string | null
 }
 
 export type Condition = {
@@ -995,6 +997,7 @@ export type WorkflowRunPayload = {
     [key: string]: unknown
   }
   response_mode?: 'blocking' | 'streaming' | null
+  trace_session_id?: string | null
 }
 
 export type WorkflowRunResponse = {
