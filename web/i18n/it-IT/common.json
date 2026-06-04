@@ -59,7 +59,6 @@
   "account.sendVerificationButton": "Invia codice di verifica",
   "account.setPassword": "Imposta una password",
   "account.showAppLength": "Mostra {{length}} app",
-  "account.studio": "Dify Studio",
   "account.verificationLabel": "Codice di verifica",
   "account.verificationPlaceholder": "Incolla il codice a 6 cifre",
   "account.workspaceIcon": "Icona della workspace",

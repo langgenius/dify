@@ -59,7 +59,6 @@
   "account.sendVerificationButton": "인증 코드 보내기",
   "account.setPassword": "비밀번호 설정",
   "account.showAppLength": "{{length}}개의 앱 표시",
-  "account.studio": "디파이 스튜디오",
   "account.verificationLabel": "인증 코드",
   "account.verificationPlaceholder": "6 자리 코드를 붙여넣습니다.",
   "account.workspaceIcon": "작업 공간 아이콘",

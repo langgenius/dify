@@ -59,7 +59,6 @@
   "account.sendVerificationButton": "Send Verification Code",
   "account.setPassword": "Set a password",
   "account.showAppLength": "Show {{length}} apps",
-  "account.studio": "Studio",
   "account.verificationLabel": "Verification Code",
   "account.verificationPlaceholder": "Paste the 6-digit code",
   "account.workspaceIcon": "Workspace Icon",

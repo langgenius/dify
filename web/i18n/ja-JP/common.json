@@ -59,7 +59,6 @@
   "account.sendVerificationButton": "確認コードの送信",
   "account.setPassword": "パスワードを設定",
   "account.showAppLength": "{{length}}アプリを表示",
-  "account.studio": "スタジオ",
   "account.verificationLabel": "認証コード",
   "account.verificationPlaceholder": "6 桁のコードを貼り付けます",
   "account.workspaceIcon": "ワークスペースアイコン",
