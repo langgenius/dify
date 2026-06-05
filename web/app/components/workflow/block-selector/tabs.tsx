@@ -35,12 +35,14 @@ type TabsProps = {
     key: TabsEnum
     name: string
     disabled?: boolean
+    disabledTip?: string
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
   noTools?: boolean
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
   allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
+  snippetsElem?: React.ReactNode
 }
 
 const normalizeToolList = (list: ToolWithProvider[] | undefined, currentBasePath?: string) => {
@@ -177,6 +179,7 @@ const Tabs: FC<TabsProps> = ({
   noTools,
   forceShowStartContent = false,
   allowStartNodeSelection = false,
+  snippetsElem,
 }) => {
   const { t } = useTranslation()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -219,10 +222,10 @@ const Tabs: FC<TabsProps> = ({
   }, [normalizedBuiltInTools, normalizedCustomTools, normalizedMcpTools, normalizedWorkflowTools, workflowStore])
 
   return (
-    <div onClick={e => e.stopPropagation()}>
+    <div className="w-full min-w-0" onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className="relative flex bg-background-section-burn pt-1 pl-1">
+          <div className="relative flex w-full min-w-0 bg-background-section-burn pt-1 pl-1">
             {
               tabs.map(tab => (
                 <TabHeaderItem
@@ -230,7 +233,7 @@ const Tabs: FC<TabsProps> = ({
                   tab={tab}
                   activeTab={activeTab}
                   onActiveTabChange={onActiveTabChange}
-                  disabledTip={disabledTip}
+                  disabledTip={tab.disabledTip || disabledTip}
                 />
               ))
             }
@@ -295,6 +298,15 @@ const Tabs: FC<TabsProps> = ({
             }}
           />
         )
+      }
+      {
+        activeTab === TabsEnum.Snippets && Boolean(snippetsElem)
+          ? (
+              <div className="border-t border-divider-subtle">
+                {snippetsElem}
+              </div>
+            )
+          : null
       }
     </div>
   )
