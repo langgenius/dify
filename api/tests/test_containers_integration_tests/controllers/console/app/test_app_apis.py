@@ -395,7 +395,7 @@ class TestSiteEndpoints:
         monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
         with app.test_request_context("/", json={"title": "My Site"}):
-            result = method(SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
+            result = method(api, SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
         assert result["title"] == "My Site"
@@ -429,7 +429,7 @@ class TestSiteEndpoints:
         monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
         with app.test_request_context("/"):
-            result = method(SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
+            result = method(api, SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
         assert result["access_token"] == "code"
