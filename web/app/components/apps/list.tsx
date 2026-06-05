@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { AppListQuery } from '@/contract/console/apps'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -8,7 +7,7 @@ import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -39,9 +38,9 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 type Props = {
   controlRefreshList?: number
 }
-const List: FC<Props> = ({
+function List({
   controlRefreshList = 0,
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
@@ -224,13 +223,12 @@ const List: FC<Props> = ({
               </div>
             </label>
             <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName="w-[200px]"
+            <SearchInput
+              className="w-52"
               value={keywords}
-              onChange={e => setKeywords(e.target.value)}
-              onClear={() => setKeywords('')}
+              onValueChange={setKeywords}
+              placeholder={t('operation.search', { ns: 'common' })}
+              aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
             />
           </div>
         </div>
