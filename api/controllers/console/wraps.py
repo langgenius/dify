@@ -291,8 +291,9 @@ def setup_required[T, **P, R](
 
 
 @overload
-def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     """Require self-hosted bootstrap setup before serving protected routes."""
+    ...
 
 
 def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
