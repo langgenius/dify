@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 import io
 from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
+from flask import Flask
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import InternalServerError
 
@@ -38,7 +38,7 @@ def _file_data():
     return FileStorage(stream=io.BytesIO(b"audio"), filename="audio.wav", content_type="audio/wav")
 
 
-def test_console_audio_api_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_audio_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: {"text": "ok"})
     api = ChatMessageAudioApi()
     handler = unwrap(api.post)
@@ -64,7 +64,7 @@ def test_console_audio_api_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -
         (InvokeError("invoke"), CompletionRequestError),
     ],
 )
-def test_console_audio_api_error_mapping(app:Flask, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
+def test_console_audio_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
     monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(exc))
     api = ChatMessageAudioApi()
     handler = unwrap(api.post)
@@ -75,7 +75,7 @@ def test_console_audio_api_error_mapping(app:Flask, monkeypatch: pytest.MonkeyPa
             handler(api, app_model=app_model)
 
 
-def test_console_audio_api_unhandled_error(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_audio_api_unhandled_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
     api = ChatMessageAudioApi()
     handler = unwrap(api.post)
@@ -86,7 +86,7 @@ def test_console_audio_api_unhandled_error(app:Flask, monkeypatch: pytest.Monkey
             handler(api, app_model=app_model)
 
 
-def test_console_text_api_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_text_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "ok"})
 
     api = ChatMessageTextApi()
@@ -103,7 +103,7 @@ def test_console_text_api_success(app:Flask, monkeypatch: pytest.MonkeyPatch) ->
     assert response == {"audio": "ok"}
 
 
-def test_console_text_api_error_mapping(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError()))
 
     api = ChatMessageTextApi()
@@ -119,7 +119,7 @@ def test_console_text_api_error_mapping(app:Flask, monkeypatch: pytest.MonkeyPat
             handler(api, app_model=app_model)
 
 
-def test_console_text_modes_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: ["voice-1"])
 
     api = TextModesApi()
@@ -132,7 +132,7 @@ def test_console_text_modes_success(app:Flask, monkeypatch: pytest.MonkeyPatch) 
     assert response == ["voice-1"]
 
 
-def test_console_text_modes_language_error(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_console_text_modes_language_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         AudioService,
         "transcript_tts_voices",
@@ -148,7 +148,7 @@ def test_console_text_modes_language_error(app:Flask, monkeypatch: pytest.Monkey
             handler(api, app_model=app_model)
 
 
-def test_audio_to_text_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_audio_to_text_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = ChatMessageAudioApi()
     method = unwrap(api.post)
 
@@ -169,7 +169,7 @@ def test_audio_to_text_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -> No
     assert response == response_payload
 
 
-def test_audio_to_text_maps_audio_too_large(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_audio_to_text_maps_audio_too_large(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = ChatMessageAudioApi()
     method = unwrap(api.post)
 
@@ -192,7 +192,7 @@ def test_audio_to_text_maps_audio_too_large(app:Flask, monkeypatch: pytest.Monke
             method(api, app_model=app_model)
 
 
-def test_text_to_audio_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_text_to_audio_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = ChatMessageTextApi()
     method = unwrap(api.post)
 
@@ -210,7 +210,7 @@ def test_text_to_audio_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -> No
     assert response == {"audio": "ok"}
 
 
-def test_text_to_audio_voices_success(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = TextModesApi()
     method = unwrap(api.get)
 
@@ -228,7 +228,7 @@ def test_text_to_audio_voices_success(app:Flask, monkeypatch: pytest.MonkeyPatch
     assert response == ["voice-1"]
 
 
-def test_audio_to_text_with_invalid_file(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_audio_to_text_with_invalid_file(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = ChatMessageAudioApi()
     method = unwrap(api.post)
 
@@ -248,7 +248,7 @@ def test_audio_to_text_with_invalid_file(app:Flask, monkeypatch: pytest.MonkeyPa
         assert response == {"text": "test"}
 
 
-def test_text_to_audio_with_language_param(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_text_to_audio_with_language_param(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = ChatMessageTextApi()
     method = unwrap(api.post)
 
@@ -265,7 +265,7 @@ def test_text_to_audio_with_language_param(app:Flask, monkeypatch: pytest.Monkey
         assert response == {"audio": "test"}
 
 
-def test_text_to_audio_voices_with_language_filter(app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = TextModesApi()
     method = unwrap(api.get)
 

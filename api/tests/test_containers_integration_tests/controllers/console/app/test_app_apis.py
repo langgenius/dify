@@ -578,7 +578,9 @@ class TestWorkflowStatisticEndpoints:
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
+            response = method(
+                api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1")
+            )
 
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
@@ -601,7 +603,9 @@ class TestWorkflowStatisticEndpoints:
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
+            response = method(
+                api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1")
+            )
 
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 

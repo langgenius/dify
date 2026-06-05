@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 
 from controllers.console.app import generator as generator_module
 from controllers.console.app.error import ProviderNotInitializeError
