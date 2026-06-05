@@ -21,7 +21,7 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useRouter } from '@/next/navigation'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { basePath } from '@/utils/var'
 import { formatCredits, getRemainingCredits } from '../utils'
@@ -77,7 +77,7 @@ function WorkspaceCardTrigger({
   showCloudBilling,
   showPlanAction,
   planActionLabel,
-  onCreditsClick,
+  creditsHref,
   onPlanClick,
 }: {
   open: boolean
@@ -87,7 +87,7 @@ function WorkspaceCardTrigger({
   showCloudBilling: boolean
   showPlanAction: boolean
   planActionLabel: string
-  onCreditsClick: () => void
+  creditsHref: string
   onPlanClick: () => void
 }) {
   const { t } = useTranslation()
@@ -112,16 +112,15 @@ function WorkspaceCardTrigger({
       </DropdownMenuTrigger>
       {showCloudBilling && (
         <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
-          <button
-            type="button"
+          <Link
+            href={creditsHref}
             className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset"
             aria-label={t('mainNav.workspace.credits', { ns: 'common', count: credits })}
-            onClick={onCreditsClick}
           >
             <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
             <span className="truncate system-xs-medium" title={credits}>{credits}</span>
             <span className="shrink-0 system-xs-regular">{t('mainNav.workspace.creditsUnit', { ns: 'common' })}</span>
-          </button>
+          </Link>
           {showPlanAction && (
             <button
               type="button"
@@ -203,7 +202,6 @@ const selectCurrentWorkspaceCardData = (workspace: {
 
 export function WorkspaceCard() {
   const { t } = useTranslation()
-  const router = useRouter()
   const currentWorkspaceQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
     select: selectCurrentWorkspaceCardData,
   }))
@@ -261,7 +259,7 @@ export function WorkspaceCard() {
           showCloudBilling={showCloudBilling}
           showPlanAction={showPlanAction}
           planActionLabel={planActionLabel}
-          onCreditsClick={() => router.push(buildIntegrationPath('provider'))}
+          creditsHref={buildIntegrationPath('provider')}
           onPlanClick={setShowPricingModal}
         />
         <DropdownMenuContent
