@@ -21,6 +21,7 @@ type ISelectDataSetProps = {
   isShow: boolean
   onClose: () => void
   selectedIds: string[]
+  selectedDatasets?: DataSet[]
   onSelect: (dataSet: DataSet[]) => void
 }
 
@@ -28,10 +29,15 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   isShow,
   onClose,
   selectedIds,
+  selectedDatasets,
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [selectedIdsInModal, setSelectedIdsInModal] = useState(() => selectedIds)
+  const initialSelectedIds = useMemo(() => {
+    return selectedDatasets?.length ? selectedDatasets.map(dataset => dataset.id) : selectedIds
+  }, [selectedDatasets, selectedIds])
+  const [selectedIdsInModalState, setSelectedIdsInModalState] = useState<string[]>()
+  const selectedIdsInModal = selectedIdsInModalState ?? initialSelectedIds
   const canSelectMulti = true
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets(
@@ -43,9 +49,17 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
     return pages.flatMap(page => page.data.filter(item => item.indexing_technique || item.provider === 'external'))
   }, [data])
   const datasetMap = useMemo(() => new Map(datasets.map(item => [item.id, item])), [datasets])
+  const selectedDatasetMap = useMemo(() => {
+    return new Map((selectedDatasets || []).map(item => [item.id, item]))
+  }, [selectedDatasets])
   const selected = useMemo(() => {
-    return selectedIdsInModal.map(id => datasetMap.get(id) || ({ id } as DataSet))
-  }, [datasetMap, selectedIdsInModal])
+    return selectedIdsInModal.reduce<DataSet[]>((acc, id) => {
+      const dataset = datasetMap.get(id) || selectedDatasetMap.get(id)
+      if (dataset)
+        acc.push(dataset)
+      return acc
+    }, [])
+  }, [datasetMap, selectedDatasetMap, selectedIdsInModal])
   const hasNoData = !isLoading && datasets.length === 0
 
   const listRef = useRef<HTMLDivElement>(null)
@@ -66,23 +80,25 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   )
 
   const toggleSelect = (dataSet: DataSet) => {
-    setSelectedIdsInModal((prev) => {
-      const isSelected = prev.includes(dataSet.id)
+    setSelectedIdsInModalState((prev) => {
+      const currentSelectedIds = prev ?? initialSelectedIds
+      const isSelected = currentSelectedIds.includes(dataSet.id)
       if (isSelected)
-        return prev.filter(id => id !== dataSet.id)
+        return currentSelectedIds.filter(id => id !== dataSet.id)
 
-      return canSelectMulti ? [...prev, dataSet.id] : [dataSet.id]
+      return canSelectMulti ? [...currentSelectedIds, dataSet.id] : [dataSet.id]
     })
   }
 
   const handleSelect = () => {
     onSelect(selected)
+    setSelectedIdsInModalState(undefined)
   }
 
   const handleClose = useCallback(() => {
-    setSelectedIdsInModal(selectedIds)
+    setSelectedIdsInModalState(undefined)
     onClose()
-  }, [onClose, selectedIds])
+  }, [onClose])
 
   const handleOpenChange = useCallback((open: boolean) => {
     if (!open)
