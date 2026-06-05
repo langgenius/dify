@@ -1669,11 +1669,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
