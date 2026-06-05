@@ -30,7 +30,7 @@ const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
-const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean, showModelMeta?: boolean }>)
+const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean }>)
 
 let mockIsCurrentWorkspaceManager = true
 
@@ -74,9 +74,14 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: (props: { hideProviderSettingsFooter?: boolean, showModelMeta?: boolean, onSelect: (model: { model: string, provider: string }) => void }) => {
+  default: (props: { hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean, onSelect: (model: { model: string, provider: string }) => void }) => {
     mockModelSelectorProps.push(props)
-    return <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>Mock Model Selector</button>
+    return (
+      <div>
+        <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>Mock Model Selector</button>
+        {props.onConfigureEmptyState && <button onClick={props.onConfigureEmptyState}>Mock Configure Empty State</button>}
+      </div>
+    )
   },
 }))
 
@@ -209,5 +214,20 @@ describe('SystemModel', () => {
     })
 
     expect(mockModelSelectorProps.every(props => props.showModelMeta === false)).toBe(true)
+  })
+
+  it('should close the dialog from the empty selector configure action', async () => {
+    render(<SystemModel {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Mock Configure Empty State' })[0]!)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+    })
   })
 })

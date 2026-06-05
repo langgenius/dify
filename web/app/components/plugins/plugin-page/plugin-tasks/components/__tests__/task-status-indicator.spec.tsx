@@ -53,7 +53,7 @@ describe('TaskStatusIndicator', () => {
 
       expect(button).toHaveClass('size-8', 'border-[0.5px]', 'border-components-panel-border-subtle', 'bg-components-panel-bg', 'p-2', 'rounded-lg')
       expect(screen.getByTestId('downloading-icon')).toHaveAttribute('data-active', 'false')
-      expect(document.querySelector('[data-status-badge="success"]')).toHaveClass('size-3.5', 'text-text-success')
+      expect(screen.getByTestId('task-status-success-badge')).toHaveClass('size-3.5', 'text-text-success')
     })
   })
 
@@ -80,7 +80,7 @@ describe('TaskStatusIndicator', () => {
       expect(screen.queryByTestId('progress-circle')).not.toBeInTheDocument()
     })
 
-    it('should show downloading icon with a success badge when isInstallingWithSuccess', () => {
+    it('should show downloading icon without success badge when isInstallingWithSuccess', () => {
       render(
         <TaskStatusIndicator
           {...defaultProps}
@@ -91,7 +91,7 @@ describe('TaskStatusIndicator', () => {
       )
       expect(screen.getByTestId('downloading-icon')).toHaveAttribute('data-active', 'true')
       expect(screen.queryByTestId('progress-circle')).not.toBeInTheDocument()
-      expect(document.querySelector('[data-status-badge="success"]')).toBeInTheDocument()
+      expect(screen.queryByTestId('task-status-success-badge')).not.toBeInTheDocument()
     })
 
     it('should show error badge when isInstallingWithError', () => {
@@ -104,7 +104,7 @@ describe('TaskStatusIndicator', () => {
         />,
       )
       expect(screen.queryByTestId('progress-circle')).not.toBeInTheDocument()
-      const badgeIcon = document.querySelector('[data-status-badge="error"]')!
+      const badgeIcon = screen.getByTestId('task-status-error-badge')
       expect(badgeIcon).toBeInTheDocument()
       expect(badgeIcon.parentElement).toHaveClass('-top-1.5', '-right-1.5', 'box-content', 'size-3.5')
       expect(badgeIcon.parentElement).toHaveClass('border')
@@ -181,7 +181,7 @@ describe('TaskStatusIndicator', () => {
     })
 
     it('should not show success badge when failed state includes successful plugins', () => {
-      const { container } = render(
+      render(
         <TaskStatusIndicator
           {...defaultProps}
           isFailed
@@ -191,8 +191,8 @@ describe('TaskStatusIndicator', () => {
         />,
       )
 
-      expect(container.querySelector('[data-status-badge="error"]')).toBeInTheDocument()
-      expect(container.querySelector('[data-status-badge="success"]')).not.toBeInTheDocument()
+      expect(screen.getByTestId('task-status-error-badge')).toBeInTheDocument()
+      expect(screen.queryByTestId('task-status-success-badge')).not.toBeInTheDocument()
     })
 
     it('should keep the center install icon neutral in failed state', () => {
@@ -299,7 +299,7 @@ describe('TaskStatusIndicator', () => {
       const button = document.getElementById('plugin-task-trigger')!
       expect(button).toBeDisabled()
       expect(screen.getByTestId('downloading-icon')).toHaveAttribute('data-active', 'false')
-      expect(button.querySelector('[data-status-badge="success"]')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('task-status-success-badge')).not.toBeInTheDocument()
     })
   })
 })

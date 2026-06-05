@@ -39,9 +39,15 @@ const createCollection = (overrides: Partial<Collection> = {}): Collection => ({
 
 describe('IntegrationsToolProviderCard', () => {
   it('shows a built-in corner badge for builtin tools', () => {
-    render(<IntegrationsToolProviderCard collection={createCollection()} />)
+    render(<IntegrationsToolProviderCard collection={createCollection()} showBuiltInBadge />)
 
     expect(screen.getByTestId('corner-mark')).toHaveTextContent('dataset.metadata.datasetMetadata.builtIn')
+  })
+
+  it('does not infer built-in badge from a missing plugin id', () => {
+    render(<IntegrationsToolProviderCard collection={createCollection()} />)
+
+    expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
   })
 
   it('does not show a source label for builtin tools', () => {
@@ -51,7 +57,7 @@ describe('IntegrationsToolProviderCard', () => {
   })
 
   it('does not show a built-in corner badge for marketplace plugin tools', () => {
-    render(<IntegrationsToolProviderCard collection={createCollection({ plugin_id: 'author/provider' })} />)
+    render(<IntegrationsToolProviderCard collection={createCollection({ plugin_id: 'author/provider' })} showBuiltInBadge />)
 
     expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
   })
@@ -69,5 +75,27 @@ describe('IntegrationsToolProviderCard', () => {
 
     expect(screen.getByText('tools.mcp.toolsCount:2')).toBeInTheDocument()
     expect(screen.queryByText(/plugin\.endpointsEnabled/)).not.toBeInTheDocument()
+  })
+
+  it('shows author and labels in the labeled card style', () => {
+    render(
+      <IntegrationsToolProviderCard
+        collection={createCollection({
+          author: 'Evan',
+          labels: ['Productivity', 'Utilities'],
+          tools: [
+            { name: 'tool-a' },
+          ] as Collection['tools'],
+        })}
+        variant="labeled"
+      />,
+    )
+
+    expect(screen.getByTestId('card-builtin-provider')).toHaveClass('shadow-xs', 'hover:bg-components-panel-on-panel-item-bg-hover', 'hover:shadow-md')
+    expect(screen.getByText('tools.author Evan')).toBeInTheDocument()
+    expect(screen.getByText('Productivity')).toBeInTheDocument()
+    expect(screen.getByText('Utilities')).toBeInTheDocument()
+    expect(screen.getAllByText('#')).toHaveLength(2)
+    expect(screen.queryByText('tools.mcp.toolsCount:1')).not.toBeInTheDocument()
   })
 })

@@ -47,7 +47,7 @@ function PluginSection({
         {headerAction}
       </div>
       <ScrollArea
-        className="max-h-[300px] overflow-hidden"
+        className="overflow-hidden"
         label={title}
         slotClassNames={{
           viewport: 'overscroll-contain',

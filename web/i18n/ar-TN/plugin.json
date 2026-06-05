@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "تحديث",
   "detailPanel.operation.updateTooltip": "قم بالتحديث للوصول إلى أحدث النماذج.",
   "detailPanel.operation.viewDetail": "عرض التفاصيل",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "الخدمة جيدة",
   "detailPanel.strategyNum": "{{num}} {{strategy}} متضمن",
   "detailPanel.switchVersion": "تبديل الإصدار",

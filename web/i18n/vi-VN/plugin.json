@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Cập nhật",
   "detailPanel.operation.updateTooltip": "Cập nhật để truy cập các mô hình mới nhất.",
   "detailPanel.operation.viewDetail": "xem chi tiết",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Dịch vụ OK",
   "detailPanel.strategyNum": "{{num}} {{strategy}} BAO GỒM",
   "detailPanel.switchVersion": "Chuyển đổi phiên bản",

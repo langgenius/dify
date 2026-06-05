@@ -74,7 +74,7 @@ const Configure = ({
               variant="secondary-accent"
             >
               <RiAddLine className="size-4" />
-              {t('dataSource.connect', { ns: 'common' })}
+              {t('dataSource.configure', { ns: 'common' })}
             </Button>
           )}
         />

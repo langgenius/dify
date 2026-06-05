@@ -18,18 +18,18 @@ import IntegrationsToolProviderCard from '@/app/components/integrations/tool-pro
 import Marketplace from '@/app/components/tools/marketplace'
 import List from './list'
 
-const EMPTY_TAG_FILTER: string[] = []
-
 type BuiltinMarketplacePanelProps = {
   containerRef: RefObject<HTMLDivElement | null>
   contentInset: PluginPageContentInset
   keywords: string
+  tagFilterValue: string[]
 }
 
 const BuiltinMarketplacePanel = ({
   containerRef,
   contentInset,
   keywords,
+  tagFilterValue,
 }: BuiltinMarketplacePanelProps) => {
   const {
     isMarketplaceArrowVisible,
@@ -39,7 +39,7 @@ const BuiltinMarketplacePanel = ({
   } = useToolMarketplacePanel({
     containerRef,
     keywords,
-    tagFilterValue: EMPTY_TAG_FILTER,
+    tagFilterValue,
   })
 
   return (
@@ -47,7 +47,7 @@ const BuiltinMarketplacePanel = ({
       <div ref={toolListTailRef} />
       <Marketplace
         searchPluginText={keywords}
-        filterPluginTags={EMPTY_TAG_FILTER}
+        filterPluginTags={tagFilterValue}
         isMarketplaceArrowVisible={isMarketplaceArrowVisible}
         showMarketplacePanel={showMarketplacePanel}
         marketplaceContext={marketplaceContext}
@@ -74,6 +74,7 @@ type PluginsPanelResultsProps = {
   loadNextPage: () => void
   scrollAreaLabel?: string
   setCurrentBuiltinToolID: (id: string) => void
+  tagFilterValue: string[]
 }
 
 const PluginsPanelResults = ({
@@ -93,6 +94,7 @@ const PluginsPanelResults = ({
   loadNextPage,
   scrollAreaLabel,
   setCurrentBuiltinToolID,
+  tagFilterValue,
 }: PluginsPanelResultsProps) => {
   const { t } = useTranslation()
 
@@ -127,6 +129,7 @@ const PluginsPanelResults = ({
                   <IntegrationsToolProviderCard
                     collection={collection}
                     current={currentBuiltinToolID === collection.id}
+                    showBuiltInBadge
                   />
                 </button>
               ))}
@@ -148,6 +151,7 @@ const PluginsPanelResults = ({
               containerRef={containerRef}
               contentInset={contentInset}
               keywords={keywords}
+              tagFilterValue={tagFilterValue}
             />
           )}
         </ScrollAreaContent>

@@ -11,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -82,6 +81,13 @@ const HelpMenu = ({
                   trailing={<ExternalLinkIndicator />}
                 />
               </DropdownMenuLinkItem>
+              <DropdownMenuLinkItem href="https://roadmap.dify.ai" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1">
+                <MenuItemContent
+                  iconClassName="i-ri-map-2-line"
+                  label={t('userProfile.roadmap', { ns: 'common' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+              </DropdownMenuLinkItem>
               <DropdownMenuCheckboxItem
                 checked={learnDifyVisible}
                 closeOnClick={false}
@@ -107,18 +113,14 @@ const HelpMenu = ({
                   />
                 </span>
               </DropdownMenuCheckboxItem>
-              <SupportMenu />
               {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
-              <DropdownMenuLinkItem href="https://roadmap.dify.ai" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1.5">
-                <MenuItemContent
-                  iconClassName="i-ri-map-2-line"
-                  label={t('userProfile.roadmap', { ns: 'common' })}
-                  trailing={<ExternalLinkIndicator />}
-                />
-              </DropdownMenuLinkItem>
+              <SupportMenu />
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator className="my-0!" />
+            <DropdownMenuGroup className="p-1">
               <DropdownMenuLinkItem href="https://github.com/langgenius/dify" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1.5">
                 <MenuItemContent
                   iconClassName="i-ri-github-line"
@@ -144,8 +146,7 @@ const HelpMenu = ({
                     label={t('userProfile.about', { ns: 'common' })}
                     trailing={(
                       <div className="flex shrink-0 items-center">
-                        <div className="mr-2 system-xs-regular text-text-tertiary">{t('about.version', { ns: 'common', version: langGeniusVersionInfo.current_version })}</div>
-                        <StatusDot status={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'success' : 'warning'} />
+                        <div className="system-xs-regular text-text-tertiary">{t('about.version', { ns: 'common', version: langGeniusVersionInfo.current_version })}</div>
                       </div>
                     )}
                   />

@@ -23,7 +23,7 @@ const MIN_VIEW_MORE_WIDTH = 160
 
 export function BannerItem({
   banner,
-  autoplayDelay,
+  autoplayDelay = 5000,
   sort,
   language,
   accountId,

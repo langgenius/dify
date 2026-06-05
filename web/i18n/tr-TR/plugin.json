@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Güncelle",
   "detailPanel.operation.updateTooltip": "En son modellere erişmek için güncelleyin.",
   "detailPanel.operation.viewDetail": "Pazar Yeri'nde görüntüle",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Servis Tamam",
   "detailPanel.strategyNum": "{{num}} {{strategy}} DAHİL",
   "detailPanel.switchVersion": "Sürümü Değiştir",

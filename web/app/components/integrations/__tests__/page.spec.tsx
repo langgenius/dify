@@ -394,7 +394,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('href', '/integrations/tools/mcp')
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'common.settings.customTool' })).toHaveAttribute('href', '/integrations/tool/api')
+    expect(screen.getByRole('link', { name: 'common.settings.customTool' })).toHaveAttribute('href', '/integrations/tools/api')
     expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' })).toHaveAttribute('href', '/integrations/tools/workflow')
     const workflowToolIcon = screen.getByRole('link', { name: 'workflow.common.workflowAsTool' }).querySelector('.i-custom-vender-integrations-workflow-as-tool')
     expect(workflowToolIcon).toBeInTheDocument()
@@ -537,12 +537,13 @@ describe('IntegrationsPage', () => {
   })
 
   it.each([
-    ['data-source', 'common.settings.dataSource', 'common.dataSourcePage.description'],
-  ] as const)('renders the %s header', (section, title, description) => {
+    ['data-source', 'common.settings.dataSource', 'common.dataSourcePage.description', 'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/datasource-plugin#data-source-plugin-types'],
+  ] as const)('renders the %s header with a docs link', (section, title, description, href) => {
     renderIntegrationsPage({ section })
 
     expect(screen.getAllByText(title)).toHaveLength(2)
     expect(screen.getByText(description)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', href)
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 

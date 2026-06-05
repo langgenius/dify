@@ -1,5 +1,6 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
@@ -84,7 +85,7 @@ const Contribute = ({ onRefreshData }: Props) => {
           className="min-w-0"
           title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
           linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
-          linkUrl={docLink('/use-dify/workspace/tools#custom-tool')}
+          linkUrl={`${docLink('/use-dify/workspace/tools' as DocPathWithoutLang)}#custom-tool`}
           onCreate={() => setIsShowEditCustomCollectionModal(true)}
         />
       )}

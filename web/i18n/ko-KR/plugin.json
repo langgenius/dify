@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "업데이트",
   "detailPanel.operation.updateTooltip": "최신 모델에 액세스하려면 업데이트하세요.",
   "detailPanel.operation.viewDetail": "자세히보기",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "서비스 정상",
   "detailPanel.strategyNum": "{{num}} {{strategy}} 포함",
   "detailPanel.switchVersion": "스위치 버전",

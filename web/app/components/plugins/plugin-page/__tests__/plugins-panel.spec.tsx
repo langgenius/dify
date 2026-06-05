@@ -101,8 +101,8 @@ vi.mock('../list', () => ({
 }))
 
 vi.mock('@/app/components/integrations/tool-provider-card', () => ({
-  default: ({ collection }: { collection: Collection }) => (
-    <div data-testid="builtin-tool-card">
+  default: ({ collection, showBuiltInBadge }: { collection: Collection, showBuiltInBadge?: boolean }) => (
+    <div data-show-built-in-badge={showBuiltInBadge ? 'true' : 'false'} data-testid="builtin-tool-card">
       {collection.id}
     </div>
   ),
@@ -118,8 +118,8 @@ vi.mock('@/app/components/integrations/hooks/use-tool-marketplace-panel', () => 
 }))
 
 vi.mock('@/app/components/tools/marketplace', () => ({
-  default: ({ searchPluginText }: { searchPluginText: string }) => (
-    <div data-search-plugin-text={searchPluginText} data-testid="tool-marketplace" />
+  default: ({ filterPluginTags, searchPluginText }: { filterPluginTags: string[], searchPluginText: string }) => (
+    <div data-filter-plugin-tags={filterPluginTags.join(',')} data-search-plugin-text={searchPluginText} data-testid="tool-marketplace" />
   ),
 }))
 
@@ -173,7 +173,7 @@ const createPlugin = (pluginId: string, label: string, tags: string[] = [], cate
   alternative_plugin_id: '',
 }) as PluginDetail
 
-const createBuiltinTool = (id: string, label: string): Collection => ({
+const createBuiltinTool = (id: string, label: string, labels: string[] = []): Collection => ({
   id,
   name: id,
   author: 'Dify',
@@ -184,7 +184,7 @@ const createBuiltinTool = (id: string, label: string): Collection => ({
   team_credentials: {},
   is_team_authorization: false,
   allow_delete: false,
-  labels: [],
+  labels,
 })
 
 describe('PluginsPanel', () => {
@@ -264,10 +264,40 @@ describe('PluginsPanel', () => {
   it('loads the scoped tool plugin category list when fixed to tool plugins', () => {
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
 
+    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'false')
     expect(mockUseInstalledPluginList).toHaveBeenCalledWith(undefined, 100, {
       category: PluginCategoryEnum.tool,
       refetchOnMount: 'always',
     })
+  })
+
+  it('filters tool plugins, builtin tools, and marketplace suggestions by selected tags', () => {
+    mockState.filters.tags = ['search']
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin('search-tool-plugin', 'Search Tool Plugin', ['search'], PluginCategoryEnum.tool),
+      createPlugin('rag-tool-plugin', 'RAG Tool Plugin', ['rag'], PluginCategoryEnum.tool),
+    ])
+    mockUseInstalledPluginList.mockReturnValue({
+      data: {
+        plugins: [],
+        builtin_tools: [
+          createBuiltinTool('search-builtin-tool', 'Search Builtin Tool', ['search']),
+          createBuiltinTool('rag-builtin-tool', 'RAG Builtin Tool', ['rag']),
+        ],
+      },
+      isLoading: false,
+      isFetching: false,
+      isLastPage: true,
+      loadNextPage: mockLoadNextPage,
+    })
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
+
+    expect(screen.getByTestId('plugin-list')).toHaveTextContent('search-tool-plugin')
+    expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('rag-tool-plugin')
+    expect(screen.getByTestId('builtin-tool-card')).toHaveTextContent('search-builtin-tool')
+    expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('rag-builtin-tool')
+    expect(screen.getByTestId('tool-marketplace')).toHaveAttribute('data-filter-plugin-tags', 'search')
   })
 
   it('renders builtin tools after plugin tools on the tool integrations page', () => {
@@ -295,6 +325,7 @@ describe('PluginsPanel', () => {
 
     expect(pluginList).toHaveTextContent('tool-plugin')
     expect(builtinToolCard).toHaveTextContent('builtin-tool')
+    expect(builtinToolCard).toHaveAttribute('data-show-built-in-badge', 'true')
     expect(pluginList).toContainElement(builtinToolCard)
     expect(screen.getByRole('button', { name: 'builtin-tool' })).toHaveAttribute('aria-pressed', 'false')
     expect(pluginItem.compareDocumentPosition(builtinToolCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

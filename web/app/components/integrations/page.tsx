@@ -37,6 +37,7 @@ type IntegrationsPageProps = {
 
 const headerDescriptionDocPaths: Partial<Record<IntegrationSection, string>> = {
   'provider': '/use-dify/workspace/model-providers',
+  'data-source': '/develop-plugin/dev-guides-and-walkthroughs/datasource-plugin#data-source-plugin-types',
   'builtin': '/use-dify/workspace/tools',
   'custom-tool': '/use-dify/workspace/tools#custom-tool',
   'workflow-tool': '/use-dify/workspace/tools#workflow-tool',

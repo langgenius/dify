@@ -89,6 +89,7 @@ export function ToolProviderGrid({
 }) {
   const showWorkflowEmptyState = activeTab === 'workflow' && !hasCategoryCollections && !isSearchResultEmpty
   const useCustomToolGrid = activeTab === 'api'
+  const useThreeColumnIntegrationsGrid = useIntegrationsCard && activeTab !== 'builtin'
 
   return (
     <div
@@ -96,6 +97,8 @@ export function ToolProviderGrid({
       className={cn(
         useCustomToolGrid
           ? 'relative grid shrink-0 grid-cols-1 content-start gap-2.5 pt-1 pb-4 md:grid-cols-2 xl:grid-cols-3'
+          : useThreeColumnIntegrationsGrid
+            ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 sm:grid-cols-2 md:grid-cols-3'
           : useIntegrationsCard
             ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 lg:grid-cols-2'
             : 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
@@ -122,6 +125,8 @@ export function ToolProviderGrid({
                         <IntegrationsToolProviderCard
                           collection={collection}
                           current={currentProviderId === collection.id}
+                          showBuiltInBadge={activeTab === 'builtin' && !collection.plugin_id}
+                          variant={activeTab === 'workflow' || activeTab === 'api' ? 'labeled' : 'default'}
                         />
                       )
                     : (

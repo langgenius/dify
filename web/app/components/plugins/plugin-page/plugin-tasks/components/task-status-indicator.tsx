@@ -23,6 +23,7 @@ function ErrorBadgeIcon() {
     <svg
       aria-hidden
       data-status-badge="error"
+      data-testid="task-status-error-badge"
       className="size-3.5 text-text-destructive"
       viewBox="0 0 24 24"
       fill="none"
@@ -41,6 +42,7 @@ function SuccessBadgeIcon() {
     <svg
       aria-hidden
       data-status-badge="success"
+      data-testid="task-status-success-badge"
       className="size-3.5 text-text-success"
       viewBox="0 0 24 24"
       fill="none"
@@ -68,10 +70,10 @@ function TaskStatusIndicator({
   onClick,
 }: TaskStatusIndicatorProps) {
   const showErrorStyle = isInstallingWithError || isFailed
-  const showSuccessIcon = isSuccess || (!isFailed && successPluginsLength > 0 && runningPluginsLength === 0)
-  const showSuccessBadge = (showSuccessIcon || isInstallingWithSuccess) && !isInstallingWithError && !isFailed
-  const showBadge = isInstallingWithError || showSuccessBadge || isFailed
   const hasActiveInstall = isInstalling || isInstallingWithSuccess || isInstallingWithError
+  const showSuccessIcon = isSuccess || (!hasActiveInstall && !isFailed && successPluginsLength > 0 && runningPluginsLength === 0)
+  const showSuccessBadge = showSuccessIcon && !isInstallingWithError && !isFailed
+  const showBadge = isInstallingWithError || showSuccessBadge || isFailed
 
   return (
     <Tooltip>

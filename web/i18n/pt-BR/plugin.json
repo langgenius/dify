@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Atualização",
   "detailPanel.operation.updateTooltip": "Atualize para acessar os modelos mais recentes.",
   "detailPanel.operation.viewDetail": "Ver detalhes",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Serviço OK",
   "detailPanel.strategyNum": "{{num}} {{strategy}} INCLUSO",
   "detailPanel.switchVersion": "Versão do Switch",

@@ -214,10 +214,12 @@ const MCPDetailContent: FC<Props> = ({
             </div>
           </div>
           <div className="flex gap-1">
-            <OperationDropdown
-              onEdit={showUpdateModal}
-              onRemove={showDeleteConfirm}
-            />
+            {isCurrentWorkspaceManager && (
+              <OperationDropdown
+                onEdit={showUpdateModal}
+                onRemove={showDeleteConfirm}
+              />
+            )}
             <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
               <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>

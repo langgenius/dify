@@ -5,6 +5,16 @@ export type LegacyPluginsSearchParams = Record<string, string | string[] | undef
 const INSTALLED_PLUGINS_TAB = 'plugins'
 const MARKETPLACE_TAB = 'discover'
 
+const integrationPluginPathByTab = new Map<string, string>([
+  ['trigger', '/integrations/trigger'],
+  ['agent-strategy', '/integrations/agent-strategy'],
+  ['extension', '/integrations/extension'],
+])
+
+const getIntegrationPluginPathByTab = (tab: string) => {
+  return integrationPluginPathByTab.get(tab)
+}
+
 const marketplacePluginTabs = new Set<string>([
   MARKETPLACE_TAB,
   ...Object.values(PLUGIN_TYPE_SEARCH_MAP),
@@ -49,6 +59,10 @@ export const getLegacyPluginRedirectPath = (
 
   if (!tab || tab === INSTALLED_PLUGINS_TAB)
     return '/integrations'
+
+  const integrationPluginPath = getIntegrationPluginPathByTab(tab)
+  if (integrationPluginPath)
+    return integrationPluginPath
 
   if (marketplacePluginTabs.has(tab))
     return buildMarketplaceRedirectPath(searchParams, tab)

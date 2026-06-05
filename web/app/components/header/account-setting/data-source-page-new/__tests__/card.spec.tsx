@@ -366,7 +366,7 @@ describe('Card Component', () => {
 
       // Act
       render(<Card item={configurableItem} />)
-      fireEvent.click(screen.getByText(/dataSource.connect/))
+      fireEvent.click(screen.getByText(/dataSource.configure/))
 
       // Find the add API key button and click it
       fireEvent.click(screen.getByText('Add API Key'))

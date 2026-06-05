@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Оновлювати",
   "detailPanel.operation.updateTooltip": "Оновіть, щоб отримати доступ до найновіших моделей.",
   "detailPanel.operation.viewDetail": "Переглянути деталі",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Сервіс працює",
   "detailPanel.strategyNum": "{{num}} {{strategy}} ВКЛЮЧЕНІ",
   "detailPanel.switchVersion": "Версія перемикача",

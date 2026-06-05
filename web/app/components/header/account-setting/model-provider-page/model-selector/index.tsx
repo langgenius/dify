@@ -23,6 +23,7 @@ type ModelSelectorProps = {
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
+  onConfigureEmptyState?: () => void
   showModelMeta?: boolean
 }
 function ModelSelector({
@@ -37,6 +38,7 @@ function ModelSelector({
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
   hideProviderSettingsFooter,
+  onConfigureEmptyState,
   showModelMeta,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
@@ -101,6 +103,11 @@ function ModelSelector({
     setInputValue('')
     onHide?.()
   }, [onHide])
+  const handleConfigureEmptyState = useCallback(() => {
+    setOpen(false)
+    setInputValue('')
+    onConfigureEmptyState?.()
+  }, [onConfigureEmptyState])
 
   return (
     <Combobox<ModelSelectorValue>
@@ -143,6 +150,7 @@ function ModelSelector({
           modelList={modelList}
           scopeFeatures={scopeFeatures}
           hideProviderSettingsFooter={hideProviderSettingsFooter}
+          onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />

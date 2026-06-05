@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Actualiza",
   "detailPanel.operation.updateTooltip": "Actualizați pentru a accesa cele mai recente modele.",
   "detailPanel.operation.viewDetail": "Vezi detalii",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Serviciu OK",
   "detailPanel.strategyNum": "{{num}} {{strategy}} INCLUS",
   "detailPanel.switchVersion": "Versiune de comutare",

@@ -130,7 +130,7 @@
   "plansCommon.supportItems.ragAPIRequest": "RAG-API-Anfragen",
   "plansCommon.supportItems.workflow": "Workflow",
   "plansCommon.talkToSales": "Mit dem Vertrieb sprechen",
-  "plansCommon.taxTip": "Alle Abonnementspreise (monatlich/jährlich) verstehen sich zuzüglich der geltenden Steuern (z. B. MwSt., Umsatzsteuer).",
+  "plansCommon.taxTip": "Alle Abonnementspreise (monatlich/jährlich) verstehen sich zuzüglich der geltenden Steuern (z. B. MwSt., Umsatzsteuer).",
   "plansCommon.taxTipSecond": "Wenn in Ihrer Region keine relevanten Steuervorschriften gelten, wird an der Kasse keine Steuer angezeigt und Ihnen werden während der gesamten Abonnementlaufzeit keine zusätzlichen Gebühren berechnet.",
   "plansCommon.teamMember_one": "{{count,number}} Teammitglied",
   "plansCommon.teamMember_other": "{{count,number}} Teammitglieder",

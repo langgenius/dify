@@ -38,7 +38,7 @@ const webAppSkeletonWidths = ['w-24', 'w-32', 'w-28']
 
 function WebAppsHeaderSkeleton() {
   return (
-    <div aria-hidden="true" className="flex h-8 items-center justify-between py-1 pr-3.5 pl-4">
+    <div aria-hidden="true" className="flex h-8 items-center justify-between p-2">
       <div className={cn(webAppSkeletonClassName, 'h-3 w-20')} />
       <div className={cn(webAppSkeletonClassName, 'size-4 rounded-md')} />
     </div>
@@ -177,7 +177,7 @@ const WebAppsSection = () => {
       {isPending
         ? <WebAppsHeaderSkeleton />
         : (
-            <div className="flex items-center justify-between py-1 pr-2.5 pl-2">
+            <div className="flex items-center justify-between py-1 pr-2 pl-2">
               <button
                 type="button"
                 aria-expanded={appsExpanded}

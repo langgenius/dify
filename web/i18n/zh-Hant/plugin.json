@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "更新",
   "detailPanel.operation.updateTooltip": "更新以取得最新模型。",
   "detailPanel.operation.viewDetail": "查看詳情",
+  "detailPanel.operation.viewReadme": "查看 README",
   "detailPanel.serviceOk": "服務正常",
   "detailPanel.strategyNum": "{{num}} {{strategy}} 包括",
   "detailPanel.switchVersion": "Switch 版本",

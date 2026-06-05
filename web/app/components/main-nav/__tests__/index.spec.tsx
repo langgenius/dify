@@ -311,6 +311,26 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
   })
 
+  it('aligns the global navigation spacing with the main sidebar design', () => {
+    mockInstalledApps = [createInstalledApp()]
+
+    renderMainNav()
+
+    const logoLink = screen.getByLabelText('Dify')
+    expect(logoLink).not.toHaveClass('px-2')
+    expect(logoLink.parentElement).toHaveClass('pt-3', 'pr-2', 'pb-2', 'pl-4')
+
+    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+    expect(homeLink.closest('nav')).toHaveClass('flex', 'flex-col', 'gap-px', 'p-2')
+    expect(homeLink).toHaveClass('h-8', 'w-full', 'rounded-[10px]', 'px-2', 'py-1.5')
+
+    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    expect(webAppsButton.parentElement).toHaveClass('py-1', 'pr-2', 'pl-2')
+
+    const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    expect(helpButton.parentElement).toHaveClass('shrink-0', 'rounded-full', 'p-1')
+  })
+
   it('renders the desktop environment tag from the old header contract', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
@@ -595,6 +615,29 @@ describe('MainNav', () => {
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('false')
     })
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('orders help menu items to match the nav shell design', async () => {
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    const labels = [
+      'common.mainNav.help.docs',
+      'common.userProfile.roadmap',
+      'common.userProfile.compliance',
+      'common.mainNav.help.learnDify',
+      'common.userProfile.contactUs',
+      'common.userProfile.forum',
+      'common.userProfile.community',
+      'common.userProfile.github',
+      'common.userProfile.about',
+    ]
+    const nodes = await Promise.all(labels.map(label => screen.findByText(label)))
+
+    nodes.slice(1).forEach((node, index) => {
+      expect(nodes[index]!.compareDocumentPosition(node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    })
   })
 
   it('hides the help menu when branding is enabled', () => {

@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Aktualisieren",
   "detailPanel.operation.updateTooltip": "Aktualisieren Sie, um auf die neuesten Modelle zuzugreifen.",
   "detailPanel.operation.viewDetail": "Im Detail sehen",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Service in Ordnung",
   "detailPanel.strategyNum": "{{num}} {{strategy}} IINKLUSIVE",
   "detailPanel.switchVersion": "Version wechseln",

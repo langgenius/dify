@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Обновлять",
   "detailPanel.operation.updateTooltip": "Обновите для доступа к последним моделям.",
   "detailPanel.operation.viewDetail": "Подробнее",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Услуга ОК",
   "detailPanel.strategyNum": "{{num}} {{strategy}} ВКЛЮЧЕННЫЙ",
   "detailPanel.switchVersion": "Версия для переключателя",
