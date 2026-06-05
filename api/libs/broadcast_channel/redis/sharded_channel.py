@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, override
 import logging
-from typing import Any
+from typing import Any, override
 
 from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
