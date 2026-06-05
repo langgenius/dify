@@ -4,8 +4,7 @@ import os
 import time
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate, Protocol, cast
-from typing import Any, Concatenate, overload
+from typing import Any, Concatenate, Protocol, cast, overload
 
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
@@ -90,6 +89,7 @@ def _is_setup_completed() -> bool:
     Use `once_true` instead of `@cache` because a pre-setup False result must not be memoized.
     """
     return db.session.scalar(select(DifySetup).limit(1)) is not None
+
 
 @overload
 def account_initialization_required[T, **P, R](
