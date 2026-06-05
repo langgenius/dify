@@ -50,11 +50,7 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from inspect import unwrap
 
 
 class TestConversationListQuery:
@@ -498,7 +494,7 @@ class TestConversationPayloadsController:
 class TestConversationApiController:
     def test_list_not_chat(self, app: Flask) -> None:
         api = ConversationApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
@@ -531,7 +527,7 @@ class TestConversationApiController:
         monkeypatch.setattr(conversation_module, "sessionmaker", _SessionMakerStub)
 
         api = ConversationApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
@@ -546,7 +542,7 @@ class TestConversationApiController:
 class TestConversationDetailApiController:
     def test_delete_not_chat(self, app: Flask) -> None:
         api = ConversationDetailApi()
-        handler = _unwrap(api.delete)
+        handler = unwrap(api.delete)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
@@ -562,7 +558,7 @@ class TestConversationDetailApiController:
         )
 
         api = ConversationDetailApi()
-        handler = _unwrap(api.delete)
+        handler = unwrap(api.delete)
         app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
@@ -580,7 +576,7 @@ class TestConversationRenameApiController:
         )
 
         api = ConversationRenameApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
@@ -596,7 +592,7 @@ class TestConversationRenameApiController:
 class TestConversationVariablesApiController:
     def test_not_chat(self, app: Flask) -> None:
         api = ConversationVariablesApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
@@ -612,7 +608,7 @@ class TestConversationVariablesApiController:
         )
 
         api = ConversationVariablesApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
@@ -645,7 +641,7 @@ class TestConversationVariablesApiController:
         )
 
         api = ConversationVariablesApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
@@ -671,7 +667,7 @@ class TestConversationVariableDetailApiController:
         )
 
         api = ConversationVariableDetailApi()
-        handler = _unwrap(api.put)
+        handler = unwrap(api.put)
         app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
@@ -697,7 +693,7 @@ class TestConversationVariableDetailApiController:
         )
 
         api = ConversationVariableDetailApi()
-        handler = _unwrap(api.put)
+        handler = unwrap(api.put)
         app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
@@ -731,7 +727,7 @@ class TestConversationVariableDetailApiController:
         )
 
         api = ConversationVariableDetailApi()
-        handler = _unwrap(api.put)
+        handler = unwrap(api.put)
         app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 

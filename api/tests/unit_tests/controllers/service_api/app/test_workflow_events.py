@@ -16,7 +16,8 @@ from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from tests.unit_tests.controllers.service_api.conftest import _unwrap
+from inspect import unwrap
+
 
 
 def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run):
@@ -34,7 +35,7 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run):
 class TestWorkflowEventsApi:
     def test_wrong_app_mode(self, app: Flask) -> None:
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace(id="end-user-1")
 
@@ -45,7 +46,7 @@ class TestWorkflowEventsApi:
     def test_workflow_run_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         _mock_repo_for_run(monkeypatch, workflow_run=None)
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
         end_user = SimpleNamespace(id="end-user-1")
 
@@ -63,7 +64,7 @@ class TestWorkflowEventsApi:
         )
         _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
         end_user = SimpleNamespace(id="end-user-1")
 
@@ -90,7 +91,7 @@ class TestWorkflowEventsApi:
         )
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
         end_user = SimpleNamespace(id="end-user-1")
 
@@ -121,7 +122,7 @@ class TestWorkflowEventsApi:
         monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
         end_user = SimpleNamespace(id="end-user-1")
 
@@ -154,7 +155,7 @@ class TestWorkflowEventsApi:
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
         end_user = SimpleNamespace(id="end-user-1")
 

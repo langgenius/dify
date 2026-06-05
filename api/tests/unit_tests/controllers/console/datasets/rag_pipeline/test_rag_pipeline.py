@@ -20,11 +20,7 @@ from models.dataset import PipelineCustomizedTemplate
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 
 
-def _unwrap(func: object) -> Callable[..., Any]:
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return cast(Callable[..., Any], func)
-
+from inspect import unwrap
 
 def _template_item() -> dict[str, object]:
     return {
@@ -60,7 +56,7 @@ def _payload() -> dict[str, object]:
 class TestPipelineTemplateListApi:
     def test_get_uses_query_defaults_and_serializes_nullable_fields(self, app: Flask) -> None:
         api = PipelineTemplateListApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
         service_calls: list[tuple[str, str]] = []
 
         def get_pipeline_templates(template_type: str, language: str) -> dict[str, object]:
@@ -87,7 +83,7 @@ class TestPipelineTemplateListApi:
 
     def test_get_passes_explicit_query_to_service(self, app: Flask) -> None:
         api = PipelineTemplateListApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
         service_calls: list[tuple[str, str]] = []
 
         def get_pipeline_templates(template_type: str, language: str) -> dict[str, object]:
@@ -108,7 +104,7 @@ class TestPipelineTemplateListApi:
 class TestPipelineTemplateDetailApi:
     def test_get_serializes_template_detail(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
         service_calls: list[tuple[str, str]] = []
 
         class Service:
@@ -128,7 +124,7 @@ class TestPipelineTemplateDetailApi:
 
     def test_get_raises_not_found_without_custom_response_body(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         class Service:
             def get_pipeline_template_detail(self, template_id: str, template_type: str) -> None:
@@ -145,7 +141,7 @@ class TestPipelineTemplateDetailApi:
 class TestCustomizedPipelineTemplateApi:
     def test_patch_validates_payload_and_returns_empty_204(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.patch)
+        method = unwrap(api.patch)
         payload = _payload()
         service_calls: list[tuple[str, PipelineTemplateInfoEntity]] = []
 
@@ -174,7 +170,7 @@ class TestCustomizedPipelineTemplateApi:
 
     def test_patch_defaults_missing_icon_info_before_service_call(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.patch)
+        method = unwrap(api.patch)
         payload: dict[str, object] = {
             "name": "Updated template",
             "description": "Updated description",
@@ -204,7 +200,7 @@ class TestCustomizedPipelineTemplateApi:
 
     def test_delete_returns_empty_204(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.delete)
+        method = unwrap(api.delete)
         deleted_template_ids: list[str] = []
 
         def delete_template(template_id: str) -> None:
@@ -221,7 +217,7 @@ class TestCustomizedPipelineTemplateApi:
 
     def test_post_exports_yaml_from_orm_template(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
         template = PipelineCustomizedTemplate(
             tenant_id="00000000-0000-0000-0000-000000000001",
             name="Template",
@@ -265,7 +261,7 @@ class TestCustomizedPipelineTemplateApi:
 
     def test_post_raises_when_template_is_missing(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         class Session:
             def scalar(self, stmt: object) -> None:
@@ -297,7 +293,7 @@ class TestCustomizedPipelineTemplateApi:
 class TestPublishCustomizedPipelineTemplateApi:
     def test_post_validates_payload_and_returns_empty_204(self, app: Flask) -> None:
         api = PublishCustomizedPipelineTemplateApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
         payload = _payload()
         service_calls: list[tuple[str, dict[str, object]]] = []
 
@@ -317,7 +313,7 @@ class TestPublishCustomizedPipelineTemplateApi:
 
     def test_post_allows_missing_icon_info_for_publish_service_fallback(self, app: Flask) -> None:
         api = PublishCustomizedPipelineTemplateApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
         payload: dict[str, object] = {
             "name": "Published template",
             "description": "Description",

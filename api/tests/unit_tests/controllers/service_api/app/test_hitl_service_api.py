@@ -43,7 +43,7 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_snapshot_events
-from tests.unit_tests.controllers.service_api.conftest import _unwrap
+from inspect import unwrap
 
 
 class _DummyRateLimit:
@@ -268,7 +268,7 @@ class TestHitlServiceApi:
         monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
         end_user = SimpleNamespace(id="end-user-1")
 
@@ -303,7 +303,7 @@ class TestHitlServiceApi:
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
         end_user = SimpleNamespace(id="end-user-1")
 

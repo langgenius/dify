@@ -29,7 +29,8 @@ from controllers.service_api.dataset.metadata import (
     DatasetMetadataServiceApi,
     DocumentMetadataEditServiceApi,
 )
-from tests.unit_tests.controllers.service_api.conftest import _unwrap
+from inspect import unwrap
+
 
 
 @pytest.fixture
@@ -65,7 +66,7 @@ class TestDatasetMetadataCreatePost:
 
     @staticmethod
     def _call_post(api, **kwargs):
-        return _unwrap(api.post)(api, **kwargs)
+        return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -195,7 +196,7 @@ class TestDatasetMetadataServiceApiPatch:
 
     @staticmethod
     def _call_patch(api, **kwargs):
-        return _unwrap(api.patch)(api, **kwargs)
+        return unwrap(api.patch)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -267,7 +268,7 @@ class TestDatasetMetadataServiceApiDelete:
 
     @staticmethod
     def _call_delete(api, **kwargs):
-        return _unwrap(api.delete)(api, **kwargs)
+        return unwrap(api.delete)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -376,7 +377,7 @@ class TestDatasetMetadataBuiltInFieldAction:
 
     @staticmethod
     def _call_post(api, **kwargs):
-        return _unwrap(api.post)(api, **kwargs)
+        return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -479,7 +480,7 @@ class TestDocumentMetadataEditPost:
 
     @staticmethod
     def _call_post(api, **kwargs):
-        return _unwrap(api.post)(api, **kwargs)
+        return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
