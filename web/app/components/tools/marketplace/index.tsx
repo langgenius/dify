@@ -48,7 +48,7 @@ const Marketplace = ({
           <div className="bg-linear-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text title-2xl-semi-bold text-transparent">
             {t('marketplace.moreFrom', { ns: 'plugin' })}
           </div>
-          <div className="flex items-center text-center body-md-regular text-text-tertiary">
+          <div className="flex flex-wrap items-center text-center body-md-regular text-text-tertiary">
             {t('marketplace.discover', { ns: 'plugin' })}
             <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t('category.models', { ns: 'plugin' })}
