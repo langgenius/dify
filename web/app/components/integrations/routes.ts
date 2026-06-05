@@ -17,6 +17,7 @@ export const TOOL_CATEGORY_VALUES = ['builtin', 'api', 'workflow', 'mcp'] as con
 export type ToolCategory = typeof TOOL_CATEGORY_VALUES[number]
 
 export type LegacyToolsSearchParams = Record<string, string | string[] | undefined>
+export type IntegrationRouteSearchParams = Record<string, string | string[] | undefined>
 
 const integrationSectionSet = new Set<string>(INTEGRATION_SECTION_VALUES)
 const toolCategorySet = new Set<string>(TOOL_CATEGORY_VALUES)
@@ -34,6 +35,25 @@ const getFirstSearchParamValue = (value: string | string[] | undefined) => {
     return value[0]
 
   return value
+}
+
+const appendSearchParams = (path: string, searchParams: IntegrationRouteSearchParams = {}) => {
+  const params = new URLSearchParams()
+
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (value === undefined)
+      return
+
+    if (Array.isArray(value)) {
+      value.forEach(item => params.append(key, item))
+      return
+    }
+
+    params.set(key, value)
+  })
+
+  const query = params.toString()
+  return query ? `${path}?${query}` : path
 }
 
 export const toolCategoryBySection: Partial<Record<IntegrationSection, ToolCategory>> = {
@@ -66,7 +86,7 @@ export const marketplaceCategoryByIntegrationSection: Partial<Record<Integration
 export const integrationPathBySection: Record<IntegrationSection, string> = {
   'provider': '/integrations/model-provider',
   'builtin': '/integrations/tools/built-in',
-  'custom-tool': '/integrations/tool/api',
+  'custom-tool': '/integrations/tools/api',
   'workflow-tool': '/integrations/tools/workflow',
   'mcp': '/integrations/tools/mcp',
   'data-source': '/integrations/data-source',
@@ -123,7 +143,7 @@ type IntegrationRouteTarget
     | { type: 'section', section: IntegrationSection }
     | { type: 'not-found' }
 
-export const getIntegrationRouteTargetBySlug = (slug?: string[]): IntegrationRouteTarget => {
+export const getIntegrationRouteTargetBySlug = (slug?: string[], searchParams?: IntegrationRouteSearchParams): IntegrationRouteTarget => {
   const path = slug?.join('/') ?? ''
 
   switch (path) {
@@ -136,6 +156,8 @@ export const getIntegrationRouteTargetBySlug = (slug?: string[]): IntegrationRou
     case 'tools/built-in':
       return { type: 'section', section: 'builtin' }
     case 'tool/api':
+      return { type: 'redirect', destination: appendSearchParams(buildIntegrationPath('custom-tool'), searchParams) }
+    case 'tools/api':
       return { type: 'section', section: 'custom-tool' }
     case 'tools/workflow':
       return { type: 'section', section: 'workflow-tool' }
