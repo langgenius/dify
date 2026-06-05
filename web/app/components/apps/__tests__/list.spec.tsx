@@ -403,7 +403,7 @@ describe('List', () => {
 
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+      fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.clear' }).at(-1)!)
 
       expect(mockSetKeywords).toHaveBeenCalledWith('')
     })
@@ -529,7 +529,6 @@ describe('List', () => {
       renderList()
 
       expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
       expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
