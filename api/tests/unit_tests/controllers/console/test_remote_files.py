@@ -4,7 +4,7 @@ import urllib.parse
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-
+from inspect import unwrap
 import httpx
 import pytest
 
@@ -14,12 +14,6 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def _make_account(account_id: str = "u1") -> Account:
@@ -89,7 +83,7 @@ def _mock_upload_dependencies(
 
 def test_get_remote_file_info_uses_head_when_successful(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.GetRemoteFileInfo()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
     decoded_url = "https://example.com/test.txt"
     encoded_url = urllib.parse.quote(decoded_url, safe="")
 
@@ -110,7 +104,7 @@ def test_get_remote_file_info_uses_head_when_successful(app, monkeypatch: pytest
 
 def test_get_remote_file_info_preserves_unencoded_target_query(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.GetRemoteFileInfo()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
     target_url = "http://example.com/api/aiagent/httpview/txt"
     query = "fileNameKey=cankao1_ce4305bc-be20-4c5d-8732-de1741d28e27"
 
@@ -131,7 +125,7 @@ def test_get_remote_file_info_preserves_unencoded_target_query(app, monkeypatch:
 
 def test_get_remote_file_info_falls_back_to_get_and_uses_default_headers(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.GetRemoteFileInfo()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
     decoded_url = "https://example.com/test.txt"
     encoded_url = urllib.parse.quote(decoded_url, safe="")
 
@@ -154,7 +148,7 @@ def test_get_remote_file_info_falls_back_to_get_and_uses_default_headers(app, mo
 
 def test_remote_file_upload_success_when_fetch_falls_back_to_get(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.RemoteFileUpload()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
     url = "https://example.com/report.txt"
 
     get_resp = _FakeResponse(status_code=200, method="GET", content=b"fallback-content")
@@ -196,7 +190,7 @@ def test_remote_file_upload_fetches_content_with_second_get_when_head_succeeds(
     app, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     api = remote_files_module.RemoteFileUpload()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
     url = "https://example.com/photo.jpg"
 
     head_resp = _FakeResponse(status_code=200, method="HEAD", content=b"head-content")
@@ -227,7 +221,7 @@ def test_remote_file_upload_fetches_content_with_second_get_when_head_succeeds(
 
 def test_remote_file_upload_raises_when_fallback_get_still_not_ok(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.RemoteFileUpload()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
     url = "https://example.com/fail.txt"
 
     make_request = MagicMock(
@@ -245,7 +239,7 @@ def test_remote_file_upload_raises_when_fallback_get_still_not_ok(app, monkeypat
 
 def test_remote_file_upload_raises_on_httpx_request_error(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.RemoteFileUpload()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
     url = "https://example.com/fail.txt"
 
     request = httpx.Request("HEAD", url)
@@ -259,7 +253,7 @@ def test_remote_file_upload_raises_on_httpx_request_error(app, monkeypatch: pyte
 
 def test_remote_file_upload_rejects_oversized_file(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.RemoteFileUpload()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
     url = "https://example.com/large.bin"
 
     make_request = MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload"))
@@ -274,7 +268,7 @@ def test_remote_file_upload_rejects_oversized_file(app, monkeypatch: pytest.Monk
 
 def test_remote_file_upload_translates_service_file_too_large_error(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.RemoteFileUpload()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
     url = "https://example.com/large.bin"
 
     make_request = MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload"))
@@ -289,7 +283,7 @@ def test_remote_file_upload_translates_service_file_too_large_error(app, monkeyp
 
 def test_remote_file_upload_translates_service_unsupported_type_error(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.RemoteFileUpload()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
     url = "https://example.com/file.exe"
 
     make_request = MagicMock(return_value=_FakeResponse(status_code=200, method="GET", content=b"payload"))

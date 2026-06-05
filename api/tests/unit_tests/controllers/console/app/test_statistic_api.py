@@ -7,16 +7,7 @@ import pytest
 from werkzeug.exceptions import BadRequest
 
 from controllers.console.app import statistic as statistic_module
-
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
-
+from inspect import unwrap
 
 class _ConnContext:
     def __init__(self, rows):
@@ -48,7 +39,7 @@ def _install_common(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_daily_message_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyMessageStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     rows = [SimpleNamespace(date="2024-01-01", message_count=3)]
     _install_common(monkeypatch)
@@ -62,7 +53,7 @@ def test_daily_message_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPat
 
 def test_daily_conversation_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyConversationStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     rows = [SimpleNamespace(date="2024-01-02", conversation_count=5)]
     _install_common(monkeypatch)
@@ -76,7 +67,7 @@ def test_daily_conversation_statistic_returns_rows(app, monkeypatch: pytest.Monk
 
 def test_daily_token_cost_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyTokenCostStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     rows = [SimpleNamespace(date="2024-01-03", token_count=10, total_price=0.25, currency="USD")]
     _install_common(monkeypatch)
@@ -94,7 +85,7 @@ def test_daily_token_cost_statistic_returns_rows(app, monkeypatch: pytest.Monkey
 
 def test_daily_terminals_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyTerminalsStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     rows = [SimpleNamespace(date="2024-01-04", terminal_count=7)]
     _install_common(monkeypatch)
@@ -111,13 +102,13 @@ def test_average_session_interaction_statistic_requires_chat_mode(app, monkeypat
     # This just verifies the decorator is applied correctly
     # Actual endpoint testing would require complex JOIN mocking
     api = statistic_module.AverageSessionInteractionStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
     assert callable(method)
 
 
 def test_daily_message_statistic_with_invalid_time_range(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyMessageStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     def mock_parse(*args, **kwargs):
         raise ValueError("Invalid time range")
@@ -133,7 +124,7 @@ def test_daily_message_statistic_with_invalid_time_range(app, monkeypatch: pytes
 
 def test_daily_message_statistic_multiple_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyMessageStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     rows = [
         SimpleNamespace(date="2024-01-01", message_count=10),
@@ -152,7 +143,7 @@ def test_daily_message_statistic_multiple_rows(app, monkeypatch: pytest.MonkeyPa
 
 def test_daily_message_statistic_empty_result(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyMessageStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     _install_common(monkeypatch)
     _install_db(monkeypatch, [])
@@ -165,7 +156,7 @@ def test_daily_message_statistic_empty_result(app, monkeypatch: pytest.MonkeyPat
 
 def test_daily_conversation_statistic_with_time_range(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyConversationStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     rows = [SimpleNamespace(date="2024-01-02", conversation_count=5)]
     _install_db(monkeypatch, rows)
@@ -184,7 +175,7 @@ def test_daily_conversation_statistic_with_time_range(app, monkeypatch: pytest.M
 
 def test_daily_token_cost_with_multiple_currencies(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyTokenCostStatistic()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     rows = [
         SimpleNamespace(date="2024-01-01", token_count=100, total_price=Decimal("0.50"), currency="USD"),

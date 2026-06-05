@@ -11,7 +11,7 @@ Note: API endpoint tests for annotation controllers are complex due to:
 - @edit_permission_required decorator checking current_user permissions
 - These are better covered by integration tests
 """
-
+from inspect import unwrap
 import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -35,7 +35,7 @@ from models.model import App
 from services.annotation_service import AppAnnotationService
 
 
-def _unwrap(func):
+def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
@@ -193,7 +193,7 @@ class TestAnnotationReplyActionApi:
         monkeypatch.setattr(AppAnnotationService, "enable_app_annotation", enable_mock)
 
         api = AnnotationReplyActionApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="app")
 
         with app.test_request_context(
@@ -211,7 +211,7 @@ class TestAnnotationReplyActionApi:
         monkeypatch.setattr(AppAnnotationService, "disable_app_annotation", disable_mock)
 
         api = AnnotationReplyActionApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="app")
 
         with app.test_request_context(
@@ -230,7 +230,7 @@ class TestAnnotationReplyActionStatusApi:
         monkeypatch.setattr(redis_client, "get", lambda *_args, **_kwargs: None)
 
         api = AnnotationReplyActionStatusApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app")
 
         with pytest.raises(ValueError):
@@ -245,7 +245,7 @@ class TestAnnotationReplyActionStatusApi:
         monkeypatch.setattr(redis_client, "get", _get)
 
         api = AnnotationReplyActionStatusApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app")
 
         response, status = handler(api, app_model=app_model, job_id="j1", action="enable")
@@ -262,7 +262,7 @@ class TestAnnotationListApi:
         monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
 
         api = AnnotationListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app")
 
         with app.test_request_context("/apps/annotations", method="GET"):
@@ -278,7 +278,7 @@ class TestAnnotationListApi:
         monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
 
         api = AnnotationListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app")
 
         with app.test_request_context("/apps/annotations?page=2&limit=5&keyword=refund", method="GET"):
@@ -297,7 +297,7 @@ class TestAnnotationListApi:
         monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
 
         api = AnnotationListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app")
 
         with app.test_request_context(f"/apps/annotations?{query_string}", method="GET"):
@@ -315,7 +315,7 @@ class TestAnnotationListApi:
         )
 
         api = AnnotationListApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="app")
 
         with app.test_request_context("/apps/annotations", method="POST", json={"question": "q", "answer": "a"}):
@@ -337,8 +337,8 @@ class TestAnnotationUpdateDeleteApi:
         monkeypatch.setattr(AppAnnotationService, "delete_app_annotation", delete_mock)
 
         api = AnnotationUpdateDeleteApi()
-        put_handler = _unwrap(api.put)
-        delete_handler = _unwrap(api.delete)
+        put_handler = unwrap(api.put)
+        delete_handler = unwrap(api.delete)
         app_model = SimpleNamespace(id="app")
 
         with app.test_request_context("/apps/annotations/1", method="PUT", json={"question": "q", "answer": "a"}):

@@ -1,7 +1,7 @@
 """Testcontainers integration tests for controllers.console.app.app_import endpoints."""
 
 from __future__ import annotations
-
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -10,15 +10,6 @@ from flask import Flask
 
 from controllers.console.app import app_import as app_import_module
 from services.app_dsl_service import ImportStatus
-
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
 
 
 class _Result:
@@ -42,7 +33,7 @@ class TestAppImportApi:
 
     def test_import_post_returns_failed_status(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -59,7 +50,7 @@ class TestAppImportApi:
 
     def test_import_post_returns_pending_status(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -76,7 +67,7 @@ class TestAppImportApi:
 
     def test_import_post_updates_webapp_auth_when_enabled(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=True)
         monkeypatch.setattr(
@@ -96,7 +87,7 @@ class TestAppImportApi:
 
     def test_import_post_commits_session_on_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -120,7 +111,7 @@ class TestAppImportApi:
 
     def test_import_post_rolls_back_session_on_failure(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
@@ -150,7 +141,7 @@ class TestAppImportConfirmApi:
 
     def test_import_confirm_returns_failed_status(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportConfirmApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         monkeypatch.setattr(
             app_import_module.AppDslService,
@@ -172,7 +163,7 @@ class TestAppImportCheckDependenciesApi:
 
     def test_import_check_dependencies_returns_result(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = app_import_module.AppImportCheckDependenciesApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         monkeypatch.setattr(
             app_import_module.AppDslService,

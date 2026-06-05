@@ -8,15 +8,7 @@ import pytest
 from controllers.console.app import generator as generator_module
 from controllers.console.app.error import ProviderNotInitializeError
 from core.errors.error import ProviderTokenNotInitError
-
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+from inspect import unwrap
 
 
 def _model_config_payload():
@@ -40,7 +32,7 @@ def _install_workflow_service(monkeypatch: pytest.MonkeyPatch, workflow):
 
 def test_rule_generate_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.RuleGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     monkeypatch.setattr(generator_module.LLMGenerator, "generate_rule_config", lambda **_kwargs: {"rules": []})
 
@@ -56,7 +48,7 @@ def test_rule_generate_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_rule_code_generate_maps_token_error(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.RuleCodeGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     def _raise(*_args, **_kwargs):
         raise ProviderTokenNotInitError("missing token")
@@ -74,7 +66,7 @@ def test_rule_code_generate_maps_token_error(app, monkeypatch: pytest.MonkeyPatc
 
 def test_instruction_generate_app_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     session = MagicMock()
     session.get.return_value = None
@@ -98,7 +90,7 @@ def test_instruction_generate_app_not_found(app, monkeypatch: pytest.MonkeyPatch
 
 def test_instruction_generate_workflow_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     app_model = SimpleNamespace(id="app-1")
     session = SimpleNamespace(get=lambda *_args, **_kwargs: app_model)
@@ -122,7 +114,7 @@ def test_instruction_generate_workflow_not_found(app, monkeypatch: pytest.Monkey
 
 def test_instruction_generate_node_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     app_model = SimpleNamespace(id="app-1")
     session = SimpleNamespace(get=lambda *_args, **_kwargs: app_model)
@@ -148,7 +140,7 @@ def test_instruction_generate_node_missing(app, monkeypatch: pytest.MonkeyPatch)
 
 def test_instruction_generate_code_node(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     app_model = SimpleNamespace(id="app-1")
     session = SimpleNamespace(get=lambda *_args, **_kwargs: app_model)
@@ -182,7 +174,7 @@ def test_instruction_generate_code_node(app, monkeypatch: pytest.MonkeyPatch) ->
 
 def test_instruction_generate_legacy_modify(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
     session = SimpleNamespace()
 
     monkeypatch.setattr(
@@ -209,7 +201,7 @@ def test_instruction_generate_legacy_modify(app, monkeypatch: pytest.MonkeyPatch
 
 def test_instruction_generate_incompatible_params(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
     session = SimpleNamespace()
 
     with app.test_request_context(
@@ -231,7 +223,7 @@ def test_instruction_generate_incompatible_params(app, monkeypatch: pytest.Monke
 
 def test_instruction_template_prompt(app) -> None:
     api = generator_module.InstructionGenerationTemplateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     with app.test_request_context(
         "/console/api/instruction-generate/template",
@@ -245,7 +237,7 @@ def test_instruction_template_prompt(app) -> None:
 
 def test_instruction_template_invalid_type(app) -> None:
     api = generator_module.InstructionGenerationTemplateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     with app.test_request_context(
         "/console/api/instruction-generate/template",
@@ -283,7 +275,7 @@ def _stub_workflow_service(monkeypatch: pytest.MonkeyPatch, returns=None, raises
 
 def test_workflow_generate_returns_service_result(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.WorkflowGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     expected = {
         "graph": {"nodes": [{"id": "node-1"}], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
@@ -306,7 +298,7 @@ def test_workflow_generate_maps_provider_token_error(app, monkeypatch: pytest.Mo
     """ProviderTokenNotInitError → ProviderNotInitializeError so the frontend
     can render the same "provider missing" UX as /rule-generate."""
     api = generator_module.WorkflowGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     _stub_workflow_service(monkeypatch, raises=ProviderTokenNotInitError("missing token"))
 
@@ -324,7 +316,7 @@ def test_workflow_generate_maps_quota_error(app, monkeypatch: pytest.MonkeyPatch
     from core.errors.error import QuotaExceededError
 
     api = generator_module.WorkflowGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     _stub_workflow_service(monkeypatch, raises=QuotaExceededError())
 
@@ -342,7 +334,7 @@ def test_workflow_generate_maps_model_not_support_error(app, monkeypatch: pytest
     from core.errors.error import ModelCurrentlyNotSupportError
 
     api = generator_module.WorkflowGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     _stub_workflow_service(monkeypatch, raises=ModelCurrentlyNotSupportError("not supported"))
 
@@ -360,7 +352,7 @@ def test_workflow_generate_maps_invoke_error(app, monkeypatch: pytest.MonkeyPatc
     from graphon.model_runtime.errors.invoke import InvokeError
 
     api = generator_module.WorkflowGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     _stub_workflow_service(monkeypatch, raises=InvokeError("LLM unreachable"))
 
@@ -376,7 +368,7 @@ def test_workflow_generate_maps_invoke_error(app, monkeypatch: pytest.MonkeyPatc
 def test_workflow_generate_accepts_advanced_chat_mode(app, monkeypatch: pytest.MonkeyPatch) -> None:
     """The payload Literal must accept advanced-chat as well as workflow."""
     api = generator_module.WorkflowGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     captured: dict = {}
 
@@ -407,7 +399,7 @@ def test_workflow_generate_accepts_advanced_chat_mode(app, monkeypatch: pytest.M
 def test_workflow_generate_forwards_current_graph_for_refine(app, monkeypatch: pytest.MonkeyPatch) -> None:
     """cmd+k `/refine`: the optional current_graph field reaches the service."""
     api = generator_module.WorkflowGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     captured: dict = {}
 
@@ -437,7 +429,7 @@ def test_workflow_generate_forwards_current_graph_for_refine(app, monkeypatch: p
 def test_workflow_generate_current_graph_defaults_to_none(app, monkeypatch: pytest.MonkeyPatch) -> None:
     """Omitting current_graph (the `/create` path) forwards None to the service."""
     api = generator_module.WorkflowGenerateApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     captured: dict = {}
 
