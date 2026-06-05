@@ -375,7 +375,7 @@ class TestConversationAppModeValidation:
         app raises NotChatAppError.
         """
         app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW.value
+        app.mode = AppMode.WORKFLOW
 
         app_mode = AppMode.value_of(app.mode)
         assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}

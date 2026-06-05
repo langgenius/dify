@@ -390,7 +390,7 @@ class TestWorkflowRunDetailApi:
 
         api = WorkflowRunDetailApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value, tenant_id="t1", id="a1")
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW, tenant_id="t1", id="a1")
 
         result = handler(api, app_model=app_model, workflow_run_id="run")
         assert result["id"] == "run"
@@ -418,7 +418,7 @@ class TestWorkflowRunApi:
 
         api = WorkflowRunApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
@@ -436,7 +436,7 @@ class TestWorkflowRunByIdApi:
 
         api = WorkflowRunByIdApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
@@ -452,7 +452,7 @@ class TestWorkflowRunByIdApi:
 
         api = WorkflowRunByIdApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
@@ -479,7 +479,7 @@ class TestWorkflowTaskStopApi:
 
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="u1")
 
         with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
@@ -540,7 +540,7 @@ def mock_workflow_app():
     app = Mock(spec=App)
     app.id = str(uuid.uuid4())
     app.tenant_id = str(uuid.uuid4())
-    app.mode = AppMode.WORKFLOW.value
+    app.mode = AppMode.WORKFLOW
     return app
 
 

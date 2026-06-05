@@ -269,7 +269,7 @@ class TestHitlServiceApi:
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1&continue_on_pause=true", method="GET"):
@@ -304,7 +304,7 @@ class TestHitlServiceApi:
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context(

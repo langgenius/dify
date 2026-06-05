@@ -46,7 +46,7 @@ class TestWorkflowEventsApi:
         _mock_repo_for_run(monkeypatch, workflow_run=None)
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
@@ -64,7 +64,7 @@ class TestWorkflowEventsApi:
         _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
@@ -91,7 +91,7 @@ class TestWorkflowEventsApi:
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
@@ -122,7 +122,7 @@ class TestWorkflowEventsApi:
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
@@ -155,7 +155,7 @@ class TestWorkflowEventsApi:
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1&include_state_snapshot=true", method="GET"):
