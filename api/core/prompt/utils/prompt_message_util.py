@@ -24,8 +24,10 @@ class PromptMessageUtil:
         """
         prompts = []
         if model_mode == ModelMode.CHAT:
-            tool_calls = []
             for prompt_message in prompt_messages:
+                # Reset per message: tool_calls belong only to the assistant message that
+                # produced them, so they must not leak onto the following message.
+                tool_calls = []
                 if prompt_message.role == PromptMessageRole.USER:
                     role = "user"
                 elif prompt_message.role == PromptMessageRole.ASSISTANT:

@@ -79,6 +79,36 @@ def test_prompt_messages_to_prompt_for_saving_chat_mode():
     assert prompts[2]["role"] == "tool"
 
 
+def test_prompt_messages_to_prompt_for_saving_does_not_leak_tool_calls_to_following_messages():
+    """tool_calls belong only to the assistant message that produced them.
+
+    tool_calls was initialized once outside the per-message loop and only reassigned in the
+    assistant branch, so a message following an assistant message with tool_calls inherited
+    the stale list.
+    """
+    chat_messages = [
+        AssistantPromptMessage(
+            content="assistant-text",
+            tool_calls=[
+                {
+                    "id": "tool-1",
+                    "type": "function",
+                    "function": {"name": "search", "arguments": '{"q":"python"}'},
+                }
+            ],
+        ),
+        UserPromptMessage(content="follow-up question"),
+    ]
+
+    prompts = PromptMessageUtil.prompt_messages_to_prompt_for_saving(ModelMode.CHAT, chat_messages)
+
+    assert prompts[0]["role"] == "assistant"
+    assert prompts[0]["tool_calls"][0]["function"]["name"] == "search"
+    assert prompts[1]["role"] == "user"
+    # The following user message must not inherit the assistant's tool_calls.
+    assert "tool_calls" not in prompts[1]
+
+
 def test_prompt_messages_to_prompt_for_saving_completion_mode_with_and_without_files():
     completion_message_with_files = UserPromptMessage(
         content=[
