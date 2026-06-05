@@ -27,11 +27,17 @@ export function EditAgentDialog({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const [open, setOpen] = useState(false)
+  const [name, setName] = useState(agent.name)
+  const [description, setDescription] = useState(agent.description ?? '')
   const updateAgentMutation = useMutation(consoleQuery.agents.byAgentId.patch.mutationOptions())
 
   const handleSubmit = (formValues: AgentFormValues) => {
     const trimmedName = formValues.name?.trim() ?? ''
-    if (!trimmedName || updateAgentMutation.isPending)
+    const trimmedDescription = formValues.description?.trim() ?? ''
+    const hasFormChanges = trimmedName !== agent.name.trim()
+      || trimmedDescription !== (agent.description?.trim() ?? '')
+
+    if (!trimmedName || !hasFormChanges || updateAgentMutation.isPending)
       return
 
     updateAgentMutation.mutate({
@@ -40,7 +46,7 @@ export function EditAgentDialog({
       },
       body: {
         name: trimmedName,
-        description: formValues.description?.trim() ?? '',
+        description: trimmedDescription,
       },
     }, {
       onSuccess: () => {
@@ -53,8 +59,21 @@ export function EditAgentDialog({
     })
   }
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setName(agent.name)
+      setDescription(agent.description ?? '')
+    }
+    setOpen(nextOpen)
+  }
+
+  const trimmedName = name.trim()
+  const trimmedDescription = description.trim()
+  const hasChanges = trimmedName !== agent.name.trim()
+    || trimmedDescription !== (agent.description?.trim() ?? '')
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={(
           <Button
@@ -86,10 +105,11 @@ export function EditAgentDialog({
             <FieldControl
               autoComplete="off"
               autoFocus
-              defaultValue={agent.name}
               maxLength={255}
+              onValueChange={setName}
               placeholder={t('roster.createForm.namePlaceholder')}
               required
+              value={name}
             />
             <FieldError match="valueMissing">
               {t('roster.createForm.nameRequired')}
@@ -101,8 +121,9 @@ export function EditAgentDialog({
             </FieldLabel>
             <Textarea
               autoComplete="off"
-              defaultValue={agent.description}
+              onValueChange={setDescription}
               placeholder={t('roster.createForm.descriptionPlaceholder')}
+              value={description}
             />
           </FieldRoot>
           <div className="flex justify-end gap-2 pt-2">
@@ -112,6 +133,7 @@ export function EditAgentDialog({
             <Button
               type="submit"
               variant="primary"
+              disabled={!trimmedName || !hasChanges}
               loading={updateAgentMutation.isPending}
             >
               {tCommon('operation.save')}
