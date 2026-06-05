@@ -660,9 +660,6 @@
   "web/app/components/apps/list.tsx": {
     "no-restricted-globals": {
       "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/apps/new-app-card.tsx": {
@@ -1744,9 +1741,6 @@
   "web/app/components/base/search-input/index.stories.tsx": {
     "no-console": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/base/svg-gallery/index.tsx": {
