@@ -275,7 +275,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
 
 
 def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
-    app, monkeypatch: pytest.MonkeyPatch
+    app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
         workflow_module,
