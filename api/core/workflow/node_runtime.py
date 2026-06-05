@@ -382,6 +382,7 @@ class _WorkflowToolRuntimeBinding:
     tool: Tool
     conversation_id: str | None = None
     parent_trace_context: ParentTraceContext | None = None
+    trace_session_id: str | None = None
 
 
 class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
@@ -423,6 +424,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             None if variable_pool is None else get_system_text(variable_pool, SystemVariableKey.CONVERSATION_ID)
         )
         parent_trace_context: ParentTraceContext | None = None
+        trace_session_id: str | None = None
         if self._is_workflow_tool_provider(node_data):
             outer_workflow_run_id = (
                 None
@@ -434,11 +436,14 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     parent_workflow_run_id=outer_workflow_run_id,
                     parent_node_execution_id=node_execution_id,
                 )
+            if isinstance(self._run_context.trace_session_id, str) and self._run_context.trace_session_id:
+                trace_session_id = self._run_context.trace_session_id
         return ToolRuntimeHandle(
             raw=_WorkflowToolRuntimeBinding(
                 tool=tool_runtime,
                 conversation_id=conversation_id,
                 parent_trace_context=parent_trace_context,
+                trace_session_id=trace_session_id,
             )
         )
 
@@ -471,6 +476,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             )
         elif hasattr(tool, "clear_parent_trace_context"):
             tool.clear_parent_trace_context()
+        if runtime_binding.trace_session_id and hasattr(tool, "set_trace_session_id"):
+            tool.set_trace_session_id(runtime_binding.trace_session_id)
+        elif hasattr(tool, "clear_trace_session_id"):
+            tool.clear_trace_session_id()
 
         try:
             messages = ToolEngine.generic_invoke(
