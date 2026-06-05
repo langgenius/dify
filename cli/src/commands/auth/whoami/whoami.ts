@@ -1,46 +1,31 @@
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
+import type { Registry } from '@/auth/hosts'
+import type { IOStreams } from '@/sys/io/streams'
 
 export type WhoamiOptions = {
   readonly io: IOStreams
-  readonly bundle: HostsBundle | undefined
+  readonly reg: Registry
   readonly json?: boolean
 }
 
 export async function runWhoami(opts: WhoamiOptions): Promise<void> {
-  const b = opts.bundle
-  if (b === undefined || b.tokens?.bearer === undefined || b.tokens.bearer === '') {
-    throw new BaseError({
-      code: ErrorCode.NotLoggedIn,
-      message: 'not logged in',
-      hint: 'run \'difyctl auth login\'',
-    })
-  }
+  const active = opts.reg.requireActive()
 
-  if (b.external_subject !== undefined) {
+  const sub = active.ctx.external_subject
+  if (sub !== undefined) {
     if (opts.json === true) {
-      opts.io.out.write(`${JSON.stringify({
-        subject_type: 'external_sso',
-        email: b.external_subject.email,
-        issuer: b.external_subject.issuer,
-      })}\n`)
+      opts.io.out.write(`${JSON.stringify({ subject_type: 'external_sso', email: sub.email, issuer: sub.issuer })}\n`)
       return
     }
-    const sub = b.external_subject
     opts.io.out.write(sub.issuer !== ''
       ? `${sub.email} (external SSO, issuer: ${sub.issuer})\n`
       : `${sub.email} (external SSO)\n`)
     return
   }
 
-  const acc = b.account ?? { id: '', email: '', name: '' }
+  const acc = active.ctx.account
   if (opts.json === true) {
     opts.io.out.write(`${JSON.stringify({ id: acc.id ?? '', email: acc.email, name: acc.name })}\n`)
     return
   }
-  opts.io.out.write(acc.name !== ''
-    ? `${acc.email} (${acc.name})\n`
-    : `${acc.email}\n`)
+  opts.io.out.write(acc.name !== '' ? `${acc.email} (${acc.name})\n` : `${acc.email}\n`)
 }

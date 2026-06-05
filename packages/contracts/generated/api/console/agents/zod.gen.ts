@@ -25,7 +25,7 @@ export const zRosterAgentUpdatePayload = z.object({
  */
 export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   summary: z.string().nullish(),
@@ -79,9 +79,9 @@ export const zAgentRosterResponse = z.object({
   active_config_snapshot_id: z.string().nullish(),
   agent_kind: zAgentKind,
   app_id: z.string().nullish(),
-  archived_at: z.string().nullish(),
+  archived_at: z.int().nullish(),
   archived_by: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   description: z.string(),
   icon: z.string().nullish(),
@@ -92,7 +92,7 @@ export const zAgentRosterResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
-  updated_at: z.string().nullish(),
+  updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
   workflow_node_id: z.string().nullish(),
@@ -117,9 +117,9 @@ export const zAgentInviteOptionResponse = z.object({
   active_config_snapshot_id: z.string().nullish(),
   agent_kind: zAgentKind,
   app_id: z.string().nullish(),
-  archived_at: z.string().nullish(),
+  archived_at: z.int().nullish(),
   archived_by: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   description: z.string(),
   existing_node_ids: z.array(z.string()).optional(),
@@ -133,7 +133,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
-  updated_at: z.string().nullish(),
+  updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
   workflow_node_id: z.string().nullish(),
@@ -161,51 +161,10 @@ export const zAppVariableConfig = z.object({
 })
 
 /**
- * AgentSoulEnvConfig
- */
-export const zAgentSoulEnvConfig = z.object({
-  secret_refs: z.array(z.record(z.string(), z.unknown())).optional(),
-  variables: z.array(z.record(z.string(), z.unknown())).optional(),
-})
-
-/**
- * AgentSoulHumanConfig
- */
-export const zAgentSoulHumanConfig = z.object({
-  contacts: z.array(z.record(z.string(), z.unknown())).optional(),
-  tools: z.array(z.record(z.string(), z.unknown())).optional(),
-})
-
-/**
- * AgentSoulMemoryConfig
- */
-export const zAgentSoulMemoryConfig = z.object({
-  artifacts: z.array(z.record(z.string(), z.unknown())).optional(),
-  budget: z.string().nullish(),
-  scope: z.string().nullish(),
-})
-
-/**
  * AgentSoulPromptConfig
  */
 export const zAgentSoulPromptConfig = z.object({
   system_prompt: z.string().optional().default(''),
-})
-
-/**
- * AgentSoulSandboxConfig
- */
-export const zAgentSoulSandboxConfig = z.object({
-  config: z.record(z.string(), z.unknown()).optional(),
-  provider: z.string().nullish(),
-})
-
-/**
- * AgentSoulSkillsFilesConfig
- */
-export const zAgentSoulSkillsFilesConfig = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).optional(),
-  skills: z.array(z.record(z.string(), z.unknown())).optional(),
 })
 
 /**
@@ -225,7 +184,7 @@ export const zAgentConfigRevisionOperation = z.enum([
  * AgentConfigRevisionResponse
  */
 export const zAgentConfigRevisionResponse = z.object({
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   current_snapshot_id: z.string(),
   id: z.string(),
@@ -237,6 +196,100 @@ export const zAgentConfigRevisionResponse = z.object({
 })
 
 /**
+ * AgentFeatureToggleConfig
+ */
+export const zAgentFeatureToggleConfig = z.object({
+  enabled: z.boolean().optional().default(false),
+})
+
+/**
+ * AgentTextToSpeechFeatureConfig
+ */
+export const zAgentTextToSpeechFeatureConfig = z.object({
+  autoPlay: z.string().nullish(),
+  enabled: z.boolean().optional().default(false),
+  language: z.string().nullish(),
+  voice: z.string().nullish(),
+})
+
+/**
+ * AgentSecretRefConfig
+ */
+export const zAgentSecretRefConfig = z.object({
+  id: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  permission_status: z.string().max(64).nullish(),
+  provider: z.string().max(255).nullish(),
+  type: z.string().max(64).nullish(),
+})
+
+/**
+ * AgentEnvVariableConfig
+ */
+export const zAgentEnvVariableConfig = z.object({
+  name: z.string().max(255).nullish(),
+  required: z.boolean().optional().default(false),
+  type: z.string().max(64).nullish(),
+  value: z.unknown().optional(),
+})
+
+/**
+ * AgentSoulEnvConfig
+ */
+export const zAgentSoulEnvConfig = z.object({
+  secret_refs: z.array(zAgentSecretRefConfig).optional(),
+  variables: z.array(zAgentEnvVariableConfig).optional(),
+})
+
+/**
+ * AgentHumanContactConfig
+ */
+export const zAgentHumanContactConfig = z.object({
+  contact_id: z.string().max(255).nullish(),
+  email: z.string().max(255).nullish(),
+  human_id: z.string().max(255).nullish(),
+  id: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+})
+
+/**
+ * AgentHumanToolConfig
+ */
+export const zAgentHumanToolConfig = z.object({
+  description: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  name: z.string().max(255).nullish(),
+})
+
+/**
+ * AgentSoulHumanConfig
+ */
+export const zAgentSoulHumanConfig = z.object({
+  contacts: z.array(zAgentHumanContactConfig).optional(),
+  tools: z.array(zAgentHumanToolConfig).optional(),
+})
+
+/**
+ * AgentKnowledgeDatasetConfig
+ */
+export const zAgentKnowledgeDatasetConfig = z.object({
+  description: z.string().nullish(),
+  id: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+})
+
+/**
+ * AgentKnowledgeQueryConfig
+ */
+export const zAgentKnowledgeQueryConfig = z.object({
+  query: z.string().nullish(),
+  score_threshold: z.number().gte(0).lte(1).nullish(),
+  score_threshold_enabled: z.boolean().nullish(),
+  top_k: z.int().gte(1).nullish(),
+})
+
+/**
  * AgentKnowledgeQueryMode
  */
 export const zAgentKnowledgeQueryMode = z.enum(['generated_query', 'user_query'])
@@ -245,9 +298,28 @@ export const zAgentKnowledgeQueryMode = z.enum(['generated_query', 'user_query']
  * AgentSoulKnowledgeConfig
  */
 export const zAgentSoulKnowledgeConfig = z.object({
-  datasets: z.array(z.record(z.string(), z.unknown())).optional(),
-  query_config: z.record(z.string(), z.unknown()).optional(),
+  datasets: z.array(zAgentKnowledgeDatasetConfig).optional(),
+  query_config: zAgentKnowledgeQueryConfig.optional(),
   query_mode: zAgentKnowledgeQueryMode.optional(),
+})
+
+/**
+ * AgentMemoryArtifactConfig
+ */
+export const zAgentMemoryArtifactConfig = z.object({
+  id: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+  type: z.string().max(64).nullish(),
+  url: z.string().nullish(),
+})
+
+/**
+ * AgentSoulMemoryConfig
+ */
+export const zAgentSoulMemoryConfig = z.object({
+  artifacts: z.array(zAgentMemoryArtifactConfig).optional(),
+  budget: z.string().nullish(),
+  scope: z.string().nullish(),
 })
 
 /**
@@ -262,6 +334,73 @@ export const zAgentSoulModelCredentialRef = z.object({
 })
 
 /**
+ * AgentSandboxProviderConfig
+ */
+export const zAgentSandboxProviderConfig = z.object({
+  env: z.array(zAgentEnvVariableConfig).optional(),
+  image: z.string().nullish(),
+  working_dir: z.string().nullish(),
+})
+
+/**
+ * AgentSoulSandboxConfig
+ */
+export const zAgentSoulSandboxConfig = z.object({
+  config: zAgentSandboxProviderConfig.optional(),
+  provider: z.string().nullish(),
+})
+
+/**
+ * AgentFileRefConfig
+ */
+export const zAgentFileRefConfig = z.object({
+  id: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+  transfer_method: z.string().max(64).nullish(),
+  type: z.string().max(64).nullish(),
+  url: z.string().nullish(),
+})
+
+/**
+ * AgentSkillRefConfig
+ */
+export const zAgentSkillRefConfig = z.object({
+  description: z.string().nullish(),
+  file_id: z.string().max(255).nullish(),
+  id: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+  path: z.string().nullish(),
+})
+
+/**
+ * AgentSoulSkillsFilesConfig
+ */
+export const zAgentSoulSkillsFilesConfig = z.object({
+  files: z.array(zAgentFileRefConfig).optional(),
+  skills: z.array(zAgentSkillRefConfig).optional(),
+})
+
+/**
+ * AgentModelResponseFormatConfig
+ */
+export const zAgentModelResponseFormatConfig = z.object({
+  type: z.string().max(64).nullish(),
+})
+
+/**
+ * AgentSoulModelSettings
+ */
+export const zAgentSoulModelSettings = z.object({
+  frequency_penalty: z.number().nullish(),
+  max_tokens: z.int().nullish(),
+  presence_penalty: z.number().nullish(),
+  response_format: zAgentModelResponseFormatConfig.optional(),
+  stop: z.array(z.string()).nullish(),
+  temperature: z.number().nullish(),
+  top_p: z.number().nullish(),
+})
+
+/**
  * AgentSoulModelConfig
  *
  * Stable model selection for Agent runtime without storing secret values.
@@ -270,8 +409,61 @@ export const zAgentSoulModelConfig = z.object({
   credential_ref: zAgentSoulModelCredentialRef.optional(),
   model: z.string().min(1).max(255),
   model_provider: z.string().min(1).max(255),
-  model_settings: z.record(z.string(), z.unknown()).optional(),
+  model_settings: zAgentSoulModelSettings.optional(),
   plugin_id: z.string().min(1).max(255),
+})
+
+/**
+ * AgentSuggestedQuestionsAfterAnswerFeatureConfig
+ */
+export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
+  enabled: z.boolean().optional().default(false),
+  model: zAgentSoulModelConfig.optional(),
+  prompt: z.string().nullish(),
+})
+
+/**
+ * AgentCliToolAuthorizationStatus
+ *
+ * Authorization state for Agent-scoped CLI tools.
+ *
+ * Missing status keeps backward compatibility with draft rows and CLI tools that
+ * do not need pre-authorization. Explicit denied-like states are blocked by the
+ * composer/publish validators and skipped by runtime request builders.
+ */
+export const zAgentCliToolAuthorizationStatus = z.enum([
+  'allowed',
+  'authorized',
+  'denied',
+  'forbidden',
+  'not_required',
+  'pending',
+  'pre_authorized',
+  'unauthorized',
+])
+
+/**
+ * AgentCliToolRiskLevel
+ *
+ * Risk marker for CLI tool bootstrap commands.
+ */
+export const zAgentCliToolRiskLevel = z.enum(['dangerous', 'safe', 'unknown'])
+
+/**
+ * AgentCliToolConfig
+ */
+export const zAgentCliToolConfig = z.object({
+  authorization_status: zAgentCliToolAuthorizationStatus.optional(),
+  command: z.string().nullish(),
+  dangerous: z.boolean().optional().default(false),
+  dangerous_acknowledged: z.boolean().optional().default(false),
+  description: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  invoke_metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  pre_authorized: z.boolean().nullish(),
+  risk_level: zAgentCliToolRiskLevel.optional(),
 })
 
 /**
@@ -317,21 +509,61 @@ export const zAgentSoulDifyToolConfig = z.object({
  * AgentSoulToolsConfig
  */
 export const zAgentSoulToolsConfig = z.object({
-  cli_tools: z.array(z.record(z.string(), z.unknown())).optional(),
+  cli_tools: z.array(zAgentCliToolConfig).optional(),
   dify_tools: z.array(zAgentSoulDifyToolConfig).optional(),
+})
+
+/**
+ * AgentModerationIOConfig
+ */
+export const zAgentModerationIoConfig = z.object({
+  enabled: z.boolean().optional().default(false),
+  preset_response: z.string().nullish(),
+})
+
+/**
+ * AgentModerationProviderConfig
+ */
+export const zAgentModerationProviderConfig = z.object({
+  api_based_extension_id: z.string().nullish(),
+  inputs_config: zAgentModerationIoConfig.optional(),
+  keywords: z.string().nullish(),
+  outputs_config: zAgentModerationIoConfig.optional(),
+})
+
+/**
+ * AgentSensitiveWordAvoidanceFeatureConfig
+ */
+export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
+  config: zAgentModerationProviderConfig.optional(),
+  enabled: z.boolean().optional().default(false),
+  type: z.string().nullish(),
+})
+
+/**
+ * AgentSoulAppFeaturesConfig
+ */
+export const zAgentSoulAppFeaturesConfig = z.object({
+  opening_statement: z.string().nullish(),
+  retriever_resource: zAgentFeatureToggleConfig.optional(),
+  sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.optional(),
+  speech_to_text: zAgentFeatureToggleConfig.optional(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.optional(),
+  text_to_speech: zAgentTextToSpeechFeatureConfig.optional(),
 })
 
 /**
  * AgentSoulConfig
  */
 export const zAgentSoulConfig = z.object({
-  app_features: z.record(z.string(), z.unknown()).optional(),
+  app_features: zAgentSoulAppFeaturesConfig.optional(),
   app_variables: z.array(zAppVariableConfig).optional(),
   env: zAgentSoulEnvConfig.optional(),
   human: zAgentSoulHumanConfig.optional(),
   knowledge: zAgentSoulKnowledgeConfig.optional(),
   memory: zAgentSoulMemoryConfig.optional(),
-  misc_legacy: z.record(z.string(), z.unknown()).optional(),
+  misc_legacy: zAgentSoulAppFeaturesConfig.optional(),
   model: zAgentSoulModelConfig.optional(),
   prompt: zAgentSoulPromptConfig.optional(),
   sandbox: zAgentSoulSandboxConfig.optional(),
@@ -359,7 +591,7 @@ export const zRosterAgentCreatePayload = z.object({
 export const zAgentConfigSnapshotDetailResponse = z.object({
   agent_id: z.string().nullish(),
   config_snapshot: zAgentSoulConfig,
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   revisions: z.array(zAgentConfigRevisionResponse).optional(),

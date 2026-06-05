@@ -18,6 +18,7 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -74,6 +75,8 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const disableMcpTooltip = disableAppCards
     ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
+
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
   const updateAppDetail = useCallback(async () => {
     try {
@@ -155,7 +158,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       }) as Promise<App>,
     )
     if (!err)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
 
     handleCallbackResult(err)
   }

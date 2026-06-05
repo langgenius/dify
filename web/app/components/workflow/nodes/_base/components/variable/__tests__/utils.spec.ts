@@ -4,7 +4,7 @@ import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
+import { BlockEnum, EditionType, InputVarType, PromptRole } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { getNodeUsedVars, updateNodeVars } from '../utils'
 
@@ -62,7 +62,26 @@ describe('variable utils', () => {
         title: 'Human Input',
         desc: '',
         form_content: '',
-        inputs: [],
+        inputs: [
+          {
+            type: InputVarType.paragraph,
+            output_variable_name: 'summary',
+            default: {
+              type: 'variable',
+              selector: ['conversation', 'memory'],
+              value: '',
+            },
+          },
+          {
+            type: InputVarType.select,
+            output_variable_name: 'decision',
+            option_source: {
+              type: 'variable',
+              selector: ['env', 'OPTIONS'],
+              value: [],
+            },
+          },
+        ],
         user_actions: [],
         timeout: 1,
         timeout_unit: 'day',
@@ -84,6 +103,8 @@ describe('variable utils', () => {
       expect(getNodeUsedVars(node)).toEqual(
         expect.arrayContaining([
           ['env', 'API_KEY'],
+          ['conversation', 'memory'],
+          ['env', 'OPTIONS'],
         ]),
       )
     })
@@ -129,7 +150,26 @@ describe('variable utils', () => {
         title: 'Human Input',
         desc: '',
         form_content: '',
-        inputs: [],
+        inputs: [
+          {
+            type: InputVarType.paragraph,
+            output_variable_name: 'summary',
+            default: {
+              type: 'variable',
+              selector: ['env', 'API_KEY'],
+              value: '',
+            },
+          },
+          {
+            type: InputVarType.select,
+            output_variable_name: 'decision',
+            option_source: {
+              type: 'variable',
+              selector: ['env', 'API_KEY'],
+              value: [],
+            },
+          },
+        ],
         user_actions: [],
         timeout: 1,
         timeout_unit: 'day',
@@ -153,6 +193,16 @@ describe('variable utils', () => {
       expect((updatedNode.data as HumanInputNodeType).delivery_methods[0]?.config).toMatchObject({
         subject: 'Subject {{#conversation.memory#}}',
         body: 'Body {{#env.RENAMED_KEY#}}',
+      })
+      expect((updatedNode.data as HumanInputNodeType).inputs[0]).toMatchObject({
+        default: {
+          selector: ['env', 'RENAMED_KEY'],
+        },
+      })
+      expect((updatedNode.data as HumanInputNodeType).inputs[1]).toMatchObject({
+        option_source: {
+          selector: ['env', 'RENAMED_KEY'],
+        },
       })
     })
   })

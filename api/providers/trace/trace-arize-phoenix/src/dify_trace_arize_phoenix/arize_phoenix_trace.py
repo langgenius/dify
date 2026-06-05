@@ -300,8 +300,12 @@ def _get_node_span_kind(node_type: str) -> OpenInferenceSpanKindValues:
     return _NODE_TYPE_TO_SPAN_KIND.get(node_type, OpenInferenceSpanKindValues.CHAIN)
 
 
-def _resolve_workflow_session_id(trace_info: WorkflowTraceInfo) -> str:
-    """Resolve the workflow session ID for Phoenix workflow spans."""
+def _metadata_trace_session_id(trace_info: BaseTraceInfo) -> str | None:
+    value = trace_info.metadata.get("trace_session_id")
+    return value if isinstance(value, str) and value else None
+
+
+def _resolve_workflow_session_fallback(trace_info: WorkflowTraceInfo) -> str:
     if trace_info.conversation_id:
         return trace_info.conversation_id
 
@@ -310,6 +314,28 @@ def _resolve_workflow_session_id(trace_info: WorkflowTraceInfo) -> str:
         return parent_workflow_run_id
 
     return trace_info.workflow_run_id
+
+
+def _resolve_message_session_fallback(trace_info: MessageTraceInfo) -> str:
+    if trace_info.message_data is not None:
+        conversation_id = getattr(trace_info.message_data, "conversation_id", None)
+        if conversation_id:
+            return conversation_id
+    return ""
+
+
+def _resolve_trace_session_id(trace_info: WorkflowTraceInfo | MessageTraceInfo) -> str:
+    trace_session_id = _metadata_trace_session_id(trace_info)
+    if trace_session_id:
+        return trace_session_id
+    if isinstance(trace_info, WorkflowTraceInfo):
+        return _resolve_workflow_session_fallback(trace_info)
+    return _resolve_message_session_fallback(trace_info)
+
+
+def _resolve_workflow_session_id(trace_info: WorkflowTraceInfo) -> str:
+    """Resolve the workflow session ID for Phoenix workflow spans."""
+    return _resolve_trace_session_id(trace_info)
 
 
 def _resolve_workflow_parent_context(trace_info: BaseTraceInfo) -> tuple[str | None, str | None]:
@@ -708,20 +734,23 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         logger.info("[Arize/Phoenix] Trace Entity Info: %s", trace_info)
         logger.info("[Arize/Phoenix] Trace Entity Type: %s", type(trace_info))
         try:
-            if isinstance(trace_info, WorkflowTraceInfo):
-                self.workflow_trace(trace_info)
-            if isinstance(trace_info, MessageTraceInfo):
-                self.message_trace(trace_info)
-            if isinstance(trace_info, ModerationTraceInfo):
-                self.moderation_trace(trace_info)
-            if isinstance(trace_info, SuggestedQuestionTraceInfo):
-                self.suggested_question_trace(trace_info)
-            if isinstance(trace_info, DatasetRetrievalTraceInfo):
-                self.dataset_retrieval_trace(trace_info)
-            if isinstance(trace_info, ToolTraceInfo):
-                self.tool_trace(trace_info)
-            if isinstance(trace_info, GenerateNameTraceInfo):
-                self.generate_name_trace(trace_info)
+            match trace_info:
+                case WorkflowTraceInfo():
+                    self.workflow_trace(trace_info)
+                case MessageTraceInfo():
+                    self.message_trace(trace_info)
+                case ModerationTraceInfo():
+                    self.moderation_trace(trace_info)
+                case SuggestedQuestionTraceInfo():
+                    self.suggested_question_trace(trace_info)
+                case DatasetRetrievalTraceInfo():
+                    self.dataset_retrieval_trace(trace_info)
+                case ToolTraceInfo():
+                    self.tool_trace(trace_info)
+                case GenerateNameTraceInfo():
+                    self.generate_name_trace(trace_info)
+                case _:
+                    pass
 
         except Exception as e:
             logger.error("[Arize/Phoenix] Trace Entity Error: %s", str(e), exc_info=True)
@@ -749,7 +778,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             file_list=safe_json_dumps(file_list),
             query=trace_info.query or "",
         )
-        workflow_session_id = _resolve_workflow_session_id(trace_info)
+        workflow_session_id = _resolve_trace_session_id(trace_info)
         parent_workflow_run_id, parent_node_execution_id = _resolve_workflow_parent_context(trace_info)
         logger.info(
             "[Arize/Phoenix] Workflow session resolution: workflow_run_id=%s conversation_id=%s "
@@ -778,6 +807,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                     SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.workflow_run_outputs),
                     SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                    SpanAttributes.SESSION_ID: workflow_session_id or "",
                 },
             }
             if trace_info.error:
@@ -1087,6 +1117,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             model_provider=trace_info.message_data.model_provider or "",
             model_id=trace_info.message_data.model_id or "",
         )
+        message_session_id = _resolve_trace_session_id(trace_info)
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
@@ -1101,7 +1132,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             SpanAttributes.OUTPUT_VALUE: trace_info.message_data.answer,
             SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.TEXT.value,
             SpanAttributes.METADATA: safe_json_dumps(metadata),
-            SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id or "",
+            SpanAttributes.SESSION_ID: message_session_id or "",
         }
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
@@ -1126,14 +1157,14 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             else:
                 outputs_str = str(trace_info.outputs)
 
-            llm_attributes = {
+            llm_attributes: dict[str, Any] = {
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: outputs_str,
                 SpanAttributes.OUTPUT_MIME_TYPE: outputs_mime_type,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
-                SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id or "",
+                SpanAttributes.SESSION_ID: message_session_id or "",
             }
             llm_attributes.update(self._construct_llm_attributes(trace_info.inputs))
             if trace_info.total_tokens is not None and trace_info.total_tokens > 0:

@@ -5,7 +5,7 @@ from collections import defaultdict
 import pytest
 
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
-from core.workflow.variable_pool_initializer import add_variables_to_pool
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
@@ -78,6 +78,25 @@ def test_get_file_attribute(pool, file):
     # Test getting a non-existent attribute
     result = pool.get(("node_1", "file_var", "non_existent_attr"))
     assert result is None
+
+
+def test_add_node_inputs_to_pool_stores_inputs_under_aliases():
+    pool = VariablePool()
+
+    add_node_inputs_to_pool(
+        pool,
+        node_id="__snippet_virtual_start__",
+        inputs={"query": "hello"},
+        aliases=("start", "__snippet_virtual_start__"),
+    )
+
+    primary_value = pool.get(["__snippet_virtual_start__", "query"])
+    alias_value = pool.get(["start", "query"])
+
+    assert primary_value is not None
+    assert primary_value.value == "hello"
+    assert alias_value is not None
+    assert alias_value.value == "hello"
 
 
 class TestVariablePool:

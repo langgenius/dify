@@ -1,4 +1,5 @@
 preset = "strict"
+strict-callable-subtyping = true
 project-includes = ["."]
 search-path = ["../.."]
 
@@ -10,7 +11,6 @@ search-path = ["../.."]
 #   rm --force "$tmp_config"
 project-excludes = [
   "commands/test_legacy_model_type_migration.py",
-  "conftest.py",
   "controllers/console/app/test_app_apis.py",
   "controllers/console/app/test_app_import_api.py",
   "controllers/console/app/test_chat_conversation_status_count_api.py",
@@ -28,7 +28,6 @@ project-excludes = [
   "controllers/console/explore/test_conversation.py",
   "controllers/console/test_api_based_extension.py",
   "controllers/console/test_apikey.py",
-  "controllers/console/workspace/test_members.py",
   "controllers/console/workspace/test_tool_provider.py",
   "controllers/console/workspace/test_trigger_providers.py",
   "controllers/console/workspace/test_workspace_wraps.py",
@@ -66,7 +65,6 @@ project-excludes = [
   "services/document_service_status.py",
   "services/enterprise/test_account_deletion_sync.py",
   "services/plugin/test_plugin_parameter_service.py",
-  "services/plugin/test_plugin_permission_service.py",
   "services/plugin/test_plugin_service.py",
   "services/rag_pipeline/test_rag_pipeline_service_db.py",
   "services/recommend_app/test_database_retrieval.py",
@@ -122,7 +120,6 @@ project-excludes = [
   "services/test_saved_message_service.py",
   "services/test_schedule_service.py",
   "services/test_tag_service.py",
-  "services/test_trigger_provider_service.py",
   "services/test_web_conversation_service.py",
   "services/test_webapp_auth_service.py",
   "services/test_webhook_service.py",
@@ -147,7 +144,6 @@ project-excludes = [
   "tasks/test_create_segment_to_index_task.py",
   "tasks/test_dataset_indexing_task.py",
   "tasks/test_deal_dataset_vector_index_task.py",
-  "tasks/test_delete_account_task.py",
   "tasks/test_delete_segment_from_index_task.py",
   "tasks/test_disable_segment_from_index_task.py",
   "tasks/test_disable_segments_from_index_task.py",
@@ -166,7 +162,6 @@ project-excludes = [
   "tasks/test_mail_register_task.py",
   "tasks/test_rag_pipeline_run_tasks.py",
   "tasks/test_remove_app_and_related_data_task.py",
-  "test_container_state_isolation.py",
   "test_opendal_fs_default_root.py",
   "test_workflow_pause_integration.py",
   "trigger/conftest.py",
@@ -179,4 +174,7 @@ project-excludes = [
 ]
 
 [errors]
+redundant-cast = true
 unannotated-return = true
+unnecessary-type-conversion = true
+unused-ignore = true

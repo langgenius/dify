@@ -1,6 +1,6 @@
-import type { FlagDefinition } from './types.js'
+import type { FlagDefinition } from './types'
 import { describe, expect, it } from 'vitest'
-import { OutputFormatNotSupportedError, UnsupportedArgValueError } from './errors.js'
+import { OutputFormatNotSupportedError, UnsupportedArgValueError } from './errors'
 
 describe('OutputFormatNotSupportedError', () => {
   it('states the offending format in the message', () => {

@@ -22,7 +22,9 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    systemFeatures: vi.fn(),
+    systemFeatures: {
+      get: vi.fn(),
+    },
   },
   consoleQuery: {
     apps: {
@@ -36,7 +38,9 @@ vi.mock('@/service/client', () => ({
       },
     },
     systemFeatures: {
-      queryKey: () => ['console', 'systemFeatures'],
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+      },
     },
   },
 }))
@@ -47,16 +51,17 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+    userProfile: { id: 'creator-1' },
   }),
 }))
 
 const mockSetKeywords = vi.fn()
-const mockSetIsCreatedByMe = vi.fn()
+const mockSetCreatorIDs = vi.fn()
 const mockSetCategory = vi.fn()
 const mockQueryState = {
   category: 'all',
   keywords: '',
-  isCreatedByMe: false,
+  creatorIDs: [] as string[],
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
   isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
@@ -64,7 +69,19 @@ vi.mock('../hooks/use-apps-query-state', () => ({
     query: mockQueryState,
     setCategory: mockSetCategory,
     setKeywords: mockSetKeywords,
-    setIsCreatedByMe: mockSetIsCreatedByMe,
+    setCreatorIDs: mockSetCreatorIDs,
+  }),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
+        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
+      ],
+    },
+    setCreatorIDs: mockSetCreatorIDs,
   }),
 }))
 
@@ -199,9 +216,9 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../new-app-card', () => ({
-  default: React.forwardRef((_props: unknown, _ref: React.ForwardedRef<unknown>) => {
+  default: (_props: { ref?: React.Ref<unknown> }) => {
     return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
-  }),
+  },
 }))
 
 vi.mock('../empty', () => ({
@@ -216,14 +233,14 @@ vi.mock('../footer', () => ({
   },
 }))
 
-let intersectionCallback: IntersectionObserverCallback | null = null
+let intersectionCallbacks: IntersectionObserverCallback[] = []
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
 beforeAll(() => {
   globalThis.IntersectionObserver = class MockIntersectionObserver {
     constructor(callback: IntersectionObserverCallback) {
-      intersectionCallback = callback
+      intersectionCallbacks.push(callback)
     }
 
     observe = mockObserve
@@ -246,6 +263,10 @@ const renderList = (searchParams = '') => {
   return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
 }
 
+const openTypeFilter = () => {
+  fireEvent.click(screen.getByRole('button', { name: /^app\.(studio\.filters\.types|types\.)/ }))
+}
+
 type AppListInfiniteOptions = {
   input: (pageParam: number) => { query: Record<string, unknown> }
   getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
@@ -264,20 +285,21 @@ describe('List', () => {
     mockServiceState.isFetchingNextPage = false
     mockQueryState.category = 'all'
     mockQueryState.keywords = ''
-    mockQueryState.isCreatedByMe = false
+    mockQueryState.creatorIDs = []
     mockUseWorkflowOnlineUsers.mockClear()
-    intersectionCallback = null
+    intersectionCallbacks = []
     localStorage.clear()
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
     })
 
-    it('should render tab slider with all app types', () => {
+    it('should render app type dropdown with all app types', () => {
       renderList()
+      openTypeFilter()
 
       expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
       expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
@@ -289,7 +311,7 @@ describe('List', () => {
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -297,9 +319,15 @@ describe('List', () => {
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
 
-    it('should render created by me checkbox', () => {
+    it('should render creators filter', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
+    })
+
+    it('should render link to snippets on apps page', () => {
+      renderList()
+
+      expect(screen.getByRole('link', { name: 'app.studio.viewSnippets' })).toHaveAttribute('href', '/snippets')
     })
 
     it('should render app cards when apps exist', () => {
@@ -334,20 +362,22 @@ describe('List', () => {
     })
   })
 
-  describe('Tab Navigation', () => {
-    it('should update category when workflow tab is clicked', () => {
+  describe('Type Filter', () => {
+    it('should update category when workflow type is selected', () => {
       renderList()
+      openTypeFilter()
 
-      fireEvent.click(screen.getByText('app.types.workflow'))
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'app.types.workflow' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
 
-    it('should update category when all tab is clicked', () => {
+    it('should update category when all type is selected', () => {
       mockQueryState.category = AppModeEnum.WORKFLOW
       renderList()
+      openTypeFilter()
 
-      fireEvent.click(screen.getByText('app.types.all'))
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'app.types.all' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
@@ -356,13 +386,13 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
       renderList()
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(mockSetKeywords).toHaveBeenCalledWith('test search')
@@ -373,10 +403,7 @@ describe('List', () => {
 
       renderList()
 
-      const clearButton = document.querySelector('.group')
-      expect(clearButton)!.toBeInTheDocument()
-      if (clearButton)
-        fireEvent.click(clearButton)
+      fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.clear' }).at(-1)!)
 
       expect(mockSetKeywords).toHaveBeenCalledWith('')
     })
@@ -385,7 +412,7 @@ describe('List', () => {
   describe('App List Query', () => {
     it('should build paged query input from active filters', () => {
       mockQueryState.keywords = 'sales'
-      mockQueryState.isCreatedByMe = true
+      mockQueryState.creatorIDs = ['creator-1', 'creator-2']
       mockQueryState.category = AppModeEnum.WORKFLOW
 
       renderList()
@@ -399,7 +426,7 @@ describe('List', () => {
           limit: 30,
           name: 'sales',
           tag_ids: ['tag-1'],
-          is_created_by_me: true,
+          creator_ids: ['creator-1', 'creator-2'],
           mode: AppModeEnum.WORKFLOW,
         },
       })
@@ -426,19 +453,19 @@ describe('List', () => {
     })
   })
 
-  describe('Created By Me Filter', () => {
-    it('should render checkbox with correct label', () => {
+  describe('Creators Filter', () => {
+    it('should render creators filter with correct label', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
     })
 
-    it('should handle checkbox change', () => {
+    it('should handle creator selection as a multi creator filter', () => {
       renderList()
 
-      const checkbox = screen.getByRole('checkbox', { name: 'app.showMyCreatedAppsOnly' })
-      fireEvent.click(checkbox)
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.allCreators' }))
+      fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 
-      expect(mockSetIsCreatedByMe).toHaveBeenCalledWith(true)
+      expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
     })
   })
 
@@ -484,11 +511,11 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { unmount } = renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
 
       unmount()
       renderList()
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
@@ -501,9 +528,10 @@ describe('List', () => {
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
   })
 
@@ -520,9 +548,10 @@ describe('List', () => {
     })
   })
 
-  describe('App Type Tabs', () => {
-    it('should render all app type tabs', () => {
+  describe('App Type Dropdown', () => {
+    it('should render all app type options', () => {
       renderList()
+      openTypeFilter()
 
       expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
       expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
@@ -532,9 +561,7 @@ describe('List', () => {
       expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
     })
 
-    it('should update category for each app type tab click', () => {
-      renderList()
-
+    it('should update category for each app type option click', () => {
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
         { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
@@ -545,8 +572,11 @@ describe('List', () => {
 
       for (const { mode, text } of appTypeTexts) {
         mockSetCategory.mockClear()
-        fireEvent.click(screen.getByText(text))
+        const { unmount } = renderList()
+        openTypeFilter()
+        fireEvent.click(screen.getByRole('menuitemradio', { name: text }))
         expect(mockSetCategory).toHaveBeenCalledWith(mode)
+        unmount()
       }
     })
   })
@@ -622,16 +652,18 @@ describe('List', () => {
   })
 
   describe('Infinite Scroll', () => {
-    it('should call fetchNextPage when intersection observer triggers', () => {
+    it('should call fetchNextPage when intersection observer triggers', async () => {
       mockServiceState.hasNextPage = true
       renderList()
 
-      if (intersectionCallback) {
+      await waitFor(() => expect(mockObserve).toHaveBeenCalled())
+
+      if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallback!(
+          intersectionCallbacks.forEach(callback => callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          )
+          ))
         })
       }
 
@@ -642,12 +674,12 @@ describe('List', () => {
       mockServiceState.hasNextPage = true
       renderList()
 
-      if (intersectionCallback) {
+      if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallback!(
+          intersectionCallbacks.forEach(callback => callback(
             [{ isIntersecting: false } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          )
+          ))
         })
       }
 
@@ -659,12 +691,12 @@ describe('List', () => {
       mockServiceState.isLoading = true
       renderList()
 
-      if (intersectionCallback) {
+      if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallback!(
+          intersectionCallbacks.forEach(callback => callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          )
+          ))
         })
       }
 

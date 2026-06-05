@@ -33,12 +33,24 @@ difyctl run app <app-id> "hello" -o json | jq .answer    # JSON output
 difyctl run app <app-id> --input name=world --input topic=cats   # workflow inputs
 ```
 
-Background docs: `difyctl help account`, `difyctl help external`, `difyctl help environment`.
+Background docs: `difyctl help account`, `difyctl help external`, `difyctl help environment`, `difyctl help agent`.
 
 ## Commands
 
 Run `difyctl --help` for the full list of commands.
 Run `difyctl <cmd> --help` for per-command reference.
+
+For agents (and scripting), start with `difyctl help agent` — the cross-command operating guide (output, discovery, auth, exit codes, errors, HITL, retry). Every help surface is also machine-readable: `difyctl help -o json` dumps the whole command tree plus the global contract (exit codes, output formats, error envelope, HITL protocol), and `difyctl <cmd> --help -o json` returns one command's descriptor.
+
+## Agent skill
+
+`difyctl skills install` installs a single, pure-delegation `SKILL.md` into your local agents so they auto-load it. The skill does not freeze the command set — it points the agent at `difyctl help -o json` for the live surface, so it never drifts from your binary. It is embedded in the binary (version-stamped) rather than checked in.
+
+- `difyctl skills install` — dry-run: detect installed agents (Claude Code, Codex, opencode, Cursor, pi) and print where the skill would land. Writes nothing.
+- `difyctl skills install --yes` — write to every detected agent, printing each path. `--agent claude-code[,cursor]` restricts to a subset; `<dir>` forces one explicit directory (handy when your agent isn't detected).
+- `difyctl skills install --stdout` — print the `SKILL.md` to stdout (for piping or self-install); writes nothing.
+
+Detection is by config-directory existence (`~/.claude`, `~/.codex`, `~/.config/opencode`, `~/.cursor`, `~/.pi`). If a copy ever looks stale, run `difyctl version` and re-run `difyctl skills install`.
 
 ## Output formats
 

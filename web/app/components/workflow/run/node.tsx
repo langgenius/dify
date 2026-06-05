@@ -34,18 +34,18 @@ import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
 
 type Props = {
-  className?: string
-  nodeInfo: NodeTracing
-  allExecutions?: NodeTracing[]
-  inMessage?: boolean
-  hideInfo?: boolean
-  hideProcessDetail?: boolean
-  onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
-  onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
-  onShowRetryDetail?: (detail: NodeTracing[]) => void
-  onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
-  notShowIterationNav?: boolean
-  notShowLoopNav?: boolean
+  readonly className?: string
+  readonly nodeInfo: NodeTracing
+  readonly allExecutions?: NodeTracing[]
+  readonly inMessage?: boolean
+  readonly hideInfo?: boolean
+  readonly hideProcessDetail?: boolean
+  readonly onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
+  readonly onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
+  readonly onShowRetryDetail?: (detail: NodeTracing[]) => void
+  readonly onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+  readonly notShowIterationNav?: boolean
+  readonly notShowLoopNav?: boolean
 }
 
 const NodePanel: FC<Props> = ({

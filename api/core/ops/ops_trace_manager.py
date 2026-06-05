@@ -5,6 +5,7 @@ import os
 import queue
 import threading
 import time
+from collections.abc import Mapping
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, TypedDict
 from uuid import UUID, uuid4
@@ -62,6 +63,11 @@ def _dump_parent_trace_context(parent_trace_context: Any) -> dict[str, str] | No
         except ValueError:
             return None
     return None
+
+
+def _get_trace_session_id(kwargs: Mapping[str, Any]) -> str | None:
+    value = kwargs.get("trace_session_id")
+    return value if isinstance(value, str) and value else None
 
 
 class _AppTracingConfig(TypedDict, total=False):
@@ -873,6 +879,10 @@ class TraceTask:
         if dumped_parent_trace_context:
             metadata["parent_trace_context"] = dumped_parent_trace_context
 
+        trace_session_id = _get_trace_session_id(self.kwargs)
+        if trace_session_id:
+            metadata["trace_session_id"] = trace_session_id
+
         workflow_trace_info = WorkflowTraceInfo(
             trace_id=self.trace_id,
             workflow_data=workflow_run.to_dict(),
@@ -955,6 +965,10 @@ class TraceTask:
         }
         if node_execution_id := kwargs.get("node_execution_id"):
             metadata["node_execution_id"] = node_execution_id
+
+        trace_session_id = _get_trace_session_id(kwargs)
+        if trace_session_id:
+            metadata["trace_session_id"] = trace_session_id
 
         message_tokens = message_data.message_tokens
 

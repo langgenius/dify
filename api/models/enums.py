@@ -224,6 +224,7 @@ class TagType(StrEnum):
 
     KNOWLEDGE = "knowledge"
     APP = "app"
+    SNIPPET = "snippet"
 
 
 class DatasetMetadataType(StrEnum):
@@ -356,3 +357,11 @@ class ApiTokenType(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+
+
+class PermissionEnum(StrEnum):
+    """Shared permission levels for resources (datasets, credentials, etc.)"""
+
+    ONLY_ME = "only_me"
+    ALL_TEAM = "all_team_members"
+    PARTIAL_TEAM = "partial_members"

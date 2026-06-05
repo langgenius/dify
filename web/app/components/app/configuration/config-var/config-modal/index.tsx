@@ -33,6 +33,7 @@ type IConfigModalProps = {
   onClose: () => void
   onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
   supportFile?: boolean
+  showHiddenField?: boolean
 }
 
 const ConfigModal: FC<IConfigModalProps> = ({
@@ -41,6 +42,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   isShow,
   onClose,
   onConfirm,
+  showHiddenField,
   supportFile,
 }) => {
   const { modelConfig } = useContext(ConfigContext)
@@ -173,6 +175,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
             onVarNameChange={handleVarNameChange}
             options={options}
             selectOptions={selectOptions}
+            showHiddenField={showHiddenField}
             tempPayload={tempPayload}
             t={t}
           />

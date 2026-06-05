@@ -4,11 +4,13 @@ from controllers.openapi.auth.conditions import (
     EDITION_CE,
     EDITION_EE,
     EDITION_SAAS,
+    HAS_ALLOWED_ROLES,
     LOADED_APP_IS_PRIVATE,
     PATH_HAS_APP_ID,
     TOKEN_IS_OAUTH_ACCOUNT,
     TOKEN_IS_OAUTH_EXTERNAL_SSO,
     WEBAPP_AUTH_ENABLED,
+    WORKSPACE_MEMBERSHIP_REQUIRED,
     Cond,
     config_cond,
     data_cond,
@@ -16,13 +18,15 @@ from controllers.openapi.auth.conditions import (
 )
 from controllers.openapi.auth.data import AuthData, Edition, RequestContext
 from libs.oauth_bearer import TokenType
+from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 
-def _ctx(token_type=TokenType.OAUTH_ACCOUNT, path_params=None):
+def _ctx(token_type=TokenType.OAUTH_ACCOUNT, path_params=None, **kwargs):
     return RequestContext(
         token_type=token_type,
         path_params=path_params or {},
+        **kwargs,
     )
 
 
@@ -141,3 +145,28 @@ def test_loaded_app_is_private():
     assert LOADED_APP_IS_PRIVATE(_ctx(), data_public) is False
     assert LOADED_APP_IS_PRIVATE(_ctx(), data_none) is False
     assert LOADED_APP_IS_PRIVATE(_ctx(), None) is False
+
+
+def test_workspace_membership_required_true():
+    assert WORKSPACE_MEMBERSHIP_REQUIRED(_ctx(workspace_membership=True)) is True
+
+
+def test_workspace_membership_required_false():
+    assert WORKSPACE_MEMBERSHIP_REQUIRED(_ctx(workspace_membership=False)) is False
+
+
+def test_workspace_membership_required_default():
+    assert WORKSPACE_MEMBERSHIP_REQUIRED(_ctx()) is False
+
+
+def test_has_allowed_roles_true():
+    ctx = _ctx(allowed_roles=frozenset({TenantAccountRole.OWNER}))
+    assert HAS_ALLOWED_ROLES(ctx) is True
+
+
+def test_has_allowed_roles_false():
+    assert HAS_ALLOWED_ROLES(_ctx(allowed_roles=None)) is False
+
+
+def test_has_allowed_roles_default():
+    assert HAS_ALLOWED_ROLES(_ctx()) is False

@@ -113,6 +113,16 @@ def test_undefined_dependency_target_is_rejected_for_compositor_construction() -
         Compositor([LayerNode("consumer", RenamedConsumerLayer, deps={"renamed": "missing_target"})])
 
 
+def test_dependency_target_must_precede_dependent_layer_in_graph_order() -> None:
+    with pytest.raises(ValueError, match="must target preceding layer nodes"):
+        Compositor(
+            [
+                LayerNode("consumer", RenamedConsumerLayer, deps={"renamed": "target"}),
+                LayerNode("target", _object_provider("value")),
+            ]
+        )
+
+
 def test_duplicate_layer_node_name_is_rejected() -> None:
     with pytest.raises(ValueError, match="Duplicate layer name 'same'"):
         Compositor(

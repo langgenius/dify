@@ -342,6 +342,8 @@ class HumanInputFormFilledResponse(StreamResponse):
         action_id: str
         action_text: str
 
+        submitted_data: Mapping[str, Any] | None = None
+
     event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_FILLED
     workflow_run_id: str
     data: Data

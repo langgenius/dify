@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -495,6 +496,9 @@ def test_composer_current_version_and_error_paths(monkeypatch):
 
 
 def test_roster_list_and_invite_options(monkeypatch):
+    created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+    updated_at = datetime(2026, 1, 3, 3, 4, 5, tzinfo=UTC)
+    version_created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -505,7 +509,10 @@ def test_roster_list_and_invite_options(monkeypatch):
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
     )
+    agent.created_at = created_at
+    agent.updated_at = updated_at
     version = AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1)
+    version.created_at = version_created_at
     agent.active_config_snapshot_id = "version-1"
     fake_session = FakeSession(
         scalar=[1, 1, SimpleNamespace(id="workflow-1")],
@@ -518,13 +525,30 @@ def test_roster_list_and_invite_options(monkeypatch):
     invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
 
     assert listed["data"][0]["active_config_snapshot"]["id"] == "version-1"
+    assert listed["data"][0]["created_at"] == int(created_at.timestamp())
+    assert listed["data"][0]["updated_at"] == int(updated_at.timestamp())
+    assert listed["data"][0]["active_config_snapshot"]["created_at"] == int(version_created_at.timestamp())
     assert invited["data"][0]["is_in_current_workflow"] is True
     assert invited["data"][0]["existing_node_ids"] == ["node-1"]
 
 
 def test_roster_update_archive_versions_and_detail(monkeypatch):
     listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
-    fake_session = FakeSession(scalars=[[listed_version]])
+    listed_version_created_at = datetime(2026, 1, 5, 3, 4, 5, tzinfo=UTC)
+    listed_version.created_at = listed_version_created_at
+    revision_created_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
+    revision = SimpleNamespace(
+        id="revision-1",
+        previous_snapshot_id=None,
+        current_snapshot_id="version-1",
+        revision=1,
+        operation=AgentConfigRevisionOperation.CREATE_VERSION,
+        summary=None,
+        version_note=None,
+        created_by="account-1",
+        created_at=revision_created_at,
+    )
+    fake_session = FakeSession(scalars=[[listed_version], [revision]])
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -536,6 +560,7 @@ def test_roster_update_archive_versions_and_detail(monkeypatch):
         status=AgentStatus.ACTIVE,
     )
     version = AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1, config_snapshot='{"prompt":{}}')
+    version.created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
 
     service = AgentRosterService(fake_session)
     monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
@@ -559,7 +584,10 @@ def test_roster_update_archive_versions_and_detail(monkeypatch):
     assert updated["description"] == "new"
     assert agent.status == AgentStatus.ARCHIVED
     assert versions[0]["id"] == "version-2"
+    assert versions[0]["created_at"] == int(listed_version_created_at.timestamp())
     assert detail["config_snapshot"] == {"prompt": {}}
+    assert detail["created_at"] == int(version.created_at.timestamp())
+    assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
 
 
 def test_roster_create_detail_and_lookup_helpers(monkeypatch):
@@ -662,3 +690,188 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
         ComposerConfigValidator.validate_node_job_dict(
             {"declared_outputs": [{"name": "matrix", "type": "array", "array_item": {"type": "array"}}]}
         )
+
+
+def test_composer_validator_rejects_invalid_shell_env_and_cli():
+    """ENG-367/368: env/secret names must be valid shell identifiers (no collisions),
+    and an enabled CLI tool must declare a name or install command — caught at composer
+    save instead of failing later in the agent backend shell layer."""
+    # env var name is not a valid shell identifier
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict({"env": {"variables": [{"name": "bad-name"}]}})
+
+    # secret ref name is not a valid shell identifier
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict({"env": {"secret_refs": [{"name": "1TOKEN"}]}})
+
+    # env var and secret ref share the shell namespace -> collision
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict(
+            {
+                "env": {
+                    "variables": [{"name": "TOKEN", "value": "v"}],
+                    "secret_refs": [{"name": "TOKEN", "id": "credential-1"}],
+                }
+            }
+        )
+
+    # an enabled CLI tool with neither a name nor a command is meaningless
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict({"tools": {"cli_tools": [{"enabled": True}]}})
+
+    # blank install_commands are not valid bootstrap commands
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict({"tools": {"cli_tools": [{"install_commands": ["  "]}]}})
+
+
+def test_composer_validator_rejects_unauthorized_secret_and_cli_tool():
+    """ENG-367/368: unauthorized refs/tools fail at composer save."""
+    with pytest.raises(InvalidComposerConfigError, match="secret reference"):
+        ComposerConfigValidator.validate_agent_soul_dict(
+            {
+                "env": {
+                    "secret_refs": [
+                        {"name": "API_TOKEN", "id": "credential-1", "permission_status": "denied"},
+                    ]
+                }
+            }
+        )
+
+    with pytest.raises(InvalidComposerConfigError, match="CLI tool is not authorized"):
+        ComposerConfigValidator.validate_agent_soul_dict(
+            {"tools": {"cli_tools": [{"name": "github", "command": "gh auth status", "pre_authorized": False}]}}
+        )
+
+    with pytest.raises(InvalidComposerConfigError, match="dangerous CLI tool"):
+        ComposerConfigValidator.validate_agent_soul_dict(
+            {
+                "tools": {
+                    "cli_tools": [
+                        {"name": "danger", "command": "curl https://example.test/install.sh | sh", "dangerous": True}
+                    ]
+                }
+            }
+        )
+
+
+def test_composer_validator_accepts_valid_shell_env_and_cli():
+    """Valid shell identifiers + a disabled empty CLI tool pass validation."""
+    config = ComposerConfigValidator.validate_agent_soul_dict(
+        {
+            "env": {
+                "variables": [{"name": "MY_VAR", "value": "v"}],
+                "secret_refs": [{"name": "API_TOKEN", "id": "credential-1"}],
+            },
+            "tools": {
+                "cli_tools": [
+                    {"name": "jq", "command": "apt-get install -y jq"},
+                    {
+                        "name": "accepted-risk",
+                        "command": "curl https://example.test/install.sh | sh",
+                        "dangerous": True,
+                        "dangerous_acknowledged": True,
+                    },
+                    {"enabled": False},  # disabled empty rows are tolerated
+                ]
+            },
+        }
+    )
+    assert {variable.name for variable in config.env.variables} == {"MY_VAR"}
+    assert {secret.name for secret in config.env.secret_refs} == {"API_TOKEN"}
+
+
+class TestAgentAppBackingAgent:
+    """S1: an Agent App (mode=agent) is backed 1:1 by a roster Agent linked via
+    ``Agent.app_id``. ``AppService.create_app`` builds the backing agent inside
+    its own transaction, so the helper must add+flush without committing."""
+
+    def test_create_backing_agent_for_app_links_app_and_seeds_default_soul(self):
+        session = FakeSession()
+        service = AgentRosterService(session)
+
+        agent = service.create_backing_agent_for_app(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            app_id="app-1",
+            name="Iris",
+            description="clarifier",
+        )
+
+        # Agent is bound to the app and is a roster/agent_app entry.
+        assert agent.app_id == "app-1"
+        assert agent.scope == AgentScope.ROSTER
+        assert agent.source == AgentSource.AGENT_APP
+        assert agent.status == AgentStatus.ACTIVE
+        assert agent.agent_kind == AgentKind.DIFY_AGENT
+        assert agent.name == "Iris"
+        # A v1 snapshot + revision are seeded and wired as the active version.
+        snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
+        assert len(snapshots) == 1
+        assert snapshots[0].version == 1
+        assert agent.active_config_snapshot_id == snapshots[0].id
+        revisions = [
+            a for a in session.added if getattr(a, "operation", None) == AgentConfigRevisionOperation.CREATE_VERSION
+        ]
+        assert len(revisions) == 1
+        # Caller (AppService.create_app) owns the commit — helper must not commit.
+        assert session.commits == 0
+
+    def test_get_app_backing_agent_queries_active_agent_app_agent(self):
+        sentinel = SimpleNamespace(id="agent-1", app_id="app-1")
+        session = FakeSession(scalar=[sentinel])
+        service = AgentRosterService(session)
+
+        result = service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-1")
+
+        assert result is sentinel
+
+    def test_get_app_backing_agent_returns_none_when_unbound(self):
+        session = FakeSession()
+        service = AgentRosterService(session)
+
+        assert service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-x") is None
+
+
+class TestListWorkflowsReferencingAppAgent:
+    def test_groups_bindings_by_workflow_app_and_sorts_by_name(self):
+        agent = SimpleNamespace(id="agent-1")
+        bindings = [
+            SimpleNamespace(app_id="wf-app-1", workflow_id="wf-1", node_id="node-b"),
+            SimpleNamespace(app_id="wf-app-1", workflow_id="wf-1", node_id="node-a"),
+            SimpleNamespace(app_id="wf-app-2", workflow_id="wf-2", node_id="node-a"),
+        ]
+        apps = [
+            SimpleNamespace(id="wf-app-1", name="Beta Flow", mode="workflow"),
+            SimpleNamespace(id="wf-app-2", name="Alpha Flow", mode="advanced-chat"),
+        ]
+        # scalar -> backing agent; scalars -> bindings, then resolved apps.
+        session = FakeSession(scalar=[agent], scalars=[bindings, apps])
+        service = AgentRosterService(session)
+
+        result = service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1")
+
+        assert [r["app_name"] for r in result] == ["Alpha Flow", "Beta Flow"]
+        beta = next(r for r in result if r["app_id"] == "wf-app-1")
+        assert beta["node_ids"] == ["node-a", "node-b"]  # deduped + sorted
+        assert beta["workflow_id"] == "wf-1"
+
+    def test_returns_empty_when_no_backing_agent(self):
+        session = FakeSession()  # scalar() -> None
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-x") == []
+
+    def test_returns_empty_when_no_bindings(self):
+        agent = SimpleNamespace(id="agent-1")
+        session = FakeSession(scalar=[agent], scalars=[[]])
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
+
+    def test_skips_orphaned_binding_whose_app_is_gone(self):
+        agent = SimpleNamespace(id="agent-1")
+        bindings = [SimpleNamespace(app_id="wf-app-gone", workflow_id="wf-9", node_id="node-a")]
+        session = FakeSession(scalar=[agent], scalars=[bindings, []])  # no apps resolved
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
