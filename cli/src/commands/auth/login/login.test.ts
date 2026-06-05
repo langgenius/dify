@@ -200,4 +200,23 @@ describe('runLogin', () => {
     })
     expect(io.errBuf()).toContain('--no-browser requested')
   })
+
+  it('TTY: prompts for host when --host omitted, uses typed URL', async () => {
+    const io = bufferStreams(`${mock.url}\n`)
+    ;(io as { isErrTTY: boolean }).isErrTTY = true
+    const store = new MemStore()
+    const reg = await runLogin({
+      io,
+      noBrowser: true,
+      insecure: true,
+      deviceLabel: 'difyctl on test',
+      api: new DeviceFlowApi(testHttpClient(mock.url)),
+      store: { store, mode: 'file' },
+      clock: noopClock,
+      browserOpener: noopBrowser,
+    })
+    expect(reg.resolveActive()?.ctx.account.email).toBe('tester@dify.ai')
+    expect(io.errBuf()).toContain('Enter Dify host URL')
+    expect(io.errBuf()).toContain('[default: https://cloud.dify.ai]')
+  })
 })

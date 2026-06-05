@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -218,8 +218,8 @@ export default function AccountSetting({
               {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <div className="flex grow justify-end">
                   <SearchInput
-                    className="w-[200px]"
-                    onChange={setSearchValue}
+                    className="w-52"
+                    onValueChange={setSearchValue}
                     value={searchValue}
                   />
                 </div>

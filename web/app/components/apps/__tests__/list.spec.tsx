@@ -203,9 +203,9 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../new-app-card', () => ({
-  default: React.forwardRef((_props: unknown, _ref: React.ForwardedRef<unknown>) => {
+  default: (_props: { ref?: React.Ref<unknown> }) => {
     return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
-  }),
+  },
 }))
 
 vi.mock('../empty', () => ({
@@ -293,7 +293,7 @@ describe('List', () => {
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -360,13 +360,13 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
       renderList()
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(mockSetKeywords).toHaveBeenCalledWith('test search')
@@ -377,10 +377,7 @@ describe('List', () => {
 
       renderList()
 
-      const clearButton = document.querySelector('.group')
-      expect(clearButton)!.toBeInTheDocument()
-      if (clearButton)
-        fireEvent.click(clearButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(mockSetKeywords).toHaveBeenCalledWith('')
     })
@@ -505,7 +502,7 @@ describe('List', () => {
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
       expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
     })
