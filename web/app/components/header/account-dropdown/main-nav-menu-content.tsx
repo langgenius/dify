@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react'
 import type { Theme } from '@/app/components/base/theme-selector'
-import type { Locale } from '@/i18n-config'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -17,20 +16,14 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useTheme } from 'next-themes'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
-import { useLocale } from '@/context/i18n'
+import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
-import { useRouter } from '@/next/navigation'
-import { updateUserProfile } from '@/service/common'
-import { timezones } from '@/utils/timezone'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 const mainNavMenuGroupClassName = 'p-1'
@@ -90,107 +83,6 @@ function AppearanceSubmenu() {
   )
 }
 
-function LanguageSubmenu() {
-  const locale = useLocale()
-  const router = useRouter()
-  const { t } = useTranslation()
-  const { userProfile, mutateUserProfile } = useAppContext()
-  const [editing, setEditing] = useState(false)
-  const languageOptions = languages.filter(item => item.supported)
-  const selectedLanguage = locale || userProfile.interface_language
-  const selectedTimezone = userProfile.timezone
-
-  const handleSelectLanguage = async (value: string) => {
-    setEditing(true)
-    try {
-      await updateUserProfile({ url: '/account/interface-language', body: { interface_language: value } })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-      await setLocaleOnClient(value as Locale, false)
-      router.refresh()
-    }
-    catch (error) {
-      toast.error((error as Error).message)
-    }
-    finally {
-      setEditing(false)
-    }
-  }
-
-  const handleSelectTimezone = async (value: string) => {
-    setEditing(true)
-    try {
-      await updateUserProfile({ url: '/account/timezone', body: { timezone: value } })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-      mutateUserProfile()
-    }
-    catch (error) {
-      toast.error((error as Error).message)
-    }
-    finally {
-      setEditing(false)
-    }
-  }
-
-  return (
-    <>
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger className={mainNavMenuItemClassName}>
-          <MenuItemContent
-            iconClassName="i-ri-translate-2"
-            label={t('language.language', { ns: 'common' })}
-          />
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent
-          placement="right-start"
-          sideOffset={6}
-          popupClassName={mainNavMenuSubPopupClassName}
-        >
-          <DropdownMenuRadioGroup
-            value={selectedLanguage}
-            onValueChange={(value) => {
-              if (!editing)
-                void handleSelectLanguage(value)
-            }}
-          >
-            {languageOptions.map(item => (
-              <DropdownMenuRadioItem key={item.value} value={item.value} closeOnClick className={mainNavMenuItemClassName}>
-                <MainNavRadioItemContent label={item.name} />
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger className={mainNavMenuItemClassName}>
-          <MenuItemContent
-            iconClassName="i-ri-global-line"
-            label={t('language.timezone', { ns: 'common' })}
-          />
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent
-          placement="right-start"
-          sideOffset={6}
-          popupClassName={mainNavMenuSubPopupClassName}
-        >
-          <DropdownMenuRadioGroup
-            value={selectedTimezone}
-            onValueChange={(value) => {
-              if (!editing)
-                void handleSelectTimezone(value)
-            }}
-          >
-            {timezones.map(item => (
-              <DropdownMenuRadioItem key={item.value} value={String(item.value)} closeOnClick className={mainNavMenuItemClassName}>
-                <MainNavRadioItemContent label={item.name} />
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
-    </>
-  )
-}
-
 type MainNavMenuContentProps = {
   onLogout: () => Promise<void>
 }
@@ -201,6 +93,7 @@ export function MainNavMenuContent({
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
   const { isEducationAccount } = useProviderContext()
+  const { setShowAccountSettingModal } = useModalContext()
 
   return (
     <>
@@ -232,8 +125,16 @@ export function MainNavMenuContent({
             trailing={<ExternalLinkIndicator />}
           />
         </DropdownMenuLinkItem>
+        <DropdownMenuItem
+          className={mainNavMenuItemClassName}
+          onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+        >
+          <MenuItemContent
+            iconClassName="i-ri-equalizer-2-line"
+            label={t('settings.preferences', { ns: 'common' })}
+          />
+        </DropdownMenuItem>
         <AppearanceSubmenu />
-        <LanguageSubmenu />
       </DropdownMenuGroup>
       <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
       <DropdownMenuGroup className={mainNavMenuGroupClassName}>
@@ -244,7 +145,7 @@ export function MainNavMenuContent({
           }}
         >
           <MenuItemContent
-            iconClassName="i-ri-logout-box-r-line"
+            iconClassName="i-ri-shut-down-line"
             label={t('userProfile.logout', { ns: 'common' })}
           />
         </DropdownMenuItem>

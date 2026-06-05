@@ -108,29 +108,16 @@ describe('SupportMenu', () => {
     )
   }
 
-  it('renders the main nav support menu trigger with local row spacing', () => {
+  it('renders support entries as flat main nav help menu items', () => {
     renderSupportMenu()
-
-    expect(screen.getByText('common.userProfile.support')).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.userProfile.support' })).toHaveClass('mx-0', 'px-3')
-  })
-
-  it('shows forum and community links when opened', () => {
-    renderSupportMenu()
-    fireEvent.click(screen.getByText('common.userProfile.support'))
-
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.community')).toBeInTheDocument()
-  })
-
-  it('shows "Contact Us" when ZENDESK_WIDGET_KEY is present', () => {
-    renderSupportMenu()
-    fireEvent.click(screen.getByText('common.userProfile.support'))
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.community')).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' })).toHaveClass('mx-0', 'px-3')
   })
 
-  it('hides dedicated support channels for Sandbox plan', () => {
+  it('keeps Contact Us visible for Sandbox plan', () => {
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
       plan: {
@@ -140,35 +127,30 @@ describe('SupportMenu', () => {
     })
 
     renderSupportMenu()
-    fireEvent.click(screen.getByText('common.userProfile.support'))
 
-    expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
   })
 
-  it('shows "Email Support" when ZENDESK_WIDGET_KEY is absent', () => {
+  it('uses mailto Contact Us when ZENDESK_WIDGET_KEY is absent', () => {
     mockZendeskKey.value = ''
 
     renderSupportMenu()
-    fireEvent.click(screen.getByText('common.userProfile.support'))
 
-    expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
-    expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
+    const contactLink = screen.getByText('common.userProfile.contactUs').closest('a')
+    expect(contactLink).toHaveAttribute('href', expect.stringContaining('mailto:support@dify.ai'))
   })
 
-  it('shows Email Support when ZENDESK_WIDGET_KEY is null', () => {
+  it('uses mailto Contact Us when ZENDESK_WIDGET_KEY is null', () => {
     mockZendeskKey.value = null as unknown as string
 
     renderSupportMenu()
-    fireEvent.click(screen.getByText('common.userProfile.support'))
 
-    expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
-    expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
+    const contactLink = screen.getByText('common.userProfile.contactUs').closest('a')
+    expect(contactLink).toHaveAttribute('href', expect.stringContaining('mailto:support@dify.ai'))
   })
 
   it('calls toggleZendeskWindow when "Contact Us" is clicked', () => {
     renderSupportMenu()
-    fireEvent.click(screen.getByText('common.userProfile.support'))
     fireEvent.click(screen.getByText('common.userProfile.contactUs'))
 
     expect(window.zE).toHaveBeenCalledWith('messenger', 'open')
@@ -176,7 +158,6 @@ describe('SupportMenu', () => {
 
   it('has correct forum and community links', () => {
     renderSupportMenu()
-    fireEvent.click(screen.getByText('common.userProfile.support'))
 
     const forumLink = screen.getByText('common.userProfile.forum').closest('a')
     const communityLink = screen.getByText('common.userProfile.community').closest('a')

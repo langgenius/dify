@@ -38,9 +38,6 @@ import {
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
 })
-const LanguageSettingModal = dynamic(() => import('@/app/components/header/account-setting/language-setting-modal'), {
-  ssr: false,
-})
 const IntegrationsSettingModal = dynamic(() => import('@/app/components/tools/integrations-setting-modal'), {
   ssr: false,
 })
@@ -95,8 +92,7 @@ export const ModalContextProvider = ({
         ? urlAccountModalState.payload
         : DEFAULT_ACCOUNT_SETTING_TAB)
     : null
-  const accountSettingModalTab = isWorkspaceSettingTab(settingsTab) ? settingsTab : null
-  const languageSettingModalTab = isUserSettingTab(settingsTab) ? settingsTab : null
+  const accountSettingModalTab = isWorkspaceSettingTab(settingsTab) || isUserSettingTab(settingsTab) ? settingsTab : null
   const integrationSettingModalSection = isIntegrationSettingTab(settingsTab) ? settingsTab : null
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
@@ -266,13 +262,6 @@ export const ModalContextProvider = ({
               activeTab={accountSettingModalTab}
               onCancelAction={handleCancelAccountSettingModal}
               onTabChangeAction={handleAccountSettingTabChange}
-            />
-          )
-        }
-        {
-          languageSettingModalTab && (
-            <LanguageSettingModal
-              onCancel={handleCancelAccountSettingModal}
             />
           )
         }

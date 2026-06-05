@@ -197,6 +197,24 @@ describe('WorkspaceCard', () => {
     expect(screen.queryByText('billing.upgradeBtn.plain')).not.toBeInTheDocument()
   })
 
+  it('uses the original paid plan badge for paid workspaces', () => {
+    mockIsCloudEdition.value = true
+    mockWorkspaces = [
+      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.team, status: 'normal', created_at: 0, current: true },
+    ]
+    vi.mocked(useProviderContext).mockReturnValue({
+      enableBilling: true,
+      isEducationAccount: false,
+      isEducationWorkspace: false,
+      isFetchedPlan: true,
+      plan: { type: Plan.team },
+    } as ProviderContextState)
+
+    renderWorkspaceCard()
+
+    expect(screen.getByText(Plan.team)).toBeInTheDocument()
+  })
+
   it('shows the license status instead of a billing plan when billing is disabled', () => {
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: false,
@@ -224,11 +242,63 @@ describe('WorkspaceCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
-    expect(await screen.findByRole('menu')).toBeInTheDocument()
+    const menu = await screen.findByRole('menu')
+    expect(menu).toBeInTheDocument()
+    expect(menu).toHaveClass('w-[280px]')
     expect(screen.getByRole('menuitem', { name: 'common.mainNav.workspace.settings' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'common.mainNav.workspace.inviteMembers' })).toBeInTheDocument()
-    expect(screen.getByText('common.mainNav.workspace.switchWorkspace')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.workspace')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.search' })).toBeInTheDocument()
+    const workspaceItem = screen.getByRole('menuitem', { name: 'Evan Workspace' })
+    expect(workspaceItem).toBeInTheDocument()
+    expect(workspaceItem.parentElement).toHaveClass('max-h-[240px]', 'overflow-y-auto')
+  })
+
+  it('filters workspace switcher options from the search action', async () => {
+    renderWorkspaceCard()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.search' }))
+
+    expect(screen.getByText('common.userProfile.workspace')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.search' })).toHaveClass('bg-state-base-hover')
+
+    fireEvent.change(screen.getByPlaceholderText('common.mainNav.workspace.searchPlaceholder'), {
+      target: { value: 'evan' },
+    })
+
     expect(screen.getByRole('menuitem', { name: 'Evan Workspace' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Solar Studio' })).not.toBeInTheDocument()
+  })
+
+  it('keeps backend workspace order by last opened and can sort by created time', async () => {
+    mockWorkspaces = [
+      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 1, current: true },
+      { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.team, status: 'normal', created_at: 3, current: false },
+      { id: 'workspace-3', name: 'Atlas Workspace', plan: Plan.team, status: 'normal', created_at: 2, current: false },
+    ]
+    renderWorkspaceCard()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    const defaultWorkspaceOptions = screen.getAllByRole('menuitem')
+      .map(item => item.getAttribute('title'))
+      .filter(Boolean)
+
+    expect(defaultWorkspaceOptions).toEqual(['Solar Studio', 'Evan Workspace', 'Atlas Workspace'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }))
+
+    expect(await screen.findByRole('menuitemradio', { name: 'common.mainNav.workspace.sort.lastOpened' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'common.mainNav.workspace.sort.createdTime' }))
+
+    const createdTimeWorkspaceOptions = screen.getAllByRole('menuitem')
+      .map(item => item.getAttribute('title'))
+      .filter(Boolean)
+
+    expect(createdTimeWorkspaceOptions).toEqual(['Evan Workspace', 'Atlas Workspace', 'Solar Studio'])
   })
 
   it('opens account settings from workspace menu actions', async () => {

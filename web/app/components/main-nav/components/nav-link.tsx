@@ -4,7 +4,7 @@ import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
 
-const navItemClassName = 'group relative flex h-9 items-center gap-2 rounded-xl p-2 transition-colors'
+const navItemClassName = 'group relative flex h-8 w-full items-center gap-2 rounded-[10px] px-2 py-1.5 transition-colors'
 
 const activeNavItemClassName = cn(
   'overflow-hidden',

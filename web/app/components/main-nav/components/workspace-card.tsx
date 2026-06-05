@@ -7,7 +7,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -27,8 +26,10 @@ import { basePath } from '@/utils/var'
 import { formatCredits, getRemainingCredits } from '../utils'
 import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
 import WorkspacePlanBadge from './workspace-plan-badge'
+import { WorkspaceSwitcher } from './workspace-switcher'
 
 const workspaceMenuTriggerHeight = 36
+const workspaceMenuAlignOffset = -28
 const workspaceCardSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
 const workspacePlans = new Set<string>(Object.values(Plan))
 
@@ -103,8 +104,8 @@ function WorkspaceCardTrigger({
       >
         <WorkspaceIcon name={name} className="h-6 w-6 rounded-lg" />
         <div className="min-w-0 grow">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="min-w-0 flex-1 truncate system-sm-medium text-text-primary" title={name}>{name}</span>
+          <div className="flex min-w-0 items-center gap-1 pr-0.5">
+            <span className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary" title={name}>{name}</span>
             {status && <span className="flex shrink-0 items-center">{status}</span>}
           </div>
         </div>
@@ -265,7 +266,8 @@ export function WorkspaceCard() {
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={-workspaceMenuTriggerHeight}
-          popupClassName="w-(--anchor-width) overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
+          alignOffset={workspaceMenuAlignOffset}
+          popupClassName="w-[280px] overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <WorkspaceMenuHeader
             name={currentWorkspace.name}
@@ -279,28 +281,10 @@ export function WorkspaceCard() {
           />
           {workspaces.length > 0 && (
             <DropdownMenuGroup className="p-1 pb-2">
-              <DropdownMenuLabel className="mx-0 h-6 px-3 py-1.5">
-                {t('mainNav.workspace.switchWorkspace', { ns: 'common' })}
-              </DropdownMenuLabel>
-              {workspaces.map(workspace => (
-                <DropdownMenuItem
-                  key={workspace.id}
-                  title={workspace.name}
-                  className={cn(
-                    'mx-0 h-8 gap-2 px-3 py-1',
-                    workspace.current && 'bg-state-base-hover',
-                  )}
-                  onClick={() => {
-                    void handleSwitchWorkspace(workspace.id)
-                  }}
-                >
-                  <WorkspaceMenuItemContent
-                    icon={<WorkspaceIcon name={workspace.name} className="h-5 w-5 rounded-md" />}
-                    label={workspace.name}
-                    trailing={workspace.current ? <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" /> : undefined}
-                  />
-                </DropdownMenuItem>
-              ))}
+              <WorkspaceSwitcher
+                workspaces={workspaces}
+                onSwitchWorkspace={workspaceId => void handleSwitchWorkspace(workspaceId)}
+              />
             </DropdownMenuGroup>
           )}
         </DropdownMenuContent>

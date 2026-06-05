@@ -139,7 +139,7 @@ const MainNav = ({
   const renderLogo = () => (
     <Link
       href="/"
-      className="flex h-8 shrink-0 items-center overflow-hidden px-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      className="flex h-8 shrink-0 items-center overflow-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
       aria-label={systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
     >
       {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
@@ -191,7 +191,7 @@ const MainNav = ({
                 )
             : (
                 <>
-                  <div className="flex items-center justify-between px-2 pt-4 pb-2">
+                  <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
                     {renderLogo()}
                     <MainNavSearchButton />
                   </div>
@@ -206,7 +206,7 @@ const MainNav = ({
               : <DatasetDetailSection expand={detailNavigationExpanded} />
             : (
                 <>
-                  <nav className="space-y-1 p-2">
+                  <nav className="flex flex-col gap-px p-2">
                     {navItems.map(item => (
                       <MainNavLink key={item.href} item={item} pathname={pathname} />
                     ))}
@@ -243,7 +243,11 @@ const MainNav = ({
                   <div className="flex min-w-0 items-center gap-1 overflow-hidden">
                     <AccountSection />
                   </div>
-                  {(!showDetailNavigation || detailNavigationExpanded) && <HelpMenu />}
+                  {(!showDetailNavigation || detailNavigationExpanded) && (
+                    <div className="flex shrink-0 items-center justify-center rounded-full p-1">
+                      <HelpMenu />
+                    </div>
+                  )}
                 </>
               )}
         </div>

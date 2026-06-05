@@ -47,6 +47,13 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('next-themes', () => ({
+  useTheme: vi.fn(() => ({
+    theme: 'system',
+    setTheme: vi.fn(),
+  })),
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: vi.fn(() => ({ data: null, isLoading: false })),
   useLanguage: vi.fn(() => 'en-US'),
@@ -201,16 +208,15 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      // Assert
-      expect(screen.getByText('common.settings.workspaceSettings'))!.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.workplaceGroup'))!.not.toBeInTheDocument()
+      expect(screen.getByText('common.settings.settings'))!.toBeInTheDocument()
+      expect(screen.getByText('common.settings.workspace'))!.toBeInTheDocument()
       expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
       expect(screen.queryByText('common.settings.dataSource'))!.not.toBeInTheDocument()
       expect(screen.queryByText('common.settings.customEndpoint'))!.not.toBeInTheDocument()
       expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.language'))!.not.toBeInTheDocument()
+      expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
     })
 
     it('should keep hidden legacy tab metadata for direct entries', () => {
@@ -339,7 +345,7 @@ describe('AccountSetting', () => {
       // Assert
       expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.settings.members' })).not.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.language'))!.not.toBeInTheDocument()
+      expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
     })
 
     it('should hide billing and custom tabs when disabled', () => {
@@ -421,6 +427,11 @@ describe('AccountSetting', () => {
       // Members
       fireEvent.click(screen.getAllByText('common.settings.members')[0]!)
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(1)
+
+      // Language
+      fireEvent.click(screen.getByText('common.settings.preferences'))
+      expect(screen.getByText('common.account.general')).toBeInTheDocument()
+      expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
     })
   })
 
