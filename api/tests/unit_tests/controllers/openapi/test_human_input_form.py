@@ -1,6 +1,8 @@
 """Tests for openapi human input form endpoints."""
 
 from __future__ import annotations
+import pytest
+from flask import Flask
 
 import json
 import sys
@@ -30,7 +32,7 @@ def _make_auth_data(app_model, caller, caller_kind):
 
 
 class TestOpenApiHumanInputFormGet:
-    def test_get_success(self, app, bypass_pipeline, monkeypatch):
+    def test_get_success(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         definition = SimpleNamespace(
@@ -74,7 +76,7 @@ class TestOpenApiHumanInputFormGet:
         assert payload["user_actions"] == [{"id": "submit", "title": "Submit"}]
         service_mock.ensure_form_active.assert_called_once_with(form)
 
-    def test_get_form_not_found(self, app, bypass_pipeline, monkeypatch):
+    def test_get_form_not_found(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         service_mock = Mock()
@@ -96,7 +98,7 @@ class TestOpenApiHumanInputFormGet:
                     auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
-    def test_get_form_wrong_app(self, app, bypass_pipeline, monkeypatch):
+    def test_get_form_wrong_app(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         form = SimpleNamespace(
@@ -121,7 +123,7 @@ class TestOpenApiHumanInputFormGet:
                     auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
-    def test_get_form_wrong_surface(self, app, bypass_pipeline, monkeypatch):
+    def test_get_form_wrong_surface(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         form = SimpleNamespace(
@@ -159,7 +161,7 @@ class TestOpenApiHumanInputFormPost:
             expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
         )
 
-    def test_post_account_caller_uses_user_id(self, app, bypass_pipeline, monkeypatch):
+    def test_post_account_caller_uses_user_id(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         form = self._make_form()
@@ -196,7 +198,7 @@ class TestOpenApiHumanInputFormPost:
         )
         assert result == ({}, 200)
 
-    def test_post_end_user_caller_uses_end_user_id(self, app, bypass_pipeline, monkeypatch):
+    def test_post_end_user_caller_uses_end_user_id(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         form = self._make_form()
