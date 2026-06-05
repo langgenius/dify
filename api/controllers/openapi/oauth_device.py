@@ -49,8 +49,8 @@ from extensions.ext_redis import redis_client
 from libs.helper import extract_remote_ip
 from libs.oauth_bearer import MINTABLE_PROFILES, SubjectType, bearer_feature_required
 from libs.rate_limit import (
-    LIMIT_APPROVE_CONSOLE,
     LIMIT_DEVICE_CODE_PER_IP,
+    LIMIT_DEVICE_FLOW_APPROVE,
     LIMIT_LOOKUP_PUBLIC,
     rate_limit,
 )
@@ -210,7 +210,7 @@ class DeviceApproveApi(Resource):
     @login_required
     @account_initialization_required
     @bearer_feature_required
-    @rate_limit(LIMIT_APPROVE_CONSOLE)
+    @rate_limit(LIMIT_DEVICE_FLOW_APPROVE)
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant: str, account: Account):
@@ -287,7 +287,7 @@ class DeviceDenyApi(Resource):
     @login_required
     @account_initialization_required
     @bearer_feature_required
-    @rate_limit(LIMIT_APPROVE_CONSOLE)
+    @rate_limit(LIMIT_DEVICE_FLOW_APPROVE)
     def post(self):
         payload = _validate_json(DeviceMutateRequest)
         user_code = payload.user_code.strip().upper()
