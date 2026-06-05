@@ -16,8 +16,10 @@ from core.app.file_access import (
     is_retriever_segment_access_granted,
 )
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval import dataset_retrieval as dataset_retrieval_module
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models import UploadFile
 
@@ -162,3 +164,42 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypat
     assert results[0].metadata.segment_id == segment_id
     assert current_scope is not None
     assert segment_id in current_scope.granted_retriever_segment_ids
+
+
+def test_retrieve_hybrid_attachment_only_reranks_with_image_query_type(app, monkeypatch) -> None:
+    """Attachment-only hybrid retrieval must rerank as IMAGE_QUERY, not TEXT_QUERY.
+
+    ``query = query or attachment_id`` overwrote ``query`` before the rerank query_type was
+    derived from it, so the ``IMAGE_QUERY`` branch was unreachable: the upload-file id was
+    sent to the reranker as plain text instead of loading the actual image.
+    """
+    captured: dict[str, object] = {}
+
+    class _CapturingDataPostProcessor:
+        def __init__(self, *args, **kwargs) -> None:
+            self.rerank_runner = object()  # truthy: skip the score-threshold-only filter branch
+
+        def invoke(self, *, query, documents, score_threshold, top_n, query_type):
+            captured["query_type"] = query_type
+            return []
+
+    monkeypatch.setattr("core.rag.datasource.retrieval_service.DataPostProcessor", _CapturingDataPostProcessor)
+    # The attachment embedding search would hit the vector store / DB; stub it out.
+    monkeypatch.setattr(RetrievalService, "embedding_search", lambda *args, **kwargs: None)
+
+    dataset = SimpleNamespace(id=str(uuid4()), tenant_id=str(uuid4()))
+
+    RetrievalService()._retrieve(
+        flask_app=app,
+        retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+        dataset=dataset,
+        all_documents=[],
+        exceptions=[],
+        query=None,
+        attachment_id="upload-file-1",
+        top_k=4,
+        score_threshold=0.0,
+        reranking_mode="reranking_model",
+    )
+
+    assert captured["query_type"] == QueryType.IMAGE_QUERY

@@ -862,6 +862,10 @@ class RetrievalService:
                     str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
                 )
 
+                # Derive the rerank query type from the original query: an attachment-only
+                # retrieval (no text query) must rerank as IMAGE_QUERY. This must be computed
+                # before `query` is overwritten with the attachment id below.
+                query_type = QueryType.TEXT_QUERY if query else QueryType.IMAGE_QUERY
                 query = query or attachment_id
                 if not query:
                     return
@@ -870,7 +874,7 @@ class RetrievalService:
                     documents=all_documents_item,
                     score_threshold=score_threshold,
                     top_n=top_k,
-                    query_type=QueryType.TEXT_QUERY if query else QueryType.IMAGE_QUERY,
+                    query_type=query_type,
                 )
                 if not data_post_processor.rerank_runner and score_threshold:
                     all_documents_item = self._filter_documents_by_vector_score_threshold(
