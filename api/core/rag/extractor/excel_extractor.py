@@ -95,7 +95,13 @@ class ExcelExtractor(BaseExtractor):
                                     if target:
                                         display_value = value if value is not None and str(value).strip() else target
                                         value = f"[{display_value}]({target})"
-                                image_links = sheet_image_map.get((cell.row, cell.column), [])
+                                cell_row = getattr(cell, "row", None)
+                                cell_column = getattr(cell, "column", None)
+                                image_links = (
+                                    sheet_image_map.get((cell_row, cell_column), [])
+                                    if isinstance(cell_row, int) and isinstance(cell_column, int)
+                                    else []
+                                )
                                 if value is None:
                                     value = ""
                                 elif not isinstance(value, str):
@@ -199,7 +205,13 @@ class ExcelExtractor(BaseExtractor):
             return None
 
         try:
-            return data_loader()
+            data = data_loader()
+            if isinstance(data, bytes):
+                return data
+            if isinstance(data, bytearray):
+                return bytes(data)
+            logger.warning("Unexpected embedded image payload type: %s", type(data).__name__)
+            return None
         except Exception:
             logger.warning("Failed to read embedded image bytes from Excel sheet", exc_info=True)
             return None
