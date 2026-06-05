@@ -1,8 +1,6 @@
 """Tests for openapi human input form endpoints."""
 
 from __future__ import annotations
-import pytest
-from flask import Flask
 
 import json
 import sys
@@ -12,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi.auth.data import AuthData

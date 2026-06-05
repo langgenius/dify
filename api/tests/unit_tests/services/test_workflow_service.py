@@ -1330,7 +1330,9 @@ class TestWorkflowService:
             passed_filters = mock_node_class.get_default_config.call_args.kwargs["filters"]
             assert passed_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is provided_config
 
-    def test_get_default_block_config_http_request_malformed_config_raises_type_error(self, workflow_service: WorkflowService):
+    def test_get_default_block_config_http_request_malformed_config_raises_type_error(
+        self, workflow_service: WorkflowService
+    ):
         with (
             patch(
                 "services.workflow_service.get_node_type_classes_mapping",
