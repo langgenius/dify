@@ -2029,6 +2029,7 @@ export type GetAppsData = {
   body?: never
   path?: never
   query?: {
+    creator_ids?: Array<string> | null
     is_created_by_me?: boolean | null
     limit?: number
     mode?:

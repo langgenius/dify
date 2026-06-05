@@ -2711,6 +2711,7 @@ export const zWorkflowCommentDetailWritable = z.object({
 })
 
 export const zGetAppsQuery = z.object({
+  creator_ids: z.array(z.string()).nullish(),
   is_created_by_me: z.boolean().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z
