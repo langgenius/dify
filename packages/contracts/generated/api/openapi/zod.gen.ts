@@ -141,6 +141,24 @@ export const zFileResponse = z.object({
   user_id: z.string().nullish(),
 })
 
+/**
+ * FormSubmitResponse
+ *
+ * Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+ * pins `additionalProperties: false` so the generated contract is an exact `{}` rather
+ * than an under-annotated open object.
+ */
+export const zFormSubmitResponse = z.record(z.string(), z.never())
+
+/**
+ * HealthResponse
+ *
+ * Liveness payload for `GET /openapi/v1/_health` — no auth required.
+ */
+export const zHealthResponse = z.object({
+  ok: z.boolean(),
+})
+
 export const zJsonValue = z.unknown()
 
 /**
@@ -248,6 +266,16 @@ export const zServerVersionResponse = z.object({
 })
 
 /**
+ * SessionListQuery
+ *
+ * Pagination for GET /account/sessions. Strict (extra='forbid').
+ */
+export const zSessionListQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(100),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
  * SessionRow
  */
 export const zSessionRow = z.object({
@@ -352,6 +380,15 @@ export const zPermittedExternalAppsListResponse = z.object({
 })
 
 /**
+ * TaskStopResponse
+ *
+ * 200 body for POST /apps/<id>/tasks/<task_id>/stop.
+ */
+export const zTaskStopResponse = z.object({
+  result: z.string().optional().default('success'),
+})
+
+/**
  * UsageInfo
  */
 export const zUsageInfo = z.object({
@@ -436,9 +473,9 @@ export const zWorkspaceListResponse = z.object({
 })
 
 /**
- * Success
+ * Health check
  */
-export const zGetHealthResponse = z.record(z.string(), z.unknown())
+export const zGetHealthResponse = zHealthResponse
 
 /**
  * Server version
@@ -449,6 +486,11 @@ export const zGetVersionResponse = zServerVersionResponse
  * Account info
  */
 export const zGetAccountResponse = zAccountResponse
+
+export const zGetAccountSessionsQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(100),
+  page: z.int().gte(1).optional().default(1),
+})
 
 /**
  * Session list
@@ -526,7 +568,7 @@ export const zPostAppsByAppIdFormHumanInputByFormTokenPath = z.object({
 /**
  * Form submitted
  */
-export const zPostAppsByAppIdFormHumanInputByFormTokenResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdFormHumanInputByFormTokenResponse = zFormSubmitResponse
 
 export const zPostAppsByAppIdRunBody = zAppRunRequest
 
@@ -557,7 +599,7 @@ export const zPostAppsByAppIdTasksByTaskIdStopPath = z.object({
 /**
  * Task stopped
  */
-export const zPostAppsByAppIdTasksByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdTasksByTaskIdStopResponse = zTaskStopResponse
 
 export const zPostOauthDeviceApproveBody = zDeviceMutateRequest
 

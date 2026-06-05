@@ -37,6 +37,8 @@ from controllers.openapi._models import (
     DeviceMutateRequest,
     DeviceMutateResponse,
     DevicePollRequest,
+    FormSubmitResponse,
+    HealthResponse,
     MemberActionResponse,
     MemberInvitePayload,
     MemberInviteResponse,
@@ -49,9 +51,11 @@ from controllers.openapi._models import (
     PermittedExternalAppsListResponse,
     RevokeResponse,
     ServerVersionResponse,
+    SessionListQuery,
     SessionListResponse,
     SessionRow,
     TagItem,
+    TaskStopResponse,
     UsageInfo,
     WorkflowRunData,
     WorkspaceDetailResponse,
@@ -74,6 +78,7 @@ register_schema_models(
     MemberListQuery,
     MemberRoleUpdatePayload,
     PermittedExternalAppsListQuery,
+    SessionListQuery,
 )
 register_response_schema_models(
     openapi_ns,
@@ -100,11 +105,14 @@ register_response_schema_models(
     MemberListResponse,
     MemberInviteResponse,
     MemberActionResponse,
+    TaskStopResponse,
+    FormSubmitResponse,
     DeviceCodeResponse,
     DeviceLookupResponse,
     DeviceMutateResponse,
     FileResponse,
     ServerVersionResponse,
+    HealthResponse,
 )
 
 from . import (

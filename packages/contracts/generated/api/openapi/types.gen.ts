@@ -161,6 +161,14 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type FormSubmitResponse = {
+  [key: string]: never
+}
+
+export type HealthResponse = {
+  ok: boolean
+}
+
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
@@ -245,6 +253,11 @@ export type ServerVersionResponse = {
   version: string
 }
 
+export type SessionListQuery = {
+  limit?: number
+  page?: number
+}
+
 export type SessionListResponse = {
   data: Array<SessionRow>
   has_more: boolean
@@ -265,6 +278,10 @@ export type SessionRow = {
 
 export type TagItem = {
   name: string
+}
+
+export type TaskStopResponse = {
+  result?: string
 }
 
 export type UsageInfo = {
@@ -323,9 +340,7 @@ export type GetHealthData = {
 }
 
 export type GetHealthResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HealthResponse
 }
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses]
@@ -359,7 +374,10 @@ export type GetAccountResponse = GetAccountResponses[keyof GetAccountResponses]
 export type GetAccountSessionsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
   url: '/account/sessions'
 }
 
@@ -503,9 +521,7 @@ export type PostAppsByAppIdFormHumanInputByFormTokenData = {
 }
 
 export type PostAppsByAppIdFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: FormSubmitResponse
 }
 
 export type PostAppsByAppIdFormHumanInputByFormTokenResponse
@@ -559,9 +575,7 @@ export type PostAppsByAppIdTasksByTaskIdStopData = {
 }
 
 export type PostAppsByAppIdTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TaskStopResponse
 }
 
 export type PostAppsByAppIdTasksByTaskIdStopResponse

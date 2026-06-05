@@ -6,6 +6,7 @@ from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
+from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
     MAX_PAGE_LIMIT,
@@ -13,6 +14,7 @@ from controllers.openapi._models import (
     AccountResponse,
     PaginationEnvelope,
     RevokeResponse,
+    SessionListQuery,
     SessionListResponse,
     SessionRow,
     WorkspacePayload,
@@ -70,6 +72,7 @@ class AccountSessionsSelfApi(Resource):
 
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
+    @openapi_ns.doc(params=query_params_from_model(SessionListQuery))
     @openapi_ns.response(200, "Session list", openapi_ns.models[SessionListResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     def get(self, *, auth_data: AuthData):

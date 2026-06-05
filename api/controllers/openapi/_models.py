@@ -173,6 +173,15 @@ class SessionListResponse(BaseModel):
     data: list[SessionRow]
 
 
+class SessionListQuery(BaseModel):
+    """Pagination for GET /account/sessions. Strict (extra='forbid')."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    page: int = Field(1, ge=1)
+    limit: int = Field(100, ge=1, le=MAX_PAGE_LIMIT)
+
+
 class RevokeResponse(BaseModel):
     status: str
 
@@ -221,6 +230,12 @@ class ServerVersionResponse(BaseModel):
 
     version: str
     edition: Literal["SELF_HOSTED", "CLOUD"]
+
+
+class HealthResponse(BaseModel):
+    """Liveness payload for `GET /openapi/v1/_health` — no auth required."""
+
+    ok: bool
 
 
 class AppDescribeQuery(BaseModel):
@@ -400,3 +415,17 @@ class MemberInviteResponse(BaseModel):
 
 class MemberActionResponse(BaseModel):
     result: Literal["success"] = "success"
+
+
+class TaskStopResponse(BaseModel):
+    """200 body for POST /apps/<id>/tasks/<task_id>/stop."""
+
+    result: Literal["success"] = "success"
+
+
+class FormSubmitResponse(BaseModel):
+    """Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+    pins `additionalProperties: false` so the generated contract is an exact `{}` rather
+    than an under-annotated open object."""
+
+    model_config = ConfigDict(extra="forbid")

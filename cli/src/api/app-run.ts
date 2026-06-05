@@ -1,5 +1,7 @@
+import type { OpenApiClient } from '@/http/orpc'
 import type { SseEvent } from '@/http/sse'
 import type { HttpClient } from '@/http/types'
+import { createOpenApiClient, unwrap } from '@/http/orpc'
 import { parseSSE } from '@/http/sse'
 import { normalizeDifyStream } from '@/http/sse-dify'
 
@@ -36,9 +38,14 @@ export type StreamOptions = {
 
 export class AppRunClient {
   private readonly http: HttpClient
+  private readonly orpc: OpenApiClient
 
   constructor(http: HttpClient) {
     this.http = http
+    // Mixed class (SPEC §4.4): runStream / reconnectStream are SSE and stay on the raw
+    // `http.stream` facade; stopTask / submitHumanInput are plain JSON and go through the
+    // generated oRPC contract. Both facades share this one transport.
+    this.orpc = createOpenApiClient(http, http.baseURL)
   }
 
   async runStream(
@@ -59,10 +66,9 @@ export class AppRunClient {
   }
 
   async stopTask(appId: string, taskId: string): Promise<void> {
-    await this.http.post(`apps/${encodeURIComponent(appId)}/tasks/${encodeURIComponent(taskId)}/stop`, {
-      json: {},
-      timeoutMs: 30_000,
-    })
+    await unwrap(this.orpc.apps.byAppId.tasks.byTaskId.stop.post({
+      params: { app_id: appId, task_id: taskId },
+    }))
   }
 
   async submitHumanInput(
@@ -71,10 +77,10 @@ export class AppRunClient {
     action: string,
     inputs: Record<string, unknown>,
   ): Promise<void> {
-    await this.http.post(
-      `apps/${encodeURIComponent(appId)}/form/human_input/${encodeURIComponent(formToken)}`,
-      { json: { action, inputs }, timeoutMs: 30_000 },
-    )
+    await unwrap(this.orpc.apps.byAppId.form.humanInput.byFormToken.post({
+      params: { app_id: appId, form_token: formToken },
+      body: { action, inputs },
+    }))
   }
 
   async reconnectStream(
