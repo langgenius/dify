@@ -128,7 +128,7 @@ def _serialize_full_content(variable: WorkflowDraftVariable) -> FullContentDict 
     return result
 
 
-def _ensure_variable_access(
+def ensure_variable_access(
     variable: WorkflowDraftVariable | None,
     app_id: str,
     variable_id: str,
@@ -361,7 +361,7 @@ class VariableApi(Resource):
             session=db.session(),
         )
         variable_id_str = str(variable_id)
-        variable = _ensure_variable_access(
+        variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
             variable_id=variable_id_str,
@@ -404,7 +404,7 @@ class VariableApi(Resource):
         args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         variable_id_str = str(variable_id)
-        variable = _ensure_variable_access(
+        variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
             variable_id=variable_id_str,
@@ -454,7 +454,7 @@ class VariableApi(Resource):
             session=db.session(),
         )
         variable_id_str = str(variable_id)
-        variable = _ensure_variable_access(
+        variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
             variable_id=variable_id_str,
@@ -486,7 +486,7 @@ class VariableResetApi(Resource):
                 f"Draft workflow not found, app_id={app_model.id}",
             )
         variable_id_str = str(variable_id)
-        variable = _ensure_variable_access(
+        variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
             variable_id=variable_id_str,
