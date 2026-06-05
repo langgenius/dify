@@ -7,9 +7,6 @@ import pytest
 from controllers.console.app import message as message_module
 
 
-from inspect import unwrap
-
-
 def test_chat_messages_query_valid(app, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test valid ChatMessagesQuery with all fields."""
     query = message_module.ChatMessagesQuery(

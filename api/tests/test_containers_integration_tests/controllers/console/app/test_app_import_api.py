@@ -1,6 +1,7 @@
 """Testcontainers integration tests for controllers.console.app.app_import endpoints."""
 
 from __future__ import annotations
+
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock

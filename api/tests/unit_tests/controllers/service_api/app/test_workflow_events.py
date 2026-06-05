@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -16,8 +17,6 @@ from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from inspect import unwrap
-
 
 
 def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run):

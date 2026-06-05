@@ -1,6 +1,7 @@
+from inspect import unwrap
 from types import SimpleNamespace
 from typing import Protocol, cast
-from inspect import unwrap
+
 import pytest
 from flask import Flask
 

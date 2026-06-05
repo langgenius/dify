@@ -16,6 +16,7 @@ Decorator strategy:
 """
 
 import uuid
+from inspect import unwrap
 from unittest.mock import Mock, patch
 
 import pytest
@@ -29,8 +30,6 @@ from controllers.service_api.dataset.metadata import (
     DatasetMetadataServiceApi,
     DocumentMetadataEditServiceApi,
 )
-from inspect import unwrap
-
 
 
 @pytest.fixture

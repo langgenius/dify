@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -9,8 +10,6 @@ from flask import Flask
 
 from controllers.console.app import model_config as model_config_module
 from models.model import AppMode, AppModelConfig
-
-from inspect import unwrap
 
 
 def test_post_updates_app_model_config_for_chat(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

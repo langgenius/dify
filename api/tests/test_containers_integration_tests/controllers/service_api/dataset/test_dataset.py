@@ -241,6 +241,7 @@ class TestTagUnbindingPayload:
 
 from inspect import unwrap
 
+
 @pytest.fixture
 def app(flask_app_with_containers: Flask):
     # Uses the full containerised app so that Flask config, extensions, and

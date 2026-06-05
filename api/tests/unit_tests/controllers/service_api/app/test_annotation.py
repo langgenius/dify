@@ -11,8 +11,9 @@ Note: API endpoint tests for annotation controllers are complex due to:
 - @edit_permission_required decorator checking current_user permissions
 - These are better covered by integration tests
 """
-from inspect import unwrap
+
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -33,7 +34,6 @@ from controllers.service_api.app.annotation import (
 from extensions.ext_redis import redis_client
 from models.model import App
 from services.annotation_service import AppAnnotationService
-
 
 # ---------------------------------------------------------------------------
 # Pydantic Model Tests

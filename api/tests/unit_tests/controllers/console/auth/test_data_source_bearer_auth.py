@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
@@ -10,8 +11,6 @@ from controllers.console.auth.data_source_bearer_auth import (
     ApiKeyAuthDataSourceBinding,
     ApiKeyAuthDataSourceBindingDelete,
 )
-
-from inspect import unwrap
 
 
 def _payload_patch(payload: dict):

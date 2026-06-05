@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -65,10 +66,6 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
     create_console_account_and_tenant,
     create_console_app,
 )
-
-
-from inspect import unwrap
-
 
 
 class TestCompletionEndpoints:

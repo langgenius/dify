@@ -16,6 +16,7 @@ Focus on:
 import sys
 import uuid
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -49,8 +50,6 @@ from services.errors.conversation import (
     ConversationVariableTypeMismatchError,
     LastConversationNotExistsError,
 )
-
-from inspect import unwrap
 
 
 class TestConversationListQuery:

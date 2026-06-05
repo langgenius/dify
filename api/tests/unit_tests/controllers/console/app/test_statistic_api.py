@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
 from werkzeug.exceptions import BadRequest
 
 from controllers.console.app import statistic as statistic_module
-from inspect import unwrap
+
 
 class _ConnContext:
     def __init__(self, rows):

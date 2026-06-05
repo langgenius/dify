@@ -16,6 +16,7 @@ Focus on:
 import sys
 import uuid
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -44,7 +45,6 @@ from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
-from inspect import unwrap
 
 def _make_mock_workflow_run(run_id: str = "run-1"):
     run = Mock()
@@ -533,6 +533,7 @@ class TestWorkflowAppLogApi:
 # ``__wrapped__`` via ``functools.wraps``.  We call the unwrapped method
 # directly to bypass the decorator.
 # =============================================================================
+
 
 @pytest.fixture
 def mock_workflow_app():

@@ -12,6 +12,7 @@ Focus on:
 """
 
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -42,8 +43,6 @@ from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
-from inspect import unwrap
-
 
 
 class TestCompletionRequestPayload:

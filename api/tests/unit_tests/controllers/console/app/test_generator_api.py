@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -8,7 +9,6 @@ import pytest
 from controllers.console.app import generator as generator_module
 from controllers.console.app.error import ProviderNotInitializeError
 from core.errors.error import ProviderTokenNotInitError
-from inspect import unwrap
 
 
 def _model_config_payload():

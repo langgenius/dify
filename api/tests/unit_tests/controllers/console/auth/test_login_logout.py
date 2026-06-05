@@ -44,7 +44,6 @@ def encode_code(code: str) -> str:
 from inspect import unwrap
 
 
-
 class TestLoginApi:
     """Test cases for the LoginApi endpoint."""
 

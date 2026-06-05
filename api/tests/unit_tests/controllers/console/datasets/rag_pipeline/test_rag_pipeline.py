@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, cast
+from inspect import unwrap
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -19,8 +18,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
 from models.dataset import PipelineCustomizedTemplate
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 
-
-from inspect import unwrap
 
 def _template_item() -> dict[str, object]:
     return {

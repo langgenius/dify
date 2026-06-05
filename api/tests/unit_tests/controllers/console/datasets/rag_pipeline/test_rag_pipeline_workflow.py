@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
 import pytest
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
-
-
-from inspect import unwrap
-
 
 
 def _make_workflow(**overrides):

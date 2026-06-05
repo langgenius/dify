@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
@@ -10,8 +11,6 @@ from pydantic import ValidationError
 
 from controllers.console.app import conversation_variables as conversation_variables_module
 from graphon.variables.types import SegmentType
-from inspect import unwrap
-
 
 
 def test_get_conversation_variables_returns_paginated_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

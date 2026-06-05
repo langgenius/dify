@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
@@ -13,9 +14,6 @@ from clients.agent_backend.workspace_files_client import (
 )
 from controllers.console import agent_app_workspace as module
 from services.agent_app_workspace_service import AgentWorkspaceInspectorError
-
-
-from inspect import unwrap
 
 
 class _AgentAppService:

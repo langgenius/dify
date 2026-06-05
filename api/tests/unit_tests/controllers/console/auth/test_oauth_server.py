@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+from inspect import unwrap
 from unittest.mock import patch
 
 from controllers.console.auth.oauth_server import OAuthServerUserAuthorizeApi
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.model import OAuthProviderApp
-
-from inspect import unwrap
 
 
 def _make_account() -> Account:

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import io
-from types import SimpleNamespace
 from inspect import unwrap
+from types import SimpleNamespace
+
 import pytest
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import InternalServerError

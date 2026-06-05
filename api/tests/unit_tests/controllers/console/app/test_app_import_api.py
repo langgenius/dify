@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -10,7 +11,6 @@ from flask import Flask
 
 from controllers.console.app import app_import as app_import_module
 from services.app_dsl_service import ImportStatus
-from inspect import unwrap
 
 
 class _Result:

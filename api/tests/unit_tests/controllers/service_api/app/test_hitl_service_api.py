@@ -7,6 +7,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock
 
@@ -43,7 +44,6 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_snapshot_events
-from inspect import unwrap
 
 
 class _DummyRateLimit:

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import urllib.parse
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-from inspect import unwrap
+
 import httpx
 import pytest
 

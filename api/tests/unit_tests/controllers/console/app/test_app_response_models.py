@@ -25,8 +25,8 @@ class _ConsoleModule(ModuleType):
     bp: object | None
     app: ModuleType
 
-from inspect import unwrap
 
+from inspect import unwrap
 
 
 @pytest.fixture(scope="module")

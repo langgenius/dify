@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from typing import Any
 
@@ -9,9 +10,6 @@ from flask import Flask
 from flask_restx import marshal
 
 from controllers.console.app import workflow_run as workflow_run_module
-
-from inspect import unwrap
-
 
 
 def _serialize_200_response(handler, payload: Any) -> Any:

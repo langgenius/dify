@@ -9,6 +9,7 @@ Tests coverage for:
 
 import io
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -39,8 +40,6 @@ from services.errors.audio import (
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
-from inspect import unwrap
-
 
 
 def _file_data():

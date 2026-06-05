@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
-from inspect import unwrap
+
 import pytest
 from flask import Flask, Response
 
@@ -21,7 +22,6 @@ from models.account import AccountStatus
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType
 from models.model import AppMode
-
 
 
 def test_jsonify_form_definition() -> None:

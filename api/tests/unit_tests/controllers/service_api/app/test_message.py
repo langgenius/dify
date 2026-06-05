@@ -15,6 +15,7 @@ Focus on:
 """
 
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -41,9 +42,6 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
-
-
-from inspect import unwrap
 
 
 class TestMessageListQuery:

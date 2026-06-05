@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -9,9 +10,6 @@ from werkzeug.exceptions import BadRequest, NotFound
 from controllers.console.app import conversation as conversation_module
 from models.model import AppMode
 from services.errors.conversation import ConversationNotExistsError
-
-from inspect import unwrap
-
 
 
 def _make_account():

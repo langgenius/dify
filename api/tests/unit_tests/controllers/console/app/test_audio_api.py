@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
@@ -8,9 +9,6 @@ import pytest
 from controllers.console.app import audio as audio_module
 from controllers.console.app.error import AudioTooLargeError
 from services.errors.audio import AudioTooLargeServiceError
-
-from inspect import unwrap
-
 
 
 def test_audio_to_text_success(app, monkeypatch: pytest.MonkeyPatch) -> None:

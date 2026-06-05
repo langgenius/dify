@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -15,8 +16,6 @@ from werkzeug.exceptions import NotFound
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.service_api.app.human_input_form import WorkflowHumanInputFormApi
 from models.human_input import RecipientType
-from inspect import unwrap
-
 
 
 class TestWorkflowHumanInputFormApi:
