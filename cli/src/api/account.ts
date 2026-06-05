@@ -1,14 +1,16 @@
 import type { AccountResponse } from '@dify/contracts/api/openapi/types.gen'
+import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
+import { createOpenApiClient, unwrap } from '@/http/orpc'
 
 export class AccountClient {
-  private readonly http: HttpClient
+  private readonly orpc: OpenApiClient
 
   constructor(http: HttpClient) {
-    this.http = http
+    this.orpc = createOpenApiClient(http, http.baseURL)
   }
 
   async get(): Promise<AccountResponse> {
-    return this.http.get<AccountResponse>('account')
+    return unwrap(this.orpc.account.get())
   }
 }

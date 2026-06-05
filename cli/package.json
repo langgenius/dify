@@ -58,6 +58,9 @@
   "dependencies": {
     "@dify/contracts": "workspace:*",
     "@napi-rs/keyring": "catalog:",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@orpc/openapi-client": "catalog:",
     "cli-table3": "catalog:",
     "eventsource-parser": "catalog:",
     "js-yaml": "catalog:",
