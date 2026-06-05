@@ -496,7 +496,7 @@ class TestAppDslService:
                 {
                     "version": CURRENT_DSL_VERSION,
                     "kind": "app",
-                    "app": {"name": "My App", "mode": AppMode.WORKFLOW},
+                    "app": {"name": "My App", "mode": AppMode.WORKFLOW.value},
                     "workflow": {"graph": {"nodes": []}, "features": {}},
                     "dependencies": dependencies_payload,
                 }
@@ -547,7 +547,7 @@ class TestAppDslService:
         data: dict = {
             "version": "0.1.5",
             "kind": "app",
-            "app": {"name": "Legacy", "mode": AppMode.WORKFLOW},
+            "app": {"name": "Legacy", "mode": AppMode.WORKFLOW.value},
         }
         if has_workflow:
             data["workflow"] = {"graph": {"nodes": []}, "features": {}}
@@ -591,7 +591,7 @@ class TestAppDslService:
 
         created_app = SimpleNamespace(
             id=str(uuid4()),
-            mode=AppMode.WORKFLOW,
+            mode=AppMode.WORKFLOW.value,
             tenant_id=_DEFAULT_TENANT_ID,
         )
         monkeypatch.setattr(
