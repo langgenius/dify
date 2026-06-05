@@ -74,6 +74,21 @@ _DEFAULT_VIEWPORT: GraphViewportDict = {"x": 0.0, "y": 0.0, "zoom": 0.7}
 _DEFAULT_NODE_WIDTH = 244
 _DEFAULT_NODE_HEIGHT = 100
 
+# Start-node input variable types that carry file uploads. Mirrors
+# ``graphon.variables.input_entities.VariableEntityType.FILE / FILE_LIST``.
+_FILE_VARIABLE_TYPES = frozenset({"file", "file-list"})
+
+# Backstop defaults for a file / file-list start variable when the builder
+# omits the required upload config. ``allowed_file_types`` is a REQUIRED field
+# (Studio rejects the draft with "supported file types is required" when it's
+# empty — see ``config-var/config-modal/utils.ts``); we default to every
+# standard type so no valid upload is rejected. ``custom`` is intentionally
+# excluded because it would in turn require a non-empty
+# ``allowed_file_extensions``. The real fix is the builder now documenting and
+# emitting these fields; this is the safety net that guarantees a loadable draft.
+_DEFAULT_ALLOWED_FILE_TYPES = ("document", "image", "audio", "video")
+_DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
+
 # Token ceiling for the planner call when the caller didn't pin one. The plan
 # is a short JSON node list (a handful of nodes with labels/purposes), so this
 # is generous headroom while still bounding a runaway response. The builder is
@@ -512,8 +527,15 @@ class WorkflowGenerator:
             tool_catalogue_section=format_builder_tool_catalogue_section(tool_catalogue_text),
             start_inputs_section=format_start_inputs_section(start_inputs or []),
         )
+        # Scope the builder cheatsheet to exactly the node types the planner
+        # chose, so the prompt carries each type's FULL schema (e.g. a file
+        # start variable's required ``allowed_file_types``) without dragging in
+        # config for unrelated node types.
+        plan_node_types = {
+            str(node.get("node_type") or "").strip() for node in plan_nodes if str(node.get("node_type") or "").strip()
+        }
         messages = [
-            SystemPromptMessage(content=get_builder_system_prompt(mode)),
+            SystemPromptMessage(content=get_builder_system_prompt(mode, plan_node_types)),
             UserPromptMessage(content=user_prompt),
         ]
         parsed = cls._invoke_and_parse_json(
@@ -658,6 +680,13 @@ class WorkflowGenerator:
         # variables before we surface them as errors.
         cls._reconcile_variable_references(nodes=nodes, mode=mode)
 
+        # Schema backstop: a "file" / "file-list" start variable MUST carry a
+        # non-empty ``allowed_file_types`` or Studio refuses to load the draft
+        # ("supported file types is required"). The builder is now told to set
+        # it, but we fill safe defaults for any variable that still lacks it so
+        # the generated workflow always loads and runs.
+        cls._normalize_start_file_variables(nodes=nodes)
+
         return cast(GraphDict, {"nodes": nodes, "edges": deduped_edges, "viewport": viewport})
 
     # ------------------------------------------------------------------
@@ -692,6 +721,21 @@ class WorkflowGenerator:
     # Strings inside ``data`` that look like node-id slugs and need
     # remapping when we defensively strip hyphens out of LLM-emitted ids.
     _ID_FIELDS: ClassVar = frozenset({"start_node_id", "iteration_id", "loop_id", "parentId"})
+
+    # ``data`` keys whose value is a plain string list, never a
+    # ``[node_id, var]`` value-selector — so the reference walker must not read
+    # a 2-element one as a selector. ``default`` holds an input's default value;
+    # ``options`` holds select choices; the ``allowed_file_*`` keys hold a file
+    # variable's upload config (types / extensions / methods).
+    _NON_SELECTOR_LIST_KEYS: ClassVar = frozenset(
+        {
+            "default",
+            "options",
+            "allowed_file_types",
+            "allowed_file_extensions",
+            "allowed_file_upload_methods",
+        }
+    )
 
     @classmethod
     def _reconcile_variable_references(cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode) -> None:
@@ -747,12 +791,16 @@ class WorkflowGenerator:
             # Known selector shapes: 2-element [node_id, var] lists.
             for k, v in value.items():
                 # ``value_selector`` / ``query_variable_selector`` / etc.: a
-                # flat 2-element list of strings.
+                # flat 2-element list of strings. Skip keys whose value is a
+                # plain string list that merely HAPPENS to have two entries —
+                # a 2-option ``select`` or a file variable's two allowed upload
+                # methods are NOT ``[node_id, var]`` selectors and must not be
+                # mistaken for references.
                 if (
                     isinstance(v, list)
                     and len(v) == 2
                     and all(isinstance(x, str) for x in v)
-                    and k != "default"  # default values for input variables are not selectors
+                    and k not in cls._NON_SELECTOR_LIST_KEYS
                 ):
                     node_id, var = v[0].strip(), v[1].strip()
                     if node_id and var:
@@ -922,6 +970,96 @@ class WorkflowGenerator:
                 "options": [],
             }
         )
+
+    @classmethod
+    def _normalize_start_file_variables(cls, *, nodes: list[dict[str, Any]]) -> None:
+        """
+        Fill the required upload config on every file / file-list start variable.
+
+        A start variable of type ``file`` / ``file-list`` is invalid without a
+        non-empty ``allowed_file_types`` — Studio rejects the draft with
+        "supported file types is required" (see the front-end validator in
+        ``config-var/config-modal/utils.ts``) and the workflow never runs. The
+        builder prompt now documents these fields, but LLMs still drop them, so
+        we backfill safe defaults here:
+
+          * a start variable a ``document-extractor`` consumes but that wasn't
+            declared as a file type → promoted to ``file`` (or ``file-list``
+            when the extractor's ``is_array_file`` is set), defaulting its
+            allowed types to ``["document"]`` (what extraction needs);
+          * empty / missing ``allowed_file_types`` → every standard file type;
+          * ``custom`` present without ``allowed_file_extensions`` → drop
+            ``custom`` (it would otherwise require a non-empty extension list);
+          * empty / missing ``allowed_file_upload_methods`` → local + remote;
+          * ensure ``allowed_file_extensions`` is at least an empty list.
+
+        Idempotent: a variable that already declares valid file config is left
+        untouched.
+        """
+        start_node = next(
+            (n for n in nodes if (n.get("data") or {}).get("type") == BuiltinNodeTypes.START),
+            None,
+        )
+        if start_node is None:
+            return
+        variables = (start_node.get("data") or {}).get("variables")
+        if not isinstance(variables, list):
+            return
+
+        # Start variables a document-extractor reads → whether it wants an
+        # array (file-list). These MUST be file inputs even if the builder
+        # mistyped them (e.g. declared "paragraph"), or the extractor fails at
+        # run time. ``["document"]`` is the right default for text extraction.
+        extractor_file_vars = cls._document_extractor_start_vars(nodes=nodes, start_id=start_node.get("id", ""))
+
+        for var in variables:
+            if not isinstance(var, dict):
+                continue
+            name = var.get("variable")
+            if name in extractor_file_vars and var.get("type") not in _FILE_VARIABLE_TYPES:
+                var["type"] = "file-list" if extractor_file_vars[name] else "file"
+                var.setdefault("allowed_file_types", ["document"])
+            if var.get("type") not in _FILE_VARIABLE_TYPES:
+                continue
+            allowed_types = var.get("allowed_file_types")
+            if not isinstance(allowed_types, list) or not allowed_types:
+                allowed_types = list(_DEFAULT_ALLOWED_FILE_TYPES)
+                var["allowed_file_types"] = allowed_types
+            # ``custom`` demands a non-empty extension list; without one, drop it
+            # so the variable doesn't trip the "file extensions required" check.
+            extensions = var.get("allowed_file_extensions")
+            has_extensions = isinstance(extensions, list) and bool(extensions)
+            if "custom" in allowed_types and not has_extensions:
+                pruned = [t for t in allowed_types if t != "custom"]
+                var["allowed_file_types"] = pruned or list(_DEFAULT_ALLOWED_FILE_TYPES)
+            methods = var.get("allowed_file_upload_methods")
+            if not isinstance(methods, list) or not methods:
+                var["allowed_file_upload_methods"] = list(_DEFAULT_FILE_UPLOAD_METHODS)
+            if not isinstance(var.get("allowed_file_extensions"), list):
+                var["allowed_file_extensions"] = []
+
+    @classmethod
+    def _document_extractor_start_vars(cls, *, nodes: list[dict[str, Any]], start_id: str) -> dict[str, bool]:
+        """
+        Map start-variable name → ``is_array_file`` for every start variable a
+        ``document-extractor`` node reads via its ``variable_selector``.
+
+        When two extractors read the same variable we keep ``True`` (file-list)
+        if any of them wants an array, since a file-list also satisfies a
+        single-file read.
+        """
+        out: dict[str, bool] = {}
+        if not start_id:
+            return out
+        for node in nodes:
+            data = node.get("data") or {}
+            if data.get("type") != BuiltinNodeTypes.DOCUMENT_EXTRACTOR:
+                continue
+            selector = data.get("variable_selector")
+            if isinstance(selector, list) and len(selector) == 2 and selector[0] == start_id:
+                var_name = selector[1]
+                out[var_name] = out.get(var_name, False) or bool(data.get("is_array_file"))
+        return out
 
     @classmethod
     def _fill_node_defaults(cls, node: dict[str, Any]) -> None:
