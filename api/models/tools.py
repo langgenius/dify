@@ -350,6 +350,14 @@ class MCPToolProvider(TypeBase):
     # encrypted headers for MCP server requests
     encrypted_headers: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
 
+    # M2 (MCP user-identity forwarding) — which identity-forwarding mechanism
+    # this provider uses. Reserved values:
+    #   "off"       — no forwarding (default; preserves pre-M2 behaviour).
+    #   "idp_token" — forward an SSO access token minted by dify-enterprise.
+    identity_mode: Mapped[str] = mapped_column(
+        sa.String(32), nullable=False, server_default=sa.text("'off'"), default="off"
+    )
+
     def load_user(self) -> Account | None:
         return db.session.scalar(select(Account).where(Account.id == self.user_id))
 
