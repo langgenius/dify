@@ -2,11 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.shell import (
+    DifyShellCliToolConfig,
+    DifyShellEnvVarConfig,
+    DifyShellLayerConfig,
+    DifyShellSandboxConfig,
+    DifyShellSecretRefConfig,
+)
 from dify_agent.protocol import CreateRunRequest
+from pydantic import BaseModel
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -15,6 +23,7 @@ from clients.agent_backend import (
     AgentBackendWorkflowNodeRunInput,
     redact_for_agent_backend_log,
 )
+from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.variables.segments import Segment
@@ -34,6 +43,15 @@ from models.provider_ids import ModelProviderID
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
+
+_DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
+_DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
+_DANGEROUS_ACK_KEYS = (
+    "dangerous_acknowledged",
+    "dangerous_accepted",
+    "risk_accepted",
+    "approved",
+)
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
@@ -123,10 +141,12 @@ class WorkflowAgentRuntimeRequestBuilder:
             )
         except WorkflowAgentPluginToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
-        if tools_layer is not None:
+        if tools_layer is not None or agent_soul.tools.cli_tools:
             metadata["agent_tools"] = {
-                "dify_tool_count": len(tools_layer.tools),
-                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools],
+                "dify_tool_count": len(tools_layer.tools) if tools_layer is not None else 0,
+                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools]
+                if tools_layer is not None
+                else [],
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
@@ -165,6 +185,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
+                include_shell=dify_config.AGENT_SHELL_ENABLED,
+                shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
@@ -372,7 +394,9 @@ class WorkflowAgentRuntimeRequestBuilder:
                         "mime_type": {"type": "string"},
                         "url": {"type": "string"},
                     },
+                    "required": ["file_id"],
                 }
+        assert_never(output_type)
 
     @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
@@ -383,3 +407,117 @@ class WorkflowAgentRuntimeRequestBuilder:
             else:
                 normalized[key] = str(value)
         return normalized
+
+
+def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:
+    """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
+    sandbox_config = _plain_mapping(agent_soul.sandbox.config)
+    return DifyShellLayerConfig(
+        cli_tools=[
+            tool
+            for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools if _cli_tool_enabled(item))
+            if tool is not None
+        ],
+        env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
+        secret_refs=[
+            secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
+        ],
+        sandbox=DifyShellSandboxConfig(
+            provider=agent_soul.sandbox.provider,
+            config=sandbox_config,
+        )
+        if agent_soul.sandbox.provider or sandbox_config
+        else None,
+    )
+
+
+def _cli_tool_enabled(item: object) -> bool:
+    """A CLI tool is bootstrapped unless explicitly disabled (default is enabled)."""
+    data = _plain_mapping(item)
+    if data.get("enabled") is False:
+        return False
+    if data.get("pre_authorized") is False or _permission_denied(data):
+        return False
+    if _dangerous_without_acknowledgement(data):
+        return False
+    return True
+
+
+def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
+    data = _plain_mapping(item)
+    commands: list[str] = []
+    raw_commands = data.get("install_commands")
+    if isinstance(raw_commands, list):
+        commands.extend(str(command) for command in raw_commands if str(command).strip())
+    # ``command`` is the typed AgentCliToolConfig field; the rest are accepted aliases.
+    for key in ("install_command", "install", "setup_command", "command"):
+        raw_command = data.get(key)
+        if isinstance(raw_command, str) and raw_command.strip():
+            commands.append(raw_command)
+    name = data.get("name") or data.get("tool_name") or data.get("label")
+    if not commands and not isinstance(name, str):
+        return None
+    return DifyShellCliToolConfig(name=name if isinstance(name, str) else None, install_commands=commands)
+
+
+def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
+    data = _plain_mapping(item)
+    name = _name_from_mapping(data)
+    if name is None:
+        return None
+    value = data.get("value", data.get("default", ""))
+    if not isinstance(value, str):
+        value = str(value)
+    return DifyShellEnvVarConfig(name=name, value=value)
+
+
+def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
+    data = _plain_mapping(item)
+    name = _name_from_mapping(data)
+    if name is None:
+        return None
+    ref = data.get("ref") or data.get("id") or data.get("credential_id") or data.get("provider_credential_id")
+    return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
+
+
+def _plain_mapping(item: object) -> dict[str, Any]:
+    if isinstance(item, BaseModel):
+        return item.model_dump(mode="python", exclude_none=True, exclude_defaults=True)
+    if isinstance(item, Mapping):
+        return dict(item)
+    return {}
+
+
+def _name_from_mapping(item: Mapping[str, Any]) -> str | None:
+    for key in ("name", "key", "env_name", "variable"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _permission_denied(data: Mapping[str, Any]) -> bool:
+    permission = data.get("permission")
+    if isinstance(permission, Mapping):
+        allowed = permission.get("allowed")
+        if allowed is False:
+            return True
+        status = permission.get("status") or permission.get("state")
+        if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+            return True
+
+    for key in ("authorization_status", "permission_status", "status"):
+        status = data.get(key)
+        if isinstance(status, str) and status in _DENIED_PERMISSION_STATUSES:
+            return True
+    return False
+
+
+def _dangerous_without_acknowledgement(data: Mapping[str, Any]) -> bool:
+    dangerous = any(data.get(key) is True for key in _DANGEROUS_FLAG_KEYS)
+    risk_level = data.get("risk_level")
+    if isinstance(risk_level, str) and risk_level == "dangerous":
+        dangerous = True
+    if not dangerous:
+        return False
+    return not any(data.get(key) is True for key in _DANGEROUS_ACK_KEYS)

@@ -219,6 +219,20 @@ export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
 }
 
+export type WorkspaceListResponse = {
+  entries?: Array<WorkspaceFileEntryResponse>
+  path: string
+  truncated?: boolean
+}
+
+export type WorkspacePreviewResponse = {
+  binary: boolean
+  path: string
+  size: number
+  text?: string | null
+  truncated: boolean
+}
+
 export type AnnotationReplyPayload = {
   embedding_model_name: string
   embedding_provider_name: string
@@ -1020,7 +1034,7 @@ export type AdvancedChatWorkflowRunForListResponse = {
 
 export type AgentConfigSnapshotSummaryResponse = {
   agent_id?: string | null
-  created_at?: string | null
+  created_at?: number | null
   created_by?: string | null
   id: string
   summary?: string | null
@@ -1134,6 +1148,13 @@ export type AgentReferencingWorkflowResponse = {
   app_name: string
   node_ids?: Array<string>
   workflow_id: string
+}
+
+export type WorkspaceFileEntryResponse = {
+  mtime: number
+  name: string
+  size: number
+  type: 'dir' | 'file' | 'symlink'
 }
 
 export type AnnotationHitHistory = {
@@ -1607,10 +1628,21 @@ export type WorkflowPreviousNodeOutputRef = {
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
 export type AgentCliToolConfig = {
+  authorization_status?: AgentCliToolAuthorizationStatus
   command?: string | null
+  dangerous?: boolean
+  dangerous_acknowledged?: boolean
   description?: string | null
   enabled?: boolean
+  invoke_metadata?: {
+    [key: string]: unknown
+  }
   name?: string | null
+  permission?: {
+    [key: string]: unknown
+  }
+  pre_authorized?: boolean | null
+  risk_level?: AgentCliToolRiskLevel
   [key: string]: unknown
 }
 
@@ -1689,6 +1721,9 @@ export type HumanInputFormSubmissionData = {
   node_id: string
   node_title: string
   rendered_content: string
+  submitted_data?: {
+    [key: string]: JsonValue2
+  } | null
 }
 
 export type ExecutionContentType = 'human_input'
@@ -1743,6 +1778,10 @@ export type DeclaredOutputFileConfig = {
 export type AgentSecretRefConfig = {
   id?: string | null
   name?: string | null
+  permission?: {
+    [key: string]: unknown
+  }
+  permission_status?: string | null
   provider?: string | null
   type?: string | null
   [key: string]: unknown
@@ -1830,6 +1869,18 @@ export type AgentSoulDifyToolConfig = {
   tool_name: string
 }
 
+export type AgentCliToolAuthorizationStatus
+  = | 'allowed'
+    | 'authorized'
+    | 'denied'
+    | 'forbidden'
+    | 'not_required'
+    | 'pending'
+    | 'pre_authorized'
+    | 'unauthorized'
+
+export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
+
 export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
@@ -1843,6 +1894,8 @@ export type UserActionConfig = {
 }
 
 export type FormInputConfig = unknown
+
+export type JsonValue2 = unknown
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
 
@@ -2449,6 +2502,72 @@ export type GetAppsByAppIdAgentReferencingWorkflowsResponses = {
 
 export type GetAppsByAppIdAgentReferencingWorkflowsResponse
   = GetAppsByAppIdAgentReferencingWorkflowsResponses[keyof GetAppsByAppIdAgentReferencingWorkflowsResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    conversation_id: string
+    path?: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesResponses = {
+  200: WorkspaceListResponse
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesResponse
+  = GetAppsByAppIdAgentWorkspaceFilesResponses[keyof GetAppsByAppIdAgentWorkspaceFilesResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    conversation_id: string
+    path: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files/download'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadErrors = {
+  413: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadError
+  = GetAppsByAppIdAgentWorkspaceFilesDownloadErrors[keyof GetAppsByAppIdAgentWorkspaceFilesDownloadErrors]
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadResponses = {
+  200: Blob | File
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadResponse
+  = GetAppsByAppIdAgentWorkspaceFilesDownloadResponses[keyof GetAppsByAppIdAgentWorkspaceFilesDownloadResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    conversation_id: string
+    path: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files/preview'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewResponses = {
+  200: WorkspacePreviewResponse
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewResponse
+  = GetAppsByAppIdAgentWorkspaceFilesPreviewResponses[keyof GetAppsByAppIdAgentWorkspaceFilesPreviewResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never
@@ -4227,6 +4346,82 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
   = GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
+  }
+  query?: {
+    node_execution_id?: string
+    path?: string
+  }
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files'
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses = {
+  200: WorkspaceListResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses]
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadData
+  = {
+    body?: never
+    path: {
+      app_id: string
+      node_id: string
+      workflow_run_id: string
+    }
+    query: {
+      node_execution_id?: string
+      path: string
+    }
+    url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/download'
+  }
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors
+  = {
+    413: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadError
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors]
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses
+  = {
+    200: Blob | File
+  }
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponse
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses]
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
+  }
+  query: {
+    node_execution_id?: string
+    path: string
+  }
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/preview'
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses
+  = {
+    200: WorkspacePreviewResponse
+  }
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses]
 
 export type GetAppsByAppIdWorkflowCommentsData = {
   body?: never

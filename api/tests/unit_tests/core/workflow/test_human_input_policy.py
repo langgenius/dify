@@ -1,8 +1,14 @@
+import pytest
+
 from core.workflow.human_input_policy import (
     HumanInputSurface,
     get_preferred_form_token,
     is_recipient_type_allowed_for_surface,
+    resolve_variable_select_input_options,
 )
+from graphon.nodes.human_input.entities import SelectInputConfig, StringListSource
+from graphon.nodes.human_input.enums import ValueSourceType
+from graphon.runtime import VariablePool
 from models.human_input import RecipientType
 
 
@@ -48,3 +54,40 @@ def test_preferred_form_token_uses_shared_priority_order() -> None:
     ]
 
     assert get_preferred_form_token(recipients) == "backstage-token"
+
+
+def test_resolve_variable_select_input_options_uses_runtime_values() -> None:
+    variable_pool = VariablePool()
+    variable_pool.add(("start", "options"), ["approve", "reject"])
+    inputs: list[SelectInputConfig] = [
+        SelectInputConfig(
+            output_variable_name="decision",
+            option_source=StringListSource(
+                type=ValueSourceType.VARIABLE,
+                selector=["start", "options"],
+                value=[],
+            ),
+        )
+    ]
+
+    resolved = resolve_variable_select_input_options(inputs, variable_pool=variable_pool)
+    assert isinstance(resolved[0], SelectInputConfig)
+    assert resolved[0].option_source.value == ["approve", "reject"]
+
+
+def test_resolve_variable_select_input_options_keeps_original_when_value_not_string_list() -> None:
+    variable_pool = VariablePool()
+    variable_pool.add(("start", "options"), [1, 2, 3])
+    inputs = [
+        SelectInputConfig(
+            output_variable_name="decision",
+            option_source=StringListSource(
+                type=ValueSourceType.VARIABLE,
+                selector=["start", "options"],
+                value=[],
+            ),
+        )
+    ]
+
+    with pytest.raises(TypeError):
+        resolve_variable_select_input_options(inputs, variable_pool=variable_pool)

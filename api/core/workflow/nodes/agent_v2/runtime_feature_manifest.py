@@ -12,24 +12,24 @@ SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
         "model",
         "structured_output",
         "tools.dify_tools",
+        "tools.cli_tools",
+        "env",
+        "sandbox",
     }
 )
 
 RESERVED_AGENT_BACKEND_FEATURES = frozenset(
     {
         "skills_files",
-        "tools.cli_tools",
         "knowledge",
         "human",
-        "env",
-        "sandbox",
         "memory",
     }
 )
 
 
 def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any]:
-    """Describe PRD capabilities that are persisted but not executed in phase 3."""
+    """Describe PRD capabilities supported by or still reserved from Agent backend runtime."""
     warnings: list[dict[str, str]] = []
     soul_dump = agent_soul.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
     for section in sorted(RESERVED_AGENT_BACKEND_FEATURES):
@@ -48,6 +48,9 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
 
     reserved_status = dict.fromkeys(sorted(RESERVED_AGENT_BACKEND_FEATURES), "reserved_not_executed")
     reserved_status["tools.dify_tools"] = "supported_when_config_valid"
+    reserved_status["tools.cli_tools"] = "supported_by_shell_bootstrap"
+    reserved_status["env"] = "supported_by_shell_bootstrap"
+    reserved_status["sandbox"] = "forwarded_to_shell_layer_config"
 
     return {
         "supported": sorted(SUPPORTED_AGENT_BACKEND_FEATURES),

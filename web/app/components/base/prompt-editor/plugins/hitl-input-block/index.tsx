@@ -6,6 +6,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
+  $nodesOfType,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
@@ -42,6 +43,14 @@ const HITLInputBlock = memo(({
       })
     })
   }, [editor, workflowNodesMap, workflowAvailableVariables])
+
+  useEffect(() => {
+    editor.update(() => {
+      $nodesOfType(HITLInputNode).forEach((node) => {
+        node.setReadonly(readonly)
+      })
+    })
+  }, [editor, readonly])
 
   useEffect(() => {
     if (!editor.hasNodes([HITLInputNode]))
@@ -95,7 +104,7 @@ const HITLInputBlock = memo(({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, onInsert, onDelete])
+  }, [editor, onInsert, onDelete, workflowNodesMap, getVarType, readonly])
 
   return null
 })
