@@ -273,11 +273,11 @@ describe('WorkspaceCard', () => {
     expect(screen.queryByRole('menuitem', { name: 'Solar Studio' })).not.toBeInTheDocument()
   })
 
-  it('keeps backend workspace order by last opened and can sort by created time', async () => {
+  it('sorts workspaces by last opened and can sort by created time', async () => {
     mockWorkspaces = [
-      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 1, current: true },
-      { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.team, status: 'normal', created_at: 3, current: false },
-      { id: 'workspace-3', name: 'Atlas Workspace', plan: Plan.team, status: 'normal', created_at: 2, current: false },
+      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 1, last_opened_at: 20, current: true },
+      { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.team, status: 'normal', created_at: 3, last_opened_at: null, current: false },
+      { id: 'workspace-3', name: 'Atlas Workspace', plan: Plan.team, status: 'normal', created_at: 2, last_opened_at: 30, current: false },
     ]
     renderWorkspaceCard()
 
@@ -287,7 +287,7 @@ describe('WorkspaceCard', () => {
       .map(item => item.getAttribute('title'))
       .filter(Boolean)
 
-    expect(defaultWorkspaceOptions).toEqual(['Solar Studio', 'Evan Workspace', 'Atlas Workspace'])
+    expect(defaultWorkspaceOptions).toEqual(['Atlas Workspace', 'Solar Studio', 'Evan Workspace'])
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }))
 

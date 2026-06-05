@@ -203,8 +203,8 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.modelProvider.searchModels').closest('.sticky')).toHaveClass('top-0', 'z-10', '-mx-6', 'bg-components-panel-bg', 'px-6', 'pb-2')
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search').closest('.sticky')).toHaveClass('top-0', 'z-10', '-mx-6', 'bg-components-panel-bg', 'px-6', 'pb-2')
       expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
       expect(screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')[0]).toBeInTheDocument()
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
@@ -245,7 +245,7 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
       expect(screen.getByText('Dify Source')).toBeInTheDocument()
       expect(screen.getByText('Partner Source')).toBeInTheDocument()
     })
@@ -278,7 +278,7 @@ describe('DataSourcePage Component', () => {
       renderWithSystemFeatures(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
-      fireEvent.change(screen.getByPlaceholderText('common.modelProvider.searchModels'), {
+      fireEvent.change(screen.getByPlaceholderText('common.operation.search'), {
         target: { value: 'partner' },
       })
 

@@ -107,7 +107,7 @@ const DataSourcePage = ({
     >
       <SearchInput
         className="w-[200px]"
-        placeholder={t('modelProvider.searchModels', { ns: 'common' })}
+        placeholder={t('operation.search', { ns: 'common' })}
         value={searchText}
         onChange={setSearchText}
       />

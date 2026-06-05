@@ -87,6 +87,7 @@ export type IWorkspace = {
   plan: string
   status: string
   created_at: number
+  last_opened_at?: number | null
   current: boolean
 }
 

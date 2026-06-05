@@ -23,6 +23,8 @@ const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-c
 const workspaceSwitchI18nKey = (key: string) => key as 'mainNav.workspace.settings'
 type WorkspaceSort = 'lastOpened' | 'createdAt'
 
+const getWorkspaceLastOpenedAt = (workspace: IWorkspace) => workspace.last_opened_at ?? 0
+
 function WorkspaceSwitchControls({
   searchText,
   sort,
@@ -133,7 +135,10 @@ export function WorkspaceSwitcher({
     if (workspaceSort === 'createdAt')
       return filteredWorkspaces.sort((a, b) => b.created_at - a.created_at)
 
-    return filteredWorkspaces
+    return filteredWorkspaces.sort((a, b) => {
+      return getWorkspaceLastOpenedAt(b) - getWorkspaceLastOpenedAt(a)
+        || b.created_at - a.created_at
+    })
   }, [workspaceSearchText, workspaceSort, workspaces])
 
   return (
