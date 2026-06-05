@@ -11,7 +11,7 @@ export function RosterSidebar({ totalAgents }: RosterSidebarProps) {
   const { t } = useTranslation('agentV2')
 
   return (
-    <aside className="hidden w-[240px] shrink-0 flex-col border-r border-divider-subtle bg-background-body px-3 py-4 md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-divider-subtle bg-background-body px-3 py-4 md:flex">
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="px-2 pb-3">
           <div className="flex items-center gap-2">
