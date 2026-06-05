@@ -60,7 +60,7 @@ def _workflow_yaml(*, version: str = CURRENT_DSL_VERSION) -> str:
         {
             "version": version,
             "kind": "app",
-            "app": {"name": "My App", "mode": AppMode.WORKFLOW},
+            "app": {"name": "My App", "mode": AppMode.WORKFLOW.value},
             "workflow": {"graph": {"nodes": []}, "features": {}},
         }
     )
