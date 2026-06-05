@@ -6,6 +6,7 @@ import markdownPreferences from 'eslint-plugin-markdown-preferences'
 
 const GENERATED_IGNORES = [
   '**/storybook-static/',
+  '**/.vinext/',
   '**/.next/',
   'web/next/',
   'web/next-env.d.ts',
