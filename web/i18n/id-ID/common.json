@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "Cara mendapatkan penghasilan",
   "modelProvider.getFreeTokens": "Dapatkan Token gratis",
   "modelProvider.installDataSourceProvider": "Pasang penyedia sumber data",
+  "modelProvider.installDataSource": "Pasang sumber data",
   "modelProvider.installProvider": "Menginstal penyedia model",
   "modelProvider.invalidApiKey": "Kunci API tidak valid",
   "modelProvider.item.deleteDesc": "{{modelName}} sedang digunakan sebagai model penalaran sistem. Beberapa fungsi tidak akan tersedia setelah dihapus. Harap konfirmasi.",

@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "Wie zu verdienen",
   "modelProvider.getFreeTokens": "Kostenlose Token erhalten",
   "modelProvider.installDataSourceProvider": "Datenquellenanbieter installieren",
+  "modelProvider.installDataSource": "Datenquelle installieren",
   "modelProvider.installProvider": "Installieren von Modellanbietern",
   "modelProvider.invalidApiKey": "Ungültiger API-Schlüssel",
   "modelProvider.item.deleteDesc": "{{modelName}} werden als System-Reasoning-Modelle verwendet. Einige Funktionen stehen nach der Entfernung nicht zur Verfügung. Bitte bestätigen.",

@@ -55,7 +55,7 @@ const InstallFromMarketplace = ({
           onClick={() => setCollapse(!collapse)}
         >
           <RiArrowDownSLine className={cn('size-4', collapse && '-rotate-90')} aria-hidden="true" />
-          {t('modelProvider.installDataSourceProvider', { ns: 'common' })}
+          {t('modelProvider.installDataSource', { ns: 'common' })}
         </button>
         <div className="mb-2 flex items-center pt-2">
           <span className="pr-1 system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>

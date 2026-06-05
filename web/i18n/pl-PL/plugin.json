@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Aktualizacja",
   "detailPanel.operation.updateTooltip": "Zaktualizuj, aby uzyskać dostęp do najnowszych modeli.",
   "detailPanel.operation.viewDetail": "Pokaż szczegóły",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Serwis OK",
   "detailPanel.strategyNum": "{{num}} {{strategy}} ZAWARTE",
   "detailPanel.switchVersion": "Wersja przełącznika",

@@ -3,12 +3,13 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { memo } from 'react'
+import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { useLocale } from '@/context/i18n'
@@ -46,6 +47,8 @@ const DataSourcePluginActions = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
+  const readmeTriggerId = useId()
+  const openReadmePanel = useReadmePanelStore(s => s.openReadmePanel)
   const detailHeaderState = usePluginDetailHeader(detail)
   const {
     modalStates,
@@ -81,6 +84,12 @@ const DataSourcePluginActions = ({
       })
     }
     handleUpdate()
+  }
+  const handleViewReadme = () => {
+    openReadmePanel({
+      detail,
+      triggerId: readmeTriggerId,
+    })
   }
 
   return (
@@ -133,6 +142,7 @@ const DataSourcePluginActions = ({
         onInfo={modalStates.showPluginInfo}
         onCheckVersion={handleUpdate}
         onRemove={modalStates.showDeleteConfirm}
+        onViewReadme={detail.plugin_unique_identifier ? handleViewReadme : undefined}
         detailUrl={getDetailUrl(detail, locale, theme || 'light')}
         triggerSize="xs"
       />

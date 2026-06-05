@@ -35,6 +35,7 @@ describe('OperationDropdown', () => {
   const mockOnInfo = vi.fn()
   const mockOnCheckVersion = vi.fn()
   const mockOnRemove = vi.fn()
+  const mockOnViewReadme = vi.fn()
   const defaultProps = {
     source: PluginSource.github,
     detailUrl: 'https://github.com/test/repo',
@@ -91,6 +92,27 @@ describe('OperationDropdown', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.marketplace} />)
 
       expect(screen.getByText('plugin.detailPanel.operation.viewDetail')).toBeInTheDocument()
+    })
+
+    it('should render view README option when provided', () => {
+      render(<OperationDropdown {...defaultProps} onViewReadme={mockOnViewReadme} />)
+
+      expect(screen.getByText('plugin.detailPanel.operation.viewReadme')).toBeInTheDocument()
+    })
+
+    it('should render view README below view marketplace', () => {
+      render(<OperationDropdown {...defaultProps} onViewReadme={mockOnViewReadme} source={PluginSource.marketplace} />)
+
+      const viewMarketplace = screen.getByText('plugin.detailPanel.operation.viewDetail').closest('a')!
+      const viewReadme = screen.getByText('plugin.detailPanel.operation.viewReadme').closest('[data-testid="dropdown-item"]')!
+
+      expect(viewMarketplace.compareDocumentPosition(viewReadme)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    })
+
+    it('should not render view README option when it is unavailable', () => {
+      render(<OperationDropdown {...defaultProps} />)
+
+      expect(screen.queryByText('plugin.detailPanel.operation.viewReadme')).not.toBeInTheDocument()
     })
 
     it('should always render remove option', () => {
@@ -168,6 +190,14 @@ describe('OperationDropdown', () => {
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
 
       expect(mockOnRemove).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onViewReadme when view README option is clicked', () => {
+      render(<OperationDropdown {...defaultProps} onViewReadme={mockOnViewReadme} />)
+
+      fireEvent.click(screen.getByText('plugin.detailPanel.operation.viewReadme'))
+
+      expect(mockOnViewReadme).toHaveBeenCalledTimes(1)
     })
 
     it('should have correct href for view detail link', () => {

@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "چگونه کسب کنیم",
   "modelProvider.getFreeTokens": "دریافت توکن‌های رایگان",
   "modelProvider.installDataSourceProvider": "نصب ارائه‌دهندگان منبع داده",
+  "modelProvider.installDataSource": "نصب منبع داده",
   "modelProvider.installProvider": "نصب ارائه دهندگان مدل",
   "modelProvider.invalidApiKey": "کلید API نامعتبر",
   "modelProvider.item.deleteDesc": "{{modelName}} به عنوان مدل‌های استدلال سیستم استفاده می‌شوند. برخی از عملکردها پس از حذف در دسترس نخواهند بود. لطفاً تأیید کنید.",

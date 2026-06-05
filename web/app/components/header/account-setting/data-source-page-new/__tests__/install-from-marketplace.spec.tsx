@@ -112,7 +112,7 @@ describe('InstallFromMarketplace Component', () => {
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
 
       // Assert
-      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
       expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url?theme=light')
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
@@ -146,7 +146,7 @@ describe('InstallFromMarketplace Component', () => {
         isLoading: false,
       })
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-      const toggleHeader = screen.getByText('common.modelProvider.installDataSourceProvider')
+      const toggleHeader = screen.getByText('common.modelProvider.installDataSource')
 
       // Act (Collapse)
       fireEvent.click(toggleHeader)
@@ -166,7 +166,7 @@ describe('InstallFromMarketplace Component', () => {
         isLoading: true,
       })
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-      const toggleHeader = screen.getByText('common.modelProvider.installDataSourceProvider')
+      const toggleHeader = screen.getByText('common.modelProvider.installDataSource')
 
       // Act (Collapse)
       fireEvent.click(toggleHeader)

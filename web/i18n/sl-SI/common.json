@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "Kako zaslužiti",
   "modelProvider.getFreeTokens": "Pridobi brezplačne žetone",
   "modelProvider.installDataSourceProvider": "Namestite ponudnike podatkovnih virov",
+  "modelProvider.installDataSource": "Namesti vir podatkov",
   "modelProvider.installProvider": "Namestitev ponudnikov modelov",
   "modelProvider.invalidApiKey": "Neveljaven API ključ",
   "modelProvider.item.deleteDesc": "{{modelName}} se uporablja kot sistemski model za sklepanja. Nekatere funkcije ne bodo na voljo po odstranitvi. Prosimo, potrdite.",

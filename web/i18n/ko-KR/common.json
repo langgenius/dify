@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "얻는 방법",
   "modelProvider.getFreeTokens": "무료 토큰 받기",
   "modelProvider.installDataSourceProvider": "데이터 소스 공급자 설치",
+  "modelProvider.installDataSource": "데이터 소스 설치",
   "modelProvider.installProvider": "모델 공급자 설치",
   "modelProvider.invalidApiKey": "잘못된 API 키",
   "modelProvider.item.deleteDesc": "{{modelName}}은 (는) 시스템 추론 모델로 사용 중입니다. 제거 후 일부 기능을 사용할 수 없습니다. 확인하시겠습니까?",

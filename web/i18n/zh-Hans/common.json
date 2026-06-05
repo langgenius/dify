@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "如何获取",
   "modelProvider.getFreeTokens": "获得免费 Tokens",
   "modelProvider.installDataSourceProvider": "安装数据源供应商",
+  "modelProvider.installDataSource": "安装数据源",
   "modelProvider.installProvider": "安装模型供应商",
   "modelProvider.invalidApiKey": "Invalid API key",
   "modelProvider.item.deleteDesc": "{{modelName}} 被用作系统推理模型。删除后部分功能将无法使用。请确认。",

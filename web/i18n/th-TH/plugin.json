@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "อัพเดต",
   "detailPanel.operation.updateTooltip": "อัปเดตเพื่อเข้าถึงโมเดลล่าสุด",
   "detailPanel.operation.viewDetail": "ดูรายละเอียด",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "บริการตกลง",
   "detailPanel.strategyNum": "{{num}} {{strategy}} รวม",
   "detailPanel.switchVersion": "สลับเวอร์ชัน",

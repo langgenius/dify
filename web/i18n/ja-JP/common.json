@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "獲得方法",
   "modelProvider.getFreeTokens": "無料トークンを獲得",
   "modelProvider.installDataSourceProvider": "データソースプロバイダーをインストールする",
+  "modelProvider.installDataSource": "データソースをインストール",
   "modelProvider.installProvider": "モデルプロバイダーをインストールする",
   "modelProvider.invalidApiKey": "無効な API キー",
   "modelProvider.item.deleteDesc": "{{modelName}}はシステムが推測するモデルとして利用されています。削除すると、一部の機能が使用不可能になる可能性があります。ご確認ください。",

@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "Як заробити",
   "modelProvider.getFreeTokens": "Отримати безкоштовні токени",
   "modelProvider.installDataSourceProvider": "Встановіть постачальників джерел даних",
+  "modelProvider.installDataSource": "Установити джерело даних",
   "modelProvider.installProvider": "Встановлення постачальників моделей",
   "modelProvider.invalidApiKey": "Недійсний ключ API",
   "modelProvider.item.deleteDesc": "{{modelName}} використовуються як системні моделі міркування. Деякі функції будуть недоступні після видалення. Будь ласка, підтвердьте.",

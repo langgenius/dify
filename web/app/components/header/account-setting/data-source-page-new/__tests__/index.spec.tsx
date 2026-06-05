@@ -210,7 +210,7 @@ describe('DataSourcePage Component', () => {
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('dataSourcePage.notSetUpTitle')).toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.installDataSource')).not.toBeInTheDocument()
     })
 
     it('should show data source placeholders while the list is loading', () => {
@@ -228,7 +228,7 @@ describe('DataSourcePage Component', () => {
       // Assert
       expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
       expect(screen.queryByText('dataSourcePage.notSetUpTitle')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.installDataSource')).not.toBeInTheDocument()
     })
   })
 
@@ -302,7 +302,7 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
     })
 
@@ -318,7 +318,7 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
     })
 
     it('should handle the case where data exists but result is an empty array', () => {
@@ -334,7 +334,7 @@ describe('DataSourcePage Component', () => {
 
       // Assert
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
     })
 
     it('should handle the case where enable_marketplace is false (edge case for coverage)', () => {
@@ -349,7 +349,7 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.installDataSource')).not.toBeInTheDocument()
     })
   })
 })

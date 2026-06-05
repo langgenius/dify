@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "روز رسانی",
   "detailPanel.operation.updateTooltip": "به‌روزرسانی کنید تا به جدیدترین مدل‌ها دسترسی پیدا کنید.",
   "detailPanel.operation.viewDetail": "نمایش جزئیات",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "خدمات خوب",
   "detailPanel.strategyNum": "{{num}} {{strategy}} شامل",
   "detailPanel.switchVersion": "نسخه سوئیچ",

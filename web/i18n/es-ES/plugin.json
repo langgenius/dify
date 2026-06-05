@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Actualizar",
   "detailPanel.operation.updateTooltip": "Actualiza para acceder a los modelos más recientes.",
   "detailPanel.operation.viewDetail": "Ver Detalle",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Servicio OK",
   "detailPanel.strategyNum": "{{num}} {{strategy}} INCLUIDO",
   "detailPanel.switchVersion": "Versión del interruptor",

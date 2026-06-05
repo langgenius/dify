@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "วิธีรับ",
   "modelProvider.getFreeTokens": "รับโทเค็นฟรี",
   "modelProvider.installDataSourceProvider": "ติดตั้งผู้ให้บริการแหล่งข้อมูล",
+  "modelProvider.installDataSource": "ติดตั้งแหล่งข้อมูล",
   "modelProvider.installProvider": "ติดตั้งผู้ให้บริการโมเดล",
   "modelProvider.invalidApiKey": "คีย์ API ไม่ถูกต้อง",
   "modelProvider.item.deleteDesc": "{{modelName}} ถูกใช้เป็นแบบจําลองการให้เหตุผลของระบบ ฟังก์ชันบางอย่างจะไม่สามารถใช้งานได้หลังจากการลบออก กรุณายืนยัน",

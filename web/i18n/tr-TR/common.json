@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "Nasıl kazanılır",
   "modelProvider.getFreeTokens": "Ücretsiz Token Al",
   "modelProvider.installDataSourceProvider": "Veri kaynağı sağlayıcılarını yükle",
+  "modelProvider.installDataSource": "Veri kaynağı yükle",
   "modelProvider.installProvider": "Model sağlayıcılarını yükleme",
   "modelProvider.invalidApiKey": "Geçersiz API anahtarı",
   "modelProvider.item.deleteDesc": "{{modelName}} şu anda sistem çıkarım modeli olarak kullanılmaktadır. Kaldırıldıktan sonra bazı işlevler kullanılamayabilir. Lütfen onaylayın.",

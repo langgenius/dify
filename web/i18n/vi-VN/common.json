@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "Cách kiếm",
   "modelProvider.getFreeTokens": "Nhận mã thông báo miễn phí",
   "modelProvider.installDataSourceProvider": "Cài đặt các nhà cung cấp nguồn dữ liệu",
+  "modelProvider.installDataSource": "Cài đặt nguồn dữ liệu",
   "modelProvider.installProvider": "Cài đặt nhà cung cấp mô hình",
   "modelProvider.invalidApiKey": "Khóa API không hợp lệ",
   "modelProvider.item.deleteDesc": "Các mô hình {{modelName}} đang được sử dụng như là các mô hình lập luận hệ thống. Một số chức năng sẽ không khả dụng sau khi loại bỏ. Vui lòng xác nhận.",

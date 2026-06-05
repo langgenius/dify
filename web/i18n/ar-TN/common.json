@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "كيف تكسب",
   "modelProvider.getFreeTokens": "احصل على رموز مجانية",
   "modelProvider.installDataSourceProvider": "تثبيت مزودي مصادر البيانات",
+  "modelProvider.installDataSource": "تثبيت مصدر بيانات",
   "modelProvider.installProvider": "تثبيت مزودي النماذج",
   "modelProvider.invalidApiKey": "مفتاح API غير صالح",
   "modelProvider.item.deleteDesc": "يتم استخدام {{modelName}} كنماذج تفكير النظام. لن تكون بعض الوظائف متاحة بعد الإزالة. يرجى التأكيد.",

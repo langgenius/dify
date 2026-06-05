@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "Cum să câștigați",
   "modelProvider.getFreeTokens": "Obțineți jetoane gratuite",
   "modelProvider.installDataSourceProvider": "Instalați furnizorii de surse de date",
+  "modelProvider.installDataSource": "Instalați sursa de date",
   "modelProvider.installProvider": "Instalarea furnizorilor de modele",
   "modelProvider.invalidApiKey": "Cheie API nevalidă",
   "modelProvider.item.deleteDesc": "{{modelName}} sunt utilizate ca modele de raționare a sistemului. Unele funcții nu vor fi disponibile după eliminare. Vă rugăm să confirmați.",

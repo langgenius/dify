@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "Cómo ganar",
   "modelProvider.getFreeTokens": "Obtener Tokens gratis",
   "modelProvider.installDataSourceProvider": "Instalar proveedores de fuentes de datos",
+  "modelProvider.installDataSource": "Instalar fuente de datos",
   "modelProvider.installProvider": "Instalación de proveedores de modelos",
   "modelProvider.invalidApiKey": "Clave API inválida",
   "modelProvider.item.deleteDesc": "{{modelName}} se está utilizando como modelo de razonamiento del sistema. Algunas funciones no estarán disponibles después de la eliminación. Por favor confirma.",

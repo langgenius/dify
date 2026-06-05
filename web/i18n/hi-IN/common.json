@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "कैसे कमाएं",
   "modelProvider.getFreeTokens": "मुफ्त टोकन प्राप्त करें",
   "modelProvider.installDataSourceProvider": "डेटा स्रोत प्रदाताओं को स्थापित करें",
+  "modelProvider.installDataSource": "डेटा स्रोत स्थापित करें",
   "modelProvider.installProvider": "मॉडल प्रदाताओं को स्थापित करें",
   "modelProvider.invalidApiKey": "अवैध API कुंजी",
   "modelProvider.item.deleteDesc": "{{modelName}} को सिस्टम तर्क मॉडल के रूप में उपयोग किया जा रहा है। हटाने के बाद कुछ कार्य उपलब्ध नहीं होंगे। कृपया पुष्टि करें।",

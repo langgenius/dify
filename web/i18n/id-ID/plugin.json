@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Pemutakhiran",
   "detailPanel.operation.updateTooltip": "Perbarui untuk mengakses model terbaru.",
   "detailPanel.operation.viewDetail": "Lihat Detail",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Layanan OK",
   "detailPanel.strategyNum": "{{num}} {{strategy}} TERMASUK",
   "detailPanel.switchVersion": "Beralih Versi",

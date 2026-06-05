@@ -132,6 +132,7 @@
   "detailPanel.operation.update": "Posodobitev",
   "detailPanel.operation.updateTooltip": "Posodobite za dostop do najnovejših modelov.",
   "detailPanel.operation.viewDetail": "Oglej si podrobnosti",
+  "detailPanel.operation.viewReadme": "View README",
   "detailPanel.serviceOk": "Storitve so v redu",
   "detailPanel.strategyNum": "{{num}} {{strategy}} VKLJUČENO",
   "detailPanel.switchVersion": "Preklopna različica",

@@ -20,6 +20,7 @@ type Props = {
   onInfo: () => void
   onCheckVersion: () => void
   onRemove: () => void
+  onViewReadme?: () => void
   detailUrl: string
   placement?: Placement
   sideOffset?: number
@@ -39,6 +40,7 @@ const OperationDropdown: FC<Props> = ({
   onInfo,
   onCheckVersion,
   onRemove,
+  onViewReadme,
   placement = 'bottom-end',
   sideOffset = 4,
   alignOffset = 0,
@@ -79,6 +81,11 @@ const OperationDropdown: FC<Props> = ({
           <DropdownMenuItem className={operationMenuItemClassName} render={<a href={detailUrl} target="_blank" rel="noopener noreferrer" />}>
             <span className={operationMenuLabelClassName}>{t('detailPanel.operation.viewDetail', { ns: 'plugin' })}</span>
             <span className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary" />
+          </DropdownMenuItem>
+        )}
+        {onViewReadme && (
+          <DropdownMenuItem className={operationMenuItemClassName} onClick={onViewReadme}>
+            <span className={operationMenuLabelClassName}>{t('detailPanel.operation.viewReadme', { ns: 'plugin' })}</span>
           </DropdownMenuItem>
         )}
         {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (

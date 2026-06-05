@@ -444,6 +444,7 @@
   "modelProvider.freeQuota.howToEarn": "How to earn",
   "modelProvider.getFreeTokens": "Get free Tokens",
   "modelProvider.installDataSourceProvider": "Install Data Source Providers",
+  "modelProvider.installDataSource": "Install data source",
   "modelProvider.installProvider": "Install model providers",
   "modelProvider.invalidApiKey": "Invalid API key",
   "modelProvider.item.deleteDesc": "{{modelName}} are being used as system reasoning models. Some functions will not be available after removal. Please confirm.",
