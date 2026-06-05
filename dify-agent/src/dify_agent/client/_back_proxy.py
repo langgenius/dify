@@ -1,19 +1,32 @@
-"""Client-safe HTTP helper for the shell back proxy connect endpoint.
+"""Client-safe HTTP helpers for shell back proxy control-plane endpoints.
 
-The main ``Client`` class currently focuses on run APIs. The shell back proxy
-CLI only needs a narrow synchronous ``POST /back-proxy/connections`` helper and
-must stay safe to import in default installations, so the implementation lives
-in this standalone module rather than importing FastAPI- or JWE-specific code.
+The main ``Client`` class currently focuses on run APIs. Sandbox-visible CLI
+commands only need a narrow synchronous subset of the server contract and must
+stay safe to import in default installations, so these helpers live in this
+standalone module rather than importing FastAPI- or JWE-specific code.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import BinaryIO
 from typing import cast
 
 import httpx
-from pydantic import JsonValue, ValidationError
+from pydantic import BaseModel, JsonValue, ValidationError
 
-from dify_agent.protocol.back_proxy import BackProxyConnectRequest, BackProxyConnectResponse, back_proxy_connections_url
+from dify_agent.protocol.back_proxy import (
+    BackProxyConnectRequest,
+    BackProxyConnectResponse,
+    BackProxyFileDownloadRequest,
+    BackProxyFileDownloadResponse,
+    BackProxyFileMapping,
+    BackProxyFileUploadRequest,
+    BackProxyFileUploadResponse,
+    back_proxy_connections_url,
+    back_proxy_file_download_request_url,
+    back_proxy_file_upload_request_url,
+)
 
 
 class BackProxyClientError(RuntimeError):
@@ -36,6 +49,10 @@ class BackProxyValidationError(BackProxyClientError):
     """Raised when request or response DTO validation fails."""
 
 
+class BackProxyTransferError(BackProxyClientError):
+    """Raised when a signed upload/download data-plane request fails."""
+
+
 def connect_back_proxy_sync(
     *,
     base_url: str,
@@ -56,31 +73,132 @@ def connect_back_proxy_sync(
             the response body cannot be parsed as JSON.
     """
     request_model = _validate_request(argv=argv, metadata=metadata)
+    response = _post_back_proxy_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="connect",
+        endpoint_url_factory=back_proxy_connections_url,
+        request_body=request_model.model_dump_json(),
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    return _parse_success_response(response=response, response_model=BackProxyConnectResponse, label="connection")
+
+
+def request_back_proxy_file_upload_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    filename: str,
+    mimetype: str,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> BackProxyFileUploadResponse:
+    """Request one signed upload URL from the shell back proxy."""
+
     try:
-        connections_url = back_proxy_connections_url(base_url)
-    except ValueError as exc:
-        raise BackProxyValidationError("invalid back proxy base URL") from exc
+        request_model = BackProxyFileUploadRequest(filename=filename, mimetype=mimetype)
+    except ValidationError as exc:
+        raise BackProxyValidationError("invalid back proxy file upload request") from exc
+    response = _post_back_proxy_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="file upload request",
+        endpoint_url_factory=back_proxy_file_upload_request_url,
+        request_body=request_model.model_dump_json(),
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    return _parse_success_response(response=response, response_model=BackProxyFileUploadResponse, label="file upload")
+
+
+def request_back_proxy_file_download_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    file: BackProxyFileMapping,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> BackProxyFileDownloadResponse:
+    """Request one signed download URL from the shell back proxy."""
+
+    try:
+        request_model = BackProxyFileDownloadRequest(file=file)
+    except ValidationError as exc:
+        raise BackProxyValidationError("invalid back proxy file download request") from exc
+    response = _post_back_proxy_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="file download request",
+        endpoint_url_factory=back_proxy_file_download_request_url,
+        request_body=request_model.model_dump_json(exclude_none=True),
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    return _parse_success_response(response=response, response_model=BackProxyFileDownloadResponse, label="file download")
+
+
+def upload_file_to_signed_url_sync(
+    *,
+    upload_url: str,
+    filename: str,
+    file_obj: BinaryIO,
+    mimetype: str,
+    timeout: float | httpx.Timeout = 120.0,
+    sync_http_client: httpx.Client | None = None,
+) -> dict[str, object]:
+    """Upload one local file directly to a signed Dify API data-plane URL."""
+
     owns_client = sync_http_client is None
     client = sync_http_client or httpx.Client(timeout=timeout, follow_redirects=True)
     try:
         response = client.post(
-            connections_url,
-            content=request_model.model_dump_json(),
-            headers={
-                "Authorization": f"Bearer {auth_jwe}",
-                "Content-Type": "application/json",
-            },
+            upload_url,
+            files={"file": (filename, file_obj, mimetype)},
             timeout=timeout,
         )
     except httpx.TimeoutException as exc:
-        raise BackProxyClientError("shell back proxy connect timed out") from exc
+        raise BackProxyTransferError("signed file upload timed out") from exc
     except httpx.RequestError as exc:
-        raise BackProxyClientError(f"shell back proxy connect request failed: {exc}") from exc
+        raise BackProxyTransferError(f"signed file upload failed: {exc}") from exc
     finally:
         if owns_client:
             client.close()
 
-    return _parse_response(response)
+    payload = _parse_json_payload(response, invalid_json_message="signed file upload returned invalid JSON")
+    if response.is_error:
+        detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
+        raise BackProxyHTTPError(response.status_code, detail)
+    if not isinstance(payload, dict):
+        raise BackProxyValidationError("invalid signed file upload response")
+    return cast(dict[str, object], payload)
+
+
+def download_file_bytes_from_signed_url_sync(
+    *,
+    download_url: str,
+    timeout: float | httpx.Timeout = 120.0,
+    sync_http_client: httpx.Client | None = None,
+) -> bytes:
+    """Download one file directly from a signed Dify API data-plane URL."""
+
+    owns_client = sync_http_client is None
+    client = sync_http_client or httpx.Client(timeout=timeout, follow_redirects=True)
+    try:
+        response = client.get(download_url, timeout=timeout)
+    except httpx.TimeoutException as exc:
+        raise BackProxyTransferError("signed file download timed out") from exc
+    except httpx.RequestError as exc:
+        raise BackProxyTransferError(f"signed file download failed: {exc}") from exc
+    finally:
+        if owns_client:
+            client.close()
+
+    if response.is_error:
+        payload = _parse_json_payload(response, invalid_json_message="signed file download returned invalid JSON")
+        detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
+        raise BackProxyHTTPError(response.status_code, detail)
+    return response.content
 
 
 def _validate_request(*, argv: list[str], metadata: dict[str, JsonValue] | None) -> BackProxyConnectRequest:
@@ -90,25 +208,74 @@ def _validate_request(*, argv: list[str], metadata: dict[str, JsonValue] | None)
         raise BackProxyValidationError("invalid back proxy connection request") from exc
 
 
-def _parse_response(response: httpx.Response) -> BackProxyConnectResponse:
+def _post_back_proxy_json(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    endpoint_name: str,
+    endpoint_url_factory: Callable[[str], str],
+    request_body: str,
+    timeout: float | httpx.Timeout,
+    sync_http_client: httpx.Client | None,
+) -> httpx.Response:
     try:
-        payload = response.json()
+        endpoint_url = endpoint_url_factory(base_url)
     except ValueError as exc:
-        raise BackProxyClientError("shell back proxy returned invalid JSON") from exc
+        raise BackProxyValidationError("invalid back proxy base URL") from exc
+    owns_client = sync_http_client is None
+    client = sync_http_client or httpx.Client(timeout=timeout, follow_redirects=True)
+    try:
+        return client.post(
+            endpoint_url,
+            content=request_body,
+            headers={
+                "Authorization": f"Bearer {auth_jwe}",
+                "Content-Type": "application/json",
+            },
+            timeout=timeout,
+        )
+    except httpx.TimeoutException as exc:
+        raise BackProxyClientError(f"shell back proxy {endpoint_name} timed out") from exc
+    except httpx.RequestError as exc:
+        raise BackProxyClientError(f"shell back proxy {endpoint_name} request failed: {exc}") from exc
+    finally:
+        if owns_client:
+            client.close()
+
+
+def _parse_success_response[T: BaseModel](
+    *,
+    response: httpx.Response,
+    response_model: type[T],
+    label: str,
+) -> T:
+    payload = _parse_json_payload(response, invalid_json_message=f"shell back proxy returned invalid JSON for {label}")
 
     if response.is_error:
         detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
         raise BackProxyHTTPError(response.status_code, detail)
 
     try:
-        return BackProxyConnectResponse.model_validate(payload)
+        return response_model.model_validate(payload)
     except ValidationError as exc:
-        raise BackProxyValidationError("invalid back proxy connection response") from exc
+        raise BackProxyValidationError(f"invalid back proxy {label} response") from exc
+
+
+def _parse_json_payload(response: httpx.Response, *, invalid_json_message: str) -> object:
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise BackProxyClientError(invalid_json_message) from exc
 
 
 __all__ = [
     "BackProxyClientError",
     "BackProxyHTTPError",
+    "BackProxyTransferError",
     "BackProxyValidationError",
     "connect_back_proxy_sync",
+    "download_file_bytes_from_signed_url_sync",
+    "request_back_proxy_file_download_sync",
+    "request_back_proxy_file_upload_sync",
+    "upload_file_to_signed_url_sync",
 ]

@@ -3,9 +3,9 @@
 Plugin daemon HTTP client settings describe the single FastAPI lifespan-owned
 ``httpx.AsyncClient`` shared by local run tasks. Layers and Agenton providers do
 not own that client, so these settings are process resource limits rather than
-per-run lifecycle knobs. Optional shell-layer settings stay here as well because
-the server injects them into layer providers instead of letting runtime modules
-read process environment variables directly.
+per-run lifecycle knobs. Shell back proxy file endpoints additionally need the
+Dify API base URL plus the trusted inner API key used for control-plane file
+request calls.
 """
 
 from typing import ClassVar
@@ -28,6 +28,8 @@ class ServerSettings(BaseSettings):
     run_retention_seconds: int = Field(default=DEFAULT_RUN_RETENTION_SECONDS, ge=1)
     plugin_daemon_url: str = "http://localhost:5002"
     plugin_daemon_api_key: str = ""
+    dify_api_base_url: str | None = None
+    dify_api_inner_api_key: str | None = None
     shellctl_entrypoint: str | None = None
     shellctl_auth_token: str | None = None
     shell_back_proxy_public_url: str | None = None
@@ -70,12 +72,38 @@ class ServerSettings(BaseSettings):
         _ = decode_server_secret_key(stripped)
         return stripped
 
+    @field_validator("dify_api_base_url")
+    @classmethod
+    def normalize_dify_api_base_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            return None
+        validated = str(TypeAdapter(AnyHttpUrl).validate_python(stripped))
+        parsed = validated.rstrip("/")
+        if "?" in parsed or "#" in parsed:
+            raise ValueError("DIFY_AGENT_DIFY_API_BASE_URL must not include a query string or fragment")
+        return parsed
+
+    @field_validator("dify_api_inner_api_key")
+    @classmethod
+    def normalize_dify_api_inner_api_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
     @model_validator(mode="after")
     def validate_shell_back_proxy_requirements(self) -> "ServerSettings":
         """Require the server secret whenever the shell back proxy URL is enabled."""
         if self.shell_back_proxy_public_url is not None and self.server_secret_key is None:
             raise ValueError(
                 "DIFY_AGENT_SERVER_SECRET_KEY is required when DIFY_AGENT_SHELL_BACK_PROXY_PUBLIC_URL is set."
+            )
+        if (self.dify_api_base_url is None) != (self.dify_api_inner_api_key is None):
+            raise ValueError(
+                "DIFY_AGENT_DIFY_API_BASE_URL and DIFY_AGENT_DIFY_API_INNER_API_KEY must be set together."
             )
         return self
 

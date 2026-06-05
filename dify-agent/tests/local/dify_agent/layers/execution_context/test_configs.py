@@ -42,20 +42,26 @@ def test_execution_context_layer_config_forbids_runtime_settings_and_unknown_fie
     config = DifyExecutionContextLayerConfig(
         tenant_id="tenant-1",
         user_id="user-1",
+        user_from="account",
         workflow_id="workflow-1",
-        invoke_from="workflow_run",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
     )
 
     assert config.tenant_id == "tenant-1"
     assert config.user_id == "user-1"
+    assert config.user_from == "account"
     assert config.workflow_id == "workflow-1"
-    assert config.invoke_from == "workflow_run"
+    assert config.agent_mode == "workflow_run"
+    assert config.invoke_from == "service-api"
 
     with pytest.raises(ValidationError):
         _ = DifyExecutionContextLayerConfig.model_validate(
             {
                 "tenant_id": "tenant-1",
-                "invoke_from": "workflow_run",
+                "user_from": "account",
+                "agent_mode": "workflow_run",
+                "invoke_from": "service-api",
                 "daemon_url": "http://daemon",
             }
         )
@@ -64,7 +70,9 @@ def test_execution_context_layer_config_forbids_runtime_settings_and_unknown_fie
         _ = DifyExecutionContextLayerConfig.model_validate(
             {
                 "tenant_id": "tenant-1",
-                "invoke_from": "workflow_run",
+                "user_from": "account",
+                "agent_mode": "workflow_run",
+                "invoke_from": "service-api",
                 "unknown": "value",
             }
         )

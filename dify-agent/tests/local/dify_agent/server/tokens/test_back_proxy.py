@@ -29,10 +29,12 @@ def _execution_context() -> DifyExecutionContextLayerConfig:
     return DifyExecutionContextLayerConfig(
         tenant_id="tenant-1",
         user_id="user-1",
+        user_from="account",
         app_id="app-1",
         workflow_id="workflow-1",
         node_id="node-1",
-        invoke_from="workflow_run",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
         trace_id="trace-1",
     )
 

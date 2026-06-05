@@ -12,6 +12,7 @@ from core.plugin.backwards_invocation.node import PluginNodeBackwardsInvocation
 from core.plugin.backwards_invocation.tool import PluginToolBackwardsInvocation
 from core.plugin.entities.request import (
     RequestFetchAppInfo,
+    RequestRequestDownloadFile,
     RequestInvokeApp,
     RequestInvokeEncrypt,
     RequestInvokeLLM,
@@ -25,16 +26,16 @@ from core.plugin.entities.request import (
     RequestInvokeTextEmbedding,
     RequestInvokeTool,
     RequestInvokeTTS,
-    RequestRequestDownloadFile,
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import get_signed_file_url_for_plugin
+from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
-from services.agent_file_request_service import AgentFileDownloadRequestService, FileDownloadRequestError
+from services.file_request_service import FileRequestService
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -433,32 +434,50 @@ class PluginUploadFileRequestApi(Resource):
 
 @inner_api_ns.route("/download/file/request")
 class PluginDownloadFileRequestApi(Resource):
-    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
     @plugin_data(payload_type=RequestRequestDownloadFile)
     @inner_api_ns.doc("plugin_download_file_request")
-    @inner_api_ns.doc(description="Request a signed download URL for a workflow file ref")
+    @inner_api_ns.doc(description="Request signed URL for file download through plugin interface")
     @inner_api_ns.doc(
         responses={
-            200: "Signed download URL generated successfully",
-            400: "Invalid access context or file mapping",
+            200: "Signed URL generated successfully",
             401: "Unauthorized - invalid API key",
-            404: "File not accessible to the tenant/user",
+            404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestDownloadFile):
-        try:
-            data = AgentFileDownloadRequestService.resolve(
-                tenant_id=tenant_model.id,
-                user_id=user_model.id,
-                user_from=payload.user_from,
-                invoke_from=payload.invoke_from,
-                file_mapping=payload.file,
-            )
-        except FileDownloadRequestError as exc:
-            return BaseBackwardsInvocationResponse(error=exc.message).model_dump(), exc.status_code
-        return BaseBackwardsInvocationResponse(data=data).model_dump()
+    def post(self, payload: RequestRequestDownloadFile):
+        """Resolve signed download metadata for trusted external runtimes.
+
+        Unlike end-user-facing upload/download APIs, this inner endpoint serves
+        trusted callers such as the ``dify-agent`` back proxy. The caller sends
+        flattened ``tenant_id`` / ``user_id`` / ``user_from`` / ``invoke_from``
+        context explicitly in the body, and ``FileRequestService`` rebuilds the
+        corresponding ``FileAccessScope`` before resolving the signed URL.
+
+        The response is control-plane metadata only: filename, mime type, size,
+        and the signed download URL. File bytes still flow through the existing
+        signed file endpoints rather than through this inner API.
+        """
+        tenant_model = db.session.get(Tenant, payload.tenant_id)
+        if tenant_model is None:
+            raise ValueError("tenant not found")
+
+        result = FileRequestService().request_download_url(
+            tenant_id=tenant_model.id,
+            user_id=payload.user_id,
+            user_from=payload.user_from,
+            invoke_from=payload.invoke_from,
+            file_mapping=payload.file.model_dump(mode="python", exclude_none=True),
+        )
+        return BaseBackwardsInvocationResponse(
+            data={
+                "filename": result.filename,
+                "mime_type": result.mime_type,
+                "size": result.size,
+                "download_url": result.download_url,
+            }
+        ).model_dump()
 
 
 @inner_api_ns.route("/fetch/app/info")

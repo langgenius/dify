@@ -4,9 +4,10 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from flask import Response
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.entities.provider_entities import BasicProviderConfig
+from core.workflow.file_reference import is_canonical_file_reference
 from core.plugin.utils.http_parser import deserialize_response
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -231,18 +232,51 @@ class RequestRequestUploadFile(BaseModel):
     mimetype: str
 
 
+class RequestDownloadFileMapping(BaseModel):
+    """File mapping accepted by trusted download-request control-plane APIs."""
+
+    transfer_method: Literal["local_file", "tool_file", "datasource_file", "remote_url"]
+    reference: str | None = None
+    url: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_locator(self) -> "RequestDownloadFileMapping":
+        if self.transfer_method == "remote_url":
+            if not self.url:
+                raise ValueError("url is required when transfer_method is remote_url")
+            if self.reference is not None:
+                raise ValueError("reference is not allowed when transfer_method is remote_url")
+            return self
+        if not self.reference:
+            raise ValueError("reference is required for non-remote file mappings")
+        if not is_canonical_file_reference(self.reference):
+            raise ValueError("reference must be a canonical Dify file reference")
+        if self.url is not None:
+            raise ValueError("url is not allowed for non-remote file mappings")
+        return self
+
+
 class RequestRequestDownloadFile(BaseModel):
-    """Request a signed download URL for a workflow file ref (Agent Files §3.1.1).
+    """Request to resolve a signed download URL for one runtime file mapping."""
 
-    ``user_from`` / ``invoke_from`` are the flattened Dify file-access context (the
-    dify-agent server reads them from the execution context). ``file`` is a standard
-    file mapping: ``transfer_method`` plus ``reference`` (local_file / tool_file /
-    datasource_file) or ``url`` (remote_url).
-    """
+    tenant_id: str
+    user_id: str
+    user_from: Literal["account", "end-user"]
+    invoke_from: Literal[
+        "service-api",
+        "openapi",
+        "web-app",
+        "trigger",
+        "explore",
+        "debugger",
+        "published",
+        "validation",
+    ]
+    file: RequestDownloadFileMapping
 
-    user_from: str
-    invoke_from: str
-    file: Mapping[str, Any]
+    model_config = ConfigDict(extra="forbid")
 
 
 class RequestFetchAppInfo(BaseModel):

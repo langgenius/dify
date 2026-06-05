@@ -1,28 +1,28 @@
 """Tenant-scope validator for file refs produced by Agent backend outputs.
 
-Stage 4 §5.3 / Agent Files §4.6: every file output the Agent backend produces
-must resolve to a file record owned by the current tenant; cross-tenant file
-references must never be plumbed downstream. Agent runtime output files are
-canonically ``ToolFile`` (referenced by a minimal ``{id}``), so this validator
-checks ``tool_files`` first and falls back to ``upload_files`` for compatibility
-with older/manual refs. ``PerOutputTypeChecker`` accepts a ``FileTenantValidator``
-Protocol so unit tests can stub the check without hitting Postgres.
+Agent outputs can point at tenant-owned ``upload_files`` or ``tool_files``
+records. Sandbox-originated output uploads become ``ToolFile`` rows, so the
+validator must accept both storage record families while still rejecting any
+cross-tenant or malformed identifier. ``PerOutputTypeChecker`` accepts a
+``FileTenantValidator`` Protocol so unit tests can stub the check without
+hitting Postgres.
 """
 
 from __future__ import annotations
 
 from uuid import UUID
 
+from graphon.file import FileTransferMethod
 from sqlalchemy import select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 
 from core.db.session_factory import session_factory
+from models import ToolFile
 from models.model import UploadFile
-from models.tools import ToolFile
 
 
-class AgentOutputFileTenantValidator:
-    """Production ``FileTenantValidator`` backed by ``tool_files`` + ``upload_files``.
+class DatabaseFileTenantValidator:
+    """Production ``FileTenantValidator`` backed by file ownership tables.
 
     Returns ``False`` (rejects the file) on any pathological input: empty
     file_id/tenant_id, non-UUID file_id format, DB errors. The Agent backend
@@ -31,24 +31,34 @@ class AgentOutputFileTenantValidator:
     workflow node from crashing on garbage backend output.
     """
 
-    def is_owned_by_tenant(self, *, file_id: str, tenant_id: str) -> bool:
+    def is_accessible_file_mapping(
+        self,
+        *,
+        file_id: str,
+        tenant_id: str,
+        transfer_method: FileTransferMethod,
+    ) -> bool:
         if not file_id or not tenant_id:
             return False
         try:
             UUID(file_id)
         except (ValueError, TypeError):
             return False
+
+        if transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.DATASOURCE_FILE}:
+            model = UploadFile
+        elif transfer_method == FileTransferMethod.TOOL_FILE:
+            model = ToolFile
+        else:
+            return False
+
         try:
             with session_factory.create_session() as session:
-                # Agent output files are canonically ToolFile; check it first.
-                tool_owner = session.scalar(select(ToolFile.tenant_id).where(ToolFile.id == file_id))
-                if tool_owner is not None:
-                    return tool_owner == tenant_id
-                upload_owner = session.scalar(select(UploadFile.tenant_id).where(UploadFile.id == file_id))
+                owner_tenant_id = session.scalar(select(model.tenant_id).where(model.id == file_id))
         except (DataError, SQLAlchemyError):
             return False
-        return upload_owner == tenant_id
+        return owner_tenant_id == tenant_id
 
 
-# Back-compat alias for callers/tests that imported the upload-only name.
-UploadFileTenantValidator = AgentOutputFileTenantValidator
+AgentOutputFileTenantValidator = DatabaseFileTenantValidator
+UploadFileTenantValidator = DatabaseFileTenantValidator

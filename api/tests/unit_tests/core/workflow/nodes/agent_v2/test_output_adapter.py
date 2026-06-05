@@ -1,4 +1,5 @@
 from agenton.compositor import CompositorSessionSnapshot
+from unittest.mock import patch
 
 from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,
@@ -6,10 +7,25 @@ from clients.agent_backend import (
     AgentBackendRunPausedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
 )
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
+from models.agent_config_entities import DeclaredArrayItem, DeclaredOutputConfig, DeclaredOutputType
+
+
+def _restored_file(*, transfer_method: FileTransferMethod, reference: str) -> File:
+    return File(
+        type=FileType.DOCUMENT,
+        transfer_method=transfer_method,
+        remote_url=None,
+        reference=reference,
+        filename="report.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=12,
+    )
 
 
 def _rebacked_tool_file(tool_file_id: str) -> File:
@@ -174,25 +190,169 @@ def test_success_output_adapter_normalizes_string_and_scalar_outputs():
 
 
 def test_success_output_adapter_normalizes_file_output_to_file_segments():
+    upload_reference = build_file_reference(record_id="upload-file-1")
+    tool_reference = build_file_reference(record_id="tool-file-1")
+    with patch(
+        "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
+        side_effect=[
+            _restored_file(transfer_method=FileTransferMethod.LOCAL_FILE, reference=upload_reference),
+            _restored_file(transfer_method=FileTransferMethod.TOOL_FILE, reference=tool_reference),
+        ],
+    ):
+        result = WorkflowAgentOutputAdapter().build_success_result(
+            event=AgentBackendRunSucceededInternalEvent(
+                run_id="run-1",
+                source_event_id="2-0",
+                output={
+                    "report": {
+                        "transfer_method": "local_file",
+                        "reference": upload_reference,
+                    },
+                    "attachments": [
+                        {
+                            "transfer_method": "tool_file",
+                            "reference": tool_reference,
+                        }
+                    ],
+                },
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+            inputs={},
+            process_data={},
+            metadata={"tenant_id": "tenant-1"},
+            declared_outputs=[
+                DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE),
+                DeclaredOutputConfig(
+                    name="attachments",
+                    type=DeclaredOutputType.ARRAY,
+                    array_item=DeclaredArrayItem(type=DeclaredOutputType.FILE),
+                ),
+            ],
+        )
+
+    report = result.outputs["report"]
+    assert isinstance(report, FileSegment)
+    assert report.value.transfer_method == FileTransferMethod.LOCAL_FILE
+    assert report.value.reference == upload_reference
+
+    attachments = result.outputs["attachments"]
+    assert isinstance(attachments, ArrayFileSegment)
+    assert attachments.value[0].transfer_method == FileTransferMethod.TOOL_FILE
+    assert attachments.value[0].reference == tool_reference
+
+
+def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_file_output():
+    tool_reference = build_file_reference(record_id="tool-file-1")
+    with patch(
+        "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
+        return_value=_restored_file(transfer_method=FileTransferMethod.TOOL_FILE, reference=tool_reference),
+    ):
+        result = WorkflowAgentOutputAdapter().build_success_result(
+            event=AgentBackendRunSucceededInternalEvent(
+                run_id="run-1",
+                source_event_id="2-0",
+                output={"report": {"transfer_method": "tool_file", "reference": tool_reference}},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+            inputs={},
+            process_data={},
+            metadata={"tenant_id": "tenant-1"},
+            declared_outputs=[DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)],
+        )
+
+    report = result.outputs["report"]
+    assert isinstance(report, FileSegment)
+    assert report.value.transfer_method == FileTransferMethod.TOOL_FILE
+    assert report.value.reference == tool_reference
+
+
+def test_success_output_adapter_accepts_canonical_datasource_file_mapping_for_declared_file_output():
+    datasource_reference = build_file_reference(record_id="datasource-file-1")
+    with patch(
+        "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
+        return_value=_restored_file(
+            transfer_method=FileTransferMethod.DATASOURCE_FILE,
+            reference=datasource_reference,
+        ),
+    ):
+        result = WorkflowAgentOutputAdapter().build_success_result(
+            event=AgentBackendRunSucceededInternalEvent(
+                run_id="run-1",
+                source_event_id="2-0",
+                output={"report": {"transfer_method": "datasource_file", "reference": datasource_reference}},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+            inputs={},
+            process_data={},
+            metadata={"tenant_id": "tenant-1"},
+            declared_outputs=[DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)],
+        )
+
+    report = result.outputs["report"]
+    assert isinstance(report, FileSegment)
+    assert report.value.transfer_method == FileTransferMethod.DATASOURCE_FILE
+    assert report.value.reference == datasource_reference
+
+
+def test_success_output_adapter_accepts_canonical_remote_url_mapping_for_declared_file_output():
+    remote_url = "https://example.com/report.pdf"
+
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
             run_id="run-1",
             source_event_id="2-0",
-            output={
-                "report": {
-                    "file_id": "upload-file-1",
-                    "filename": "report.pdf",
-                    "mime_type": "application/pdf",
-                    "size": 12,
-                },
-                "attachments": [
-                    {
-                        "tool_file_id": "tool-file-1",
-                        "filename": "chart.png",
-                        "mime_type": "image/png",
-                    }
-                ],
-            },
+            output={"report": {"transfer_method": "remote_url", "url": remote_url}},
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+        ),
+        inputs={},
+        process_data={},
+        metadata={"tenant_id": "tenant-1"},
+        declared_outputs=[DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)],
+    )
+
+    report = result.outputs["report"]
+    assert isinstance(report, FileSegment)
+    assert report.value.transfer_method == FileTransferMethod.REMOTE_URL
+    assert report.value.remote_url == remote_url
+
+
+def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_array_file_output():
+    tool_reference = build_file_reference(record_id="tool-file-1")
+    with patch(
+        "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
+        return_value=_restored_file(transfer_method=FileTransferMethod.TOOL_FILE, reference=tool_reference),
+    ):
+        result = WorkflowAgentOutputAdapter().build_success_result(
+            event=AgentBackendRunSucceededInternalEvent(
+                run_id="run-1",
+                source_event_id="2-0",
+                output={"attachments": [{"transfer_method": "tool_file", "reference": tool_reference}]},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+            inputs={},
+            process_data={},
+            metadata={"tenant_id": "tenant-1"},
+            declared_outputs=[
+                DeclaredOutputConfig(
+                    name="attachments",
+                    type=DeclaredOutputType.ARRAY,
+                    array_item=DeclaredArrayItem(type=DeclaredOutputType.FILE),
+                )
+            ],
+        )
+
+    attachments = result.outputs["attachments"]
+    assert isinstance(attachments, ArrayFileSegment)
+    assert attachments.value[0].transfer_method == FileTransferMethod.TOOL_FILE
+    assert attachments.value[0].reference == tool_reference
+
+
+def test_success_output_adapter_does_not_treat_generic_object_with_string_id_as_file():
+    result = WorkflowAgentOutputAdapter().build_success_result(
+        event=AgentBackendRunSucceededInternalEvent(
+            run_id="run-1",
+            source_event_id="2-0",
+            output={"meta": {"id": "123", "type": "summary"}},
             session_snapshot=CompositorSessionSnapshot(layers=[]),
         ),
         inputs={},
@@ -200,17 +360,117 @@ def test_success_output_adapter_normalizes_file_output_to_file_segments():
         metadata={},
     )
 
-    report = result.outputs["report"]
-    assert isinstance(report, FileSegment)
-    assert report.value.type == FileType.DOCUMENT
-    assert report.value.transfer_method == FileTransferMethod.LOCAL_FILE
-    assert report.value.reference == "upload-file-1"
+    assert result.outputs["meta"] == {"id": "123", "type": "summary"}
 
-    attachments = result.outputs["attachments"]
-    assert isinstance(attachments, ArrayFileSegment)
-    assert attachments.value[0].type == FileType.IMAGE
-    assert attachments.value[0].transfer_method == FileTransferMethod.TOOL_FILE
-    assert attachments.value[0].reference == "tool-file-1"
+
+def test_success_output_adapter_does_not_crash_on_generic_object_with_non_string_id():
+    result = WorkflowAgentOutputAdapter().build_success_result(
+        event=AgentBackendRunSucceededInternalEvent(
+            run_id="run-1",
+            source_event_id="2-0",
+            output={"meta": {"id": 1, "name": "foo"}},
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+        ),
+        inputs={},
+        process_data={},
+        metadata={},
+    )
+
+    assert result.outputs["meta"] == {"id": 1, "name": "foo"}
+
+
+def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_object_output():
+    tool_reference = build_file_reference(record_id="tool-file-1")
+    result = WorkflowAgentOutputAdapter().build_success_result(
+        event=AgentBackendRunSucceededInternalEvent(
+            run_id="run-1",
+            source_event_id="2-0",
+            output={
+                "meta": {
+                    "attachment": {
+                        "transfer_method": "tool_file",
+                        "reference": tool_reference,
+                    }
+                }
+            },
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+        ),
+        inputs={},
+        process_data={},
+        metadata={},
+        declared_outputs=[DeclaredOutputConfig(name="meta", type=DeclaredOutputType.OBJECT)],
+    )
+
+    assert result.outputs["meta"] == {
+        "attachment": {
+            "transfer_method": "tool_file",
+            "reference": tool_reference,
+        }
+    }
+
+
+def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_generic_array_output():
+    tool_reference = build_file_reference(record_id="tool-file-1")
+    result = WorkflowAgentOutputAdapter().build_success_result(
+        event=AgentBackendRunSucceededInternalEvent(
+            run_id="run-1",
+            source_event_id="2-0",
+            output={
+                "items": [
+                    {
+                        "attachment": {
+                            "transfer_method": "tool_file",
+                            "reference": tool_reference,
+                        }
+                    }
+                ]
+            },
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+        ),
+        inputs={},
+        process_data={},
+        metadata={},
+        declared_outputs=[
+            DeclaredOutputConfig(
+                name="items",
+                type=DeclaredOutputType.ARRAY,
+                array_item=DeclaredArrayItem(type=DeclaredOutputType.OBJECT),
+            )
+        ],
+    )
+
+    assert result.outputs["items"] == [
+        {
+            "attachment": {
+                "transfer_method": "tool_file",
+                "reference": tool_reference,
+            }
+        }
+    ]
+
+
+def test_success_output_adapter_does_not_normalize_top_level_canonical_file_mapping_without_declared_file_field():
+    tool_reference = build_file_reference(record_id="tool-file-1")
+    result = WorkflowAgentOutputAdapter().build_success_result(
+        event=AgentBackendRunSucceededInternalEvent(
+            run_id="run-1",
+            source_event_id="2-0",
+            output={
+                "transfer_method": "tool_file",
+                "reference": tool_reference,
+            },
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+        ),
+        inputs={},
+        process_data={},
+        metadata={"tenant_id": "tenant-1"},
+        declared_outputs=[DeclaredOutputConfig(name="text", type=DeclaredOutputType.STRING, required=False)],
+    )
+
+    assert result.outputs == {
+        "transfer_method": "tool_file",
+        "reference": tool_reference,
+    }
 
 
 def test_success_output_adapter_maps_backend_usage_to_llm_usage_and_metadata():

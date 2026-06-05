@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import base64
 import json
+from pathlib import Path
 
 import pytest
 
 from dify_agent.cli.main import main
 from dify_agent.protocol.back_proxy import BackProxyConnectResponse
+
+
+def _reference(record_id: str) -> str:
+    payload = base64.urlsafe_b64encode(json.dumps({"record_id": record_id}, separators=(",", ":")).encode()).decode()
+    return f"dify-file-ref:{payload}"
 
 
 def test_cli_connect_reports_missing_environment_variables(capsys: pytest.CaptureFixture[str]) -> None:
@@ -120,3 +127,51 @@ def test_cli_reports_structurally_invalid_back_proxy_url_environment_value(
     assert exc_info.value.code == 2
     assert "invalid DIFY_AGENT_BACK_PROXY_URL" in captured.err
     assert expected_message in captured.err
+
+
+def test_cli_file_upload_prints_uploaded_tool_file_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "dify_agent.cli.main.upload_file_from_environment",
+        lambda *, path: type(
+            "Response",
+            (),
+            {
+                "model_dump_json": lambda self: json.dumps(
+                    {
+                        "transfer_method": "tool_file",
+                        "reference": _reference(Path(path).name),
+                    }
+                )
+            },
+        )(),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["file", "upload", "/tmp/report.pdf"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert json.loads(captured.out) == {
+        "transfer_method": "tool_file",
+        "reference": _reference("report.pdf"),
+    }
+
+
+def test_cli_file_download_prints_saved_path(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "dify_agent.cli.main.download_file_from_environment",
+        lambda **_kwargs: type("Response", (), {"path": Path("/tmp/report.pdf")})(),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["file", "download", "tool_file", _reference("tool-file-1"), "/tmp"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured.out.strip() == "/tmp/report.pdf"

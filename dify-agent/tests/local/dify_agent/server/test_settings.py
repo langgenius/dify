@@ -84,3 +84,35 @@ def test_server_settings_rejects_padded_or_quoted_server_secret_key() -> None:
 
     with pytest.raises(ValidationError, match="unpadded base64url"):
         _ = ServerSettings(server_secret_key=f'"{secret}"')
+
+
+def test_server_settings_normalizes_dify_api_base_url_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_DIFY_API_BASE_URL", "https://api.example.com/")
+    monkeypatch.setenv("DIFY_AGENT_DIFY_API_INNER_API_KEY", "inner-secret")
+
+    settings = ServerSettings()
+
+    assert settings.dify_api_base_url == "https://api.example.com"
+    assert settings.dify_api_inner_api_key == "inner-secret"
+
+
+def test_server_settings_requires_dify_api_base_url_and_key_together() -> None:
+    with pytest.raises(ValidationError, match="DIFY_AGENT_DIFY_API_BASE_URL"):
+        _ = ServerSettings(dify_api_base_url="https://api.example.com")
+
+    with pytest.raises(ValidationError, match="DIFY_AGENT_DIFY_API_BASE_URL"):
+        _ = ServerSettings(dify_api_inner_api_key="inner-secret")
+
+
+def test_server_settings_rejects_dify_api_base_url_with_query_or_fragment() -> None:
+    with pytest.raises(ValidationError, match="query string or fragment"):
+        _ = ServerSettings(
+            dify_api_base_url="https://api.example.com?x=1",
+            dify_api_inner_api_key="inner-secret",
+        )
+
+    with pytest.raises(ValidationError, match="query string or fragment"):
+        _ = ServerSettings(
+            dify_api_base_url="https://api.example.com#frag",
+            dify_api_inner_api_key="inner-secret",
+        )

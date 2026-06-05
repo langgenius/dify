@@ -5,11 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.layers.execution_context import (
-    DifyExecutionContextInvokeFrom,
-    DifyExecutionContextLayerConfig,
-    DifyExecutionContextUserFrom,
-)
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
@@ -30,6 +26,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.file import FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
@@ -174,6 +171,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
+                    user_from=context.dify_context.user_from.value,
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
@@ -182,12 +180,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                     conversation_id=get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID),
                     agent_id=context.agent.id,
                     agent_config_version_id=context.snapshot.id,
-                    # Agent Files §1.3: forward the real Dify access context
-                    # (user_from + invoke_from) so downstream file/drive inner APIs
-                    # can rebuild it; the agent run mode moves to agent_mode.
-                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
-                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
-                    agent_mode=self._agent_mode(context.dify_context.invoke_from),
+                    agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
+                    invoke_from=context.dify_context.invoke_from.value,
                 ),
                 agent_soul_prompt=agent_soul.prompt.system_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
@@ -211,7 +205,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         )
 
     @staticmethod
-    def _agent_mode(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
+    def _agent_backend_agent_mode(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.VALIDATION}:
             return "single_step"
         return "workflow_run"
@@ -396,14 +390,44 @@ class WorkflowAgentRuntimeRequestBuilder:
                 return schema
             case DeclaredOutputType.FILE:
                 return {
-                    "type": "object",
-                    "properties": {
-                        "file_id": {"type": "string"},
-                        "filename": {"type": "string"},
-                        "mime_type": {"type": "string"},
-                        "url": {"type": "string"},
-                    },
-                    "required": ["file_id"],
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.LOCAL_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.TOOL_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.DATASOURCE_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.REMOTE_URL.value},
+                                "url": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "url"],
+                        },
+                    ],
                 }
         assert_never(output_type)
 

@@ -9,8 +9,8 @@ read-only views:
 * :meth:`snapshot_workflow_run` — every node + its declared outputs + per-output
   status, for one debug workflow run.
 * :meth:`node_detail` — the same shape filtered down to one node.
-* :meth:`output_preview` — full payload for one output, with signed download
-  URL when the output references an upload file.
+ * :meth:`output_preview` — full payload for one output, with signed download
+   URL when the output is a canonical Agent v2 file mapping.
 
 Design constraints baked into this version:
 
@@ -61,12 +61,14 @@ from core.workflow.nodes.agent_v2.binding_resolver import (
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuilder,
 )
+from factories.file_factory.builders import build_from_mapping
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import helpers as file_helpers
+from core.app.file_access import DatabaseFileAccessController
 from models import App
 from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
@@ -175,6 +177,7 @@ class _ResolvedDeclaration:
 
     name: str
     declared_type: DeclaredOutputType | None
+    array_item_type: DeclaredOutputType | None
     inferred: bool
 
 
@@ -294,53 +297,103 @@ def _retried_attempt_count(metadata: Mapping[str, Any] | None) -> int:
 
 
 _PREVIEW_TEXT_LIMIT = 500
-_FILE_ID_KEYS: tuple[str, ...] = ("file_id", "upload_file_id", "tool_file_id")
-
-
-def _looks_like_file_ref(value: Any) -> str | None:
-    """Return the resolved ``file_id`` when ``value`` is a file-shaped dict."""
+def _looks_like_file_ref(value: Any) -> bool:
+    """Return whether ``value`` looks like a canonical Agent v2 file mapping."""
     if not isinstance(value, Mapping):
-        return None
-    for key in _FILE_ID_KEYS:
-        candidate = value.get(key)
-        if isinstance(candidate, str) and candidate:
-            return candidate
-    return None
+        return False
+    transfer_method = value.get("transfer_method")
+    if transfer_method == "remote_url":
+        return isinstance(value.get("url"), str) and bool(value.get("url"))
+    return isinstance(transfer_method, str) and isinstance(value.get("reference"), str) and bool(value.get("reference"))
 
 
-def _value_preview(value: Any) -> Any:
+def _resolve_preview_url(value: Mapping[str, Any], *, tenant_id: str) -> str | None:
+    """Resolve one canonical file mapping into its preview/download URL.
+
+    Agent v2 output files now use the same ``transfer_method`` +
+    ``reference``/``url`` mapping contract as the back-proxy download request,
+    so the Inspector rebuilds a graphon ``File`` through the standard factory
+    path instead of trying to special-case upload/tool file ids itself.
+    """
+    file = build_from_mapping(
+        mapping=value,
+        tenant_id=tenant_id,
+        access_controller=DatabaseFileAccessController(),
+    )
+    return file_helpers.resolve_file_url(file)
+
+
+def _value_preview(value: Any, *, tenant_id: str, declaration: _ResolvedDeclaration) -> Any:
     """Compact preview suitable for the snapshot endpoint.
 
-    File refs are augmented with a signed download URL so the panel can render
-    a thumbnail / link without a second round-trip; long strings are truncated;
-    other scalar / dict / list shapes are returned as-is (the Pydantic layer
-    enforces JSON-safety on serialization).
+    Canonical file mappings are augmented with a signed download URL only when
+    the declared output is ``FILE`` or ``ARRAY[FILE]``. Canonical-looking
+    mappings nested inside ``OBJECT`` or non-file arrays remain plain JSON so
+    the Inspector does not introduce a nested file protocol the runtime itself
+    does not promise. Long strings are truncated; other scalar / dict / list
+    shapes are returned as-is (the Pydantic layer enforces JSON-safety on
+    serialization).
     """
-    file_id = _looks_like_file_ref(value)
-    if file_id:
+    if declaration.declared_type == DeclaredOutputType.FILE and _looks_like_file_ref(value):
         assert isinstance(value, Mapping)
         try:
-            preview_url = file_helpers.get_signed_file_url(upload_file_id=file_id)
+            preview_url = _resolve_preview_url(value, tenant_id=tenant_id)
         except Exception:
-            logger.warning("NodeOutputInspector: signed URL failed for file_id=%s", file_id, exc_info=True)
+            logger.warning("NodeOutputInspector: signed URL failed for file mapping=%s", value, exc_info=True)
             preview_url = None
         return {**dict(value), "preview_url": preview_url}
+    if (
+        declaration.declared_type == DeclaredOutputType.ARRAY
+        and declaration.array_item_type == DeclaredOutputType.FILE
+        and isinstance(value, list)
+        and all(_looks_like_file_ref(item) for item in value)
+    ):
+        resolved_items: list[Any] = []
+        for item in value:
+            assert isinstance(item, Mapping)
+            try:
+                preview_url = _resolve_preview_url(item, tenant_id=tenant_id)
+            except Exception:
+                logger.warning("NodeOutputInspector: signed URL failed for file mapping=%s", item, exc_info=True)
+                preview_url = None
+            resolved_items.append({**dict(item), "preview_url": preview_url})
+        return resolved_items
     if isinstance(value, str) and len(value) > _PREVIEW_TEXT_LIMIT:
         return value[:_PREVIEW_TEXT_LIMIT] + "…"
     return value
 
 
-def _full_value(value: Any) -> Any:
-    """Same shape as :func:`_value_preview` minus the truncation."""
-    file_id = _looks_like_file_ref(value)
-    if file_id:
+def _full_value(value: Any, *, tenant_id: str, declaration: _ResolvedDeclaration) -> Any:
+    """Same shape as :func:`_value_preview` minus the truncation.
+
+    As with preview values, only outputs declared as ``FILE`` or
+    ``ARRAY[FILE]`` get signed URL augmentation; non-file outputs keep their raw
+    JSON payload unchanged even if it resembles a canonical file mapping.
+    """
+    if declaration.declared_type == DeclaredOutputType.FILE and _looks_like_file_ref(value):
         assert isinstance(value, Mapping)
         try:
-            preview_url = file_helpers.get_signed_file_url(upload_file_id=file_id)
+            preview_url = _resolve_preview_url(value, tenant_id=tenant_id)
         except Exception:
-            logger.warning("NodeOutputInspector: signed URL failed for file_id=%s", file_id, exc_info=True)
+            logger.warning("NodeOutputInspector: signed URL failed for file mapping=%s", value, exc_info=True)
             preview_url = None
         return {**dict(value), "preview_url": preview_url}
+    if (
+        declaration.declared_type == DeclaredOutputType.ARRAY
+        and declaration.array_item_type == DeclaredOutputType.FILE
+        and isinstance(value, list)
+        and all(_looks_like_file_ref(item) for item in value)
+    ):
+        resolved_items: list[Any] = []
+        for item in value:
+            assert isinstance(item, Mapping)
+            try:
+                preview_url = _resolve_preview_url(item, tenant_id=tenant_id)
+            except Exception:
+                logger.warning("NodeOutputInspector: signed URL failed for file mapping=%s", item, exc_info=True)
+                preview_url = None
+            resolved_items.append({**dict(item), "preview_url": preview_url})
+        return resolved_items
     return value
 
 
@@ -421,10 +474,22 @@ class NodeOutputInspectorService:
         output_name: str,
     ) -> OutputPreviewView:
         """Full payload for one declared output (with signed file URL)."""
-        detail = self.node_detail(
-            app_model=app_model,
-            workflow_run_id=workflow_run_id,
-            node_id=node_id,
+        workflow_run, executions = self._load_run_and_executions(app_model=app_model, workflow_run_id=workflow_run_id)
+        graph_nodes = _graph_nodes(workflow_run)
+        raw_node = next((n for n in graph_nodes if str(n.get("id")) == node_id), None)
+        if raw_node is None:
+            raise NodeOutputInspectorError(
+                "node_not_in_workflow_run",
+                f"Node {node_id!r} does not appear in workflow run {workflow_run_id!r}.",
+            )
+
+        execution = self._index_executions_by_node(executions).get(node_id)
+        detail = self._build_node_view(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            workflow_id=workflow_run.workflow_id,
+            raw_node=raw_node,
+            execution=execution,
         )
         view = next((o for o in detail.outputs if o.name == output_name), None)
         if view is None:
@@ -432,19 +497,24 @@ class NodeOutputInspectorService:
                 "node_output_not_declared",
                 f"Output {output_name!r} is not declared on node {node_id!r}.",
             )
+        declaration = next((d for d in self._resolve_declared_outputs(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            workflow_id=workflow_run.workflow_id,
+            node_id=node_id,
+            raw_node=raw_node,
+            execution=execution,
+        ) if d.name == output_name), _ResolvedDeclaration(name=output_name, declared_type=view.type, array_item_type=None, inferred=True))
 
         # ``node_detail`` already produced a truncated value_preview; reload
         # the raw value from the execution payload so the preview endpoint can
         # return the full thing (still wrapped through ``_full_value`` for
         # signed file URLs).
-        execution = self._index_executions_by_node(
-            self._load_run_and_executions(app_model=app_model, workflow_run_id=workflow_run_id)[1]
-        ).get(node_id)
         full_value: Any = None
         if execution is not None:
             outputs = _decode_json_blob(execution.outputs) or {}
             if output_name in outputs:
-                full_value = _full_value(outputs[output_name])
+                full_value = _full_value(outputs[output_name], tenant_id=app_model.tenant_id, declaration=declaration)
 
         return OutputPreviewView(
             node_id=node_id,
@@ -546,6 +616,7 @@ class NodeOutputInspectorService:
         for declaration in declarations:
             output_views.append(
                 self._build_output_view(
+                    tenant_id=tenant_id,
                     declaration=declaration,
                     node_status=node_status,
                     outputs_dict=outputs_dict,
@@ -568,6 +639,7 @@ class NodeOutputInspectorService:
     def _build_output_view(
         self,
         *,
+        tenant_id: str,
         declaration: _ResolvedDeclaration,
         node_status: NodeStatus,
         outputs_dict: Mapping[str, Any] | None,
@@ -617,7 +689,11 @@ class NodeOutputInspectorService:
         else:
             status = NodeOutputStatus.READY
 
-        value_preview = _value_preview(outputs_dict.get(name)) if outputs_dict and name in outputs_dict else None
+        value_preview = (
+            _value_preview(outputs_dict.get(name), tenant_id=tenant_id, declaration=declaration)
+            if outputs_dict and name in outputs_dict
+            else None
+        )
 
         return NodeOutputView(
             name=name,
@@ -659,7 +735,15 @@ class NodeOutputInspectorService:
                 node_id=node_id,
             )
             if agent_decl is not None:
-                return [_ResolvedDeclaration(name=o.name, declared_type=o.type, inferred=False) for o in agent_decl]
+                return [
+                    _ResolvedDeclaration(
+                        name=o.name,
+                        declared_type=o.type,
+                        array_item_type=o.array_item.type if o.array_item is not None else None,
+                        inferred=False,
+                    )
+                    for o in agent_decl
+                ]
 
         # Non-agent (or agent-binding-missing) fall back to inferring from the
         # produced payload so the Inspector still has something to show.
@@ -700,7 +784,7 @@ class NodeOutputInspectorService:
         outputs = _decode_json_blob(execution.outputs)
         if not outputs:
             return []
-        return [_ResolvedDeclaration(name=name, declared_type=None, inferred=True) for name in outputs]
+        return [_ResolvedDeclaration(name=name, declared_type=None, array_item_type=None, inferred=True) for name in outputs]
 
 
 def _is_passing(result: Mapping[str, Any]) -> bool:

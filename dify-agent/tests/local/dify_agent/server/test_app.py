@@ -146,6 +146,8 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         shellctl_auth_token="shell-secret",
         shell_back_proxy_public_url="https://agent.example.com/back-proxy",
         server_secret_key=_base64url_secret(b"1" * 32),
+        dify_api_base_url="https://api.example.com",
+        dify_api_inner_api_key="inner-secret",
         plugin_daemon_connect_timeout=1,
         plugin_daemon_read_timeout=2,
         plugin_daemon_write_timeout=3,
@@ -165,7 +167,12 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
             provider for provider in layer_providers if provider.type_id == "dify.execution_context"
         )
         execution_context_layer = execution_context_provider.create_layer(
-            DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run")
+            DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="service-api",
+            )
         )
         shell_provider = next(provider for provider in layer_providers if provider.type_id == "dify.shell")
         shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
@@ -185,7 +192,15 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         store = scheduler.store
         assert isinstance(store, RedisRunStore)
         assert store.run_retention_seconds == 7
-        assert any(route.path == "/back-proxy/connections" for route in create_app(settings).routes)
+        assert any(getattr(route, "path", None) == "/back-proxy/connections" for route in create_app(settings).routes)
+        assert any(
+            getattr(route, "path", None) == "/back-proxy/files/upload-request"
+            for route in create_app(settings).routes
+        )
+        assert any(
+            getattr(route, "path", None) == "/back-proxy/files/download-request"
+            for route in create_app(settings).routes
+        )
 
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert FakeRunScheduler.created[0].plugin_daemon_http_client.is_closed is True

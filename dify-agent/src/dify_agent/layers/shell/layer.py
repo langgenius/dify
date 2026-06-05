@@ -761,6 +761,7 @@ def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
 
 def _wrap_user_script(script: str) -> str:
     """Source Agent Soul env before executing a model-requested shell command."""
+    # TODO: refactor
     return "\n".join(
         [
             'if [ -f ".dify/env.sh" ]; then',

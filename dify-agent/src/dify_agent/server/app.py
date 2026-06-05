@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
+from dify_agent.server.back_proxy_files import DifyApiBackProxyFileRequestHandler
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.routes.back_proxy import create_back_proxy_router
 from dify_agent.server.routes.runs import create_runs_router
@@ -31,6 +32,12 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
     back_proxy_token_codec = resolved_settings.create_back_proxy_token_codec()
+    back_proxy_file_request_handler = None
+    if resolved_settings.dify_api_base_url and resolved_settings.dify_api_inner_api_key:
+        back_proxy_file_request_handler = DifyApiBackProxyFileRequestHandler(
+            dify_api_base_url=resolved_settings.dify_api_base_url,
+            dify_api_inner_api_key=resolved_settings.dify_api_inner_api_key,
+        )
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
@@ -82,8 +89,14 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
     app.include_router(create_runs_router(get_store, get_scheduler))
+    # TODO: refactor
     app.include_router(create_workspace_files_router(lambda: workspace_file_service))
-    app.include_router(create_back_proxy_router(lambda: back_proxy_token_codec))
+    app.include_router(
+        create_back_proxy_router(
+            lambda: back_proxy_token_codec,
+            lambda: back_proxy_file_request_handler,
+        )
+    )
     return app
 
 

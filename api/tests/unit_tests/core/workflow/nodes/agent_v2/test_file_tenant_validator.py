@@ -11,18 +11,30 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
+from graphon.file import FileTransferMethod
 
-from core.workflow.nodes.agent_v2.file_tenant_validator import (
-    AgentOutputFileTenantValidator,
-    UploadFileTenantValidator,
-)
+from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
 
 
 def test_empty_inputs_return_false_without_db_hit():
     validator = UploadFileTenantValidator()
     with patch("core.workflow.nodes.agent_v2.file_tenant_validator.session_factory") as factory:
-        assert validator.is_owned_by_tenant(file_id="", tenant_id="tenant-1") is False
-        assert validator.is_owned_by_tenant(file_id="abc", tenant_id="") is False
+        assert (
+            validator.is_accessible_file_mapping(
+                file_id="",
+                tenant_id="tenant-1",
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+            )
+            is False
+        )
+        assert (
+            validator.is_accessible_file_mapping(
+                file_id="abc",
+                tenant_id="",
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+            )
+            is False
+        )
     factory.create_session.assert_not_called()
 
 
@@ -40,7 +52,14 @@ def test_empty_inputs_return_false_without_db_hit():
 def test_non_uuid_file_ids_return_false_without_db_hit(bad_file_id: str):
     validator = UploadFileTenantValidator()
     with patch("core.workflow.nodes.agent_v2.file_tenant_validator.session_factory") as factory:
-        assert validator.is_owned_by_tenant(file_id=bad_file_id, tenant_id="tenant-1") is False
+        assert (
+            validator.is_accessible_file_mapping(
+                file_id=bad_file_id,
+                tenant_id="tenant-1",
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+            )
+            is False
+        )
     factory.create_session.assert_not_called()
 
 
@@ -53,32 +72,37 @@ def test_db_error_swallowed_and_returns_false():
     valid_uuid = "550e8400-e29b-41d4-a716-446655440000"
     with patch("core.workflow.nodes.agent_v2.file_tenant_validator.session_factory") as factory:
         factory.create_session.return_value.__enter__.return_value.scalar.side_effect = SQLAlchemyError("boom")
-        assert validator.is_owned_by_tenant(file_id=valid_uuid, tenant_id="tenant-1") is False
+        assert (
+            validator.is_accessible_file_mapping(
+                file_id=valid_uuid,
+                tenant_id="tenant-1",
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+            )
+            is False
+        )
 
 
-_VALID_UUID = "550e8400-e29b-41d4-a716-446655440000"
-
-
-def test_tool_file_owned_by_tenant_returns_true():
-    """Agent Files §4.6: agent output files are canonically ToolFile."""
-    validator = AgentOutputFileTenantValidator()
+def test_accessible_file_mapping_checks_transfer_method_family():
+    validator = UploadFileTenantValidator()
+    valid_uuid = "550e8400-e29b-41d4-a716-446655440000"
     with patch("core.workflow.nodes.agent_v2.file_tenant_validator.session_factory") as factory:
-        # First scalar() = tool_files lookup -> tenant owns it.
+        factory.create_session.return_value.__enter__.return_value.scalar.return_value = None
+        assert (
+            validator.is_accessible_file_mapping(
+                file_id=valid_uuid,
+                tenant_id="tenant-1",
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+            )
+            is False
+        )
+
+    with patch("core.workflow.nodes.agent_v2.file_tenant_validator.session_factory") as factory:
         factory.create_session.return_value.__enter__.return_value.scalar.return_value = "tenant-1"
-        assert validator.is_owned_by_tenant(file_id=_VALID_UUID, tenant_id="tenant-1") is True
-
-
-def test_tool_file_owned_by_other_tenant_rejected():
-    validator = AgentOutputFileTenantValidator()
-    with patch("core.workflow.nodes.agent_v2.file_tenant_validator.session_factory") as factory:
-        factory.create_session.return_value.__enter__.return_value.scalar.return_value = "tenant-OTHER"
-        assert validator.is_owned_by_tenant(file_id=_VALID_UUID, tenant_id="tenant-1") is False
-
-
-def test_falls_back_to_upload_file_when_not_a_tool_file():
-    validator = AgentOutputFileTenantValidator()
-    with patch("core.workflow.nodes.agent_v2.file_tenant_validator.session_factory") as factory:
-        scalar = factory.create_session.return_value.__enter__.return_value.scalar
-        # tool_files miss -> upload_files hit for this tenant.
-        scalar.side_effect = [None, "tenant-1"]
-        assert validator.is_owned_by_tenant(file_id=_VALID_UUID, tenant_id="tenant-1") is True
+        assert (
+            validator.is_accessible_file_mapping(
+                file_id=valid_uuid,
+                tenant_id="tenant-1",
+                transfer_method=FileTransferMethod.TOOL_FILE,
+            )
+            is True
+        )

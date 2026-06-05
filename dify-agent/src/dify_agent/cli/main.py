@@ -16,6 +16,7 @@ import typer
 from typer.main import get_command
 
 from dify_agent.cli._back_proxy import connect_from_environment
+from dify_agent.cli._files import download_file_from_environment, upload_file_from_environment
 from dify_agent.cli._env import MissingBackProxyEnvironmentError, has_back_proxy_environment
 from dify_agent.client._back_proxy import BackProxyClientError
 
@@ -25,7 +26,9 @@ app = typer.Typer(
     help="Forward shell-visible dify-agent commands back to the Dify Agent server.",
     no_args_is_help=True,
 )
-_KNOWN_ROOT_COMMANDS = frozenset({"connect"})
+file_app = typer.Typer(help="Upload or download workflow files through the back proxy.")
+app.add_typer(file_app, name="file")
+_KNOWN_ROOT_COMMANDS = frozenset({"connect", "file"})
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
@@ -35,6 +38,26 @@ def connect(
 ) -> None:
     """Establish one shell back proxy connection using the current environment."""
     _run_connect(argv=list(argv), json_output=json_output)
+
+
+@file_app.command("upload")
+def upload(path: str = typer.Argument(..., metavar="PATH")) -> None:
+    """Upload one sandbox-local file as a ToolFile output reference."""
+    _run_file_upload(path=path)
+
+
+@file_app.command("download")
+def download(
+    transfer_method: str = typer.Argument(..., metavar="TRANSFER_METHOD"),
+    reference_or_url: str = typer.Argument(..., metavar="REFERENCE_OR_URL"),
+    directory: str | None = typer.Argument(default=None, metavar="DIR"),
+) -> None:
+    """Download one workflow file mapping into the local sandbox directory."""
+    _run_file_download(
+        transfer_method=transfer_method,
+        reference_or_url=reference_or_url,
+        directory=directory,
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -102,6 +125,34 @@ def _run_connect(*, argv: list[str], json_output: bool) -> None:
         typer.echo(response.model_dump_json())
         return
     typer.echo(f"connected {response.connection_id}")
+
+
+def _run_file_upload(*, path: str) -> None:
+    try:
+        response = upload_file_from_environment(path=path)
+    except MissingBackProxyEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except BackProxyClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
+
+
+def _run_file_download(*, transfer_method: str, reference_or_url: str, directory: str | None) -> None:
+    try:
+        response = download_file_from_environment(
+            transfer_method=transfer_method,
+            reference_or_url=reference_or_url,
+            directory=directory,
+        )
+    except MissingBackProxyEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except BackProxyClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(str(response.path))
 
 
 __all__ = ["app", "main"]

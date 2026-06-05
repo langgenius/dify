@@ -213,6 +213,7 @@ def _execution_context_layer() -> DifyExecutionContextLayer:
         DifyExecutionContextLayerConfig(
             tenant_id="tenant-1",
             user_id="user-1",
+            user_from="account",
             app_id="app-1",
             workflow_id="workflow-1",
             workflow_run_id="workflow-run-1",
@@ -221,7 +222,8 @@ def _execution_context_layer() -> DifyExecutionContextLayer:
             conversation_id="conversation-1",
             agent_id="agent-1",
             agent_config_version_id="agent-config-version-1",
-            invoke_from="workflow_run",
+            agent_mode="workflow_run",
+            invoke_from="service-api",
             trace_id="trace-1",
         ),
         daemon_url="http://plugin-daemon",

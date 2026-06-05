@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from clients.agent_backend import (
@@ -11,22 +11,26 @@ from clients.agent_backend import (
     AgentBackendRunPausedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
 )
+from core.app.file_access import DatabaseFileAccessController
+from factories.file_factory.builders import build_from_mapping
+from core.workflow.file_reference import is_canonical_file_reference
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.variables.segments import ArrayFileSegment, FileSegment
+from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
 
 
 class WorkflowAgentOutputAdapter:
-    """Convert terminal Agent backend events into workflow node run results."""
+    """Convert terminal Agent backend events into workflow node run results.
 
-    def __init__(self, *, tool_file_rebacker: Callable[..., File | None] | None = None) -> None:
-        # Agent Files §4.6: resolve a bare ToolFile id into a graphon File whose
-        # metadata comes from the ToolFile row (not the untrusted sandbox payload).
-        # Injected so unit tests can stub it without DB access; None keeps the
-        # legacy payload-only behaviour for non-file or rich-payload outputs.
-        self._tool_file_rebacker = tool_file_rebacker
+    ``DifyAgentNode`` relies on this after the earlier per-output type-check pass:
+    once the backend payload has been validated against declared ``FILE`` or
+    ``ARRAY[FILE]`` outputs, this adapter can safely convert canonical file
+    mappings into ``FileSegment`` values without reintroducing false positives
+    for normal object outputs.
+    """
 
     def build_success_result(
         self,
@@ -35,15 +39,27 @@ class WorkflowAgentOutputAdapter:
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-        tenant_id: str | None = None,
+        declared_outputs: Sequence[DeclaredOutputConfig] | None = None,
     ) -> NodeRunResult:
+        """Build the successful node result from one backend terminal event.
+
+        ``declared_outputs`` is optional for generic normalization, but callers
+        should pass it from the earlier type-checking stage so canonical file
+        mappings are normalized on the correct declared fields only.
+
+        Canonical persisted-file mappings (``local_file`` / ``tool_file`` /
+        ``datasource_file``) also require ``metadata["tenant_id"]`` so the
+        adapter can hydrate filename / extension / mime metadata through the
+        server-side file factory before producing ``FileSegment`` values.
+        """
         metadata = self._with_terminal_metadata(metadata, event, "succeeded")
         usage = self._usage_from_metadata(metadata)
+        tenant_id = metadata.get("tenant_id") if isinstance(metadata.get("tenant_id"), str) else None
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
-            outputs=self._normalize_outputs(event.output, tenant_id=tenant_id),
+            outputs=self._normalize_outputs(event.output, declared_outputs=declared_outputs, tenant_id=tenant_id),
             metadata=self._build_node_metadata(metadata=metadata, usage=usage),
             llm_usage=usage or LLMUsage.empty_usage(),
         )
@@ -109,148 +125,132 @@ class WorkflowAgentOutputAdapter:
             error_type="agent_backend_stream_error",
         )
 
-    def _normalize_outputs(self, output: Any, *, tenant_id: str | None) -> dict[str, Any]:
+    @classmethod
+    def _normalize_outputs(
+        cls,
+        output: Any,
+        *,
+        declared_outputs: Sequence[DeclaredOutputConfig] | None = None,
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Normalize backend output payloads into workflow-facing values.
+
+        Field values remain untouched unless the declared output type says they
+        should be interpreted as files. Non-remote canonical mappings depend on
+        ``tenant_id`` so persisted file metadata can be reconstructed through the
+        DB-backed file factory.
+        """
         if isinstance(output, dict):
-            if self._is_file_payload(output):
-                file = self._file_from_payload(output, tenant_id=tenant_id)
-                if file is not None:
-                    return {"file": FileSegment(value=file)}
-            return {key: self._normalize_output_value(value, tenant_id=tenant_id) for key, value in output.items()}
+            declared_outputs_by_name = {declared.name: declared for declared in declared_outputs or ()}
+            return {
+                key: cls._normalize_output_value(
+                    value,
+                    declared_output=declared_outputs_by_name.get(key),
+                    tenant_id=tenant_id,
+                )
+                for key, value in output.items()
+            }
         if isinstance(output, str):
             return {"text": output}
         return {"result": output}
 
-    def _normalize_output_value(self, value: Any, *, tenant_id: str | None) -> Any:
+    @classmethod
+    def _normalize_output_value(
+        cls,
+        value: Any,
+        *,
+        declared_output: DeclaredOutputConfig | None = None,
+        tenant_id: str | None = None,
+    ) -> Any:
         if isinstance(value, File | FileSegment | ArrayFileSegment):
             return value
-        if isinstance(value, Mapping):
-            if self._is_file_payload(value):
-                file = self._file_from_payload(value, tenant_id=tenant_id)
-                if file is not None:
-                    return FileSegment(value=file)
-                # A bare ref that did not resolve to a tenant file: treat as a plain object.
-            return {key: self._normalize_output_value(item, tenant_id=tenant_id) for key, item in value.items()}
-        if isinstance(value, list):
-            if value and all(isinstance(item, Mapping) and self._is_file_payload(item) for item in value):
-                files = [self._file_from_payload(item, tenant_id=tenant_id) for item in value]
-                if all(file is not None for file in files):
-                    return ArrayFileSegment(value=[file for file in files if file is not None])
-            return [self._normalize_output_value(item, tenant_id=tenant_id) for item in value]
+        if declared_output is not None:
+            normalized_declared_value = cls._normalize_declared_output_value(
+                value,
+                declared_output=declared_output,
+                tenant_id=tenant_id,
+            )
+            if normalized_declared_value is not None:
+                return normalized_declared_value
         return value
 
-    # Keys a file-output ref may legitimately carry. A dict is treated as a file
-    # ref only if it has an id/url AND every key is one of these — so a bare
-    # ``{"id": "..."}`` (Agent Files §4.6 canonical) is recognized while ordinary
-    # business objects that merely contain an ``id`` field are not.
-    _FILE_FIELD_KEYS: frozenset[str] = frozenset(
-        {
-            "id",
-            "file_id",
-            "upload_file_id",
-            "tool_file_id",
-            "url",
-            "remote_url",
-            "filename",
-            "name",
-            "mime_type",
-            "mimetype",
-            "extension",
-            "size",
-            "type",
-            "file_type",
-        }
-    )
+    @classmethod
+    def _normalize_declared_output_value(
+        cls,
+        value: Any,
+        *,
+        declared_output: DeclaredOutputConfig,
+        tenant_id: str | None = None,
+    ) -> Any | None:
+        if declared_output.type == DeclaredOutputType.FILE and isinstance(value, Mapping):
+            return cls._file_segment_from_payload(value, tenant_id=tenant_id)
+        if (
+            declared_output.type == DeclaredOutputType.ARRAY
+            and declared_output.array_item is not None
+            and declared_output.array_item.type == DeclaredOutputType.FILE
+            and isinstance(value, list)
+            and all(isinstance(item, Mapping) for item in value)
+        ):
+            return ArrayFileSegment(value=[cls._file_from_payload(item, tenant_id=tenant_id) for item in value])
+        return None
 
     @classmethod
-    def _is_file_payload(cls, value: Mapping[str, Any]) -> bool:
-        has_ref = any(
-            isinstance(value.get(key), str) and value.get(key)
-            for key in ("id", "file_id", "upload_file_id", "tool_file_id", "url", "remote_url")
+    def _file_segment_from_payload(cls, value: Mapping[str, Any], *, tenant_id: str | None) -> FileSegment:
+        return FileSegment(value=cls._file_from_payload(value, tenant_id=tenant_id))
+
+    @classmethod
+    def _file_from_payload(cls, value: Mapping[str, Any], *, tenant_id: str | None) -> File:
+        transfer_method_raw = value.get("transfer_method")
+        if not isinstance(transfer_method_raw, str):
+            raise ValueError("file mapping missing transfer_method")
+        transfer_method = FileTransferMethod.value_of(transfer_method_raw)
+
+        expected_keys = {"transfer_method", "url"} if transfer_method == FileTransferMethod.REMOTE_URL else {
+            "transfer_method",
+            "reference",
+        }
+        if set(value) != expected_keys:
+            raise ValueError(f"{transfer_method.value} file mapping must contain exactly {sorted(expected_keys)}")
+
+        remote_url = cls._string_value(value.get("url"))
+        reference = cls._string_value(value.get("reference"))
+
+        if transfer_method == FileTransferMethod.REMOTE_URL:
+            if remote_url is None:
+                raise ValueError("remote_url file mapping missing url")
+            return File(
+                type=FileType.CUSTOM,
+                transfer_method=transfer_method,
+                remote_url=remote_url,
+                reference=None,
+                filename=None,
+                extension=None,
+                mime_type=None,
+                size=-1,
+            )
+        elif reference is None:
+            raise ValueError(f"{transfer_method.value} file mapping missing reference")
+        elif not is_canonical_file_reference(reference):
+            raise ValueError(f"{transfer_method.value} file mapping has invalid canonical reference")
+        if tenant_id is None:
+            raise ValueError("tenant_id is required to reconstruct persisted file mappings")
+
+        return cls._restore_file_from_canonical_mapping(
+            mapping=value,
+            tenant_id=tenant_id,
         )
-        return has_ref and all(key in cls._FILE_FIELD_KEYS for key in value)
 
     @staticmethod
-    def _is_rich_payload(value: Mapping[str, Any]) -> bool:
-        """The payload carries its own metadata, so it can build a File without DB reback."""
-        return any(value.get(key) for key in ("filename", "name", "mime_type", "mimetype", "url", "remote_url"))
-
-    def _file_from_payload(self, value: Mapping[str, Any], *, tenant_id: str | None) -> File | None:
-        # Canonical Agent output file is a ToolFile referenced by ``id`` (or the
-        # ``tool_file_id`` alias). Reback its metadata authoritatively from the
-        # ToolFile row instead of trusting the sandbox payload.
-        tool_file_id = self._string_value(value.get("tool_file_id") or value.get("id"))
-        remote_url = self._string_value(value.get("remote_url") or value.get("url"))
-        upload_file_id = self._string_value(value.get("upload_file_id") or value.get("file_id"))
-
-        if tool_file_id and self._tool_file_rebacker is not None and tenant_id:
-            rebacked = self._tool_file_rebacker(tenant_id=tenant_id, tool_file_id=tool_file_id)
-            if rebacked is not None:
-                return rebacked
-
-        # No authoritative reback: only build a File from the payload when it
-        # actually carries file metadata; a bare unresolved id is not a file.
-        if not self._is_rich_payload(value):
-            return None
-
-        filename = self._string_value(value.get("filename") or value.get("name"))
-        mime_type = self._string_value(value.get("mime_type") or value.get("mimetype"))
-        extension = self._extension_from_payload(value, filename)
-        file_type = self._file_type_from_payload(value, mime_type)
-        size = value.get("size")
-        if not isinstance(size, int):
-            size = -1
-
-        if tool_file_id:
-            transfer_method = FileTransferMethod.TOOL_FILE
-            related_id = tool_file_id
-        elif remote_url:
-            transfer_method = FileTransferMethod.REMOTE_URL
-            related_id = None
-        else:
-            transfer_method = FileTransferMethod.LOCAL_FILE
-            related_id = upload_file_id
-
-        return File(
-            type=file_type,
-            transfer_method=transfer_method,
-            remote_url=remote_url if transfer_method == FileTransferMethod.REMOTE_URL else None,
-            related_id=related_id,
-            filename=filename,
-            extension=extension,
-            mime_type=mime_type,
-            size=size,
+    def _restore_file_from_canonical_mapping(*, mapping: Mapping[str, Any], tenant_id: str) -> File:
+        return build_from_mapping(
+            mapping=mapping,
+            tenant_id=tenant_id,
+            access_controller=DatabaseFileAccessController(),
         )
 
     @staticmethod
     def _string_value(value: Any) -> str | None:
         return value if isinstance(value, str) and value else None
-
-    @classmethod
-    def _extension_from_payload(cls, value: Mapping[str, Any], filename: str | None) -> str | None:
-        extension = cls._string_value(value.get("extension"))
-        if extension:
-            return extension if extension.startswith(".") else f".{extension}"
-        if filename and "." in filename:
-            return f".{filename.rsplit('.', 1)[1]}"
-        return None
-
-    @staticmethod
-    def _file_type_from_payload(value: Mapping[str, Any], mime_type: str | None) -> FileType:
-        explicit_type = value.get("type") or value.get("file_type")
-        if isinstance(explicit_type, str):
-            try:
-                return FileType(explicit_type)
-            except ValueError:
-                pass
-        if mime_type:
-            if mime_type.startswith("image/"):
-                return FileType.IMAGE
-            if mime_type.startswith("audio/"):
-                return FileType.AUDIO
-            if mime_type.startswith("video/"):
-                return FileType.VIDEO
-            return FileType.DOCUMENT
-        return FileType.CUSTOM
 
     @staticmethod
     def _usage_from_metadata(metadata: Mapping[str, Any]) -> LLMUsage | None:
