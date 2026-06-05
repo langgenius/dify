@@ -250,6 +250,10 @@ def _publish_error_event(exc: Exception, workflow_run_id: str, app_mode: AppMode
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
     payload = json.dumps({"event": "error", "message": str(exc), "status": 500})
     topic.publish(payload.encode())
+    # Publish a terminal event to close the SSE stream immediately.
+    # Without this, stream_topic_events keeps waiting until idle_timeout (300 s),
+    # leaving the UI stuck in "Running" with no feedback to the user.
+    topic.publish(json.dumps({"event": "workflow_finished", "data": {}}).encode())
 
 
 def _publish_streaming_response(
