@@ -43,6 +43,7 @@ export type AppInfoResponse = {
   mode: string
   name: string
   tags: Array<string>
+  workflow_id: string | null
 }
 
 export type ChatRequestPayload = {

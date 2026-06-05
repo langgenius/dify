@@ -113,5 +113,5 @@ class AppInfoApi(Resource):
             "tags": tags,
             "mode": app_model.mode,
             "author_name": app_model.author_name,
-            "workflow_id": app_model.workflow_id,
+            "workflow_id": app_model.workflow_id if app_model.mode in [AppMode.WORKFLOW.value, AppMode.ADVANCED_CHAT.value] else None,
         }

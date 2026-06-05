@@ -2221,6 +2221,7 @@ Returns a list of available models for the specified model type.
 | mode | string |  | Yes |
 | name | string |  | Yes |
 | tags | [ string ] |  | Yes |
+| workflow_id | string | Nullable. Published workflow ID for workflow/advanced-chat apps; null otherwise. | Yes |
 
 #### ChatRequestPayload
 
