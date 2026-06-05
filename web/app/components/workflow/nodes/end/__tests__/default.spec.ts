@@ -17,8 +17,8 @@ const createPayload = (overrides: Partial<EndNodeType> = {}): EndNodeType => ({
 })
 
 describe('end/default', () => {
-  it('should initialize the node without default outputs', () => {
-    expect(nodeDefault.defaultValue.outputs).toBeUndefined()
+  it('should initialize the node with an empty output list', () => {
+    expect(nodeDefault.defaultValue.outputs).toEqual([])
   })
 
   it('should require output configuration by default', () => {

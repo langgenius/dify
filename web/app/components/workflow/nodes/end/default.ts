@@ -10,7 +10,9 @@ const metaData = genNodeMetaData({
 })
 const nodeDefault: NodeDefault<EndNodeType> = {
   metaData,
-  defaultValue: {},
+  defaultValue: {
+    outputs: [],
+  },
   checkValid(payload: EndNodeType, t: any) {
     const outputs = payload.outputs || []
 
