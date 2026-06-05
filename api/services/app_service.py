@@ -551,9 +551,9 @@ class AppService:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 # current tool standard
-                provider_type = tool.get("provider_type", "")
-                provider_id = tool.get("provider_id", "")
-                tool_name = tool.get("tool_name", "")
+                provider_type = str(tool.get("provider_type", ""))
+                provider_id = str(tool.get("provider_id", ""))
+                tool_name = str(tool.get("tool_name", ""))
                 if provider_type == "builtin":
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":

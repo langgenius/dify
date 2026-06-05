@@ -12,6 +12,7 @@ from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
+from models.enums import SummaryStatus
 from services.summary_index_service import SummaryIndexService
 
 logger = logging.getLogger(__name__)
@@ -102,8 +103,8 @@ def regenerate_summary_index_task(
                         DocumentSegmentSummary.summary_content.isnot(None),  # Must have summary content
                         # Include completed summaries or error summaries (with content)
                         or_(
-                            DocumentSegmentSummary.status == "completed",
-                            DocumentSegmentSummary.status == "error",
+                            DocumentSegmentSummary.status == SummaryStatus.COMPLETED,
+                            DocumentSegmentSummary.status == SummaryStatus.ERROR,
                         ),
                         DatasetDocument.enabled == True,  # Document must be enabled
                         DatasetDocument.archived == False,  # Document must not be archived
@@ -174,7 +175,7 @@ def regenerate_summary_index_task(
                             )
                             total_segments_failed += 1
                             # Update summary record with error status
-                            summary_record.status = "error"
+                            summary_record.status = SummaryStatus.ERROR
                             summary_record.error = f"Re-vectorization failed: {str(e)}"
                             session.add(summary_record)
                             session.commit()
@@ -240,7 +241,7 @@ def regenerate_summary_index_task(
                         )
 
                         for segment in segments:
-                            summary_record = None
+                            summary_record: DocumentSegmentSummary | None = None
                             try:
                                 # Get existing summary record
                                 summary_record = session.scalar(
@@ -272,8 +273,8 @@ def regenerate_summary_index_task(
                                 )
                                 total_segments_failed += 1
                                 # Update summary record with error status
-                                if summary_record:
-                                    summary_record.status = "error"
+                                if summary_record is not None:
+                                    summary_record.status = SummaryStatus.ERROR
                                     summary_record.error = f"Regeneration failed: {str(e)}"
                                     session.add(summary_record)
                                     session.commit()
