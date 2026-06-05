@@ -15,7 +15,12 @@ from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_user,
+)
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
@@ -27,8 +32,8 @@ from graphon.file import helpers as file_helpers
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.types import SegmentType
-from libs.login import current_user, login_required
-from models import App, AppMode
+from libs.login import login_required
+from models import Account, App, AppMode
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -127,10 +132,11 @@ def _ensure_variable_access(
     variable: WorkflowDraftVariable | None,
     app_id: str,
     variable_id: str,
+    current_user_id: str,
 ) -> WorkflowDraftVariable:
     if variable is None:
         raise NotFoundError(description=f"variable not found, id={variable_id}")
-    if variable.app_id != app_id or variable.user_id != current_user.id:
+    if variable.app_id != app_id or variable.user_id != current_user_id:
         raise NotFoundError(description=f"variable not found, id={variable_id}")
     return variable
 
@@ -215,7 +221,7 @@ workflow_draft_variable_list_model = console_ns.model(
 
 
 def _api_prerequisite[T, **P, R](
-    f: Callable[Concatenate[T, P], R],
+    f: Callable[Concatenate[T, Account, P], R],
 ) -> Callable[Concatenate[T, P], R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
@@ -232,9 +238,10 @@ def _api_prerequisite[T, **P, R](
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @wraps(f)
-    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R | Response:
-        return f(self, *args, **kwargs)
+    def wrapper(self: T, current_user: Account, *args: P.args, **kwargs: P.kwargs) -> R | Response:
+        return f(self, current_user, *args, **kwargs)
 
     return wrapper
 
@@ -251,7 +258,7 @@ class WorkflowVariableCollectionApi(Resource):
     )
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
-    def get(self, app_model: App):
+    def get(self, current_user: Account, app_model: App):
         """
         Get draft workflow
         """
@@ -281,7 +288,7 @@ class WorkflowVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all draft workflow variables")
     @console_ns.response(204, "Workflow variables deleted successfully")
     @_api_prerequisite
-    def delete(self, app_model: App):
+    def delete(self, current_user: Account, app_model: App):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -315,7 +322,7 @@ class NodeVariableCollectionApi(Resource):
     @console_ns.response(200, "Node variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    def get(self, app_model: App, node_id: str):
+    def get(self, current_user: Account, app_model: App, node_id: str):
         validate_node_id(node_id)
         with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
@@ -329,7 +336,7 @@ class NodeVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all variables for a specific node")
     @console_ns.response(204, "Node variables deleted successfully")
     @_api_prerequisite
-    def delete(self, app_model: App, node_id: str):
+    def delete(self, current_user: Account, app_model: App, node_id: str):
         validate_node_id(node_id)
         srv = WorkflowDraftVariableService(db.session())
         srv.delete_node_variables(app_model.id, node_id, user_id=current_user.id)
@@ -349,7 +356,7 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def get(self, app_model: App, variable_id: UUID):
+    def get(self, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -358,6 +365,7 @@ class VariableApi(Resource):
             variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
             variable_id=variable_id_str,
+            current_user_id=current_user.id,
         )
         return variable
 
@@ -368,7 +376,7 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def patch(self, app_model: App, variable_id: UUID):
+    def patch(self, current_user: Account, app_model: App, variable_id: UUID):
         # Request payload for file types:
         #
         # Local File:
@@ -400,6 +408,7 @@ class VariableApi(Resource):
             variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
             variable_id=variable_id_str,
+            current_user_id=current_user.id,
         )
 
         new_name = args_model.name
@@ -440,7 +449,7 @@ class VariableApi(Resource):
     @console_ns.response(204, "Variable deleted successfully")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    def delete(self, app_model: App, variable_id: UUID):
+    def delete(self, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -449,6 +458,7 @@ class VariableApi(Resource):
             variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
             variable_id=variable_id_str,
+            current_user_id=current_user.id,
         )
         draft_var_srv.delete_variable(variable)
         db.session.commit()
@@ -464,7 +474,7 @@ class VariableResetApi(Resource):
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    def put(self, app_model: App, variable_id: UUID):
+    def put(self, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -480,6 +490,7 @@ class VariableResetApi(Resource):
             variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
             variable_id=variable_id_str,
+            current_user_id=current_user.id,
         )
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
@@ -490,20 +501,20 @@ class VariableResetApi(Resource):
             return marshal(resetted, workflow_draft_variable_model)
 
 
-def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
+def _get_variable_list(app_model: App, node_id: str, current_user_id: str) -> WorkflowDraftVariableList:
     with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
         draft_var_srv = WorkflowDraftVariableService(
             session=session,
         )
         if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(app_model.id, user_id=current_user.id)
+            draft_vars = draft_var_srv.list_conversation_variables(app_model.id, user_id=current_user_id)
         elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(app_model.id, user_id=current_user.id)
+            draft_vars = draft_var_srv.list_system_variables(app_model.id, user_id=current_user_id)
         else:
             draft_vars = draft_var_srv.list_node_variables(
                 app_id=app_model.id,
                 node_id=node_id,
-                user_id=current_user.id,
+                user_id=current_user_id,
             )
     return draft_vars
 
@@ -517,7 +528,7 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    def get(self, app_model: App):
+    def get(self, current_user: Account, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
         workflow_srv = WorkflowService()
@@ -527,7 +538,7 @@ class ConversationVariableCollectionApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(db.session())
         draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=current_user.id)
         db.session.commit()
-        return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
+        return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID, current_user.id)
 
     @console_ns.expect(console_ns.models[ConversationVariableUpdatePayload.__name__])
     @console_ns.doc("update_conversation_variables")
@@ -539,7 +550,8 @@ class ConversationVariableCollectionApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
-    def post(self, app_model: App):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         payload = ConversationVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
@@ -566,8 +578,8 @@ class SystemVariableCollectionApi(Resource):
     @console_ns.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    def get(self, app_model: App):
-        return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID)
+    def get(self, current_user: Account, app_model: App):
+        return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
@@ -578,7 +590,7 @@ class EnvironmentVariableCollectionApi(Resource):
     @console_ns.response(200, "Environment variables retrieved successfully")
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
-    def get(self, app_model: App):
+    def get(self, _current_user: Account, app_model: App):
         """
         Get draft workflow
         """
@@ -619,7 +631,8 @@ class EnvironmentVariableCollectionApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def post(self, app_model: App):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         payload = EnvironmentVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
