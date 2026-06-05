@@ -30,21 +30,27 @@ from clients.agent_backend.factory import create_agent_backend_run_client
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from clients.agent_backend.request_builder import (
     AGENT_SOUL_PROMPT_LAYER_ID,
-    DIFY_PLUGIN_CONTEXT_LAYER_ID,
+    DIFY_EXECUTION_CONTEXT_LAYER_ID,
+    DIFY_PLUGIN_TOOLS_LAYER_ID,
     WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
     WORKFLOW_USER_PROMPT_LAYER_ID,
+    AgentBackendAgentAppRunInput,
     AgentBackendModelConfig,
     AgentBackendOutputConfig,
     AgentBackendRunRequestBuilder,
     AgentBackendWorkflowNodeRunInput,
+    CleanupLayerSpec,
+    extract_cleanup_layer_specs,
     redact_for_agent_backend_log,
 )
 
 __all__ = [
     "AGENT_SOUL_PROMPT_LAYER_ID",
-    "DIFY_PLUGIN_CONTEXT_LAYER_ID",
+    "DIFY_EXECUTION_CONTEXT_LAYER_ID",
+    "DIFY_PLUGIN_TOOLS_LAYER_ID",
     "WORKFLOW_NODE_JOB_PROMPT_LAYER_ID",
     "WORKFLOW_USER_PROMPT_LAYER_ID",
+    "AgentBackendAgentAppRunInput",
     "AgentBackendError",
     "AgentBackendHTTPError",
     "AgentBackendInternalEvent",
@@ -66,9 +72,11 @@ __all__ = [
     "AgentBackendTransportError",
     "AgentBackendValidationError",
     "AgentBackendWorkflowNodeRunInput",
+    "CleanupLayerSpec",
     "DifyAgentBackendRunClient",
     "FakeAgentBackendRunClient",
     "FakeAgentBackendScenario",
     "create_agent_backend_run_client",
+    "extract_cleanup_layer_specs",
     "redact_for_agent_backend_log",
 ]

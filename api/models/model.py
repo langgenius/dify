@@ -366,6 +366,10 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
+    # New Agent App type backed by the Dify Agent runtime (distinct from the
+    # legacy ``agent-chat`` ReAct app). The app is bound 1:1 to a roster Agent
+    # via ``Agent.app_id``; its configuration lives in the Agent Soul snapshot.
+    AGENT = "agent"
     CHANNEL = "channel"
     RAG_PIPELINE = "rag-pipeline"
 
@@ -459,6 +463,27 @@ class App(Base):
         return None
 
     @property
+    def bound_agent_id(self) -> str | None:
+        """For an Agent App (mode=agent), the roster Agent it is backed by.
+
+        Resolved via ``Agent.app_id`` so the console can open the Composer in
+        roster-detail mode from the app id. ``None`` for non-agent apps.
+        """
+        if self.mode != AppMode.AGENT:
+            return None
+        from .agent import Agent, AgentScope, AgentSource, AgentStatus
+
+        agent = db.session.scalar(
+            select(Agent).where(
+                Agent.app_id == self.id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        return agent.id if agent else None
+
+    @property
     def api_base_url(self) -> str:
         base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
         return normalize_api_base_url(base)
@@ -492,8 +517,8 @@ class App(Base):
 
     @property
     def deleted_tools(self) -> list[DeletedToolInfo]:
+        from core.plugin.plugin_service import PluginService
         from core.tools.tool_manager import ToolManager, ToolProviderType
-        from services.plugin.plugin_service import PluginService
 
         # get agent mode tools
         app_model_config = self.app_model_config

@@ -1,7 +1,6 @@
 import type {
   DataSourceCredential,
 } from './types'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,6 @@ import {
 import {
   memo,
   useCallback,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -29,12 +27,10 @@ const Operator = ({
   onRename,
 }: OperatorProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const {
     type,
   } = credentialItem
   const handleAction = useCallback((action: string) => {
-    setOpen(false)
     queueMicrotask(() => {
       if (action === 'rename') {
         onRename?.()
@@ -45,12 +41,12 @@ const Operator = ({
   }, [credentialItem, onAction, onRename])
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         render={(
           <ActionButton
             size="l"
-            className={cn(open && 'bg-state-base-hover', 'focus-visible:ring-2 focus-visible:ring-state-accent-solid')}
+            className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
             aria-label={t('operation.more', { ns: 'common' })}
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />

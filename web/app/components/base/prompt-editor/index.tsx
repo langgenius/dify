@@ -3,10 +3,9 @@
 import type { InitialConfigType } from '@lexical/react/LexicalComposer'
 import type {
   EditorState,
-  LexicalCommand,
 } from 'lexical'
 import type { FC } from 'react'
-import type { Hotkey } from './plugins/shortcuts-popup-plugin'
+import type { Hotkey, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -97,6 +96,16 @@ const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
   return null
 }
 
+const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    editor.setEditable(editable)
+  }, [editor, editable])
+
+  return null
+}
+
 export type PromptEditorProps = {
   instanceId?: string
   compact?: boolean
@@ -122,7 +131,7 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
-  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void }> }>
+  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }> }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -194,13 +203,13 @@ const PromptEditor: FC<PromptEditorProps> = ({
     eventEmitter?.emit({
       type: UPDATE_DATASETS_EVENT_EMITTER,
       payload: contextBlock?.datasets,
-    } as any)
+    })
   }, [eventEmitter, contextBlock?.datasets])
   useEffect(() => {
     eventEmitter?.emit({
       type: UPDATE_HISTORY_EVENT_EMITTER,
       payload: historyBlock?.history,
-    } as any)
+    })
   }, [eventEmitter, historyBlock?.history])
 
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null)
@@ -243,6 +252,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           onEditorChange={handleEditorChange}
         />
         <ValueSyncPlugin value={value} />
+        <EditableSyncPlugin editable={editable} />
       </div>
     </LexicalComposer>
   )

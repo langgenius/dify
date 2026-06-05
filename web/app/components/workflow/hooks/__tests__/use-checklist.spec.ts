@@ -372,6 +372,41 @@ describe('useChecklist', () => {
     ])
   })
 
+  it('should detect duplicate output variables across end nodes', () => {
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const firstEndNode = createNode({
+      id: 'end-1',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 1',
+        outputs: [{ variable: 'workflow_id', value_selector: ['sys', 'workflow_id'] }],
+      },
+    })
+    const secondEndNode = createNode({
+      id: 'end-2',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 2',
+        outputs: [{ variable: 'workflow_id', value_selector: ['sys', 'workflow_id'] }],
+      },
+    })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'end-1' }),
+      createEdge({ source: 'start', target: 'end-2' }),
+    ]
+
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, firstEndNode, secondEndNode], edges),
+    )
+
+    const firstWarning = result.current.find((item: ChecklistItem) => item.id === 'end-1')
+    const secondWarning = result.current.find((item: ChecklistItem) => item.id === 'end-2')
+
+    expect(firstWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(true)
+    expect(secondWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(true)
+  })
+
   it('should sync checklist items to the workflow store without render phase update warnings', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

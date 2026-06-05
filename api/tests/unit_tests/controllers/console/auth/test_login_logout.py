@@ -41,6 +41,15 @@ def encode_code(code: str) -> str:
     return base64.b64encode(code.encode("utf-8")).decode()
 
 
+def _unwrap(func):
+    bound_self = getattr(func, "__self__", None)
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    if bound_self is not None:
+        return func.__get__(bound_self, bound_self.__class__)
+    return func
+
+
 class TestLoginApi:
     """Test cases for the LoginApi endpoint."""
 
@@ -486,13 +495,9 @@ class TestLogoutApi:
         account.email = "test@example.com"
         return account
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.current_account_with_tenant")
     @patch("controllers.console.auth.login.AccountService.logout")
     @patch("controllers.console.auth.login.flask_login.logout_user")
-    def test_successful_logout(
-        self, mock_logout_user, mock_service_logout, mock_current_account, mock_db, app: Flask, mock_account
-    ):
+    def test_successful_logout(self, mock_logout_user, mock_service_logout, app: Flask, mock_account):
         """
         Test successful logout flow.
 
@@ -502,23 +507,18 @@ class TestLogoutApi:
         - All authentication cookies are cleared
         - Success response is returned
         """
-        # Arrange
-        mock_current_account.return_value = (mock_account, MagicMock())
-
         # Act
         with app.test_request_context("/logout", method="POST"):
             logout_api = LogoutApi()
-            response = logout_api.post()
+            response = _unwrap(logout_api.post)(mock_account)
 
         # Assert
         mock_service_logout.assert_called_once_with(account=mock_account)
         mock_logout_user.assert_called_once()
         assert response.json["result"] == "success"
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.current_account_with_tenant")
     @patch("controllers.console.auth.login.flask_login")
-    def test_logout_anonymous_user(self, mock_flask_login, mock_current_account, mock_db, app: Flask):
+    def test_logout_anonymous_user(self, mock_flask_login, app: Flask):
         """
         Test logout for anonymous (not logged in) user.
 
@@ -532,12 +532,11 @@ class TestLogoutApi:
         anonymous_user = MagicMock()
         mock_flask_login.AnonymousUserMixin = type("AnonymousUserMixin", (), {})
         anonymous_user.__class__ = mock_flask_login.AnonymousUserMixin
-        mock_current_account.return_value = (anonymous_user, None)
 
         # Act
         with app.test_request_context("/logout", method="POST"):
             logout_api = LogoutApi()
-            response = logout_api.post()
+            response = _unwrap(logout_api.post)(anonymous_user)
 
         # Assert
         assert response.json["result"] == "success"

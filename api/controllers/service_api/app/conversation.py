@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -154,7 +155,7 @@ class ConversationApi(Resource):
         Supports pagination using last_id and limit parameters.
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         query_args = ConversationListQuery.model_validate(request.args.to_dict())
@@ -195,10 +196,10 @@ class ConversationDetailApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def delete(self, app_model: App, end_user: EndUser, c_id):
+    def delete(self, app_model: App, end_user: EndUser, c_id: UUID):
         """Delete a specific conversation."""
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -224,10 +225,10 @@ class ConversationRenameApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def post(self, app_model: App, end_user: EndUser, c_id):
+    def post(self, app_model: App, end_user: EndUser, c_id: UUID):
         """Rename a conversation or auto-generate a name."""
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -266,7 +267,7 @@ class ConversationVariablesApi(Resource):
         service_api_ns.models[ConversationVariableInfiniteScrollPaginationResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser, c_id):
+    def get(self, app_model: App, end_user: EndUser, c_id: UUID):
         """List all variables for a conversation.
 
         Conversational variables are only available for chat applications.
@@ -312,7 +313,7 @@ class ConversationVariableDetailApi(Resource):
         service_api_ns.models[ConversationVariableResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def put(self, app_model: App, end_user: EndUser, c_id, variable_id):
+    def put(self, app_model: App, end_user: EndUser, c_id: UUID, variable_id: UUID):
         """Update a conversation variable's value.
 
         Allows updating the value of a specific conversation variable.
@@ -323,13 +324,13 @@ class ConversationVariableDetailApi(Resource):
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-        variable_id = str(variable_id)
+        variable_id_str = str(variable_id)
 
         payload = ConversationVariableUpdatePayload.model_validate(service_api_ns.payload or {})
 
         try:
             variable = ConversationService.update_conversation_variable(
-                app_model, conversation_id, variable_id, end_user, payload.value
+                app_model, conversation_id, variable_id_str, end_user, payload.value
             )
             return ConversationVariableResponse.model_validate(variable, from_attributes=True).model_dump(mode="json")
         except services.errors.conversation.ConversationNotExistsError:

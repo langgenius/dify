@@ -3,6 +3,7 @@ import type { MailRegisterResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +12,7 @@ import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
@@ -32,6 +34,7 @@ const parseUtmInfo = () => {
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
   const locale = useLocale()
@@ -87,13 +90,14 @@ const ChangePasswordForm = () => {
         Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
         toast.success(t('api.actionSuccess', { ns: 'common' }))
-        router.replace('/apps')
+        await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+        router.replace('/')
       }
     }
     catch (error) {
       console.error(error)
     }
-  }, [password, token, valid, confirmPassword, register, locale])
+  }, [password, token, valid, confirmPassword, register, locale, queryClient, router, t])
 
   return (
     <div className={

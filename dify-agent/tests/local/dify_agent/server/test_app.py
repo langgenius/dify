@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 from typing import ClassVar
 
 import pytest
 from fastapi.testclient import TestClient
+from shell_session_manager.shellctl.client import ShellctlClient
 
 import dify_agent.server.app as app_module
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
+from dify_agent.layers.shell import DifyShellLayerConfig
+from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
-from dify_agent.layers.dify_plugin.configs import DifyPluginLayerConfig
-from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
 from dify_agent.server.app import create_app, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
@@ -133,6 +137,8 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         run_retention_seconds=7,
         plugin_daemon_url="http://plugin-daemon",
         plugin_daemon_api_key="daemon-secret",
+        shellctl_entrypoint="http://shellctl",
+        shellctl_auth_token="shell-secret",
         plugin_daemon_connect_timeout=1,
         plugin_daemon_read_timeout=2,
         plugin_daemon_write_timeout=3,
@@ -148,11 +154,23 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert scheduler.shutdown_grace_seconds == 5
         layer_providers = scheduler.layer_providers
         assert isinstance(layer_providers, tuple)
-        plugin_provider = next(provider for provider in layer_providers if provider.type_id == "dify.plugin")
-        plugin_layer = plugin_provider.create_layer(DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="plugin-1"))
-        assert isinstance(plugin_layer, DifyPluginLayer)
-        assert plugin_layer.daemon_url == "http://plugin-daemon"
-        assert plugin_layer.daemon_api_key == "daemon-secret"
+        execution_context_provider = next(
+            provider for provider in layer_providers if provider.type_id == "dify.execution_context"
+        )
+        execution_context_layer = execution_context_provider.create_layer(
+            DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run")
+        )
+        shell_provider = next(provider for provider in layer_providers if provider.type_id == "dify.shell")
+        shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
+        assert isinstance(execution_context_layer, DifyExecutionContextLayer)
+        assert isinstance(shell_layer, DifyShellLayer)
+        assert execution_context_layer.daemon_url == "http://plugin-daemon"
+        assert execution_context_layer.daemon_api_key == "daemon-secret"
+        assert shell_layer.shellctl_entrypoint == "http://shellctl"
+        shellctl_client = shell_layer.shellctl_client_factory("http://shellctl")
+        assert isinstance(shellctl_client, ShellctlClient)
+        assert shellctl_client.token == "shell-secret"
+        asyncio.run(shellctl_client.close())
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client
         assert http_client.is_closed is False

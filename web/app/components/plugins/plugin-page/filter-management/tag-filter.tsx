@@ -43,7 +43,7 @@ const TagsFilter = ({
           <div className={cn(
             'flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 py-1 text-text-tertiary select-none hover:bg-state-base-hover-alt',
             selectedTagsLength && 'text-text-secondary',
-            open && 'bg-state-base-hover',
+            'data-popup-open:bg-state-base-hover',
           )}
           >
             <div className={cn(

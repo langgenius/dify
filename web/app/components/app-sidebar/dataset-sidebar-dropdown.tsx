@@ -63,7 +63,7 @@ const DatasetSidebarDropdown = ({
             aria-label={t('operation.more', { ns: 'common' })}
             className={cn(
               'flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
-              open && 'bg-background-default-hover',
+              'data-popup-open:bg-background-default-hover',
             )}
           >
             <AppIcon

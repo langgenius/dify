@@ -3,6 +3,7 @@ import type { AppDetailResponse } from '@/models/app'
 import type { AppTrigger } from '@/service/use-tools'
 import type { AppSSO } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,20 +30,6 @@ type ITriggerCardProps = {
 
 const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
   const { trigger_type, status, provider_name } = trigger
-
-  // Status dot styling based on trigger status
-  const getStatusDot = () => {
-    if (status === 'enabled') {
-      return (
-        <div className="absolute -top-0.5 -left-0.5 size-1.5 rounded-xs border border-black/15 bg-green-500" />
-      )
-    }
-    else {
-      return (
-        <div className="absolute -top-0.5 -left-0.5 size-1.5 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
-      )
-    }
-  }
 
   // Get BlockEnum type from trigger_type
   let blockType: BlockEnum
@@ -78,7 +65,11 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
         size="md"
         toolIcon={triggerIcon}
       />
-      {getStatusDot()}
+      <StatusDot
+        className="absolute -top-0.5 -left-0.5"
+        size="small"
+        status={status === 'enabled' ? 'success' : 'disabled'}
+      />
     </div>
   )
 }

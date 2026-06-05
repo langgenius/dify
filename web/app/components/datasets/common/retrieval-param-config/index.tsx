@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -207,13 +208,17 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className="mb-4 flex gap-2">
+            <RadioGroup<RerankingModeEnum>
+              aria-label={t('modelProvider.rerankModel.key', { ns: 'common' })}
+              value={value.reranking_mode}
+              onValueChange={handleChangeRerankMode}
+              className="mb-4 flex gap-2"
+            >
               {
                 rerankingModeOptions.map(option => (
                   <RadioCard
                     key={option.value}
-                    isChosen={value.reranking_mode === option.value}
-                    onChosen={() => handleChangeRerankMode(option.value)}
+                    value={option.value}
                     icon={(
                       <img
                         src={
@@ -230,7 +235,7 @@ const RetrievalParamConfig: FC<Props> = ({
                   />
                 ))
               }
-            </div>
+            </RadioGroup>
             {
               value.reranking_mode === RerankingModeEnum.WeightedScore && (
                 <WeightedScore

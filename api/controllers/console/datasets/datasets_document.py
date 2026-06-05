@@ -5,10 +5,11 @@ from collections.abc import Sequence
 from contextlib import ExitStack
 from datetime import datetime
 from typing import Any, Literal, cast
+from uuid import UUID
 
 import sqlalchemy as sa
 from flask import request, send_file
-from flask_restx import Resource, marshal
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -33,16 +34,18 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.document_fields import (
-    document_fields,
-    document_status_fields,
-    document_with_segments_fields,
+    DocumentMetadataResponse,
+    DocumentResponse,
+    DocumentStatusListResponse,
+    DocumentStatusResponse,
+    normalize_enum,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
-from libs.helper import to_timestamp
-from libs.login import current_account_with_tenant, login_required
-from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
+from libs.helper import dump_response, to_timestamp
+from libs.login import login_required
+from models import Account, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
@@ -68,15 +71,11 @@ from ..wraps import (
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_enum(value: Any) -> Any:
-    if isinstance(value, str) or value is None:
-        return value
-    return getattr(value, "value", value)
 
 
 class DatasetResponse(ResponseModel):
@@ -92,7 +91,7 @@ class DatasetResponse(ResponseModel):
     @field_validator("data_source_type", "indexing_technique", mode="before")
     @classmethod
     def _normalize_enum_fields(cls, value: Any) -> Any:
-        return _normalize_enum(value)
+        return normalize_enum(value)
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -100,61 +99,10 @@ class DatasetResponse(ResponseModel):
         return to_timestamp(value)
 
 
-class DocumentMetadataResponse(ResponseModel):
-    id: str
-    name: str
-    type: str
-    value: str | None = None
-
-
-class DocumentResponse(ResponseModel):
-    id: str
-    position: int | None = None
-    data_source_type: str | None = None
-    data_source_info: Any = Field(default=None, validation_alias="data_source_info_dict")
-    data_source_detail_dict: Any = None
-    dataset_process_rule_id: str | None = None
-    name: str
-    created_from: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    tokens: int | None = None
-    indexing_status: str | None = None
-    error: str | None = None
-    enabled: bool | None = None
-    disabled_at: int | None = None
-    disabled_by: str | None = None
-    archived: bool | None = None
-    display_status: str | None = None
-    word_count: int | None = None
-    hit_count: int | None = None
-    doc_form: str | None = None
-    doc_metadata: list[DocumentMetadataResponse] = Field(default_factory=list, validation_alias="doc_metadata_details")
-    summary_index_status: str | None = None
-    need_summary: bool | None = None
-
-    @field_validator("data_source_type", "indexing_status", "display_status", "doc_form", mode="before")
-    @classmethod
-    def _normalize_enum_fields(cls, value: Any) -> Any:
-        return _normalize_enum(value)
-
-    @field_validator("doc_metadata", mode="before")
-    @classmethod
-    def _normalize_doc_metadata(cls, value: Any) -> list[Any]:
-        if value is None:
-            return []
-        return value
-
-    @field_validator("created_at", "disabled_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
 class DocumentWithSegmentsResponse(DocumentResponse):
     process_rule_dict: Any = None
-    completed_segments: int | None = None
-    total_segments: int | None = None
+    completed_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
+    total_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class DatasetAndDocumentResponse(ResponseModel):
@@ -189,6 +137,14 @@ class DocumentDatasetListParam(BaseModel):
     fetch_val: str = Field("false", alias="fetch")
 
 
+class DocumentWithSegmentsListResponse(ResponseModel):
+    data: list[DocumentWithSegmentsResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
+
+
 register_schema_models(
     console_ns,
     KnowledgeConfig,
@@ -199,18 +155,25 @@ register_schema_models(
     GenerateSummaryPayload,
     DocumentMetadataUpdatePayload,
     DocumentBatchDownloadZipPayload,
+)
+register_response_schema_models(
+    console_ns,
+    SimpleResultMessageResponse,
+    SimpleResultResponse,
+    UrlResponse,
     DatasetResponse,
     DocumentMetadataResponse,
     DocumentResponse,
     DocumentWithSegmentsResponse,
     DatasetAndDocumentResponse,
+    DocumentWithSegmentsListResponse,
 )
-register_response_schema_models(console_ns, SimpleResultMessageResponse, SimpleResultResponse, UrlResponse)
 
 
 class DocumentResource(Resource):
-    def get_document(self, dataset_id: str, document_id: str) -> Document:
-        current_user, current_tenant_id = current_account_with_tenant()
+    def get_document(
+        self, dataset_id: str, document_id: str, current_user: Account, current_tenant_id: str
+    ) -> Document:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -230,8 +193,7 @@ class DocumentResource(Resource):
 
         return document
 
-    def get_batch_documents(self, dataset_id: str, batch: str) -> Sequence[Document]:
-        current_user, _ = current_account_with_tenant()
+    def get_batch_documents(self, dataset_id: str, batch: str, current_user: Account) -> Sequence[Document]:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -258,8 +220,8 @@ class GetProcessRuleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account):
         req_data = request.args
 
         document_id = req_data.get("document_id")
@@ -311,13 +273,18 @@ class DatasetDocumentListApi(Resource):
             "status": "Filter documents by display status",
         }
     )
-    @console_ns.response(200, "Documents retrieved successfully")
+    @console_ns.response(
+        200,
+        "Documents retrieved successfully",
+        console_ns.models[DocumentWithSegmentsListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
-        current_user, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        dataset_id_str = str(dataset_id)
         raw_args = request.args.to_dict()
         param = DocumentDatasetListParam.model_validate(raw_args)
         page = param.page
@@ -342,7 +309,7 @@ class DatasetDocumentListApi(Resource):
                     )
         except (ArgumentTypeError, ValueError, Exception):
             fetch = False
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -351,7 +318,7 @@ class DatasetDocumentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        query = select(Document).where(Document.dataset_id == str(dataset_id), Document.tenant_id == current_tenant_id)
+        query = select(Document).where(Document.dataset_id == dataset_id_str, Document.tenant_id == current_tenant_id)
 
         if status:
             query = DocumentService.apply_display_status_filter(query, status)
@@ -372,7 +339,7 @@ class DatasetDocumentListApi(Resource):
                     sa.select(
                         DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count")
                     )
-                    .where(DocumentSegment.dataset_id == str(dataset_id))
+                    .where(DocumentSegment.dataset_id == dataset_id_str)
                     .group_by(DocumentSegment.document_id)
                     .subquery()
                 )
@@ -424,18 +391,15 @@ class DatasetDocumentListApi(Resource):
                 )
                 document.completed_segments = completed_segments
                 document.total_segments = total_segments
-            data = marshal(documents, document_with_segments_fields)
-        else:
-            data = marshal(documents, document_fields)
         response = {
-            "data": data,
+            "data": documents,
             "has_more": len(documents) == limit,
             "limit": limit,
             "total": paginated_documents.total,
             "page": page,
         }
 
-        return response
+        return dump_response(DocumentWithSegmentsListResponse, response)
 
     @setup_required
     @login_required
@@ -444,11 +408,11 @@ class DatasetDocumentListApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
-    def post(self, dataset_id):
-        current_user, _ = current_account_with_tenant()
-        dataset_id = str(dataset_id)
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID):
+        dataset_id_str = str(dataset_id)
 
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
 
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -472,7 +436,7 @@ class DatasetDocumentListApi(Resource):
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, current_user)
-            dataset = DatasetService.get_dataset(dataset_id)
+            dataset = DatasetService.get_dataset(dataset_id_str)
 
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -481,18 +445,16 @@ class DatasetDocumentListApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
-        return DatasetAndDocumentResponse.model_validate(
-            {"dataset": dataset, "documents": documents, "batch": batch}, from_attributes=True
-        ).model_dump(mode="json")
+        return dump_response(DatasetAndDocumentResponse, {"dataset": dataset, "documents": documents, "batch": batch})
 
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Documents deleted successfully")
-    def delete(self, dataset_id):
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+    def delete(self, dataset_id: UUID):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -504,7 +466,7 @@ class DatasetDocumentListApi(Resource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/init")
@@ -521,9 +483,10 @@ class DatasetInitApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
@@ -566,9 +529,7 @@ class DatasetInitApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
-        return DatasetAndDocumentResponse.model_validate(
-            {"dataset": dataset, "documents": documents, "batch": batch}, from_attributes=True
-        ).model_dump(mode="json")
+        return dump_response(DatasetAndDocumentResponse, {"dataset": dataset, "documents": documents, "batch": batch})
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate")
@@ -582,11 +543,12 @@ class DocumentIndexingEstimateApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id):
-        _, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        document = self.get_document(dataset_id, document_id)
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        document = self.get_document(dataset_id_str, document_id_str, current_user, current_tenant_id)
 
         if document.indexing_status in {IndexingStatus.COMPLETED, IndexingStatus.ERROR}:
             raise DocumentAlreadyFinishedError()
@@ -624,7 +586,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                         data_process_rule_dict,
                         document.doc_form,
                         "English",
-                        dataset_id,
+                        dataset_id_str,
                     )
                     return estimate_response.model_dump(), 200
                 except LLMBadRequestError:
@@ -647,11 +609,11 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, batch):
-        _, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
-        batch = str(batch)
-        documents = self.get_batch_documents(dataset_id, batch)
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, batch: str):
+        dataset_id_str = str(dataset_id)
+        documents = self.get_batch_documents(dataset_id_str, batch, current_user)
         if not documents:
             return {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}, 200
         data_process_rule = documents[0].dataset_process_rule
@@ -725,7 +687,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     data_process_rule_dict,
                     document.doc_form,
                     "English",
-                    dataset_id,
+                    dataset_id_str,
                 )
                 return response.model_dump(), 200
             except LLMBadRequestError:
@@ -742,13 +704,16 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
 class DocumentBatchIndexingStatusApi(DocumentResource):
+    @console_ns.response(
+        200, "Indexing status retrieved successfully", console_ns.models[DocumentStatusListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, batch):
-        dataset_id = str(dataset_id)
-        batch = str(batch)
-        documents = self.get_batch_documents(dataset_id, batch)
+    @with_current_user
+    def get(self, current_user: Account, dataset_id: UUID, batch: str):
+        dataset_id_str = str(dataset_id)
+        documents = self.get_batch_documents(dataset_id_str, batch, current_user)
         documents_status = []
         for document in documents:
             completed_segments = (
@@ -785,9 +750,8 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
                 "completed_segments": completed_segments,
                 "total_segments": total_segments,
             }
-            documents_status.append(marshal(document_dict, document_status_fields))
-        data = {"data": documents_status}
-        return data
+            documents_status.append(document_dict)
+        return dump_response(DocumentStatusListResponse, {"data": documents_status})
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
@@ -795,21 +759,25 @@ class DocumentIndexingStatusApi(DocumentResource):
     @console_ns.doc("get_document_indexing_status")
     @console_ns.doc(description="Get document indexing status")
     @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @console_ns.response(200, "Indexing status retrieved successfully")
+    @console_ns.response(
+        200, "Indexing status retrieved successfully", console_ns.models[DocumentStatusResponse.__name__]
+    )
     @console_ns.response(404, "Document not found")
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id):
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        document = self.get_document(dataset_id, document_id)
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        document = self.get_document(dataset_id_str, document_id_str, current_user, current_tenant_id)
 
         completed_segments = (
             db.session.scalar(
                 select(func.count(DocumentSegment.id)).where(
                     DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.document_id == document_id_str,
                     DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                 )
             )
@@ -818,7 +786,7 @@ class DocumentIndexingStatusApi(DocumentResource):
         total_segments = (
             db.session.scalar(
                 select(func.count(DocumentSegment.id)).where(
-                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.document_id == document_id_str,
                     DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                 )
             )
@@ -840,7 +808,7 @@ class DocumentIndexingStatusApi(DocumentResource):
             "completed_segments": completed_segments,
             "total_segments": total_segments,
         }
-        return marshal(document_dict, document_status_fields)
+        return dump_response(DocumentStatusResponse, document_dict)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
@@ -861,10 +829,12 @@ class DocumentApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id):
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        document = self.get_document(dataset_id, document_id)
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        document = self.get_document(dataset_id_str, document_id_str, current_user, current_tenant_id)
 
         metadata = request.args.get("metadata", "all")
         if metadata not in self.METADATA_CHOICES:
@@ -873,7 +843,7 @@ class DocumentApi(DocumentResource):
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
-            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             response = {
                 "id": document.id,
@@ -907,7 +877,7 @@ class DocumentApi(DocumentResource):
                 "need_summary": document.need_summary if document.need_summary is not None else False,
             }
         else:
-            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             response = {
                 "id": document.id,
@@ -950,23 +920,25 @@ class DocumentApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document deleted successfully")
-    def delete(self, dataset_id, document_id):
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+    @with_current_user
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
 
-        document = self.get_document(dataset_id, document_id)
+        document = self.get_document(dataset_id_str, document_id_str, current_user, current_tenant_id)
 
         try:
             DocumentService.delete_document(document)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
@@ -980,9 +952,11 @@ class DocumentDownloadApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def get(self, dataset_id: str, document_id: str) -> dict[str, Any]:
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID) -> dict[str, Any]:
         # Reuse the shared permission/tenant checks implemented in DocumentResource.
-        document = self.get_document(str(dataset_id), str(document_id))
+        document = self.get_document(str(dataset_id), str(document_id), current_user, current_tenant_id)
         return {"url": DocumentService.get_document_download_url(document)}
 
 
@@ -997,16 +971,17 @@ class DocumentBatchDownloadZipApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
-    def post(self, dataset_id: str):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         """Stream a ZIP archive containing the requested uploaded documents."""
         # Parse and validate request payload.
         payload = DocumentBatchDownloadZipPayload.model_validate(console_ns.payload or {})
 
-        current_user, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
+        dataset_id_str = str(dataset_id)
         document_ids: list[str] = [str(document_id) for document_id in payload.document_ids]
         upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
-            dataset_id=dataset_id,
+            dataset_id=dataset_id_str,
             document_ids=document_ids,
             tenant_id=current_tenant_id,
             current_user=current_user,
@@ -1044,11 +1019,19 @@ class DocumentProcessingApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id, document_id, action: Literal["pause", "resume"]):
-        current_user, _ = current_account_with_tenant()
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        document = self.get_document(dataset_id, document_id)
+    @with_current_user
+    @with_current_tenant_id
+    def patch(
+        self,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        action: Literal["pause", "resume"],
+    ):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        document = self.get_document(dataset_id_str, document_id_str, current_user, current_tenant_id)
 
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
@@ -1092,11 +1075,12 @@ class DocumentMetadataApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def put(self, dataset_id, document_id):
-        current_user, _ = current_account_with_tenant()
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        document = self.get_document(dataset_id, document_id)
+    @with_current_user
+    @with_current_tenant_id
+    def put(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        document = self.get_document(dataset_id_str, document_id_str, current_user, current_tenant_id)
 
         req_data = DocumentMetadataUpdatePayload.model_validate(request.get_json() or {})
 
@@ -1141,10 +1125,12 @@ class DocumentStatusApi(DocumentResource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def patch(self, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
-        current_user, _ = current_account_with_tenant()
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+    @with_current_user
+    def patch(
+        self, current_user: Account, dataset_id: UUID, action: Literal["enable", "disable", "archive", "un_archive"]
+    ):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
@@ -1179,16 +1165,16 @@ class DocumentPauseApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document paused successfully")
-    def patch(self, dataset_id, document_id):
+    def patch(self, dataset_id: UUID, document_id: UUID):
         """pause document."""
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
 
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        document = DocumentService.get_document(dataset.id, document_id)
+        document = DocumentService.get_document(dataset.id, document_id_str)
 
         # 404 if document not found
         if document is None:
@@ -1204,7 +1190,7 @@ class DocumentPauseApi(DocumentResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot pause completed document.")
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
@@ -1214,14 +1200,14 @@ class DocumentRecoverApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document resumed successfully")
-    def patch(self, dataset_id, document_id):
+    def patch(self, dataset_id: UUID, document_id: UUID):
         """recover document."""
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
-        document = DocumentService.get_document(dataset.id, document_id)
+        document = DocumentService.get_document(dataset.id, document_id_str)
 
         # 404 if document not found
         if document is None:
@@ -1236,7 +1222,7 @@ class DocumentRecoverApi(DocumentResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Document is not in paused status.")
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/retry")
@@ -1247,18 +1233,16 @@ class DocumentRetryApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     @console_ns.response(204, "Documents retry started successfully")
-    def post(self, dataset_id):
+    def post(self, dataset_id: UUID):
         """retry document."""
         payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         retry_documents = []
         if not dataset:
             raise NotFound("Dataset not found.")
         for document_id in payload.document_ids:
             try:
-                document_id = str(document_id)
-
                 document = DocumentService.get_document(dataset.id, document_id)
 
                 # 404 if document not found
@@ -1277,9 +1261,9 @@ class DocumentRetryApi(DocumentResource):
                 logger.exception("Failed to retry document, document id: %s", document_id)
                 continue
         # retry document
-        DocumentService.retry_document(dataset_id, retry_documents)
+        DocumentService.retry_document(dataset_id_str, retry_documents)
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
@@ -1289,9 +1273,9 @@ class DocumentRenameApi(DocumentResource):
     @account_initialization_required
     @console_ns.response(200, "Document renamed successfully", console_ns.models[DocumentResponse.__name__])
     @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
-    def post(self, dataset_id, document_id):
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID, document_id: UUID):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        current_user, _ = current_account_with_tenant()
         if not current_user.is_dataset_editor:
             raise Forbidden()
         dataset = DatasetService.get_dataset(dataset_id)
@@ -1301,11 +1285,11 @@ class DocumentRenameApi(DocumentResource):
         payload = DocumentRenamePayload.model_validate(console_ns.payload or {})
 
         try:
-            document = DocumentService.rename_document(dataset_id, document_id, payload.name)
+            document = DocumentService.rename_document(str(dataset_id), str(document_id), payload.name)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return DocumentResponse.model_validate(document, from_attributes=True).model_dump(mode="json")
+        return dump_response(DocumentResponse, document)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
@@ -1314,15 +1298,15 @@ class WebsiteDocumentSyncApi(DocumentResource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def get(self, dataset_id, document_id):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, dataset_id: UUID, document_id: UUID):
         """sync website document."""
-        _, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
-        document_id = str(document_id)
-        document = DocumentService.get_document(dataset.id, document_id)
+        document_id_str = str(document_id)
+        document = DocumentService.get_document(dataset.id, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         if document.tenant_id != current_tenant_id:
@@ -1333,7 +1317,7 @@ class WebsiteDocumentSyncApi(DocumentResource):
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
         # sync document
-        DocumentService.sync_website_document(dataset_id, document)
+        DocumentService.sync_website_document(dataset_id_str, document)
 
         return {"result": "success"}, 200
 
@@ -1343,19 +1327,19 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id):
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
+    def get(self, dataset_id: UUID, document_id: UUID):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
 
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
-        document = DocumentService.get_document(dataset.id, document_id)
+        document = DocumentService.get_document(dataset.id, document_id_str)
         if not document:
             raise NotFound("Document not found.")
         log = db.session.scalar(
             select(DocumentPipelineExecutionLog)
-            .where(DocumentPipelineExecutionLog.document_id == document_id)
+            .where(DocumentPipelineExecutionLog.document_id == document_id_str)
             .order_by(DocumentPipelineExecutionLog.created_at.desc())
             .limit(1)
         )
@@ -1392,7 +1376,8 @@ class DocumentGenerateSummaryApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self, dataset_id):
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID):
         """
         Generate summary index for specified documents.
 
@@ -1400,11 +1385,10 @@ class DocumentGenerateSummaryApi(Resource):
         (indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),
         then asynchronously generates summary indexes for the provided documents.
         """
-        current_user, _ = current_account_with_tenant()
-        dataset_id = str(dataset_id)
+        dataset_id_str = str(dataset_id)
 
         # Get dataset
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -1438,7 +1422,7 @@ class DocumentGenerateSummaryApi(Resource):
             raise ValueError("Summary index is not enabled for this dataset. Please enable it in the dataset settings.")
 
         # Verify all documents exist and belong to the dataset
-        documents = DocumentService.get_documents_by_ids(dataset_id, document_list)
+        documents = DocumentService.get_documents_by_ids(dataset_id_str, document_list)
 
         if len(documents) != len(document_list):
             found_ids = {doc.id for doc in documents}
@@ -1452,7 +1436,7 @@ class DocumentGenerateSummaryApi(Resource):
         if documents_to_update:
             document_ids_to_update = [str(doc.id) for doc in documents_to_update]
             DocumentService.update_documents_need_summary(
-                dataset_id=dataset_id,
+                dataset_id=dataset_id_str,
                 document_ids=document_ids_to_update,
                 need_summary=True,
             )
@@ -1465,11 +1449,11 @@ class DocumentGenerateSummaryApi(Resource):
                 continue
 
             # Dispatch async task
-            generate_summary_index_task.delay(dataset_id, document.id)
+            generate_summary_index_task.delay(dataset_id_str, document.id)
             logger.info(
                 "Dispatched summary generation task for document %s in dataset %s",
                 document.id,
-                dataset_id,
+                dataset_id_str,
             )
 
         return {"result": "success"}, 200
@@ -1485,7 +1469,8 @@ class DocumentSummaryStatusApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id):
+    @with_current_user
+    def get(self, current_user: Account, dataset_id: UUID, document_id: UUID):
         """
         Get summary index generation status for a document.
 
@@ -1498,12 +1483,11 @@ class DocumentSummaryStatusApi(DocumentResource):
           - not_started: Number of segments without summary records
         - summaries: List of summary records with status and content preview
         """
-        current_user, _ = current_account_with_tenant()
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
 
         # Get dataset
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -1517,8 +1501,8 @@ class DocumentSummaryStatusApi(DocumentResource):
         from services.summary_index_service import SummaryIndexService
 
         result = SummaryIndexService.get_document_summary_status_detail(
-            document_id=document_id,
-            dataset_id=dataset_id,
+            document_id=document_id_str,
+            dataset_id=dataset_id_str,
         )
 
         return result, 200

@@ -5,11 +5,10 @@ import { PlusIcon } from '@heroicons/react/20/solid'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { IS_CLOUD_EDITION } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import { AppTypeIcon } from '../../app/type-selector'
 
@@ -30,8 +29,7 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
+  const canViewApp = IS_CLOUD_EDITION
   const handleTryApp = () => {
     trackEvent('preview_template', {
       template_id: app.app_id,
@@ -78,9 +76,9 @@ const AppCard = ({
           {app.description}
         </div>
       </div>
-      {isExplore && (canCreate || isTrialApp) && (
+      {isExplore && (canCreate || canViewApp) && (
         <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canCreate && 'grid-cols-2')}>
+          <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canCreate && canViewApp && 'grid-cols-2')}>
             {
               canCreate && (
                 <Button variant="primary" className="h-7" onClick={() => onCreate()}>
@@ -89,10 +87,12 @@ const AppCard = ({
                 </Button>
               )
             }
-            <Button className="h-7" onClick={handleTryApp}>
-              <RiInformation2Line className="mr-1 size-4" />
-              <span>{t('appCard.try', { ns: 'explore' })}</span>
-            </Button>
+            {canViewApp && (
+              <Button className="h-7" onClick={handleTryApp}>
+                <RiInformation2Line className="mr-1 size-4" />
+                <span>{t('appCard.try', { ns: 'explore' })}</span>
+              </Button>
+            )}
           </div>
         </div>
       )}

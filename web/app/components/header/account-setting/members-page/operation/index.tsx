@@ -1,6 +1,5 @@
 'use client'
 import type { Member } from '@/models/common'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { memo, useMemo, useState } from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
@@ -30,7 +29,6 @@ const nonOwnerRoles = ['admin', 'editor', 'normal'] as const
 const isNonOwnerRole = (role: Member['role']) => role !== 'owner'
 
 const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
-  const [open, setOpen] = useState(false)
   const { t } = useTranslation()
   const { datasetOperatorEnabled } = useProviderContext()
   const RoleMap = {
@@ -59,7 +57,6 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
   }, [operatorRole, datasetOperatorEnabled])
   const canRemoveMember = operatorRole === 'owner' || (operatorRole === 'admin' && isNonOwnerRole(member.role))
   const handleDeleteMemberOrCancelInvitation = async () => {
-    setOpen(false)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
@@ -69,7 +66,6 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
   }
   const handleUpdateMemberRole = async (role: string) => {
-    setOpen(false)
     try {
       await updateMemberRole({
         url: `/workspaces/current/members/${member.id}/update-role`,
@@ -82,12 +78,12 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
   }
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
-        render={<button type="button" className={cn('group flex size-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')} />}
+        className="group flex size-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
       >
         {RoleMap[member.role] || RoleMap.normal}
-        <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
+        <span aria-hidden className="i-ri-arrow-down-s-line hidden size-4 shrink-0 group-hover:block group-data-popup-open:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"

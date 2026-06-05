@@ -51,8 +51,8 @@ members = [
     "dify-vdb-weaviate",
 ]
 overrides = [
-    { name = "litellm", specifier = ">=1.83.10" },
-    { name = "pyarrow", specifier = ">=18.0.0" },
+    { name = "litellm", specifier = ">=1.83.10,<2.0.0" },
+    { name = "pyarrow", specifier = ">=23.0.1,<24.0.0" },
 ]
 
 [[package]]
@@ -595,16 +595,16 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.10"
+version = "1.43.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/27/ae1a71e945ce7bde39b0677b252fe7d8a0ad7fa3d6b724d78b81469c08fe/boto3-1.43.10.tar.gz", hash = "sha256:27342e5d5f6170fcc8d1e21cdd939af2448d58ac56b08d494250eaad998e30c7", size = 113159, upload-time = "2026-05-18T20:42:34.454Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/79/4b/616367e871ce3f1cb3e8545a97736b6331b9fb081497f2d44c5b2aa6959d/boto3-1.43.14.tar.gz", hash = "sha256:5c0a994b3182061ee101812e721100717a4d664f9f4ceaf4a86b6d032ce9fc2d", size = 113142, upload-time = "2026-05-22T19:28:47.861Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/1b/439234598449f846b17333e67ec63c3dd8f8880c13de9089383b4bab58c3/boto3-1.43.10-py3-none-any.whl", hash = "sha256:83918184d95967e4c6e9ed1e9a2f58250b291e6ea2cb847ab0825d52596b39e5", size = 140534, upload-time = "2026-05-18T20:42:32.009Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/00/59cb9329c18e2d3aa23062ceaa87d065f2e81e7d2931df24d64e9a7815aa/boto3-1.43.14-py3-none-any.whl", hash = "sha256:574335744656cfed0b362a0a0467aaf2eb2bf15526edcd02d31d3c661f4b09e4", size = 140536, upload-time = "2026-05-22T19:28:46.49Z" },
 ]
 
 [[package]]
@@ -627,16 +627,16 @@ bedrock-runtime = [
 
 [[package]]
 name = "botocore"
-version = "1.43.10"
+version = "1.43.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/4e/c127dd0628c551f10cb890e279a9c0e367523b880c4cd3e81a1e76886174/botocore-1.43.10.tar.gz", hash = "sha256:2f4af585b41dbccdfc9f49677d7bd72d713a12ef89a1dc9c8538a927649498bf", size = 15365344, upload-time = "2026-05-18T20:42:21.562Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/3c/798d2f7deb118241930c7c6bcfb0b970d3f0245bf580700663199aeed2c3/botocore-1.43.14.tar.gz", hash = "sha256:b9e500737e43d2f147c9d4e23b54360335e77d4c0ba90a318f51b65e06cb8516", size = 15382604, upload-time = "2026-05-22T19:28:36.363Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/0e/41f64d6c267edf03f4fe8f461edc4c644243e77c8d5a1fef1e0166ac4ed0/botocore-1.43.10-py3-none-any.whl", hash = "sha256:8a0176d8c2f8bebe95d4f923a824a1ace04b02f360e220681c388e097f32c3b6", size = 15043571, upload-time = "2026-05-18T20:42:16.664Z" },
+    { url = "https://files.pythonhosted.org/packages/27/7e/6e64821077cd2efc4aa51b7d638fb6d48e1c7c450201c529fbaf1de8bfd3/botocore-1.43.14-py3-none-any.whl", hash = "sha256:1f4a2a95ea78c10398e78431e98c1fe47adb54a7b10a32975144c1f541186658", size = 15061424, upload-time = "2026-05-22T19:28:32.682Z" },
 ]
 
 [[package]]
@@ -1281,7 +1281,7 @@ wheels = [
 [[package]]
 name = "dify-agent"
 version = "0.1.0"
-source = { directory = "../dify-agent" }
+source = { editable = "../dify-agent" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
@@ -1291,17 +1291,18 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "~=0.2.2" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0" },
+    { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.2.2" },
+    { name = "httpx", specifier = "==0.28.1" },
+    { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
-    { name = "pydantic-ai-slim", specifier = ">=1.85.1" },
-    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1" },
-    { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0" },
-    { name = "redis", marker = "extra == 'server'", specifier = ">=5" },
-    { name = "typing-extensions", specifier = ">=4.12.2" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.38.0" },
+    { name = "pydantic-ai-slim", specifier = ">=1.85.1,<2.0.0" },
+    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
+    { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
+    { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
+    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.1.1" },
+    { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
+    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
 ]
 provides-extras = ["server"]
 
@@ -1609,46 +1610,46 @@ vdb-xinference = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aliyun-log-python-sdk", specifier = ">=0.9.44,<1.0.0" },
+    { name = "aliyun-log-python-sdk", specifier = "==0.9.44" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
-    { name = "bleach", specifier = ">=6.3.0" },
-    { name = "boto3", specifier = ">=1.43.10" },
-    { name = "celery", specifier = ">=5.6.3" },
-    { name = "croniter", specifier = ">=6.2.2" },
-    { name = "dify-agent", directory = "../dify-agent" },
-    { name = "fastopenapi", extras = ["flask"], specifier = "~=0.7.0" },
+    { name = "bleach", specifier = ">=6.3.0,<7.0.0" },
+    { name = "boto3", specifier = ">=1.43.14,<2.0.0" },
+    { name = "celery", specifier = ">=5.6.3,<6.0.0" },
+    { name = "croniter", specifier = ">=6.2.2,<7.0.0" },
+    { name = "dify-agent", editable = "../dify-agent" },
+    { name = "fastopenapi", extras = ["flask"], specifier = "==0.7.0" },
     { name = "flask", specifier = ">=3.1.3,<4.0.0" },
     { name = "flask-compress", specifier = ">=1.24,<2.0.0" },
-    { name = "flask-cors", specifier = ">=6.0.2" },
-    { name = "flask-login", specifier = ">=0.6.3,<1.0.0" },
+    { name = "flask-cors", specifier = ">=6.0.2,<7.0.0" },
+    { name = "flask-login", specifier = "==0.6.3" },
     { name = "flask-migrate", specifier = ">=4.1.0,<5.0.0" },
     { name = "flask-orjson", specifier = ">=2.0.0,<3.0.0" },
     { name = "flask-restx", specifier = ">=1.3.2,<2.0.0" },
-    { name = "gevent", specifier = ">=26.4.0" },
-    { name = "gevent-websocket", specifier = ">=0.10.1" },
-    { name = "gmpy2", specifier = ">=2.3.0" },
-    { name = "google-api-python-client", specifier = ">=2.196.0" },
+    { name = "gevent", specifier = ">=26.4.0,<26.5.0" },
+    { name = "gevent-websocket", specifier = "==0.10.1" },
+    { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
+    { name = "google-api-python-client", specifier = ">=2.196.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.151.0,<2.0.0" },
-    { name = "graphon", specifier = "~=0.4.0" },
-    { name = "gunicorn", specifier = ">=26.0.0" },
-    { name = "httpx", extras = ["socks"], specifier = ">=0.28.1,<1.0.0" },
-    { name = "httpx-sse", specifier = "~=0.4.0" },
-    { name = "json-repair", specifier = "~=0.59.4" },
-    { name = "opentelemetry-distro", specifier = ">=0.62b1,<1.0.0" },
-    { name = "opentelemetry-instrumentation-celery", specifier = ">=0.62b0,<1.0.0" },
-    { name = "opentelemetry-instrumentation-flask", specifier = ">=0.62b0,<1.0.0" },
-    { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.62b0,<1.0.0" },
-    { name = "opentelemetry-instrumentation-redis", specifier = ">=0.62b0,<1.0.0" },
-    { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.62b0,<1.0.0" },
+    { name = "graphon", specifier = "==0.4.0" },
+    { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
+    { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
+    { name = "httpx-sse", specifier = "==0.4.3" },
+    { name = "json-repair", specifier = "==0.59.4" },
+    { name = "opentelemetry-distro", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-celery", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-flask", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-httpx", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-redis", specifier = "==0.62b1" },
+    { name = "opentelemetry-instrumentation-sqlalchemy", specifier = "==0.62b1" },
     { name = "opentelemetry-propagator-b3", specifier = ">=1.41.1,<2.0.0" },
-    { name = "psycogreen", specifier = ">=1.0.2" },
-    { name = "psycopg2-binary", specifier = ">=2.9.12" },
-    { name = "python-socketio", specifier = ">=5.13.0" },
-    { name = "readabilipy", specifier = ">=0.3.0,<1.0.0" },
-    { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0" },
+    { name = "psycogreen", specifier = ">=1.0.2,<2.0.0" },
+    { name = "psycopg2-binary", specifier = ">=2.9.12,<3.0.0" },
+    { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
+    { name = "readabilipy", specifier = "==0.3.0" },
+    { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0,<8.0.0" },
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
-    { name = "sendgrid", specifier = ">=6.12.5" },
-    { name = "sseclient-py", specifier = ">=1.8.0" },
+    { name = "sendgrid", specifier = ">=6.12.5,<7.0.0" },
+    { name = "sseclient-py", specifier = ">=1.8.0,<2.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1716,19 +1717,19 @@ dev = [
     { name = "xinference-client", specifier = ">=2.7.0" },
 ]
 storage = [
-    { name = "azure-storage-blob", specifier = ">=12.29.0" },
-    { name = "bce-python-sdk", specifier = ">=0.9.71" },
-    { name = "cos-python-sdk-v5", specifier = ">=1.9.43" },
-    { name = "esdk-obs-python", specifier = ">=3.22.2" },
-    { name = "google-cloud-storage", specifier = ">=3.10.1" },
-    { name = "opendal", specifier = ">=0.46.0" },
-    { name = "oss2", specifier = ">=2.19.1" },
-    { name = "supabase", specifier = ">=2.30.0" },
-    { name = "tos", specifier = ">=2.9.0" },
+    { name = "azure-storage-blob", specifier = ">=12.29.0,<13.0.0" },
+    { name = "bce-python-sdk", specifier = "==0.9.71" },
+    { name = "cos-python-sdk-v5", specifier = ">=1.9.43,<2.0.0" },
+    { name = "esdk-obs-python", specifier = ">=3.22.2,<4.0.0" },
+    { name = "google-cloud-storage", specifier = ">=3.10.1,<4.0.0" },
+    { name = "opendal", specifier = "==0.46.0" },
+    { name = "oss2", specifier = ">=2.19.1,<3.0.0" },
+    { name = "supabase", specifier = ">=2.30.0,<3.0.0" },
+    { name = "tos", specifier = ">=2.9.0,<3.0.0" },
 ]
 tools = [
-    { name = "cloudscraper", specifier = ">=1.2.71" },
-    { name = "nltk", specifier = ">=3.9.1" },
+    { name = "cloudscraper", specifier = ">=1.2.71,<2.0.0" },
+    { name = "nltk", specifier = ">=3.9.1,<4.0.0" },
 ]
 trace-aliyun = [{ name = "dify-trace-aliyun", editable = "providers/trace/trace-aliyun" }]
 trace-all = [
@@ -1810,7 +1811,7 @@ vdb-upstash = [{ name = "dify-vdb-upstash", editable = "providers/vdb/vdb-upstas
 vdb-vastbase = [{ name = "dify-vdb-vastbase", editable = "providers/vdb/vdb-vastbase" }]
 vdb-vikingdb = [{ name = "dify-vdb-vikingdb", editable = "providers/vdb/vdb-vikingdb" }]
 vdb-weaviate = [{ name = "dify-vdb-weaviate", editable = "providers/vdb/vdb-weaviate" }]
-vdb-xinference = [{ name = "xinference-client", specifier = ">=2.7.0" }]
+vdb-xinference = [{ name = "xinference-client", specifier = ">=2.7.0,<3.0.0" }]
 
 [[package]]
 name = "dify-trace-aliyun"
@@ -1840,7 +1841,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "arize-phoenix-otel", specifier = "~=0.15.0" }]
+requires-dist = [{ name = "arize-phoenix-otel", specifier = "==0.15.0" }]
 
 [[package]]
 name = "dify-trace-langfuse"
@@ -1862,7 +1863,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "langsmith", specifier = ">=0.8.0" }]
+requires-dist = [{ name = "langsmith", specifier = "==0.8.5" }]
 
 [[package]]
 name = "dify-trace-mlflow"
@@ -1873,7 +1874,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mlflow-skinny", specifier = ">=3.11.1" }]
+requires-dist = [{ name = "mlflow-skinny", specifier = ">=3.11.1,<4.0.0" }]
 
 [[package]]
 name = "dify-trace-opik"
@@ -1914,7 +1915,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "weave", specifier = ">=0.52.36" }]
+requires-dist = [{ name = "weave", specifier = "==0.52.36" }]
 
 [[package]]
 name = "dify-vdb-alibabacloud-mysql"
@@ -1925,7 +1926,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mysql-connector-python", specifier = ">=9.3.0" }]
+requires-dist = [{ name = "mysql-connector-python", specifier = ">=9.3.0,<10.0.0" }]
 
 [[package]]
 name = "dify-vdb-analyticdb"
@@ -1940,8 +1941,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alibabacloud-gpdb20160503", specifier = "~=5.2.0" },
-    { name = "alibabacloud-tea-openapi", specifier = "~=0.4.3" },
-    { name = "clickhouse-connect", specifier = "~=0.15.0" },
+    { name = "alibabacloud-tea-openapi", specifier = "==0.4.4" },
+    { name = "clickhouse-connect", specifier = "==0.15.1" },
 ]
 
 [[package]]
@@ -1975,7 +1976,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "clickzetta-connector-python", specifier = ">=0.8.102" }]
+requires-dist = [{ name = "clickzetta-connector-python", specifier = "==0.8.104" }]
 
 [[package]]
 name = "dify-vdb-couchbase"
@@ -2008,7 +2009,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "holo-search-sdk", specifier = ">=0.4.2" }]
+requires-dist = [{ name = "holo-search-sdk", specifier = "==0.4.2" }]
 
 [[package]]
 name = "dify-vdb-huawei-cloud"
@@ -2030,7 +2031,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "intersystems-irispython", specifier = ">=5.1.0" }]
+requires-dist = [{ name = "intersystems-irispython", specifier = ">=5.1.0,<6.0.0" }]
 
 [[package]]
 name = "dify-vdb-lindorm"
@@ -2044,7 +2045,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "opensearch-py", specifier = "==3.1.0" },
-    { name = "tenacity", specifier = ">=8.0.0" },
+    { name = "tenacity", specifier = ">=8.0.0,<9.0.0" },
 ]
 
 [[package]]
@@ -2056,7 +2057,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mo-vector", specifier = "~=0.1.13" }]
+requires-dist = [{ name = "mo-vector", specifier = "==0.1.13" }]
 
 [[package]]
 name = "dify-vdb-milvus"
@@ -2078,7 +2079,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "clickhouse-connect", specifier = "~=0.15.0" }]
+requires-dist = [{ name = "clickhouse-connect", specifier = "==0.15.1" }]
 
 [[package]]
 name = "dify-vdb-oceanbase"
@@ -2091,8 +2092,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mysql-connector-python", specifier = ">=9.3.0" },
-    { name = "pyobvector", specifier = "~=0.2.17" },
+    { name = "mysql-connector-python", specifier = ">=9.3.0,<10.0.0" },
+    { name = "pyobvector", specifier = "==0.2.25" },
 ]
 
 [[package]]
@@ -2131,7 +2132,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "~=0.2.2" }]
+requires-dist = [{ name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "==0.2.2" }]
 
 [[package]]
 name = "dify-vdb-pgvector"
@@ -2224,7 +2225,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyobvector", specifier = "~=0.2.17" }]
+requires-dist = [{ name = "pyobvector", specifier = "==0.2.25" }]
 
 [[package]]
 name = "dify-vdb-vikingdb"
@@ -5274,11 +5275,11 @@ wheels = [
 
 [[package]]
 name = "pyjwt"
-version = "2.12.1"
+version = "2.13.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c2/27/a3b6e5bf6ff856d2509292e95c8f57f0df7017cf5394921fc4e4ef40308a/pyjwt-2.12.1.tar.gz", hash = "sha256:c74a7a2adf861c04d002db713dd85f84beb242228e671280bf709d765b03672b", size = 102564, upload-time = "2026-03-13T19:27:37.25Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/81/58d0ac84e1ef3a3843791d6954d94c0b33d526c75eeb1efbce9d0a4c4077/pyjwt-2.13.0.tar.gz", hash = "sha256:41571c89ca91598c79e8ef18a2d07367d4810fbbd6f637794879baf1b7703423", size = 107515, upload-time = "2026-05-21T19:54:36.618Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/7a/8dd906bd22e79e47397a61742927f6747fe93242ef86645ee9092e610244/pyjwt-2.12.1-py3-none-any.whl", hash = "sha256:28ca37c070cad8ba8cd9790cd940535d40274d22f80ab87f3ac6a713e6e8454c", size = 29726, upload-time = "2026-03-13T19:27:35.677Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/5e/ecf12fdb62546d64385c158514e9b2b671f7832108ef2ecd2020ce0af2d1/pyjwt-2.13.0-py3-none-any.whl", hash = "sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728", size = 31274, upload-time = "2026-05-21T19:54:35.362Z" },
 ]
 
 [package.optional-dependencies]
@@ -6443,11 +6444,11 @@ wheels = [
 
 [[package]]
 name = "tenacity"
-version = "9.1.2"
+version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0a/d4/2b0cd0fe285e14b36db076e78c93766ff1d529d70408bd1d2a5a84f1d929/tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb", size = 48036, upload-time = "2025-04-02T08:25:09.966Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/4d/6a19536c50b849338fcbe9290d562b52cbdcf30d8963d3588a68a4107df1/tenacity-8.5.0.tar.gz", hash = "sha256:8bc6c0c8a09b31e6cad13c47afbed1a567518250a9a171418582ed8d9c20ca78", size = 47309, upload-time = "2024-07-05T07:25:31.836Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/30/643397144bfbfec6f6ef821f36f33e57d35946c44a2352d3c9f0ae847619/tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138", size = 28248, upload-time = "2025-04-02T08:25:07.678Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/3f/8ba87d9e287b9d385a02a7114ddcef61b26f86411e121c9003eb509a1773/tenacity-8.5.0-py3-none-any.whl", hash = "sha256:b594c2a5945830c267ce6b79a166228323ed52718f30302c1359836112346687", size = 28165, upload-time = "2024-07-05T07:25:29.591Z" },
 ]
 
 [[package]]

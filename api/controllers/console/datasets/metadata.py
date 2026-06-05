@@ -1,15 +1,26 @@
 from typing import Literal
+from uuid import UUID
 
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
-from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
-from fields.dataset_fields import dataset_metadata_fields
-from libs.login import current_account_with_tenant, login_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    enterprise_license_required,
+    setup_required,
+    with_current_user,
+)
+from fields.dataset_fields import (
+    DatasetMetadataBuiltInFieldsResponse,
+    DatasetMetadataListResponse,
+    DatasetMetadataResponse,
+)
+from libs.helper import dump_response
+from libs.login import login_required
+from models.account import Account
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -22,7 +33,12 @@ from services.metadata_service import MetadataService
 register_schema_models(
     console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload, DocumentMetadataOperation, MetadataDetail
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(
+    console_ns,
+    DatasetMetadataBuiltInFieldsResponse,
+    DatasetMetadataListResponse,
+    DatasetMetadataResponse,
+)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata")
@@ -31,10 +47,10 @@ class DatasetMetadataCreateApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @marshal_with(dataset_metadata_fields)
+    @console_ns.response(201, "Metadata created successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
-    def post(self, dataset_id):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID):
         metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
@@ -44,18 +60,22 @@ class DatasetMetadataCreateApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         metadata = MetadataService.create_metadata(dataset_id_str, metadata_args)
-        return metadata, 201
+        return dump_response(DatasetMetadataResponse, metadata), 201
 
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def get(self, dataset_id):
+    @console_ns.response(
+        200, "Metadata retrieved successfully", console_ns.models[DatasetMetadataListResponse.__name__]
+    )
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        return MetadataService.get_dataset_metadatas(dataset), 200
+        metadata = MetadataService.get_dataset_metadatas(dataset)
+        return dump_response(DatasetMetadataListResponse, metadata), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
@@ -64,10 +84,10 @@ class DatasetMetadataApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @marshal_with(dataset_metadata_fields)
+    @console_ns.response(200, "Metadata updated successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
-    def patch(self, dataset_id, metadata_id):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def patch(self, current_user: Account, dataset_id: UUID, metadata_id: UUID):
         payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
         name = payload.name
 
@@ -79,15 +99,15 @@ class DatasetMetadataApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, name)
-        return metadata, 200
+        return dump_response(DatasetMetadataResponse, metadata), 200
 
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
     @console_ns.response(204, "Metadata deleted successfully")
-    def delete(self, dataset_id, metadata_id):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def delete(self, current_user: Account, dataset_id: UUID, metadata_id: UUID):
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -96,7 +116,8 @@ class DatasetMetadataApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
-        return {"result": "success"}, 204
+        # Frontend callers only await success and invalidate metadata caches; no response body is consumed.
+        return "", 204
 
 
 @console_ns.route("/datasets/metadata/built-in")
@@ -105,9 +126,14 @@ class DatasetMetadataBuiltInFieldApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @console_ns.response(
+        200,
+        "Built-in fields retrieved successfully",
+        console_ns.models[DatasetMetadataBuiltInFieldsResponse.__name__],
+    )
     def get(self):
         built_in_fields = MetadataService.get_built_in_fields()
-        return {"fields": built_in_fields}, 200
+        return dump_response(DatasetMetadataBuiltInFieldsResponse, {"fields": built_in_fields}), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
@@ -116,9 +142,9 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, dataset_id, action: Literal["enable", "disable"]):
-        current_user, _ = current_account_with_tenant()
+    @console_ns.response(204, "Action completed successfully")
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID, action: Literal["enable", "disable"]):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -130,7 +156,8 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
                 MetadataService.enable_built_in_field(dataset)
             case "disable":
                 MetadataService.disable_built_in_field(dataset)
-        return {"result": "success"}, 200
+        # Frontend callers only await success and invalidate metadata caches; no response body is consumed.
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
@@ -140,9 +167,12 @@ class DocumentMetadataEditApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @console_ns.expect(console_ns.models[MetadataOperationData.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, dataset_id):
-        current_user, _ = current_account_with_tenant()
+    @console_ns.response(
+        204,
+        "Documents metadata updated successfully",
+    )
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -153,4 +183,5 @@ class DocumentMetadataEditApi(Resource):
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 
-        return {"result": "success"}, 200
+        # Frontend callers only await success and invalidate caches; no response body is consumed.
+        return "", 204

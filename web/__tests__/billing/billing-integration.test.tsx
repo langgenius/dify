@@ -53,6 +53,9 @@ vi.mock('@/service/use-billing', () => ({
     refetch: mockRefetch,
   }),
   useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
+  useCurrentPlanVectorSpace: () => ({
+    data: undefined,
+  }),
 }))
 
 vi.mock('@/service/use-education', () => ({
@@ -490,8 +493,8 @@ describe('Capacity Full Components Integration', () => {
       expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
       // Should show usage/total fraction "5/5"
       expect(screen.getByText(/5\/5/)).toBeInTheDocument()
-      // Should have a meter rendered
-      expect(screen.getByRole('meter')).toBeInTheDocument()
+      // Should have an accessible meter rendered
+      expect(screen.getByRole('meter', { name: /usagePage\.buildApps/i })).toBeInTheDocument()
     })
 
     it('should display upgrade tip and upgrade button for professional plan', () => {

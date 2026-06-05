@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.tool_providers import (
@@ -73,7 +75,9 @@ def client(flask_app_with_containers: Flask):
 @patch("controllers.console.workspace.tool_providers.sessionmaker", autospec=True)
 @patch("controllers.console.workspace.tool_providers.MCPToolManageService._reconnect_with_url", autospec=True)
 @pytest.mark.usefixtures("_mock_cache", "_mock_user_tenant")
-def test_create_mcp_provider_populates_tools(mock_reconnect, mock_session, mock_current_account_with_tenant, client):
+def test_create_mcp_provider_populates_tools(
+    mock_reconnect, mock_session, mock_current_account_with_tenant, client: FlaskClient
+):
     # Arrange: reconnect returns tools immediately
     mock_reconnect.return_value = ReconnectResult(
         authed=True,
@@ -281,11 +285,12 @@ class TestBuiltinProviderApis:
         api = ToolBuiltinProviderGetCredentialsApi()
         method = unwrap(api.get)
 
+        mock_user = SimpleNamespace(id="user-1", is_admin_or_owner=False)
         with (
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.tool_providers.current_account_with_tenant",
-                return_value=(None, "t"),
+                return_value=(mock_user, "t"),
             ),
             patch(
                 "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_credentials",

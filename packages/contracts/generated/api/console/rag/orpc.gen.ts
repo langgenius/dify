@@ -15,6 +15,7 @@ import {
   zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath,
   zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse,
   zGetRagPipelinesByPipelineIdExportsPath,
+  zGetRagPipelinesByPipelineIdExportsQuery,
   zGetRagPipelinesByPipelineIdExportsResponse,
   zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath,
   zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse,
@@ -57,8 +58,11 @@ import {
   zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse,
   zGetRagPipelinesRecommendedPluginsResponse,
   zGetRagPipelineTemplatesByTemplateIdPath,
+  zGetRagPipelineTemplatesByTemplateIdQuery,
   zGetRagPipelineTemplatesByTemplateIdResponse,
+  zGetRagPipelineTemplatesQuery,
   zGetRagPipelineTemplatesResponse,
+  zPatchRagPipelineCustomizedTemplatesByTemplateIdBody,
   zPatchRagPipelineCustomizedTemplatesByTemplateIdPath,
   zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
@@ -118,20 +122,13 @@ import {
   zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse,
 } from './zod.gen'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const delete_ = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteRagPipelineCustomizedTemplatesByTemplateId',
     path: '/rag/pipeline/customized/templates/{template_id}',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath }))
@@ -151,9 +148,15 @@ export const patch = oc
     method: 'PATCH',
     operationId: 'patchRagPipelineCustomizedTemplatesByTemplateId',
     path: '/rag/pipeline/customized/templates/{template_id}',
+    successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchRagPipelineCustomizedTemplatesByTemplateIdPath }))
+  .input(
+    z.object({
+      body: zPatchRagPipelineCustomizedTemplatesByTemplateIdBody,
+      params: zPatchRagPipelineCustomizedTemplatesByTemplateIdPath,
+    }),
+  )
   .output(zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse)
 
 export const post = oc
@@ -181,20 +184,13 @@ export const customized = {
   templates,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRagPipelineDataset',
     path: '/rag/pipeline/dataset',
+    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ body: zPostRagPipelineDatasetBody }))
@@ -204,20 +200,13 @@ export const dataset = {
   post: post2,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRagPipelineEmptyDataset',
     path: '/rag/pipeline/empty-dataset',
+    successStatus: 201,
     tags: ['console'],
   })
   .output(zPostRagPipelineEmptyDatasetResponse)
@@ -242,7 +231,12 @@ export const get = oc
     path: '/rag/pipeline/templates/{template_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetRagPipelineTemplatesByTemplateIdPath }))
+  .input(
+    z.object({
+      params: zGetRagPipelineTemplatesByTemplateIdPath,
+      query: zGetRagPipelineTemplatesByTemplateIdQuery.optional(),
+    }),
+  )
   .output(zGetRagPipelineTemplatesByTemplateIdResponse)
 
 export const byTemplateId2 = {
@@ -265,6 +259,7 @@ export const get2 = oc
     path: '/rag/pipeline/templates',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }))
   .output(zGetRagPipelineTemplatesResponse)
 
 export const templates2 = {
@@ -301,16 +296,8 @@ export const datasourcePlugins = {
   get: get3,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRagPipelinesImportsByImportIdConfirm',
@@ -328,16 +315,8 @@ export const byImportId = {
   confirm,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getRagPipelinesImportsByPipelineIdCheckDependencies',
@@ -355,16 +334,8 @@ export const byPipelineId = {
   checkDependencies,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRagPipelinesImports',
@@ -447,6 +418,7 @@ export const post7 = oc
     method: 'POST',
     operationId: 'postRagPipelinesByPipelineIdCustomizedPublish',
     path: '/rag/pipelines/{pipeline_id}/customized/publish',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(
@@ -465,23 +437,20 @@ export const customized2 = {
   publish,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdExports',
     path: '/rag/pipelines/{pipeline_id}/exports',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetRagPipelinesByPipelineIdExportsPath }))
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdExportsPath,
+      query: zGetRagPipelinesByPipelineIdExportsQuery.optional(),
+    }),
+  )
   .output(zGetRagPipelinesByPipelineIdExportsResponse)
 
 export const exports_ = {

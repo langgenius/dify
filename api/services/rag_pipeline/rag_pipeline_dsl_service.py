@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin import PluginDependency
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -78,9 +78,9 @@ class CheckDependenciesPendingData(BaseModel):
 class RagPipelineDslService:
     """Import, export, and inspect RAG pipeline DSL using the caller-owned session.
 
-    Controllers wrap this service in a SQLAlchemy transaction context, so methods must only flush interim changes when
-    generated IDs are needed. Committing inside the service would close the caller's transaction and break later work in
-    the same context manager.
+    Callers pass a plain ``Session`` (not wrapped in ``.begin()``) and are responsible for calling
+    ``session.commit()`` on success or ``session.rollback()`` on failure.  Methods here only flush
+    when generated IDs are needed mid-operation; they never commit or rollback.
     """
 
     def __init__(self, session: Session):
@@ -125,7 +125,7 @@ class RagPipelineDslService:
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
-                response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+                response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 content = response.content.decode()
 

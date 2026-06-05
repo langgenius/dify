@@ -1,23 +1,20 @@
+from contextlib import nullcontext
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import HTTPException
 
-import services
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
-    MemberNotInTenantError,
     NotOwnerError,
     OwnerTransferLimitError,
 )
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
-    MemberCancelInviteApi,
     MemberInviteEmailApi,
     MemberListApi,
     MemberUpdateRoleApi,
@@ -52,10 +49,9 @@ class TestMemberListApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.get_tenant_members", return_value=members),
         ):
-            result, status = method(api)
+            result, status = method(api, user)
 
         assert status == 200
         assert len(result["accounts"]) == 1
@@ -68,13 +64,17 @@ class TestMemberListApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
         ):
             with pytest.raises(ValueError):
-                method(api)
+                method(api, user)
 
 
 class TestMemberInviteEmailApi:
+    @pytest.fixture(autouse=True)
+    def _mock_member_invite_lock(self):
+        with patch("controllers.console.workspace.members.redis_client.lock", return_value=nullcontext()):
+            yield
+
     def test_invite_success(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
@@ -82,6 +82,8 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
         payload = {
@@ -92,12 +94,14 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
             patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
-            result, status = method(api)
+            result, status = method(api, user)
 
         assert status == 201
         assert result["result"] == "success"
@@ -109,6 +113,8 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = True
         features.workspace_members.is_available.return_value = False
 
         payload = {
@@ -118,11 +124,41 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api)
+                method(api, user)
+
+    def test_invite_billing_limit_exceeded(self, app: Flask):
+        api = MemberInviteEmailApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock(id="t1")
+        user = MagicMock(current_tenant=tenant)
+        features = MagicMock()
+        features.billing.enabled = True
+        features.members.size = 9
+        features.members.limit = 10
+        features.workspace_members.enabled = False
+
+        payload = {
+            "emails": ["a@test.com", "b@test.com"],
+            "role": "normal",
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=2),
+            patch("controllers.console.workspace.members._count_current_members", return_value=9),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", True),
+        ):
+            with pytest.raises(WorkspaceMembersLimitExceeded):
+                method(api, user)
 
     def test_invite_already_member(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -131,6 +167,8 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
         payload = {
@@ -140,15 +178,17 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=0),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=AccountAlreadyInTenantError(),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
-            result, status = method(api)
+            result, status = method(api, user)
 
         assert result["invitation_results"][0]["status"] == "success"
 
@@ -162,7 +202,7 @@ class TestMemberInviteEmailApi:
         }
 
         with app.test_request_context("/", json=payload):
-            result, status = method(api)
+            result, status = method(api, MagicMock())
 
         assert status == 400
         assert result["code"] == "invalid-role"
@@ -174,6 +214,8 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
         payload = {
@@ -183,148 +225,22 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=Exception("boom"),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
-            result, _ = method(api)
+            result, _ = method(api, user)
 
         assert result["invitation_results"][0]["status"] == "failed"
 
 
-class TestMemberCancelInviteApi:
-    def test_cancel_success(self, app: Flask):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-            patch("controllers.console.workspace.members.TenantService.remove_member_from_tenant"),
-        ):
-            get_mock.return_value = member
-            result, status = method(api, member.id)
-
-        assert status == 200
-        assert result["result"] == "success"
-
-    def test_cancel_not_found(self, app: Flask):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-        ):
-            get_mock.return_value = None
-
-            with pytest.raises(HTTPException):
-                method(api, "x")
-
-    def test_cancel_cannot_operate_self(self, app: Flask):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-            patch(
-                "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
-                side_effect=services.errors.account.CannotOperateSelfError("x"),
-            ),
-        ):
-            get_mock.return_value = member
-            result, status = method(api, member.id)
-
-        assert status == 400
-
-    def test_cancel_no_permission(self, app: Flask):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-            patch(
-                "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
-                side_effect=services.errors.account.NoPermissionError("x"),
-            ),
-        ):
-            get_mock.return_value = member
-            result, status = method(api, member.id)
-
-        assert status == 403
-
-    def test_cancel_member_not_in_tenant(self, app: Flask):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-            patch(
-                "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
-                side_effect=services.errors.account.MemberNotInTenantError(),
-            ),
-        ):
-            get_mock.return_value = member
-            result, status = method(api, member.id)
-
-        assert status == 404
-
-
 class TestMemberUpdateRoleApi:
-    def test_update_success(self, app: Flask):
-        api = MemberUpdateRoleApi()
-        method = unwrap(api.put)
-
-        tenant = MagicMock()
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        payload = {"role": "normal"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get", return_value=member),
-            patch("controllers.console.workspace.members.TenantService.update_member_role"),
-        ):
-            result = method(api, "id")
-
-        if isinstance(result, tuple):
-            result = result[0]
-
-        assert result["result"] == "success"
-
     def test_update_invalid_role(self, app: Flask):
         api = MemberUpdateRoleApi()
         method = unwrap(api.put)
@@ -332,26 +248,9 @@ class TestMemberUpdateRoleApi:
         payload = {"role": "invalid-role"}
 
         with app.test_request_context("/", json=payload):
-            result, status = method(api, "id")
+            result, status = method(api, MagicMock(), "id")
 
         assert status == 400
-
-    def test_update_member_not_found(self, app: Flask):
-        api = MemberUpdateRoleApi()
-        method = unwrap(api.put)
-
-        payload = {"role": "normal"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.members.current_account_with_tenant",
-                return_value=(MagicMock(current_tenant=MagicMock()), "t1"),
-            ),
-            patch("controllers.console.workspace.members.db.session.get", return_value=None),
-        ):
-            with pytest.raises(HTTPException):
-                method(api, "id")
 
 
 class TestDatasetOperatorMemberListApi:
@@ -372,12 +271,11 @@ class TestDatasetOperatorMemberListApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.members.TenantService.get_dataset_operator_members", return_value=members
             ),
         ):
-            result, status = method(api)
+            result, status = method(api, user)
 
         assert status == 200
         assert len(result["accounts"]) == 1
@@ -390,10 +288,9 @@ class TestDatasetOperatorMemberListApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
         ):
             with pytest.raises(ValueError):
-                method(api)
+                method(api, user)
 
 
 class TestSendOwnerTransferEmailApi:
@@ -410,13 +307,12 @@ class TestSendOwnerTransferEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=False),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.send_owner_transfer_email", return_value="token"
             ),
         ):
-            result = method(api)
+            result = method(api, user)
 
         assert result["result"] == "success"
 
@@ -432,7 +328,7 @@ class TestSendOwnerTransferEmailApi:
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=True),
         ):
             with pytest.raises(EmailSendIpLimitError):
-                method(api)
+                method(api, MagicMock())
 
     def test_send_not_owner(self, app: Flask):
         api = SendOwnerTransferEmailApi()
@@ -445,11 +341,10 @@ class TestSendOwnerTransferEmailApi:
             app.test_request_context("/", json={}),
             patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=False),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=False),
         ):
             with pytest.raises(NotOwnerError):
-                method(api)
+                method(api, user)
 
 
 class TestOwnerTransferCheckApi:
@@ -464,7 +359,6 @@ class TestOwnerTransferCheckApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
@@ -476,7 +370,7 @@ class TestOwnerTransferCheckApi:
             ),
         ):
             with pytest.raises(EmailCodeError):
-                method(api)
+                method(api, user)
 
     def test_rate_limited(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -489,7 +383,6 @@ class TestOwnerTransferCheckApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
@@ -497,7 +390,7 @@ class TestOwnerTransferCheckApi:
             ),
         ):
             with pytest.raises(OwnerTransferLimitError):
-                method(api)
+                method(api, user)
 
     def test_invalid_token(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -510,7 +403,6 @@ class TestOwnerTransferCheckApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
@@ -519,7 +411,7 @@ class TestOwnerTransferCheckApi:
             patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
         ):
             with pytest.raises(InvalidTokenError):
-                method(api)
+                method(api, user)
 
     def test_invalid_email(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -532,7 +424,6 @@ class TestOwnerTransferCheckApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
@@ -544,7 +435,7 @@ class TestOwnerTransferCheckApi:
             ),
         ):
             with pytest.raises(InvalidEmailError):
-                method(api)
+                method(api, user)
 
 
 class TestOwnerTransferApi:
@@ -559,11 +450,10 @@ class TestOwnerTransferApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
         ):
             with pytest.raises(CannotTransferOwnerToSelfError):
-                method(api, "1")
+                method(api, user, "1")
 
     def test_invalid_token(self, app: Flask):
         api = OwnerTransfer()
@@ -576,33 +466,8 @@ class TestOwnerTransferApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
         ):
             with pytest.raises(InvalidTokenError):
-                method(api, "2")
-
-    def test_member_not_in_tenant(self, app: Flask):
-        api = OwnerTransfer()
-        method = unwrap(api.post)
-
-        tenant = MagicMock()
-        user = MagicMock(id="1", email="a@test.com", current_tenant=tenant)
-        member = MagicMock()
-
-        payload = {"token": "t"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-            patch(
-                "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
-                return_value={"email": "a@test.com"},
-            ),
-            patch("controllers.console.workspace.members.db.session.get", return_value=member),
-            patch("controllers.console.workspace.members.TenantService.is_member", return_value=False),
-        ):
-            with pytest.raises(MemberNotInTenantError):
-                method(api, "2")
+                method(api, user, "2")

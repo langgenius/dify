@@ -64,6 +64,13 @@ vi.mock('@/utils/model-config', () => ({
   formatBooleanInputs: vi.fn((forms, inputs) => inputs),
 }))
 
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: (timestamp: number) => `formatted-${timestamp}`,
+    formatDate: (value: string) => `formatted-${value}`,
+  }),
+}))
+
 type ChatHookReturn = ReturnType<typeof useChat>
 
 const mockAppData = {

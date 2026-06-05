@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -8,28 +7,28 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiArrowDownSLine, RiCheckLine, RiSortAsc, RiSortDesc } from '@remixicon/react'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type Item = {
   value: number | string
   name: string
-} & Record<string, any>
+} & Record<string, unknown>
 
 type Props = {
   order?: string
   value: number | string
   items: Item[]
-  onSelect: (item: any) => void
+  onSelect: (value: string) => void
 }
-const Sort: FC<Props> = ({
+
+function Sort({
   order,
   value,
   items,
   onSelect,
-}) => {
+}: Props) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
 
   const triggerContent = useMemo(() => {
     return items.find(item => item.value === value)?.name || ''
@@ -37,28 +36,18 @@ const Sort: FC<Props> = ({
 
   return (
     <div className="inline-flex items-center">
-      <DropdownMenu
-        open={open}
-        onOpenChange={setOpen}
-      >
+      <DropdownMenu>
         <div className="relative">
           <DropdownMenuTrigger
-            nativeButton={false}
-            render={<div className="block" />}
+            className="flex min-h-8 cursor-pointer items-center rounded-l-lg border-none bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt"
           >
-            <div className={cn(
-              'flex min-h-8 cursor-pointer items-center rounded-l-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-              open && 'bg-state-base-hover-alt! hover:bg-state-base-hover-alt',
-            )}
-            >
-              <div className="flex items-center gap-0.5 px-1">
-                <div className="system-sm-regular text-text-tertiary">{t('filter.sortBy', { ns: 'appLog' })}</div>
-                <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
-                  {triggerContent}
-                </div>
+            <div className="flex items-center gap-0.5 px-1">
+              <div className="system-sm-regular text-text-tertiary">{t('filter.sortBy', { ns: 'appLog' })}</div>
+              <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
+                {triggerContent}
               </div>
-              <RiArrowDownSLine className="size-4 text-text-tertiary" />
             </div>
+            <RiArrowDownSLine className="size-4 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             placement="bottom-start"

@@ -14,11 +14,21 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
-      <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div data-testid="dropdown-menu" data-open={open}>{children}</div>
-      </DropdownMenuContext>
-    ),
+    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open?: boolean, onOpenChange?: (open: boolean) => void }) => {
+      const [internalOpen, setInternalOpen] = React.useState(open ?? false)
+      const isOpen = open ?? internalOpen
+      const setOpen = (nextOpen: boolean) => {
+        if (open === undefined)
+          setInternalOpen(nextOpen)
+        onOpenChange?.(nextOpen)
+      }
+
+      return (
+        <DropdownMenuContext value={{ isOpen, setOpen }}>
+          <div data-testid="dropdown-menu" data-open={isOpen}>{children}</div>
+        </DropdownMenuContext>
+      )
+    },
     DropdownMenuTrigger: ({
       children,
       render,

@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
@@ -18,7 +19,7 @@ from fields.conversation_fields import (
     SimpleConversation,
 )
 from libs.helper import uuid_value
-from models.model import AppMode
+from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.web_conversation_service import WebConversationService
@@ -80,9 +81,9 @@ class ConversationListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user):
+    def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         raw_args = request.args.to_dict()
@@ -126,9 +127,9 @@ class ConversationApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def delete(self, app_model, end_user, c_id):
+    def delete(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -136,7 +137,7 @@ class ConversationApi(WebApiResource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 @web_ns.route("/conversations/<uuid:c_id>/name")
@@ -165,9 +166,9 @@ class ConversationRenameApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, c_id):
+    def post(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -203,9 +204,9 @@ class ConversationPinApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
-    def patch(self, app_model, end_user, c_id):
+    def patch(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -234,9 +235,9 @@ class ConversationUnPinApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
-    def patch(self, app_model, end_user, c_id):
+    def patch(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)

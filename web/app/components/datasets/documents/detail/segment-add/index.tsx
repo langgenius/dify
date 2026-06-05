@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
@@ -30,9 +30,7 @@ export function SegmentAdd({
   embedding,
 }: SegmentAddProps) {
   const { t } = useTranslation()
-  const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false)
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
-  const batchMenuAnchorRef = useRef<HTMLDivElement>(null)
   const { plan, enableBilling } = useProviderContext()
   const canAddChunks = !enableBilling || plan.type !== Plan.sandbox
 
@@ -40,24 +38,13 @@ export function SegmentAdd({
     ? 'text-components-button-secondary-accent-text-disabled'
     : 'text-components-button-secondary-accent-text'
 
-  const handleAddClick = () => {
+  const openSegmentDialog = (openDialog: () => void) => {
     if (!canAddChunks) {
       setIsPlanUpgradeModalOpen(true)
       return
     }
 
-    showNewSegmentModal()
-  }
-
-  const handleBatchAddClick = () => {
-    setIsBatchMenuOpen(false)
-
-    if (!canAddChunks) {
-      setIsPlanUpgradeModalOpen(true)
-      return
-    }
-
-    showBatchModal()
+    openDialog()
   }
 
   if (importStatus) {
@@ -115,7 +102,6 @@ export function SegmentAdd({
 
   return (
     <div
-      ref={batchMenuAnchorRef}
       className={cn(
         'relative z-20 flex items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
         embedding && 'border-components-button-secondary-border-disabled bg-components-button-secondary-bg-disabled',
@@ -125,7 +111,7 @@ export function SegmentAdd({
         type="button"
         className={`inline-flex items-center rounded-l-lg border-0 border-r border-r-divider-subtle bg-transparent px-2.5 py-2 text-left
           hover:bg-state-base-hover disabled:cursor-not-allowed disabled:hover:bg-transparent`}
-        onClick={handleAddClick}
+        onClick={() => openSegmentDialog(showNewSegmentModal)}
         disabled={embedding}
       >
         <span aria-hidden className={cn('i-ri-add-line size-4', textColor)} />
@@ -133,29 +119,25 @@ export function SegmentAdd({
           {t('list.action.addButton', { ns: 'datasetDocuments' })}
         </span>
       </button>
-      <DropdownMenu open={isBatchMenuOpen} onOpenChange={setIsBatchMenuOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={t('list.action.batchAdd', { ns: 'datasetDocuments' })}
           disabled={embedding}
           className={cn(
             `rounded-l-none rounded-r-lg border-0 bg-transparent p-2 backdrop-blur-[5px]
-            hover:bg-state-base-hover disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent`,
-            isBatchMenuOpen && 'bg-state-base-hover',
+            hover:bg-state-base-hover disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent data-popup-open:bg-state-base-hover`,
           )}
         >
-          <div className="flex items-center justify-center">
-            <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
-          </div>
+          <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          placement="bottom-start"
+          placement="bottom-end"
           sideOffset={4}
-          positionerProps={{ anchor: batchMenuAnchorRef }}
-          popupClassName="w-[var(--anchor-width)]"
+          popupClassName="min-w-[120px]"
         >
           <DropdownMenuItem
             className="system-md-regular"
-            onClick={handleBatchAddClick}
+            onClick={() => openSegmentDialog(showBatchModal)}
           >
             {t('list.action.batchAdd', { ns: 'datasetDocuments' })}
           </DropdownMenuItem>

@@ -1,4 +1,6 @@
+import type { ReactElement } from 'react'
 import type { MockedFunction } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -51,6 +53,20 @@ const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseMailRegister = useMailRegister as unknown as MockedFunction<typeof useMailRegister>
 const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<typeof getBrowserTimezone>
 
+const renderWithQueryClient = (ui: ReactElement) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>,
+  )
+}
+
 describe('Signup Set Password Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -68,7 +84,7 @@ describe('Signup Set Password Page', () => {
 
   describe('Registration payload', () => {
     it('should submit locale and browser timezone when setting password', async () => {
-      render(<ChangePasswordForm />)
+      renderWithQueryClient(<ChangePasswordForm />)
 
       fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
         target: { value: 'ValidPass123!' },
@@ -106,7 +122,7 @@ describe('Signup Set Password Page', () => {
     it('should defer the amplitude event and fire GA immediately when registration succeeds', async () => {
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
-      render(<ChangePasswordForm />)
+      renderWithQueryClient(<ChangePasswordForm />)
       fillAndSubmit()
 
       await waitFor(() => {
@@ -118,14 +134,14 @@ describe('Signup Set Password Page', () => {
       expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success', {
         method: 'email',
       })
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
+      expect(mockReplace).toHaveBeenCalledWith('/')
     })
 
     it('should remember the utm event and clear the utm cookie when a utm_info cookie is present', async () => {
       Cookies.set('utm_info', JSON.stringify({ utm_source: 'twitter' }))
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
-      render(<ChangePasswordForm />)
+      renderWithQueryClient(<ChangePasswordForm />)
       fillAndSubmit()
 
       await waitFor(() => {

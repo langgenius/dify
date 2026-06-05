@@ -63,8 +63,8 @@ jobs:
         id: render
         run: |
           comment_body="$(uv run --directory api python libs/pyrefly_type_coverage.py \
-            --base base_report.json \
-            < pr_report.json)"
+            --base "$GITHUB_WORKSPACE/base_report.json" \
+            < "$GITHUB_WORKSPACE/pr_report.json")"
 
           {
             echo "### Pyrefly Type Coverage"

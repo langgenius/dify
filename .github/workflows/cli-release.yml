@@ -1,0 +1,88 @@
+name: CLI Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'difyctl-v*'
+
+concurrency:
+  group: cli-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: build standalone binaries (all targets)
+    runs-on: depot-ubuntu-24.04
+    if: github.repository == 'langgenius/dify'
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./cli
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        with:
+          bun-version: latest
+
+      - name: Read cli/package.json
+        id: manifest
+        run: |
+          version=$(node -p "require('./package.json').version")
+          channel=$(node -p "require('./package.json').difyctl.channel")
+          minDify=$(node -p "require('./package.json').difyctl.compat.minDify")
+          maxDify=$(node -p "require('./package.json').difyctl.compat.maxDify")
+          {
+              echo "version=$version"
+              echo "channel=$channel"
+              echo "minDify=$minDify"
+              echo "maxDify=$maxDify"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate manifest
+        run: scripts/release-validate-manifest.sh
+
+      - name: Install cross-arch native prebuilds
+        # Re-installs node_modules with every @napi-rs/keyring platform variant
+        # so `bun build --compile` can embed the right .node into each target.
+        working-directory: ./
+        run: NPM_CONFIG_USERCONFIG="$PWD/cli/scripts/cross-arch.npmrc" pnpm install --frozen-lockfile
+
+      - name: Compile standalone binaries (all targets)
+        env:
+          CLI_VERSION: ${{ steps.manifest.outputs.version }}
+          DIFYCTL_CHANNEL: ${{ steps.manifest.outputs.channel }}
+          DIFYCTL_MIN_DIFY: ${{ steps.manifest.outputs.minDify }}
+          DIFYCTL_MAX_DIFY: ${{ steps.manifest.outputs.maxDify }}
+        run: |
+          DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
+          DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
+            pnpm build:bin
+
+      - name: Generate sha256 checksum file
+        env:
+          CLI_VERSION: ${{ steps.manifest.outputs.version }}
+        run: scripts/release-write-checksums.sh
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        with:
+          tag_name: difyctl-v${{ steps.manifest.outputs.version }}
+          name: difyctl ${{ steps.manifest.outputs.version }}
+          prerelease: ${{ steps.manifest.outputs.channel != 'stable' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            cli/dist/bin/difyctl-v*

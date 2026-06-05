@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -55,7 +56,7 @@ class MessageListApi(Resource):
         Retrieves messages with pagination support using first_id.
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         query_args = MessageListQuery.model_validate(request.args.to_dict())
@@ -94,19 +95,19 @@ class MessageFeedbackApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, message_id):
+    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
         """Submit feedback for a message.
 
         Allows users to rate messages as like/dislike and provide optional feedback content.
         """
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(service_api_ns.payload or {})
 
         try:
             MessageService.create_feedback(
                 app_model=app_model,
-                message_id=message_id,
+                message_id=message_id_str,
                 user=end_user,
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
@@ -159,19 +160,19 @@ class MessageSuggestedApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
-    def get(self, app_model: App, end_user: EndUser, message_id):
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
         """Get suggested follow-up questions for a message.
 
         Returns AI-generated follow-up questions based on the message content.
         """
-        message_id = str(message_id)
+        message_id_str = str(message_id)
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.SERVICE_API
+                app_model=app_model, user=end_user, message_id=message_id_str, invoke_from=InvokeFrom.SERVICE_API
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")

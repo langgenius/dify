@@ -1,14 +1,16 @@
+from uuid import UUID
+
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from fields.base import ResponseModel
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
 from .. import console_ns
 from ..auth.error import ApiKeyAuthFailedError
-from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required, with_current_tenant_id
 
 
 class ApiKeyAuthBindingPayload(BaseModel):
@@ -40,8 +42,8 @@ class ApiKeyAuthDataSource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         data_source_api_key_bindings = ApiKeyAuthService.get_provider_auth_list(current_tenant_id)
         if data_source_api_key_bindings:
             return {
@@ -67,9 +69,9 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         # The role of the current user in the table must be admin or owner
-        _, current_tenant_id = current_account_with_tenant()
         payload = ApiKeyAuthBindingPayload.model_validate(console_ns.payload)
         data = payload.model_dump()
         ApiKeyAuthService.validate_api_key_auth_args(data)
@@ -87,10 +89,9 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @console_ns.response(204, "Binding deleted successfully")
-    def delete(self, binding_id):
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str, binding_id: UUID):
         # The role of the current user in the table must be admin or owner
-        _, current_tenant_id = current_account_with_tenant()
+        ApiKeyAuthService.delete_provider_auth(current_tenant_id, str(binding_id))
 
-        ApiKeyAuthService.delete_provider_auth(current_tenant_id, binding_id)
-
-        return {"result": "success"}, 204
+        return "", 204

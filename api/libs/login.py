@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Concatenate, cast, overload
 
 from flask import Response, current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS
@@ -48,7 +48,17 @@ def current_account_with_tenant() -> tuple[Account, str]:
     return user, user.current_tenant_id
 
 
-def login_required[**P, R](func: Callable[P, R]) -> Callable[P, R | Response]:
+@overload
+def login_required[T, **P, R](
+    func: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R | Response]: ...
+
+
+@overload
+def login_required[**P, R](func: Callable[P, R]) -> Callable[P, R | Response]: ...
+
+
+def login_required[R](func: Callable[..., R]) -> Callable[..., R | Response]:
     """
     If you decorate a view with this, it will ensure that the current user is
     logged in and authenticated before calling the actual view. (If they are
@@ -83,7 +93,9 @@ def login_required[**P, R](func: Callable[P, R]) -> Callable[P, R | Response]:
     """
 
     @wraps(func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R | Response:
+    def decorated_view(*args: Any, **kwargs: Any) -> R | Response:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain Flask view functions.
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             return current_app.ensure_sync(func)(*args, **kwargs)
 
