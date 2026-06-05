@@ -15,6 +15,7 @@ import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { CheckModal } from '@/hooks/use-pay'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import dynamic from '@/next/dynamic'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -135,12 +136,14 @@ const List: FC<Props> = ({
     { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
   ]
 
+  const [needRefreshValue, setNeedRefreshValue] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
+
   useEffect(() => {
-    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
-      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
+    if (needRefreshValue === '1') {
+      setNeedRefreshValue(null)
       refetch()
     }
-  }, [refetch])
+  }, [needRefreshValue, setNeedRefreshValue, refetch])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
