@@ -1,7 +1,6 @@
 from __future__ import annotations
-from flask import Flask
-import inspect
 
+import inspect
 import json
 from datetime import datetime
 from types import SimpleNamespace
@@ -9,6 +8,7 @@ from typing import cast
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException, NotFound
 
@@ -17,6 +17,7 @@ from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNo
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
+
 
 def _make_workflow(**overrides):
     workflow = SimpleNamespace(
@@ -123,7 +124,7 @@ def test_sync_draft_workflow_invalid_json(app: Flask, monkeypatch: pytest.Monkey
         data="[]",
         content_type="application/json",
     ):
-        response, status = handler(api,"t1", app_model=SimpleNamespace(id="app"))
+        response, status = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert status == 400
     assert response["message"] == "Invalid JSON data"
@@ -161,7 +162,6 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
 
 def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
 
-
     def _raise(*_args, **_kwargs):
         raise workflow_module.WorkflowHashNotEqualError()
 
@@ -177,7 +177,7 @@ def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.Monke
         json={"graph": {}, "features": {}, "hash": "h"},
     ):
         with pytest.raises(DraftWorkflowNotSync):
-            handler(api, "t1",  app_model=SimpleNamespace(id="app"))
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
 
 def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -202,7 +202,8 @@ def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: py
         method="POST",
     ):
         response = handler(
-            api, "t1", 
+            api,
+            "t1",
             app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
             workflow_id="published-workflow",
         )
@@ -231,13 +232,16 @@ def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: 
     ):
         with pytest.raises(NotFound):
             handler(
-                api,"t1",
+                api,
+                "t1",
                 app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="published-workflow",
             )
 
 
-def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -260,7 +264,8 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app: F
     ):
         with pytest.raises(HTTPException) as exc:
             handler(
-                api,"t1",
+                api,
+                "t1",
                 app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="draft-workflow",
             )
@@ -291,7 +296,8 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
     ):
         with pytest.raises(HTTPException) as exc:
             handler(
-                api,"t1",
+                api,
+                "t1",
                 app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="published-workflow",
             )
@@ -300,7 +306,9 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
     assert exc.value.description == "invalid workflow graph"
 
 
-def test_get_published_workflows_serializes_items_before_session_closes(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_published_workflows_serializes_items_before_session_closes(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     api = workflow_module.PublishedAllWorkflowApi()
     handler = inspect.unwrap(api.get)
 
@@ -345,7 +353,7 @@ def test_get_published_workflows_serializes_items_before_session_closes(app: Fla
         method="GET",
         query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
     ):
-        response = handler(api,"t1", app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
+        response = handler(api, "t1", app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
 
     assert response["items"][0]["id"] == "w1"
     assert response["page"] == 1
@@ -362,7 +370,7 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
     api = workflow_module.DraftWorkflowApi()
     handler = inspect.unwrap(api.get)
 
-    response = handler(api,"t1", app_model=SimpleNamespace(id="app"))
+    response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert response["id"] == "workflow-1"
     assert response["graph"] == {"nodes": [], "edges": []}
@@ -505,7 +513,7 @@ def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     handler = inspect.unwrap(api.get)
 
     with pytest.raises(DraftWorkflowNotExist):
-        handler(api,"t1", app_model=SimpleNamespace(id="app"))
+        handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
 
 def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -517,7 +525,6 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
         ),
     )
 
-
     api = workflow_module.AdvancedChatDraftWorkflowRunApi()
     handler = inspect.unwrap(api.post)
 
@@ -527,7 +534,7 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
         json={"inputs": {}},
     ):
         with pytest.raises(NotFound):
-            handler(api,"t1", app_model=SimpleNamespace(id="app"))
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
 
 def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
