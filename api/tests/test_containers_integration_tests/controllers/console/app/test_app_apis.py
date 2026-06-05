@@ -113,7 +113,7 @@ class TestCompletionEndpoints:
             "/",
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
-            resp = method(app_model=MagicMock(id="app-1"))
+            resp = method(api, app_model=MagicMock(id="app-1"))
 
         assert resp == {"result": {"text": "ok"}}
 
@@ -141,7 +141,7 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(NotFound):
-                method(app_model=MagicMock(id="app-1"))
+                method(api, app_model=MagicMock(id="app-1"))
 
     def test_completion_api_provider_not_initialized(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
@@ -165,7 +165,7 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(app_model=MagicMock(id="app-1"))
+                method(api, app_model=MagicMock(id="app-1"))
 
     def test_completion_api_quota_exceeded(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
@@ -189,7 +189,7 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(app_model=MagicMock(id="app-1"))
+                method(api, app_model=MagicMock(id="app-1"))
 
 
 class TestAppEndpoints:
@@ -218,7 +218,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(app_model=SimpleNamespace(icon_type=app_module.IconType.EMOJI))
+            response = method(api, app_model=SimpleNamespace(icon_type=app_module.IconType.EMOJI))
 
         assert response == {"id": "app-1"}
         assert app_service.update_app.call_args.args[1]["icon_type"] is None
@@ -255,7 +255,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(app_model=SimpleNamespace())
+            response = method(api, app_model=SimpleNamespace())
 
         assert response == {"id": "app-1"}
         assert app_service.update_app_icon.call_args.args[1:] == (
@@ -318,7 +318,7 @@ class TestOpsTraceEndpoints:
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(app_model=MagicMock(id="app-1"))
+            result = method(api, app_model=MagicMock(id="app-1"))
 
         assert result == {"has_not_configured": True}
 
@@ -337,7 +337,7 @@ class TestOpsTraceEndpoints:
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
             with pytest.raises(BadRequest):
-                method(app_model=MagicMock(id="app-1"))
+                method(api, app_model=MagicMock(id="app-1"))
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
@@ -351,7 +351,7 @@ class TestOpsTraceEndpoints:
 
         with app.test_request_context("/?tracing_provider=langfuse"):
             with pytest.raises(BadRequest):
-                method(app_model=MagicMock(id="app-1"))
+                method(api, app_model=MagicMock(id="app-1"))
 
 
 class TestSiteEndpoints:
