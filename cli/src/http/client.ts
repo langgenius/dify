@@ -273,7 +273,8 @@ export function createHttpClient(opts: ClientOptions): HttpClient {
   // Request through the same transport (UA+bearer hooks, retry, timeout, error-map) while
   // skipping joinURL. Policy comes from the client instance defaults — there is no per-call
   // override, so this stays a drop-in for OpenAPILink's `(req, init) => Promise<Response>`.
-  // Returns the raw Response for every status (oRPC reads the body and maps errors itself).
+  // Returns the raw Response for every status; the oRPC fetch wrapper (orpc.ts) inspects the
+  // status and raises classifyResponse for non-2xx, so error mapping stays in one place.
   const requestFetch = (req: Request, init?: RequestInit): Promise<Response> => {
     const method = req.method.toUpperCase() as HttpMethod
     const resolved: ResolvedOptions = {

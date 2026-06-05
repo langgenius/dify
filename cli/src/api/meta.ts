@@ -13,7 +13,7 @@ export class MetaClient {
   private readonly orpc: OpenApiClient
 
   constructor(http: HttpClient) {
-    this.orpc = createOpenApiClient(http, http.baseURL)
+    this.orpc = createOpenApiClient(http)
   }
 
   async serverVersion(): Promise<ServerVersionResponse> {

@@ -19,7 +19,7 @@ export class MembersClient {
   private readonly orpc: OpenApiClient
 
   constructor(http: HttpClient) {
-    this.orpc = createOpenApiClient(http, http.baseURL)
+    this.orpc = createOpenApiClient(http)
   }
 
   async list(workspaceId: string, q?: { page?: number, limit?: number }): Promise<MemberListResponse> {

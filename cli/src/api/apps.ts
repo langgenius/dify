@@ -16,7 +16,7 @@ export class AppsClient {
   private readonly orpc: OpenApiClient
 
   constructor(http: HttpClient) {
-    this.orpc = createOpenApiClient(http, http.baseURL)
+    this.orpc = createOpenApiClient(http)
   }
 
   async list(q: ListQuery): Promise<AppListResponse> {

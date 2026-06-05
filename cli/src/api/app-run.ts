@@ -45,7 +45,7 @@ export class AppRunClient {
     // Mixed class (SPEC §4.4): runStream / reconnectStream are SSE and stay on the raw
     // `http.stream` facade; stopTask / submitHumanInput are plain JSON and go through the
     // generated oRPC contract. Both facades share this one transport.
-    this.orpc = createOpenApiClient(http, http.baseURL)
+    this.orpc = createOpenApiClient(http)
   }
 
   async runStream(

@@ -10,7 +10,7 @@ export class WorkspacesClient {
     // oRPC client over the same transport (UA+bearer / retry / timeout / error-map) — SPEC §4.4:
     // one transport, a contract facade. Both methods are standard unary JSON, so both go through
     // the generated contract.
-    this.orpc = createOpenApiClient(http, http.baseURL)
+    this.orpc = createOpenApiClient(http)
   }
 
   async list(): Promise<WorkspaceListResponse> {

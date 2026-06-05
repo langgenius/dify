@@ -7,14 +7,15 @@ import { openAPIBase } from '@/util/host'
 import { createHttpClient } from './client.js'
 import { createOpenApiClient, unwrap } from './orpc.js'
 
-// createOpenApiClient + unwrap is the oRPC facade every migrated wrapper uses. oRPC owns error
-// construction for non-2xx, so these tests pin that mapOrpcError translates the ORPCError back
-// into the CLI's HttpClientError AND recovers Dify's wire message/hint (parity with the
-// transport path's classifyResponse), since the typed-client tests can't observe that.
+// createOpenApiClient + unwrap is the oRPC facade every migrated wrapper uses. The facade's
+// fetch wrapper raises classifyResponse for any non-2xx, so these tests pin that a migrated
+// endpoint surfaces the SAME classified HttpClientError as the `this.http.*` transport path —
+// Dify's message/hint, the request method/url, and the raw body — which the typed-client
+// tests can't observe.
 function orpcClient(host: string) {
   // retryAttempts: 0 so the 5xx case fails fast instead of burning the backoff budget.
   const http = createHttpClient({ baseURL: openAPIBase(host), bearer: 'dfoa_test', retryAttempts: 0 })
-  return createOpenApiClient(http, http.baseURL)
+  return createOpenApiClient(http)
 }
 
 async function catchErr(run: () => Promise<unknown>): Promise<unknown> {
@@ -46,6 +47,12 @@ describe('mapOrpcError (via unwrap)', () => {
       expect(caught.httpStatus).toBe(403)
       expect(caught.message).toBe('no access')
       expect(caught.hint).toBe('ask an admin')
+      // Parity with the transport path: the migrated endpoint's error keeps the request
+      // method/url and the raw body, so formatted errors still print the `request:` line
+      // and the raw-response dump (not just message/hint).
+      expect(caught.method).toBe('GET')
+      expect(caught.url).toContain('/account')
+      expect(caught.rawResponse).toContain('no access')
     }
   })
 

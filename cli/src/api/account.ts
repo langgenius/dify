@@ -7,7 +7,7 @@ export class AccountClient {
   private readonly orpc: OpenApiClient
 
   constructor(http: HttpClient) {
-    this.orpc = createOpenApiClient(http, http.baseURL)
+    this.orpc = createOpenApiClient(http)
   }
 
   async get(): Promise<AccountResponse> {
