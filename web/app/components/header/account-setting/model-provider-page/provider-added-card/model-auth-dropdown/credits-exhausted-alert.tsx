@@ -1,6 +1,7 @@
 import { MeterIndicator, MeterLabel, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Trans, useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContextSelector } from '@/context/modal-context'
 import { formatNumber } from '@/utils/format'
 import { useTrialCredits } from '../use-trial-credits'
@@ -41,13 +42,15 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback, credits: cred
             i18nKey={descriptionKey}
             ns="common"
             components={{
-              upgradeLink: (
-                <button
-                  type="button"
-                  className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
-                  onClick={() => setShowPricingModal()}
-                />
-              ),
+              upgradeLink: IS_CLOUD_EDITION
+                ? (
+                    <button
+                      type="button"
+                      className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
+                      onClick={() => setShowPricingModal()}
+                    />
+                  )
+                : <span />,
             }}
           />
         </div>

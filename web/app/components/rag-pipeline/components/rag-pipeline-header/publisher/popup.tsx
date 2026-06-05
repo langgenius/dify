@@ -23,6 +23,7 @@ import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -145,7 +146,8 @@ const Popup = ({
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
-      setShowPricingModal()
+      if (IS_CLOUD_EDITION)
+        setShowPricingModal()
     }
     else {
       onShowPublishAsKnowledgePipelineModal?.()
@@ -214,7 +216,7 @@ const Popup = ({
             <span className="grow truncate text-left" title={t('common.publishAs', { ns: 'pipeline' })}>
               {t('common.publishAs', { ns: 'pipeline' })}
             </span>
-            {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
+            {IS_CLOUD_EDITION && !isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
                 <SparklesSoft aria-hidden="true" className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
                 <span className="p-0.5 system-2xs-medium">
