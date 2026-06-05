@@ -264,6 +264,7 @@ class AccountService:
 
             account.set_tenant_id(available_ta.tenant_id)
             available_ta.current = True
+            available_ta.last_opened_at = naive_utc_now()
             db.session.commit()
 
         AccountService._refresh_account_last_active(account)
@@ -1450,6 +1451,7 @@ class TenantService:
                 .values(current=False)
             )
             tenant_account_join.current = True
+            tenant_account_join.last_opened_at = naive_utc_now()
             # Set the current tenant for the account
             account.set_tenant_id(tenant_account_join.tenant_id)
             db.session.commit()

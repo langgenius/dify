@@ -8,7 +8,6 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { LicenseStatus } from '@/features/system-features/constants'
-import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { WorkspaceCard } from '../workspace-card'
 
@@ -35,10 +34,6 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: vi.fn(),
 }))
 
 vi.mock('@/service/client', async (importOriginal) => {
@@ -146,22 +141,22 @@ describe('WorkspaceCard', () => {
       setShowPricingModal: mockSetShowPricingModal,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
-    vi.mocked(useRouter).mockReturnValue({
-      push: vi.fn(),
-      replace: vi.fn(),
-      prefetch: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-    })
   })
 
   it('hides cloud-only credits and upgrade actions outside cloud edition', () => {
     renderWorkspaceCard()
 
     expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /common\.mainNav\.workspace\.credits/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common\.mainNav\.workspace\.credits/ })).not.toBeInTheDocument()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+  })
+
+  it('links workspace credits to model provider settings in cloud edition', () => {
+    mockIsCloudEdition.value = true
+
+    renderWorkspaceCard()
+
+    expect(screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits/ })).toHaveAttribute('href', '/integrations/model-provider')
   })
 
   it('renders a stable skeleton while the current workspace is loading', () => {

@@ -603,11 +603,10 @@ describe('MainNav', () => {
     expect(screen.queryByRole('button', { name: 'common.mainNav.help.openMenu' })).not.toBeInTheDocument()
   })
 
-  it('opens workspace settings, members, provider credits, plan, and workspace switching actions', async () => {
+  it('opens workspace settings, members, plan, and workspace switching actions', async () => {
     renderMainNav()
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ }))
-    expect(mockPush).toHaveBeenCalledWith('/integrations/model-provider')
+    expect(screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))

@@ -31,7 +31,7 @@ type AppListHeaderFiltersProps = {
   showCreateButton: boolean
 }
 
-function AppListHeaderFilters({
+export function AppListHeaderFilters({
   category,
   tagIDs,
   keywords,
@@ -104,7 +104,7 @@ function AppListHeaderFilters({
               sideOffset={4}
               popupClassName="w-70 p-0"
             >
-              <div className="p-1">
+              <div className="py-1">
                 <DropdownMenuItem
                   className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                   onClick={onCreateBlank}
@@ -121,7 +121,7 @@ function AppListHeaderFilters({
                 </DropdownMenuItem>
               </div>
               <div className="h-px bg-divider-subtle" />
-              <div className="p-1">
+              <div className="py-1">
                 <DropdownMenuItem
                   className={cn(
                     'h-auto items-start gap-1 rounded-lg px-2 py-1.5',
@@ -145,5 +145,3 @@ function AppListHeaderFilters({
     </div>
   )
 }
-
-export default AppListHeaderFilters
