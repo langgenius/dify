@@ -189,7 +189,6 @@ class _StreamsSubscription(Subscription):
         assert isinstance(item, (bytes, bytearray)), "Unexpected item type in stream queue"
         return bytes(item)
 
-    @override
     def _publish_close_event(self) -> None:
         """Publish an empty message to the stream to unblock the listener's xread."""
         try:
