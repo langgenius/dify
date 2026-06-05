@@ -248,9 +248,6 @@
     }
   },
   "web/app/components/app-sidebar/index.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
