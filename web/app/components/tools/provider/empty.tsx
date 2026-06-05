@@ -1,4 +1,5 @@
 'use client'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -94,7 +95,7 @@ const Empty = ({
           </Link>
         </div>
         <Link
-          href={docLink('/use-dify/workspace/tools#workflow-tool')}
+          href={`${docLink('/use-dify/workspace/tools' as DocPathWithoutLang)}#workflow-tool`}
           target="_blank"
           rel="noreferrer"
           className="rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary hover:text-text-accent"
