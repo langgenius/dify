@@ -55,7 +55,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(SimpleNamespace(id="u1"))
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         session.rollback.assert_called_once_with()
         session.commit.assert_not_called()
@@ -76,7 +76,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(SimpleNamespace(id="u1"))
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         session.commit.assert_called_once_with()
         session.rollback.assert_not_called()
@@ -99,7 +99,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(SimpleNamespace(id="u1"))
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         session.commit.assert_called_once_with()
         session.rollback.assert_not_called()
@@ -126,7 +126,7 @@ class TestAppImportConfirmApi:
         )
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(SimpleNamespace(id="u1"), import_id="import-1")
+            response, status = method(api, SimpleNamespace(id="u1"), import_id="import-1")
 
         session.rollback.assert_called_once_with()
         session.commit.assert_not_called()

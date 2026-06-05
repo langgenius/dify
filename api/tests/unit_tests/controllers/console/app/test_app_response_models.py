@@ -26,7 +26,13 @@ class _ConsoleModule(ModuleType):
     app: ModuleType
 
 
-from inspect import unwrap
+def _unwrap(func):
+    bound_self = getattr(func, "__self__", None)
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    if bound_self is not None:
+        return func.__get__(bound_self, bound_self.__class__)
+    return func
 
 
 @pytest.fixture(scope="module")
@@ -413,7 +419,7 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     app: Flask, app_module: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     api = app_module.AppListApi()
-    method = unwrap(api.get)
+    method = _unwrap(api.get)
     app_item = SimpleNamespace(
         id="app-1",
         name="Workflow App",

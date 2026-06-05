@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
@@ -14,6 +13,13 @@ from clients.agent_backend.workspace_files_client import (
 )
 from controllers.console import agent_app_workspace as module
 from services.agent_app_workspace_service import AgentWorkspaceInspectorError
+
+
+def _unwrapped_get(resource_cls):
+    func = resource_cls.get
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
 
 
 class _AgentAppService:
@@ -135,9 +141,9 @@ def test_agent_app_workspace_resources_proxy_service(monkeypatch: pytest.MonkeyP
     )
     app_model = SimpleNamespace(id="app-1")
 
-    listing = unwrap(module.AgentAppWorkspaceListResource)(object(), app_model)
-    preview = unwrap(module.AgentAppWorkspacePreviewResource)(object(), app_model)
-    download = unwrap(module.AgentAppWorkspaceDownloadResource)(object(), app_model)
+    listing = _unwrapped_get(module.AgentAppWorkspaceListResource)(object(), app_model)
+    preview = _unwrapped_get(module.AgentAppWorkspacePreviewResource)(object(), app_model)
+    download = _unwrapped_get(module.AgentAppWorkspaceDownloadResource)(object(), app_model)
 
     assert listing["entries"][0]["name"] == "a.txt"
     assert preview["text"] == "hello"
@@ -162,7 +168,7 @@ def test_agent_app_workspace_resource_returns_normalized_errors(monkeypatch: pyt
         lambda model: SimpleNamespace(conversation_id="conv-1", path="."),
     )
 
-    assert unwrap(module.AgentAppWorkspaceListResource)(object(), SimpleNamespace(id="app-1")) == (
+    assert _unwrapped_get(module.AgentAppWorkspaceListResource)(object(), SimpleNamespace(id="app-1")) == (
         {"code": "no_active_session", "message": "no active session"},
         404,
     )
@@ -179,9 +185,9 @@ def test_workflow_agent_workspace_resources_proxy_service(monkeypatch: pytest.Mo
     )
     app_model = SimpleNamespace(id="app-1")
 
-    listing = unwrap(module.WorkflowAgentWorkspaceListResource)(object(), app_model, "run-1", "agent-node")
-    preview = unwrap(module.WorkflowAgentWorkspacePreviewResource)(object(), app_model, "run-1", "agent-node")
-    download = unwrap(module.WorkflowAgentWorkspaceDownloadResource)(object(), app_model, "run-1", "agent-node")
+    listing = _unwrapped_get(module.WorkflowAgentWorkspaceListResource)(object(), app_model, "run-1", "agent-node")
+    preview = _unwrapped_get(module.WorkflowAgentWorkspacePreviewResource)(object(), app_model, "run-1", "agent-node")
+    download = _unwrapped_get(module.WorkflowAgentWorkspaceDownloadResource)(object(), app_model, "run-1", "agent-node")
 
     assert listing["path"] == "out.txt"
     assert preview["text"] == "hello"
