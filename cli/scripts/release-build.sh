@@ -6,9 +6,10 @@
 # / dist/ step needed.
 #
 # Prereqs:
-#   - All @napi-rs/keyring native variants present in node_modules. Use
-#     `NPM_CONFIG_USERCONFIG=cli/scripts/cross-arch.npmrc pnpm install --force`
-#     to populate them.
+#   - All @napi-rs/keyring native variants present in node_modules. Append
+#     cli/scripts/cross-arch.pnpm.yaml onto pnpm-workspace.yaml before the
+#     install that first populates node_modules so pnpm fetches every
+#     foreign-arch prebuild (the CLI Release workflow does this).
 #
 # Env (all optional; defaults derived from cli/package.json + git):
 #   CLI_VERSION        — package.json `version`

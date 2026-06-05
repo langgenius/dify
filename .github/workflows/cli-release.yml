@@ -103,6 +103,10 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
+      - name: Enable cross-arch native prebuilds
+        working-directory: ./
+        run: cat cli/scripts/cross-arch.pnpm.yaml >> pnpm-workspace.yaml
+
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
@@ -113,10 +117,6 @@ jobs:
         uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
         with:
           bun-version-file: cli/.bun-version
-
-      - name: Install cross-arch native prebuilds
-        working-directory: ./
-        run: NPM_CONFIG_USERCONFIG="$PWD/cli/scripts/cross-arch.npmrc" pnpm install --frozen-lockfile
 
       - name: Compile standalone binaries (all targets)
         run: |
