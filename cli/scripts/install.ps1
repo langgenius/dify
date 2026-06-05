@@ -47,61 +47,69 @@ function Find-ReleaseForDifyctl([string]$Want) {
     return $null
 }
 
-if ($difyVersion) {
-    try { $release = Invoke-RestMethod -Uri "$apiBase/releases/tags/$difyVersion" -Headers $headers }
-    catch { throw "Dify release $difyVersion not found: $_" }
-}
-elseif ($difyctlVersion) {
-    $release = Find-ReleaseForDifyctl $difyctlVersion
-    if (-not $release) { throw "difyctl $difyctlVersion not found on any Dify release" }
-}
-else {
-    try { $release = Invoke-RestMethod -Uri "$apiBase/releases/latest" -Headers $headers }
-    catch { throw "failed to query latest Dify release (set DIFY_VERSION to pin one): $_" }
-}
-
-$difyTag = $release.tag_name
-$asset = Select-Asset $release
-if (-not $asset) { throw "no difyctl published for Dify $difyTag (target $target); set DIFY_VERSION to a release that has one" }
-
-$assetName = $asset.Name
-$ver       = $asset.Version
-$checksums = "difyctl-v$ver-checksums.txt"
-$base      = "$dlBase/$difyTag"
-
-$tmp = Join-Path $env:TEMP ("difyctl-" + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $tmp -Force | Out-Null
-try {
-    Write-Host "downloading $assetName (Dify $difyTag)..."
-    $assetPath = Join-Path $tmp $assetName
-    $sumsPath  = Join-Path $tmp $checksums
-    Invoke-WebRequest -Uri "$base/$assetName" -OutFile $assetPath
-    Invoke-WebRequest -Uri "$base/$checksums" -OutFile $sumsPath
-
-    $expected = (Get-Content $sumsPath |
-        Where-Object { $_ -match '\s' + [regex]::Escape($assetName) + '$' } |
-        ForEach-Object { ($_ -split '\s+')[0] } |
-        Select-Object -First 1)
-    if (-not $expected) { throw "no checksum entry for $assetName" }
-    $actual = (Get-FileHash -Path $assetPath -Algorithm SHA256).Hash.ToLower()
-    if ($actual -ne $expected.ToLower()) { throw "checksum mismatch for $assetName" }
-
-    $binDir = Join-Path $prefix 'bin'
-    New-Item -ItemType Directory -Path $binDir -Force | Out-Null
-    $targetBin = Join-Path $binDir 'difyctl.exe'
-    Copy-Item -Path $assetPath -Destination $targetBin -Force
-
-    Write-Host ""
-    Write-Host "difyctl v$ver installed (from Dify $difyTag): $targetBin"
-    if (($env:PATH -split ';') -notcontains $binDir) {
-        Write-Host ""
-        Write-Host "$binDir is not on your PATH. Add it with:"
-        Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$binDir;`$env:PATH`", 'User')"
+function Resolve-Release {
+    if ($difyVersion) {
+        try { return Invoke-RestMethod -Uri "$apiBase/releases/tags/$difyVersion" -Headers $headers }
+        catch { throw "Dify release $difyVersion not found: $_" }
+    }
+    elseif ($difyctlVersion) {
+        $release = Find-ReleaseForDifyctl $difyctlVersion
+        if (-not $release) { throw "difyctl $difyctlVersion not found on any Dify release" }
+        return $release
     }
     else {
-        Write-Host 'verify: run "difyctl version"'
+        try { return Invoke-RestMethod -Uri "$apiBase/releases/latest" -Headers $headers }
+        catch { throw "failed to query latest Dify release (set DIFY_VERSION to pin one): $_" }
     }
 }
-finally {
-    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+
+function Invoke-Main {
+    $release = Resolve-Release
+    $difyTag = $release.tag_name
+    $asset = Select-Asset $release
+    if (-not $asset) { throw "no difyctl published for Dify $difyTag (target $target); set DIFY_VERSION to a release that has one" }
+
+    $assetName = $asset.Name
+    $ver       = $asset.Version
+    $checksums = "difyctl-v$ver-checksums.txt"
+    $base      = "$dlBase/$difyTag"
+
+    $tmp = Join-Path $env:TEMP ("difyctl-" + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+    try {
+        Write-Host "downloading $assetName (Dify $difyTag)..."
+        $assetPath = Join-Path $tmp $assetName
+        $sumsPath  = Join-Path $tmp $checksums
+        Invoke-WebRequest -Uri "$base/$assetName" -OutFile $assetPath
+        Invoke-WebRequest -Uri "$base/$checksums" -OutFile $sumsPath
+
+        $expected = (Get-Content $sumsPath |
+            Where-Object { $_ -match '\s' + [regex]::Escape($assetName) + '$' } |
+            ForEach-Object { ($_ -split '\s+')[0] } |
+            Select-Object -First 1)
+        if (-not $expected) { throw "no checksum entry for $assetName" }
+        $actual = (Get-FileHash -Path $assetPath -Algorithm SHA256).Hash.ToLower()
+        if ($actual -ne $expected.ToLower()) { throw "checksum mismatch for $assetName" }
+
+        $binDir = Join-Path $prefix 'bin'
+        New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+        $targetBin = Join-Path $binDir 'difyctl.exe'
+        Copy-Item -Path $assetPath -Destination $targetBin -Force
+
+        Write-Host ""
+        Write-Host "difyctl v$ver installed (from Dify $difyTag): $targetBin"
+        if (($env:PATH -split ';') -notcontains $binDir) {
+            Write-Host ""
+            Write-Host "$binDir is not on your PATH. Add it with:"
+            Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$binDir;`$env:PATH`", 'User')"
+        }
+        else {
+            Write-Host 'verify: run "difyctl version"'
+        }
+    }
+    finally {
+        Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    }
 }
+
+if ($env:DIFYCTL_INSTALL_LIB -ne '1') { Invoke-Main }
