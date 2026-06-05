@@ -301,6 +301,7 @@ class TenantAccountJoin(TypeBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False, onupdate=func.current_timestamp()
     )
+    last_opened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
 
 class AccountIntegrate(TypeBase):
