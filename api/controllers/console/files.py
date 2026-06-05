@@ -1,4 +1,4 @@
-from typing import Literal, override
+from typing import Literal
 from uuid import UUID
 
 from flask import request
@@ -45,7 +45,6 @@ class FileApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[UploadConfig.__name__])
-    @override
     def get(self):
         config = UploadConfig(
             file_size_limit=dify_config.UPLOAD_FILE_SIZE_LIMIT,
@@ -67,7 +66,6 @@ class FileApi(Resource):
     @cloud_edition_billing_resource_check("documents")
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @with_current_user
-    @override
     def post(self, current_user: Account):
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
@@ -113,7 +111,6 @@ class FilePreviewApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
     @with_current_tenant_id
-    @override
     def get(self, current_tenant_id: str, file_id: UUID):
         file_id_str = str(file_id)
         text = FileService(db.engine).get_file_preview(file_id_str, current_tenant_id)
@@ -126,6 +123,5 @@ class FileSupportTypeApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AllowedExtensionsResponse.__name__])
-    @override
     def get(self):
         return {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}

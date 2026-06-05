@@ -72,7 +72,6 @@ class BaseApiKeyListResource(Resource):
     token_prefix: str | None = None
     max_keys = 10
 
-    @override
     def get(self, resource_id: str, current_tenant_id: str) -> dict[str, object]:
         return dump_response(ApiKeyList, self._get_api_key_list(resource_id, current_tenant_id))
 
@@ -88,7 +87,6 @@ class BaseApiKeyListResource(Resource):
         return ApiKeyList.model_validate({"data": keys}, from_attributes=True)
 
     @edit_permission_required
-    @override
     def post(self, resource_id: str, current_tenant_id: str) -> tuple[dict[str, object], int]:
         return dump_response(ApiKeyItem, self._create_api_key(resource_id, current_tenant_id)), 201
 
@@ -130,7 +128,6 @@ class BaseApiKeyResource(Resource):
     resource_model: type | None = None
     resource_id_field: str | None = None
 
-    @override
     def delete(
         self, resource_id: str, api_key_id: str, current_tenant_id: str, current_user: Account
     ) -> tuple[str, int]:
