@@ -555,7 +555,7 @@ class AppDslService:
         :param app_model: App instance
         """
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
+        workflow = workflow_service.get_draft_workflow(app_model, workflow_id or "")
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
 
