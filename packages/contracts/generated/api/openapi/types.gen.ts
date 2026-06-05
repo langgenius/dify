@@ -281,7 +281,7 @@ export type TagItem = {
 }
 
 export type TaskStopResponse = {
-  result?: string
+  result: string
 }
 
 export type UsageInfo = {

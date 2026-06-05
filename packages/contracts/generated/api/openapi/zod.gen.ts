@@ -382,10 +382,12 @@ export const zPermittedExternalAppsListResponse = z.object({
 /**
  * TaskStopResponse
  *
- * 200 body for POST /apps/<id>/tasks/<task_id>/stop.
+ * 200 body for POST /apps/<id>/tasks/<task_id>/stop. The handler always returns
+ * {"result": "success"}, so `result` is required (no default) — the generated contract
+ * types it as a required `'success'` rather than an optional field.
  */
 export const zTaskStopResponse = z.object({
-  result: z.string().optional().default('success'),
+  result: z.string(),
 })
 
 /**
