@@ -69,7 +69,7 @@ const createDefaultCollections = () => [
     team_credentials: {},
     is_team_authorization: false,
     allow_delete: true,
-    labels: [],
+    labels: ['api', 'tools'],
   },
   {
     id: 'workflow-1',
@@ -82,7 +82,7 @@ const createDefaultCollections = () => [
     team_credentials: {},
     is_team_authorization: false,
     allow_delete: true,
-    labels: [],
+    labels: ['productivity', 'utilities'],
   },
 ]
 
@@ -568,6 +568,16 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('card-my-api').parentElement).not.toHaveClass('flex-1')
     })
 
+    it('shows custom API card author and label tags from collection labels', () => {
+      renderProviderList(undefined, 'api', 'compact')
+
+      const card = within(screen.getByTestId('card-my-api'))
+      expect(card.getByText('tools.author User')).toBeInTheDocument()
+      expect(card.getByText('api')).toBeInTheDocument()
+      expect(card.getByText('tools')).toBeInTheDocument()
+      expect(card.queryByText(/tools\.mcp\.toolsCount/)).not.toBeInTheDocument()
+    })
+
     it('shows card skeletons instead of custom create card while tool providers are loading', () => {
       mockIsLoadingToolProviders = true
       renderProviderList({ category: 'api' })
@@ -581,6 +591,30 @@ describe('ProviderList', () => {
     it('shows workflow collections', () => {
       renderProviderList({ category: 'workflow' })
       expect(screen.getByTestId('card-wf-tool')).toBeInTheDocument()
+    })
+
+    it('uses a three-column responsive grid in compact integrations pages', () => {
+      renderProviderList(undefined, 'workflow', 'compact')
+
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('grid', 'grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3')
+      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('lg:grid-cols-2')
+      expect(screen.getByTestId('card-wf-tool').parentElement).toHaveClass('min-w-0')
+    })
+
+    it('does not show the built-in badge on workflow cards', () => {
+      renderProviderList(undefined, 'workflow', 'compact')
+
+      expect(within(screen.getByTestId('card-wf-tool')).queryByText('dataset.metadata.datasetMetadata.builtIn')).not.toBeInTheDocument()
+    })
+
+    it('shows workflow card author and label tags from collection labels', () => {
+      renderProviderList(undefined, 'workflow', 'compact')
+
+      const card = within(screen.getByTestId('card-wf-tool'))
+      expect(card.getByText('tools.author User')).toBeInTheDocument()
+      expect(card.getByText('productivity')).toBeInTheDocument()
+      expect(card.getByText('utilities')).toBeInTheDocument()
+      expect(card.queryByText(/tools\.mcp\.toolsCount/)).not.toBeInTheDocument()
     })
 
     it('shows empty state when no workflow collections exist', () => {

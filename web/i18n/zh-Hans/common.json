@@ -708,7 +708,7 @@
   "theme.dark": "深色",
   "theme.light": "浅色",
   "theme.theme": "主题",
-  "toolsPage.description": "工作区中所有可用的工具 —— 包括内置工具和从 Marketplace 安装的工具。",
+  "toolsPage.description": "工作区中的所有工具插件，包括内置工具和从 Marketplace 安装的工具。",
   "toolsPage.toolPlugin": "工具插件",
   "triggerPage.description": "将第三方事件转换为应用可识别并响应的输入——无需手动触发，即可自动运行工作流。",
   "unit.char": "个字符",

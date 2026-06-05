@@ -708,7 +708,7 @@
   "theme.dark": "暗い",
   "theme.light": "明るい",
   "theme.theme": "テーマ",
-  "toolsPage.description": "ワークスペースで利用可能なすべてのツール —— 組み込みのものと Marketplace からインストールしたものを含みます。",
+  "toolsPage.description": "ワークスペース内のすべてのツールプラグイン（ビルトインツールと Marketplace からインストールしたツールを含む）",
   "toolsPage.toolPlugin": "Tool Plugin",
   "triggerPage.description": "サードパーティのイベントを、アプリが認識・処理できる入力に変換——手動トリガーなしでワークフローを自動化できます。",
   "unit.char": "文字",

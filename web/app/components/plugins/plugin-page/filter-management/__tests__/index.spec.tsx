@@ -727,7 +727,7 @@ describe('TagFilter Component', () => {
 
       // Assert
       // Assert
-      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags'))!.toBeInTheDocument()
     })
 
     it('should render selected tag labels', () => {
@@ -890,7 +890,7 @@ describe('FilterManagement Component', () => {
       // Assert - All three filters should be present
       // Assert - All three filters should be present
       expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
-      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
 
@@ -900,7 +900,7 @@ describe('FilterManagement Component', () => {
 
       // Assert
       expect(screen.queryByText('plugin.allCategories'))!.not.toBeInTheDocument()
-      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
 
@@ -910,7 +910,7 @@ describe('FilterManagement Component', () => {
 
       // Assert
       expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
-      expect(screen.queryByText('pluginTags.allTags'))!.not.toBeInTheDocument()
+      expect(screen.queryByText('common.tag.tags'))!.not.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
 
@@ -935,7 +935,7 @@ describe('FilterManagement Component', () => {
       // Assert
       // Assert
       expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
-      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toHaveValue('')
     })
 

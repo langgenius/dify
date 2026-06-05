@@ -76,6 +76,7 @@ const PluginsPanel = ({
   const isAgentStrategyIntegrationPage = fixedCategory === PluginCategoryEnum.agent
   const isExtensionIntegrationPage = fixedCategory === PluginCategoryEnum.extension
   const isIntegrationCategoryPage = isToolIntegrationPage || isTriggerIntegrationPage || isAgentStrategyIntegrationPage || isExtensionIntegrationPage
+  const supportsTagFilter = !fixedCategory || isToolIntegrationPage || isTriggerIntegrationPage
   const { data: enableMarketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -110,26 +111,25 @@ const PluginsPanel = ({
 
   const filteredList = useMemo(() => {
     const { categories, searchQuery, tags } = filters
-    const shouldApplyTagFilter = !fixedCategory || isTriggerIntegrationPage
     const filteredList = categoryList.filter((plugin) => {
       return (
         (fixedCategory || categories.length === 0 || categories.includes(plugin.declaration.category))
-        && (!shouldApplyTagFilter || tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
+        && (!supportsTagFilter || tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
         && matchesSearchQuery(plugin, searchQuery, locale)
       )
     })
     return filteredList
-  }, [categoryList, fixedCategory, isTriggerIntegrationPage, filters, locale])
+  }, [categoryList, fixedCategory, supportsTagFilter, filters, locale])
   const builtinTools = isToolIntegrationPage ? pluginList?.builtin_tools ?? EMPTY_BUILTIN_TOOLS : EMPTY_BUILTIN_TOOLS
   const filteredBuiltinTools = useMemo(() => {
     if (!isToolIntegrationPage)
       return []
 
-    return filterBuiltinTools(builtinTools, filters.searchQuery, locale)
-  }, [builtinTools, filters.searchQuery, isToolIntegrationPage, locale])
+    return filterBuiltinTools(builtinTools, filters.searchQuery, locale, filters.tags)
+  }, [builtinTools, filters.searchQuery, filters.tags, isToolIntegrationPage, locale])
   const hasVisiblePlugins = (filteredList?.length ?? 0) > 0
   const hasVisibleBuiltinTools = filteredBuiltinTools.length > 0
-  const isFilteringCategory = !!filters.searchQuery.trim() || (isTriggerIntegrationPage && filters.tags.length > 0)
+  const isFilteringCategory = !!filters.searchQuery.trim() || (supportsTagFilter && filters.tags.length > 0)
   const isIntegrationCategorySearchEmpty = isIntegrationCategoryPage && isSearchResultEmpty({
     hasActiveFilter: isFilteringCategory,
     isLoading: isPluginListLoading,
@@ -185,7 +185,7 @@ const PluginsPanel = ({
       {!layout && !isIntegrationCategoryPage && <div className="h-px self-stretch bg-divider-subtle"></div>}
       <FilterManagement
         hideCategoryFilter={!!fixedCategory}
-        hideTagFilter={!!fixedCategory && !isTriggerIntegrationPage}
+        hideTagFilter={!supportsTagFilter}
         onFilterChange={handleFilterChange}
         rightSlot={toolbarAction}
       />
@@ -216,6 +216,7 @@ const PluginsPanel = ({
                   loadNextPage={loadNextPage}
                   scrollAreaLabel={scrollAreaLabel}
                   setCurrentBuiltinToolID={setCurrentBuiltinToolID}
+                  tagFilterValue={filters.tags}
                 />
               )
             : isIntegrationCategorySearchEmpty
