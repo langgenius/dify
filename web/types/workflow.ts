@@ -305,6 +305,7 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
   }
 }
 

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -25,6 +26,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 from models import App
+from services.workflow_generator_service import WorkflowGeneratorService
 from services.workflow_service import WorkflowService
 
 
@@ -42,6 +44,24 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
+class WorkflowGeneratePayload(BaseModel):
+    """Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
+
+    See ``services/workflow_generator_service.py`` for behaviour. Errors are
+    surfaced through the same envelope as ``/rule-generate`` so the frontend
+    can reuse its existing handler.
+    """
+
+    mode: Literal["workflow", "advanced-chat"] = Field(..., description="Target app mode for the generated graph")
+    instruction: str = Field(..., description="Natural-language workflow description")
+    ideal_output: str = Field(default="", description="Optional sample output for grounding")
+    model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
+    current_graph: dict | None = Field(
+        default=None,
+        description="Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch",
+    )
+
+
 register_enum_models(console_ns, LLMMode)
 register_schema_models(
     console_ns,
@@ -50,6 +70,7 @@ register_schema_models(
     RuleStructuredOutputPayload,
     InstructionGeneratePayload,
     InstructionTemplatePayload,
+    WorkflowGeneratePayload,
     ModelConfig,
 )
 
@@ -265,3 +286,56 @@ class InstructionGenerationTemplateApi(Resource):
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:
                 raise ValueError(f"Invalid type: {args.type}")
+
+
+@console_ns.route("/workflow-generate")
+class WorkflowGenerateApi(Resource):
+    """Generate a Workflow / Chatflow draft graph from a natural-language description.
+
+    Triggered by the cmd+k `/create` slash command. Returns a graph payload
+    shaped exactly like ``WorkflowService.sync_draft_workflow``'s input, so the
+    frontend can hand it straight to ``/apps/{id}/workflows/draft``.
+    """
+
+    @console_ns.doc("generate_workflow_graph")
+    @console_ns.doc(description="Generate a Dify workflow graph from natural language")
+    @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
+    @console_ns.response(200, "Workflow graph generated successfully")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(402, "Provider quota exceeded")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
+        args = WorkflowGeneratePayload.model_validate(console_ns.payload)
+
+        # Reject obviously-empty instructions at the boundary — Pydantic only
+        # validates ``instruction`` is a str, but a whitespace-only string
+        # would still hit the LLM and waste a planner+builder roundtrip on a
+        # response that the postprocess validator would reject anyway.
+        if not args.instruction.strip():
+            return {
+                "error": "Instruction is required",
+                "errors": [{"code": "EMPTY_INSTRUCTION", "detail": "Instruction is required"}],
+            }, 400
+
+        try:
+            result = WorkflowGeneratorService.generate_workflow_graph(
+                tenant_id=current_tenant_id,
+                mode=args.mode,
+                instruction=args.instruction,
+                model_config=args.model_config_data,
+                ideal_output=args.ideal_output,
+                current_graph=args.current_graph,
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+
+        return result
