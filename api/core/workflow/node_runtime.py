@@ -35,7 +35,7 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -47,7 +47,12 @@ from graphon.model_runtime.entities.llm_entities import (
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormInputConfig,
+    HumanInputNodeData,
+)
 from graphon.nodes.llm.runtime_protocols import (
     LLMProtocol,
     PromptMessageSerializerProtocol,
@@ -83,7 +88,6 @@ from .system_variables import SystemVariableKey, get_system_text
 if TYPE_CHECKING:
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
-    from graphon.file import File
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
 
@@ -378,6 +382,7 @@ class _WorkflowToolRuntimeBinding:
     tool: Tool
     conversation_id: str | None = None
     parent_trace_context: ParentTraceContext | None = None
+    trace_session_id: str | None = None
 
 
 class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
@@ -419,6 +424,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             None if variable_pool is None else get_system_text(variable_pool, SystemVariableKey.CONVERSATION_ID)
         )
         parent_trace_context: ParentTraceContext | None = None
+        trace_session_id: str | None = None
         if self._is_workflow_tool_provider(node_data):
             outer_workflow_run_id = (
                 None
@@ -430,11 +436,14 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     parent_workflow_run_id=outer_workflow_run_id,
                     parent_node_execution_id=node_execution_id,
                 )
+            if isinstance(self._run_context.trace_session_id, str) and self._run_context.trace_session_id:
+                trace_session_id = self._run_context.trace_session_id
         return ToolRuntimeHandle(
             raw=_WorkflowToolRuntimeBinding(
                 tool=tool_runtime,
                 conversation_id=conversation_id,
                 parent_trace_context=parent_trace_context,
+                trace_session_id=trace_session_id,
             )
         )
 
@@ -467,6 +476,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             )
         elif hasattr(tool, "clear_parent_trace_context"):
             tool.clear_parent_trace_context()
+        if runtime_binding.trace_session_id and hasattr(tool, "set_trace_session_id"):
+            tool.set_trace_session_id(runtime_binding.trace_session_id)
+        elif hasattr(tool, "clear_trace_session_id"):
+            tool.clear_trace_session_id()
 
         try:
             messages = ToolEngine.generic_invoke(
@@ -682,6 +695,7 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         self._run_context = resolve_dify_run_context(run_context)
         self._workflow_execution_id_getter = workflow_execution_id_getter
         self._form_repository = form_repository
+        self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
 
     def _invoke_source(self) -> str:
         invoke_from = self._run_context.invoke_from
@@ -735,6 +749,23 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         repo = self.build_form_repository()
         return repo.get_form(node_id)
 
+    def restore_submitted_data(
+        self,
+        *,
+        node_data: HumanInputNodeData,
+        submitted_data: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        restored_data: dict[str, Any] = dict(submitted_data)
+        for input_config in node_data.inputs:
+            output_variable_name = input_config.output_variable_name
+            if output_variable_name not in submitted_data:
+                continue
+            restored_data[output_variable_name] = self._restore_submitted_value(
+                input_config=input_config,
+                value=submitted_data[output_variable_name],
+            )
+        return restored_data
+
     def create_form(
         self,
         *,
@@ -754,6 +785,55 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             resolved_default_values=resolved_default_values,
         )
         return repo.create_form(params)
+
+    def _restore_submitted_value(
+        self,
+        *,
+        input_config: FormInputConfig,
+        value: Any,
+    ) -> Any:
+        if isinstance(input_config, FileInputConfig):
+            return self._restore_submitted_file_value(
+                output_variable_name=input_config.output_variable_name,
+                value=value,
+            )
+        if isinstance(input_config, FileListInputConfig):
+            return self._restore_submitted_file_list_value(
+                output_variable_name=input_config.output_variable_name,
+                value=value,
+            )
+        return value
+
+    def _restore_submitted_file_value(
+        self,
+        *,
+        output_variable_name: str,
+        value: Any,
+    ) -> Any:
+        if not isinstance(value, Mapping):
+            msg = (
+                "HumanInput file submission must be persisted as a mapping, "
+                f"output_variable_name={output_variable_name}"
+            )
+            raise ValueError(msg)
+        return self._file_reference_factory.build_from_mapping(mapping=value)
+
+    def _restore_submitted_file_list_value(
+        self,
+        *,
+        output_variable_name: str,
+        value: Any,
+    ) -> list[Any]:
+        if not isinstance(value, list):
+            msg = (
+                "HumanInput file-list submission must be persisted as a list, "
+                f"output_variable_name={output_variable_name}"
+            )
+            raise ValueError(msg)
+        if any(not isinstance(item, Mapping) for item in value):
+            msg = f"HumanInput file-list submission must contain mappings, output_variable_name={output_variable_name}"
+            raise ValueError(msg)
+        return [self._file_reference_factory.build_from_mapping(mapping=item) for item in value]
 
 
 def build_dify_llm_file_saver(

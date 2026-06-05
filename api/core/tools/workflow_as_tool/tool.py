@@ -9,7 +9,11 @@ from sqlalchemy import select
 
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
-from core.helper.trace_id_helper import ParentTraceContext, extract_parent_trace_context_from_args
+from core.helper.trace_id_helper import (
+    ParentTraceContext,
+    extract_parent_trace_context_from_args,
+    extract_trace_session_id_from_args,
+)
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
@@ -38,6 +42,7 @@ class WorkflowTool(Tool):
     """
 
     _parent_trace_context: ParentTraceContext | None
+    _trace_session_id: str | None
 
     def __init__(
         self,
@@ -58,6 +63,7 @@ class WorkflowTool(Tool):
         self.label = label
         self._latest_usage = LLMUsage.empty_usage()
         self._parent_trace_context = None
+        self._trace_session_id = None
 
         super().__init__(entity=entity, runtime=runtime)
 
@@ -103,6 +109,8 @@ class WorkflowTool(Tool):
             generator_args.update(
                 extract_parent_trace_context_from_args({"parent_trace_context": self._parent_trace_context})
             )
+        if self._trace_session_id:
+            generator_args.update(extract_trace_session_id_from_args({"trace_session_id": self._trace_session_id}))
 
         result = generator.generate(
             app_model=app,
@@ -215,6 +223,7 @@ class WorkflowTool(Tool):
             label=self.label,
         )
         forked._parent_trace_context = self._parent_trace_context.model_copy() if self._parent_trace_context else None
+        forked._trace_session_id = self._trace_session_id
         return forked
 
     def set_parent_trace_context(
@@ -232,6 +241,14 @@ class WorkflowTool(Tool):
     def clear_parent_trace_context(self) -> None:
         """Remove parent trace context before invoking this tool outside a nested workflow."""
         self._parent_trace_context = None
+
+    def set_trace_session_id(self, trace_session_id: str) -> None:
+        """Attach parent trace session ID without exposing it as tool input."""
+        self._trace_session_id = trace_session_id
+
+    def clear_trace_session_id(self) -> None:
+        """Remove trace session ID before invoking this tool outside a traced session."""
+        self._trace_session_id = None
 
     def _resolve_user(self, user_id: str) -> Account | EndUser | None:
         """

@@ -72,6 +72,7 @@ export const zChatRequestPayload = z.object({
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('dev'),
+  trace_session_id: z.string().nullish(),
   workflow_id: z.string().nullish(),
 })
 
@@ -139,6 +140,7 @@ export const zCompletionRequestPayload = z.object({
   query: z.string().optional().default(''),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('dev'),
+  trace_session_id: z.string().nullish(),
 })
 
 /**
@@ -1353,6 +1355,7 @@ export const zWorkflowRunPayload = z.object({
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
+  trace_session_id: z.string().nullish(),
 })
 
 /**

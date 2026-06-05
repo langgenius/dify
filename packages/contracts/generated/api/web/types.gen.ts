@@ -128,6 +128,15 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
+export type HumanInputFileUploadFormPayload = {
+  url?: string | null
+}
+
+export type HumanInputUploadTokenResponse = {
+  expires_at: number
+  upload_token: string
+}
+
 export type LicenseLimitationModel = {
   enabled: boolean
   limit: number
@@ -853,6 +862,38 @@ export type PostFormHumanInputByFormTokenResponses = {
 
 export type PostFormHumanInputByFormTokenResponse
   = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+
+export type PostFormHumanInputByFormTokenUploadTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human_input/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponse
+  = PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
+
+export type PostHumanInputFormsFilesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/human-input-forms/files'
+}
+
+export type PostHumanInputFormsFilesResponses = {
+  201: FileResponse
+}
+
+export type PostHumanInputFormsFilesResponse
+  = PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
 
 export type PostLoginData = {
   body: LoginPayload

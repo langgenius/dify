@@ -27,6 +27,9 @@ describe('useWorkflowFinished', () => {
       data: { status: 'succeeded', outputs: { a: 'hello', b: 'world' } },
     } as WorkflowFinishedResponse)
 
-    expect(store.getState().workflowRunningData!.resultTabActive).toBeFalsy()
+    const state = store.getState().workflowRunningData!
+    expect(state.result.status).toBe('succeeded')
+    expect(state.resultTabActive).toBe(false)
+    expect(state.resultText).toBe('')
   })
 })

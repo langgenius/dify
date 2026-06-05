@@ -755,7 +755,7 @@ export const zSite = z.object({
  */
 export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   summary: z.string().nullish(),
@@ -1697,16 +1697,6 @@ export const zAgentComposerNodeJobCandidatesResponse = z.object({
 })
 
 /**
- * AgentCliToolConfig
- */
-export const zAgentCliToolConfig = z.object({
-  command: z.string().nullish(),
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  name: z.string().max(255).nullish(),
-})
-
-/**
  * AgentComposerDifyToolCandidateResponse
  */
 export const zAgentComposerDifyToolCandidateResponse = z.object({
@@ -1736,27 +1726,6 @@ export const zAgentSkillRefConfig = z.object({
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
   path: z.string().nullish(),
-})
-
-/**
- * AgentComposerSoulCandidatesResponse
- */
-export const zAgentComposerSoulCandidatesResponse = z.object({
-  cli_tools: z.array(zAgentCliToolConfig).optional(),
-  dify_tools: z.array(zAgentComposerDifyToolCandidateResponse).optional(),
-  human_contacts: z.array(zAgentHumanContactConfig).optional(),
-  knowledge_datasets: z.array(zAgentKnowledgeDatasetConfig).optional(),
-  skills_files: z.array(zAgentSkillRefConfig).optional(),
-})
-
-/**
- * AgentComposerCandidatesResponse
- */
-export const zAgentComposerCandidatesResponse = z.object({
-  allowed_node_job_candidates: zAgentComposerNodeJobCandidatesResponse.optional(),
-  allowed_soul_candidates: zAgentComposerSoulCandidatesResponse.optional(),
-  capabilities: zComposerCandidateCapabilities.optional(),
-  variant: zComposerVariant,
 })
 
 /**
@@ -1852,17 +1821,6 @@ export const zConversationPagination = z.object({
   page: z.int(),
   per_page: z.int(),
   total: z.int(),
-})
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
 })
 
 /**
@@ -1995,6 +1953,8 @@ export const zDeclaredOutputFileConfig = z.object({
 export const zAgentSecretRefConfig = z.object({
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  permission_status: z.string().max(64).nullish(),
   provider: z.string().max(255).nullish(),
   type: z.string().max(64).nullish(),
 })
@@ -2132,6 +2092,71 @@ export const zWorkflowNodeJobMetadata = z.object({
 })
 
 /**
+ * AgentCliToolAuthorizationStatus
+ *
+ * Authorization state for Agent-scoped CLI tools.
+ *
+ * Missing status keeps backward compatibility with draft rows and CLI tools that
+ * do not need pre-authorization. Explicit denied-like states are blocked by the
+ * composer/publish validators and skipped by runtime request builders.
+ */
+export const zAgentCliToolAuthorizationStatus = z.enum([
+  'allowed',
+  'authorized',
+  'denied',
+  'forbidden',
+  'not_required',
+  'pending',
+  'pre_authorized',
+  'unauthorized',
+])
+
+/**
+ * AgentCliToolRiskLevel
+ *
+ * Risk marker for CLI tool bootstrap commands.
+ */
+export const zAgentCliToolRiskLevel = z.enum(['dangerous', 'safe', 'unknown'])
+
+/**
+ * AgentCliToolConfig
+ */
+export const zAgentCliToolConfig = z.object({
+  authorization_status: zAgentCliToolAuthorizationStatus.optional(),
+  command: z.string().nullish(),
+  dangerous: z.boolean().optional().default(false),
+  dangerous_acknowledged: z.boolean().optional().default(false),
+  description: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  invoke_metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  pre_authorized: z.boolean().nullish(),
+  risk_level: zAgentCliToolRiskLevel.optional(),
+})
+
+/**
+ * AgentComposerSoulCandidatesResponse
+ */
+export const zAgentComposerSoulCandidatesResponse = z.object({
+  cli_tools: z.array(zAgentCliToolConfig).optional(),
+  dify_tools: z.array(zAgentComposerDifyToolCandidateResponse).optional(),
+  human_contacts: z.array(zAgentHumanContactConfig).optional(),
+  knowledge_datasets: z.array(zAgentKnowledgeDatasetConfig).optional(),
+  skills_files: z.array(zAgentSkillRefConfig).optional(),
+})
+
+/**
+ * AgentComposerCandidatesResponse
+ */
+export const zAgentComposerCandidatesResponse = z.object({
+  allowed_node_job_candidates: zAgentComposerNodeJobCandidatesResponse.optional(),
+  allowed_soul_candidates: zAgentComposerSoulCandidatesResponse.optional(),
+  capabilities: zComposerCandidateCapabilities.optional(),
+  variant: zComposerVariant,
+})
+
+/**
  * AgentModerationIOConfig
  */
 export const zAgentModerationIoConfig = z.object({
@@ -2159,6 +2184,20 @@ export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
 })
 
 export const zFormInputConfig = z.unknown()
+
+export const zJsonValue2 = z.unknown()
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+})
 
 /**
  * OutputErrorStrategy
