@@ -107,7 +107,7 @@ class LLMGenerator:
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
-        prompts = [UserPromptMessage(content=prompt)]
+        prompts: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
         with measure_time() as timer:
             response: LLMResult = model_instance.invoke_llm(
@@ -201,7 +201,7 @@ class LLMGenerator:
         except InvokeAuthorizationError:
             return []
 
-        prompt_messages = [UserPromptMessage(content=prompt)]
+        prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
         questions: Sequence[str] = []
 
@@ -210,8 +210,8 @@ class LLMGenerator:
             if use_configured_model and isinstance(configured_completion_params, dict):
                 model_parameters, stop = _normalize_completion_params(configured_completion_params)
             elif use_configured_model:
-                model_parameters = {}
-                stop = []
+                model_parameters: dict[str, object] = {}
+                stop: list[str] = []
             else:
                 # Default-model generation keeps the built-in suggested-questions tuning.
                 model_parameters = {
@@ -253,7 +253,7 @@ class LLMGenerator:
                 remove_template_variables=False,
             )
 
-            prompt_messages = [UserPromptMessage(content=prompt_generate)]
+            prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt_generate)]
 
             model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
 
@@ -299,7 +299,7 @@ class LLMGenerator:
             },
             remove_template_variables=False,
         )
-        prompt_messages = [UserPromptMessage(content=prompt_generate_prompt)]
+        prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt_generate_prompt)]
 
         # get model instance
         model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
@@ -331,7 +331,7 @@ class LLMGenerator:
                 },
                 remove_template_variables=False,
             )
-            parameter_messages = [UserPromptMessage(content=parameter_generate_prompt)]
+            parameter_messages: list[PromptMessage] = [UserPromptMessage(content=parameter_generate_prompt)]
 
             # the second step to generate the task_parameter and task_statement
             statement_generate_prompt = statement_template.format(
@@ -341,7 +341,7 @@ class LLMGenerator:
                 },
                 remove_template_variables=False,
             )
-            statement_messages = [UserPromptMessage(content=statement_generate_prompt)]
+            statement_messages: list[PromptMessage] = [UserPromptMessage(content=statement_generate_prompt)]
 
             try:
                 parameter_content: LLMResult = model_instance.invoke_llm(
@@ -397,7 +397,7 @@ class LLMGenerator:
             model=args.model_config_data.name,
         )
 
-        prompt_messages = [UserPromptMessage(content=prompt)]
+        prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
         model_parameters = args.model_config_data.completion_params
         try:
             response: LLMResult = model_instance.invoke_llm(
@@ -455,7 +455,7 @@ class LLMGenerator:
             model=args.model_config_data.name,
         )
 
-        prompt_messages = [
+        prompt_messages: list[PromptMessage] = [
             SystemPromptMessage(content=SYSTEM_STRUCTURED_OUTPUT_GENERATE),
             UserPromptMessage(content=args.instruction),
         ]
@@ -634,7 +634,7 @@ class LLMGenerator:
                 system_prompt = LLM_MODIFY_CODE_SYSTEM
             case _:
                 system_prompt = LLM_MODIFY_PROMPT_SYSTEM
-        prompt_messages = [
+        prompt_messages: list[PromptMessage] = [
             SystemPromptMessage(content=system_prompt),
             UserPromptMessage(
                 content=json.dumps(

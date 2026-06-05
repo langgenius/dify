@@ -196,7 +196,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         top_k: int,
         score_threshold: float,
         reranking_model: RerankingModelDict,
-    ):
+    ) -> list[Document]:
         # Set search parameters.
         results = RetrievalService.retrieve(
             retrieval_method=retrieval_method,
@@ -207,13 +207,11 @@ class QAIndexProcessor(BaseIndexProcessor):
             reranking_model=reranking_model,
         )
         # Organize results.
-        docs = []
+        docs: list[Document] = []
         for result in results:
-            metadata = result.metadata
-            metadata["score"] = result.score
-            if result.score >= score_threshold:
-                doc = Document(page_content=result.page_content, metadata=metadata)
-                docs.append(doc)
+            score = self._retrieval_score(result)
+            if score >= score_threshold:
+                docs.append(self._copy_retrieved_document(result, score))
         return docs
 
     @override

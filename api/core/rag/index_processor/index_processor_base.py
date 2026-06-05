@@ -111,6 +111,27 @@ class BaseIndexProcessor(ABC):
     ) -> list[Document]:
         raise NotImplementedError
 
+    def _retrieval_score(self, document: Document) -> float:
+        """Return the score carried by RetrievalService on Document metadata."""
+        score_value: object = document.metadata.get("score", 0.0)
+        if isinstance(score_value, bool):
+            return 0.0
+        if isinstance(score_value, int | float):
+            return float(score_value)
+        if isinstance(score_value, str):
+            try:
+                return float(score_value)
+            except ValueError:
+                return 0.0
+        return 0.0
+
+    def _copy_retrieved_document(self, document: Document, score: float) -> Document:
+        # RetrievalService returns RAG Document objects; scores are stored in metadata,
+        # not on a side-loaded Document.score attribute. Copy metadata before annotating.
+        metadata = dict(document.metadata)
+        metadata["score"] = score
+        return document.model_copy(update={"metadata": metadata})
+
     def _get_splitter(
         self,
         processing_rule_mode: str,
