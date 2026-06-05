@@ -223,7 +223,7 @@ function NodeSelector({
         alignOffset={alignOffset}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
+        <div className={cn('w-[400px] min-w-0 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', popupClassName)}>
           <Tabs
             tabs={tabs}
             activeTab={activeTab}
@@ -240,7 +240,8 @@ function NodeSelector({
                     tags={tags}
                     onTagsChange={setTags}
                     placeholder={searchPlaceholder}
-                    inputClassName="grow"
+                    wrapperClassName="w-full min-w-0"
+                    inputClassName="min-w-0 grow"
                   />
                 )}
                 {activeTab === TabsEnum.Blocks && (
@@ -273,7 +274,8 @@ function NodeSelector({
                     tags={tags}
                     onTagsChange={setTags}
                     placeholder={t('searchTools', { ns: 'plugin' })!}
-                    inputClassName="grow"
+                    wrapperClassName="w-full min-w-0"
+                    inputClassName="min-w-0 grow"
                   />
                 )}
               </div>
