@@ -10,19 +10,12 @@ from flask import Flask
 from controllers.console.app import model_config as model_config_module
 from models.model import AppMode, AppModelConfig
 
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+from inspect import unwrap
 
 
 def test_post_updates_app_model_config_for_chat(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = model_config_module.ModelConfigResource()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     app_model = SimpleNamespace(
         id="app-1",
@@ -62,7 +55,7 @@ def test_post_updates_app_model_config_for_chat(app: Flask, monkeypatch: pytest.
 
 def test_post_encrypts_agent_tool_parameters(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = model_config_module.ModelConfigResource()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     app_model = SimpleNamespace(
         id="app-1",

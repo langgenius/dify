@@ -18,12 +18,7 @@ from models.model import App, AppMode, Site
 def app(flask_app_with_containers) -> Flask:
     return flask_app_with_containers
 
-
-def _unwrap(method):
-    fn = method
-    while hasattr(fn, "__wrapped__"):
-        fn = fn.__wrapped__
-    return fn
+from inspect import unwrap
 
 
 def _create_tenant(db_session: Session, *, status: TenantStatus = TenantStatus.NORMAL) -> Tenant:
@@ -76,7 +71,7 @@ class TestAppSiteApi:
 
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test-token"}):
             api = AppSiteApi()
-            response = _unwrap(api.get)(api, app_model=app_model)
+            response = unwrap(api.get)(api, app_model=app_model)
 
         assert response["title"] == "Service API Site"
         assert response["icon"] == "robot"
@@ -89,7 +84,7 @@ class TestAppSiteApi:
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test-token"}):
             api = AppSiteApi()
             with pytest.raises(Forbidden):
-                _unwrap(api.get)(api, app_model=app_model)
+                unwrap(api.get)(api, app_model=app_model)
 
     def test_get_site_tenant_archived(self, app: Flask, db_session_with_containers: Session) -> None:
         tenant = _create_tenant(db_session_with_containers)
@@ -107,4 +102,4 @@ class TestAppSiteApi:
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test-token"}):
             api = AppSiteApi()
             with pytest.raises(Forbidden):
-                _unwrap(api.get)(api, app_model=app_model)
+                unwrap(api.get)(api, app_model=app_model)

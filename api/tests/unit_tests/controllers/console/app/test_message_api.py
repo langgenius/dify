@@ -7,13 +7,7 @@ import pytest
 from controllers.console.app import message as message_module
 
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+from inspect import unwrap
 
 
 def test_chat_messages_query_valid(app, monkeypatch: pytest.MonkeyPatch) -> None:

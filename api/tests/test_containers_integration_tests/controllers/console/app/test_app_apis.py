@@ -67,13 +67,8 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 )
 
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+from inspect import unwrap
+
 
 
 class TestCompletionEndpoints:
@@ -97,7 +92,7 @@ class TestCompletionEndpoints:
 
     def test_completion_api_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         class DummyAccount:
             pass
@@ -127,7 +122,7 @@ class TestCompletionEndpoints:
 
     def test_completion_api_conversation_not_exists(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         class DummyAccount:
             pass
@@ -153,7 +148,7 @@ class TestCompletionEndpoints:
 
     def test_completion_api_provider_not_initialized(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         class DummyAccount:
             pass
@@ -177,7 +172,7 @@ class TestCompletionEndpoints:
 
     def test_completion_api_quota_exceeded(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         class DummyAccount:
             pass
@@ -207,7 +202,7 @@ class TestAppEndpoints:
 
     def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = app_module.AppApi()
-        method = _unwrap(api.put)
+        method = unwrap(api.put)
         payload = {
             "name": "Updated App",
             "description": "Updated description",
@@ -245,7 +240,7 @@ class TestAppEndpoints:
 
     def test_app_icon_post_should_forward_icon_type(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = app_module.AppIconApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
         payload = {
             "icon": "https://example.com/icon.png",
             "icon_type": "image",
@@ -317,7 +312,7 @@ class TestOpsTraceEndpoints:
 
     def test_trace_app_config_get_empty(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         monkeypatch.setattr(
             ops_trace_module.OpsService,
@@ -332,7 +327,7 @@ class TestOpsTraceEndpoints:
 
     def test_trace_app_config_post_invalid(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         monkeypatch.setattr(
             ops_trace_module.OpsService,
@@ -349,7 +344,7 @@ class TestOpsTraceEndpoints:
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
-        method = _unwrap(api.delete)
+        method = unwrap(api.delete)
 
         monkeypatch.setattr(
             ops_trace_module.OpsService,
@@ -377,7 +372,7 @@ class TestSiteEndpoints:
 
     def test_app_site_update_post(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = site_module.AppSite()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         site = MagicMock()
         site.app_id = "app-1"
@@ -410,7 +405,7 @@ class TestSiteEndpoints:
 
     def test_app_site_access_token_reset(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = site_module.AppSiteAccessTokenReset()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         site = MagicMock()
         site.app_id = "app-1"
@@ -468,7 +463,7 @@ class TestWorkflowAppLogEndpoints:
 
     def test_workflow_app_log_api_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = workflow_app_log_module.WorkflowAppLogApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         monkeypatch.setattr(workflow_app_log_module, "db", SimpleNamespace(engine=MagicMock()))
 
@@ -514,7 +509,7 @@ class TestWorkflowDraftVariableEndpoints:
 
     def test_workflow_variable_collection_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = workflow_draft_variable_module.WorkflowVariableCollectionApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         monkeypatch.setattr(workflow_draft_variable_module, "db", SimpleNamespace(engine=MagicMock()))
         monkeypatch.setattr(workflow_draft_variable_module, "current_user", SimpleNamespace(id="user-1"))
@@ -583,7 +578,7 @@ class TestWorkflowStatisticEndpoints:
         )
 
         api = workflow_statistic_module.WorkflowDailyRunsStatistic()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         with app.test_request_context("/"):
             response = method(SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
@@ -606,7 +601,7 @@ class TestWorkflowStatisticEndpoints:
         )
 
         api = workflow_statistic_module.WorkflowDailyTerminalsStatistic()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         with app.test_request_context("/"):
             response = method(SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
@@ -628,7 +623,7 @@ class TestWorkflowTriggerEndpoints:
 
     def test_webhook_trigger_api_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = workflow_trigger_module.WebhookTriggerApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
         monkeypatch.setattr(workflow_trigger_module, "db", SimpleNamespace(engine=MagicMock()))
 

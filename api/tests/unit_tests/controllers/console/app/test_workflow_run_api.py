@@ -10,11 +10,8 @@ from flask_restx import marshal
 
 from controllers.console.app import workflow_run as workflow_run_module
 
+from inspect import unwrap
 
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def _serialize_200_response(handler, payload: Any) -> Any:
@@ -93,7 +90,7 @@ def test_workflow_run_list_returns_frontend_history_contract(app: Flask, monkeyp
     monkeypatch.setattr(workflow_run_module, "WorkflowRunService", WorkflowRunService)
 
     api = workflow_run_module.WorkflowRunListApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/workflow-runs?limit=10", method="GET"):
         payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
@@ -134,7 +131,7 @@ def test_advanced_chat_workflow_run_list_keeps_message_fields(app: Flask, monkey
     monkeypatch.setattr(workflow_run_module, "WorkflowRunService", WorkflowRunService)
 
     api = workflow_run_module.AdvancedChatAppWorkflowRunListApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/advanced-chat/workflow-runs?limit=1", method="GET"):
         payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
@@ -173,7 +170,7 @@ def test_workflow_run_detail_returns_frontend_detail_contract(app: Flask, monkey
     monkeypatch.setattr(workflow_run_module, "WorkflowRunService", WorkflowRunService)
 
     api = workflow_run_module.WorkflowRunDetailApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/workflow-runs/run-1", method="GET"):
         payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"), run_id="run-1")
@@ -211,7 +208,7 @@ def test_workflow_run_node_executions_return_frontend_trace_contract(
     monkeypatch.setattr(workflow_run_module, "current_user", SimpleNamespace(id="account-1"))
 
     api = workflow_run_module.WorkflowRunNodeExecutionListApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/workflow-runs/run-1/node-executions", method="GET"):
         payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"), run_id="run-1")

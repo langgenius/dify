@@ -7,11 +7,7 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.model import OAuthProviderApp
 
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from inspect import unwrap
 
 
 def _make_account() -> Account:
@@ -38,7 +34,7 @@ def _make_oauth_provider_app() -> OAuthProviderApp:
 
 def test_oauth_authorize_uses_injected_current_user() -> None:
     api = OAuthServerUserAuthorizeApi()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
     account = _make_account()
     oauth_provider_app = _make_oauth_provider_app()
 

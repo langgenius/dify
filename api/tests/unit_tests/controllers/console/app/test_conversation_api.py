@@ -10,14 +10,8 @@ from controllers.console.app import conversation as conversation_module
 from models.model import AppMode
 from services.errors.conversation import ConversationNotExistsError
 
+from inspect import unwrap
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
 
 
 def _make_account():
@@ -26,7 +20,7 @@ def _make_account():
 
 def test_completion_conversation_list_returns_paginated_result(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_module.CompletionConversationApi()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     account = _make_account()
     monkeypatch.setattr(conversation_module, "parse_time_range", lambda *_args, **_kwargs: (None, None))
@@ -47,7 +41,7 @@ def test_completion_conversation_list_returns_paginated_result(app, monkeypatch:
 
 def test_completion_conversation_list_invalid_time_range(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_module.CompletionConversationApi()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     account = _make_account()
     monkeypatch.setattr(
@@ -67,7 +61,7 @@ def test_completion_conversation_list_invalid_time_range(app, monkeypatch: pytes
 
 def test_chat_conversation_list_advanced_chat_calls_paginate(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_module.ChatConversationApi()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     account = _make_account()
     monkeypatch.setattr(conversation_module, "parse_time_range", lambda *_args, **_kwargs: (None, None))
@@ -114,7 +108,7 @@ def test_get_conversation_missing_raises_not_found(monkeypatch: pytest.MonkeyPat
 
 def test_completion_conversation_delete_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_module.CompletionConversationDetailApi()
-    method = _unwrap(api.delete)
+    method = unwrap(api.delete)
 
     monkeypatch.setattr(
         conversation_module.ConversationService,

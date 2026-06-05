@@ -10,20 +10,13 @@ from pydantic import ValidationError
 
 from controllers.console.app import conversation_variables as conversation_variables_module
 from graphon.variables.types import SegmentType
+from inspect import unwrap
 
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
 
 
 def test_get_conversation_variables_returns_paginated_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     created_at = datetime(2026, 1, 1, tzinfo=UTC)
     updated_at = datetime(2026, 1, 2, tzinfo=UTC)
@@ -68,7 +61,7 @@ def test_get_conversation_variables_normalizes_value_type_and_value(
     app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     row = SimpleNamespace(
         created_at=None,
@@ -104,7 +97,7 @@ def test_get_conversation_variables_normalizes_value_type_and_value(
 
 def test_get_conversation_variables_requires_conversation_id(app) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
 
     with app.test_request_context("/console/api/apps/app-1/conversation-variables", method="GET"):
         with pytest.raises(ValidationError):

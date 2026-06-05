@@ -10,15 +10,7 @@ from flask import Flask
 
 from controllers.console.app import app_import as app_import_module
 from services.app_dsl_service import ImportStatus
-
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+from inspect import unwrap
 
 
 class _Result:
@@ -52,7 +44,7 @@ class TestAppImportApi:
     def test_import_post_returns_failed_status_and_rolls_back(
         self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         session = _mock_session(monkeypatch)
@@ -73,7 +65,7 @@ class TestAppImportApi:
     def test_import_post_returns_pending_status_and_commits(
         self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
         session = _mock_session(monkeypatch)
@@ -94,7 +86,7 @@ class TestAppImportApi:
     def test_import_post_updates_webapp_auth_when_enabled(
         self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=True)
         session = _mock_session(monkeypatch)
@@ -124,7 +116,7 @@ class TestAppImportConfirmApi:
     def test_import_confirm_returns_failed_status_and_rolls_back(
         self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         session = _mock_session(monkeypatch)
         monkeypatch.setattr(
