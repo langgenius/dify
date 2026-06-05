@@ -891,9 +891,9 @@ class WorkflowGenerator:
                             rewritten = cls._LENIENT_VAR_REF_RE.sub(lambda m: cls._rewrite_var_ref(m, id_map), v)
                             if rewritten != v:
                                 value[k] = rewritten
-                        case [str(v0), str()] if v0 in id_map:
+                        case [str(v0), str(v1)] if v0 in id_map:
                             # 2-element ``["node-id", "var"]`` selector list.
-                            value[k] = [id_map[v[0]], v[1]]
+                            value[k] = [id_map[v0], v1]
                         case _:
                             cls._rewrite_refs_in_data(v, id_map)
             case list():
