@@ -56,7 +56,7 @@ class ModelProviderService:
 
         return provider_configuration
 
-    def get_provider_list(self, tenant_id: str, model_type: str = "") -> list[ProviderResponse]:
+    def get_provider_list(self, tenant_id: str, model_type: str | None = None) -> list[ProviderResponse]:
         """
         get provider list.
 
