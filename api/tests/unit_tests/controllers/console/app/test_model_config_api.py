@@ -42,7 +42,7 @@ def test_post_updates_app_model_config_for_chat(app: Flask, monkeypatch: pytest.
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", send_mock)
 
     with app.test_request_context("/console/api/apps/app-1/model-config", method="POST", json={"pre_prompt": "hi"}):
-        response = method("t1", "u1", app_model=app_model)
+        response = method(api, "t1", "u1", app_model=app_model)
 
     session.add.assert_called_once()
     session.flush.assert_called_once()
@@ -129,7 +129,7 @@ def test_post_encrypts_agent_tool_parameters(app: Flask, monkeypatch: pytest.Mon
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", send_mock)
 
     with app.test_request_context("/console/api/apps/app-1/model-config", method="POST", json={"pre_prompt": "hi"}):
-        response = method("t1", "u1", app_model=app_model)
+        response = method(api, "t1", "u1", app_model=app_model)
 
     stored_config = session.add.call_args[0][0]
     stored_agent_mode = json.loads(stored_config.agent_mode)

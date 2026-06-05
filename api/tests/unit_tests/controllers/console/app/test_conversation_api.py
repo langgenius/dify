@@ -116,4 +116,4 @@ def test_completion_conversation_delete_maps_not_found(monkeypatch: pytest.Monke
     )
 
     with pytest.raises(NotFound):
-        method(_make_account(), app_model=SimpleNamespace(id="app-1"), conversation_id="c1")
+        method(api, _make_account(), app_model=SimpleNamespace(id="app-1"), conversation_id="c1")

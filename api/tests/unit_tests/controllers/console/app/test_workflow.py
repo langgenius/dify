@@ -370,7 +370,7 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
     api = workflow_module.DraftWorkflowApi()
     handler = inspect.unwrap(api.get)
 
-    response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
+    response = handler(api, app_model=SimpleNamespace(id="app"))
 
     assert response["id"] == "workflow-1"
     assert response["graph"] == {"nodes": [], "edges": []}

@@ -222,7 +222,7 @@ def test_instruction_generate_incompatible_params(app: Flask, monkeypatch: pytes
     assert response["error"] == "incompatible parameters"
 
 
-def test_instruction_template_prompt(app) -> None:
+def test_instruction_template_prompt(app: Flask) -> None:
     api = generator_module.InstructionGenerationTemplateApi()
     method = unwrap(api.post)
 
@@ -231,12 +231,12 @@ def test_instruction_template_prompt(app) -> None:
         method="POST",
         json={"type": "prompt"},
     ):
-        response = method()
+        response = method(api)
 
     assert "data" in response
 
 
-def test_instruction_template_invalid_type(app) -> None:
+def test_instruction_template_invalid_type(app: Flask) -> None:
     api = generator_module.InstructionGenerationTemplateApi()
     method = unwrap(api.post)
 
@@ -246,7 +246,7 @@ def test_instruction_template_invalid_type(app) -> None:
         json={"type": "unknown"},
     ):
         with pytest.raises(ValueError):
-            method()
+            method(api)
 
 
 # ─ /workflow-generate ─────────────────────────────────────────────────────────
