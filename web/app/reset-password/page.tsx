@@ -9,6 +9,7 @@ import Input from '@/app/components/base/input'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
@@ -22,6 +23,7 @@ export default function CheckCode() {
   const [email, setEmail] = useState('')
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
+  const setCountdownLeftTime = useSetLocalStorage<string>(COUNT_DOWN_KEY, { raw: true })
 
   const handleGetEMailVerificationCode = async () => {
     try {
@@ -37,7 +39,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import CheckEmail from './components/check-email'
 import FeedBack from './components/feed-back'
 import VerifyEmail from './components/verify-email'
@@ -17,11 +18,12 @@ export default function DeleteAccount(props: DeleteAccountProps) {
 
   const [showVerifyEmail, setShowVerifyEmail] = useState(false)
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
+  const setCountdownLeftTime = useSetLocalStorage<string>(COUNT_DOWN_KEY, { raw: true })
 
   const handleEmailCheckSuccess = useCallback(async () => {
     try {
       setShowVerifyEmail(true)
-      localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+      setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
     }
     catch (error) { console.error(error) }
   }, [])
