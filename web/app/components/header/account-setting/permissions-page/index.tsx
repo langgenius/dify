@@ -122,8 +122,8 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
 
   return (
     <>
-      <div className="flex flex-col gap-y-6">
-        <div className="flex min-h-[67px] items-center gap-3 overflow-hidden rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
+      <div className="flex min-w-0 flex-col gap-y-6">
+        <div className="flex min-h-[67px] min-w-0 items-center gap-3 overflow-hidden rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
           <div className="flex min-w-0 grow flex-col gap-y-1 overflow-hidden">
             <div className="truncate system-md-semibold text-text-secondary">
               {t('role.workspaceRoles.title', { ns: 'permission' })}
@@ -133,7 +133,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
             </div>
           </div>
           {canManageRoles && (
-            <div className="flex items-center">
+            <div className="flex shrink-0 items-center">
               <Button
                 variant="primary"
                 size="small"

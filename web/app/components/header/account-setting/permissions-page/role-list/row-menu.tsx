@@ -9,6 +9,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,7 +85,7 @@ const RowMenu = ({
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger render={<ActionButton size="m" className={open ? 'bg-state-base-hover' : ''} aria-label={t('operation.moreActions', { ns: 'common' })} />}>
+        <DropdownMenuTrigger render={<ActionButton size="m" className={cn('shrink-0', open && 'bg-state-base-hover')} aria-label={t('operation.moreActions', { ns: 'common' })} />}>
           <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">

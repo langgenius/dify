@@ -28,7 +28,7 @@ const Row = ({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 border-b border-divider-regular px-3 py-3.5 hover:bg-background-default-hover',
+        'flex min-w-0 items-center gap-3 border-b border-divider-regular px-3 py-3.5 hover:bg-background-default-hover',
         className,
       )}
     >

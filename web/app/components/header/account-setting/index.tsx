@@ -186,8 +186,8 @@ export default function AccountSetting({
       show
       onClose={handleClose}
     >
-      <div className="mx-auto flex h-screen max-w-262">
-        <div className="flex w-11 flex-col border-r border-divider-burn pr-6 pl-4 sm:w-56">
+      <div className="mx-auto flex h-screen w-full max-w-262">
+        <div className="flex w-11 shrink-0 flex-col border-r border-divider-burn pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
           <div className="w-full">
             {
@@ -223,7 +223,7 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div className="relative flex min-h-0 w-206">
+        <div className="relative flex min-h-0 min-w-0 flex-1">
           <div className="fixed top-6 right-6 z-9999 flex flex-col items-center">
             <Button
               variant="tertiary"
@@ -238,21 +238,21 @@ export default function AccountSetting({
           </div>
           <ScrollArea
             ref={containerRef}
-            className="h-full min-h-0 flex-1 bg-components-panel-bg"
+            className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-components-panel-bg"
             slotClassNames={{
-              viewport: 'overscroll-contain',
-              content: 'min-h-full pb-4',
+              viewport: 'overscroll-contain overflow-x-hidden',
+              content: '!min-w-0 min-h-full w-full max-w-full overflow-x-hidden pb-4',
             }}
           >
-            <div className="sticky top-0 z-20 mx-8 mb-4.5 flex items-center bg-components-panel-bg pt-6.75 pb-2">
-              <div className="shrink-0 title-2xl-semi-bold text-text-primary">
+            <div className="sticky top-0 z-20 mx-4 mb-4.5 flex min-w-0 items-center gap-3 bg-components-panel-bg pt-6.75 pb-2 sm:mx-8">
+              <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
                 {visibleActiveItem?.name}
                 {visibleActiveItem?.description && (
                   <div className="mt-1 system-sm-regular text-text-tertiary">{visibleActiveItem?.description}</div>
                 )}
               </div>
               {visibleActiveItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
-                <div className="flex grow justify-end">
+                <div className="flex shrink-0 justify-end">
                   <SearchInput
                     className="w-50"
                     onChange={setSearchValue}
@@ -261,7 +261,7 @@ export default function AccountSetting({
                 </div>
               )}
             </div>
-            <div className="px-4 pt-2 sm:px-8">
+            <div className="min-w-0 px-4 pt-2 sm:px-8">
               {visibleActiveMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
               {visibleActiveMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
               {visibleActiveMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={containerRef} />}

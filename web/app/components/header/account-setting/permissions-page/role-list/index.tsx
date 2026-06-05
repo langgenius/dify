@@ -41,11 +41,11 @@ const RoleList = ({
   }
 
   return (
-    <div className={cn('flex flex-col gap-y-6', className)}>
+    <div className={cn('flex min-w-0 flex-col gap-y-6', className)}>
       {groups.map(group => (
         <section
           key={group.id}
-          className="flex flex-col gap-y-1"
+          className="flex min-w-0 flex-col gap-y-1"
         >
           <div className="flex min-h-6 items-center system-sm-medium text-text-secondary">
             {t(`role.groups.${group.id}`, { ns: 'permission', defaultValue: group.title })}
