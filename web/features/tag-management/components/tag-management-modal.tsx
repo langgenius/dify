@@ -1,4 +1,5 @@
 'use client'
+import type { TagType } from '@/contract/console/tags'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -8,7 +9,7 @@ import { consoleQuery } from '@/service/client'
 import { TagItemEditor } from './tag-item-editor'
 
 type TagManagementModalProps = {
-  type: 'knowledge' | 'app'
+  type: TagType
   show: boolean
   onClose: () => void
   onTagsChange?: () => void

@@ -122,6 +122,7 @@ from .explore import (
     saved_message,
     trial,
 )
+from .snippets import snippet_workflow, snippet_workflow_draft_variable
 from .socketio import workflow as socketio_workflow
 
 # Import tag controllers
@@ -137,6 +138,7 @@ from .workspace import (
     model_providers,
     models,
     plugin,
+    snippets,
     tool_providers,
     trigger_providers,
     workspace,
@@ -212,6 +214,9 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "snippet_workflow",
+    "snippet_workflow_draft_variable",
+    "snippets",
     "socketio_workflow",
     "spec",
     "statistic",
