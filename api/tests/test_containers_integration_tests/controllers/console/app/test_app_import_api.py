@@ -44,7 +44,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(SimpleNamespace(id="u1"))
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
@@ -61,7 +61,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(SimpleNamespace(id="u1"))
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         assert status == 202
         assert response["status"] == ImportStatus.PENDING
@@ -80,7 +80,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(SimpleNamespace(id="u1"))
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         update_access.assert_called_once_with("app-123", "private")
         assert status == 200
@@ -103,7 +103,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: fake_session)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(SimpleNamespace(id="u1"))
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         fake_session.commit.assert_called_once_with()
         fake_session.rollback.assert_not_called()
@@ -127,7 +127,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: fake_session)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(SimpleNamespace(id="u1"))
+            response, status = method(api, SimpleNamespace(id="u1"))
 
         fake_session.rollback.assert_called_once_with()
         fake_session.commit.assert_not_called()
@@ -151,7 +151,7 @@ class TestAppImportConfirmApi:
         )
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(SimpleNamespace(id="u1"), import_id="import-1")
+            response, status = method(api, SimpleNamespace(id="u1"), import_id="import-1")
 
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
@@ -173,7 +173,7 @@ class TestAppImportCheckDependenciesApi:
         )
 
         with app.test_request_context("/console/api/apps/imports/app-1/check-dependencies", method="GET"):
-            response, status = method(app_model=SimpleNamespace(id="app-1"))
+            response, status = method(api, app_model=SimpleNamespace(id="app-1"))
 
         assert status == 200
         assert response["leaked_dependencies"] == []

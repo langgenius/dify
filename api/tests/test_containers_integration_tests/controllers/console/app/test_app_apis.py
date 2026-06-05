@@ -490,7 +490,7 @@ class TestWorkflowAppLogEndpoints:
         )
 
         with app.test_request_context("/?page=1&limit=20"):
-            result = method(app_model=SimpleNamespace(id="app-1"))
+            result = method(api, app_model=SimpleNamespace(id="app-1"))
 
         assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
@@ -542,7 +542,7 @@ class TestWorkflowDraftVariableEndpoints:
         monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
 
         with app.test_request_context("/?page=1&limit=20"):
-            result = method(app_model=SimpleNamespace(id="app-1"))
+            result = method(api, app_model=SimpleNamespace(id="app-1"))
 
         assert result == {"items": [], "total": 0}
 
@@ -578,7 +578,7 @@ class TestWorkflowStatisticEndpoints:
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            response = method(SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
+            response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
@@ -601,7 +601,7 @@ class TestWorkflowStatisticEndpoints:
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            response = method(SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
+            response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 
@@ -645,7 +645,7 @@ class TestWorkflowTriggerEndpoints:
         monkeypatch.setattr(workflow_trigger_module, "sessionmaker", DummySessionMaker)
 
         with app.test_request_context("/?node_id=node-1"):
-            result = method(app_model=SimpleNamespace(id="app-1"))
+            result = method(api, app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
         assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
