@@ -4,14 +4,6 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import AppDetailTop from '../app-detail-top'
 
-const mockBack = vi.fn()
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    back: mockBack,
-  }),
-}))
-
 vi.mock('../toggle-button', () => ({
   default: ({ expand, handleToggle }: { expand: boolean, handleToggle: () => void }) => (
     <button type="button" data-testid="toggle-button" data-expand={expand} onClick={handleToggle}>
@@ -41,10 +33,11 @@ describe('AppDetailTop', () => {
     vi.clearAllMocks()
   })
 
-  it('links the home icon to home instead of studio', () => {
+  it('links the combined home control to home', () => {
     renderWithGotoAnythingStore(<AppDetailTop />)
 
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 
   it('links the Studio breadcrumb to the Studio page', () => {
@@ -53,7 +46,7 @@ describe('AppDetailTop', () => {
     expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
   })
 
-  it('keeps the back button and quick search actions', () => {
+  it('keeps the quick search action', () => {
     renderWithGotoAnythingStore(
       <>
         <AppDetailTop />
@@ -62,10 +55,8 @@ describe('AppDetailTop', () => {
     )
     expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('false')
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
     fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(mockBack).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
   })
 
