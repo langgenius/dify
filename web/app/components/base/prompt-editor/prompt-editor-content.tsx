@@ -1,6 +1,6 @@
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
-import type { Hotkey, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
+import type { Hotkey, ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -68,6 +68,7 @@ import {
 
 type ShortcutPopup = {
   hotkey: Hotkey
+  displayMode?: ShortcutPopupDisplayMode
   Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>
 }
 
@@ -144,8 +145,8 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
         )}
         ErrorBoundary={LexicalErrorBoundary}
       />
-      {shortcutPopups.map(({ hotkey, Popup }, idx) => (
-        <ShortcutsPopupPlugin key={idx} hotkey={hotkey}>
+      {shortcutPopups.map(({ hotkey, displayMode, Popup }, idx) => (
+        <ShortcutsPopupPlugin key={idx} hotkey={hotkey} displayMode={displayMode}>
           {(closePortal, onInsert) => <Popup onClose={closePortal} onInsert={onInsert} />}
         </ShortcutsPopupPlugin>
       ))}
