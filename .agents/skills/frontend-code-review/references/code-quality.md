@@ -31,6 +31,7 @@ Flag:
 - New CSS modules or ad hoc CSS when Tailwind utilities and Dify tokens cover the need.
 - Generic color utilities where Dify semantic tokens exist.
 - Manual string concatenation for conditional classes.
+- JS conditional class branches for primitive visual states already exposed by Dify UI/Base UI `data-*` selectors.
 - Incoming `className` placed before default classes in `cn(...)`, preventing call-site overrides.
 - Arbitrary z-index or one-off layering fixes on overlays.
 
@@ -39,6 +40,7 @@ Use:
 - `cn(...)` from the local package or utility already used by the file.
 - Dify semantic tokens and Tailwind v4 utilities.
 - Existing component variants before one-off class forks.
+- Primitive selectors such as `data-disabled:*`, `data-checked:*`, `data-highlighted:*`, `group-data-*`, `peer-data-*`, and `has-[:focus-visible]` before adding React state or boolean props solely for styling.
 
 ## Imports
 

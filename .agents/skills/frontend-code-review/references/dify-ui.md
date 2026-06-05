@@ -37,10 +37,11 @@ Flag:
 
 - Flattened props where related values need a discriminated union, such as `value` / `defaultValue`, `multiple` / `value`, or `clearable` / `onChange`.
 - React state used only to mirror Base UI state for class names.
+- JavaScript conditional class logic for visual states that the Dify UI/Base UI primitive already exposes through `data-*` attributes or CSS variables.
 - Controlled props added when uncontrolled DOM state or CSS variables would be enough.
 - Thin wrappers that rename Base UI parts without adding semantics.
 
-Prefer Base UI data attributes and CSS variables for visual state.
+Prefer Base UI/Dify UI data attributes and CSS variables for visual state: `data-open`, `data-checked`, `data-disabled`, `data-highlighted`, `data-popup-open`, `group-data-*`, `peer-data-*`, `has-[:focus-visible]`, and primitive CSS variables such as anchor width or transform origin. Use JS conditional classes for product/business state that the primitive does not expose.
 
 ## Forms
 
@@ -99,6 +100,7 @@ Flag:
 - Using dify-ui `Input` as a drop-in replacement for legacy inputs that include search, clear, copy, unit, localized placeholder, or number normalization behavior.
 - Building a form row from loose text and controls instead of the matching Field/Form primitives.
 - Adding component state only to style `data-open`, `data-checked`, `data-disabled`, or highlighted states that Base UI already exposes.
+- Passing booleans down only so children can toggle classes already expressible with primitive `data-*` selectors.
 
 ## Tokens, Radius, And Styling
 
