@@ -896,8 +896,9 @@ export type WorkflowDraftVariableUpdatePayload = {
 }
 
 export type PublishWorkflowPayload = {
-  marked_comment?: string | null
-  marked_name?: string | null
+  knowledge_base_setting?: {
+    [key: string]: unknown
+  } | null
 }
 
 export type WebhookTriggerResponse = {
@@ -2036,6 +2037,7 @@ export type GetAppsData = {
   body?: never
   path?: never
   query?: {
+    creator_ids?: Array<string> | null
     is_created_by_me?: boolean | null
     limit?: number
     mode?:

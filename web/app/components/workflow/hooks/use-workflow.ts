@@ -418,19 +418,26 @@ export const useWorkflow = () => {
 export const useWorkflowReadOnly = () => {
   const workflowStore = useWorkflowStore()
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const canvasReadOnly = useStore(s => s.canvasReadOnly)
 
   const getWorkflowReadOnly = useCallback(() => {
-    return workflowStore.getState().workflowRunningData?.result.status === WorkflowRunningStatus.Running
+    const {
+      canvasReadOnly,
+      workflowRunningData,
+    } = workflowStore.getState()
+
+    return canvasReadOnly || workflowRunningData?.result.status === WorkflowRunningStatus.Running
   }, [workflowStore])
 
   return {
-    workflowReadOnly: workflowRunningData?.result.status === WorkflowRunningStatus.Running,
+    workflowReadOnly: canvasReadOnly || workflowRunningData?.result.status === WorkflowRunningStatus.Running,
     getWorkflowReadOnly,
   }
 }
 
 const useNodesReadOnlyBase = (canEdit: boolean) => {
   const workflowStore = useWorkflowStore()
+  const canvasReadOnly = useStore(s => s.canvasReadOnly)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
@@ -440,10 +447,12 @@ const useNodesReadOnlyBase = (canEdit: boolean) => {
       workflowRunningData,
       historyWorkflowData,
       isRestoring,
+      canvasReadOnly,
     } = workflowStore.getState()
 
     return !!(
-      !canEdit
+      canvasReadOnly
+      || !canEdit
       || workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
@@ -453,7 +462,8 @@ const useNodesReadOnlyBase = (canEdit: boolean) => {
 
   return {
     nodesReadOnly: !!(
-      !canEdit
+      canvasReadOnly
+      || !canEdit
       || workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData

@@ -536,6 +536,7 @@ export const zDatasetDetailResponse = z.object({
   is_published: z.boolean(),
   name: z.string(),
   permission: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
   provider: z.string(),
   retrieval_model_dict: zDatasetRetrievalModelResponse,

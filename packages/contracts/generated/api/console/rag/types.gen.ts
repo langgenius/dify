@@ -55,6 +55,7 @@ export type DatasetDetailResponse = {
   is_published: boolean
   name: string
   permission: string
+  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse

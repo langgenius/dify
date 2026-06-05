@@ -105,8 +105,13 @@ const AppNav = () => {
         icon={<span className="i-ri-robot-2-line size-4" />}
         activeIcon={<span className="i-ri-robot-2-fill size-4" />}
         text={t('menus.apps', { ns: 'common' })}
-        activeSegment={['apps', 'app']}
+        activeSegment={['apps', 'app', 'snippets']}
         link="/apps"
+        activeLink={{
+          segment: 'snippets',
+          text: t('tabs.snippets', { ns: 'workflow' }),
+          link: '/snippets',
+        }}
         curNav={appDetail}
         navigationItems={navItems}
         createText={t('menus.newApp', { ns: 'common' })}

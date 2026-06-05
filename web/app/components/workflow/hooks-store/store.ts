@@ -134,6 +134,7 @@ export const createHooksStore = ({
   invalidateSysVarValues = noop,
   resetConversationVar = async () => noop(),
   invalidateConversationVarValues = noop,
+  configsMap,
   accessControl = fullWorkflowAccessControl,
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
@@ -172,6 +173,7 @@ export const createHooksStore = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
+    configsMap,
     accessControl,
   }))
 }

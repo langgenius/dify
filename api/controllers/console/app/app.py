@@ -66,6 +66,7 @@ register_enum_models(console_ns, IconType)
 
 _logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
+_CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
 
 
 class AppListQuery(BaseModel):
@@ -76,6 +77,7 @@ class AppListQuery(BaseModel):
     )
     name: str | None = Field(default=None, description="Filter by app name")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
+    creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
 
     @field_validator("tag_ids", mode="before")
@@ -96,15 +98,39 @@ class AppListQuery(BaseModel):
         except ValueError as exc:
             raise ValueError("Invalid UUID format in tag_ids.") from exc
 
+    @field_validator("creator_ids", mode="before")
+    @classmethod
+    def validate_creator_ids(cls, value: list[str] | None) -> list[str] | None:
+        if not value:
+            return None
+
+        if not isinstance(value, list):
+            raise ValueError("Unsupported creator_ids type.")
+
+        items = [str(item).strip() for item in value if item and str(item).strip()]
+        if not items:
+            return None
+
+        try:
+            return [str(uuid.UUID(item)) for item in items]
+        except ValueError as exc:
+            raise ValueError("Invalid UUID format in creator_ids.") from exc
+
 
 def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
     normalized: dict[str, str | list[str]] = {}
     indexed_tag_ids: list[tuple[int, str]] = []
+    indexed_creator_ids: list[tuple[int, str]] = []
 
     for key in query_args:
         match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
         if match:
             indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
+            continue
+
+        match = _CREATOR_IDS_BRACKET_PATTERN.fullmatch(key)
+        if match:
+            indexed_creator_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
             continue
 
         value = query_args.get(key)
@@ -113,6 +139,8 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
 
     if indexed_tag_ids:
         normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
+    if indexed_creator_ids:
+        normalized["creator_ids"] = [value for _, value in sorted(indexed_creator_ids)]
 
     return normalized
 
@@ -506,6 +534,7 @@ class AppListApi(Resource):
             mode=args.mode,
             name=args.name,
             tag_ids=args.tag_ids,
+            creator_ids=args.creator_ids,
             is_created_by_me=args.is_created_by_me,
         )
 

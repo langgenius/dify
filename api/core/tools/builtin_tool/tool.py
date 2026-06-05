@@ -135,7 +135,7 @@ class BuiltinTool(Tool):
             else:
                 if len(messages[-1]) + len(j) < max_tokens * 0.5:
                     messages[-1] += j
-                if get_prompt_tokens(messages[-1] + j) > max_tokens * 0.7:
+                elif get_prompt_tokens(messages[-1] + j) > max_tokens * 0.7:
                     messages.append(j)
                 else:
                     messages[-1] += j

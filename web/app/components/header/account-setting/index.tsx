@@ -6,7 +6,7 @@ import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -254,8 +254,8 @@ export default function AccountSetting({
               {visibleActiveItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <div className="flex shrink-0 justify-end">
                   <SearchInput
-                    className="w-50"
-                    onChange={setSearchValue}
+                    className="w-52"
+                    onValueChange={setSearchValue}
                     value={searchValue}
                   />
                 </div>

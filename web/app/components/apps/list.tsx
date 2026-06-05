@@ -1,31 +1,33 @@
 'use client'
 
-import type { FC } from 'react'
 import type { AppListQuery } from '@/contract/console/apps'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
+import { SearchInput } from '@/app/components/base/search-input'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
+import Link from '@/next/link'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { hasPermission } from '@/utils/permission'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
+import { AppTypeFilter } from './app-type-filter'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
+import CreatorsFilter from './creators-filter'
 import Empty from './empty'
 import Footer from './footer'
-import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
+import { useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import NewAppCard from './new-app-card'
@@ -40,9 +42,9 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 type Props = {
   controlRefreshList?: number
 }
-const List: FC<Props> = ({
+function List({
   controlRefreshList = 0,
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { workspacePermissionKeys, isLoadingWorkspacePermissionKeys } = useAppContext()
@@ -53,10 +55,10 @@ const List: FC<Props> = ({
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { category, keywords, isCreatedByMe },
+    query: { category, keywords, creatorIDs },
     setCategory,
     setKeywords,
-    setIsCreatedByMe,
+    setCreatorIDs,
   } = useAppsQueryState()
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
@@ -65,6 +67,7 @@ const List: FC<Props> = ({
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
+  const [needRefreshAppList, setNeedRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
 
   const handleDSLFileDropped = useCallback((file: File) => {
     setDroppedDSLFile(file)
@@ -92,9 +95,9 @@ const List: FC<Props> = ({
     limit: 30,
     name: debouncedKeywords,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
+    ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
     ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, debouncedKeywords, isCreatedByMe, tagIDs])
+  }), [category, creatorIDs, debouncedKeywords, tagIDs])
 
   const {
     data,
@@ -127,23 +130,13 @@ const List: FC<Props> = ({
   }, [controlRefreshList, refetch])
 
   const anchorRef = useRef<HTMLDivElement>(null)
-  const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line size-3.5" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line size-3.5" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line size-3.5" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line size-3.5" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line size-3.5" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line size-3.5" /> },
-  ]
 
   useEffect(() => {
-    // eslint-disable-next-line no-restricted-globals -- useLocalStorage bails out during server render; this effect only runs on the client.
-    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
-      // eslint-disable-next-line no-restricted-globals -- preserve the raw refresh flag format used by app creation flows.
-      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
+    if (needRefreshAppList === '1') {
+      setNeedRefreshAppList(null)
       refetch()
     }
-  }, [refetch])
+  }, [needRefreshAppList, refetch, setNeedRefreshAppList])
 
   useEffect(() => {
     const hasMore = hasNextPage ?? true
@@ -172,10 +165,6 @@ const List: FC<Props> = ({
     }
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
-
-  const handleCreatedByMeChange = useCallback((checked: boolean) => {
-    setIsCreatedByMe(checked)
-  }, [setIsCreatedByMe])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
@@ -209,43 +198,44 @@ const List: FC<Props> = ({
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
-          <TabSliderNew
-            value={category}
-            onChange={(nextValue) => {
-              if (isAppListCategory(nextValue))
-                setCategory(nextValue)
-            }}
-            options={options}
-          />
-          <div className="flex items-center gap-2">
-            <label className="mr-2 flex h-7 items-center space-x-2">
-              <Checkbox checked={isCreatedByMe} onCheckedChange={handleCreatedByMeChange} />
-              <div className="text-sm font-normal text-text-secondary">
-                {t('showMyCreatedAppsOnly', { ns: 'app' })}
-              </div>
-            </label>
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-background-body px-12 pt-7 pb-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <AppTypeFilter
+              value={category}
+              onChange={setCategory}
+            />
+            <CreatorsFilter
+              value={creatorIDs}
+              onChange={setCreatorIDs}
+            />
             <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-            <div className="relative w-[200px]">
-              <span className="absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
-              <Input
-                className={cn('pr-[26px] pl-[26px]', !keywords && 'pr-3')}
-                placeholder={t('operation.search', { ns: 'common' })}
+            <div className="relative w-50">
+              <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
+              <SearchInput
+                className="w-52"
                 value={keywords}
-                onChange={e => setKeywords(e.target.value)}
+                onValueChange={setKeywords}
+                placeholder={t('operation.search', { ns: 'common' })}
+                aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
               />
               {!!keywords && (
                 <button
                   type="button"
                   aria-label={t('operation.clear', { ns: 'common' })}
-                  className="group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-px"
+                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
                   onClick={() => setKeywords('')}
                 >
-                  <span className="i-ri-close-circle-fill size-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" aria-hidden="true" />
+                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
                 </button>
               )}
             </div>
           </div>
+          <Link
+            href="/snippets"
+            className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
+          >
+            {t('studio.viewSnippets', { ns: 'app' })}
+          </Link>
         </div>
         <div className={cn(
           'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
