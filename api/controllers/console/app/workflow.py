@@ -1,5 +1,3 @@
-from models import Account
-from controllers.console.wraps import with_current_user
 import json
 import logging
 from collections.abc import Sequence
@@ -23,7 +21,12 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_user,
+)
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -56,7 +59,7 @@ from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
 from libs.login import current_account_with_tenant, login_required
-from models import App
+from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
@@ -516,7 +519,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user:Account, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
@@ -554,7 +557,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App , node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
@@ -1124,7 +1127,7 @@ class WorkflowFeaturesApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self,current_user: Account, app_model: App):
+    def post(self, current_user: Account, app_model: App):
 
         args = WorkflowFeaturesPayload.model_validate(console_ns.payload or {})
         features = args.features
@@ -1239,7 +1242,7 @@ class WorkflowByIdApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def patch(self, current_user :Account, app_model: App, workflow_id: str):
+    def patch(self, current_user: Account, app_model: App, workflow_id: str):
         """
         Update workflow attributes
         """
@@ -1419,7 +1422,6 @@ class DraftWorkflowTriggerNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
-    
     @with_current_user
     @edit_permission_required
     def post(self, current_user: Account, app_model: App, node_id: str):
