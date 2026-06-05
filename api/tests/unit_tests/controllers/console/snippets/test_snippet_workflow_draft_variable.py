@@ -18,6 +18,17 @@ def _unwrap(func):
     return func
 
 
+@pytest.fixture(autouse=True)
+def _patch_snippet_service_factory(monkeypatch):
+    def factory():
+        service_factory = module.SnippetService
+        if isinstance(service_factory, type):
+            return service_factory.__new__(service_factory)
+        return service_factory()
+
+    monkeypatch.setattr(module, "_snippet_service", factory)
+
+
 @pytest.fixture
 def app():
     app = Flask("test_snippet_workflow_draft_variable")

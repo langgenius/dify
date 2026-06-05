@@ -16,7 +16,7 @@ from typing import Any
 
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
@@ -47,6 +47,10 @@ from services.workflow_draft_variable_service import WorkflowDraftVariableList, 
 _SNIPPET_EXCLUDED_DRAFT_VARIABLE_NODE_IDS: frozenset[str] = frozenset(
     {SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
 )
+
+
+def _snippet_service() -> SnippetService:
+    return SnippetService(sessionmaker(bind=db.engine, expire_on_commit=False))
 
 
 def _ensure_snippet_draft_variable_row_allowed(
@@ -89,7 +93,7 @@ class SnippetWorkflowVariableCollectionApi(Resource):
     def get(self, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
         args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         if snippet_service.get_draft_workflow(snippet=snippet) is None:
             raise DraftWorkflowNotExist()
 
@@ -237,7 +241,7 @@ class SnippetVariableResetApi(Resource):
     @_snippet_draft_var_prerequisite
     def put(self, snippet: CustomizedSnippet, variable_id: str) -> Response | Any:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if draft_workflow is None:
             raise NotFoundError(
@@ -291,7 +295,7 @@ class SnippetEnvironmentVariableCollectionApi(Resource):
     @console_ns.response(404, "Draft workflow not found")
     @_snippet_draft_var_prerequisite
     def get(self, snippet: CustomizedSnippet) -> dict[str, list[dict[str, Any]]]:
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if workflow is None:
             raise DraftWorkflowNotExist()

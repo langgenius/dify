@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 from flask import Response, request
 from flask_restx import Resource, marshal
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound
 
@@ -33,6 +33,10 @@ from services.snippet_service import SnippetService
 logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
+
+
+def _snippet_service() -> SnippetService:
+    return SnippetService(sessionmaker(bind=db.engine, expire_on_commit=False))
 
 
 def _normalize_snippet_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
@@ -93,7 +97,8 @@ class CustomizedSnippetsApi(Resource):
 
         query = SnippetListQuery.model_validate(_normalize_snippet_list_query_args(request.args))
 
-        snippets, total, has_more = SnippetService.get_snippets(
+        snippet_service = _snippet_service()
+        snippets, total, has_more = snippet_service.get_snippets(
             tenant_id=current_tenant_id,
             page=query.page,
             limit=query.limit,
@@ -134,7 +139,8 @@ class CustomizedSnippetsApi(Resource):
             if payload.graph is not None:
                 SnippetService.validate_snippet_graph_forbidden_nodes(payload.graph)
 
-            snippet = SnippetService.create_snippet(
+            snippet_service = _snippet_service()
+            snippet = snippet_service.create_snippet(
                 tenant_id=current_tenant_id,
                 name=payload.name,
                 description=payload.description,
@@ -161,7 +167,8 @@ class CustomizedSnippetDetailApi(Resource):
         """Get customized snippet details."""
         _, current_tenant_id = current_account_with_tenant()
 
-        snippet = SnippetService.get_snippet_by_id(
+        snippet_service = _snippet_service()
+        snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
             tenant_id=current_tenant_id,
         )
@@ -184,7 +191,8 @@ class CustomizedSnippetDetailApi(Resource):
         """Update customized snippet."""
         current_user, current_tenant_id = current_account_with_tenant()
 
-        snippet = SnippetService.get_snippet_by_id(
+        snippet_service = _snippet_service()
+        snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
             tenant_id=current_tenant_id,
         )
@@ -227,7 +235,8 @@ class CustomizedSnippetDetailApi(Resource):
         """Delete customized snippet."""
         _, current_tenant_id = current_account_with_tenant()
 
-        snippet = SnippetService.get_snippet_by_id(
+        snippet_service = _snippet_service()
+        snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
             tenant_id=current_tenant_id,
         )
@@ -261,7 +270,8 @@ class CustomizedSnippetExportApi(Resource):
         """Export snippet as DSL."""
         _, current_tenant_id = current_account_with_tenant()
 
-        snippet = SnippetService.get_snippet_by_id(
+        snippet_service = _snippet_service()
+        snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
             tenant_id=current_tenant_id,
         )
@@ -369,7 +379,8 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
         """Check dependencies for a snippet."""
         _, current_tenant_id = current_account_with_tenant()
 
-        snippet = SnippetService.get_snippet_by_id(
+        snippet_service = _snippet_service()
+        snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
             tenant_id=current_tenant_id,
         )
@@ -399,7 +410,8 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
         """Increment snippet use count when it is inserted into a workflow."""
         _, current_tenant_id = current_account_with_tenant()
 
-        snippet = SnippetService.get_snippet_by_id(
+        snippet_service = _snippet_service()
+        snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
             tenant_id=current_tenant_id,
         )

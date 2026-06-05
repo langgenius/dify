@@ -1,21 +1,28 @@
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.db import session_factory
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, TagBinding
 from models.enums import WorkflowRunTriggeredFrom
+from models.model import UploadFile
 from models.snippet import CustomizedSnippet, SnippetType
+from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
+    WorkflowAppLog,
+    WorkflowArchiveLog,
+    WorkflowDraftVariable,
+    WorkflowDraftVariableFile,
     WorkflowKind,
     WorkflowNodeExecutionModel,
     WorkflowRun,
@@ -41,19 +48,121 @@ SNIPPET_FORBIDDEN_NODE_TYPES: frozenset[str] = frozenset(
 class SnippetService:
     """Service for managing customized snippets."""
 
-    def __init__(self, session_maker: sessionmaker | None = None):
+    def __init__(
+        self,
+        session_maker: sessionmaker[Session] | Session | None = None,
+        session: Session | None = None,
+    ):
         """Initialize SnippetService with repository dependencies."""
-        if session_maker is None:
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        if isinstance(session_maker, Session):
+            session = session_maker
+            session_maker = None
+        if session is not None:
+            session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        elif session_maker is None:
+            session_maker = session_factory.get_session_maker()
+        assert session_maker is not None
+        self._session = session
+        self._session_maker = session_maker
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
+    @contextmanager
+    def _session_scope(self) -> Iterator[Session]:
+        current_session = getattr(self, "_session", None)
+        if current_session is not None:
+            yield current_session
+            return
+
+        with self._session_maker() as session:
+            yield session
+
+    def _commit_if_owned(self, session: Session) -> None:
+        if getattr(self, "_session", None) is None:
+            session.commit()
+
     @staticmethod
     def _snippet_kind_filter():
         """Match snippet workflows by business kind."""
         return Workflow.kind == WorkflowKind.SNIPPET.value
+
+    @staticmethod
+    def _delete_draft_variable_files(*, session: Session, snippet: CustomizedSnippet) -> None:
+        file_ids = list(
+            session.scalars(
+                select(WorkflowDraftVariable.file_id).where(
+                    WorkflowDraftVariable.app_id == snippet.id,
+                    WorkflowDraftVariable.file_id.is_not(None),
+                )
+            ).all()
+        )
+        if not file_ids:
+            return
+
+        file_records = session.execute(
+            select(WorkflowDraftVariableFile.id, WorkflowDraftVariableFile.upload_file_id, UploadFile.key)
+            .join(UploadFile, UploadFile.id == WorkflowDraftVariableFile.upload_file_id)
+            .where(
+                WorkflowDraftVariableFile.tenant_id == snippet.tenant_id,
+                WorkflowDraftVariableFile.app_id == snippet.id,
+                WorkflowDraftVariableFile.id.in_(file_ids),
+            )
+        ).all()
+        upload_file_ids: list[str] = []
+
+        from extensions.ext_storage import storage
+
+        for _, upload_file_id, storage_key in file_records:
+            try:
+                storage.delete(storage_key)
+            except Exception:
+                logger.exception("Failed to delete snippet draft variable storage object %s", storage_key)
+            upload_file_ids.append(upload_file_id)
+
+        if upload_file_ids:
+            session.execute(
+                delete(UploadFile)
+                .where(UploadFile.id.in_(upload_file_ids))
+                .execution_options(synchronize_session=False)
+            )
+        session.execute(
+            delete(WorkflowDraftVariableFile)
+            .where(
+                WorkflowDraftVariableFile.tenant_id == snippet.tenant_id,
+                WorkflowDraftVariableFile.app_id == snippet.id,
+                WorkflowDraftVariableFile.id.in_(file_ids),
+            )
+            .execution_options(synchronize_session=False)
+        )
+
+    @staticmethod
+    def _delete_archived_workflow_run_files(*, snippet: CustomizedSnippet) -> None:
+        from configs import dify_config
+        from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
+
+        if not (dify_config.BILLING_ENABLED and dify_config.ARCHIVE_STORAGE_ENABLED):
+            return
+
+        prefix = f"{snippet.tenant_id}/app_id={snippet.id}/"
+        try:
+            archive_storage = get_archive_storage()
+        except ArchiveStorageNotConfiguredError as e:
+            logger.info("Archive storage not configured, skipping snippet archive file cleanup: %s", e)
+            return
+
+        try:
+            keys = archive_storage.list_objects(prefix)
+        except Exception:
+            logger.exception("Failed to list snippet archive files for prefix %s", prefix)
+            return
+
+        for key in keys:
+            try:
+                archive_storage.delete_object(key)
+            except Exception:
+                logger.exception("Failed to delete snippet archive file %s", key)
 
     @staticmethod
     def validate_snippet_graph_forbidden_nodes(graph: Mapping[str, Any]) -> None:
@@ -79,8 +188,8 @@ class SnippetService:
 
     # --- CRUD Operations ---
 
-    @staticmethod
     def get_snippets(
+        self,
         *,
         tenant_id: str,
         page: int = 1,
@@ -126,13 +235,14 @@ class SnippetService:
             else:
                 return [], 0, False
 
-        # Get total count
-        count_stmt = select(func.count()).select_from(stmt.subquery())
-        total = db.session.scalar(count_stmt) or 0
+        with self._session_scope() as session:
+            # Get total count
+            count_stmt = select(func.count()).select_from(stmt.subquery())
+            total = session.scalar(count_stmt) or 0
 
-        # Apply pagination
-        stmt = stmt.limit(limit + 1).offset((page - 1) * limit)
-        snippets = list(db.session.scalars(stmt).all())
+            # Apply pagination
+            stmt = stmt.limit(limit + 1).offset((page - 1) * limit)
+            snippets = list(session.scalars(stmt).all())
 
         has_more = len(snippets) > limit
         if has_more:
@@ -140,8 +250,8 @@ class SnippetService:
 
         return snippets, total, has_more
 
-    @staticmethod
     def get_snippet_by_id(
+        self,
         *,
         snippet_id: str,
         tenant_id: str,
@@ -153,17 +263,15 @@ class SnippetService:
         :param tenant_id: Tenant ID
         :return: CustomizedSnippet or None
         """
-        return (
-            db.session.query(CustomizedSnippet)
-            .where(
+        with self._session_scope() as session:
+            stmt = select(CustomizedSnippet).where(
                 CustomizedSnippet.id == snippet_id,
                 CustomizedSnippet.tenant_id == tenant_id,
             )
-            .first()
-        )
+            return session.scalar(stmt)
 
-    @staticmethod
     def create_snippet(
+        self,
         *,
         tenant_id: str,
         name: str,
@@ -195,8 +303,9 @@ class SnippetService:
             created_by=account.id,
         )
 
-        db.session.add(snippet)
-        db.session.commit()
+        with self._session_scope() as session:
+            session.add(snippet)
+            self._commit_if_owned(session)
 
         return snippet
 
@@ -245,11 +354,69 @@ class SnippetService:
         :param snippet: Snippet to delete
         :return: True if deleted successfully
         """
+        SnippetService._delete_draft_variable_files(session=session, snippet=snippet)
         session.execute(
-            delete(TagBinding).where(
+            delete(WorkflowDraftVariable)
+            .where(WorkflowDraftVariable.app_id == snippet.id)
+            .execution_options(synchronize_session=False)
+        )
+        session.execute(
+            delete(WorkflowToolProvider)
+            .where(
+                WorkflowToolProvider.tenant_id == snippet.tenant_id,
+                WorkflowToolProvider.app_id == snippet.id,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        session.execute(
+            delete(WorkflowAppLog)
+            .where(
+                WorkflowAppLog.tenant_id == snippet.tenant_id,
+                WorkflowAppLog.app_id == snippet.id,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        session.execute(
+            delete(WorkflowArchiveLog)
+            .where(
+                WorkflowArchiveLog.tenant_id == snippet.tenant_id,
+                WorkflowArchiveLog.app_id == snippet.id,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        SnippetService._delete_archived_workflow_run_files(snippet=snippet)
+        session.execute(
+            delete(WorkflowNodeExecutionModel)
+            .where(
+                WorkflowNodeExecutionModel.tenant_id == snippet.tenant_id,
+                WorkflowNodeExecutionModel.app_id == snippet.id,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        session.execute(
+            delete(WorkflowRun)
+            .where(
+                WorkflowRun.tenant_id == snippet.tenant_id,
+                WorkflowRun.app_id == snippet.id,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        session.execute(
+            delete(Workflow)
+            .where(
+                Workflow.tenant_id == snippet.tenant_id,
+                Workflow.app_id == snippet.id,
+                SnippetService._snippet_kind_filter(),
+            )
+            .execution_options(synchronize_session=False)
+        )
+        session.execute(
+            delete(TagBinding)
+            .where(
                 TagBinding.tenant_id == snippet.tenant_id,
                 TagBinding.target_id == snippet.id,
             )
+            .execution_options(synchronize_session=False)
         )
         session.delete(snippet)
         return True
@@ -263,17 +430,14 @@ class SnippetService:
         :param snippet: CustomizedSnippet instance
         :return: Draft Workflow or None
         """
-        workflow = (
-            db.session.query(Workflow)
-            .where(
+        with self._session_scope() as session:
+            stmt = select(Workflow).where(
                 Workflow.tenant_id == snippet.tenant_id,
                 Workflow.app_id == snippet.id,
                 self._snippet_kind_filter(),
                 Workflow.version == "draft",
             )
-            .first()
-        )
-        return workflow
+            return session.scalar(stmt)
 
     def get_published_workflow(self, snippet: CustomizedSnippet) -> Workflow | None:
         """
@@ -285,17 +449,14 @@ class SnippetService:
         if not snippet.workflow_id:
             return None
 
-        workflow = (
-            db.session.query(Workflow)
-            .where(
+        with self._session_scope() as session:
+            stmt = select(Workflow).where(
                 Workflow.tenant_id == snippet.tenant_id,
                 Workflow.app_id == snippet.id,
                 self._snippet_kind_filter(),
                 Workflow.id == snippet.workflow_id,
             )
-            .first()
-        )
-        return workflow
+            return session.scalar(stmt)
 
     def get_published_workflow_by_id(self, snippet: CustomizedSnippet, workflow_id: str) -> Workflow | None:
         """
@@ -306,16 +467,14 @@ class SnippetService:
         :return: Published Workflow or None
         :raises IsDraftWorkflowError: If the workflow ID points to a draft workflow
         """
-        workflow = (
-            db.session.query(Workflow)
-            .where(
+        with self._session_scope() as session:
+            stmt = select(Workflow).where(
                 Workflow.tenant_id == snippet.tenant_id,
                 Workflow.app_id == snippet.id,
                 self._snippet_kind_filter(),
                 Workflow.id == workflow_id,
             )
-            .first()
-        )
+            workflow = session.scalar(stmt)
         if not workflow:
             return None
         if workflow.version == Workflow.VERSION_DRAFT:
@@ -366,8 +525,6 @@ class SnippetService:
                 environment_variables=[],
                 conversation_variables=[],
             )
-            db.session.add(workflow)
-            db.session.flush()
         else:
             # Update existing draft workflow
             workflow.graph = json.dumps(graph)
@@ -384,7 +541,10 @@ class SnippetService:
             snippet.updated_by = account.id
             snippet.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
-        db.session.commit()
+        with self._session_scope() as session:
+            session.add(workflow)
+            session.add(snippet)
+            self._commit_if_owned(session)
         return workflow
 
     def restore_published_workflow_to_draft(
@@ -412,7 +572,7 @@ class SnippetService:
         SnippetService.validate_snippet_graph_forbidden_nodes(source_workflow.graph_dict)
 
         draft_workflow = self.get_draft_workflow(snippet=snippet)
-        draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
+        draft_workflow, _is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=snippet.tenant_id,
             app_id=snippet.id,
             source_workflow=source_workflow,
@@ -421,10 +581,9 @@ class SnippetService:
             updated_at_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
         )
 
-        if is_new_draft:
-            db.session.add(draft_workflow)
-
-        db.session.commit()
+        with self._session_scope() as session:
+            session.add(draft_workflow)
+            self._commit_if_owned(session)
         return draft_workflow
 
     def publish_workflow(

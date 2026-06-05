@@ -23,7 +23,7 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Union, cast
 
-from sqlalchemy.orm import make_transient
+from sqlalchemy.orm import Session, make_transient, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
@@ -135,6 +135,7 @@ class SnippetGenerateService:
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
+        session_maker: sessionmaker[Session] | None = None,
     ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a snippet's draft workflow.
@@ -155,7 +156,7 @@ class SnippetGenerateService:
         :return: Blocking response mapping or SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        snippet_service = SnippetService()
+        snippet_service = SnippetService(session_maker)
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
             raise ValueError("Workflow not initialized")
@@ -185,6 +186,7 @@ class SnippetGenerateService:
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
+        session_maker: sessionmaker[Session] | None = None,
     ) -> Mapping[str, Any]:
         """
         Run a snippet's published workflow in non-streaming (blocking) mode.
@@ -200,7 +202,7 @@ class SnippetGenerateService:
         :return: Blocking response mapping with workflow outputs
         :raises ValueError: If the snippet has no published workflow
         """
-        snippet_service = SnippetService()
+        snippet_service = SnippetService(session_maker)
         workflow = snippet_service.get_published_workflow(snippet)
         if not workflow:
             raise ValueError("No published workflow found for snippet")
@@ -331,6 +333,7 @@ class SnippetGenerateService:
         account: Account,
         query: str = "",
         files: Sequence[File] | None = None,
+        session_maker: sessionmaker[Session] | None = None,
     ) -> WorkflowNodeExecutionModel:
         """
         Run a single node in a snippet's draft workflow (single-step debugging).
@@ -347,7 +350,7 @@ class SnippetGenerateService:
         :return: WorkflowNodeExecutionModel with execution results
         :raises ValueError: If the snippet has no draft workflow
         """
-        snippet_service = SnippetService()
+        snippet_service = SnippetService(session_maker)
         draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
@@ -373,6 +376,7 @@ class SnippetGenerateService:
         node_id: str,
         args: Mapping[str, Any],
         streaming: bool = True,
+        session_maker: sessionmaker[Session] | None = None,
     ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a single iteration node in a snippet's draft workflow.
@@ -389,7 +393,7 @@ class SnippetGenerateService:
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        snippet_service = SnippetService()
+        snippet_service = SnippetService(session_maker)
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
             raise ValueError("Workflow not initialized")
@@ -415,6 +419,7 @@ class SnippetGenerateService:
         node_id: str,
         args: Any,
         streaming: bool = True,
+        session_maker: sessionmaker[Session] | None = None,
     ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a single loop node in a snippet's draft workflow.
@@ -431,7 +436,7 @@ class SnippetGenerateService:
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        snippet_service = SnippetService()
+        snippet_service = SnippetService(session_maker)
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
             raise ValueError("Workflow not initialized")

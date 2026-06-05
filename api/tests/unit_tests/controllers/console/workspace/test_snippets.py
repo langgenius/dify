@@ -14,6 +14,14 @@ def _unwrap(func):
     return func
 
 
+@pytest.fixture(autouse=True)
+def _patch_snippet_service_factory(monkeypatch):
+    def factory():
+        return snippets_module.SnippetService.__new__(snippets_module.SnippetService)
+
+    monkeypatch.setattr(snippets_module, "_snippet_service", factory)
+
+
 class _SessionContext:
     def __init__(self, engine, *args, **kwargs):
         self.engine = engine

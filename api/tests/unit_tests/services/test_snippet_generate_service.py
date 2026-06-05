@@ -128,7 +128,7 @@ def test_parse_files_delegates_to_file_factory(monkeypatch):
 def test_generate_raises_when_draft_workflow_missing(monkeypatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
     )
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
@@ -156,7 +156,7 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch
 
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
     )
     ensure_start_node = Mock(return_value=workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
@@ -189,7 +189,7 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch
 
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_published_workflow=Mock(return_value=workflow)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_published_workflow=Mock(return_value=workflow)),
     )
     ensure_start_node = Mock(return_value=workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
@@ -232,7 +232,7 @@ def test_run_draft_node_delegates_to_workflow_service(monkeypatch):
 
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowService", Mock(return_value=workflow_service))
 
@@ -260,7 +260,7 @@ def test_run_draft_node_delegates_to_workflow_service(monkeypatch):
 def test_run_draft_node_raises_when_draft_workflow_missing(monkeypatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
     )
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
@@ -283,7 +283,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch):
 
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 
@@ -308,7 +308,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch):
 def test_generate_single_iteration_raises_when_draft_workflow_missing(monkeypatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
     )
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
@@ -331,7 +331,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch):
 
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 
@@ -356,7 +356,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch):
 def test_generate_single_loop_raises_when_draft_workflow_missing(monkeypatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
     )
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
@@ -371,7 +371,7 @@ def test_generate_single_loop_raises_when_draft_workflow_missing(monkeypatch):
 def test_run_published_raises_when_published_workflow_missing(monkeypatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
-        lambda: SimpleNamespace(get_published_workflow=Mock(return_value=None)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_published_workflow=Mock(return_value=None)),
     )
 
     with pytest.raises(ValueError, match="No published workflow found"):

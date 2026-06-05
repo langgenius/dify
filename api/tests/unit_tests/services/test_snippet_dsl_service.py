@@ -399,10 +399,10 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch)
 
 
 def test_check_dependencies_returns_empty_without_draft_workflow(monkeypatch):
-    service = SnippetDslService(session=SimpleNamespace())
+    service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
     monkeypatch.setattr(
         "services.snippet_dsl_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
     )
 
     result = service.check_dependencies(SimpleNamespace(id="snippet-1", tenant_id="tenant-1"))
@@ -411,7 +411,7 @@ def test_check_dependencies_returns_empty_without_draft_workflow(monkeypatch):
 
 
 def test_check_dependencies_returns_generated_dependencies(monkeypatch):
-    service = SnippetDslService(session=SimpleNamespace())
+    service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
     workflow = SimpleNamespace(graph_dict={"nodes": []})
     leaked_dependencies = [
         {
@@ -421,7 +421,7 @@ def test_check_dependencies_returns_generated_dependencies(monkeypatch):
     ]
     monkeypatch.setattr(
         "services.snippet_dsl_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr(service, "_extract_dependencies_from_workflow", Mock(return_value=["langgenius/openai"]))
     monkeypatch.setattr(
@@ -445,14 +445,14 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
         updated_by=None,
         updated_at=None,
     )
-    session = SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock())
+    session = SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get_bind=Mock())
     service = SnippetDslService(session=session)
     draft_workflow = SimpleNamespace(unique_hash="hash-1")
     snippet_service = SimpleNamespace(
         get_draft_workflow=Mock(return_value=draft_workflow),
         sync_draft_workflow=Mock(),
     )
-    monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda: snippet_service)
+    monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
 
     result = service._create_or_update_snippet(
         snippet=snippet,
@@ -478,10 +478,10 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
 
 
 def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch):
-    session = SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock())
+    session = SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get_bind=Mock())
     service = SnippetDslService(session=session)
     snippet_service = SimpleNamespace(get_draft_workflow=Mock(return_value=None), sync_draft_workflow=Mock())
-    monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda: snippet_service)
+    monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
 
     result = service._create_or_update_snippet(
         snippet=None,
@@ -506,10 +506,10 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch):
 
 
 def test_export_snippet_dsl_raises_without_draft_workflow(monkeypatch):
-    service = SnippetDslService(session=SimpleNamespace())
+    service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
     monkeypatch.setattr(
         "services.snippet_dsl_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
     )
 
     with pytest.raises(ValueError, match="Missing draft workflow"):
@@ -517,7 +517,7 @@ def test_export_snippet_dsl_raises_without_draft_workflow(monkeypatch):
 
 
 def test_export_snippet_dsl_returns_yaml(monkeypatch):
-    service = SnippetDslService(session=SimpleNamespace())
+    service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
     workflow = SimpleNamespace(
         to_dict=Mock(return_value={"graph": {"nodes": []}}),
         graph_dict={"nodes": []},
@@ -532,7 +532,7 @@ def test_export_snippet_dsl_returns_yaml(monkeypatch):
     )
     monkeypatch.setattr(
         "services.snippet_dsl_service.SnippetService",
-        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr(
         "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",

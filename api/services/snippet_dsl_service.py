@@ -98,6 +98,9 @@ class SnippetDslService:
     def __init__(self, session: Session):
         self._session = session
 
+    def _snippet_service(self) -> SnippetService:
+        return SnippetService(session=self._session)
+
     def import_snippet(
         self,
         *,
@@ -382,7 +385,7 @@ class SnippetDslService:
         """
         Check dependencies for a snippet
         """
-        snippet_service = SnippetService()
+        snippet_service = self._snippet_service()
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
             return CheckDependenciesResult(leaked_dependencies=[])
@@ -450,7 +453,7 @@ class SnippetDslService:
         if workflow_data:
             graph = workflow_data.get("graph", {})
 
-            snippet_service = SnippetService()
+            snippet_service = self._snippet_service()
             # Get existing workflow hash if exists
             existing_workflow = snippet_service.get_draft_workflow(snippet=snippet)
             unique_hash = existing_workflow.unique_hash if existing_workflow else None
@@ -473,7 +476,7 @@ class SnippetDslService:
         :param include_secret: Whether include secret variable
         :return: YAML string
         """
-        snippet_service = SnippetService()
+        snippet_service = self._snippet_service()
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")

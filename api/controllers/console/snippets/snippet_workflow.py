@@ -5,7 +5,7 @@ from functools import wraps
 from flask import request
 from flask_restx import Resource
 from pydantic import Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -55,6 +55,14 @@ logger = logging.getLogger(__name__)
 # Register Pydantic models with Swagger
 
 
+def _snippet_session_maker() -> sessionmaker[Session]:
+    return sessionmaker(bind=db.engine, expire_on_commit=False)
+
+
+def _snippet_service() -> SnippetService:
+    return SnippetService(_snippet_session_maker())
+
+
 class SnippetWorkflowResponse(WorkflowResponse):
     input_fields: list[dict] = Field(default_factory=list)
 
@@ -100,7 +108,8 @@ def get_snippet[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
         snippet_id = str(kwargs.get("snippet_id"))
         del kwargs["snippet_id"]
 
-        snippet = SnippetService.get_snippet_by_id(
+        snippet_service = _snippet_service()
+        snippet = snippet_service.get_snippet_by_id(
             snippet_id=snippet_id,
             tenant_id=current_tenant_id,
         )
@@ -131,13 +140,12 @@ class SnippetDraftWorkflowApi(Resource):
     @edit_permission_required
     def get(self, snippet: CustomizedSnippet):
         """Get draft workflow for snippet."""
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
 
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        db.session.expunge(workflow)
         workflow.conversation_variables = []
         response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
@@ -159,7 +167,7 @@ class SnippetDraftWorkflowApi(Resource):
         payload = SnippetDraftSyncPayload.model_validate(console_ns.payload or {})
 
         try:
-            snippet_service = SnippetService()
+            snippet_service = _snippet_service()
             workflow = snippet_service.sync_draft_workflow(
                 snippet=snippet,
                 graph=payload.graph,
@@ -214,7 +222,7 @@ class SnippetPublishedWorkflowApi(Resource):
         if not snippet.is_published:
             return None
 
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         workflow = snippet_service.get_published_workflow(snippet=snippet)
 
         if not workflow:
@@ -236,7 +244,7 @@ class SnippetPublishedWorkflowApi(Resource):
     def post(self, snippet: CustomizedSnippet):
         """Publish snippet workflow."""
         current_user, _ = current_account_with_tenant()
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
 
         with Session(db.engine) as session:
             snippet = session.merge(snippet)
@@ -268,7 +276,7 @@ class SnippetDefaultBlockConfigsApi(Resource):
     @edit_permission_required
     def get(self, snippet: CustomizedSnippet):
         """Get default block configurations for snippet workflow."""
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         return snippet_service.get_default_block_configs()
 
 
@@ -292,7 +300,7 @@ class SnippetPublishedAllWorkflowApi(Resource):
         """Get all published workflow versions for snippet."""
         args = SnippetWorkflowListQuery.model_validate(request.args.to_dict(flat=True))
 
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         with Session(db.engine) as session:
             workflows, has_more = snippet_service.get_all_published_workflows(
                 session=session,
@@ -328,7 +336,7 @@ class SnippetDraftWorkflowRestoreApi(Resource):
     def post(self, snippet: CustomizedSnippet, workflow_id: str):
         """Restore a published snippet workflow version into the draft workflow."""
         current_user, _ = current_account_with_tenant()
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
 
         try:
             workflow = snippet_service.restore_published_workflow_to_draft(
@@ -375,7 +383,7 @@ class SnippetWorkflowRunsApi(Resource):
             "limit": query.limit,
         }
 
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         result = snippet_service.get_snippet_workflow_runs(snippet=snippet, args=args)
 
         return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
@@ -398,7 +406,7 @@ class SnippetWorkflowRunDetailApi(Resource):
         """Get workflow run detail for snippet."""
         run_id = str(run_id)
 
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         workflow_run = snippet_service.get_snippet_workflow_run(snippet=snippet, run_id=run_id)
 
         if not workflow_run:
@@ -423,7 +431,7 @@ class SnippetWorkflowRunNodeExecutionsApi(Resource):
         """List node executions for a workflow run."""
         run_id = str(run_id)
 
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         node_executions = snippet_service.get_snippet_workflow_run_node_executions(
             snippet=snippet,
             run_id=run_id,
@@ -462,7 +470,7 @@ class SnippetDraftNodeRunApi(Resource):
         user_inputs = payload.inputs
 
         # Get draft workflow for file parsing
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not draft_workflow:
             raise NotFound("Draft workflow not found")
@@ -476,6 +484,7 @@ class SnippetDraftNodeRunApi(Resource):
             account=current_user,
             query=payload.query,
             files=files,
+            session_maker=_snippet_session_maker(),
         )
 
         return WorkflowRunNodeExecutionResponse.model_validate(
@@ -503,7 +512,7 @@ class SnippetDraftNodeLastRunApi(Resource):
         Returns the most recent execution record for the given node,
         including status, inputs, outputs, and timing information.
         """
-        snippet_service = SnippetService()
+        snippet_service = _snippet_service()
         draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not draft_workflow:
             raise NotFound("Draft workflow not found")
@@ -544,7 +553,12 @@ class SnippetDraftRunIterationNodeApi(Resource):
 
         try:
             response = SnippetGenerateService.generate_single_iteration(
-                snippet=snippet, user=current_user, node_id=node_id, args=args, streaming=True
+                snippet=snippet,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                streaming=True,
+                session_maker=_snippet_session_maker(),
             )
 
             return helper.compact_generate_response(response)
@@ -580,7 +594,12 @@ class SnippetDraftRunLoopNodeApi(Resource):
 
         try:
             response = SnippetGenerateService.generate_single_loop(
-                snippet=snippet, user=current_user, node_id=node_id, args=args, streaming=True
+                snippet=snippet,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                streaming=True,
+                session_maker=_snippet_session_maker(),
             )
 
             return helper.compact_generate_response(response)
@@ -621,6 +640,7 @@ class SnippetDraftWorkflowRunApi(Resource):
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
+                session_maker=_snippet_session_maker(),
             )
 
             return helper.compact_generate_response(response)

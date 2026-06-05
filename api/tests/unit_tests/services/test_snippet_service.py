@@ -21,6 +21,21 @@ class _SessionWithoutNameLookup:
         raise AssertionError("snippet name uniqueness lookup should not be used")
 
 
+class _SessionContext:
+    def __init__(self, session) -> None:
+        self._session = session
+
+    def __enter__(self):
+        return self._session
+
+    def __exit__(self, *args) -> None:
+        return None
+
+
+def _session_maker(session):
+    return lambda: _SessionContext(session)
+
+
 def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
     return Workflow(
         id=workflow_id,
@@ -42,9 +57,10 @@ def test_create_snippet_allows_duplicate_names(monkeypatch: pytest.MonkeyPatch) 
     session = _SessionWithoutNameLookup()
     account = SimpleNamespace(id="account-1")
 
-    monkeypatch.setattr("services.snippet_service.db.session", session)
+    service = SnippetService.__new__(SnippetService)
+    service._session_maker = _session_maker(session)
 
-    snippet = SnippetService.create_snippet(
+    snippet = service.create_snippet(
         tenant_id="tenant-1",
         name="shared name",
         description=None,
@@ -79,8 +95,9 @@ def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> No
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("services.snippet_service.TagService.get_target_ids_by_tag_ids", Mock(return_value=[]))
+    service = SnippetService.__new__(SnippetService)
 
-    result = SnippetService.get_snippets(tenant_id="tenant-1", tag_ids=["tag-1"])
+    result = service.get_snippets(tenant_id="tenant-1", tag_ids=["tag-1"])
 
     assert result == ([], 0, False)
 
@@ -95,13 +112,14 @@ def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPa
         scalar=Mock(return_value=3),
         scalars=Mock(return_value=SimpleNamespace(all=Mock(return_value=snippets))),
     )
-    monkeypatch.setattr("services.snippet_service.db.session", session)
+    service = SnippetService.__new__(SnippetService)
+    service._session_maker = _session_maker(session)
     monkeypatch.setattr(
         "services.snippet_service.TagService.get_target_ids_by_tag_ids",
         Mock(return_value=["snippet-1", "snippet-2", "snippet-3"]),
     )
 
-    result, total, has_more = SnippetService.get_snippets(
+    result, total, has_more = service.get_snippets(
         tenant_id="tenant-1",
         page=2,
         limit=2,
@@ -167,8 +185,8 @@ def test_update_snippet_updates_optional_fields() -> None:
 def test_sync_draft_workflow_creates_draft_and_updates_input_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetService.__new__(SnippetService)
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=None))
-    session = SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock())
-    monkeypatch.setattr("services.snippet_service.db.session", session)
+    session = SimpleNamespace(add=Mock(), commit=Mock())
+    service._session_maker = _session_maker(session)
     snippet = SimpleNamespace(
         id="snippet-1",
         tenant_id="tenant-1",
@@ -189,13 +207,14 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(monkeypatch:
     assert workflow.app_id == snippet.id
     assert workflow.kind == WorkflowKind.SNIPPET
     assert json.loads(snippet.input_fields) == [{"variable": "query"}]
-    session.add.assert_called_once_with(workflow)
-    session.flush.assert_called_once()
+    session.add.assert_any_call(workflow)
+    session.add.assert_any_call(snippet)
     session.commit.assert_called_once()
 
 
 def test_sync_draft_workflow_raises_when_hash_mismatches() -> None:
     service = SnippetService.__new__(SnippetService)
+    service._session_maker = _session_maker(SimpleNamespace(commit=Mock(), add=Mock()))
     service.get_draft_workflow = Mock(return_value=SimpleNamespace(unique_hash="server-hash"))
 
     with pytest.raises(WorkflowHashNotEqualError):
@@ -224,10 +243,10 @@ def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(monkeyp
         updated_at=None,
     )
     account = SimpleNamespace(id="account-1")
-    session = SimpleNamespace(commit=Mock())
+    session = SimpleNamespace(add=Mock(), commit=Mock())
 
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=workflow))
-    monkeypatch.setattr("services.snippet_service.db.session", session)
+    service._session_maker = _session_maker(session)
 
     result = service.sync_draft_workflow(
         snippet=snippet,
@@ -311,10 +330,10 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
     )
     service = SnippetService.__new__(SnippetService)
     session = SimpleNamespace(add=Mock(), commit=Mock())
+    service._session_maker = _session_maker(session)
 
     monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=source_workflow))
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=draft_workflow))
-    monkeypatch.setattr("services.snippet_service.db.session", session)
 
     result = service.restore_published_workflow_to_draft(
         snippet=snippet,
@@ -326,7 +345,7 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
     assert draft_workflow.graph_dict == source_graph
     assert draft_workflow.features_dict == source_features
     assert draft_workflow.updated_by == account.id
-    session.add.assert_not_called()
+    session.add.assert_called_once_with(draft_workflow)
     session.commit.assert_called_once()
 
 
@@ -336,6 +355,7 @@ def test_restore_published_snippet_workflow_to_draft_raises_when_source_missing(
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     account = SimpleNamespace(id="account-2")
     service = SnippetService.__new__(SnippetService)
+    service._session_maker = _session_maker(SimpleNamespace(add=Mock(), commit=Mock()))
 
     monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=None))
 
@@ -364,6 +384,7 @@ def test_restore_published_snippet_workflow_to_draft_adds_new_draft(monkeypatch:
     )
     service = SnippetService.__new__(SnippetService)
     session = SimpleNamespace(add=Mock(), commit=Mock())
+    service._session_maker = _session_maker(session)
 
     monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=source_workflow))
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=None))
@@ -371,7 +392,6 @@ def test_restore_published_snippet_workflow_to_draft_adds_new_draft(monkeypatch:
         "services.snippet_service.apply_published_workflow_snapshot_to_draft",
         Mock(return_value=(new_draft_workflow, True)),
     )
-    monkeypatch.setattr("services.snippet_service.db.session", session)
 
     result = service.restore_published_workflow_to_draft(
         snippet=snippet,
@@ -394,10 +414,9 @@ def test_get_published_workflow_returns_none_without_workflow_id() -> None:
 
 def test_get_published_workflow_by_id_raises_for_draft(monkeypatch: pytest.MonkeyPatch) -> None:
     draft_workflow = SimpleNamespace(version=Workflow.VERSION_DRAFT)
-    query = SimpleNamespace(where=Mock(return_value=SimpleNamespace(first=Mock(return_value=draft_workflow))))
-    session = SimpleNamespace(query=Mock(return_value=query))
-    monkeypatch.setattr("services.snippet_service.db.session", session)
+    session = SimpleNamespace(scalar=Mock(return_value=draft_workflow))
     service = SnippetService.__new__(SnippetService)
+    service._session_maker = _session_maker(session)
 
     with pytest.raises(IsDraftWorkflowError):
         service.get_published_workflow_by_id(
@@ -480,15 +499,71 @@ def test_get_all_published_workflows_paginates() -> None:
     session.scalars.assert_called_once()
 
 
-def test_delete_snippet_removes_tag_bindings() -> None:
+def test_delete_snippet_removes_related_records() -> None:
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
-    session = SimpleNamespace(execute=Mock(), delete=Mock())
+    session = SimpleNamespace(
+        execute=Mock(),
+        scalars=Mock(return_value=SimpleNamespace(all=Mock(return_value=[]))),
+        delete=Mock(),
+    )
 
     result = SnippetService.delete_snippet(session=session, snippet=snippet)
 
     assert result is True
-    session.execute.assert_called_once()
+    executed_sql = "\n".join(str(call.args[0]) for call in session.execute.call_args_list)
+    assert "workflow_draft_variables" in executed_sql
+    assert "tool_workflow_providers" in executed_sql
+    assert "workflow_app_logs" in executed_sql
+    assert "workflow_archive_logs" in executed_sql
+    assert "workflow_node_executions" in executed_sql
+    assert "workflow_runs" in executed_sql
+    assert "workflows" in executed_sql
+    assert "kind" in executed_sql
+    assert "tag_bindings" in executed_sql
     session.delete.assert_called_once_with(snippet)
+
+
+def test_delete_draft_variable_files_removes_storage_objects(monkeypatch) -> None:
+    from extensions.ext_storage import storage
+
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    storage_delete = Mock()
+    monkeypatch.setattr(storage, "delete", storage_delete)
+    session = SimpleNamespace(
+        scalars=Mock(return_value=SimpleNamespace(all=Mock(return_value=["file-1"]))),
+        execute=Mock(
+            side_effect=[
+                SimpleNamespace(all=Mock(return_value=[("file-1", "upload-1", "storage-key")])),
+                None,
+                None,
+            ]
+        ),
+    )
+
+    SnippetService._delete_draft_variable_files(session=session, snippet=snippet)
+
+    storage_delete.assert_called_once_with("storage-key")
+    executed_sql = "\n".join(str(call.args[0]) for call in session.execute.call_args_list)
+    assert "upload_files" in executed_sql
+    assert "workflow_draft_variable_files" in executed_sql
+
+
+def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch) -> None:
+    from configs import dify_config
+
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    archive_storage = SimpleNamespace(
+        list_objects=Mock(return_value=["tenant-1/app_id=snippet-1/run.json"]),
+        delete_object=Mock(),
+    )
+    monkeypatch.setattr(dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(dify_config, "ARCHIVE_STORAGE_ENABLED", True)
+    monkeypatch.setattr("libs.archive_storage.get_archive_storage", Mock(return_value=archive_storage))
+
+    SnippetService._delete_archived_workflow_run_files(snippet=snippet)
+
+    archive_storage.list_objects.assert_called_once_with("tenant-1/app_id=snippet-1/")
+    archive_storage.delete_object.assert_called_once_with("tenant-1/app_id=snippet-1/run.json")
 
 
 def test_workflow_run_queries_delegate_to_repositories() -> None:

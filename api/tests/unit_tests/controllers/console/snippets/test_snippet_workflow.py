@@ -16,6 +16,18 @@ def _unwrap(func):
     return func
 
 
+@pytest.fixture(autouse=True)
+def _patch_snippet_service_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+    def factory():
+        service_factory = snippet_workflow_module.SnippetService
+        if isinstance(service_factory, type):
+            return service_factory.__new__(service_factory)
+        return service_factory()
+
+    monkeypatch.setattr(snippet_workflow_module, "_snippet_service", factory)
+    monkeypatch.setattr(snippet_workflow_module, "_snippet_session_maker", Mock(return_value=Mock()))
+
+
 def test_get_snippet_requires_snippet_id(app):
     @snippet_workflow_module.get_snippet
     def view(**kwargs):
