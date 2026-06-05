@@ -67,7 +67,10 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
 }) => {
   const { t } = useTranslation()
   const isTryApp = appSourceType === AppSourceTypeEnum.tryApp
-  const showCopyAction = (currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow
+  const hasWorkflowCopyContent = currentTab === 'RESULT'
+    ? !!workflowProcessData?.resultText
+    : currentTab === 'DETAIL' && content !== undefined && content !== null && content !== ''
+  const showCopyAction = isWorkflow ? hasWorkflowCopyContent : true
 
   return (
     <>
