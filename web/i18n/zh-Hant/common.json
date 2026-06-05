@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "未配置模型供應商",
   "modelProvider.selector.noProviderConfiguredDesc": "前往插件市場安裝，或在設定中配置供應商。",
   "modelProvider.selector.onlyCompatibleModelsShown": "僅顯示相容的模型",
+  "modelProvider.selector.noModelFoundForSearch": "未找到「{{query}}」相關模型",
   "modelProvider.selector.rerankTip": "請設定 Rerank 模型",
   "modelProvider.selector.tip": "該模型已被刪除。請添模型或選擇其他模型。",
   "modelProvider.setupModelFirst": "請先設定您的模型",

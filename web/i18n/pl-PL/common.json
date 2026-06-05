@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Nie skonfigurowano dostawcy modeli",
   "modelProvider.selector.noProviderConfiguredDesc": "Przeglądaj Marketplace, aby zainstalować dostawcę, lub skonfiguruj dostawców w ustawieniach.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Wyświetlane są tylko kompatybilne modele",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Proszę skonfigurować model ponownego rankingu",
   "modelProvider.selector.tip": "Ten model został usunięty. Proszę dodać model lub wybrać inny model.",
   "modelProvider.setupModelFirst": "Proszę najpierw skonfigurować swój model",

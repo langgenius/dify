@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Nenhum provedor de modelo configurado",
   "modelProvider.selector.noProviderConfiguredDesc": "Navegue pelo Marketplace para instalar um, ou configure provedores nas configurações.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Apenas modelos compatíveis são exibidos",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Por favor, configure o modelo de reordenação",
   "modelProvider.selector.tip": "Este modelo foi removido. Adicione um modelo ou selecione outro modelo.",
   "modelProvider.setupModelFirst": "Por favor, configure seu modelo primeiro",

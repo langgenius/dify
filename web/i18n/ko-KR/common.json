@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "모델 공급자가 구성되지 않았습니다",
   "modelProvider.selector.noProviderConfiguredDesc": "마켓플레이스에서 설치하거나 설정에서 공급자를 구성하세요.",
   "modelProvider.selector.onlyCompatibleModelsShown": "호환되는 모델만 표시됩니다",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "재랭크 모델을 설정하세요",
   "modelProvider.selector.tip": "이 모델은 삭제되었습니다. 다른 모델을 추가하거나 다른 모델을 선택하세요.",
   "modelProvider.setupModelFirst": "먼저 모델을 설정하세요",

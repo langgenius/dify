@@ -38,6 +38,7 @@ export type PopupProps = {
   modelList: Model[]
   scopeFeatures?: ModelFeatureEnum[]
   hideProviderSettingsFooter?: boolean
+  onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
   onHide: () => void
 }
@@ -47,6 +48,7 @@ function Popup({
   modelList,
   scopeFeatures = [],
   hideProviderSettingsFooter,
+  onConfigureEmptyState,
   onInputValueChange,
   onHide,
 }: PopupProps) {
@@ -178,6 +180,7 @@ function Popup({
   }, [previewCardHandle])
   const isProviderSettingsCurrentPage = searchParams?.get('action') === ACCOUNT_SETTING_MODAL_ACTION
     && searchParams?.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
+  const handleConfigureEmptyState = onConfigureEmptyState ?? (isProviderSettingsCurrentPage ? onHide : handleOpenSettings)
 
   return (
     <ModelSelectorPopupFrame>
@@ -208,12 +211,12 @@ function Popup({
         <div className="pb-1">
           {!filteredModelList.length && !installedModelList.length && (
             <ModelSelectorEmptyState
-              onConfigure={handleOpenSettings}
+              onConfigure={handleConfigureEmptyState}
             />
           )}
           {!filteredModelList.length && installedModelList.length > 0 && (
             <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
-              {`No model found for \u201C${inputValue}\u201D`}
+              {t('modelProvider.selector.noModelFoundForSearch', { ns: 'common', query: inputValue })}
             </div>
           )}
           {scopeFeatures.length > 0 && (

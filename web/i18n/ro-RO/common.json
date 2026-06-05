@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Niciun furnizor de modele configurat",
   "modelProvider.selector.noProviderConfiguredDesc": "Răsfoiți Marketplace pentru a instala unul sau configurați furnizorii în setări.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Sunt afișate doar modelele compatibile",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Vă rugăm să configurați modelul de reordonare",
   "modelProvider.selector.tip": "Acest model a fost eliminat. Vă rugăm să adăugați un model sau să selectați un alt model.",
   "modelProvider.setupModelFirst": "Vă rugăm să configurați mai întâi modelul",

@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "هیچ ارائه‌دهنده مدلی پیکربندی نشده است",
   "modelProvider.selector.noProviderConfiguredDesc": "در Marketplace جستجو کنید تا یکی نصب کنید، یا ارائه‌دهندگان را در تنظیمات پیکربندی کنید.",
   "modelProvider.selector.onlyCompatibleModelsShown": "فقط مدل‌های سازگار نمایش داده می‌شوند",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "لطفاً مدل رتبه‌بندی مجدد را تنظیم کنید",
   "modelProvider.selector.tip": "این مدل حذف شده است. لطفاً یک مدل اضافه کنید یا مدل دیگری را انتخاب کنید.",
   "modelProvider.setupModelFirst": "لطفاً ابتدا مدل خود را تنظیم کنید",

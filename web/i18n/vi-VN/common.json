@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Chưa cấu hình nhà cung cấp mô hình",
   "modelProvider.selector.noProviderConfiguredDesc": "Duyệt Marketplace để cài đặt hoặc cấu hình nhà cung cấp trong phần cài đặt.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Chỉ hiển thị các mô hình tương thích",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Vui lòng thiết lập mô hình sắp xếp lại",
   "modelProvider.selector.tip": "Mô hình này đã bị xóa. Vui lòng thêm một mô hình hoặc chọn mô hình khác.",
   "modelProvider.setupModelFirst": "Vui lòng thiết lập mô hình của bạn trước",

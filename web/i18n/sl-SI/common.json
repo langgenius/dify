@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Noben ponudnik modelov ni konfiguriran",
   "modelProvider.selector.noProviderConfiguredDesc": "Poiščite v Tržnici za namestitev ali konfigurirajte ponudnike v nastavitvah.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Prikazani so samo združljivi modeli",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Prosimo, nastavite model za prerazvrstitev",
   "modelProvider.selector.tip": "Ta model je bil odstranjen. Prosimo, dodajte model ali izberite drugega.",
   "modelProvider.setupModelFirst": "Najprej nastavite svoj model",

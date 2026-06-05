@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Geen modelprovider geconfigureerd",
   "modelProvider.selector.noProviderConfiguredDesc": "Blader in de Marketplace om er een te installeren, of configureer providers in de instellingen.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Alleen compatibele modellen worden weergegeven",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Please set up the Rerank model",
   "modelProvider.selector.tip": "This model has been removed. Please add a model or select another model.",
   "modelProvider.setupModelFirst": "Please set up your model first",

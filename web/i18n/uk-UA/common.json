@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Постачальник моделей не налаштований",
   "modelProvider.selector.noProviderConfiguredDesc": "Перегляньте Marketplace для встановлення або налаштуйте постачальників у параметрах.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Показано лише сумісні моделі",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Будь ласка, налаштуйте модель повторного ранжування",
   "modelProvider.selector.tip": "Цю модель було видалено. Будь ласка, додайте модель або виберіть іншу.",
   "modelProvider.setupModelFirst": "Будь ласка, спочатку налаштуйте свою модель",

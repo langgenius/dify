@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Yapılandırılmış model sağlayıcı yok",
   "modelProvider.selector.noProviderConfiguredDesc": "Yüklemek için Pazar Yeri'ne göz atın veya ayarlardan sağlayıcıları yapılandırın.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Yalnızca uyumlu modeller gösterilir",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Lütfen Yeniden Sıralama modelini ayarlayın",
   "modelProvider.selector.tip": "Bu model kaldırıldı. Lütfen bir model ekleyin veya başka bir model seçin.",
   "modelProvider.setupModelFirst": "Lütfen önce modelinizi ayarlayın",

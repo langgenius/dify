@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "ยังไม่ได้กำหนดค่าผู้ให้บริการโมเดล",
   "modelProvider.selector.noProviderConfiguredDesc": "เรียกดู Marketplace เพื่อติดตั้ง หรือกำหนดค่าผู้ให้บริการในการตั้งค่า",
   "modelProvider.selector.onlyCompatibleModelsShown": "แสดงเฉพาะโมเดลที่รองรับเท่านั้น",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "โปรดตั้งค่าโมเดล Rerank",
   "modelProvider.selector.tip": "รุ่นนี้ถูกลบออกแล้ว โปรดเพิ่มรุ่นหรือเลือกรุ่นอื่น",
   "modelProvider.setupModelFirst": "โปรดตั้งค่าโมเดลของคุณก่อน",

@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Поставщик моделей не настроен",
   "modelProvider.selector.noProviderConfiguredDesc": "Установите из Marketplace или настройте поставщиков в настройках.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Показаны только совместимые модели",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Пожалуйста, настройте модель повторного ранжирования",
   "modelProvider.selector.tip": "Эта модель была удалена. Пожалуйста, добавьте модель или выберите другую модель.",
   "modelProvider.setupModelFirst": "Пожалуйста, сначала настройте свою модель",

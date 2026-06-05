@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "कोई मॉडल प्रदाता कॉन्फ़िगर नहीं है",
   "modelProvider.selector.noProviderConfiguredDesc": "इंस्टॉल करने के लिए Marketplace ब्राउज़ करें, या सेटिंग्स में प्रदाता कॉन्फ़िगर करें।",
   "modelProvider.selector.onlyCompatibleModelsShown": "केवल संगत मॉडल दिखाए गए हैं",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "कृपया रीरैंक मॉडल सेट करें",
   "modelProvider.selector.tip": "इस मॉडल को हटा दिया गया है। कृपया एक मॉडल जोड़ें या किसी अन्य मॉडल का चयन करें।",
   "modelProvider.setupModelFirst": "कृपया पहले अपना मॉडल सेट करें",

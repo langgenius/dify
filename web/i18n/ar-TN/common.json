@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "لم يتم تكوين أي مزود نموذج",
   "modelProvider.selector.noProviderConfiguredDesc": "تصفح السوق لتثبيت مزود، أو قم بتكوين المزودين في الإعدادات.",
   "modelProvider.selector.onlyCompatibleModelsShown": "يتم عرض النماذج المتوافقة فقط",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "يرجى إعداد نموذج إعادة الترتيب",
   "modelProvider.selector.tip": "تمت إزالة هذا النموذج. يرجى إضافة نموذج أو تحديد نموذج آخر.",
   "modelProvider.setupModelFirst": "يرجى إعداد نموذجك أولاً",

@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "Belum ada penyedia model yang dikonfigurasi",
   "modelProvider.selector.noProviderConfiguredDesc": "Jelajahi Marketplace untuk menginstal, atau konfigurasikan penyedia di pengaturan.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Hanya model yang kompatibel yang ditampilkan",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Silakan atur model Rerank",
   "modelProvider.selector.tip": "Model ini telah dihapus. Silakan tambahkan model atau pilih model lain.",
   "modelProvider.setupModelFirst": "Silakan atur model Anda terlebih dahulu",

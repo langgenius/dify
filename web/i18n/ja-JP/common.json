@@ -498,6 +498,7 @@
   "modelProvider.selector.noProviderConfigured": "モデルプロバイダーが設定されていません",
   "modelProvider.selector.noProviderConfiguredDesc": "マーケットプレイスでインストールするか、設定でプロバイダーを設定してください。",
   "modelProvider.selector.onlyCompatibleModelsShown": "互換性のあるモデルのみが表示されます",
+  "modelProvider.selector.noModelFoundForSearch": "No model found for “{{query}}”",
   "modelProvider.selector.rerankTip": "Rerank モデルを設定してください",
   "modelProvider.selector.tip": "このモデルは削除されました。別のモデルを追加するか、別のモデルを選択してください。",
   "modelProvider.setupModelFirst": "まずモデルをセットアップしてください",
