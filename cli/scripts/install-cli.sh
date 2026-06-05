@@ -1,12 +1,13 @@
 #!/bin/sh
-# install-cli.sh — one-line difyctl installer from public GitHub Releases.
+# install-cli.sh — one-line difyctl installer. difyctl ships as assets on Dify
+# GitHub Releases; this installs the build matching your Dify version.
 #
 # usage:
 #   curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
 #
 # env:
-#   DIFYCTL_CHANNEL  track to install: stable (default) | rc
-#   DIFYCTL_VERSION  exact version pin (e.g. 0.2.0); overrides DIFYCTL_CHANNEL
+#   DIFY_VERSION     Dify release tag to install difyctl from (e.g. 1.14.2). Primary key.
+#   DIFYCTL_VERSION  difyctl version pin (used only when DIFY_VERSION is unset).
 #   DIFYCTL_PREFIX   install dir (default $HOME/.local); binary -> $PREFIX/bin/difyctl
 #   DIFYCTL_REPO     release source repo (default langgenius/dify)
 # requires: curl, uname, sort -V, and sha256sum or shasum.
@@ -14,29 +15,15 @@ set -eu
 
 REPO="${DIFYCTL_REPO:-langgenius/dify}"
 PREFIX="${DIFYCTL_PREFIX:-${HOME}/.local}"
-CHANNEL="${DIFYCTL_CHANNEL:-stable}"
-VERSION="${DIFYCTL_VERSION:-}"
-# Asset/tag naming is convention-locked to cli/package.json `difyctl.release`
-# (and release-naming.mjs). This installer ships standalone (curl | sh) so it
-# cannot read that source at runtime — keep these in sync by hand if it changes.
-TAG_PREFIX="difyctl-v"
+DIFY_VERSION="${DIFY_VERSION:-}"
+DIFYCTL_VERSION="${DIFYCTL_VERSION:-}"
+API="https://api.github.com/repos/${REPO}"
+DL="https://github.com/${REPO}/releases/download"
 
 err() { printf '%s\n' "install-cli: $*" >&2; }
 die() { err "$*"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
-
-# select_version CHANNEL  (reads git/matching-refs JSON on stdin) -> highest matching version
-select_version() {
-    _channel="$1"
-    _versions=$(grep -oE '"ref"[[:space:]]*:[[:space:]]*"refs/tags/difyctl-v[^"]*"' \
-        | sed -E 's#.*"refs/tags/difyctl-v([^"]*)".*#\1#')
-    case "$_channel" in
-        rc)     _versions=$(printf '%s\n' "$_versions" | grep -E -- '-rc\.[0-9]+$' || true) ;;
-        stable) _versions=$(printf '%s\n' "$_versions" | grep -vE -- '-' || true) ;;
-        *)      die "invalid DIFYCTL_CHANNEL: ${_channel} (expected stable | rc)" ;;
-    esac
-    printf '%s\n' "$_versions" | sed '/^$/d' | sort -V | tail -1
-}
+re_escape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|/]/\\&/g'; }
 
 detect_target() {
     case "$(uname -s)" in
@@ -52,24 +39,80 @@ detect_target() {
     printf '%s-%s' "$_os" "$_arch"
 }
 
-resolve_version() {
-    if [ -n "$VERSION" ]; then
-        printf '%s' "$VERSION"
-        return 0
+# list_asset_names  (reads release JSON on stdin) -> one difyctl asset name per line
+list_asset_names() {
+    grep -oE '"name"[[:space:]]*:[[:space:]]*"difyctl-v[^"]*"' \
+        | sed -E 's#.*"name"[[:space:]]*:[[:space:]]*"([^"]*)".*#\1#'
+}
+
+# pick_asset TARGET  (reads release JSON on stdin) -> highest-semver matching asset name
+pick_asset() {
+    _target=$(re_escape "$1")
+    list_asset_names \
+        | grep -E -- "-${_target}(\\.exe)?\$" \
+        | grep -vE -- '-checksums\.txt$' \
+        | sort -V | tail -1
+}
+
+# asset_version ASSET_NAME TARGET -> difyctl version embedded in the name
+asset_version() {
+    _target=$(re_escape "$2")
+    printf '%s' "$1" | sed -E "s#^difyctl-v(.*)-${_target}(\\.exe)?\$#\\1#"
+}
+
+# list_release_tags  (reads /releases array JSON on stdin) -> tag per line, newest first
+list_release_tags() {
+    grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+        | sed -E 's#.*:[[:space:]]*"([^"]*)".*#\1#'
+}
+
+fetch_json() {
+    curl -fsSL -H "Accept: application/vnd.github+json" "$1"
+}
+
+# find_release_for_difyctl WANT TARGET -> newest Dify tag whose assets host that difyctl build
+find_release_for_difyctl() {
+    _want="$1"
+    _target="$2"
+    _raw=$(fetch_json "${API}/releases?per_page=100") \
+        || die "failed to query ${REPO} releases (network error or GitHub API rate limit)"
+    _tags=$(printf '%s' "$_raw" | list_release_tags)
+    for _t in $_tags; do
+        _rel=$(fetch_json "${API}/releases/tags/${_t}") \
+            || { err "fetch failed for ${_t}, skipping"; continue; }
+        _name=$(printf '%s' "$_rel" | pick_asset "$_target")
+        [ -n "$_name" ] || continue
+        if [ "$(asset_version "$_name" "$_target")" = "$_want" ]; then
+            printf '%s' "$_t"
+            return 0
+        fi
+    done
+    return 1
+}
+
+resolve_release() {
+    _target="$1"
+    if [ -n "$DIFY_VERSION" ]; then
+        REL=$(fetch_json "${API}/releases/tags/${DIFY_VERSION}") \
+            || die "Dify release ${DIFY_VERSION} not found"
+        DIFY_TAG="$DIFY_VERSION"
+    elif [ -n "$DIFYCTL_VERSION" ]; then
+        DIFY_TAG=$(find_release_for_difyctl "$DIFYCTL_VERSION" "$_target") \
+            || die "difyctl ${DIFYCTL_VERSION} not found on any Dify release"
+        REL=$(fetch_json "${API}/releases/tags/${DIFY_TAG}") \
+            || die "failed to fetch Dify release ${DIFY_TAG}"
+    else
+        REL=$(fetch_json "${API}/releases/latest") \
+            || die "failed to query latest Dify release (set DIFY_VERSION to pin one)"
+        DIFY_TAG=$(printf '%s' "$REL" | list_release_tags | head -1)
+        [ -n "$DIFY_TAG" ] || die "could not parse a tag from the latest Dify release"
     fi
-    _api="https://api.github.com/repos/${REPO}/git/matching-refs/tags/difyctl-v"
-    if ! _refs=$(curl -fsSL -H "Accept: application/vnd.github+json" "$_api"); then
-        die "failed to query ${REPO} releases (network error or GitHub API rate limit); set DIFYCTL_VERSION to pin a version"
-    fi
-    _resolved=$(printf '%s' "$_refs" | select_version "$CHANNEL")
-    [ -n "$_resolved" ] || die "no ${CHANNEL} difyctl release found in ${REPO}"
-    printf '%s' "$_resolved"
 }
 
 main() {
     need curl
     need uname
-    need sort
+    sort -V /dev/null >/dev/null 2>&1 || die "sort with -V support is required (install coreutils)"
     if command -v sha256sum >/dev/null 2>&1; then
         HASH="sha256sum"
     elif command -v shasum >/dev/null 2>&1; then
@@ -79,23 +122,24 @@ main() {
     fi
 
     target=$(detect_target)
-    version=$(resolve_version)
-    tag="${TAG_PREFIX}${version}"
-    asset="difyctl-v${version}-${target}"
+    resolve_release "$target"
+
+    asset=$(printf '%s' "$REL" | pick_asset "$target")
+    [ -n "$asset" ] || die "no difyctl published for Dify ${DIFY_TAG} (target ${target}); set DIFY_VERSION to a release that has one"
+    version=$(asset_version "$asset" "$target")
     checksums="difyctl-v${version}-checksums.txt"
-    base="https://github.com/${REPO}/releases/download/${tag}"
+    base="${DL}/${DIFY_TAG}"
 
     tmp=$(mktemp -d 2>/dev/null || mktemp -d -t difyctl-install)
     trap 'rm -rf "$tmp"' EXIT INT TERM
 
-    printf 'downloading %s (%s)...\n' "$asset" "$tag"
+    printf 'downloading %s (Dify %s)...\n' "$asset" "$DIFY_TAG"
     curl -fsSL "${base}/${asset}" -o "${tmp}/${asset}" \
         || die "download failed: ${base}/${asset}"
     curl -fsSL "${base}/${checksums}" -o "${tmp}/${checksums}" \
         || die "checksum manifest download failed: ${base}/${checksums}"
 
-    # exact, end-anchored, regex-safe match of the asset's checksum line; fail-closed on no match
-    _pattern=$(printf '%s' "$asset" | sed 's/[][\\.^$*+?(){}|/]/\\&/g')
+    _pattern=$(re_escape "$asset")
     _sumline=$(grep -E -- "[[:space:]]${_pattern}\$" "${tmp}/${checksums}") || true
     [ -n "$_sumline" ] || die "no checksum entry for ${asset}"
     (
@@ -109,7 +153,7 @@ main() {
     cp "${tmp}/${asset}" "$target_bin"
     chmod +x "$target_bin"
 
-    printf '\ndifyctl v%s installed: %s\n' "$version" "$target_bin"
+    printf '\ndifyctl v%s installed (from Dify %s): %s\n' "$version" "$DIFY_TAG" "$target_bin"
 
     case ":${PATH}:" in
         *":${bin_dir}:"*)
@@ -124,7 +168,6 @@ main() {
     esac
 }
 
-# Run main unless sourced as a library (tests set DIFYCTL_INSTALL_LIB=1).
 if [ "${DIFYCTL_INSTALL_LIB:-0}" != "1" ]; then
     main "$@"
 fi

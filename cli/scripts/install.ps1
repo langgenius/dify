@@ -1,76 +1,90 @@
-# install.ps1 — one-line difyctl installer for Windows from public GitHub Releases.
+# install.ps1 — one-line difyctl installer for Windows. difyctl ships as assets
+# on Dify GitHub Releases; this installs the build matching your Dify version.
 #
 # usage:
 #   irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install.ps1 | iex
 #
 # env:
-#   DIFYCTL_CHANNEL  stable (default) | rc
-#   DIFYCTL_VERSION  exact version pin (e.g. 0.2.0); overrides DIFYCTL_CHANNEL
+#   DIFY_VERSION     Dify release tag to install difyctl from (e.g. 1.14.2). Primary key.
+#   DIFYCTL_VERSION  difyctl version pin (used only when DIFY_VERSION is unset).
 #   DIFYCTL_PREFIX   install dir (default $env:LOCALAPPDATA\difyctl)
 #   DIFYCTL_REPO     release source repo (default langgenius/dify)
 
 $ErrorActionPreference = 'Stop'
 
-$repo    = if ($env:DIFYCTL_REPO) { $env:DIFYCTL_REPO } else { 'langgenius/dify' }
-$channel = if ($env:DIFYCTL_CHANNEL) { $env:DIFYCTL_CHANNEL } else { 'stable' }
-$version = $env:DIFYCTL_VERSION
-$prefix  = if ($env:DIFYCTL_PREFIX) { $env:DIFYCTL_PREFIX } else { Join-Path $env:LOCALAPPDATA 'difyctl' }
-# Asset/tag naming is convention-locked to cli/package.json difyctl.release
-# (and release-naming.mjs). This installer ships standalone (irm | iex) so it
-# cannot read that source at runtime — keep these in sync by hand if it changes.
-$target  = 'windows-x64'
+$repo           = if ($env:DIFYCTL_REPO) { $env:DIFYCTL_REPO } else { 'langgenius/dify' }
+$difyVersion    = $env:DIFY_VERSION
+$difyctlVersion = $env:DIFYCTL_VERSION
+$prefix         = if ($env:DIFYCTL_PREFIX) { $env:DIFYCTL_PREFIX } else { Join-Path $env:LOCALAPPDATA 'difyctl' }
+$target         = 'windows-x64'
+$apiBase        = "https://api.github.com/repos/$repo"
+$dlBase         = "https://github.com/$repo/releases/download"
+$headers        = @{ Accept = 'application/vnd.github+json' }
 
-function Select-Version([string]$Channel, [object[]]$Refs) {
-    $versions = $Refs.ref |
-        Where-Object { $_ -like 'refs/tags/difyctl-v*' } |
-        ForEach-Object { $_ -replace '^refs/tags/difyctl-v', '' }
-    switch ($Channel) {
-        'rc'     { $versions = $versions | Where-Object { $_ -match '-rc\.\d+$' } }
-        'stable' { $versions = $versions | Where-Object { $_ -notmatch '-' } }
-        default  { throw "invalid DIFYCTL_CHANNEL: $Channel (expected stable | rc)" }
-    }
-    $versions |
-        Sort-Object `
-            @{ Expression = { [version](($_ -split '-')[0]) } }, `
-            @{ Expression = { if ($_ -match '-rc\.(\d+)$') { [int]$Matches[1] } else { [int]::MaxValue } } } |
+function Get-AssetSemver([string]$Name) {
+    if ($Name -notmatch '^difyctl-v(.+?)-windows-x64\.exe$') { return $null }
+    $v = $Matches[1]
+    $core = (($v -split '\+')[0] -split '-')[0]
+    if ($core -notmatch '^\d+\.\d+\.\d+$') { return $null }
+    $rc = if ($v -match '-rc\.(\d+)') { [int]$Matches[1] } else { [int]::MaxValue }
+    return [pscustomobject]@{ Name = $Name; Version = $v; Core = [version]$core; Rc = $rc }
+}
+
+function Select-Asset([object]$Release) {
+    $Release.assets |
+        ForEach-Object { Get-AssetSemver $_.name } |
+        Where-Object { $_ } |
+        Sort-Object Core, Rc |
         Select-Object -Last 1
 }
 
-function Resolve-Version {
-    if ($version) { return $version }
-    $api = "https://api.github.com/repos/$repo/git/matching-refs/tags/difyctl-v"
-    try {
-        $refs = Invoke-RestMethod -Uri $api -Headers @{ Accept = 'application/vnd.github+json' }
-    } catch {
-        throw "failed to query $repo releases (network error or GitHub API rate limit); set DIFYCTL_VERSION to pin a version"
+function Find-ReleaseForDifyctl([string]$Want) {
+    $releases = Invoke-RestMethod -Uri "$apiBase/releases?per_page=100" -Headers $headers
+    foreach ($rel in $releases) {
+        $asset = Select-Asset $rel
+        if ($asset -and $asset.Version -eq $Want) { return $rel }
     }
-    $resolved = Select-Version -Channel $channel -Refs $refs
-    if (-not $resolved) { throw "no $channel difyctl release found in $repo" }
-    return $resolved
+    return $null
 }
 
-$ver       = Resolve-Version
-$tag       = "difyctl-v$ver"
-$asset     = "difyctl-v$ver-$target.exe"
+if ($difyVersion) {
+    try { $release = Invoke-RestMethod -Uri "$apiBase/releases/tags/$difyVersion" -Headers $headers }
+    catch { throw "Dify release $difyVersion not found: $_" }
+}
+elseif ($difyctlVersion) {
+    $release = Find-ReleaseForDifyctl $difyctlVersion
+    if (-not $release) { throw "difyctl $difyctlVersion not found on any Dify release" }
+}
+else {
+    try { $release = Invoke-RestMethod -Uri "$apiBase/releases/latest" -Headers $headers }
+    catch { throw "failed to query latest Dify release (set DIFY_VERSION to pin one): $_" }
+}
+
+$difyTag = $release.tag_name
+$asset = Select-Asset $release
+if (-not $asset) { throw "no difyctl published for Dify $difyTag (target $target); set DIFY_VERSION to a release that has one" }
+
+$assetName = $asset.Name
+$ver       = $asset.Version
 $checksums = "difyctl-v$ver-checksums.txt"
-$base      = "https://github.com/$repo/releases/download/$tag"
+$base      = "$dlBase/$difyTag"
 
 $tmp = Join-Path $env:TEMP ("difyctl-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 try {
-    Write-Host "downloading $asset ($tag)..."
-    $assetPath = Join-Path $tmp $asset
+    Write-Host "downloading $assetName (Dify $difyTag)..."
+    $assetPath = Join-Path $tmp $assetName
     $sumsPath  = Join-Path $tmp $checksums
-    Invoke-WebRequest -Uri "$base/$asset" -OutFile $assetPath
+    Invoke-WebRequest -Uri "$base/$assetName" -OutFile $assetPath
     Invoke-WebRequest -Uri "$base/$checksums" -OutFile $sumsPath
 
     $expected = (Get-Content $sumsPath |
-        Where-Object { $_ -match '\s' + [regex]::Escape($asset) + '$' } |
+        Where-Object { $_ -match '\s' + [regex]::Escape($assetName) + '$' } |
         ForEach-Object { ($_ -split '\s+')[0] } |
         Select-Object -First 1)
-    if (-not $expected) { throw "no checksum entry for $asset" }
+    if (-not $expected) { throw "no checksum entry for $assetName" }
     $actual = (Get-FileHash -Path $assetPath -Algorithm SHA256).Hash.ToLower()
-    if ($actual -ne $expected.ToLower()) { throw "checksum mismatch for $asset" }
+    if ($actual -ne $expected.ToLower()) { throw "checksum mismatch for $assetName" }
 
     $binDir = Join-Path $prefix 'bin'
     New-Item -ItemType Directory -Path $binDir -Force | Out-Null
@@ -78,12 +92,13 @@ try {
     Copy-Item -Path $assetPath -Destination $targetBin -Force
 
     Write-Host ""
-    Write-Host "difyctl v$ver installed: $targetBin"
+    Write-Host "difyctl v$ver installed (from Dify $difyTag): $targetBin"
     if (($env:PATH -split ';') -notcontains $binDir) {
         Write-Host ""
         Write-Host "$binDir is not on your PATH. Add it with:"
         Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$binDir;`$env:PATH`", 'User')"
-    } else {
+    }
+    else {
         Write-Host 'verify: run "difyctl version"'
     }
 }

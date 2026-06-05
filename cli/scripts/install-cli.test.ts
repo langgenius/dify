@@ -4,47 +4,78 @@ import { describe, expect, it } from 'vitest'
 
 const SCRIPT = fileURLToPath(new URL('./install-cli.sh', import.meta.url))
 
-// Drive the pure resolver: `. install-cli.sh; select_version <channel>` with
-// the matching-refs JSON piped to stdin. DIFYCTL_INSTALL_LIB=1 stops main running.
-function selectVersion(channel: string, refsJson: string): string {
-  return execFileSync('sh', ['-c', `. "${SCRIPT}"; select_version "$1"`, 'sh', channel], {
-    input: refsJson,
+function pickAsset(target: string, releaseJson: string): string {
+  return execFileSync('sh', ['-c', `. "${SCRIPT}"; pick_asset "$1"`, 'sh', target], {
+    input: releaseJson,
     encoding: 'utf8',
     env: { ...process.env, DIFYCTL_INSTALL_LIB: '1' },
   }).trim()
 }
 
-// A git/matching-refs/tags/difyctl-v response in arbitrary (non-sorted) order,
-// with a stray non-difyctl ref to prove the filter is strict.
-const REFS = JSON.stringify([
-  { ref: 'refs/tags/difyctl-v0.1.0-rc.1' },
-  { ref: 'refs/tags/difyctl-v0.2.0' },
-  { ref: 'refs/tags/difyctl-v0.1.0' },
-  { ref: 'refs/tags/some-other-tag' },
-  { ref: 'refs/tags/difyctl-v0.2.0-rc.2' },
-  { ref: 'refs/tags/difyctl-v0.10.0' },
-  { ref: 'refs/tags/difyctl-v0.2.0-rc.10' },
-])
+function assetVersion(name: string, target: string): string {
+  return execFileSync('sh', ['-c', `. "${SCRIPT}"; asset_version "$1" "$2"`, 'sh', name, target], {
+    encoding: 'utf8',
+    env: { ...process.env, DIFYCTL_INSTALL_LIB: '1' },
+  }).trim()
+}
 
-describe('install-cli select_version', () => {
-  it('stable picks the highest non-prerelease difyctl version', () => {
-    expect(selectVersion('stable', REFS)).toBe('0.10.0')
+const RELEASE = JSON.stringify({
+  tag_name: '1.14.2',
+  name: 'Dify 1.14.2',
+  assets: [
+    { name: 'difyctl-v0.1.0-rc.1-linux-x64' },
+    { name: 'difyctl-v0.2.0-linux-x64' },
+    { name: 'difyctl-v0.2.0-linux-arm64' },
+    { name: 'difyctl-v0.2.0-darwin-arm64' },
+    { name: 'difyctl-v0.2.0-windows-x64.exe' },
+    { name: 'difyctl-v0.2.0-checksums.txt' },
+    { name: 'some-other-asset.zip' },
+  ],
+})
+
+describe('install-cli pick_asset', () => {
+  it('picks the highest difyctl version for a linux target', () => {
+    expect(pickAsset('linux-x64', RELEASE)).toBe('difyctl-v0.2.0-linux-x64')
   })
 
-  it('rc picks the highest rc (semver-aware: rc.10 > rc.2)', () => {
-    expect(selectVersion('rc', REFS)).toBe('0.2.0-rc.10')
+  it('matches the windows .exe asset', () => {
+    expect(pickAsset('windows-x64', RELEASE)).toBe('difyctl-v0.2.0-windows-x64.exe')
   })
 
-  it('ignores non-difyctl refs entirely', () => {
-    const noisy = JSON.stringify([{ ref: 'refs/tags/v1.15.0' }, { ref: 'refs/tags/difyctl-v0.3.0' }])
-    expect(selectVersion('stable', noisy)).toBe('0.3.0')
+  it('matches an arm64 target exactly (no x64 bleed-through)', () => {
+    expect(pickAsset('darwin-arm64', RELEASE)).toBe('difyctl-v0.2.0-darwin-arm64')
   })
 
-  it('yields empty when there are no difyctl tags', () => {
-    expect(selectVersion('stable', '[]')).toBe('')
+  it('excludes the checksums asset', () => {
+    expect(pickAsset('linux-x64', RELEASE)).not.toContain('checksums')
   })
 
-  it('rejects an invalid channel', () => {
-    expect(() => selectVersion('nightly', REFS)).toThrow()
+  it('yields empty when no asset matches the target', () => {
+    expect(pickAsset('darwin-x64', RELEASE)).toBe('')
+  })
+
+  it('picks the highest semver when several difyctl versions are present', () => {
+    const many = JSON.stringify({
+      assets: [
+        { name: 'difyctl-v0.2.0-linux-x64' },
+        { name: 'difyctl-v0.10.0-linux-x64' },
+        { name: 'difyctl-v0.9.0-linux-x64' },
+      ],
+    })
+    expect(pickAsset('linux-x64', many)).toBe('difyctl-v0.10.0-linux-x64')
+  })
+})
+
+describe('install-cli asset_version', () => {
+  it('extracts the version from a posix asset name', () => {
+    expect(assetVersion('difyctl-v0.2.0-linux-x64', 'linux-x64')).toBe('0.2.0')
+  })
+
+  it('extracts the version from a windows .exe asset name', () => {
+    expect(assetVersion('difyctl-v0.2.0-windows-x64.exe', 'windows-x64')).toBe('0.2.0')
+  })
+
+  it('extracts a prerelease version', () => {
+    expect(assetVersion('difyctl-v0.1.0-rc.1-linux-x64', 'linux-x64')).toBe('0.1.0-rc.1')
   })
 })
