@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from libs.datetime_utils import naive_utc_now
+from libs.helper import to_timestamp
 from models.agent import (
     Agent,
     AgentConfigRevision,
@@ -64,9 +65,9 @@ class AgentRosterService:
             "created_by": agent.created_by,
             "updated_by": agent.updated_by,
             "archived_by": agent.archived_by,
-            "archived_at": agent.archived_at.isoformat() if agent.archived_at else None,
-            "created_at": agent.created_at.isoformat() if agent.created_at else None,
-            "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
+            "archived_at": to_timestamp(agent.archived_at),
+            "created_at": to_timestamp(agent.created_at),
+            "updated_at": to_timestamp(agent.updated_at),
         }
 
     @staticmethod
@@ -80,7 +81,7 @@ class AgentRosterService:
             "summary": version.summary,
             "version_note": version.version_note,
             "created_by": version.created_by,
-            "created_at": version.created_at.isoformat() if version.created_at else None,
+            "created_at": to_timestamp(version.created_at),
         }
 
     def list_roster_agents(
@@ -415,7 +416,7 @@ class AgentRosterService:
                 "summary": revision.summary,
                 "version_note": revision.version_note,
                 "created_by": revision.created_by,
-                "created_at": revision.created_at.isoformat() if revision.created_at else None,
+                "created_at": to_timestamp(revision.created_at),
             }
             for revision in revisions
         ]

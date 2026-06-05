@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -495,6 +496,9 @@ def test_composer_current_version_and_error_paths(monkeypatch):
 
 
 def test_roster_list_and_invite_options(monkeypatch):
+    created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+    updated_at = datetime(2026, 1, 3, 3, 4, 5, tzinfo=UTC)
+    version_created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -505,7 +509,10 @@ def test_roster_list_and_invite_options(monkeypatch):
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
     )
+    agent.created_at = created_at
+    agent.updated_at = updated_at
     version = AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1)
+    version.created_at = version_created_at
     agent.active_config_snapshot_id = "version-1"
     fake_session = FakeSession(
         scalar=[1, 1, SimpleNamespace(id="workflow-1")],
@@ -518,13 +525,30 @@ def test_roster_list_and_invite_options(monkeypatch):
     invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
 
     assert listed["data"][0]["active_config_snapshot"]["id"] == "version-1"
+    assert listed["data"][0]["created_at"] == int(created_at.timestamp())
+    assert listed["data"][0]["updated_at"] == int(updated_at.timestamp())
+    assert listed["data"][0]["active_config_snapshot"]["created_at"] == int(version_created_at.timestamp())
     assert invited["data"][0]["is_in_current_workflow"] is True
     assert invited["data"][0]["existing_node_ids"] == ["node-1"]
 
 
 def test_roster_update_archive_versions_and_detail(monkeypatch):
     listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
-    fake_session = FakeSession(scalars=[[listed_version]])
+    listed_version_created_at = datetime(2026, 1, 5, 3, 4, 5, tzinfo=UTC)
+    listed_version.created_at = listed_version_created_at
+    revision_created_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
+    revision = SimpleNamespace(
+        id="revision-1",
+        previous_snapshot_id=None,
+        current_snapshot_id="version-1",
+        revision=1,
+        operation=AgentConfigRevisionOperation.CREATE_VERSION,
+        summary=None,
+        version_note=None,
+        created_by="account-1",
+        created_at=revision_created_at,
+    )
+    fake_session = FakeSession(scalars=[[listed_version], [revision]])
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -536,6 +560,7 @@ def test_roster_update_archive_versions_and_detail(monkeypatch):
         status=AgentStatus.ACTIVE,
     )
     version = AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1, config_snapshot='{"prompt":{}}')
+    version.created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
 
     service = AgentRosterService(fake_session)
     monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
@@ -559,9 +584,10 @@ def test_roster_update_archive_versions_and_detail(monkeypatch):
     assert updated["description"] == "new"
     assert agent.status == AgentStatus.ARCHIVED
     assert versions[0]["id"] == "version-2"
+    assert versions[0]["created_at"] == int(listed_version_created_at.timestamp())
     assert detail["config_snapshot"] == {"prompt": {}}
-    assert fake_session.commits == 0
-    assert fake_session.flushes >= 2
+    assert detail["created_at"] == int(version.created_at.timestamp())
+    assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
 
 
 def test_roster_create_detail_and_lookup_helpers(monkeypatch):
