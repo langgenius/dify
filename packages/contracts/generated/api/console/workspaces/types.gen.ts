@@ -397,6 +397,7 @@ export type McpProviderCreatePayload = {
   icon: string
   icon_background?: string
   icon_type: string
+  identity_mode?: IdentityMode
   name: string
   server_identifier: string
   server_url: string
@@ -415,6 +416,7 @@ export type McpProviderUpdatePayload = {
   icon: string
   icon_background?: string
   icon_type: string
+  identity_mode?: IdentityMode
   name: string
   provider_id: string
   server_identifier: string
@@ -553,6 +555,8 @@ export type PluginPermissionSettingsPayload = {
 export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
 
 export type CredentialType = 'api-key' | 'oauth2' | 'unauthorized'
+
+export type IdentityMode = 'idp_token' | 'off'
 
 export type WorkflowToolParameterConfiguration = {
   description: string
