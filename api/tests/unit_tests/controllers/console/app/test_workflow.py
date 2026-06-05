@@ -513,7 +513,7 @@ def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     handler = inspect.unwrap(api.get)
 
     with pytest.raises(DraftWorkflowNotExist):
-        handler(api, "t1", app_model=SimpleNamespace(id="app"))
+        handler(api, app_model=SimpleNamespace(id="app"))
 
 
 def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
