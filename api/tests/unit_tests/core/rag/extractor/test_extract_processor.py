@@ -200,6 +200,13 @@ class TestExtractProcessorFileRouting:
 
         assert extractor_name == expected_extractor
 
+    def test_extract_routes_excel_with_upload_context(self, monkeypatch: pytest.MonkeyPatch):
+        extractor_name, args, kwargs = self._run_extract_for_extension(monkeypatch, ".xlsx", etl_type="SelfHosted")
+
+        assert extractor_name == "ExcelExtractor"
+        assert args[1:] == ("tenant-1", "user-1")
+        assert kwargs == {}
+
     def test_extract_requires_upload_file_when_file_path_not_provided(self):
         setting = SimpleNamespace(datasource_type=DatasourceType.FILE, upload_file=None)
 
