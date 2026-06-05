@@ -31,6 +31,7 @@ const PluginTasks = ({
   const [open, setOpen] = useState(false)
   const {
     errorPlugins,
+    successPlugins,
     runningPlugins,
     runningPluginsLength,
     successPluginsLength,
@@ -45,7 +46,7 @@ const PluginTasks = ({
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
   const hasPluginTasks = totalPluginsLength > 0
-  const canOpenMenu = isFailed || isInstallingWithError
+  const canOpenMenu = isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess
 
   // Generate tooltip text based on status
   const tip = useMemo(() => {
@@ -83,6 +84,11 @@ const PluginTasks = ({
   }, [handleClearErrorPlugin, runningPluginsLength])
 
   // Clear handlers using the generic function
+  const handleClearAll = useCallback(
+    () => clearPluginsAndClose([...successPlugins, ...errorPlugins]),
+    [clearPluginsAndClose, successPlugins, errorPlugins],
+  )
+
   const handleClearErrors = useCallback(
     () => clearPluginsAndClose(errorPlugins),
     [clearPluginsAndClose, errorPlugins],
@@ -139,8 +145,10 @@ const PluginTasks = ({
         >
           <PluginTaskList
             runningPlugins={runningPlugins}
+            successPlugins={successPlugins}
             errorPlugins={errorPlugins}
             getIconUrl={getIconUrl}
+            onClearAll={handleClearAll}
             onClearErrors={handleClearErrors}
             onClearSingle={handleClearSingle}
           />
