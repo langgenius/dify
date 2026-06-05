@@ -162,7 +162,7 @@
   "newApp.agentShortDescription": "Agent intelligent avec raisonnement et utilisation autonome de l’outil",
   "newApp.agentUserDescription": "Un agent intelligent capable d’un raisonnement itératif et d’une utilisation autonome d’outils pour atteindre les objectifs de la tâche.",
   "newApp.appCreateDSLErrorPart1": "Une différence significative entre les versions DSL a été détectée. Forcer l’importation peut entraîner un dysfonctionnement de l’application.",
-  "newApp.appCreateDSLErrorPart2": "Voulez-vous continuer ?",
+  "newApp.appCreateDSLErrorPart2": "Voulez-vous continuer ?",
   "newApp.appCreateDSLErrorPart3": "Version actuelle de l’application DSL :",
   "newApp.appCreateDSLErrorPart4": "Version DSL prise en charge par le système :",
   "newApp.appCreateDSLErrorTitle": "Incompatibilité de version",

@@ -125,7 +125,7 @@ describe('TaskStatusIndicator', () => {
 
   describe('Success state', () => {
     it('should show success icon when isSuccess', () => {
-      render(
+      const { container } = render(
         <TaskStatusIndicator
           {...defaultProps}
           isSuccess
@@ -138,7 +138,7 @@ describe('TaskStatusIndicator', () => {
     })
 
     it('should show success icon when successPlugins > 0 and no running plugins', () => {
-      render(
+      const { container } = render(
         <TaskStatusIndicator
           {...defaultProps}
           successPluginsLength={2}

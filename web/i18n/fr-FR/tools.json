@@ -134,7 +134,7 @@
   "mcp.modal.name": "Nom & Icône",
   "mcp.modal.namePlaceholder": "Nommez votre serveur MCP",
   "mcp.modal.noHeaders": "Aucun en-tête personnalisé configuré",
-  "mcp.modal.redirectUrlWarning": "Veuillez configurer votre URL de redirection OAuth sur :",
+  "mcp.modal.redirectUrlWarning": "Veuillez configurer votre URL de redirection OAuth sur :",
   "mcp.modal.save": "Enregistrer",
   "mcp.modal.serverIdentifier": "Identifiant du Serveur",
   "mcp.modal.serverIdentifierPlaceholder": "Identifiant unique, par ex. mon-serveur-mcp",
