@@ -11,9 +11,9 @@ import { renderWithNuqs } from '@/test/nuqs-testing'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 import { AppInitializer } from '../app-initializer'
 
-const { mockSendGAEvent, mockTrackEvent } = vi.hoisted(() => ({
+const { mockSendGAEvent, mockRememberRegistrationSuccess } = vi.hoisted(() => ({
   mockSendGAEvent: vi.fn(),
-  mockTrackEvent: vi.fn(),
+  mockRememberRegistrationSuccess: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -34,8 +34,8 @@ vi.mock('@/utils/gtag', () => ({
   sendGAEvent: (...args: unknown[]) => mockSendGAEvent(...args),
 }))
 
-vi.mock('../base/amplitude', () => ({
-  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+vi.mock('../base/amplitude/registration-tracking', () => ({
+  rememberRegistrationSuccess: (...args: unknown[]) => mockRememberRegistrationSuccess(...args),
 }))
 
 const mockUsePathname = vi.mocked(usePathname)
@@ -113,10 +113,11 @@ describe('AppInitializer', () => {
 
     await waitFor(() => expect(screen.getByText('ready')).toBeInTheDocument())
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
+    // Amplitude event is deferred (remembered) so it can fire after the user ID is set,
+    // while the GA event still fires immediately.
+    expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
       method: 'oauth',
-      utm_source: 'linkedin',
-      slug: 'agent-launch',
+      utmInfo: { utm_source: 'linkedin', slug: 'agent-launch' },
     })
     expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
       method: 'oauth',
@@ -139,8 +140,9 @@ describe('AppInitializer', () => {
 
     await waitFor(() => expect(screen.getByText('ready')).toBeInTheDocument())
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success', {
+    expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
       method: 'oauth',
+      utmInfo: null,
     })
     expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success', {
       method: 'oauth',

@@ -13,7 +13,7 @@ import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
-import { trackEvent } from './base/amplitude'
+import { rememberRegistrationSuccess } from './base/amplitude/registration-tracking'
 
 type AppInitializerProps = {
   children: ReactNode
@@ -58,11 +58,10 @@ export const AppInitializer = ({
           }
         }
 
-        // Track registration event with UTM params
-        trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
-          method: 'oauth',
-          ...utmInfo,
-        })
+        // Defer the Amplitude registration event until the user ID is attached. It is
+        // flushed in AppContextProvider after setUserId runs. Firing it here would
+        // record it under an anonymous Amplitude profile (no user ID set yet).
+        rememberRegistrationSuccess({ method: 'oauth', utmInfo })
 
         sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'oauth',
