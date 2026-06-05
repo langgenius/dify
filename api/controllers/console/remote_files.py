@@ -1,3 +1,5 @@
+from typing import override
+
 import httpx
 from flask import request
 from flask_restx import Resource
@@ -34,6 +36,7 @@ register_response_schema_models(console_ns, FileWithSignedUrl, RemoteFileInfo)
 class GetRemoteFileInfo(Resource):
     @console_ns.response(200, "Success", console_ns.models[RemoteFileInfo.__name__])
     @login_required
+    @override
     def get(self, url: str):
         decoded_url = helpers.decode_remote_url(url, request.query_string)
         resp = remote_fetcher.make_request("HEAD", decoded_url)
@@ -52,6 +55,7 @@ class RemoteFileUpload(Resource):
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
     @login_required
     @with_current_user
+    @override
     def post(self, current_user: Account):
         payload = RemoteFileUploadPayload.model_validate(console_ns.payload)
         url = payload.url

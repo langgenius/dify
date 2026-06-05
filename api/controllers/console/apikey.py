@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import override
 from uuid import UUID
 
 import flask_restx
@@ -71,6 +72,7 @@ class BaseApiKeyListResource(Resource):
     token_prefix: str | None = None
     max_keys = 10
 
+    @override
     def get(self, resource_id: str, current_tenant_id: str) -> dict[str, object]:
         return dump_response(ApiKeyList, self._get_api_key_list(resource_id, current_tenant_id))
 
@@ -86,6 +88,7 @@ class BaseApiKeyListResource(Resource):
         return ApiKeyList.model_validate({"data": keys}, from_attributes=True)
 
     @edit_permission_required
+    @override
     def post(self, resource_id: str, current_tenant_id: str) -> tuple[dict[str, object], int]:
         return dump_response(ApiKeyItem, self._create_api_key(resource_id, current_tenant_id)), 201
 
@@ -127,6 +130,7 @@ class BaseApiKeyResource(Resource):
     resource_model: type | None = None
     resource_id_field: str | None = None
 
+    @override
     def delete(
         self, resource_id: str, api_key_id: str, current_tenant_id: str, current_user: Account
     ) -> tuple[str, int]:
@@ -175,6 +179,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "App ID"})
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
+    @override
     def get(self, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
         """Get all API keys for an app"""
         return dump_response(ApiKeyList, self._get_api_key_list(str(resource_id), current_tenant_id))
@@ -186,6 +191,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
+    @override
     def post(self, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key for an app"""
         return dump_response(ApiKeyItem, self._create_api_key(str(resource_id), current_tenant_id)), 201
@@ -204,6 +210,7 @@ class AppApiKeyResource(BaseApiKeyResource):
     @console_ns.response(204, "API key deleted successfully")
     @with_current_user
     @with_current_tenant_id
+    @override
     def delete(
         self, current_tenant_id: str, current_user: Account, resource_id: UUID, api_key_id: UUID
     ) -> tuple[str, int]:
@@ -223,6 +230,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "Dataset ID"})
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
+    @override
     def get(self, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
         """Get all API keys for a dataset"""
         return dump_response(ApiKeyList, self._get_api_key_list(str(resource_id), current_tenant_id))
@@ -234,6 +242,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
+    @override
     def post(self, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key for a dataset"""
         return dump_response(ApiKeyItem, self._create_api_key(str(resource_id), current_tenant_id)), 201
@@ -252,6 +261,7 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     @console_ns.response(204, "API key deleted successfully")
     @with_current_user
     @with_current_tenant_id
+    @override
     def delete(
         self, current_tenant_id: str, current_user: Account, resource_id: UUID, api_key_id: UUID
     ) -> tuple[str, int]:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, override
 from uuid import UUID
 
 from flask import request
@@ -99,6 +99,7 @@ class CodeBasedExtensionAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @override
     def get(self):
         query = CodeBasedExtensionQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -117,6 +118,7 @@ class APIBasedExtensionAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @override
     def get(self, current_tenant_id: str):
         return [
             _serialize_api_based_extension(extension)
@@ -131,6 +133,7 @@ class APIBasedExtensionAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @override
     def post(self, current_tenant_id: str):
         payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
 
@@ -154,6 +157,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @override
     def get(self, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
 
@@ -170,6 +174,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @override
     def post(self, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
 
@@ -198,6 +203,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @override
     def delete(self, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
 
