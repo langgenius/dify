@@ -3,6 +3,7 @@ import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { OutputFormat, table } from '@/framework/output'
+import { agentGuide } from './guide'
 import { runGetApp } from './run'
 
 const APP_MODE_VALUES: readonly AppMode[] = [
@@ -64,5 +65,9 @@ export default class GetApp extends DifyCommand {
       format,
       data: result.data,
     })
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

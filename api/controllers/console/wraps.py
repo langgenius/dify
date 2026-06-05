@@ -5,6 +5,7 @@ import time
 from collections.abc import Callable
 from functools import wraps
 from typing import Concatenate, Protocol, cast
+from typing import Any, Concatenate, overload
 
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
@@ -90,10 +91,21 @@ def _is_setup_completed() -> bool:
     """
     return db.session.scalar(select(DifySetup).limit(1)) is not None
 
+@overload
+def account_initialization_required[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]: ...
 
-def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+
+@overload
+def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+
+
+def account_initialization_required[R](view: Callable[..., R]) -> Callable[..., R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+    def decorated(*args: Any, **kwargs: Any) -> R:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain functions used in tests and utilities.
         # check account initialization
         current_user, _ = current_account_with_tenant()
         if current_user.status == AccountStatus.UNINITIALIZED:
@@ -272,11 +284,22 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+@overload
+def setup_required[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]: ...
+
+
+@overload
+def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
     """Require self-hosted bootstrap setup before serving protected routes."""
 
+
+def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+    def decorated(*args: Any, **kwargs: Any) -> R:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain functions used in tests and utilities.
         # check setup
         if dify_config.EDITION == "SELF_HOSTED" and not _is_setup_completed():
             if os.environ.get("INIT_PASSWORD"):
@@ -608,7 +631,7 @@ def with_current_user_id[T, **P, R](
     @wraps(view)
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
         current_user, _ = current_account_with_tenant()
-        return view(self, str(current_user.id), *args, **kwargs)
+        return view(self, current_user.id, *args, **kwargs)
 
     return decorated
 

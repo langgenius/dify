@@ -22,11 +22,13 @@ from clients.agent_backend import (
     AgentBackendRunRequestBuilder,
     redact_for_agent_backend_log,
 )
+from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.workflow.nodes.agent_v2.plugin_tools_builder import (
     WorkflowAgentPluginToolsBuilder,
     WorkflowAgentPluginToolsBuildError,
 )
+from core.workflow.nodes.agent_v2.runtime_request_builder import build_shell_layer_config
 from models.agent_config_entities import AgentSoulConfig
 from models.provider_ids import ModelProviderID
 
@@ -96,10 +98,13 @@ class AgentAppRuntimeRequestBuilder:
             )
         except WorkflowAgentPluginToolsBuildError as error:
             raise AgentAppRuntimeRequestBuildError(error.error_code, str(error)) from error
-        if tools_layer is not None:
+        if tools_layer is not None or agent_soul.tools.cli_tools:
             metadata["agent_tools"] = {
-                "dify_tool_count": len(tools_layer.tools),
-                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools],
+                "dify_tool_count": len(tools_layer.tools) if tools_layer is not None else 0,
+                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools]
+                if tools_layer is not None
+                else [],
+                "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
         request = self._request_builder.build_for_agent_app(
@@ -112,7 +117,7 @@ class AgentAppRuntimeRequestBuilder:
                     model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
                     model=agent_soul.model.model,
                     credentials=self._normalize_credentials(credentials),
-                    model_settings=agent_soul.model.model_settings,
+                    model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
@@ -126,6 +131,8 @@ class AgentAppRuntimeRequestBuilder:
                 agent_soul_prompt=agent_soul.prompt.system_prompt or None,
                 user_prompt=context.user_query,
                 tools=tools_layer,
+                include_shell=dify_config.AGENT_SHELL_ENABLED,
+                shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,

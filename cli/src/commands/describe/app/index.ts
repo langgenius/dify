@@ -2,6 +2,7 @@ import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { formatted, OutputFormat } from '@/framework/output'
+import { agentGuide } from './guide'
 import { runDescribeApp } from './run'
 
 export default class DescribeApp extends DifyCommand {
@@ -35,5 +36,9 @@ export default class DescribeApp extends DifyCommand {
         { active: ctx.active, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
       ),
     })
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

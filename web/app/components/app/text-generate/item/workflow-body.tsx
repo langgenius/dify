@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -17,7 +18,7 @@ type WorkflowBodyProps = {
   depth: number
   hideProcessDetail?: boolean
   isError: boolean
-  onSubmitHumanInputForm: (formToken: string, formData: { inputs: Record<string, string>, action: string }) => Promise<void>
+  onSubmitHumanInputForm: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   onSwitchTab: (tab: string) => void
   showResultTabs: boolean
   siteInfo: SiteInfo | null

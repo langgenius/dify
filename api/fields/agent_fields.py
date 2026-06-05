@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import Field
 
@@ -13,10 +13,15 @@ from models.agent import (
     WorkflowAgentBindingType,
 )
 from models.agent_config_entities import (
+    AgentCliToolConfig,
+    AgentHumanContactConfig,
+    AgentKnowledgeDatasetConfig,
+    AgentSkillRefConfig,
     AgentSoulConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
+    WorkflowPreviousNodeOutputRef,
 )
 from services.entities.agent_entities import (
     ComposerCandidateCapabilities,
@@ -32,7 +37,7 @@ class AgentConfigSnapshotSummaryResponse(ResponseModel):
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None
-    created_at: str | None = None
+    created_at: int | None = None
 
 
 class AgentRosterResponse(ResponseModel):
@@ -54,9 +59,9 @@ class AgentRosterResponse(ResponseModel):
     created_by: str | None = None
     updated_by: str | None = None
     archived_by: str | None = None
-    archived_at: str | None = None
-    created_at: str | None = None
-    updated_at: str | None = None
+    archived_at: int | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 class AgentInviteOptionResponse(AgentRosterResponse):
@@ -90,7 +95,7 @@ class AgentConfigRevisionResponse(ResponseModel):
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None
-    created_at: str | None = None
+    created_at: int | None = None
 
 
 class AgentConfigSnapshotDetailResponse(AgentConfigSnapshotSummaryResponse):
@@ -167,18 +172,27 @@ class AgentComposerValidateResponse(ResponseModel):
     errors: list[str] = Field(default_factory=list)
 
 
+class AgentComposerDifyToolCandidateResponse(ResponseModel):
+    id: str | None = None
+    name: str | None = None
+    description: str | None = None
+    provider: str | None = None
+    provider_id: str | None = None
+    plugin_id: str | None = None
+
+
 class AgentComposerNodeJobCandidatesResponse(ResponseModel):
-    previous_node_outputs: list[dict[str, Any]] = Field(default_factory=list)
+    previous_node_outputs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declare_output_types: list[DeclaredOutputType] = Field(default_factory=list)
-    human_contacts: list[dict[str, Any]] = Field(default_factory=list)
+    human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
 
 
 class AgentComposerSoulCandidatesResponse(ResponseModel):
-    skills_files: list[dict[str, Any]] = Field(default_factory=list)
-    dify_tools: list[dict[str, Any]] = Field(default_factory=list)
-    cli_tools: list[dict[str, Any]] = Field(default_factory=list)
-    knowledge_datasets: list[dict[str, Any]] = Field(default_factory=list)
-    human_contacts: list[dict[str, Any]] = Field(default_factory=list)
+    skills_files: list[AgentSkillRefConfig] = Field(default_factory=list)
+    dify_tools: list[AgentComposerDifyToolCandidateResponse] = Field(default_factory=list)
+    cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
+    knowledge_datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
+    human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
 
 
 class AgentComposerCandidatesResponse(ResponseModel):

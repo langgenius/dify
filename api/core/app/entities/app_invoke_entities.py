@@ -54,6 +54,7 @@ class DifyRunContext(BaseModel):
     user_id: str
     user_from: UserFrom
     invoke_from: InvokeFrom
+    trace_session_id: str | None = None
 
 
 def build_dify_run_context(
@@ -63,6 +64,7 @@ def build_dify_run_context(
     user_id: str,
     user_from: UserFrom,
     invoke_from: InvokeFrom,
+    trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -78,6 +80,7 @@ def build_dify_run_context(
         user_id=user_id,
         user_from=user_from,
         invoke_from=invoke_from,
+        trace_session_id=trace_session_id,
     )
     return run_context
 

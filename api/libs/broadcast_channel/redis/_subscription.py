@@ -3,7 +3,7 @@ import queue
 import threading
 import types
 from collections.abc import Generator, Iterator
-from typing import Any, Self
+from typing import Any, Self, override
 
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
@@ -165,6 +165,7 @@ class RedisSubscriptionBase(Subscription):
 
             yield item
 
+    @override
     def __iter__(self) -> Iterator[bytes]:
         """Return an iterator over messages from the subscription."""
         if self._closed.is_set():
@@ -172,6 +173,7 @@ class RedisSubscriptionBase(Subscription):
         self._start_if_needed()
         return iter(self._message_iterator())
 
+    @override
     def receive(self, timeout: float | None = 0.1) -> bytes | None:
         """Receive the next message from the subscription."""
         if self._closed.is_set():
@@ -185,11 +187,13 @@ class RedisSubscriptionBase(Subscription):
 
         return item
 
+    @override
     def __enter__(self) -> Self:
         """Context manager entry point."""
         self._start_if_needed()
         return self
 
+    @override
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -200,6 +204,7 @@ class RedisSubscriptionBase(Subscription):
         self.close()
         return None
 
+    @override
     def close(self) -> None:
         """Close the subscription and clean up resources."""
         if self._closed.is_set():

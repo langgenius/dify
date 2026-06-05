@@ -1,3 +1,4 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { Args } from '@/framework/flags'
 import { raw } from '@/framework/output'
@@ -6,6 +7,8 @@ import { runConfigSet } from './run'
 
 export default class ConfigSet extends DifyCommand {
   static override description = 'Set a config key (validates value)'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> config set defaults.format json',

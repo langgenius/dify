@@ -1,7 +1,7 @@
 """Shellctl-backed Dify shell layer.
 
 ``DifyShellLayer`` is a stateful pydantic-ai tool layer that exposes exactly
-``shell.run``, ``shell.wait``, ``shell.input``, and ``shell.interrupt``. The
+``shell_run``, ``shell_wait``, ``shell_input``, and ``shell_interrupt``. The
 layer persists only JSON-safe shell session state in ``runtime_state`` and keeps
 its live shellctl HTTP client on the layer instance only while
 ``resource_context()`` is active. Agenton enters that resource scope before
@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Callable, Sequence
 from contextlib import asynccontextmanager
+import json
 import logging
 import re
 import secrets
@@ -58,51 +59,51 @@ _SESSION_ID_ATTEMPT_LIMIT = 256
 _SESSION_ID_PATTERN = re.compile(r"^[0-9a-f]{7}$")
 _SHELL_LAYER_PREFIX_PROMPT = """You have access to a shell layer. It provides four tools:
 
-1. shell.run
+1. shell_run
    Start a new shell job in the current isolated workspace.
    Use it to execute commands or scripts.
 
-2. shell.wait
+2. shell_wait
    Wait for more output or completion from an existing shell job.
-   Use it when shell.run returns done=false.
+   Use it when shell_run returns done=false.
 
-3. shell.input
+3. shell_input
    Send stdin text to a running shell job, then wait for new output.
    Use it for interactive commands that are waiting for input.
 
-4. shell.interrupt
+4. shell_interrupt
    Interrupt a running shell job.
    Use it to stop a long-running, stuck, or no-longer-needed command.
 
 Common arguments:
 
 - script:
-  The command or script to execute. Used by shell.run.
+  The command or script to execute. Used by shell_run.
 
 - job_id:
-  The id of a shell job returned by shell.run.
-  Use it with shell.wait, shell.input, and shell.interrupt.
+  The id of a shell job returned by shell_run.
+  Use it with shell_wait, shell_input, and shell_interrupt.
   Never invent a job_id.
 
 - timeout:
   Maximum time, in seconds, to wait for output or completion for this tool call.
-  A timeout does not necessarily mean the job has stopped; if done=false, use shell.wait again.
+  A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.
 
 - text:
-  Text to send to the running process stdin. Used by shell.input.
+  Text to send to the running process stdin. Used by shell_input.
   Include "\\n" if the process expects Enter.
 
 - grace_seconds:
-  Time to wait after interrupting before forceful cleanup. Used by shell.interrupt.
+  Time to wait after interrupting before forceful cleanup. Used by shell_interrupt.
 
 Usage rules:
 
-- Start with shell.run.
-- If shell.run returns done=false, call shell.wait with the returned job_id.
-- Use shell.input only when the job is running and waiting for stdin.
-- Use shell.interrupt when a job is stuck or should be stopped.
+- Start with shell_run.
+- If shell_run returns done=false, call shell_wait with the returned job_id.
+- Use shell_input only when the job is running and waiting for stdin.
+- Use shell_interrupt when a job is stuck or should be stopped.
 
-The script argument of shell.run can be a normal shell script, or a shebang script.
+The script argument of shell_run can be a normal shell script, or a shebang script.
 If the first line is a shebang, the shell layer executes the script directly.
 
 Tips:
@@ -271,7 +272,7 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     The mutable serializable state lives in ``runtime_state``; the live client is
     intentionally kept off-snapshot in ``_shellctl_client``. Tool methods update
     tracked job ids and output offsets after every successful shellctl response so
-    later ``shell.wait``/``shell.input`` calls can resume from the last known
+    later ``shell_wait``/``shell_input`` calls can resume from the last known
     offset without exposing offsets as model-controlled inputs.
     """
 
@@ -318,10 +319,10 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     @override
     def tools(self) -> Sequence[PydanticAITool[object]]:
         return [
-            Tool(self._tool_run, name="shell.run"),
-            Tool(self._tool_wait, name="shell.wait"),
-            Tool(self._tool_input, name="shell.input"),
-            Tool(self._tool_interrupt, name="shell.interrupt"),
+            Tool(self._tool_run, name="shell_run"),
+            Tool(self._tool_wait, name="shell_wait"),
+            Tool(self._tool_input, name="shell_input"),
+            Tool(self._tool_interrupt, name="shell_interrupt"),
         ]
 
     @override
@@ -357,6 +358,7 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         try:
             _ = self._require_client()
             session_id, workspace_cwd = await self._allocate_workspace()
+            await self._bootstrap_workspace(workspace_cwd)
         except BaseException:
             await self._cleanup_create_failure()
             raise
@@ -432,7 +434,7 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         """Start a new shell job inside the session workspace."""
         try:
             client = self._require_client()
-            result = await client.run(script, cwd=self._require_workspace_cwd(), timeout=timeout)
+            result = await client.run(_wrap_user_script(script), cwd=self._require_workspace_cwd(), timeout=timeout)
             self._track_job_result(result)
             return _job_result_observation(result)
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
@@ -491,6 +493,17 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
                 )
             return session_id, _workspace_cwd(session_id)
         raise RuntimeError("Failed to allocate a unique shell workspace session id after 256 attempts.")
+
+    async def _bootstrap_workspace(self, workspace_cwd: str) -> None:
+        """Apply Agent Soul shell config to the freshly-created workspace."""
+        bootstrap_script = _workspace_bootstrap_script(self.config)
+        if not bootstrap_script:
+            return
+        result = await self._run_internal_job_to_completion(bootstrap_script, cwd=workspace_cwd)
+        if result["exit_code"] != 0:
+            raise RuntimeError(
+                f"Failed to bootstrap shell workspace {workspace_cwd}: {result['status']} exit_code={result['exit_code']}"
+            )
 
     async def _cleanup_create_failure(self) -> None:
         """Best-effort shellctl job cleanup for create failures before ACTIVE state.
@@ -681,6 +694,51 @@ def _workspace_cwd(session_id: str) -> str:
     return f"{_WORKSPACE_ROOT}/{_validated_session_id(session_id)}"
 
 
+def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
+    """Return the workspace bootstrap script for env + CLI tool declarations."""
+    lines: list[str] = [
+        "set -eu",
+        'mkdir -p ".dify"',
+        "cat > \".dify/env.sh\" <<'DIFY_ENV_EOF'",
+    ]
+    for env_var in config.env:
+        lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
+    for secret_ref in config.secret_refs:
+        # Secret refs are resolved outside this public DTO. Preserve the env var
+        # name without inventing a value so host-provided env can flow through.
+        lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
+    if config.sandbox is not None:
+        if config.sandbox.provider:
+            lines.append(f"export DIFY_SANDBOX_PROVIDER={_shquote(config.sandbox.provider)}")
+        if config.sandbox.config:
+            sandbox_config = json.dumps(config.sandbox.config, ensure_ascii=True, sort_keys=True)
+            lines.append(f"export DIFY_SANDBOX_CONFIG_JSON={_shquote(sandbox_config)}")
+    lines.extend(
+        [
+            "DIFY_ENV_EOF",
+            'chmod 600 ".dify/env.sh"',
+        ]
+    )
+    for tool in config.cli_tools:
+        for command in tool.install_commands:
+            lines.append(command)
+    return "\n".join(lines) if len(lines) > 5 or config.cli_tools else ""
+
+
+def _wrap_user_script(script: str) -> str:
+    """Source Agent Soul env before executing a model-requested shell command."""
+    return "\n".join(
+        [
+            'if [ -f ".dify/env.sh" ]; then',
+            "  set -a",
+            '  . ".dify/env.sh"',
+            "  set +a",
+            "fi",
+            script,
+        ]
+    )
+
+
 def _workspace_mkdir_script(*, session_id: str) -> str:
     """Return the internal mkdir command used for proposal-defined collision checks.
 
@@ -703,6 +761,11 @@ def _workspace_mkdir_script(*, session_id: str) -> str:
 
 def _workspace_cleanup_script(*, session_id: str) -> str:
     return f'rm -rf -- "$HOME/workspace/{_validated_session_id(session_id)}"'
+
+
+def _shquote(value: str) -> str:
+    """Single-quote a value for POSIX shells, escaping embedded single quotes."""
+    return "'" + value.replace("'", "'\\''") + "'"
 
 
 def _validated_session_id(session_id: str) -> str:

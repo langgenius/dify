@@ -147,7 +147,7 @@ class AppDescribeApi(AppReadResource):
 class AppListApi(Resource):
     @openapi_ns.doc(params=query_params_from_model(AppListQuery))
     @openapi_ns.response(200, "App list", openapi_ns.models[AppListResponse.__name__])
-    @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     def get(self, *, auth_data: AuthData):
         try:
             query: AppListQuery = AppListQuery.model_validate(request.args.to_dict(flat=True))

@@ -20,7 +20,9 @@ from redis.asyncio import Redis
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.routes.runs import create_runs_router
+from dify_agent.server.routes.workspace_files import create_workspace_files_router
 from dify_agent.server.settings import ServerSettings
+from dify_agent.server.workspace_files import WorkspaceFileService
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
@@ -32,6 +34,14 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
         shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
         shellctl_auth_token=resolved_settings.shellctl_auth_token,
+    )
+    workspace_file_service = (
+        WorkspaceFileService(
+            shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
+            shellctl_auth_token=resolved_settings.shellctl_auth_token,
+        )
+        if resolved_settings.shellctl_entrypoint
+        else None
     )
     state: dict[str, object] = {}
 
@@ -68,6 +78,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
     app.include_router(create_runs_router(get_store, get_scheduler))
+    app.include_router(create_workspace_files_router(lambda: workspace_file_service))
     return app
 
 
