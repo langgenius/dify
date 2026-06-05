@@ -504,7 +504,7 @@ class TestLogoutApi:
         # Act
         with app.test_request_context("/logout", method="POST"):
             logout_api = LogoutApi()
-            response = unwrap(logout_api.post)(mock_account)
+            response = unwrap(logout_api.post)(logout_api, mock_account)
 
         # Assert
         mock_service_logout.assert_called_once_with(account=mock_account)
@@ -530,7 +530,7 @@ class TestLogoutApi:
         # Act
         with app.test_request_context("/logout", method="POST"):
             logout_api = LogoutApi()
-            response = unwrap(logout_api.post)(anonymous_user)
+            response = unwrap(logout_api.post)(logout_api, anonymous_user)
 
         # Assert
         assert response.json["result"] == "success"

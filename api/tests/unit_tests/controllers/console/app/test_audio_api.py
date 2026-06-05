@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flask import Flask
 
 import io
 from inspect import unwrap
@@ -11,7 +12,7 @@ from controllers.console.app.error import AudioTooLargeError
 from services.errors.audio import AudioTooLargeServiceError
 
 
-def test_audio_to_text_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_audio_to_text_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = audio_module.ChatMessageAudioApi()
     method = unwrap(api.post)
 
@@ -27,12 +28,12 @@ def test_audio_to_text_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
         data=data,
         content_type="multipart/form-data",
     ):
-        response = method(app_model=app_model)
+        response = method(api, app_model=app_model)
 
     assert response == response_payload
 
 
-def test_audio_to_text_maps_audio_too_large(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_audio_to_text_maps_audio_too_large(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = audio_module.ChatMessageAudioApi()
     method = unwrap(api.post)
 
@@ -52,10 +53,10 @@ def test_audio_to_text_maps_audio_too_large(app, monkeypatch: pytest.MonkeyPatch
         content_type="multipart/form-data",
     ):
         with pytest.raises(AudioTooLargeError):
-            method(app_model=app_model)
+            method(api, app_model=app_model)
 
 
-def test_text_to_audio_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_text_to_audio_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = audio_module.ChatMessageTextApi()
     method = unwrap(api.post)
 
@@ -68,12 +69,12 @@ def test_text_to_audio_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
         method="POST",
         json={"text": "hello"},
     ):
-        response = method(app_model=app_model)
+        response = method(api, app_model=app_model)
 
     assert response == {"audio": "ok"}
 
 
-def test_text_to_audio_voices_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = audio_module.TextModesApi()
     method = unwrap(api.get)
 
@@ -86,12 +87,12 @@ def test_text_to_audio_voices_success(app, monkeypatch: pytest.MonkeyPatch) -> N
         method="GET",
         query_string={"language": "en-US"},
     ):
-        response = method(app_model=app_model)
+        response = method(api, app_model=app_model)
 
     assert response == ["voice-1"]
 
 
-def test_audio_to_text_with_invalid_file(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_audio_to_text_with_invalid_file(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = audio_module.ChatMessageAudioApi()
     method = unwrap(api.post)
 
@@ -107,11 +108,11 @@ def test_audio_to_text_with_invalid_file(app, monkeypatch: pytest.MonkeyPatch) -
         content_type="multipart/form-data",
     ):
         # Should not raise, AudioService is mocked
-        response = method(app_model=app_model)
+        response = method(api, app_model=app_model)
         assert response == {"text": "test"}
 
 
-def test_text_to_audio_with_language_param(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_text_to_audio_with_language_param(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = audio_module.ChatMessageTextApi()
     method = unwrap(api.post)
 
@@ -124,11 +125,11 @@ def test_text_to_audio_with_language_param(app, monkeypatch: pytest.MonkeyPatch)
         method="POST",
         json={"text": "hello", "language": "en-US"},
     ):
-        response = method(app_model=app_model)
+        response = method(api, app_model=app_model)
         assert response == {"audio": "test"}
 
 
-def test_text_to_audio_voices_with_language_filter(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = audio_module.TextModesApi()
     method = unwrap(api.get)
 
@@ -144,5 +145,5 @@ def test_text_to_audio_voices_with_language_filter(app, monkeypatch: pytest.Monk
         "/console/api/apps/app-1/text-to-audio/voices?language=en-US",
         method="GET",
     ):
-        response = method(app_model=app_model)
+        response = method(api, app_model=app_model)
         assert isinstance(response, list)

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flask import Flask
 
 from inspect import unwrap
 from types import SimpleNamespace
@@ -16,7 +17,7 @@ def _make_account():
     return SimpleNamespace(timezone="UTC", id="u1")
 
 
-def test_completion_conversation_list_returns_paginated_result(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_completion_conversation_list_returns_paginated_result(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_module.CompletionConversationApi()
     method = unwrap(api.get)
 
@@ -32,12 +33,12 @@ def test_completion_conversation_list_returns_paginated_result(app, monkeypatch:
     monkeypatch.setattr(conversation_module.db, "paginate", lambda *_args, **_kwargs: paginate_result)
 
     with app.test_request_context("/console/api/apps/app-1/completion-conversations", method="GET"):
-        response = method(account, app_model=SimpleNamespace(id="app-1"))
+        response = method(api, account, app_model=SimpleNamespace(id="app-1"))
 
     assert response == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
 
-def test_completion_conversation_list_invalid_time_range(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_completion_conversation_list_invalid_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_module.CompletionConversationApi()
     method = unwrap(api.get)
 
@@ -54,10 +55,10 @@ def test_completion_conversation_list_invalid_time_range(app, monkeypatch: pytes
         query_string={"start": "bad"},
     ):
         with pytest.raises(BadRequest):
-            method(account, app_model=SimpleNamespace(id="app-1"))
+            method(api, account, app_model=SimpleNamespace(id="app-1"))
 
 
-def test_chat_conversation_list_advanced_chat_calls_paginate(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_chat_conversation_list_advanced_chat_calls_paginate(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_module.ChatConversationApi()
     method = unwrap(api.get)
 
@@ -73,7 +74,7 @@ def test_chat_conversation_list_advanced_chat_calls_paginate(app, monkeypatch: p
     monkeypatch.setattr(conversation_module.db, "paginate", lambda *_args, **_kwargs: paginate_result)
 
     with app.test_request_context("/console/api/apps/app-1/chat-conversations", method="GET"):
-        response = method(account, app_model=SimpleNamespace(id="app-1", mode=AppMode.ADVANCED_CHAT))
+        response = method(api, account, app_model=SimpleNamespace(id="app-1", mode=AppMode.ADVANCED_CHAT))
 
     assert response == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
