@@ -17,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { useDebounce } from 'ahooks'
 import * as React from 'react'
 import {
   memo,
@@ -89,6 +90,7 @@ function NodeSelector({
   const { t } = useTranslation()
   const nodes = useNodes()
   const [searchText, setSearchText] = useState('')
+  const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const [tags, setTags] = useState<string[]>([])
   const [localOpen, setLocalOpen] = useState(false)
   // Exclude nodes explicitly ignored (such as the node currently being edited) when checking canvas state.
@@ -159,6 +161,9 @@ function NodeSelector({
   const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
     setActiveTab(newActiveTab)
   }, [setActiveTab])
+  const filterSearchText = activeTab === TabsEnum.Start || activeTab === TabsEnum.Tools
+    ? debouncedSearchText
+    : searchText
 
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Start)
@@ -281,7 +286,7 @@ function NodeSelector({
               </div>
             )}
             onSelect={handleSelect}
-            searchText={searchText}
+            searchText={filterSearchText}
             tags={tags}
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
