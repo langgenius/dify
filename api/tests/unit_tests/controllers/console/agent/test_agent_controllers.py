@@ -263,9 +263,9 @@ def test_roster_detail_patch_delete_and_versions_call_services(
     )
     assert archived["account_id"] == "account-1"
     assert (
-        _call_roster(AgentRosterVersionsApi.get, AgentRosterVersionsApi(), roster_session, "tenant-1", agent_id)["data"][
-            0
-        ]["id"]
+        _call_roster(AgentRosterVersionsApi.get, AgentRosterVersionsApi(), roster_session, "tenant-1", agent_id)[
+            "data"
+        ][0]["id"]
         == "version-1"
     )
     version_detail = _call_roster(
