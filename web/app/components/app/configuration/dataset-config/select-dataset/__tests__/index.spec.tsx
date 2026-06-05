@@ -9,6 +9,12 @@ import { DatasetPermission } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import SelectDataSet from '../index'
 
+const mockAppIcon = vi.hoisted(() => vi.fn(() => null))
+
+vi.mock('@/app/components/base/app-icon', () => ({
+  default: mockAppIcon,
+}))
+
 vi.mock('@/i18n-config/i18next-config', () => ({
   default: {
     changeLanguage: vi.fn(),
@@ -119,6 +125,39 @@ describe('SelectDataSet', () => {
       fireEvent.click(addButton)
     })
     expect(onSelect).toHaveBeenCalledWith([datasetOne])
+  })
+
+  it('uses the default dataset icon when icon_info is missing', async () => {
+    const dataset = {
+      ...makeDataset({
+        id: 'set-null-icon',
+        name: 'Dataset Without Icon',
+      }),
+      icon_info: null,
+    } as unknown as DataSet
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [dataset] }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+    })
+
+    await act(async () => {
+      render(<SelectDataSet {...baseProps} selectedIds={[]} />)
+    })
+
+    expect(screen.getByText('Dataset Without Icon')).toBeInTheDocument()
+    expect(mockAppIcon).toHaveBeenCalledWith(
+      expect.objectContaining({
+        size: 'tiny',
+        iconType: 'emoji',
+        icon: '📙',
+        background: '#FFF4ED',
+        imageUrl: undefined,
+      }),
+      undefined,
+    )
   })
 
   it('shows empty state when no datasets are available and disables add', async () => {

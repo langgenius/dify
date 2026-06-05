@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
+import type { DataSet, IconInfo } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -16,6 +16,34 @@ import FeatureIcon from '@/app/components/header/account-setting/model-provider-
 import { useKnowledge } from '@/hooks/use-knowledge'
 import Link from '@/next/link'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
+
+const DEFAULT_DATASET_ICON: IconInfo = {
+  icon_type: 'emoji',
+  icon: '📙',
+  icon_background: '#FFF4ED',
+  icon_url: '',
+}
+
+type NullableDatasetIconInfo = Partial<{
+  [Key in keyof IconInfo]: IconInfo[Key] | null
+}>
+
+const normalizeDatasetIconInfo = (iconInfo?: NullableDatasetIconInfo | null): IconInfo => ({
+  icon_type: iconInfo?.icon_type ?? DEFAULT_DATASET_ICON.icon_type,
+  icon: iconInfo?.icon ?? DEFAULT_DATASET_ICON.icon,
+  icon_background: iconInfo?.icon_background ?? DEFAULT_DATASET_ICON.icon_background,
+  icon_url: iconInfo?.icon_url ?? DEFAULT_DATASET_ICON.icon_url,
+})
+
+const getDatasetIconProps = (iconInfo?: NullableDatasetIconInfo | null) => {
+  const normalizedIconInfo = normalizeDatasetIconInfo(iconInfo)
+  return {
+    iconType: normalizedIconInfo.icon_type,
+    icon: normalizedIconInfo.icon,
+    background: normalizedIconInfo.icon_type === 'image' ? undefined : normalizedIconInfo.icon_background,
+    imageUrl: normalizedIconInfo.icon_type === 'image' ? normalizedIconInfo.icon_url : undefined,
+  }
+}
 
 type ISelectDataSetProps = {
   isShow: boolean
@@ -128,10 +156,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
                       <AppIcon
                         size="tiny"
-                        iconType={item.icon_info.icon_type}
-                        icon={item.icon_info.icon}
-                        background={item.icon_info.icon_type === 'image' ? undefined : item.icon_info.icon_background}
-                        imageUrl={item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined}
+                        {...getDatasetIconProps(item.icon_info)}
                       />
                     </div>
                     <div className={cn('max-w-50 truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && 'max-w-30! opacity-30')}>{item.name}</div>
