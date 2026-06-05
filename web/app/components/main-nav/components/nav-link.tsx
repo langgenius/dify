@@ -43,7 +43,6 @@ const MainNavLink = ({
   return (
     <Link
       href={item.href}
-      title={item.label}
       aria-current={activated ? 'page' : undefined}
       className={cn(
         navItemClassName,
