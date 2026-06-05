@@ -78,6 +78,11 @@ export type Collection = {
     timeout?: number
     sse_read_timeout?: number
   }
+  // M3 — user-identity forwarding (MCP). Single selector now drives both
+  // "is forwarding on?" and "which mechanism to use?". Pre-collapse builds
+  // also sent a redundant `forward_user_identity` boolean; the api dropped
+  // it, so the field is gone here too.
+  identity_mode?: 'off' | 'idp_token'
   // Workflow
   workflow_app_id?: string
 }

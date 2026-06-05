@@ -1666,11 +1666,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -1741,9 +1736,6 @@
   "web/app/components/base/search-input/index.stories.tsx": {
     "no-console": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/base/svg-gallery/index.tsx": {

@@ -216,8 +216,8 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../new-app-card', () => ({
-  default: ({ ref: _ref }: { ref?: React.Ref<HTMLDivElement> }) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button', 'ref': _ref }, 'New App Card')
+  default: (_props: { ref?: React.Ref<unknown> }) => {
+    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
   },
 }))
 
@@ -311,7 +311,7 @@ describe('List', () => {
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -386,13 +386,13 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
       renderList()
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(mockSetKeywords).toHaveBeenCalledWith('test search')
@@ -531,6 +531,7 @@ describe('List', () => {
       expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
   })

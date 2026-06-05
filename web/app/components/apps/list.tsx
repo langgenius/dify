@@ -2,11 +2,11 @@
 
 import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -40,9 +40,9 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 type Props = {
   controlRefreshList?: number
 }
-const List = ({
+function List({
   controlRefreshList = 0,
-}: Props) => {
+}: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
@@ -210,11 +210,12 @@ const List = ({
             <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <div className="relative w-50">
               <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
-              <Input
-                className={cn('pl-6.5', keywords && 'pr-6.5')}
+              <SearchInput
+                className="w-52"
                 value={keywords}
-                onChange={e => setKeywords(e.target.value)}
+                onValueChange={setKeywords}
                 placeholder={t('operation.search', { ns: 'common' })}
+                aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
               />
               {!!keywords && (
                 <button

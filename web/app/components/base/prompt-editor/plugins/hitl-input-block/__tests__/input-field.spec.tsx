@@ -91,6 +91,29 @@ describe('InputField', () => {
     lastVarReferencePickerProps = undefined
   })
 
+  it('should keep the header and actions visible while the field content scrolls internally', () => {
+    const { container } = render(
+      <InputField
+        nodeId="node-layout"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    const panel = container.firstElementChild
+    const header = panel?.children[0]
+    const scrollBody = panel?.children[1]
+    const footer = panel?.lastElementChild
+
+    expect(panel).toHaveClass('max-h-(--shortcut-popup-max-height)', 'overflow-hidden')
+    expect(header).toHaveClass('shrink-0', 'pb-2')
+    expect(scrollBody).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto')
+    expect(footer).toHaveClass('shrink-0', 'bg-components-panel-bg')
+    expect(footer).not.toHaveClass('border-t')
+  })
+
   it('should disable save and show validation error when variable name is invalid', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
