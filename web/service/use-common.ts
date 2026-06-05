@@ -5,6 +5,7 @@ import type {
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
   AccountIntegrate,
   CodeBasedExtension,
@@ -132,10 +133,14 @@ type MemberResponse = {
   accounts: Member[] | null
 }
 
-export const useMembers = () => {
+export const useMembers = (language?: AccessControlTemplateLanguage) => {
   return useQuery<MemberResponse>({
-    queryKey: commonQueryKeys.members,
-    queryFn: () => get<MemberResponse>('/workspaces/current/members', { params: {} }),
+    queryKey: [...commonQueryKeys.members, language],
+    queryFn: () => get<MemberResponse>('/workspaces/current/members', {
+      params: {
+        language,
+      },
+    }),
   })
 }
 

@@ -13,7 +13,7 @@ import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
@@ -28,9 +28,10 @@ import TransferOwnershipModal from './transfer-ownership-modal'
 const MembersPage = () => {
   const { t } = useTranslation()
   const locale = useLocale()
+  const language = getAccessControlTemplateLanguage(locale)
 
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
-  const { data, refetch } = useMembers()
+  const { data, refetch } = useMembers(language)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
