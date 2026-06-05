@@ -13,6 +13,7 @@ vi.mock('../utils', () => ({
 describe('registration tracking', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllGlobals()
     window.sessionStorage.clear()
   })
 
@@ -38,6 +39,25 @@ describe('registration tracking', () => {
         eventName: 'user_registration_success_with_utm',
         properties: { method: 'oauth', utm_source: 'linkedin', slug: 'agent-launch' },
       })
+    })
+
+    it('should swallow errors when writing to sessionStorage fails', () => {
+      vi.stubGlobal('window', {
+        sessionStorage: {
+          getItem: vi.fn(() => null),
+          setItem: () => {
+            throw new Error('quota exceeded')
+          },
+          removeItem: vi.fn(),
+        },
+      })
+
+      try {
+        expect(() => rememberRegistrationSuccess({ method: 'email' })).not.toThrow()
+      }
+      finally {
+        vi.unstubAllGlobals()
+      }
     })
   })
 
@@ -78,6 +98,94 @@ describe('registration tracking', () => {
 
       expect(mockTrackEvent).not.toHaveBeenCalled()
       expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+    })
+
+    it('should clear the pending entry without tracking when it has no event name', () => {
+      window.sessionStorage.setItem(
+        REGISTRATION_SUCCESS_STORAGE_KEY,
+        JSON.stringify({ properties: { method: 'email' } }),
+      )
+
+      flushRegistrationSuccess()
+
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+    })
+
+    it('should stop without tracking when reading from sessionStorage throws', () => {
+      vi.stubGlobal('window', {
+        sessionStorage: {
+          getItem: () => {
+            throw new Error('read failed')
+          },
+          setItem: vi.fn(),
+          removeItem: vi.fn(),
+        },
+      })
+
+      try {
+        expect(() => flushRegistrationSuccess()).not.toThrow()
+        expect(mockTrackEvent).not.toHaveBeenCalled()
+      }
+      finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
+    it('should still track when clearing the pending entry fails', () => {
+      const pending = { eventName: 'user_registration_success', properties: { method: 'email' } }
+      vi.stubGlobal('window', {
+        sessionStorage: {
+          getItem: () => JSON.stringify(pending),
+          setItem: vi.fn(),
+          removeItem: () => {
+            throw new Error('remove failed')
+          },
+        },
+      })
+
+      try {
+        flushRegistrationSuccess()
+
+        expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success', { method: 'email' })
+      }
+      finally {
+        vi.unstubAllGlobals()
+      }
+    })
+  })
+
+  // Both producers and the consumer must degrade gracefully when sessionStorage is
+  // missing (SSR) or blocked (privacy mode / disabled storage).
+  describe('when sessionStorage is unavailable', () => {
+    it('should no-op without throwing when window is undefined', () => {
+      vi.stubGlobal('window', undefined)
+
+      try {
+        expect(() => rememberRegistrationSuccess({ method: 'email' })).not.toThrow()
+        expect(() => flushRegistrationSuccess()).not.toThrow()
+        expect(mockTrackEvent).not.toHaveBeenCalled()
+      }
+      finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
+    it('should no-op without throwing when accessing sessionStorage throws', () => {
+      vi.stubGlobal('window', {
+        get sessionStorage() {
+          throw new Error('storage disabled')
+        },
+      })
+
+      try {
+        expect(() => rememberRegistrationSuccess({ method: 'oauth' })).not.toThrow()
+        expect(() => flushRegistrationSuccess()).not.toThrow()
+        expect(mockTrackEvent).not.toHaveBeenCalled()
+      }
+      finally {
+        vi.unstubAllGlobals()
+      }
     })
   })
 })
