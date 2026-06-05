@@ -147,6 +147,9 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     appId: 'app-1',
   }),
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
