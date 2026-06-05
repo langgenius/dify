@@ -212,6 +212,24 @@ def test_app_list_query_normalizes_orpc_bracket_tag_ids(app_module):
     assert query.tag_ids == [first_tag_id, second_tag_id]
 
 
+def test_app_list_query_normalizes_orpc_bracket_creator_ids(app_module):
+    first_creator_id = "9e8959cf-a67b-4d34-9906-1d687517b248"
+    second_creator_id = "1886f96a-5bf0-42bf-961d-8d2129049076"
+    query_args = MultiDict(
+        [
+            ("page", "1"),
+            ("limit", "30"),
+            ("creator_ids[1]", second_creator_id),
+            ("creator_ids[0]", first_creator_id),
+        ]
+    )
+
+    normalized = app_module._normalize_app_list_query_args(query_args)
+    query = app_module.AppListQuery.model_validate(normalized)
+
+    assert query.creator_ids == [first_creator_id, second_creator_id]
+
+
 def test_app_list_query_preserves_regular_query_params(app_module):
     query_args = MultiDict(
         [
@@ -258,6 +276,13 @@ def test_app_list_query_normalizes_empty_bracket_tag_ids_to_none(app_module):
 
 def test_app_list_query_rejects_invalid_bracket_tag_id(app_module):
     normalized = app_module._normalize_app_list_query_args(MultiDict([("tag_ids[0]", "not-a-uuid")]))
+
+    with pytest.raises(ValidationError):
+        app_module.AppListQuery.model_validate(normalized)
+
+
+def test_app_list_query_rejects_invalid_bracket_creator_id(app_module):
+    normalized = app_module._normalize_app_list_query_args(MultiDict([("creator_ids[0]", "not-a-uuid")]))
 
     with pytest.raises(ValidationError):
         app_module.AppListQuery.model_validate(normalized)
