@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { useDebounce } from 'ahooks'
 import * as React from 'react'
 import {
   memo,
@@ -95,6 +96,7 @@ function NodeSelector({
   const flowType = useHooksStore(s => s.configsMap?.flowType)
   const [searchText, setSearchText] = useState('')
   const [snippetsLoading, setSnippetsLoading] = useState(() => Boolean(openFromProps) && defaultActiveTab === TabsEnum.Snippets)
+  const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const [tags, setTags] = useState<string[]>([])
   const [localOpen, setLocalOpen] = useState(false)
   // Exclude nodes explicitly ignored (such as the node currently being edited) when checking canvas state.
@@ -188,6 +190,9 @@ function NodeSelector({
       window.clearTimeout(timer)
     }
   }, [snippetsLoading])
+  const filterSearchText = activeTab === TabsEnum.Start || activeTab === TabsEnum.Tools
+    ? debouncedSearchText
+    : searchText
 
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Start)
@@ -254,7 +259,7 @@ function NodeSelector({
         alignOffset={alignOffset}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
+        <div className={cn('w-[400px] min-w-0 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', popupClassName)}>
           <Tabs
             tabs={tabs}
             activeTab={activeTab}
@@ -312,7 +317,7 @@ function NodeSelector({
                   </div>
                 )}
             onSelect={handleSelect}
-            searchText={searchText}
+            searchText={filterSearchText}
             tags={tags}
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}

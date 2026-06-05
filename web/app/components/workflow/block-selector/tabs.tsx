@@ -222,10 +222,10 @@ const Tabs: FC<TabsProps> = ({
   }, [normalizedBuiltInTools, normalizedCustomTools, normalizedMcpTools, normalizedWorkflowTools, workflowStore])
 
   return (
-    <div onClick={e => e.stopPropagation()}>
+    <div className="w-full min-w-0" onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className="relative flex bg-background-section-burn pt-1 pl-1">
+          <div className="relative flex w-full min-w-0 bg-background-section-burn pt-1 pl-1">
             {
               tabs.map(tab => (
                 <TabHeaderItem
