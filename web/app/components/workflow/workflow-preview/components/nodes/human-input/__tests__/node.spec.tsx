@@ -1,52 +1,22 @@
 import { render } from '@testing-library/react'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import CustomNode from '../index'
+import Node from '../node'
 
 vi.mock('reactflow', () => ({
   Handle: (props: { id: string, type: string, className?: string }) => (
     <div data-testid="handle" data-handleid={props.id} data-type={props.type} className={props.className} />
   ),
   Position: {
-    Left: 'left',
     Right: 'right',
   },
 }))
 
-describe('workflow preview custom node', () => {
-  it('renders the mapped node component inside the shared base card', () => {
-    const props: React.ComponentProps<typeof CustomNode> = {
-      id: 'classifier-1',
-      type: 'custom-node',
-      selected: false,
-      zIndex: 1,
-      isConnectable: true,
-      dragging: false,
-      xPos: 0,
-      yPos: 0,
-      dragHandle: undefined,
-      data: {
-        type: BlockEnum.QuestionClassifier,
-        title: 'Classifier node',
-        desc: '',
-        classes: [
-          { id: 'class-a', name: 'Billing' },
-        ],
-      } as never,
-    }
-
-    const { container, getByText } = render(
-      <CustomNode {...props} />,
-    )
-
-    expect(getByText('Classifier node')).toBeInTheDocument()
-    expect(container.querySelector('[data-handleid="class-a"]')).toBeInTheDocument()
-  })
-
-  it('renders human input output handles from the mapped node component', () => {
-    const props: React.ComponentProps<typeof CustomNode> = {
+describe('workflow preview human input node', () => {
+  it('renders one output handle per user action and timeout', () => {
+    const props: React.ComponentProps<typeof Node> = {
       id: 'human-input-1',
-      type: 'custom-node',
+      type: 'human-input-node',
       selected: false,
       zIndex: 1,
       isConnectable: true,
@@ -63,6 +33,7 @@ describe('workflow preview custom node', () => {
         inputs: [],
         user_actions: [
           { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+          { id: 'regenerate', title: 'Regenerate', button_style: UserActionButtonType.Default },
         ],
         timeout: 1,
         timeout_unit: 'hour',
@@ -70,11 +41,14 @@ describe('workflow preview custom node', () => {
     }
 
     const { container, getByText } = render(
-      <CustomNode {...props} />,
+      <Node {...props} />,
     )
 
-    expect(getByText('Human Input')).toBeInTheDocument()
+    expect(getByText('approve')).toBeInTheDocument()
+    expect(getByText('regenerate')).toBeInTheDocument()
+    expect(getByText('Timeout')).toBeInTheDocument()
     expect(container.querySelector('[data-handleid="approve"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-handleid="regenerate"]')).toBeInTheDocument()
     expect(container.querySelector('[data-handleid="__timeout"]')).toBeInTheDocument()
   })
 })
