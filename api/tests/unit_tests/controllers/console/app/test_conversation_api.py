@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.app import conversation as conversation_module

@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 import io
 from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
+from flask import Flask
 
 from controllers.console.app import audio as audio_module
 from controllers.console.app.error import AudioTooLargeError
