@@ -32,7 +32,7 @@ export type AppDescribeInfo = {
 }
 
 export type AppDescribeQuery = {
-  fields?: Array<string> | null
+  fields?: string
   workspace_id?: string | null
 }
 
@@ -444,7 +444,7 @@ export type GetAppsByAppIdDescribeData = {
     app_id: string
   }
   query?: {
-    fields?: Array<string>
+    fields?: string
     workspace_id?: string
   }
   url: '/apps/{app_id}/describe'

@@ -87,8 +87,12 @@ class AppDescribeInfo(AppInfoResponse):
 
 class AppDescribeResponse(BaseModel):
     info: AppDescribeInfo | None = None
-    parameters: dict[str, Any] | None = None
-    input_schema: dict[str, Any] | None = None
+    # `parameters` (the app-config blob) and `input_schema` (a Draft 2020-12 JSON Schema derived
+    # per-app) are deliberately open JSON, not under-annotated. The `x-dify-opaque` marker tells the
+    # contract generator's readiness detector to treat them as intentional, so the route is not
+    # flagged "annotations incomplete". CLI/web consume them as opaque objects either way.
+    parameters: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    input_schema: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
 
 
 class ChatMessageResponse(BaseModel):
@@ -238,6 +242,17 @@ class HealthResponse(BaseModel):
     ok: bool
 
 
+def _csv_string_query_schema(schema: dict[str, Any]) -> None:
+    """Re-shape a set/list field's query schema to a comma-separated string — the wire form the
+    handler actually accepts (`request.args` is flat + the validator splits on ','). Without this
+    the generated contract would type it as an array and serialize `fields[0]=…&fields[1]=…`,
+    which `extra='forbid'` rejects. Runtime `set[str]` validation is unaffected."""
+    schema.pop("anyOf", None)
+    schema.pop("items", None)
+    schema.pop("uniqueItems", None)
+    schema["type"] = "string"
+
+
 class AppDescribeQuery(BaseModel):
     """`?fields=` allow-list for GET /apps/<id>/describe.
 
@@ -246,7 +261,7 @@ class AppDescribeQuery(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    fields: set[str] | None = None
+    fields: set[str] | None = Field(default=None, json_schema_extra=_csv_string_query_schema)
     workspace_id: str | None = None
 
     @field_validator("workspace_id", mode="before")

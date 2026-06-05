@@ -19,7 +19,7 @@ export const zAccountPayload = z.object({
  * Empty / omitted → all blocks. Unknown member → ValidationError → 422.
  */
 export const zAppDescribeQuery = z.object({
-  fields: z.array(z.string()).nullish(),
+  fields: z.string().optional(),
   workspace_id: z.string().nullish(),
 })
 
@@ -530,7 +530,7 @@ export const zGetAppsByAppIdDescribePath = z.object({
 })
 
 export const zGetAppsByAppIdDescribeQuery = z.object({
-  fields: z.array(z.string()).optional(),
+  fields: z.string().optional(),
   workspace_id: z.string().optional(),
 })
 
