@@ -35,12 +35,6 @@ from models.model import App
 from services.annotation_service import AppAnnotationService
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
-
 # ---------------------------------------------------------------------------
 # Pydantic Model Tests
 # ---------------------------------------------------------------------------
