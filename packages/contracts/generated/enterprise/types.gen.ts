@@ -238,7 +238,6 @@ export type DeployReq = {
   dsl?: string
   sourceAppId?: string
   new?: NewAppInstance
-  existingAppInstanceId?: string
   environmentId?: string
   releaseName?: string
   releaseDescription?: string

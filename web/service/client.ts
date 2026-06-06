@@ -541,8 +541,9 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
       deploymentService: {
         deploy: {
           mutationOptions: {
-            onSuccess: (data, variables, _result, context) => {
-              const appInstanceId = data.appInstance?.id ?? data.release?.appInstanceId ?? variables.body.existingAppInstanceId
+            onSuccess: (data, _variables, _result, context) => {
+              // Deploy always creates a new AppInstance, so the reply carries it.
+              const appInstanceId = data.appInstance?.id ?? data.release?.appInstanceId
               if (!appInstanceId) {
                 return Promise.all([
                   context.client.invalidateQueries({

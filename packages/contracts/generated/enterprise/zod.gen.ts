@@ -387,7 +387,6 @@ export const zDeployReq = z.object({
   dsl: z.string().optional(),
   sourceAppId: z.string().optional(),
   new: zNewAppInstance.optional(),
-  existingAppInstanceId: z.string().optional(),
   environmentId: z.string().optional(),
   releaseName: z.string().optional(),
   releaseDescription: z.string().optional(),
