@@ -2275,9 +2275,6 @@
     }
   },
   "web/app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -2297,11 +2294,6 @@
   },
   "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-document/info-group.tsx": {
-    "no-restricted-globals": {
       "count": 1
     }
   },
