@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import override
 from uuid import UUID
 
 import flask_restx
