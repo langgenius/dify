@@ -130,11 +130,17 @@ class WaterCrawlProvider:
         while True:
             page += 1
             response = self.client.get_crawl_request_results(crawl_request_id, page, page_size, query_params)
-            if not response["results"]:
+
+            # Ensure we only proceed when a JSON object is returned (not an event stream)
+            if not isinstance(response, dict):
+                raise TypeError(f"Expected dict response, got {type(response)}")
+
+            results = response.get("results")
+            if not results:
                 break
 
-            for result in response["results"]:
+            for result in results:
                 yield self._structure_data(result)
 
-            if response["next"] is None:
+            if response.get("next") is None:
                 break
