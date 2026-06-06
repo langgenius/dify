@@ -1,22 +1,25 @@
 """Excel document extractor used for RAG ingestion.
 
 Supports cell hyperlinks for both `.xls` and `.xlsx`, and embedded worksheet images
-for `.xlsx` files by converting them into markdown image links.
+for `.xlsx` files by converting them into markdown image links. Embedded images are
+stored with deterministic keys derived from the source upload file and anchor cell so
+retries can safely reuse the same assets.
 """
 
+import hashlib
 import logging
 import mimetypes
 import os
-import uuid
 from typing import TypedDict, override
 
 import pandas as pd
 from openpyxl import load_workbook
+from sqlalchemy import select
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
@@ -32,6 +35,14 @@ class Candidate(TypedDict):
     map: dict[int, str]
 
 
+class SheetImageCandidate(TypedDict):
+    anchor: tuple[int, int]
+    content_hash: str
+    file_key: str
+    image_bytes: bytes
+    image_ext: str
+
+
 class ExcelExtractor(BaseExtractor):
     """Load Excel files.
 
@@ -44,12 +55,14 @@ class ExcelExtractor(BaseExtractor):
     _autodetect_encoding: bool
     _tenant_id: str | None
     _user_id: str | None
+    _source_file_id: str | None
 
     def __init__(
         self,
         file_path: str,
         tenant_id: str | None = None,
         user_id: str | None = None,
+        source_file_id: str | None = None,
         encoding: str | None = None,
         autodetect_encoding: bool = False,
     ):
@@ -57,6 +70,7 @@ class ExcelExtractor(BaseExtractor):
         self._file_path = file_path
         self._tenant_id = tenant_id
         self._user_id = user_id
+        self._source_file_id = source_file_id
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
 
@@ -70,19 +84,18 @@ class ExcelExtractor(BaseExtractor):
             # Worksheet drawing objects, including embedded images, are not available in read-only mode.
             wb = load_workbook(self._file_path, data_only=True)
             try:
-                upload_files: list[UploadFile] = []
                 for sheet_name in wb.sheetnames:
                     sheet = wb[sheet_name]
                     header_row_idx, column_map, max_col_idx = self._find_header_and_columns(sheet)
                     if not column_map:
                         continue
                     start_row = header_row_idx + 1
-                    sheet_image_map, sheet_upload_files = self._extract_images_from_sheet(
-                        sheet,
+                    sheet_image_map = self._extract_images_from_sheet(
+                        sheet_name=sheet_name,
+                        sheet=sheet,
                         valid_columns={column_idx + 1 for column_idx in column_map},
                         min_row=start_row,
                     )
-                    upload_files.extend(sheet_upload_files)
                     for row in sheet.iter_rows(min_row=start_row, max_col=max_col_idx, values_only=False):
                         page_content = []
                         row_has_content = False
@@ -117,9 +130,6 @@ class ExcelExtractor(BaseExtractor):
                             documents.append(
                                 Document(page_content=";".join(page_content), metadata={"source": self._file_path})
                             )
-                if upload_files:
-                    db.session.add_all(upload_files)
-                    db.session.commit()
             finally:
                 wb.close()
 
@@ -143,16 +153,20 @@ class ExcelExtractor(BaseExtractor):
         return documents
 
     def _extract_images_from_sheet(
-        self, sheet, valid_columns: set[int], min_row: int
-    ) -> tuple[dict[tuple[int, int], list[str]], list[UploadFile]]:
-        """Extract embedded worksheet images and map them to their anchor cell."""
-        if not self._tenant_id or not self._user_id:
-            return {}, []
+        self, sheet_name: str, sheet, valid_columns: set[int], min_row: int
+    ) -> dict[tuple[int, int], list[str]]:
+        """
+        Extract embedded worksheet images and map them to their anchor cell.
 
-        image_map: dict[tuple[int, int], list[str]] = {}
-        upload_files: list[UploadFile] = []
+        Images are stored with deterministic keys derived from the source upload file,
+        sheet, anchor cell, and content hash so retried tasks can reuse the same
+        UploadFile rows and storage objects.
+        """
+        if not self._tenant_id or not self._user_id or not self._source_file_id:
+            return {}
+
         images = getattr(sheet, "_images", None) or []
-        base_url = dify_config.FILES_URL
+        image_candidates: list[SheetImageCandidate] = []
 
         for image in images:
             marker = getattr(getattr(image, "anchor", None), "_from", None)
@@ -171,32 +185,100 @@ class ExcelExtractor(BaseExtractor):
             if not image_ext:
                 continue
 
-            file_uuid = str(uuid.uuid4())
-            file_key = f"image_files/{self._tenant_id}/{file_uuid}.{image_ext}"
-            mime_type, _ = mimetypes.guess_type(file_key)
-            storage.save(file_key, image_bytes)
-
-            upload_file = UploadFile(
-                tenant_id=self._tenant_id,
-                storage_type=StorageType(dify_config.STORAGE_TYPE),
-                key=file_key,
-                name=file_key,
-                size=len(image_bytes),
-                extension=image_ext,
-                mime_type=mime_type or "",
-                created_by=self._user_id,
-                created_by_role=CreatorUserRole.ACCOUNT,
-                created_at=naive_utc_now(),
-                used=True,
-                used_by=self._user_id,
-                used_at=naive_utc_now(),
-            )
-            upload_files.append(upload_file)
-            image_map.setdefault((row_idx + 1, col_idx + 1), []).append(
-                f"![image]({base_url}/files/{upload_file.id}/file-preview)"
+            anchor_row = row_idx + 1
+            anchor_column = col_idx + 1
+            content_hash = self._hash_image_bytes(image_bytes)
+            image_candidates.append(
+                {
+                    "anchor": (anchor_row, anchor_column),
+                    "content_hash": content_hash,
+                    "file_key": self._build_image_file_key(
+                        sheet_name=sheet_name,
+                        anchor_row=anchor_row,
+                        anchor_column=anchor_column,
+                        content_hash=content_hash,
+                        image_ext=image_ext,
+                    ),
+                    "image_bytes": image_bytes,
+                    "image_ext": image_ext,
+                }
             )
 
-        return image_map, upload_files
+        if not image_candidates:
+            return {}
+
+        image_map: dict[tuple[int, int], list[str]] = {}
+        base_url = dify_config.FILES_URL
+        candidate_keys = sorted({candidate["file_key"] for candidate in image_candidates})
+
+        with session_factory.create_session() as session:
+            existing_upload_files = session.scalars(
+                select(UploadFile).where(
+                    UploadFile.tenant_id == self._tenant_id,
+                    UploadFile.key.in_(candidate_keys),
+                )
+            ).all()
+            upload_files_by_key = {upload_file.key: upload_file for upload_file in existing_upload_files}
+            new_upload_files: list[UploadFile] = []
+
+            for candidate in image_candidates:
+                upload_file = upload_files_by_key.get(candidate["file_key"])
+                if upload_file is None:
+                    storage.save(candidate["file_key"], candidate["image_bytes"])
+                    mime_type, _ = mimetypes.guess_type(candidate["file_key"])
+                    upload_file = UploadFile(
+                        tenant_id=self._tenant_id,
+                        storage_type=StorageType(dify_config.STORAGE_TYPE),
+                        key=candidate["file_key"],
+                        name=candidate["file_key"],
+                        size=len(candidate["image_bytes"]),
+                        extension=candidate["image_ext"],
+                        mime_type=mime_type or "",
+                        created_by=self._user_id,
+                        created_by_role=CreatorUserRole.ACCOUNT,
+                        created_at=naive_utc_now(),
+                        used=True,
+                        used_by=self._user_id,
+                        used_at=naive_utc_now(),
+                        hash=candidate["content_hash"],
+                    )
+                    upload_files_by_key[candidate["file_key"]] = upload_file
+                    new_upload_files.append(upload_file)
+
+                image_map.setdefault(candidate["anchor"], []).append(
+                    f"![image]({base_url}/files/{upload_file.id}/file-preview)"
+                )
+
+            if new_upload_files:
+                session.add_all(new_upload_files)
+                session.commit()
+
+        return image_map
+
+    @staticmethod
+    def _hash_image_bytes(image_bytes: bytes) -> str:
+        """Return a stable content hash for extracted image bytes."""
+        return hashlib.sha256(image_bytes).hexdigest()
+
+    def _build_image_file_key(
+        self,
+        *,
+        sheet_name: str,
+        anchor_row: int,
+        anchor_column: int,
+        content_hash: str,
+        image_ext: str,
+    ) -> str:
+        """Build a deterministic storage key for an embedded worksheet image."""
+        assert self._tenant_id is not None, "tenant_id is required for image extraction"
+        assert self._source_file_id is not None, "source_file_id is required for image extraction"
+
+        normalized_ext = image_ext.strip().lower()
+        sheet_hash = hashlib.sha256(sheet_name.encode("utf-8")).hexdigest()[:16]
+        return (
+            f"image_files/{self._tenant_id}/{self._source_file_id}/"
+            f"{sheet_hash}_r{anchor_row}_c{anchor_column}_{content_hash}.{normalized_ext}"
+        )
 
     def _get_image_bytes(self, image) -> bytes | None:
         """Return embedded image bytes from an openpyxl image object."""

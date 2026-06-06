@@ -58,6 +58,84 @@ class _FakeImage:
         return self._raw_data
 
 
+class _FieldExpression:
+    def __eq__(self, other):
+        return ("eq", other)
+
+    def in_(self, values):
+        return ("in", tuple(values))
+
+
+class _SelectStub:
+    def where(self, *args, **kwargs):
+        return self
+
+
+class _FakeUploadFile:
+    tenant_id = _FieldExpression()
+    key = _FieldExpression()
+    _i = 0
+
+    def __init__(self, **kwargs):
+        type(self)._i += 1
+        self.id = f"u{self._i}"
+        self.key = kwargs["key"]
+
+
+class _PersistentSession:
+    def __init__(self, persisted):
+        self._persisted = persisted
+        self.added = []
+        self.commit_count = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def scalars(self, _stmt):
+        return SimpleNamespace(all=lambda: list(self._persisted.values()))
+
+    def add_all(self, objects) -> None:
+        self.added.extend(objects)
+
+    def commit(self) -> None:
+        self.commit_count += 1
+        for upload_file in self.added:
+            self._persisted[upload_file.key] = upload_file
+        self.added.clear()
+
+
+class _PersistentSessionFactory:
+    def __init__(self):
+        self.persisted = {}
+        self.sessions = []
+
+    def create_session(self):
+        session = _PersistentSession(self.persisted)
+        self.sessions.append(session)
+        return session
+
+
+def _patch_image_persistence(monkeypatch: pytest.MonkeyPatch):
+    saves: list[tuple[str, bytes]] = []
+    session_factory = _PersistentSessionFactory()
+
+    def save(key: str, data: bytes) -> None:
+        saves.append((key, data))
+
+    _FakeUploadFile._i = 0
+    monkeypatch.setattr(excel_module, "storage", SimpleNamespace(save=save))
+    monkeypatch.setattr(excel_module, "session_factory", session_factory)
+    monkeypatch.setattr(excel_module, "select", lambda *args, **kwargs: _SelectStub())
+    monkeypatch.setattr(excel_module, "UploadFile", _FakeUploadFile)
+    monkeypatch.setattr(excel_module.dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(excel_module.dify_config, "STORAGE_TYPE", "local", raising=False)
+
+    return saves, session_factory
+
+
 class TestExcelExtractor:
     def test_extract_xlsx_with_hyperlinks_and_sheet_skip(self, monkeypatch: pytest.MonkeyPatch):
         sheet_with_data = _FakeSheet(
@@ -97,40 +175,14 @@ class TestExcelExtractor:
         )
         workbook = _FakeWorkbook({"Data": sheet})
         monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbook)
+        saves, session_factory = _patch_image_persistence(monkeypatch)
 
-        saves: list[tuple[str, bytes]] = []
-
-        def save(key: str, data: bytes) -> None:
-            saves.append((key, data))
-
-        monkeypatch.setattr(excel_module, "storage", SimpleNamespace(save=save))
-
-        class DummySession:
-            def __init__(self) -> None:
-                self.added = []
-                self.committed = False
-
-            def add_all(self, objects) -> None:
-                self.added.extend(objects)
-
-            def commit(self) -> None:
-                self.committed = True
-
-        db_stub = SimpleNamespace(session=DummySession())
-        monkeypatch.setattr(excel_module, "db", db_stub)
-        monkeypatch.setattr(excel_module.dify_config, "FILES_URL", "http://files.local", raising=False)
-        monkeypatch.setattr(excel_module.dify_config, "STORAGE_TYPE", "local", raising=False)
-
-        class FakeUploadFile:
-            _i = 0
-
-            def __init__(self, **kwargs):
-                type(self)._i += 1
-                self.id = f"u{self._i}"
-
-        monkeypatch.setattr(excel_module, "UploadFile", FakeUploadFile)
-
-        extractor = ExcelExtractor("/tmp/sample.xlsx", tenant_id="tenant-1", user_id="user-1")
+        extractor = ExcelExtractor(
+            "/tmp/sample.xlsx",
+            tenant_id="tenant-1",
+            user_id="user-1",
+            source_file_id="source-file-1",
+        )
         docs = extractor.extract()
 
         assert workbook.closed is True
@@ -138,14 +190,15 @@ class TestExcelExtractor:
         assert docs[0].page_content == (
             '"Question":"Q1";"Answer":"A1";'
             '"Image":"![image](http://files.local/files/u1/file-preview) '
-            '![image](http://files.local/files/u2/file-preview)"'
+            '![image](http://files.local/files/u1/file-preview)"'
         )
         assert docs[1].page_content == '"Question":"Q2";"Answer":"A2";"Image":""'
-        assert len(saves) == 2
-        assert all(key.startswith("image_files/tenant-1/") and key.endswith(".png") for key, _ in saves)
-        assert [data for _, data in saves] == [image_bytes, image_bytes]
-        assert len(db_stub.session.added) == 2
-        assert db_stub.session.committed is True
+        assert len(saves) == 1
+        assert saves[0][0].startswith("image_files/tenant-1/source-file-1/")
+        assert saves[0][0].endswith(".png")
+        assert saves[0][1] == image_bytes
+        assert len(session_factory.persisted) == 1
+        assert [session.commit_count for session in session_factory.sessions] == [1]
 
     def test_extract_xlsx_keeps_rows_with_only_embedded_images(self, monkeypatch: pytest.MonkeyPatch):
         image_bytes = b"\x89PNG\r\n\x1a\nimage-only-row"
@@ -159,40 +212,14 @@ class TestExcelExtractor:
         )
         workbook = _FakeWorkbook({"Data": sheet})
         monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbook)
+        saves, session_factory = _patch_image_persistence(monkeypatch)
 
-        saves: list[tuple[str, bytes]] = []
-
-        def save(key: str, data: bytes) -> None:
-            saves.append((key, data))
-
-        monkeypatch.setattr(excel_module, "storage", SimpleNamespace(save=save))
-
-        class DummySession:
-            def __init__(self) -> None:
-                self.added = []
-                self.committed = False
-
-            def add_all(self, objects) -> None:
-                self.added.extend(objects)
-
-            def commit(self) -> None:
-                self.committed = True
-
-        db_stub = SimpleNamespace(session=DummySession())
-        monkeypatch.setattr(excel_module, "db", db_stub)
-        monkeypatch.setattr(excel_module.dify_config, "FILES_URL", "http://files.local", raising=False)
-        monkeypatch.setattr(excel_module.dify_config, "STORAGE_TYPE", "local", raising=False)
-
-        class FakeUploadFile:
-            _i = 0
-
-            def __init__(self, **kwargs):
-                type(self)._i += 1
-                self.id = f"u{self._i}"
-
-        monkeypatch.setattr(excel_module, "UploadFile", FakeUploadFile)
-
-        extractor = ExcelExtractor("/tmp/sample.xlsx", tenant_id="tenant-1", user_id="user-1")
+        extractor = ExcelExtractor(
+            "/tmp/sample.xlsx",
+            tenant_id="tenant-1",
+            user_id="user-1",
+            source_file_id="source-file-1",
+        )
         docs = extractor.extract()
 
         assert workbook.closed is True
@@ -201,8 +228,52 @@ class TestExcelExtractor:
             '"Question":"";"Answer":"";"Image":"![image](http://files.local/files/u1/file-preview)"'
         )
         assert len(saves) == 1
-        assert len(db_stub.session.added) == 1
-        assert db_stub.session.committed is True
+        assert len(session_factory.persisted) == 1
+        assert [session.commit_count for session in session_factory.sessions] == [1]
+
+    def test_extract_xlsx_reuses_existing_embedded_image_uploads_on_retry(self, monkeypatch: pytest.MonkeyPatch):
+        image_bytes = b"\x89PNG\r\n\x1a\nretry-safe-image"
+        workbooks = [
+            _FakeWorkbook(
+                {
+                    "Data": _FakeSheet(
+                        header_rows=[("Question", "Answer", "Image")],
+                        data_rows=[(_FakeCell("Q1"), _FakeCell("A1"), _FakeCell(None))],
+                        images=[_FakeImage(image_bytes, row=1, col=2)],
+                    )
+                }
+            ),
+            _FakeWorkbook(
+                {
+                    "Data": _FakeSheet(
+                        header_rows=[("Question", "Answer", "Image")],
+                        data_rows=[(_FakeCell("Q1"), _FakeCell("A1"), _FakeCell(None))],
+                        images=[_FakeImage(image_bytes, row=1, col=2)],
+                    )
+                }
+            ),
+        ]
+        monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbooks.pop(0))
+        saves, session_factory = _patch_image_persistence(monkeypatch)
+
+        extractor = ExcelExtractor(
+            "/tmp/sample.xlsx",
+            tenant_id="tenant-1",
+            user_id="user-1",
+            source_file_id="source-file-1",
+        )
+        first_docs = extractor.extract()
+        second_docs = extractor.extract()
+
+        expected_page_content = (
+            '"Question":"Q1";"Answer":"A1";"Image":"![image](http://files.local/files/u1/file-preview)"'
+        )
+
+        assert first_docs[0].page_content == expected_page_content
+        assert second_docs[0].page_content == expected_page_content
+        assert len(saves) == 1
+        assert len(session_factory.persisted) == 1
+        assert [session.commit_count for session in session_factory.sessions] == [1, 0]
 
     def test_extract_xls_path(self, monkeypatch: pytest.MonkeyPatch):
         class FakeExcelFile:
