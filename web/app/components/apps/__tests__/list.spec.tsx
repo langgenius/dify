@@ -233,12 +233,6 @@ vi.mock('../app-card', () => ({
   },
 }))
 
-vi.mock('../new-app-card', () => ({
-  default: React.forwardRef((_props: unknown, _ref: React.ForwardedRef<unknown>) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
-  }),
-}))
-
 vi.mock('../empty', () => ({
   default: () => {
     return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
@@ -362,9 +356,9 @@ describe('List', () => {
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
     })
 
-    it('should render new app card for editors', () => {
+    it('should not render new app card in the app grid', () => {
       renderList()
-      expect(screen.getByTestId('new-app-card'))!.toBeInTheDocument()
+      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
     it('should render footer when branding is disabled', () => {

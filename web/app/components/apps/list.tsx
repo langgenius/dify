@@ -27,12 +27,11 @@ import Footer from './footer'
 import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
-import NewAppCard from './new-app-card'
 
 function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -47,7 +46,6 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
   } = useAppsQueryState()
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
-  const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
@@ -240,15 +238,6 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
                 !hasAnyApp && 'overflow-hidden',
               )}
               >
-                {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && hasAnyApp && (
-                  <NewAppCard
-                    ref={newAppCardRef}
-                    isLoading={isLoadingCurrentWorkspace}
-                    onSuccess={refetch}
-                    selectedAppType={category}
-                    className={cn(!hasAnyApp && 'z-10')}
-                  />
-                )}
                 {showSkeleton
                   ? <AppCardSkeleton count={6} />
                   : hasAnyApp
