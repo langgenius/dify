@@ -88,8 +88,7 @@ function availableInstanceName(baseName: string, existingNames: readonly string[
 export function useCreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
-  const createInitialDeploymentFromSourceApp = useMutation(consoleQuery.enterprise.deploymentService.createInitialDeploymentFromSourceApp.mutationOptions())
-  const createInitialDeploymentFromDsl = useMutation(consoleQuery.enterprise.deploymentService.createInitialDeploymentFromDsl.mutationOptions())
+  const createInitialDeployment = useMutation(consoleQuery.enterprise.deploymentService.deploy.mutationOptions())
 
   const [step, setStep] = useState<GuideStep>('source')
   const [method, setMethod] = useState<GuideMethod>('bindApp')
@@ -235,8 +234,7 @@ export function useCreateDeploymentGuide() {
   const isEnvironmentLoading = shouldLoadDeploymentTarget && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
   const isBindingLoading = shouldLoadDeploymentTarget && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
   const isDeploying = isSkippingReleaseOnly
-    || createInitialDeploymentFromSourceApp.isPending
-    || createInitialDeploymentFromDsl.isPending
+    || createInitialDeployment.isPending
   const sourceName = method === 'importDsl'
     ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
     : method === 'bindApp'
@@ -458,12 +456,14 @@ export function useCreateDeploymentGuide() {
 
       const idempotencyKey = createDeploymentIdempotencyKey()
       const response = method === 'importDsl'
-        ? await createInitialDeploymentFromDsl.mutateAsync({
+        ? await createInitialDeployment.mutateAsync({
             body: {
               dsl: encodedDslContent,
+              new: {
+                name: submittedInstanceName,
+                description: instanceDescription.trim() || undefined,
+              },
               environmentId: targetEnvironmentId,
-              appInstanceName: submittedInstanceName,
-              appInstanceDescription: instanceDescription.trim() || undefined,
               releaseName: submittedReleaseName,
               releaseDescription: submittedReleaseDescription || undefined,
               credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
@@ -473,12 +473,14 @@ export function useCreateDeploymentGuide() {
             },
           })
         : effectiveSelectedApp?.id
-          ? await createInitialDeploymentFromSourceApp.mutateAsync({
+          ? await createInitialDeployment.mutateAsync({
               body: {
                 sourceAppId: effectiveSelectedApp.id,
+                new: {
+                  name: submittedInstanceName,
+                  description: instanceDescription.trim() || undefined,
+                },
                 environmentId: targetEnvironmentId,
-                appInstanceName: submittedInstanceName,
-                appInstanceDescription: instanceDescription.trim() || undefined,
                 releaseName: submittedReleaseName,
                 releaseDescription: submittedReleaseDescription || undefined,
                 credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),

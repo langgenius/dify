@@ -7,23 +7,21 @@ export type Drift
     | { kind: 'up-to-date' }
     | { kind: 'behind', steps: number }
 
-export function computeDrift(
-  row: EnvironmentDeployment,
-  releaseRows: Release[],
-): Drift {
+export function computeDrift(row: EnvironmentDeployment): Drift {
   if (isUndeployedDeploymentRow(row))
     return { kind: 'undeployed' }
 
-  const currentReleaseId = row.currentRelease?.id
-  if (!currentReleaseId)
+  if (!row.currentRelease?.id)
     return { kind: 'unknown' }
 
-  const idx = releaseRows.findIndex(release => release.id === currentReleaseId)
-  if (idx === -1)
+  // releasesBehind is server-computed against the full release history (0 == up
+  // to date). It is absent only when undetermined, which renders as unknown.
+  const behind = row.releasesBehind
+  if (behind == null)
     return { kind: 'unknown' }
-  if (idx === 0)
+  if (behind === 0)
     return { kind: 'up-to-date' }
-  return { kind: 'behind', steps: idx }
+  return { kind: 'behind', steps: behind }
 }
 
 export function latestReleaseId(releaseRows: Release[]): string | undefined {

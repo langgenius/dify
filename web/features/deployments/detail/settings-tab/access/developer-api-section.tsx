@@ -10,7 +10,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { atom, useAtom, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -53,64 +53,42 @@ function buildCurlExample(apiUrl: string, token: string) {
 }'`
 }
 
-function deploymentEnvironment(row: { environment?: Environment }): Environment | undefined {
-  return row.environment?.id ? row.environment : undefined
-}
-
 function useDeveloperApiStatus(appInstanceId: string) {
-  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
+  const developerApiSettingsQuery = useQuery(consoleQuery.enterprise.accessService.getDeveloperApiSettings.queryOptions({
     input: {
       params: { appInstanceId },
     },
   }))
-  const accessChannels = accessChannelsQuery.data?.accessChannels
+  const accessChannels = developerApiSettingsQuery.data?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
 
   return {
     apiEnabled,
     accessChannels,
-    isLoading: accessChannelsQuery.isLoading,
-    isError: accessChannelsQuery.isError,
+    isLoading: developerApiSettingsQuery.isLoading,
+    isError: developerApiSettingsQuery.isError,
   }
 }
 
 function useDeveloperApiResources(appInstanceId: string) {
-  const {
-    apiEnabled,
-    isLoading: accessChannelsLoading,
-    isError: accessChannelsError,
-  } = useDeveloperApiStatus(appInstanceId)
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
+  const developerApiSettingsQuery = useQuery(consoleQuery.enterprise.accessService.getDeveloperApiSettings.queryOptions({
     input: {
       params: { appInstanceId },
     },
   }))
-  const environments = environmentDeploymentsQuery.data?.data
-    ?.map(deploymentEnvironment)
-    .filter((environment): environment is Environment & { id: string } => Boolean(environment)) ?? []
-  const apiKeyQueries = useQueries({
-    queries: environments.map(environment => consoleQuery.enterprise.accessService.listApiKeys.queryOptions({
-      input: {
-        params: {
-          appInstanceId,
-          environmentId: environment.id,
-        },
-      },
-      enabled: Boolean(apiEnabled),
-    })),
-  })
-  const apiKeys: ApiKey[] = apiKeyQueries.flatMap(query => query.data?.data ?? [])
-  const apiUrl = apiKeyQueries.find(query => query.data?.apiUrl)?.data?.apiUrl
-  const apiKeysLoading = apiKeyQueries.some(query => query.isLoading)
-  const apiKeysError = apiKeyQueries.some(query => query.isError)
+  const accessChannels = developerApiSettingsQuery.data?.accessChannels
+  const apiEnabled = accessChannels?.developerApiEnabled ?? false
+  const environments = developerApiSettingsQuery.data?.environments?.filter((environment): environment is Environment & { id: string } => Boolean(environment.id)) ?? []
+  const apiKeys: ApiKey[] = developerApiSettingsQuery.data?.apiKeys ?? []
+  const apiUrl = developerApiSettingsQuery.data?.developerApiUrl?.apiUrl
 
   return {
     apiEnabled,
     apiUrl,
     environments,
     apiKeys,
-    isLoading: accessChannelsLoading || environmentDeploymentsQuery.isLoading || (apiEnabled && apiKeysLoading),
-    isError: accessChannelsError || environmentDeploymentsQuery.isError || (apiEnabled && apiKeysError),
+    isLoading: developerApiSettingsQuery.isLoading,
+    isError: developerApiSettingsQuery.isError,
   }
 }
 

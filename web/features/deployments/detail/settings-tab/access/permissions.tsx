@@ -4,6 +4,7 @@ import type {
   AccessPolicy,
   AccessSubject,
   Environment,
+  Subject,
 } from '@dify/contracts/enterprise/types.gen'
 import type { AccessSubjectSelectionValue } from '@/app/components/base/access-subject-selector'
 import type {
@@ -15,7 +16,7 @@ import type {
 } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControlDialog from '@/app/components/app/app-access-control/access-control-dialog'
@@ -112,6 +113,35 @@ function normalizeSubject(subject: AccessControlSubject): SelectableAccessSubjec
     subjectType: SUBJECT_TYPE_ACCOUNT,
     name: accountSubject.accountData.name || accountSubject.accountData.email,
   }
+}
+
+function normalizeResolvedSubject(subject: Subject): SelectableAccessSubject | undefined {
+  if (subject.subjectType === SUBJECT_TYPE_GROUP) {
+    const id = subject.subjectId || subject.groupData?.id
+    if (!id)
+      return undefined
+
+    return {
+      id,
+      subjectType: SUBJECT_TYPE_GROUP,
+      name: subject.groupData?.name,
+      memberCount: subject.groupData?.groupSize,
+    }
+  }
+
+  if (subject.subjectType === SUBJECT_TYPE_ACCOUNT) {
+    const id = subject.subjectId || subject.accountData?.id
+    if (!id)
+      return undefined
+
+    return {
+      id,
+      subjectType: SUBJECT_TYPE_ACCOUNT,
+      name: subject.accountData?.name || subject.accountData?.email,
+    }
+  }
+
+  return undefined
 }
 
 function getSubjectLabel(subject: SelectableAccessSubject) {
@@ -360,6 +390,7 @@ type EnvironmentPermissionRowProps = {
   disabled?: boolean
   environment: Environment
   summaryPolicy?: AccessPolicy
+  resolvedSubjects?: Subject[]
 }
 
 export function EnvironmentPermissionRow({
@@ -367,21 +398,12 @@ export function EnvironmentPermissionRow({
   disabled,
   environment,
   summaryPolicy,
+  resolvedSubjects = [],
 }: EnvironmentPermissionRowProps) {
   const { t } = useTranslation('deployments')
   const environmentId = environment.id
-  const accessPolicyQuery = useQuery(consoleQuery.enterprise.accessService.getAccessPolicy.queryOptions({
-    input: environmentId
-      ? {
-          params: {
-            appInstanceId,
-            environmentId,
-          },
-        }
-      : skipToken,
-  }))
   const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
-  const policy = accessPolicyQuery.data?.policy ?? summaryPolicy
+  const policy = summaryPolicy
   const policyKind = accessModeToPermissionKey(policy?.mode)
   const accessSubjectsQuery = useSearchForWhiteListCandidates({
     resultsPerPage: ACCESS_SUBJECT_LABEL_PAGE_SIZE,
@@ -405,16 +427,19 @@ export function EnvironmentPermissionRow({
   const [dialogOpen, setDialogOpen] = useState(false)
   const subjectLabelCandidates = [
     ...(draft.subjects ?? []),
+    ...resolvedSubjects
+      .map(normalizeResolvedSubject)
+      .filter((subject): subject is SelectableAccessSubject => Boolean(subject)),
     ...accessSubjects,
   ]
   const hasDraft = draft.fingerprint === policyFingerprint
   const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind
   const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(policy, subjectLabelCandidates) : []
-  const subjects = hasDraft && draft.subjects ? draft.subjects : accessSubjectsQuery.isLoading ? [] : policySelectedSubjects
+  const subjects = hasDraft && draft.subjects ? draft.subjects : policySelectedSubjects
   const subjectSelection = accessControlSelectionFromSubjects(subjects)
   const isSaving = setEnvironmentAccessPolicy.isPending
   const subjectsLoading = permissionKind === 'specific' && accessSubjectsQuery.isLoading
-  const controlsDisabled = disabled || isSaving || accessPolicyQuery.isLoading || accessPolicyQuery.isError || subjectsLoading
+  const controlsDisabled = disabled || isSaving || subjectsLoading
   const envName = environmentName(environment)
 
   const persistPolicy = (
@@ -506,7 +531,7 @@ export function EnvironmentPermissionRow({
         <SubjectsSummary
           permissionKind={permissionKind}
           subjects={subjects}
-          loading={subjectsLoading}
+          loading={subjectsLoading && subjects.length === 0}
         />
       </DetailTableCell>
     </DetailTableRow>

@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type {
@@ -16,8 +17,9 @@ import { useSetAtom } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { DEPLOYMENT_PAGE_SIZE } from '../../data'
+import { environmentId } from '../../environment'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
+import { releaseDeploymentAction } from '../../release-action'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
 import {
@@ -54,6 +56,7 @@ type DeployFormProps = {
 type DeployReadyFormProps = DeployFormProps & {
   environments: EnvironmentOption[]
   releases: Release[]
+  runtimeRows: EnvironmentDeployment[]
   defaultReleaseId?: string
   releaseEmptyLabel?: string
 }
@@ -64,6 +67,7 @@ function DeployReadyForm({
   appInstanceId,
   environments,
   releases,
+  runtimeRows,
   defaultReleaseId,
   releaseEmptyLabel,
   lockedEnvId,
@@ -71,7 +75,8 @@ function DeployReadyForm({
 }: DeployReadyFormProps) {
   const { t } = useTranslation('deployments')
   const closeDeployDrawer = useSetAtom(closeDeployDrawerAtom)
-  const startDeploy = useMutation(consoleQuery.enterprise.deploymentService.deploy.mutationOptions())
+  const promoteRelease = useMutation(consoleQuery.enterprise.deploymentService.promote.mutationOptions())
+  const rollbackRelease = useMutation(consoleQuery.enterprise.deploymentService.rollback.mutationOptions())
   const presetRelease = presetReleaseId ? releases.find(r => r.id === presetReleaseId) : undefined
   const displayedRelease: Release | undefined = presetRelease ?? (presetReleaseId ? { id: presetReleaseId } : undefined)
   const isExistingRelease = Boolean(presetReleaseId)
@@ -153,7 +158,7 @@ function DeployReadyForm({
   )
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, selectedBindings[runtimeCredentialSlotKey(slot)]))
   const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, effectiveEnvVarValues))
-  const isSubmitting = startDeploy.isPending
+  const isSubmitting = promoteRelease.isPending || rollbackRelease.isPending
   const deployFormReady = Boolean(
     selectedEnvironmentId
     && selectedEnvironment
@@ -191,7 +196,42 @@ function DeployReadyForm({
       return
 
     const idempotencyKey = createDeploymentIdempotencyKey()
-    startDeploy.mutate(
+    const currentRelease = runtimeRows.find(row => environmentId(row.environment) === selectedEnvironmentId)?.currentRelease
+    const action = releaseDeploymentAction({
+      targetRelease,
+      currentRelease,
+      releaseRows: releases,
+      isExistingRelease: true,
+    })
+    const mutationOptions = {
+      onSuccess: () => {
+        closeDeployDrawer()
+      },
+      onError: () => {
+        toast.error(t('deployDrawer.deployFailed'))
+      },
+    }
+
+    if (action === 'rollback') {
+      rollbackRelease.mutate(
+        {
+          params: {
+            appInstanceId,
+            environmentId: selectedEnvironmentId,
+          },
+          body: {
+            appInstanceId,
+            environmentId: selectedEnvironmentId,
+            targetReleaseId,
+            idempotencyKey,
+          },
+        },
+        mutationOptions,
+      )
+      return
+    }
+
+    promoteRelease.mutate(
       {
         params: {
           appInstanceId,
@@ -206,14 +246,7 @@ function DeployReadyForm({
           idempotencyKey,
         },
       },
-      {
-        onSuccess: () => {
-          closeDeployDrawer()
-        },
-        onError: () => {
-          toast.error(t('deployDrawer.deployFailed'))
-        },
-      },
+      mutationOptions,
     )
   }
 
@@ -275,26 +308,17 @@ export function DeployForm({
   presetReleaseId,
 }: DeployFormProps) {
   const { t } = useTranslation('deployments')
-  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
-    input: {
-      params: { appInstanceId },
-      query: {
-        pageNumber: 1,
-        resultsPerPage: DEPLOYMENT_PAGE_SIZE,
-      },
-    },
-  }))
-  const runtimeInstancesQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
+  const releaseDeploymentViewQuery = useQuery(consoleQuery.enterprise.releaseService.getReleaseDeploymentView.queryOptions({
     input: {
       params: { appInstanceId },
     },
   }))
 
-  if (releaseHistoryQuery.isLoading || runtimeInstancesQuery.isLoading) {
+  if (releaseDeploymentViewQuery.isLoading) {
     return <DeployFormSkeleton />
   }
 
-  if (releaseHistoryQuery.isError || runtimeInstancesQuery.isError) {
+  if (releaseDeploymentViewQuery.isError) {
     return (
       <div className="p-4 system-sm-regular text-text-destructive">
         {t('common.loadFailed')}
@@ -302,13 +326,13 @@ export function DeployForm({
     )
   }
 
-  const runtimeRows = runtimeInstancesQuery.data?.data ?? []
+  const runtimeRows = releaseDeploymentViewQuery.data?.environmentDeployments ?? []
   const selectableEnvironmentRows = runtimeRows
     .filter(row => lockedEnvId ? Boolean(row.environment?.id) : isAvailableDeploymentTarget(row))
   const environments = selectableEnvironmentRows
     .map(row => row.environment)
     .filter((environment): environment is EnvironmentOption => Boolean(environment?.id))
-  const releaseRows = releaseHistoryQuery.data?.data?.filter(release => release.id) ?? []
+  const releaseRows = releaseDeploymentViewQuery.data?.releases?.filter(release => release.id) ?? []
   const currentReleaseId = currentReleaseIdForEnvironment(runtimeRows, lockedEnvId)
   const releases = selectableDeployReleases({
     releases: releaseRows,
@@ -328,6 +352,7 @@ export function DeployForm({
       appInstanceId={appInstanceId}
       environments={environments}
       releases={releases}
+      runtimeRows={runtimeRows}
       defaultReleaseId={defaultReleaseId}
       releaseEmptyLabel={releaseEmptyLabel}
       lockedEnvId={lockedEnvId}

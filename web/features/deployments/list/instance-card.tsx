@@ -2,7 +2,7 @@
 
 import type {
   AccessChannels,
-  AppInstance,
+  AppInstanceSummary,
   EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
@@ -11,13 +11,11 @@ import type { InstanceDetailTabKey } from '../detail/tabs'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useQuery } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
 import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { TitleTooltip } from '../components/title-tooltip'
 import { EnvironmentDeploymentBadge } from '../deployment-ui'
@@ -27,13 +25,11 @@ import { environmentName } from '../environment'
 import { formatDate, releaseLabel } from '../release'
 import {
   deploymentStatus,
-  deploymentStatusPollingInterval,
   isUndeployedDeploymentRow,
 } from '../runtime-status'
 import { openDeployDrawerAtom } from '../store'
 
 const VISIBLE_ENVIRONMENT_COUNT = 3
-const CARD_RELEASE_QUERY_PAGE_SIZE = 1
 
 function getInstanceTabHref(appInstanceId: string, tabKey: InstanceDetailTabKey) {
   return `/deployments/${appInstanceId}/${tabKey}`
@@ -45,14 +41,6 @@ function hasEnvironment(row: EnvironmentDeployment) {
 
 function isActiveDeployment(row: EnvironmentDeployment) {
   return hasEnvironment(row) && !isUndeployedDeploymentRow(row)
-}
-
-function pickLatestRelease(rows: Release[]): Release | undefined {
-  return [...rows].sort((a, b) => {
-    const aTime = a.createdAt ? Date.parse(a.createdAt) : 0
-    const bTime = b.createdAt ? Date.parse(b.createdAt) : 0
-    return bTime - aTime
-  })[0]
 }
 
 function isReleaseDeployed(release: Release | undefined, rows: EnvironmentDeployment[]) {
@@ -295,49 +283,28 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
   )
 }
 
-export function InstanceCard({ app }: {
-  app: AppInstance
+export function InstanceCard({ summary }: {
+  summary: AppInstanceSummary
 }) {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const appInstanceId = app.id ?? ''
-  const appName = app.name ?? appInstanceId
+  const app = summary.appInstance
+  const appInstanceId = app?.id ?? ''
+  const appName = app?.name ?? appInstanceId
   const detailHref = getInstanceTabHref(appInstanceId, 'overview')
-  const input = appInstanceId ? { params: { appInstanceId } } : skipToken
-  const releaseHistoryInput = appInstanceId
-    ? {
-        params: { appInstanceId },
-        query: {
-          pageNumber: 1,
-          resultsPerPage: CARD_RELEASE_QUERY_PAGE_SIZE,
-        },
-      }
-    : skipToken
+  const instanceIsLoading = false
+  const accessChannelsIsLoading = false
 
-  const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input,
-  }))
-  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
-    input,
-  }))
-  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
-    input: releaseHistoryInput,
-  }))
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input,
-    refetchInterval: query => deploymentStatusPollingInterval(query.state.data),
-  }))
-
-  if (!app.id)
+  if (!app?.id)
     return null
 
-  const description = (instanceQuery.data?.appInstance?.description ?? app.description)?.trim()
-  const access = accessChannelsQuery.data?.accessChannels
-  const releaseRows = releaseHistoryQuery.data?.data?.filter((release): release is Release & { id: string } => Boolean(release.id)) ?? []
+  const description = app.description?.trim()
+  const access = summary.accessChannels
+  const releaseRows = summary.latestRelease?.id ? [summary.latestRelease as Release & { id: string }] : []
   const hasRelease = releaseRows.length > 0
-  const activeDeploymentRows = environmentDeploymentsQuery.data?.data?.filter(isActiveDeployment) ?? []
-  const latestRelease = pickLatestRelease(releaseRows)
+  const activeDeploymentRows = summary.environmentDeployments?.filter(isActiveDeployment) ?? []
+  const latestRelease = releaseRows[0]
   const latestReleaseTime = latestRelease?.createdAt
   const latestReleaseTimeMs = latestReleaseTime ? Date.parse(latestReleaseTime) : Number.NaN
   const latestReleaseDeployed = isReleaseDeployed(latestRelease, activeDeploymentRows)
@@ -347,9 +314,9 @@ export function InstanceCard({ app }: {
         Number.isNaN(latestReleaseTimeMs) ? undefined : formatTimeFromNow(latestReleaseTimeMs),
       ].filter(Boolean).join(' · ')
     : t('card.notDeployed')
-  const releaseHistoryIsLoading = releaseHistoryQuery.isLoading
-  const statusIsLoading = environmentDeploymentsQuery.isLoading || (!activeDeploymentRows.length && releaseHistoryQuery.isLoading)
-  const statusHasError = environmentDeploymentsQuery.isError || releaseHistoryQuery.isError
+  const releaseHistoryIsLoading = false
+  const statusIsLoading = false
+  const statusHasError = false
   const showDeployAction = !statusIsLoading && !statusHasError && hasRelease && activeDeploymentRows.length === 0
   const showFooterCreateReleaseAction = !releaseHistoryIsLoading && !statusIsLoading && !statusHasError && !hasRelease
 
@@ -373,7 +340,7 @@ export function InstanceCard({ app }: {
               {appName}
             </h3>
           </TitleTooltip>
-          {instanceQuery.isLoading
+          {instanceIsLoading
             ? (
                 <div className="mt-2 flex flex-col gap-1.5">
                   <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
@@ -428,7 +395,7 @@ export function InstanceCard({ app }: {
                   />
                 </div>
               )
-            : <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsQuery.isLoading} />}
+            : <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsIsLoading} />}
           <ReleaseMetaTooltip release={latestRelease} deployed={latestReleaseDeployed}>
             <Link
               href={latestRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'instances')}

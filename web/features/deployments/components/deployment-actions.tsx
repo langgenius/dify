@@ -172,7 +172,20 @@ function EditDeploymentDialog({
           queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
         }),
         queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
+        }),
+        queryClient.invalidateQueries({
           queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
+            type: 'query',
+            input: {
+              params: {
+                appInstanceId: updatedAppInstanceId,
+              },
+            },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
             type: 'query',
             input: {
               params: {

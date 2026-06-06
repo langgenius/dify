@@ -195,6 +195,34 @@ export const zDeploymentOptionsReleaseDefaults = z.object({
   description: z.string().optional(),
 })
 
+export const zDeveloperApiUrl = z.object({
+  apiUrl: z.string().optional(),
+  status: z
+    .enum([
+      'DEVELOPER_API_URL_STATUS_UNSPECIFIED',
+      'DEVELOPER_API_URL_STATUS_CONFIGURED',
+      'DEVELOPER_API_URL_STATUS_NOT_CONFIGURED',
+    ])
+    .optional(),
+  errorCode: z.string().optional(),
+  errorMessage: z.string().optional(),
+})
+
+export const zApiKeySummary = z.object({
+  apiKeyCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  environmentCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  developerApiEnabled: z.boolean().optional(),
+  developerApiUrl: zDeveloperApiUrl.optional(),
+})
+
 export const zEnvVarInput = z.object({
   key: z.string().optional(),
   value: z.string().optional(),
@@ -206,43 +234,6 @@ export const zEnvVarInput = z.object({
       'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT',
     ])
     .optional(),
-})
-
-export const zCreateInitialDeploymentFromDslReq = z.object({
-  dsl: z.string().optional(),
-  environmentId: z.string().optional(),
-  appInstanceName: z.string().optional(),
-  appInstanceDescription: z.string().optional(),
-  releaseName: z.string().optional(),
-  releaseDescription: z.string().optional(),
-  credentials: z.array(zCredentialSelectionInput).optional(),
-  envVars: z.array(zEnvVarInput).optional(),
-  idempotencyKey: z.string().optional(),
-  expectedDslDigest: z.string().optional(),
-})
-
-export const zCreateInitialDeploymentFromSourceAppReq = z.object({
-  sourceAppId: z.string().optional(),
-  environmentId: z.string().optional(),
-  appInstanceName: z.string().optional(),
-  appInstanceDescription: z.string().optional(),
-  releaseName: z.string().optional(),
-  releaseDescription: z.string().optional(),
-  credentials: z.array(zCredentialSelectionInput).optional(),
-  envVars: z.array(zEnvVarInput).optional(),
-  idempotencyKey: z.string().optional(),
-  expectedDslDigest: z.string().optional(),
-})
-
-export const zDeployReq = z.object({
-  appInstanceId: z.string().optional(),
-  environmentId: z.string().optional(),
-  releaseId: z.string().optional(),
-  credentials: z.array(zCredentialSelectionInput).optional(),
-  envVars: z.array(zEnvVarInput).optional(),
-  idempotencyKey: z.string().optional(),
-  reuseLastEnvValues: z.boolean().optional(),
-  reuseLastCredentials: z.boolean().optional(),
 })
 
 export const zEnvVarSlot = z.object({
@@ -315,6 +306,11 @@ export const zEnvironment = z.object({
     .optional(),
 })
 
+export const zAccessEndpoint = z.object({
+  environment: zEnvironment.optional(),
+  endpointUrl: z.string().optional(),
+})
+
 /**
  * Error is the wire failure shape carried on a Deployment or Ack.
  */
@@ -357,6 +353,13 @@ export const zGetDeploymentOptionsReply = z.object({
   options: zDeploymentOptions.optional(),
 })
 
+export const zGetDeveloperApiSettingsReply = z.object({
+  accessChannels: zAccessChannels.optional(),
+  environments: z.array(zEnvironment).optional(),
+  apiKeys: z.array(zApiKey).optional(),
+  developerApiUrl: zDeveloperApiUrl.optional(),
+})
+
 export const zListApiKeysReply = z.object({
   data: z.array(zApiKey).optional(),
   apiUrl: z.string().optional(),
@@ -373,6 +376,25 @@ export const zListReleaseCredentialCandidatesReply = z.object({
 export const zNamedRef = z.object({
   id: z.string().optional(),
   name: z.string().optional(),
+})
+
+export const zNewAppInstance = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+})
+
+export const zDeployReq = z.object({
+  dsl: z.string().optional(),
+  sourceAppId: z.string().optional(),
+  new: zNewAppInstance.optional(),
+  existingAppInstanceId: z.string().optional(),
+  environmentId: z.string().optional(),
+  releaseName: z.string().optional(),
+  releaseDescription: z.string().optional(),
+  credentials: z.array(zCredentialSelectionInput).optional(),
+  envVars: z.array(zEnvVarInput).optional(),
+  idempotencyKey: z.string().optional(),
+  expectedDslDigest: z.string().optional(),
 })
 
 /**
@@ -419,9 +441,8 @@ export const zGetAppRunnerLogReply = z.object({
 
 export const zPromoteReq = z.object({
   appInstanceId: z.string().optional(),
-  fromEnvironmentId: z.string().optional(),
-  toEnvironmentId: z.string().optional(),
-  sourceDeploymentId: z.string().optional(),
+  releaseId: z.string().optional(),
+  environmentId: z.string().optional(),
   credentials: z.array(zCredentialSelectionInput).optional(),
   envVars: z.array(zEnvVarInput).optional(),
   idempotencyKey: z.string().optional(),
@@ -458,6 +479,44 @@ export const zReleaseContentMatch = z.object({
 export const zCheckReleaseContentReply = z.object({
   gateCommitId: z.string().optional(),
   matchedRelease: zReleaseContentMatch.optional(),
+})
+
+export const zReleaseEnvironmentAction = z.object({
+  environment: zEnvironment.optional(),
+  kind: z
+    .enum([
+      'RELEASE_ENVIRONMENT_ACTION_KIND_UNSPECIFIED',
+      'RELEASE_ENVIRONMENT_ACTION_KIND_PROMOTE',
+      'RELEASE_ENVIRONMENT_ACTION_KIND_ROLLBACK',
+      'RELEASE_ENVIRONMENT_ACTION_KIND_CURRENT',
+      'RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING',
+      'RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED',
+    ])
+    .optional(),
+  disabledReason: z.string().optional(),
+  requiresRuntimeInputs: z.boolean().optional(),
+  currentReleaseId: z.string().optional(),
+})
+
+/**
+ * ReleaseEnvironmentDeployment is an environment where the release is the
+ * active deployment, paired with that environment's runtime status so the
+ * version history can show running vs failed vs deploying.
+ */
+export const zReleaseEnvironmentDeployment = z.object({
+  environment: zEnvironment.optional(),
+  status: z
+    .enum([
+      'RUNTIME_INSTANCE_STATUS_UNSPECIFIED',
+      'RUNTIME_INSTANCE_STATUS_UNDEPLOYED',
+      'RUNTIME_INSTANCE_STATUS_DEPLOYING',
+      'RUNTIME_INSTANCE_STATUS_READY',
+      'RUNTIME_INSTANCE_STATUS_FAILED',
+      'RUNTIME_INSTANCE_STATUS_DRIFTED',
+      'RUNTIME_INSTANCE_STATUS_INVALID',
+      'RUNTIME_INSTANCE_STATUS_UNDEPLOYING',
+    ])
+    .optional(),
 })
 
 export const zReportRuntimeAssignmentStatusReply = z.object({
@@ -518,7 +577,7 @@ export const zDeployment = z.object({
   finalizedAt: z.string().optional(),
 })
 
-export const zCreateInitialDeploymentReply = z.object({
+export const zDeployReply = z.object({
   appInstance: zAppInstance.optional(),
   release: zRelease.optional(),
   deployment: zDeployment.optional(),
@@ -540,6 +599,7 @@ export const zEnvironmentDeployment = z.object({
       'RUNTIME_INSTANCE_STATUS_FAILED',
       'RUNTIME_INSTANCE_STATUS_DRIFTED',
       'RUNTIME_INSTANCE_STATUS_INVALID',
+      'RUNTIME_INSTANCE_STATUS_UNDEPLOYING',
     ])
     .optional(),
   currentRelease: zRelease.optional(),
@@ -547,6 +607,39 @@ export const zEnvironmentDeployment = z.object({
   currentDeployment: zEnvironmentDeploymentRecord.optional(),
   error: zError.optional(),
   updatedAt: z.string().optional(),
+  releasesBehind: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+})
+
+export const zAppInstanceSummary = z.object({
+  appInstance: zAppInstance.optional(),
+  environmentDeployments: z.array(zEnvironmentDeployment).optional(),
+  latestRelease: zRelease.optional(),
+  accessChannels: zAccessChannels.optional(),
+  apiKeySummary: zApiKeySummary.optional(),
+})
+
+export const zGetAppInstanceOverviewReply = z.object({
+  appInstance: zAppInstance.optional(),
+  environmentDeployments: z.array(zEnvironmentDeployment).optional(),
+  recentReleases: z.array(zRelease).optional(),
+  accessChannels: zAccessChannels.optional(),
+  apiKeySummary: zApiKeySummary.optional(),
+  totalReleaseCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+})
+
+export const zGetReleaseDeploymentViewReply = z.object({
+  releases: z.array(zRelease).optional(),
+  environmentDeployments: z.array(zEnvironmentDeployment).optional(),
+  environmentActions: z.array(zReleaseEnvironmentAction).optional(),
+  options: zDeploymentOptions.optional(),
 })
 
 export const zGetReleaseReply = z.object({
@@ -555,6 +648,17 @@ export const zGetReleaseReply = z.object({
 
 export const zListEnvironmentDeploymentsReply = z.object({
   data: z.array(zEnvironmentDeployment).optional(),
+})
+
+export const zReleaseSummary = z.object({
+  release: zRelease.optional(),
+  deployedEnvironments: z.array(zReleaseEnvironmentDeployment).optional(),
+  environmentActions: z.array(zReleaseEnvironmentAction).optional(),
+  activeEnvironmentCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 export const zResolveApiTokenRouteReply = z.object({
@@ -585,7 +689,19 @@ export const zResolveApiTokenRouteReq = z.object({
 export const zRollbackReq = z.object({
   appInstanceId: z.string().optional(),
   environmentId: z.string().optional(),
+  targetReleaseId: z.string().optional(),
   idempotencyKey: z.string().optional(),
+})
+
+export const zRollbackTarget = z.object({
+  release: zRelease.optional(),
+  resolvedDeploymentId: z.string().optional(),
+  deployedAt: z.string().optional(),
+  isCurrent: z.boolean().optional(),
+})
+
+export const zListRollbackTargetsReply = z.object({
+  data: z.array(zRollbackTarget).optional(),
 })
 
 export const zRunnerInfo = z.object({
@@ -691,6 +807,48 @@ export const zUpdateReleaseReq = z.object({
   description: z.string().optional(),
 })
 
+export const zSubjectAccountData = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  email: z.string().optional(),
+  avatar: z.string().optional(),
+})
+
+export const zSubjectGroupData = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  groupSize: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+})
+
+/**
+ * Subject represents a subject (user or group) in access control
+ */
+export const zSubject = z.object({
+  subjectId: z.string().optional(),
+  subjectType: z
+    .enum(['SUBJECT_TYPE_UNSPECIFIED', 'SUBJECT_TYPE_ACCOUNT', 'SUBJECT_TYPE_GROUP'])
+    .optional(),
+  accountData: zSubjectAccountData.optional(),
+  groupData: zSubjectGroupData.optional(),
+})
+
+export const zEnvironmentAccessPolicy = z.object({
+  environment: zEnvironment.optional(),
+  policy: zAccessPolicy.optional(),
+  resolvedSubjects: z.array(zSubject).optional(),
+})
+
+export const zGetAccessSettingsReply = z.object({
+  accessChannels: zAccessChannels.optional(),
+  environmentPolicies: z.array(zEnvironmentAccessPolicy).optional(),
+  webAppEndpoints: z.array(zAccessEndpoint).optional(),
+  cliEndpoint: zAccessEndpoint.optional(),
+})
+
 /**
  * CursorPagination: pagination by cursor token
  */
@@ -739,6 +897,11 @@ export const zPagination = z.object({
     .optional(),
 })
 
+export const zListAppInstanceSummariesReply = z.object({
+  data: z.array(zAppInstanceSummary).optional(),
+  pagination: zPagination.optional(),
+})
+
 export const zListAppInstancesForDashboardReply = z.object({
   data: z.array(zAppInstance).optional(),
   pagination: zPagination.optional(),
@@ -751,6 +914,11 @@ export const zListAppInstancesReply = z.object({
 
 export const zListDeploymentsReply = z.object({
   data: z.array(zDeployment).optional(),
+  pagination: zPagination.optional(),
+})
+
+export const zListReleaseSummariesReply = z.object({
+  data: z.array(zReleaseSummary).optional(),
   pagination: zPagination.optional(),
 })
 
@@ -767,6 +935,26 @@ export const zAccessServiceDeleteApiKeyPath = z.object({
  * OK
  */
 export const zAccessServiceDeleteApiKeyResponse = zDeleteApiKeyReply
+
+export const zAppInstanceServiceListAppInstanceSummariesQuery = z.object({
+  pageNumber: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  resultsPerPage: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  name: z.string().optional(),
+  environmentId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zAppInstanceServiceListAppInstanceSummariesResponse = zListAppInstanceSummariesReply
 
 export const zAppInstanceServiceListAppInstancesQuery = z.object({
   pageNumber: z
@@ -844,6 +1032,15 @@ export const zAccessServiceUpdateAccessChannelsPath = z.object({
  */
 export const zAccessServiceUpdateAccessChannelsResponse = zUpdateAccessChannelsReply
 
+export const zAccessServiceGetAccessSettingsPath = z.object({
+  appInstanceId: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zAccessServiceGetAccessSettingsResponse = zGetAccessSettingsReply
+
 export const zDeploymentServiceListDeploymentsPath = z.object({
   appInstanceId: z.string(),
 })
@@ -866,6 +1063,15 @@ export const zDeploymentServiceListDeploymentsQuery = z.object({
  * OK
  */
 export const zDeploymentServiceListDeploymentsResponse = zListDeploymentsReply
+
+export const zAccessServiceGetDeveloperApiSettingsPath = z.object({
+  appInstanceId: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zAccessServiceGetDeveloperApiSettingsResponse = zGetDeveloperApiSettingsReply
 
 export const zDeploymentServiceListEnvironmentDeploymentsPath = z.object({
   appInstanceId: z.string(),
@@ -932,9 +1138,9 @@ export const zDeploymentServiceCancelDeploymentPath = z.object({
  */
 export const zDeploymentServiceCancelDeploymentResponse = zDeploymentReply
 
-export const zDeploymentServiceDeployBody = zDeployReq
+export const zDeploymentServicePromoteBody = zPromoteReq
 
-export const zDeploymentServiceDeployPath = z.object({
+export const zDeploymentServicePromotePath = z.object({
   appInstanceId: z.string(),
   environmentId: z.string(),
 })
@@ -942,7 +1148,7 @@ export const zDeploymentServiceDeployPath = z.object({
 /**
  * OK
  */
-export const zDeploymentServiceDeployResponse = zDeploymentReply
+export const zDeploymentServicePromoteResponse = zDeploymentReply
 
 export const zDeploymentServiceRollbackBody = zRollbackReq
 
@@ -956,6 +1162,16 @@ export const zDeploymentServiceRollbackPath = z.object({
  */
 export const zDeploymentServiceRollbackResponse = zDeploymentReply
 
+export const zDeploymentServiceListRollbackTargetsPath = z.object({
+  appInstanceId: z.string(),
+  environmentId: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zDeploymentServiceListRollbackTargetsResponse = zListRollbackTargetsReply
+
 export const zDeploymentServiceUndeployBody = zUndeployReq
 
 export const zDeploymentServiceUndeployPath = z.object({
@@ -968,16 +1184,53 @@ export const zDeploymentServiceUndeployPath = z.object({
  */
 export const zDeploymentServiceUndeployResponse = zDeploymentReply
 
-export const zDeploymentServicePromoteBody = zPromoteReq
-
-export const zDeploymentServicePromotePath = z.object({
+export const zAppInstanceServiceGetAppInstanceOverviewPath = z.object({
   appInstanceId: z.string(),
 })
 
 /**
  * OK
  */
-export const zDeploymentServicePromoteResponse = zDeploymentReply
+export const zAppInstanceServiceGetAppInstanceOverviewResponse = zGetAppInstanceOverviewReply
+
+export const zReleaseServiceGetReleaseDeploymentViewPath = z.object({
+  appInstanceId: z.string(),
+})
+
+export const zReleaseServiceGetReleaseDeploymentViewQuery = z.object({
+  releaseId: z.string().optional(),
+  environmentId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zReleaseServiceGetReleaseDeploymentViewResponse = zGetReleaseDeploymentViewReply
+
+export const zReleaseServiceListReleaseSummariesPath = z.object({
+  appInstanceId: z.string(),
+})
+
+export const zReleaseServiceListReleaseSummariesQuery = z.object({
+  releaseId: z.string().optional(),
+  name: z.string().optional(),
+  pageNumber: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  resultsPerPage: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  environmentId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zReleaseServiceListReleaseSummariesResponse = zListReleaseSummariesReply
 
 export const zReleaseServiceListReleasesPath = z.object({
   appInstanceId: z.string(),
@@ -1004,6 +1257,13 @@ export const zReleaseServiceListReleasesQuery = z.object({
  */
 export const zReleaseServiceListReleasesResponse = zListReleasesReply
 
+export const zDeploymentServiceDeployBody = zDeployReq
+
+/**
+ * OK
+ */
+export const zDeploymentServiceDeployResponse = zDeployReply
+
 export const zEnvironmentServiceListDeployableEnvironmentsQuery = z.object({
   environmentId: z.string().optional(),
   name: z.string().optional(),
@@ -1029,24 +1289,6 @@ export const zReleaseServiceGetDeploymentOptionsFromSourceAppBody
  * OK
  */
 export const zReleaseServiceGetDeploymentOptionsFromSourceAppResponse = zGetDeploymentOptionsReply
-
-export const zDeploymentServiceCreateInitialDeploymentFromDslBody
-  = zCreateInitialDeploymentFromDslReq
-
-/**
- * OK
- */
-export const zDeploymentServiceCreateInitialDeploymentFromDslResponse
-  = zCreateInitialDeploymentReply
-
-export const zDeploymentServiceCreateInitialDeploymentFromSourceAppBody
-  = zCreateInitialDeploymentFromSourceAppReq
-
-/**
- * OK
- */
-export const zDeploymentServiceCreateInitialDeploymentFromSourceAppResponse
-  = zCreateInitialDeploymentReply
 
 export const zReleaseServiceCheckReleaseContentFromDslBody = zCheckReleaseContentFromDslReq
 

@@ -1,15 +1,11 @@
 'use client'
 
-import type { AccessChannels, EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
+import type { AccessChannels, ApiKeySummary } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueries } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
 import { DeploymentStatusBadge } from '../../deployment-ui'
-import { environmentId } from '../../environment'
-import { hasRuntimeInstanceDeployment } from '../../runtime-status'
 import { SectionState } from '../common'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 
@@ -20,8 +16,9 @@ type AccessStatusSectionProps = {
 
 type ApiTokenSummarySectionProps = {
   appInstanceId: string
-  rows: EnvironmentDeployment[]
   accessChannels?: AccessChannels
+  apiKeySummary?: ApiKeySummary
+  deployedEnvironmentCount: number
   isEnvironmentLoading: boolean
   isEnvironmentError: boolean
 }
@@ -106,30 +103,20 @@ export function AccessStatusSection({ appInstanceId, accessChannels }: AccessSta
 
 export function ApiTokenSummarySection({
   appInstanceId,
-  rows,
   accessChannels,
+  apiKeySummary,
+  deployedEnvironmentCount,
   isEnvironmentLoading,
   isEnvironmentError,
 }: ApiTokenSummarySectionProps) {
   const { t } = useTranslation('deployments')
-  const runtimeRows = rows.filter(hasRuntimeInstanceDeployment)
   const apiEnabled = Boolean(accessChannels?.developerApiEnabled)
-  const apiKeyQueries = useQueries({
-    queries: runtimeRows.map(row => consoleQuery.enterprise.accessService.listApiKeys.queryOptions({
-      input: {
-        params: {
-          appInstanceId,
-          environmentId: environmentId(row.environment),
-        },
-      },
-      enabled: apiEnabled,
-    })),
-  })
-  const apiKeyCount = apiKeyQueries.reduce((count, query) => count + (query.data?.data?.length ?? 0), 0)
-  const apiKeysLoading = apiKeyQueries.some(query => query.isLoading)
-  const apiKeysError = apiKeyQueries.some(query => query.isError)
-  const isLoading = isEnvironmentLoading || (apiEnabled && apiKeysLoading)
-  const isError = isEnvironmentError || (apiEnabled && apiKeysError)
+  const apiKeyCount = apiKeySummary?.apiKeyCount ?? 0
+  // The label reads "deployed environments"; count environments with an active
+  // runtime deployment, not the api-key summary's environments-with-keys count.
+  const apiKeyEnvironmentCount = deployedEnvironmentCount
+  const isLoading = isEnvironmentLoading
+  const isError = isEnvironmentError
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
@@ -172,7 +159,7 @@ export function ApiTokenSummarySection({
                             {t('overview.apiKeysCount', { count: apiKeyCount })}
                           </span>
                           <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
-                            {t('overview.apiTokenSummary.environments', { count: runtimeRows.length })}
+                            {t('overview.apiTokenSummary.environments', { count: apiKeyEnvironmentCount })}
                           </span>
                         </span>
                       )

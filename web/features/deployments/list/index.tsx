@@ -1,5 +1,6 @@
 'use client'
 
+import type { AppInstanceSummary } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -13,6 +14,7 @@ import { consoleQuery } from '@/service/client'
 import { DeployDrawer } from '../components/deploy-drawer'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../components/empty-state'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
+import { deploymentStatusPollingInterval } from '../runtime-status'
 import { CreateDeploymentButton } from './create-deployment-button'
 import { EnvironmentFilter } from './environment-filter'
 import { InstanceCard } from './instance-card'
@@ -24,6 +26,20 @@ import {
 } from './query-state'
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
+
+type ListAppInstanceSummariesInfiniteData = {
+  pages?: Array<{
+    data?: AppInstanceSummary[]
+  }>
+}
+
+function listDeploymentStatusPollingInterval(data?: ListAppInstanceSummariesInfiniteData) {
+  const rows = data?.pages?.flatMap(page =>
+    page.data?.flatMap(summary => summary.environmentDeployments ?? []) ?? [],
+  ) ?? []
+
+  return deploymentStatusPollingInterval({ data: rows })
+}
 
 function DeploymentsListState({ children }: {
   children: ReactNode
@@ -162,7 +178,7 @@ export function DeploymentsList() {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
+    ...consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.infiniteOptions({
       input: pageParam => ({
         query: {
           pageNumber: Number(pageParam),
@@ -175,6 +191,7 @@ export function DeploymentsList() {
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
+    refetchInterval: query => listDeploymentStatusPollingInterval(query.state.data),
   })
   const pages = data?.pages ?? []
   const apps = pages.flatMap(page => page.data ?? [])
@@ -218,10 +235,10 @@ export function DeploymentsList() {
               ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
               : apps.length === 0
                 ? <DeploymentsListEmpty />
-                : apps.map(app => (
+                : apps.map((app, index) => (
                     <InstanceCard
-                      key={app.id}
-                      app={app}
+                      key={app.appInstance?.id ?? index}
+                      summary={app}
                     />
                   ))}
           {isFetchingNextPage && <DeploymentsListSkeleton />}

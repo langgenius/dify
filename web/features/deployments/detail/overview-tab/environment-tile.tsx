@@ -41,7 +41,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
   const router = useRouter()
 
   const envId = environmentId(row.environment)
-  const drift = computeDrift(row, releaseRows)
+  const drift = computeDrift(row)
   const status = deploymentStatus(row)
   const latestId = latestReleaseId(releaseRows)
   const hasAnyRelease = releaseRows.length > 0

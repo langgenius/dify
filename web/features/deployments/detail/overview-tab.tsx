@@ -4,12 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { hasRuntimeInstanceDeployment } from '../runtime-status'
 import { SectionState } from './common'
 import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './overview-tab/access-status-section'
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/environment-strip'
 import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
-
-const OVERVIEW_RELEASE_WINDOW = 20
 
 function OverviewLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -68,21 +67,13 @@ export function OverviewTab({ appInstanceId }: {
 }) {
   const { t } = useTranslation('deployments')
   const input = { params: { appInstanceId } }
-  const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({ input }))
-  const runtimeInstancesQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({ input }))
-  const releasesQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
-    input: {
-      params: { appInstanceId },
-      query: { pageNumber: 1, resultsPerPage: OVERVIEW_RELEASE_WINDOW },
-    },
-  }))
-  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({ input }))
-  const instance = instanceQuery.data?.appInstance
+  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({ input }))
+  const instance = overviewQuery.data?.appInstance
 
-  if (instanceQuery.isLoading)
+  if (overviewQuery.isLoading)
     return <OverviewLoadingSkeleton appInstanceId={appInstanceId} />
 
-  if (instanceQuery.isError) {
+  if (overviewQuery.isError) {
     return (
       <OverviewLayout>
         <SectionState>{t('common.loadFailed')}</SectionState>
@@ -98,22 +89,14 @@ export function OverviewTab({ appInstanceId }: {
     )
   }
 
-  if (releasesQuery.isLoading)
-    return <OverviewLoadingSkeleton appInstanceId={appInstanceId} />
-
-  if (releasesQuery.isError) {
-    return (
-      <OverviewLayout>
-        <SectionState>{t('common.loadFailed')}</SectionState>
-      </OverviewLayout>
-    )
-  }
-
-  const releaseRows = releasesQuery.data?.data ?? []
-  const releaseCount = releasesQuery.data?.pagination?.totalCount ?? releaseRows.length
-  const runtimeRows = runtimeInstancesQuery.data?.data?.filter(row => row.environment?.id) ?? []
+  const releaseRows = overviewQuery.data?.recentReleases ?? []
+  // recentReleases is a capped preview; totalReleaseCount is the true total.
+  const releaseCount = overviewQuery.data?.totalReleaseCount ?? releaseRows.length
+  const runtimeRows = overviewQuery.data?.environmentDeployments?.filter(row => row.environment?.id) ?? []
+  const deployedEnvironmentCount = runtimeRows.filter(hasRuntimeInstanceDeployment).length
   const latestRelease = releaseRows[0]
-  const accessChannels = accessChannelsQuery.data?.accessChannels
+  const accessChannels = overviewQuery.data?.accessChannels
+  const apiKeySummary = overviewQuery.data?.apiKeySummary
 
   return (
     <OverviewLayout>
@@ -122,8 +105,8 @@ export function OverviewTab({ appInstanceId }: {
           appInstanceId={appInstanceId}
           rows={runtimeRows}
           releaseRows={releaseRows}
-          isLoading={runtimeInstancesQuery.isLoading}
-          isError={runtimeInstancesQuery.isError}
+          isLoading={overviewQuery.isLoading}
+          isError={overviewQuery.isError}
         />
         <LatestReleaseSection appInstanceId={appInstanceId}>
           <ReleaseHero
@@ -135,10 +118,11 @@ export function OverviewTab({ appInstanceId }: {
         <AccessStatusSection appInstanceId={appInstanceId} accessChannels={accessChannels} />
         <ApiTokenSummarySection
           appInstanceId={appInstanceId}
-          rows={runtimeRows}
           accessChannels={accessChannels}
-          isEnvironmentLoading={runtimeInstancesQuery.isLoading}
-          isEnvironmentError={runtimeInstancesQuery.isError}
+          apiKeySummary={apiKeySummary}
+          deployedEnvironmentCount={deployedEnvironmentCount}
+          isEnvironmentLoading={overviewQuery.isLoading}
+          isEnvironmentError={overviewQuery.isError}
         />
       </div>
     </OverviewLayout>

@@ -1,14 +1,13 @@
 'use client'
 
-import type { AccessChannels, Environment } from '@dify/contracts/enterprise/types.gen'
+import type { AccessChannels, AccessEndpoint } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
-import { webappUrl } from '../../../webapp-url'
 import { DetailEmptyState, DetailNoticeState, Section, SectionState } from '../../common'
 import { CopyPill, EndpointRow } from './common'
 import { getUrlOrigin } from './url'
@@ -105,29 +104,24 @@ function ChannelRow({ info, children }: {
 
 export function AccessChannelsSection({
   appInstanceId,
+  accessChannels,
+  webAppEndpoints,
+  cliEndpoint,
+  isLoading,
+  isError,
 }: {
   appInstanceId: string
+  accessChannels?: AccessChannels
+  webAppEndpoints?: AccessEndpoint[]
+  cliEndpoint?: AccessEndpoint
+  isLoading: boolean
+  isError: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
-  const accessChannels = accessChannelsQuery.data?.accessChannels
   const runEnabled = accessChannels?.webAppEnabled ?? false
-  const webappRows = environmentDeploymentsQuery.data?.data
-    ?.map(row => row.environment)
-    .filter((environment): environment is Environment & { id: string, runtimeEndpoint: string } => Boolean(environment?.id && environment.runtimeEndpoint)) ?? []
-  const cliDomain = getUrlOrigin(webappRows[0]?.runtimeEndpoint)
+  const webappRows = webAppEndpoints?.filter(endpoint => Boolean(endpoint.environment?.id && endpoint.endpointUrl)) ?? []
+  const cliDomain = getUrlOrigin(cliEndpoint?.endpointUrl)
   const cliDocsUrl = cliDomain ? `${cliDomain}/cli` : undefined
-  const isLoading = accessChannelsQuery.isLoading || (runEnabled && environmentDeploymentsQuery.isLoading)
-  const isError = accessChannelsQuery.isError || (runEnabled && environmentDeploymentsQuery.isError)
 
   return (
     <Section
@@ -170,13 +164,13 @@ export function AccessChannelsSection({
                     {webappRows.length > 0
                       ? (
                           <div className="flex flex-col gap-1.5">
-                            {webappRows.map((environment) => {
-                              const endpointUrl = webappUrl(environment.runtimeEndpoint ?? '')
+                            {webappRows.map((endpoint) => {
+                              const endpointUrl = endpoint.endpointUrl ?? ''
 
                               return (
                                 <EndpointRow
-                                  key={`webapp-${environment.id ?? environment.runtimeEndpoint}`}
-                                  envName={environmentName(environment)}
+                                  key={`webapp-${endpoint.environment?.id ?? endpoint.endpointUrl}`}
+                                  envName={environmentName(endpoint.environment)}
                                   label={t('access.runAccess.urlLabel')}
                                   value={endpointUrl}
                                   openLabel={t('access.runAccess.openWebapp')}

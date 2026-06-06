@@ -1,7 +1,7 @@
 'use client'
 
-import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
-import type { ReleaseDeployment } from './release-deployments'
+import type { EnvironmentDeployment, Release, ReleaseSummary } from '@dify/contracts/enterprise/types.gen'
+import type { ReleaseDeployment, ReleaseWithSummaryDeployments } from './release-deployments'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query'
@@ -18,7 +18,6 @@ import {
   releaseCommit,
   releaseLabel,
 } from '../../release'
-import { isUndeployedDeploymentRow } from '../../runtime-status'
 import {
   DetailEmptyState,
   DetailListState,
@@ -38,16 +37,23 @@ import {
 } from '../table-styles'
 import { DeployReleaseMenu } from './deploy-release-menu'
 import { DeployedToBadge } from './deployed-to-badge'
-import { getReleaseDeployments } from './release-deployments'
+import { getReleaseDeployments, getReleaseSummaryDeployments } from './release-deployments'
 
 const RELEASE_TABLE_ROW_SKELETON_KEYS = ['latest', 'previous', 'older', 'archived', 'initial']
 
-type ReleaseRowWithId = Release & {
+type ReleaseRowWithId = ReleaseWithSummaryDeployments & {
   id: string
 }
 
-function hasReleaseId(row: Release): row is ReleaseRowWithId {
-  return Boolean(row.id)
+function releaseRowFromSummary(summary: ReleaseSummary): ReleaseRowWithId | undefined {
+  if (!summary.release?.id)
+    return undefined
+
+  return {
+    ...summary.release,
+    id: summary.release.id,
+    summaryDeployments: getReleaseSummaryDeployments(summary),
+  }
 }
 
 function ReleaseHistoryTableSkeleton() {
@@ -391,10 +397,9 @@ export function ReleaseHistoryTable({ appInstanceId }: {
 }) {
   const { t } = useTranslation('deployments')
   const [currentPage, setCurrentPage] = useState(0)
-  const input = { params: { appInstanceId } }
-  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
+  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleaseSummaries.queryOptions({
     input: {
-      ...input,
+      params: { appInstanceId },
       query: {
         pageNumber: currentPage + 1,
         resultsPerPage: RELEASE_HISTORY_PAGE_SIZE,
@@ -402,19 +407,14 @@ export function ReleaseHistoryTable({ appInstanceId }: {
     },
     placeholderData: keepPreviousData,
   }))
-  const releaseRows = releaseHistoryQuery.data?.data?.filter(hasReleaseId) ?? []
+  const releaseRows = releaseHistoryQuery.data?.data?.map(releaseRowFromSummary).filter((row): row is ReleaseRowWithId => Boolean(row)) ?? []
   const totalReleases = releaseHistoryQuery.data?.pagination?.totalCount ?? releaseRows.length
   const totalReleasePages = Math.ceil(totalReleases / RELEASE_HISTORY_PAGE_SIZE)
-  const shouldLoadRuntimeInstances = releaseRows.length > 0
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input,
-    enabled: shouldLoadRuntimeInstances,
-  }))
   const isLoading = releaseHistoryQuery.isLoading
   const hasError = releaseHistoryQuery.isError
-  const deployedToLoading = shouldLoadRuntimeInstances && environmentDeploymentsQuery.isLoading
-  const deployedToHasError = shouldLoadRuntimeInstances && environmentDeploymentsQuery.isError
-  const deploymentRows = environmentDeploymentsQuery.data?.data?.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)) ?? []
+  const deployedToLoading = false
+  const deployedToHasError = false
+  const deploymentRows: EnvironmentDeployment[] = []
   const handleReleaseDeleted = () => {
     if (releaseRows.length === 1 && currentPage > 0)
       setCurrentPage(page => Math.max(page - 1, 0))

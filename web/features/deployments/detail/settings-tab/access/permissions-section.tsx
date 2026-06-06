@@ -1,11 +1,9 @@
 'use client'
 
-import type { Environment } from '@dify/contracts/enterprise/types.gen'
+import type { AccessChannels, Environment, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { consoleQuery } from '@/service/client'
 import { DetailEmptyState, Section, SectionState } from '../../common'
 import {
   DetailTable,
@@ -59,26 +57,20 @@ function AccessPermissionsSkeleton() {
 
 export function AccessPermissionsSection({
   appInstanceId,
+  accessChannels,
+  environmentPolicies,
+  isLoading,
+  isError,
 }: {
   appInstanceId: string
+  accessChannels?: AccessChannels
+  environmentPolicies?: EnvironmentAccessPolicy[]
+  isLoading: boolean
+  isError: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
-  const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
-  const environments = environmentDeploymentsQuery.data?.data
-    ?.map(row => row.environment)
-    .filter(hasEnvironment) ?? []
-  const permissionsDisabled = !(accessChannelsQuery.data?.accessChannels?.webAppEnabled ?? false)
-  const isLoading = environmentDeploymentsQuery.isLoading || accessChannelsQuery.isLoading
-  const isError = environmentDeploymentsQuery.isError || accessChannelsQuery.isError
+  const policyRows = environmentPolicies?.filter(row => hasEnvironment(row.environment)) ?? []
+  const permissionsDisabled = !(accessChannels?.webAppEnabled ?? false)
 
   return (
     <Section
@@ -90,7 +82,7 @@ export function AccessPermissionsSection({
         ? <AccessPermissionsSkeleton />
         : isError
           ? <SectionState>{t('common.loadFailed')}</SectionState>
-          : environments.length === 0
+          : policyRows.length === 0
             ? (
                 <DetailEmptyState
                   variant="section"
@@ -109,12 +101,14 @@ export function AccessPermissionsSection({
                     </DetailTableRow>
                   </DetailTableHeader>
                   <DetailTableBody className="block pc:table-row-group">
-                    {environments.map(environment => (
+                    {policyRows.map(environmentPolicy => (
                       <EnvironmentPermissionRow
-                        key={environment.id}
+                        key={environmentPolicy.environment!.id}
                         appInstanceId={appInstanceId}
                         disabled={permissionsDisabled}
-                        environment={environment}
+                        environment={environmentPolicy.environment!}
+                        summaryPolicy={environmentPolicy.policy}
+                        resolvedSubjects={environmentPolicy.resolvedSubjects}
                       />
                     ))}
                   </DetailTableBody>

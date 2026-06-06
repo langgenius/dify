@@ -148,13 +148,34 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
         }),
       }),
       queryClient.invalidateQueries({
+        queryKey: consoleQuery.enterprise.releaseService.listReleaseSummaries.key({
+          type: 'query',
+          input: { params: { appInstanceId } },
+        }),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.enterprise.releaseService.getReleaseDeploymentView.key({
+          type: 'query',
+          input: { params: { appInstanceId } },
+        }),
+      }),
+      queryClient.invalidateQueries({
         queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
           type: 'query',
           input: { params: { appInstanceId } },
         }),
       }),
       queryClient.invalidateQueries({
+        queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
+          type: 'query',
+          input: { params: { appInstanceId } },
+        }),
+      }),
+      queryClient.invalidateQueries({
         queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
       }),
       queryClient.invalidateQueries({
         queryKey: consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.key({
