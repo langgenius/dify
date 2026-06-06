@@ -14,6 +14,10 @@ import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowCanvasMaximize } from '../hooks/use-workflow-canvas-maximize'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
+import { useWorkflowRun } from '../hooks/use-workflow-run'
+import { useWorkflowRunValidation } from '../hooks/use-checklist'
+import { useWorkflowStartRun } from '../hooks/use-workflow-start-run'
+import { WorkflowRunningStatus } from '../types'
 import { useStore } from '../store/workflow'
 import {
   subscribeWorkflowCommand,
@@ -79,6 +83,12 @@ export const useWorkflowHotkeys = (): void => {
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
+  const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
+  const { handleStopRun } = useWorkflowRun()
+  const { warningNodes } = useWorkflowRunValidation()
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const isListening = useStore(s => s.isListening)
+  const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running || isListening
 
   const {
     zoomTo,
@@ -192,6 +202,19 @@ export const useWorkflowHotkeys = (): void => {
     ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.download-import-log'], () => {
       collaborationManager.downloadGraphImportLog()
     }),
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.save'], () => {
+      handleSyncWorkflowDraft(true)
+    }),
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.run'], () => {
+      handleWorkflowStartRunInWorkflow()
+    }, {
+      enabled: !isRunning && warningNodes.length === 0 && !showDebugAndPreviewPanel,
+    }),
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.stop'], () => {
+      handleStopRun(workflowRunningData?.task_id || '')
+    }, {
+      enabled: isRunning,
+    }),
   ], [
     constrainedZoomIn,
     constrainedZoomOut,
@@ -209,9 +232,14 @@ export const useWorkflowHotkeys = (): void => {
     handleNodesPaste,
     handleSyncWorkflowDraft,
     handleToggleMaximizeCanvas,
+    handleStopRun,
+    handleWorkflowStartRunInWorkflow,
     historyShortcutsEnabled,
     isCommentModeAvailable,
+    isRunning,
     showDebugAndPreviewPanel,
+    warningNodes,
+    workflowRunningData?.task_id,
     zoomTo,
   ])
 
