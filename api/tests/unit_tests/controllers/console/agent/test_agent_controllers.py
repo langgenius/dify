@@ -37,9 +37,15 @@ def roster_session() -> SimpleNamespace:
     return SimpleNamespace()
 
 
-def _call_roster(method, api_instance, session, *args):
-    """Invoke the unwrapped handler with injected args, then session last."""
-    return _unwrap(method)(api_instance, *args, session)
+def _call_roster(method, api_instance, session, tenant_id, *path_args, account_id=None):
+    """Invoke the unwrapped handler; session precedes URL path segments."""
+    if path_args:
+        if account_id is not None:
+            return _unwrap(method)(api_instance, tenant_id, account_id, session, *path_args)
+        return _unwrap(method)(api_instance, tenant_id, session, *path_args)
+    if account_id is not None:
+        return _unwrap(method)(api_instance, tenant_id, account_id, session)
+    return _unwrap(method)(api_instance, tenant_id, session)
 
 
 def _agent_response(agent_id: str = "agent-1") -> dict:
@@ -170,7 +176,7 @@ def test_roster_list_post_creates_agent_and_returns_detail(
 
     with app.test_request_context(json={"name": "Analyst", "agent_soul": {"prompt": {"system_prompt": "x"}}}):
         result, status = _call_roster(
-            AgentRosterListApi.post, AgentRosterListApi(), roster_session, "tenant-1", account_id
+            AgentRosterListApi.post, AgentRosterListApi(), roster_session, "tenant-1", account_id=account_id
         )
 
     assert status == 201
@@ -252,12 +258,14 @@ def test_roster_detail_patch_delete_and_versions_call_services(
     assert _call_roster(AgentRosterDetailApi.get, api, roster_session, "tenant-1", agent_id)["id"] == agent_id
     with app.test_request_context(json={"description": "updated"}):
         assert (
-            _call_roster(AgentRosterDetailApi.patch, api, roster_session, "tenant-1", account_id, agent_id)[
+            _call_roster(AgentRosterDetailApi.patch, api, roster_session, "tenant-1", agent_id, account_id=account_id)[
                 "description"
             ]
             == "updated"
         )
-    assert _call_roster(AgentRosterDetailApi.delete, api, roster_session, "tenant-1", account_id, agent_id) == (
+    assert _call_roster(
+        AgentRosterDetailApi.delete, api, roster_session, "tenant-1", agent_id, account_id=account_id
+    ) == (
         "",
         204,
     )

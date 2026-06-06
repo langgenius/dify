@@ -126,7 +126,7 @@ class AgentRosterDetailApi(Resource):
     @account_initialization_required
     @with_session(write=False)
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID, session: Session):
+    def get(self, tenant_id: str, session: Session, agent_id: UUID):
         return dump_response(
             AgentRosterResponse,
             _agent_roster_service(session).get_roster_agent_detail(tenant_id=tenant_id, agent_id=str(agent_id)),
@@ -141,7 +141,7 @@ class AgentRosterDetailApi(Resource):
     @with_session
     @with_current_user_id
     @with_current_tenant_id
-    def patch(self, tenant_id: str, account_id: str, agent_id: UUID, session: Session):
+    def patch(self, tenant_id: str, account_id: str, session: Session, agent_id: UUID):
         payload = RosterAgentUpdatePayload.model_validate(console_ns.payload or {})
         return dump_response(
             AgentRosterResponse,
@@ -158,7 +158,7 @@ class AgentRosterDetailApi(Resource):
     @with_session
     @with_current_user_id
     @with_current_tenant_id
-    def delete(self, tenant_id: str, account_id: str, agent_id: UUID, session: Session):
+    def delete(self, tenant_id: str, account_id: str, session: Session, agent_id: UUID):
         _agent_roster_service(session).archive_roster_agent(
             tenant_id=tenant_id, agent_id=str(agent_id), account_id=account_id
         )
@@ -173,7 +173,7 @@ class AgentRosterVersionsApi(Resource):
     @account_initialization_required
     @with_session(write=False)
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID, session: Session):
+    def get(self, tenant_id: str, session: Session, agent_id: UUID):
         return dump_response(
             AgentConfigSnapshotListResponse,
             {"data": _agent_roster_service(session).list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))},
@@ -188,7 +188,7 @@ class AgentRosterVersionDetailApi(Resource):
     @account_initialization_required
     @with_session(write=False)
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID, version_id: UUID, session: Session):
+    def get(self, tenant_id: str, session: Session, agent_id: UUID, version_id: UUID):
         return dump_response(
             AgentConfigSnapshotDetailResponse,
             _agent_roster_service(session).get_agent_version_detail(
