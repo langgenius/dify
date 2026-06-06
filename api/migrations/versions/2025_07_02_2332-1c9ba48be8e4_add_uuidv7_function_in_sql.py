@@ -45,10 +45,22 @@ def upgrade():
     # PostgreSQL 18's `uuidv7` function. This capability is rarely needed in practice, as IDs can be
     # generated and controlled within the application layer.
     conn = op.get_bind()
-    
+
     if _is_pg(conn):
-        # PostgreSQL: Create uuidv7 functions
-        op.execute(sa.text(r"""
+        # PostgreSQL 18 ships a native pg_catalog.uuidv7(), so only create our own
+        # when the server does not already provide one.  In Alembic offline mode
+        # conn.execute returns None, so we default to creating the function (which
+        # is the safe conservative choice for SQL output generation).
+        result = conn.execute(sa.text(
+            "SELECT 1 FROM pg_proc p "
+            "JOIN pg_namespace n ON p.pronamespace = n.oid "
+            "WHERE p.proname = 'uuidv7' AND n.nspname = 'pg_catalog'"
+        ))
+        has_native = result is not None and result.scalar() == 1
+
+        if not has_native:
+            # PostgreSQL: Create uuidv7 function
+            op.execute(sa.text(r"""
 /* Main function to generate a uuidv7 value with millisecond precision */
 CREATE FUNCTION uuidv7() RETURNS uuid
 AS
@@ -71,6 +83,8 @@ COMMENT ON FUNCTION uuidv7 IS
     'Generate a uuid-v7 value with a 48-bit timestamp (millisecond precision) and 74 bits of randomness';
 """))
 
+        # uuidv7_boundary(timestamptz) is not provided by PostgreSQL 18,
+        # so it is always created.
         op.execute(sa.text(r"""
 CREATE FUNCTION uuidv7_boundary(timestamptz) RETURNS uuid
 AS
@@ -93,9 +107,13 @@ COMMENT ON FUNCTION uuidv7_boundary(timestamptz) IS
 
 def downgrade():
     conn = op.get_bind()
-    
+
     if _is_pg(conn):
-        op.execute(sa.text("DROP FUNCTION uuidv7"))
-        op.execute(sa.text("DROP FUNCTION uuidv7_boundary"))
+        # IF EXISTS keeps the downgrade a no-op on PostgreSQL 18, where the
+        # native pg_catalog.uuidv7() was kept and no public.uuidv7() was
+        # created. Scoping the drop to the public schema avoids touching the
+        # built-in.
+        op.execute(sa.text("DROP FUNCTION IF EXISTS public.uuidv7()"))
+        op.execute(sa.text("DROP FUNCTION IF EXISTS public.uuidv7_boundary(timestamptz)"))
     else:
         pass
