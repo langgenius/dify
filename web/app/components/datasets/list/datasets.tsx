@@ -5,11 +5,9 @@ import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
-import NewDatasetCard from './new-dataset-card'
 
 type Props = {
   datasetList: ReturnType<typeof useDatasetList>['data'] | null
@@ -32,10 +30,9 @@ const Datasets = ({
   isLoading,
   isPlaceholderData,
   emptyElement,
-  onOpenTagManagement = () => {},
+  onOpenTagManagement = () => { },
 }: Props) => {
   const { t } = useTranslation()
-  const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
   const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
@@ -64,8 +61,7 @@ const Datasets = ({
 
   return (
     <>
-      <nav className="relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-6 pt-2">
-        {isCurrentWorkspaceEditor && hasAnyDataset && <NewDatasetCard />}
+      <nav className="relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-8 pt-2">
         {showDatasetSkeleton
           ? <DatasetCardSkeleton label={t('loading', { ns: 'common' })} />
           : datasets.map(dataset => (
