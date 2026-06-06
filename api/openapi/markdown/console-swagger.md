@@ -16080,8 +16080,16 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | string | *Enum:* `"automatic"`, `"custom"`, `"hierarchical"` | Yes |
+| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
+
+#### ProcessRuleMode
+
+Dataset Process Rule Mode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProcessRuleMode | string | Dataset Process Rule Mode |  |
 
 #### PublishWorkflowPayload
 
