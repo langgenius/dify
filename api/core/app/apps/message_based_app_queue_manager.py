@@ -1,6 +1,6 @@
 from typing import override
 
-from core.app.apps.base_app_queue_manager import GRAPH_ENGINE_BACKED_APP_MODES, AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
@@ -11,6 +11,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueStopEvent,
 )
+from models.model import AppMode
 
 
 class MessageBasedAppQueueManager(AppQueueManager):
@@ -47,6 +48,6 @@ class MessageBasedAppQueueManager(AppQueueManager):
             self.stop_listen()
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
-            if self._app_mode in GRAPH_ENGINE_BACKED_APP_MODES:
+            if self._app_mode == AppMode.ADVANCED_CHAT.value:
                 return
             raise GenerateTaskStoppedError()

@@ -24,7 +24,6 @@ from extensions.ext_redis import redis_client
 from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
-GRAPH_ENGINE_BACKED_APP_MODES = {"advanced-chat", "workflow"}
 
 
 class PublishFrom(IntEnum):

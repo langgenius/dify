@@ -42,11 +42,13 @@ def test_message_queue_does_not_raise_legacy_stop_for_advanced_chat() -> None:
         manager.publish(QueueTextChunkEvent(text="chunk"), PublishFrom.APPLICATION_MANAGER)
 
 
-def test_workflow_queue_does_not_raise_legacy_stop_for_workflow() -> None:
+def test_workflow_queue_does_not_read_legacy_stop_flag() -> None:
     manager = _workflow_queue_manager(AppMode.WORKFLOW.value)
 
-    with patch.object(manager, "_is_stopped", return_value=True):
+    with patch.object(manager, "_is_stopped", return_value=True) as is_stopped:
         manager.publish(QueueTextChunkEvent(text="chunk"), PublishFrom.APPLICATION_MANAGER)
+
+    is_stopped.assert_not_called()
 
 
 def test_message_queue_keeps_legacy_stop_for_non_graphengine_chat() -> None:
