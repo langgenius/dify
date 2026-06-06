@@ -65,7 +65,14 @@ const DatasetListHeader = ({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <TagFilter type="knowledge" value={tagFilterValue} onChange={onTagsChange} onOpenTagManagement={onOpenTagManagement} />
+          <TagFilter
+            type="knowledge"
+            value={tagFilterValue}
+            onChange={onTagsChange}
+            onOpenTagManagement={onOpenTagManagement}
+            emptyLabel={t('tag.tags', { ns: 'common' })}
+            showLeadingIcon={false}
+          />
           <SearchInput
             className="w-[200px]"
             value={keywords}

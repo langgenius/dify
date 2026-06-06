@@ -28,6 +28,7 @@ const DocModeInfo = ({
 }: DocModeInfoProps) => {
   const { t } = useTranslation()
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
+  const isPipeline = dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline'
 
   if (isExternalProvider) {
     return (
@@ -37,7 +38,7 @@ const DocModeInfo = ({
     )
   }
 
-  if (!isShowDocModeInfo)
+  if (!isShowDocModeInfo && !isPipeline)
     return <div aria-hidden="true" className={docModeInfoClassName} />
 
   const indexingText = dataset.indexing_technique
@@ -49,7 +50,12 @@ const DocModeInfo = ({
 
   return (
     <div className={docModeInfoClassName}>
-      {!!dataset.doc_form && (
+      {isPipeline && (
+        <span className="max-w-full min-w-0 truncate">
+          {t('cornerLabel.pipeline', { ns: 'dataset' })}
+        </span>
+      )}
+      {isShowDocModeInfo && !!dataset.doc_form && (
         <span
           className="max-w-full min-w-0 truncate"
           title={t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
@@ -57,7 +63,7 @@ const DocModeInfo = ({
           {t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
         </span>
       )}
-      {dataset.indexing_technique && indexingText && (
+      {isShowDocModeInfo && dataset.indexing_technique && indexingText && (
         <span
           className="max-w-full min-w-0 truncate"
           title={indexingText}
@@ -65,7 +71,7 @@ const DocModeInfo = ({
           {indexingText}
         </span>
       )}
-      {dataset.is_multimodal && (
+      {isShowDocModeInfo && dataset.is_multimodal && (
         <span
           className="max-w-full min-w-0 truncate"
           title={t('multimodal', { ns: 'dataset' })}

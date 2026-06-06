@@ -36,6 +36,17 @@ vi.mock('@/hooks/use-knowledge', () => ({
   }),
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { ns?: string }) => {
+      if (key === 'cornerLabel.pipeline' && options?.ns === 'dataset')
+        return 'Pipeline'
+
+      return options?.ns ? `${options.ns}.${key}` : key
+    },
+  }),
+}))
+
 describe('DatasetCardHeader', () => {
   const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     id: 'dataset-1',
@@ -212,9 +223,9 @@ describe('DatasetCardHeader', () => {
         runtime_mode: 'rag_pipeline',
         is_published: false,
       })
-      const { container } = render(<DatasetCardHeader dataset={dataset} />)
+      render(<DatasetCardHeader dataset={dataset} />)
+      expect(screen.getByText('Pipeline')).toBeInTheDocument()
       expect(screen.queryByText(/High Quality/)).not.toBeInTheDocument()
-      expect(container.querySelector('[aria-hidden="true"].min-h-3')).toBeInTheDocument()
     })
 
     it('should show doc mode info for published pipeline', () => {
@@ -226,6 +237,7 @@ describe('DatasetCardHeader', () => {
         is_published: true,
       })
       render(<DatasetCardHeader dataset={dataset} />)
+      expect(screen.getByText('Pipeline')).toBeInTheDocument()
       expect(screen.getByText(/chunkingMode/)).toBeInTheDocument()
     })
   })
