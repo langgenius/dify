@@ -69,7 +69,6 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 )
 
 
-
 def _make_account() -> Account:
     account = Account(
         name="tester",
