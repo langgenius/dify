@@ -27,6 +27,7 @@ import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
@@ -72,9 +73,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     presence_penalty: 0,
     frequency_penalty: 0,
   }
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
+  const [localModel, setLocalModel] = useLocalStorage<Model>('auto-gen-model')
   const [model, setModel] = React.useState<Model>(localModel || {
     name: '',
     provider: '',
@@ -122,8 +121,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    setLocalModel(newModel)
+  }, [model, setModel, setLocalModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     const newModel = {
@@ -131,8 +130,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    setLocalModel(newModel)
+  }, [model, setModel, setLocalModel])
 
   const onGenerate = async () => {
     if (!isValid())
@@ -172,9 +171,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
       if (localModel) {
         setModel({
           ...localModel,
@@ -192,7 +188,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         }))
       }
     }
-  }, [defaultModel])
+  }, [defaultModel, localModel])
 
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
