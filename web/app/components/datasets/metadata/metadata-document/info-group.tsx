@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
 import InputCombined from '../edit-metadata-batch/input-combined'
@@ -50,9 +51,10 @@ const InfoGroup: FC<Props> = ({
   const router = useRouter()
   const { t } = useTranslation()
   const { formatTime: formatTimestamp } = useTimestamp()
+  const setIsShowManageMetadata = useSetLocalStorage<string>(isShowManageMetadataLocalStorageKey, { raw: true })
 
   const handleMangeMetadata = () => {
-    localStorage.setItem(isShowManageMetadataLocalStorageKey, 'true')
+    setIsShowManageMetadata('true')
     router.push(`/datasets/${dataSetId}/documents`)
   }
 
