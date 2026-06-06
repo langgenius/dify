@@ -721,9 +721,11 @@ export type PreProcessingRule = {
 }
 
 export type ProcessRule = {
-  mode: 'automatic' | 'custom' | 'hierarchical'
+  mode: ProcessRuleMode
   rules?: Rule
 }
+
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
 
 export type RerankingModel = {
   reranking_model_name?: string | null
