@@ -62,6 +62,7 @@ from services.workflow_draft_variable_service import (
 )
 
 logger = logging.getLogger(__name__)
+WF_STOP_DIAG_MARKER = "WF_STOP_DIAG_7B9C2F"
 
 
 def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> dict[str, str]:
@@ -667,6 +668,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             try:
                 runner.run()
             except GenerateTaskStoppedError:
+                logger.warning(
+                    "%s advanced_chat_runner_generate_task_stopped task_id=%s app_id=%s message_id=%s",
+                    WF_STOP_DIAG_MARKER,
+                    application_generate_entity.task_id,
+                    application_generate_entity.app_config.app_id,
+                    message.id,
+                )
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(

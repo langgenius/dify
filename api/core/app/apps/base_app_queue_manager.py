@@ -24,6 +24,7 @@ from extensions.ext_redis import redis_client
 from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
+WF_STOP_DIAG_MARKER = "WF_STOP_DIAG_7B9C2F"
 
 
 class PublishFrom(IntEnum):
@@ -74,6 +75,13 @@ class AppQueueManager(ABC):
                 finally:
                     elapsed_time = time.time() - start_time
                     if elapsed_time >= listen_timeout or self._is_stopped():
+                        logger.warning(
+                            "%s queue_listen_stop_detected task_id=%s elapsed_time=%.3f timeout=%s",
+                            WF_STOP_DIAG_MARKER,
+                            self._task_id,
+                            elapsed_time,
+                            listen_timeout,
+                        )
                         # publish two messages to make sure the client can receive the stop signal
                         # and stop listening after the stop signal processed
                         self.publish(
@@ -156,14 +164,37 @@ class AppQueueManager(ABC):
         """
         result: Any | None = redis_client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
+            logger.warning(
+                "%s set_stop_flag_no_owner task_id=%s invoke_from=%s user_id=%s",
+                WF_STOP_DIAG_MARKER,
+                task_id,
+                invoke_from,
+                user_id,
+            )
             return
 
         user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
         if result.decode("utf-8") != f"{user_prefix}-{user_id}":
+            logger.warning(
+                "%s set_stop_flag_user_mismatch task_id=%s invoke_from=%s user_id=%s owner=%s",
+                WF_STOP_DIAG_MARKER,
+                task_id,
+                invoke_from,
+                user_id,
+                result.decode("utf-8"),
+            )
             return
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
         redis_client.setex(stopped_cache_key, 600, 1)
+        logger.warning(
+            "%s set_stop_flag_success task_id=%s invoke_from=%s user_id=%s stopped_key=%s",
+            WF_STOP_DIAG_MARKER,
+            task_id,
+            invoke_from,
+            user_id,
+            stopped_cache_key,
+        )
 
     @classmethod
     def set_stop_flag_no_user_check(cls, task_id: str) -> None:
@@ -175,10 +206,17 @@ class AppQueueManager(ABC):
         :return:
         """
         if not task_id:
+            logger.warning("%s set_stop_flag_no_user_check_empty_task_id", WF_STOP_DIAG_MARKER)
             return
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
         redis_client.setex(stopped_cache_key, 600, 1)
+        logger.warning(
+            "%s set_stop_flag_no_user_check_success task_id=%s stopped_key=%s",
+            WF_STOP_DIAG_MARKER,
+            task_id,
+            stopped_cache_key,
+        )
 
     @cachedmethod(lambda self: self._stopped_cache, lock=lambda self: self._cache_lock)
     def _is_stopped(self) -> bool:
