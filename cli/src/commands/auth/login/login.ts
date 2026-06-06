@@ -2,17 +2,18 @@ import type { Clock } from './device-flow.js'
 import type { CodeResponse, PollSuccess } from '@/api/oauth-device'
 import type { AccountContext, Workspace } from '@/auth/hosts'
 import type { StorageMode, Store } from '@/store/store'
+import type { ParseResult } from '@/sys/io/prompt'
 import type { IOStreams } from '@/sys/io/streams'
 import type { BrowserEnv, BrowserOpener } from '@/util/browser'
 import * as os from 'node:os'
-import * as readline from 'node:readline'
 import { DeviceFlowApi } from '@/api/oauth-device'
 import { Registry } from '@/auth/hosts'
-import { BaseError } from '@/errors/base'
+import { BaseError, isBaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { createHttpClient } from '@/http/client'
 import { getTokenStore, tokenKey } from '@/store/manager'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { promptText } from '@/sys/io/prompt'
 import { startSpinner } from '@/sys/io/spinner'
 import { decideOpen, OpenDecision, openUrl, realEnv } from '@/util/browser'
 import { bareHost, DEFAULT_HOST, openAPIBase, resolveHost, validateVerificationURI } from '@/util/host'
@@ -86,30 +87,43 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
 }
 
 async function resolveLoginHost(opts: LoginOptions, insecure: boolean): Promise<string> {
-  let raw = opts.host?.trim() ?? ''
-  if (raw === '') {
-    if (!opts.io.isErrTTY) {
-      throw new BaseError({
-        code: ErrorCode.UsageMissingArg,
-        message: '--host is required (no TTY)',
-        hint: 'pass the host explicitly, e.g. \'difyctl auth login --host cloud.dify.ai\'',
-      })
-    }
-    raw = await promptHost(opts.io)
+  const raw = opts.host?.trim() ?? ''
+  if (raw !== '')
+    return resolveHost({ raw, insecure })
+  if (!opts.io.isErrTTY) {
+    throw new BaseError({
+      code: ErrorCode.UsageMissingArg,
+      message: '--host is required (no TTY)',
+      hint: 'pass the host explicitly, e.g. \'difyctl auth login --host cloud.dify.ai\'',
+    })
   }
-  return resolveHost({ raw, insecure })
+  return promptHost(opts.io, insecure)
 }
 
-async function promptHost(io: IOStreams): Promise<string> {
-  io.err.write(`? Dify host [${DEFAULT_HOST}]: `)
-  const rl = readline.createInterface({ input: io.in, output: io.err, terminal: false })
-  try {
-    const line: string = await new Promise(resolve => rl.once('line', resolve))
-    return line.trim()
+function makeHostParser(insecure: boolean): (raw: string) => ParseResult<string> {
+  return (raw: string) => {
+    try {
+      return { ok: true, value: resolveHost({ raw, insecure }) }
+    }
+    catch (err) {
+      if (isBaseError(err)) {
+        const msg = err.hint !== undefined ? `${err.message} — ${err.hint}` : err.message
+        return { ok: false, error: msg }
+      }
+      return { ok: false, error: String(err) }
+    }
   }
-  finally {
-    rl.close()
-  }
+}
+
+async function promptHost(io: IOStreams, insecure: boolean): Promise<string> {
+  return promptText<string>({
+    io,
+    label: 'Enter Dify host URL',
+    hint: insecure ? 'e.g. https://cloud.dify.ai or http://localhost' : 'e.g. https://your-dify.com',
+    default: DEFAULT_HOST,
+    acceptAsDefault: raw => /^y(?:es)?$/i.test(raw.trim()),
+    parse: makeHostParser(insecure),
+  })
 }
 
 function defaultDeviceLabel(): string {

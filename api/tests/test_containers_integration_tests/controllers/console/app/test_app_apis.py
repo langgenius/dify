@@ -60,12 +60,24 @@ from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from models.account import Account, AccountStatus
 from models.model import AppMode
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
     create_console_app,
 )
+
+
+
+def _make_account() -> Account:
+    account = Account(
+        name="tester",
+        email="tester@example.com",
+        status=AccountStatus.ACTIVE,
+    )
+    account.id = "user-1"  # type: ignore[assignment]
+    return account
 
 
 class TestCompletionEndpoints:
@@ -91,13 +103,6 @@ class TestCompletionEndpoints:
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
-        class DummyAccount:
-            pass
-
-        dummy_account = DummyAccount()
-
-        monkeypatch.setattr(completion_module, "current_user", dummy_account)
-        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -113,7 +118,7 @@ class TestCompletionEndpoints:
             "/",
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
-            resp = method(api, app_model=MagicMock(id="app-1"))
+            resp = method(api, _make_account(), app_model=MagicMock(id="app-1"))
 
         assert resp == {"result": {"text": "ok"}}
 
@@ -121,13 +126,6 @@ class TestCompletionEndpoints:
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
-        class DummyAccount:
-            pass
-
-        dummy_account = DummyAccount()
-
-        monkeypatch.setattr(completion_module, "current_user", dummy_account)
-        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -141,19 +139,12 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(NotFound):
-                method(api, app_model=MagicMock(id="app-1"))
+                method(api, _make_account(), app_model=MagicMock(id="app-1"))
 
     def test_completion_api_provider_not_initialized(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
-        class DummyAccount:
-            pass
-
-        dummy_account = DummyAccount()
-
-        monkeypatch.setattr(completion_module, "current_user", dummy_account)
-        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -165,19 +156,12 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(api, app_model=MagicMock(id="app-1"))
+                method(api, _make_account(), app_model=MagicMock(id="app-1"))
 
     def test_completion_api_quota_exceeded(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
-        class DummyAccount:
-            pass
-
-        dummy_account = DummyAccount()
-
-        monkeypatch.setattr(completion_module, "current_user", dummy_account)
-        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -189,7 +173,7 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(api, app_model=MagicMock(id="app-1"))
+                method(api, _make_account(), app_model=MagicMock(id="app-1"))
 
 
 class TestAppEndpoints:
@@ -509,7 +493,6 @@ class TestWorkflowDraftVariableEndpoints:
         method = unwrap(api.get)
 
         monkeypatch.setattr(workflow_draft_variable_module, "db", SimpleNamespace(engine=MagicMock()))
-        monkeypatch.setattr(workflow_draft_variable_module, "current_user", SimpleNamespace(id="user-1"))
 
         class DummySessionCtx:
             def __enter__(self):
@@ -542,7 +525,7 @@ class TestWorkflowDraftVariableEndpoints:
         monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
 
         with app.test_request_context("/?page=1&limit=20"):
-            result = method(api, app_model=SimpleNamespace(id="app-1"))
+            result = method(api, _make_account(), app_model=SimpleNamespace(id="app-1"))
 
         assert result == {"items": [], "total": 0}
 

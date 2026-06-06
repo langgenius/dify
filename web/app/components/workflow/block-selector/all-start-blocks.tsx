@@ -62,9 +62,11 @@ const AllStartBlocks = ({
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
-  const entryNodeTypes = availableBlocksTypes?.length
-    ? availableBlocksTypes
-    : ENTRY_NODE_TYPES
+  const entryNodeTypes = useMemo(() => {
+    return availableBlocksTypes?.length
+      ? availableBlocksTypes
+      : [...ENTRY_NODE_TYPES]
+  }, [availableBlocksTypes])
   const enableTriggerPlugin = entryNodeTypes.includes(BlockEnumValue.TriggerPlugin)
   const { data: triggerProviders = [] } = useAllTriggerPlugins(enableTriggerPlugin)
   const providerMap = useMemo(() => {
@@ -98,7 +100,8 @@ const AllStartBlocks = ({
   const shouldShowFeatured = enableTriggerPlugin
     && enable_marketplace
     && !hasFilter
-  const shouldShowTriggerListTitle = hasStartBlocksContent || hasPluginContent
+  const hasTriggerOptions = entryNodeTypes.some(type => type !== BlockEnumValue.Start)
+  const shouldShowTriggerListTitle = hasTriggerOptions && (hasStartBlocksContent || hasPluginContent)
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
   const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {

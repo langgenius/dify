@@ -412,7 +412,7 @@ class ToolManager:
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credential_id=agent_tool.credential_id,
         )
-        runtime_parameters = {}
+        runtime_parameters: dict[str, Any] = {}
         parameters = tool_entity.get_merged_runtime_parameters()
         runtime_parameters = cls._convert_tool_parameters_type(
             parameters, variable_pool, agent_tool.tool_parameters, typ="agent"
@@ -501,7 +501,7 @@ class ToolManager:
             tool_invoke_from=ToolInvokeFrom.PLUGIN,
             credential_id=credential_id,
         )
-        runtime_parameters = {}
+        runtime_parameters: dict[str, Any] = {}
         parameters = tool_entity.get_merged_runtime_parameters()
         for parameter in parameters:
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
@@ -1070,7 +1070,7 @@ class ToolManager:
         from graphon.nodes.tool.entities import ToolNodeData
         from graphon.nodes.tool.exc import ToolParameterError
 
-        runtime_parameters = {}
+        runtime_parameters: dict[str, Any] = {}
         for parameter in parameters:
             if (
                 parameter.type

@@ -1226,7 +1226,7 @@ class DatasetKeywordTable(TypeBase):
                         items = cast(dict[str, Any], dct).items()
                         for keyword, node_idxs in items:
                             if isinstance(node_idxs, list):
-                                result[keyword] = set(cast(list[Any], node_idxs))
+                                result[keyword] = set(node_idxs)
                             else:
                                 result[keyword] = node_idxs
                         return result
