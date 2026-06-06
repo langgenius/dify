@@ -63,7 +63,6 @@ export function AppListHeaderFilters({
         <Chip
           value={appTypeValue}
           items={appTypeItems}
-          leftIcon={<span aria-hidden className="i-ri-apps-2-line block size-3.5 text-text-tertiary" />}
           className="[&_.system-sm-regular]:text-text-secondary"
           panelClassName="rounded-lg"
           onSelect={item => onCategoryChange(item.value || 'all')}

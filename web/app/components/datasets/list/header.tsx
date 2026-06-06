@@ -70,7 +70,6 @@ const DatasetListHeader = ({
             value={tagFilterValue}
             onChange={onTagsChange}
             onOpenTagManagement={onOpenTagManagement}
-            emptyLabel={t('tag.tags', { ns: 'common' })}
             showLeadingIcon={false}
           />
           <SearchInput

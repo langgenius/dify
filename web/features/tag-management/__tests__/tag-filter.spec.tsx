@@ -79,12 +79,6 @@ describe('TagFilter', () => {
   })
 
   describe('Props', () => {
-    it('should apply a custom empty label', () => {
-      render(<TagFilter {...defaultProps} emptyLabel="Tags" />)
-      expect(screen.getByText('Tags')).toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Tags' })).toBeInTheDocument()
-    })
-
     it('should hide the leading tag icon when disabled', () => {
       const { container } = render(<TagFilter {...defaultProps} showLeadingIcon={false} />)
       expect(container.querySelector('svg')).not.toBeInTheDocument()

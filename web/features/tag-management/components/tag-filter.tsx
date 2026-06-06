@@ -19,7 +19,6 @@ type TagFilterProps = {
   value: string[]
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
-  emptyLabel?: string
   showLeadingIcon?: boolean
 }
 export const TagFilter = ({
@@ -27,7 +26,6 @@ export const TagFilter = ({
   value,
   onChange,
   onOpenTagManagement = () => {},
-  emptyLabel,
   showLeadingIcon = true,
 }: TagFilterProps) => {
   const { t } = useTranslation()
@@ -53,7 +51,7 @@ export const TagFilter = ({
 
   const firstTagId = value[0]
   const currentTagName = firstTagId ? tagById.get(firstTagId)?.name : undefined
-  const placeholderLabel = emptyLabel ?? t('tag.placeholder', { ns: 'common' })
+  const placeholderLabel = t('tag.placeholder', { ns: 'common' })
   const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : placeholderLabel
   const handleValueChange = useCallback((nextTags: Tag[]) => {
     const unknownTagIds = value.filter(tagId => !tagById.has(tagId))

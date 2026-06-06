@@ -309,8 +309,9 @@ describe('List', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      renderList()
+      const { container } = renderList()
       expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(container.querySelector('.i-ri-filter-3-line')).toBeInTheDocument()
     })
 
     it('should render app type select with all app types', async () => {

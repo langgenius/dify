@@ -701,7 +701,7 @@
   "tag.manageTags": "태그 관리",
   "tag.noTag": "태그 없음",
   "tag.noTagYet": "아직 태그가 없습니다",
-  "tag.placeholder": "모든 태그",
+  "tag.placeholder": "태그",
   "tag.selectorPlaceholder": "검색 또는 생성할 문자를 입력하세요",
   "tag.tags": "태그",
   "theme.auto": "시스템",
