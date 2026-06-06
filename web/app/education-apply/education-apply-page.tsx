@@ -19,11 +19,12 @@ import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   useRouter,
   useSearchParams,
 } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { switchWorkspace } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
 import {
@@ -62,6 +63,7 @@ const EducationApplyAgeContent = () => {
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
   const queryClient = useQueryClient()
+  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -83,7 +85,7 @@ const EducationApplyAgeContent = () => {
       if (res.message === 'success') {
         onPlanInfoChanged()
         updateEducationStatus()
-        localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+        setEducationVerifying(null)
         setHasSubmittedEducation(true)
       }
       else {
@@ -118,7 +120,7 @@ const EducationApplyAgeContent = () => {
   }
   const renderBackToDifyButton = () => (
     <Button variant="ghost-accent" onClick={handleReturnHome}>
-      <span className="mr-1 i-ri-arrow-left-line h-4 w-4" />
+      <span className="mr-1 i-ri-arrow-left-line size-4" />
       {t('applied.noPaymentPermission.returnHome', { ns: 'education' })}
     </Button>
   )
@@ -129,7 +131,7 @@ const EducationApplyAgeContent = () => {
     try {
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id: tenantId } })
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: commonQueryKeys.currentWorkspace }),
+        queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.current.post.key() }),
         queryClient.invalidateQueries({ queryKey: commonQueryKeys.workspaces }),
       ])
       onPlanInfoChanged()
@@ -153,7 +155,7 @@ const EducationApplyAgeContent = () => {
       return (
         <div className="flex w-full flex-col items-start gap-3">
           <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
-            <span className="mt-0.5 mr-2 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
+            <span className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
             <div className="system-md-regular text-text-warning">
               <Trans
                 i18nKey="applied.activeSubscription.description"
@@ -179,7 +181,7 @@ const EducationApplyAgeContent = () => {
     return (
       <div className="flex w-full flex-col items-start gap-3">
         <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
-          <span className="mt-0.5 mr-2 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
+          <span className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
           <div className="system-md-regular text-text-warning">
             {t('applied.noPaymentPermission.description', { ns: 'education' })}
           </div>
@@ -296,7 +298,7 @@ const EducationApplyAgeContent = () => {
                     target="_blank"
                   >
                     {t('learn', { ns: 'education' })}
-                    <span className="ml-1 i-ri-external-link-line h-3 w-3" />
+                    <span className="ml-1 i-ri-external-link-line size-3" />
                   </a>
                 </>
               )}

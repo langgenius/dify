@@ -7,8 +7,8 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useKeyPress } from 'ahooks'
 import {
 
   memo,
@@ -35,18 +35,17 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { appDefaultIconBackground } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
 import {
   PublisherAccessSection,
@@ -84,10 +83,12 @@ export type AppPublisherProps = {
   hasHumanInputNode?: boolean
 }
 
-const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
+const PUBLISH_SHORTCUT = ['Mod', 'Shift', 'P']
+
+export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
 type AppPublisherPublishHandler
-  = | ((params?: ModelAndParameter | PublishWorkflowParams) => Promise<unknown> | unknown)
+  = | ((params?: AppPublisherPublishParams) => Promise<unknown> | unknown)
     | ((params?: unknown) => Promise<unknown> | unknown)
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
@@ -302,12 +303,12 @@ const AppPublisher = ({
     }
   }, [appDetail?.id, publishingToMarketplace, t])
 
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
+  useHotkey('Mod+Shift+P', (e) => {
     e.preventDefault()
     if (publishDisabled || published)
       return
     handlePublish()
-  }, { exactMatch: true, useCapture: true })
+  })
 
   useEffect(() => {
     const appId = appDetail?.id
@@ -382,7 +383,7 @@ const AppPublisher = ({
               disabled={disabled}
             >
               {t('common.publish', { ns: 'workflow' })}
-              <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
+              <span className="i-ri-arrow-down-s-line size-4 text-components-button-primary-text" />
             </Button>
           )}
         />
@@ -451,7 +452,7 @@ const AppPublisher = ({
             {systemFeatures.enable_creators_platform && (
               <div className="border-t border-divider-subtle p-4">
                 <SuggestedAction
-                  icon={<span className="i-ri-store-line h-4 w-4" />}
+                  icon={<span className="i-ri-store-line size-4" />}
                   disabled={!publishedAt || publishingToMarketplace}
                   onClick={handlePublishToMarketplace}
                 >

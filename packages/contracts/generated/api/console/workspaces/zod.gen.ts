@@ -3,21 +3,24 @@
 import * as z from 'zod'
 
 /**
- * TenantInfoResponse
+ * SnippetImportPayload
+ *
+ * Payload for importing snippet from DSL.
  */
-export const zTenantInfoResponse = z.object({
-  created_at: z.int().nullish(),
-  custom_config: z.record(z.string(), z.unknown()).nullish(),
-  id: z.string(),
-  in_trial: z.boolean().nullish(),
+export const zSnippetImportPayload = z.object({
+  description: z.string().nullish(),
+  mode: z.string(),
   name: z.string().nullish(),
-  next_credit_reset_date: z.int().nullish(),
-  plan: z.string().nullish(),
-  role: z.string().nullish(),
-  status: z.string().nullish(),
-  trial_credits: z.int().nullish(),
-  trial_credits_used: z.int().nullish(),
-  trial_end_reason: z.string().nullish(),
+  snippet_id: z.string().nullish(),
+  yaml_content: z.string().nullish(),
+  yaml_url: z.string().nullish(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
 })
 
 /**
@@ -111,10 +114,27 @@ export const zOwnerTransferCheckPayload = z.object({
 })
 
 /**
+ * VerificationTokenResponse
+ */
+export const zVerificationTokenResponse = z.object({
+  email: z.string(),
+  is_valid: z.boolean(),
+  token: z.string(),
+})
+
+/**
  * OwnerTransferEmailPayload
  */
 export const zOwnerTransferEmailPayload = z.object({
   language: z.string().nullish(),
+})
+
+/**
+ * SimpleResultDataResponse
+ */
+export const zSimpleResultDataResponse = z.object({
+  data: z.string(),
+  result: z.string(),
 })
 
 /**
@@ -177,6 +197,24 @@ export const zParserPreferredProviderType = z.object({
 })
 
 /**
+ * WorkspacePermissionResponse
+ */
+export const zWorkspacePermissionResponse = z.object({
+  allow_member_invite: z.boolean(),
+  allow_owner_transfer: z.boolean(),
+  workspace_id: z.string(),
+})
+
+/**
+ * PluginDebuggingKeyResponse
+ */
+export const zPluginDebuggingKeyResponse = z.object({
+  host: z.string(),
+  key: z.string(),
+  port: z.int(),
+})
+
+/**
  * ParserGithubInstall
  */
 export const zParserGithubInstall = z.object({
@@ -210,6 +248,13 @@ export const zParserDynamicOptionsWithCredentials = z.object({
   parameter: z.string(),
   plugin_id: z.string(),
   provider: z.string(),
+})
+
+/**
+ * SuccessResponse
+ */
+export const zSuccessResponse = z.object({
+  success: z.boolean(),
 })
 
 /**
@@ -404,6 +449,140 @@ export const zWorkspaceInfoPayload = z.object({
  */
 export const zSwitchWorkspacePayload = z.object({
   tenant_id: z.string(),
+})
+
+/**
+ * WorkspaceCustomConfigResponse
+ */
+export const zWorkspaceCustomConfigResponse = z.object({
+  remove_webapp_brand: z.boolean().nullish(),
+  replace_webapp_logo: z.string().nullish(),
+})
+
+/**
+ * TenantInfoResponse
+ */
+export const zTenantInfoResponse = z.object({
+  created_at: z.int().nullish(),
+  custom_config: zWorkspaceCustomConfigResponse.optional(),
+  id: z.string(),
+  in_trial: z.boolean().nullish(),
+  name: z.string().nullish(),
+  next_credit_reset_date: z.int().nullish(),
+  plan: z.string().nullish(),
+  role: z.string().nullish(),
+  status: z.string().nullish(),
+  trial_credits: z.int().nullish(),
+  trial_credits_used: z.int().nullish(),
+  trial_end_reason: z.string().nullish(),
+})
+
+/**
+ * IconInfo
+ *
+ * Icon information model.
+ */
+export const zIconInfo = z.object({
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.enum(['emoji', 'image']).nullish(),
+  icon_url: z.string().nullish(),
+})
+
+/**
+ * UpdateSnippetPayload
+ *
+ * Payload for updating a snippet.
+ */
+export const zUpdateSnippetPayload = z.object({
+  description: z.string().max(2000).nullish(),
+  icon_info: zIconInfo.optional(),
+  name: z.string().min(1).max(255).nullish(),
+})
+
+/**
+ * InputFieldDefinition
+ *
+ * Input field definition for snippet parameters.
+ */
+export const zInputFieldDefinition = z.object({
+  default: z.string().nullish(),
+  hint: z.boolean().nullish(),
+  label: z.string().nullish(),
+  max_length: z.int().nullish(),
+  options: z.array(z.string()).nullish(),
+  placeholder: z.string().nullish(),
+  required: z.boolean().nullish(),
+  type: z.string().nullish(),
+})
+
+/**
+ * CreateSnippetPayload
+ *
+ * Payload for creating a new snippet.
+ */
+export const zCreateSnippetPayload = z.object({
+  description: z.string().max(2000).nullish(),
+  graph: z.record(z.string(), z.unknown()).nullish(),
+  icon_info: zIconInfo.optional(),
+  input_fields: z.array(zInputFieldDefinition).nullish(),
+  name: z.string().min(1).max(255),
+  type: z.enum(['group', 'node']).optional().default('node'),
+})
+
+export const zAnonymousInlineModelB0Fd3F86D9D5 = z.object({
+  email: z.string().optional(),
+  id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zAnonymousInlineModel7B8B49Ca164e = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  type: z.string().optional(),
+})
+
+export const zSnippet = z.object({
+  created_at: z.record(z.string(), z.unknown()).optional(),
+  created_by: zAnonymousInlineModelB0Fd3F86D9D5.optional(),
+  description: z.string().optional(),
+  graph: z.record(z.string(), z.unknown()).optional(),
+  icon_info: z.record(z.string(), z.unknown()).optional(),
+  id: z.string().optional(),
+  input_fields: z.record(z.string(), z.unknown()).optional(),
+  is_published: z.boolean().optional(),
+  name: z.string().optional(),
+  tags: z.array(zAnonymousInlineModel7B8B49Ca164e).optional(),
+  type: z.string().optional(),
+  updated_at: z.record(z.string(), z.unknown()).optional(),
+  updated_by: zAnonymousInlineModelB0Fd3F86D9D5.optional(),
+  use_count: z.int().optional(),
+  version: z.int().optional(),
+})
+
+export const zAnonymousInlineModel7B67Ac8A4Db8 = z.object({
+  author_name: z.string().optional(),
+  created_at: z.record(z.string(), z.unknown()).optional(),
+  created_by: z.string().optional(),
+  description: z.string().optional(),
+  icon_info: z.record(z.string(), z.unknown()).optional(),
+  id: z.string().optional(),
+  is_published: z.boolean().optional(),
+  name: z.string().optional(),
+  tags: z.array(zAnonymousInlineModel7B8B49Ca164e).optional(),
+  type: z.string().optional(),
+  updated_at: z.record(z.string(), z.unknown()).optional(),
+  updated_by: z.string().optional(),
+  use_count: z.int().optional(),
+  version: z.int().optional(),
+})
+
+export const zSnippetPagination = z.object({
+  data: z.array(zAnonymousInlineModel7B67Ac8A4Db8).optional(),
+  has_more: z.boolean().optional(),
+  limit: z.int().optional(),
+  page: z.int().optional(),
+  total: z.int().optional(),
 })
 
 /**
@@ -647,6 +826,7 @@ export const zBuiltinToolAddPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
   name: z.string().max(30).nullish(),
   type: zCredentialType,
+  visibility: z.string().nullish(),
 })
 
 /**
@@ -751,6 +931,112 @@ export const zGetWorkspacesCurrentAgentProvidersResponse = z.array(
   z.record(z.string(), z.unknown()),
 )
 
+export const zGetWorkspacesCurrentCustomizedSnippetsQuery = z.object({
+  creators: z.array(z.string()).nullish(),
+  is_published: z.boolean().nullish(),
+  keyword: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  tag_ids: z.array(z.string()).nullish(),
+})
+
+/**
+ * Snippets retrieved successfully
+ */
+export const zGetWorkspacesCurrentCustomizedSnippetsResponse = zSnippetPagination
+
+export const zPostWorkspacesCurrentCustomizedSnippetsBody = zCreateSnippetPayload
+
+/**
+ * Snippet created successfully
+ */
+export const zPostWorkspacesCurrentCustomizedSnippetsResponse = zSnippet
+
+export const zPostWorkspacesCurrentCustomizedSnippetsImportsBody = zSnippetImportPayload
+
+export const zPostWorkspacesCurrentCustomizedSnippetsImportsResponse = z.union([
+  z.record(z.string(), z.unknown()),
+  z.record(z.string(), z.unknown()),
+])
+
+export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPath = z.object({
+  import_id: z.string(),
+})
+
+/**
+ * Import confirmed successfully
+ */
+export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
+  snippet_id: z.string(),
+})
+
+/**
+ * Snippet deleted successfully
+ */
+export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = z.record(
+  z.string(),
+  z.never(),
+)
+
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
+  snippet_id: z.string(),
+})
+
+/**
+ * Snippet retrieved successfully
+ */
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippet
+
+export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdBody = zUpdateSnippetPayload
+
+export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
+  snippet_id: z.string(),
+})
+
+/**
+ * Snippet updated successfully
+ */
+export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippet
+
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesPath = z.object({
+  snippet_id: z.string(),
+})
+
+/**
+ * Dependencies checked successfully
+ */
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportPath = z.object({
+  snippet_id: z.string(),
+})
+
+/**
+ * Snippet exported successfully
+ */
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementPath = z.object({
+  snippet_id: z.string(),
+})
+
+/**
+ * Use count incremented successfully
+ */
+export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse
+  = z.record(z.string(), z.unknown())
+
 /**
  * Success
  */
@@ -770,7 +1056,7 @@ export const zPostWorkspacesCurrentDefaultModelBody = zParserPostDefault
 /**
  * Success
  */
-export const zPostWorkspacesCurrentDefaultModelResponse = z.record(z.string(), z.unknown())
+export const zPostWorkspacesCurrentDefaultModelResponse = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentEndpointsBody = zEndpointCreatePayload
 
@@ -872,10 +1158,7 @@ export const zPostWorkspacesCurrentMembersOwnerTransferCheckBody = zOwnerTransfe
 /**
  * Success
  */
-export const zPostWorkspacesCurrentMembersOwnerTransferCheckResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentMembersOwnerTransferCheckResponse = zVerificationTokenResponse
 
 export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody
   = zOwnerTransferEmailPayload
@@ -883,10 +1166,8 @@ export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody
 /**
  * Success
  */
-export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse
+  = zSimpleResultDataResponse
 
 export const zDeleteWorkspacesCurrentMembersByMemberIdPath = z.object({
   member_id: z.string(),
@@ -954,11 +1235,11 @@ export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath = z
 })
 
 /**
- * Success
+ * Credential deleted successfully
  */
 export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.object({
@@ -1015,10 +1296,8 @@ export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchPath
 /**
  * Success
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse
+  = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateBody
   = zParserCredentialValidate
@@ -1042,11 +1321,11 @@ export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath = z.obje
 })
 
 /**
- * Success
+ * Model deleted successfully
  */
 export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsPath = z.object({
@@ -1083,11 +1362,11 @@ export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPa
 })
 
 /**
- * Success
+ * Credential deleted successfully
  */
 export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath = z.object({
@@ -1150,7 +1429,7 @@ export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwit
  * Success
  */
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponse
-  = z.record(z.string(), z.unknown())
+  = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateBody
   = zParserValidate
@@ -1176,10 +1455,8 @@ export const zPatchWorkspacesCurrentModelProvidersByProviderModelsDisablePath = 
 /**
  * Success
  */
-export const zPatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse
+  = zSimpleResultResponse
 
 export const zPatchWorkspacesCurrentModelProvidersByProviderModelsEnableBody = zParserDeleteModels
 
@@ -1190,10 +1467,8 @@ export const zPatchWorkspacesCurrentModelProvidersByProviderModelsEnablePath = z
 /**
  * Success
  */
-export const zPatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse
+  = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateBody
   = zLoadBalancingCredentialPayload
@@ -1250,10 +1525,8 @@ export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderType
 /**
  * Success
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse
+  = zSimpleResultResponse
 
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
   model_type: z.string(),
@@ -1270,7 +1543,7 @@ export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse = z.record
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPermissionResponse = z.record(z.string(), z.unknown())
+export const zGetWorkspacesCurrentPermissionResponse = zWorkspacePermissionResponse
 
 export const zGetWorkspacesCurrentPluginAssetQuery = z.object({
   file_name: z.string(),
@@ -1285,7 +1558,7 @@ export const zGetWorkspacesCurrentPluginAssetResponse = z.record(z.string(), z.u
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginDebuggingKeyResponse = z.record(z.string(), z.unknown())
+export const zGetWorkspacesCurrentPluginDebuggingKeyResponse = zPluginDebuggingKeyResponse
 
 export const zGetWorkspacesCurrentPluginFetchManifestQuery = z.object({
   plugin_unique_identifier: z.string(),
@@ -1402,10 +1675,7 @@ export const zPostWorkspacesCurrentPluginPermissionChangeBody = zParserPermissio
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginPermissionChangeResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentPluginPermissionChangeResponse = zSuccessResponse
 
 /**
  * Success
@@ -1460,7 +1730,7 @@ export const zGetWorkspacesCurrentPluginTasksResponse = z.record(z.string(), z.u
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginTasksDeleteAllResponse = z.record(z.string(), z.unknown())
+export const zPostWorkspacesCurrentPluginTasksDeleteAllResponse = zSuccessResponse
 
 export const zGetWorkspacesCurrentPluginTasksByTaskIdPath = z.object({
   task_id: z.string(),
@@ -1478,10 +1748,7 @@ export const zPostWorkspacesCurrentPluginTasksByTaskIdDeletePath = z.object({
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath = z.object({
   identifier: z.string(),
@@ -1491,17 +1758,14 @@ export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath = z
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentPluginUninstallBody = zParserUninstall
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginUninstallResponse = z.record(z.string(), z.unknown())
+export const zPostWorkspacesCurrentPluginUninstallResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentPluginUpgradeGithubBody = zParserGithubUpgrade
 
@@ -1776,7 +2040,7 @@ export const zDeleteWorkspacesCurrentToolProviderMcpBody = zMcpProviderDeletePay
 /**
  * Success
  */
-export const zDeleteWorkspacesCurrentToolProviderMcpResponse = z.record(z.string(), z.unknown())
+export const zDeleteWorkspacesCurrentToolProviderMcpResponse = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentToolProviderMcpBody = zMcpProviderCreatePayload
 
@@ -2087,7 +2351,7 @@ export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsD
  * Success
  */
 export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse
-  = z.record(z.string(), z.unknown())
+  = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateBody
   = zTriggerSubscriptionBuilderUpdatePayload

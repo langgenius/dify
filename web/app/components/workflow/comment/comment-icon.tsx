@@ -208,7 +208,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
           onMouseLeave={handleMouseLeave}
         >
           <div
-            className="relative h-10 rounded-tl-full rounded-tr-full rounded-br-full"
+            className="relative h-10 rounded-t-full rounded-br-full"
             style={{ width: dynamicWidth }}
           >
             <div className={`absolute inset-[6px] overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full border bg-components-panel-bg transition-shadow ${
@@ -217,12 +217,12 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
                 : 'border-components-panel-border'
             }`}
             >
-              <div className="flex h-full w-full items-center justify-center px-1">
+              <div className="flex size-full items-center justify-center px-1">
                 <UserAvatarList
                   users={participants}
                   maxVisible={3}
                   size="sm"
-                  className="-translate-y-[1.5px]"
+                  className="translate-y-[-1.5px]"
                 />
               </div>
             </div>

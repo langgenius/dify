@@ -66,10 +66,32 @@ vi.mock('@/service/use-datasource', () => ({
 }))
 
 vi.mock('@/service/use-common', () => ({
-  useApiBasedExtensions: vi.fn(() => ({ data: [], isPending: false })),
   useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
   useProviderContext: vi.fn(),
 }))
+
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, prop, receiver) {
+        if (prop === 'apiBasedExtension') {
+          return {
+            get: {
+              queryOptions: () => ({
+                queryKey: ['console', 'api-based-extension'],
+                queryFn: () => Promise.resolve([]),
+              }),
+            },
+          }
+        }
+
+        return Reflect.get(target, prop, receiver)
+      },
+    }),
+  }
+})
 
 vi.mock('@/app/components/billing/billing-page', () => ({
   __esModule: true,
@@ -439,7 +461,7 @@ describe('AccountSetting', () => {
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PROVIDER })
 
       // Act
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'test-search' } })
 
       // Assert

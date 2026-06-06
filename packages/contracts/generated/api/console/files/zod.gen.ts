@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * AllowedExtensionsResponse
+ */
+export const zAllowedExtensionsResponse = z.object({
+  allowed_extensions: z.array(z.string()),
+})
+
+/**
  * UploadConfig
  */
 export const zUploadConfig = z.object({
@@ -39,9 +46,16 @@ export const zFileResponse = z.object({
 })
 
 /**
+ * TextContentResponse
+ */
+export const zTextContentResponse = z.object({
+  content: z.string(),
+})
+
+/**
  * Success
  */
-export const zGetFilesSupportTypeResponse = z.record(z.string(), z.unknown())
+export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
 
 /**
  * Success
@@ -60,4 +74,4 @@ export const zGetFilesByFileIdPreviewPath = z.object({
 /**
  * Success
  */
-export const zGetFilesByFileIdPreviewResponse = z.record(z.string(), z.unknown())
+export const zGetFilesByFileIdPreviewResponse = zTextContentResponse

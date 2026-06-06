@@ -3,10 +3,40 @@
 import * as z from 'zod'
 
 /**
+ * CustomizedPipelineTemplatePayload
+ */
+export const zCustomizedPipelineTemplatePayload = z.object({
+  description: z.string().max(400).optional().default(''),
+  icon_info: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1).max(40),
+})
+
+/**
+ * SimpleDataResponse
+ */
+export const zSimpleDataResponse = z.object({
+  data: z.string(),
+})
+
+/**
  * RagPipelineDatasetImportPayload
  */
 export const zRagPipelineDatasetImportPayload = z.object({
   yaml_content: z.string(),
+})
+
+/**
+ * PipelineTemplateDetailResponse
+ */
+export const zPipelineTemplateDetailResponse = z.object({
+  chunk_structure: z.string(),
+  created_by: z.string().nullish(),
+  description: z.string(),
+  export_data: z.string(),
+  graph: z.record(z.string(), z.unknown()),
+  icon_info: z.record(z.string(), z.unknown()),
+  id: z.string(),
+  name: z.string(),
 })
 
 /**
@@ -25,12 +55,19 @@ export const zRagPipelineImportPayload = z.object({
 })
 
 /**
- * Payload
+ * SimpleResultResponse
  */
-export const zPayload = z.object({
-  description: z.string().max(400).optional().default(''),
-  icon_info: z.record(z.string(), z.unknown()).nullish(),
-  name: z.string().min(1).max(40),
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * RagPipelineWorkflowSyncResponse
+ */
+export const zRagPipelineWorkflowSyncResponse = z.object({
+  hash: z.string(),
+  result: z.string(),
+  updated_at: z.int(),
 })
 
 /**
@@ -77,6 +114,22 @@ export const zDraftWorkflowRunPayload = z.object({
 })
 
 /**
+ * WorkflowDraftVariablePatchPayload
+ */
+export const zWorkflowDraftVariablePatchPayload = z.object({
+  name: z.string().nullish(),
+  value: z.unknown().optional(),
+})
+
+/**
+ * RagPipelineWorkflowPublishResponse
+ */
+export const zRagPipelineWorkflowPublishResponse = z.object({
+  created_at: z.int(),
+  result: z.string(),
+})
+
+/**
  * Parser
  */
 export const zParser = z.object({
@@ -96,6 +149,102 @@ export const zPublishedWorkflowRunPayload = z.object({
   original_document_id: z.string().nullish(),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('streaming'),
   start_node_id: z.string(),
+})
+
+/**
+ * ImportStatus
+ */
+export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
+
+/**
+ * RagPipelineImportResponse
+ */
+export const zRagPipelineImportResponse = z.object({
+  current_dsl_version: z.string(),
+  dataset_id: z.string().nullish(),
+  error: z.string().optional().default(''),
+  id: z.string(),
+  imported_dsl_version: z.string(),
+  pipeline_id: z.string().nullish(),
+  status: zImportStatus,
+})
+
+/**
+ * DatasetDocMetadataResponse
+ */
+export const zDatasetDocMetadataResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasetExternalKnowledgeInfoResponse
+ */
+export const zDatasetExternalKnowledgeInfoResponse = z.object({
+  external_knowledge_api_endpoint: z.string().nullish(),
+  external_knowledge_api_id: z.string().nullish(),
+  external_knowledge_api_name: z.string().nullish(),
+  external_knowledge_id: z.string().nullish(),
+})
+
+/**
+ * DatasetExternalRetrievalModelResponse
+ */
+export const zDatasetExternalRetrievalModelResponse = z.object({
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean().nullish(),
+  top_k: z.int(),
+})
+
+/**
+ * DatasetIconInfoResponse
+ */
+export const zDatasetIconInfoResponse = z.object({
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullish(),
+})
+
+/**
+ * DatasetSummaryIndexSettingResponse
+ */
+export const zDatasetSummaryIndexSettingResponse = z.object({
+  enable: z.boolean().nullish(),
+  model_name: z.string().nullish(),
+  model_provider_name: z.string().nullish(),
+  summary_prompt: z.string().nullish(),
+})
+
+/**
+ * DatasetTagResponse
+ */
+export const zDatasetTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * PipelineTemplateItemResponse
+ */
+export const zPipelineTemplateItemResponse = z.object({
+  chunk_structure: z.string(),
+  copyright: z.string().nullish(),
+  description: z.string(),
+  icon: z.record(z.string(), z.unknown()),
+  id: z.string(),
+  name: z.string(),
+  position: z.int(),
+  privacy_policy: z.string().nullish(),
+})
+
+/**
+ * PipelineTemplateListResponse
+ */
+export const zPipelineTemplateListResponse = z.object({
+  pipeline_templates: z.array(zPipelineTemplateItemResponse),
 })
 
 /**
@@ -273,28 +422,166 @@ export const zWorkflowPaginationResponse = z.object({
   page: z.int(),
 })
 
+/**
+ * DatasetRerankingModelResponse
+ */
+export const zDatasetRerankingModelResponse = z.object({
+  reranking_model_name: z.string().nullish(),
+  reranking_provider_name: z.string().nullish(),
+})
+
+/**
+ * Type
+ */
+export const zType = z.enum(['github', 'marketplace', 'package'])
+
+/**
+ * PluginDependency
+ */
+export const zPluginDependency = z.object({
+  current_identifier: z.string().nullish(),
+  type: zType,
+  value: z.unknown(),
+})
+
+/**
+ * RagPipelineImportCheckDependenciesResponse
+ */
+export const zRagPipelineImportCheckDependenciesResponse = z.object({
+  leaked_dependencies: z.array(zPluginDependency).optional(),
+})
+
+/**
+ * Github
+ */
+export const zGithub = z.object({
+  github_plugin_unique_identifier: z.string(),
+  package: z.string(),
+  repo: z.string(),
+  version: z.string(),
+})
+
+/**
+ * Marketplace
+ */
+export const zMarketplace = z.object({
+  marketplace_plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
+ * Package
+ */
+export const zPackage = z.object({
+  plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
+ * DatasetKeywordSettingResponse
+ */
+export const zDatasetKeywordSettingResponse = z.object({
+  keyword_weight: z.number().nullish(),
+})
+
+/**
+ * DatasetVectorSettingResponse
+ */
+export const zDatasetVectorSettingResponse = z.object({
+  embedding_model_name: z.string().nullish(),
+  embedding_provider_name: z.string().nullish(),
+  vector_weight: z.number().nullish(),
+})
+
+/**
+ * DatasetWeightedScoreResponse
+ */
+export const zDatasetWeightedScoreResponse = z.object({
+  keyword_setting: zDatasetKeywordSettingResponse.optional(),
+  vector_setting: zDatasetVectorSettingResponse.optional(),
+  weight_type: z.string().nullish(),
+})
+
+/**
+ * DatasetRetrievalModelResponse
+ */
+export const zDatasetRetrievalModelResponse = z.object({
+  reranking_enable: z.boolean(),
+  reranking_mode: z.string().nullish(),
+  reranking_model: zDatasetRerankingModelResponse.optional(),
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean(),
+  search_method: z.string(),
+  top_k: z.int(),
+  weights: zDatasetWeightedScoreResponse.optional(),
+})
+
+/**
+ * DatasetDetailResponse
+ */
+export const zDatasetDetailResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z.string().nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse,
+  icon_info: zDatasetIconInfoResponse.optional(),
+  id: z.string(),
+  indexing_technique: z.string().nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  name: z.string(),
+  permission: z.string(),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.string().nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
 export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
   template_id: z.string(),
 })
 
 /**
- * Success
+ * Pipeline template deleted
  */
 export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
+
+export const zPatchRagPipelineCustomizedTemplatesByTemplateIdBody
+  = zCustomizedPipelineTemplatePayload
 
 export const zPatchRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
   template_id: z.string(),
 })
 
 /**
- * Success
+ * Pipeline template updated
  */
 export const zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPostRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
@@ -304,36 +591,42 @@ export const zPostRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
 /**
  * Success
  */
-export const zPostRagPipelineCustomizedTemplatesByTemplateIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelineCustomizedTemplatesByTemplateIdResponse = zSimpleDataResponse
 
 export const zPostRagPipelineDatasetBody = zRagPipelineDatasetImportPayload
 
 /**
- * Success
+ * RAG pipeline dataset import started
  */
-export const zPostRagPipelineDatasetResponse = z.record(z.string(), z.unknown())
+export const zPostRagPipelineDatasetResponse = zRagPipelineImportResponse
 
 /**
- * Success
+ * RAG pipeline dataset created
  */
-export const zPostRagPipelineEmptyDatasetResponse = z.record(z.string(), z.unknown())
+export const zPostRagPipelineEmptyDatasetResponse = zDatasetDetailResponse
+
+export const zGetRagPipelineTemplatesQuery = z.object({
+  language: z.string().optional().default('en-US'),
+  type: z.string().optional().default('built-in'),
+})
 
 /**
- * Success
+ * Pipeline templates
  */
-export const zGetRagPipelineTemplatesResponse = z.record(z.string(), z.unknown())
+export const zGetRagPipelineTemplatesResponse = zPipelineTemplateListResponse
 
 export const zGetRagPipelineTemplatesByTemplateIdPath = z.object({
   template_id: z.string(),
 })
 
+export const zGetRagPipelineTemplatesByTemplateIdQuery = z.object({
+  type: z.string().optional().default('built-in'),
+})
+
 /**
- * Success
+ * Pipeline template
  */
-export const zGetRagPipelineTemplatesByTemplateIdResponse = z.record(z.string(), z.unknown())
+export const zGetRagPipelineTemplatesByTemplateIdResponse = zPipelineTemplateDetailResponse
 
 /**
  * Success
@@ -343,30 +636,28 @@ export const zGetRagPipelinesDatasourcePluginsResponse = z.record(z.string(), z.
 export const zPostRagPipelinesImportsBody = zRagPipelineImportPayload
 
 /**
- * Success
+ * Import completed
  */
-export const zPostRagPipelinesImportsResponse = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesImportsResponse = zRagPipelineImportResponse
 
 export const zPostRagPipelinesImportsByImportIdConfirmPath = z.object({
   import_id: z.string(),
 })
 
 /**
- * Success
+ * Import confirmed
  */
-export const zPostRagPipelinesImportsByImportIdConfirmResponse = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesImportsByImportIdConfirmResponse = zRagPipelineImportResponse
 
 export const zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath = z.object({
   pipeline_id: z.string(),
 })
 
 /**
- * Success
+ * Dependencies checked
  */
-export const zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse
+  = zRagPipelineImportCheckDependenciesResponse
 
 /**
  * Success
@@ -385,28 +676,32 @@ export const zPostRagPipelinesTransformDatasetsByDatasetIdResponse = z.record(
   z.unknown(),
 )
 
-export const zPostRagPipelinesByPipelineIdCustomizedPublishBody = zPayload
+export const zPostRagPipelinesByPipelineIdCustomizedPublishBody = zCustomizedPipelineTemplatePayload
 
 export const zPostRagPipelinesByPipelineIdCustomizedPublishPath = z.object({
   pipeline_id: z.string(),
 })
 
 /**
- * Success
+ * Pipeline template published
  */
 export const zPostRagPipelinesByPipelineIdCustomizedPublishResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zGetRagPipelinesByPipelineIdExportsPath = z.object({
   pipeline_id: z.string(),
 })
 
+export const zGetRagPipelinesByPipelineIdExportsQuery = z.object({
+  include_secret: z.string().optional().default('false'),
+})
+
 /**
- * Success
+ * Pipeline exported
  */
-export const zGetRagPipelinesByPipelineIdExportsResponse = z.record(z.string(), z.unknown())
+export const zGetRagPipelinesByPipelineIdExportsResponse = zSimpleDataResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowRunsPath = z.object({
   pipeline_id: z.string(),
@@ -423,12 +718,10 @@ export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath = z.
 })
 
 /**
- * Success
+ * Task stopped successfully
  */
-export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse
+  = zSimpleResultResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath = z.object({
   pipeline_id: z.string(),
@@ -500,7 +793,7 @@ export const zPostRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftResponse = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftResponse = zRagPipelineWorkflowSyncResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody
   = zDatasourceNodeRunPayload
@@ -721,6 +1014,9 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResp
   z.unknown(),
 )
 
+export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody
+  = zWorkflowDraftVariablePatchPayload
+
 export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath = z.object({
   pipeline_id: z.string(),
   variable_id: z.string(),
@@ -761,10 +1057,8 @@ export const zPostRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse
+  = zRagPipelineWorkflowPublishResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody
   = zParser
@@ -838,11 +1132,11 @@ export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object
 })
 
 /**
- * Success
+ * Workflow deleted successfully
  */
 export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object({
@@ -863,7 +1157,5 @@ export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath = z.o
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse
+  = zRagPipelineWorkflowSyncResponse

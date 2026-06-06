@@ -1,58 +1,139 @@
 """
-Regression tests for the `_TokenData` TypedDict used by
-`libs.helper.TokenManager`.
+Regression tests for `libs.helper.TokenManager`.
 
-These tests guard the contract that every field a caller writes via
-`generate_token` survives the TypedDict-validated round-trip performed
-by `get_token_data`. Specifically, the `phase` field that the console
-and web `forgot-password` + `change-email` controllers depend on for
-the security check introduced in PR #35425 (GHSA-4q3w-q5mc-45rq) must
-be preserved — otherwise downstream `if data.get("phase", "") != "reset"`
-checks always fail with `InvalidTokenError`.
+`TokenManager` is the storage primitive shared by multiple auth flows, so it
+must preserve every metadata field written by the caller. Business-specific
+validation now happens at the callsite boundary (for example,
+`AccountService.get_change_email_data`), not inside `TokenManager`.
 """
 
 import json
+from types import SimpleNamespace
 
-# pyright: reportPrivateUsage=false
-from libs.helper import _token_data_adapter
+import pytest
+from pydantic import ValidationError
+
+import libs.helper as helper_module
+from libs.helper import TokenManager
 
 
-def test_token_data_adapter_preserves_phase_field() -> None:
-    """`phase` written by callers like generate_reset_password_token must
-    survive the TypedDict-validated round-trip in get_token_data.
+def _build_fake_redis(storage: dict[str, str]):
+    def store_value(key: str, _ttl: int, value: str) -> bool:
+        storage[key] = value
+        return True
 
-    Regression: PR #34380 introduced `_TokenData` but did not list
-    `phase`, so the TypeAdapter silently dropped it and the security
-    gate from PR #35425 (GHSA-4q3w-q5mc-45rq) always failed.
-    """
-    payload = {
-        "account_id": None,
-        "email": "user@example.com",
-        "token_type": "reset_password",
-        "code": "123456",
-        "phase": "reset",
-    }
-    data = dict(_token_data_adapter.validate_json(json.dumps(payload)))
+    def load_value(key: str) -> str | None:
+        return storage.get(key)
 
-    assert data.get("phase") == "reset", (
-        "phase field was stripped by the _TokenData TypedDict adapter; "
-        "the forgot-password phase-bound check (PR #35425) will always fail."
+    return SimpleNamespace(
+        setex=store_value,
+        get=load_value,
+        delete=lambda *_args, **_kwargs: None,
     )
 
 
-def test_token_data_adapter_preserves_change_email_payload() -> None:
-    """Sanity round-trip for the change-email flow: every field set by
-    `generate_change_email_token` must come back, including the phase
-    string the controller branches on."""
-    payload = {
-        "account_id": "acc-1",
-        "email": "new@example.com",
-        "token_type": "change_email",
-        "code": "654321",
-        "old_email": "old@example.com",
-        "phase": "verify_old_email",
-    }
-    data = dict(_token_data_adapter.validate_json(json.dumps(payload)))
+def test_token_manager_roundtrip_preserves_untyped_metadata_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`TokenManager` must round-trip arbitrary metadata keys without silently
+    dropping fields such as `phase`, `email_change_phase`, or future auth
+    payload extensions.
+    """
 
+    storage: dict[str, str] = {}
+    monkeypatch.setattr(helper_module, "redis_client", _build_fake_redis(storage))
+
+    token = TokenManager.generate_token(
+        email="user@example.com",
+        token_type="change_email",
+        additional_data={
+            "code": "654321",
+            "old_email": "old@example.com",
+            "phase": "legacy-phase",
+            "email_change_phase": "old_email",
+            "custom_marker": "preserve-me",
+        },
+    )
+
+    data = TokenManager.get_token_data(token, "change_email")
+
+    assert data is not None
+    assert data.get("phase") == "legacy-phase"
+    assert data.get("email_change_phase") == "old_email"
+    assert data.get("custom_marker") == "preserve-me"
+
+
+def test_token_manager_roundtrip_uses_explicit_email_with_account(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When both `account` and `email` are supplied, the token should bind the
+    stable `account_id` from the account and the target email from the explicit
+    email argument.
+    """
+
+    storage: dict[str, str] = {}
+    monkeypatch.setattr(helper_module, "redis_client", _build_fake_redis(storage))
+
+    account = SimpleNamespace(id="acc-1", email="old@example.com")
+
+    token = TokenManager.generate_token(
+        account=account,
+        email="new@example.com",
+        token_type="change_email",
+        additional_data={
+            "code": "654321",
+            "old_email": "old@example.com",
+            "email_change_phase": "new_email",
+        },
+    )
+
+    data = TokenManager.get_token_data(token, "change_email")
+
+    assert data is not None
+    assert data.get("account_id") == "acc-1"
+    assert data.get("email") == "new@example.com"
     assert data.get("old_email") == "old@example.com"
-    assert data.get("phase") == "verify_old_email"
+    assert data.get("email_change_phase") == "new_email"
+
+
+def test_token_manager_roundtrip_still_validates_declared_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unknown fields should be preserved, but declared baseline fields should
+    still be validated by `_token_data_adapter`.
+    """
+
+    storage = {
+        "change_email:token:token-123": json.dumps(
+            {
+                "token_type": "change_email",
+                "account_id": "acc-1",
+                "email": ["not-a-string"],
+                "code": "654321",
+                "old_email": "old@example.com",
+                "email_change_phase": "old_email",
+            }
+        )
+    }
+    monkeypatch.setattr(helper_module, "redis_client", _build_fake_redis(storage))
+
+    with pytest.raises(ValidationError):
+        TokenManager.get_token_data("token-123", "change_email")
+
+
+def test_token_manager_roundtrip_validates_email_change_phase_as_string(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`email_change_phase` is part of the shared baseline schema, so obviously
+    malformed discriminator values should fail before the change-email-specific
+    union parsing at the callsite boundary.
+    """
+
+    storage = {
+        "change_email:token:token-456": json.dumps(
+            {
+                "token_type": "change_email",
+                "account_id": "acc-1",
+                "email": "new@example.com",
+                "code": "654321",
+                "old_email": "old@example.com",
+                "email_change_phase": ["not-a-string"],
+            }
+        )
+    }
+    monkeypatch.setattr(helper_module, "redis_client", _build_fake_redis(storage))
+
+    with pytest.raises(ValidationError):
+        TokenManager.get_token_data("token-456", "change_email")

@@ -6,9 +6,7 @@ export type ClientOptions = {
 
 export type TenantInfoResponse = {
   created_at?: number | null
-  custom_config?: {
-    [key: string]: unknown
-  } | null
+  custom_config?: WorkspaceCustomConfigResponse
   id: string
   in_trial?: boolean | null
   name?: string | null
@@ -21,12 +19,78 @@ export type TenantInfoResponse = {
   trial_end_reason?: string | null
 }
 
+export type SnippetPagination = {
+  data?: Array<AnonymousInlineModel7B67Ac8A4Db8>
+  has_more?: boolean
+  limit?: number
+  page?: number
+  total?: number
+}
+
+export type CreateSnippetPayload = {
+  description?: string | null
+  graph?: {
+    [key: string]: unknown
+  } | null
+  icon_info?: IconInfo
+  input_fields?: Array<InputFieldDefinition> | null
+  name: string
+  type?: 'group' | 'node'
+}
+
+export type Snippet = {
+  created_at?: {
+    [key: string]: unknown
+  }
+  created_by?: AnonymousInlineModelB0Fd3F86D9D5
+  description?: string
+  graph?: {
+    [key: string]: unknown
+  }
+  icon_info?: {
+    [key: string]: unknown
+  }
+  id?: string
+  input_fields?: {
+    [key: string]: unknown
+  }
+  is_published?: boolean
+  name?: string
+  tags?: Array<AnonymousInlineModel7B8B49Ca164e>
+  type?: string
+  updated_at?: {
+    [key: string]: unknown
+  }
+  updated_by?: AnonymousInlineModelB0Fd3F86D9D5
+  use_count?: number
+  version?: number
+}
+
+export type SnippetImportPayload = {
+  description?: string | null
+  mode: string
+  name?: string | null
+  snippet_id?: string | null
+  yaml_content?: string | null
+  yaml_url?: string | null
+}
+
+export type UpdateSnippetPayload = {
+  description?: string | null
+  icon_info?: IconInfo
+  name?: string | null
+}
+
 export type AccountWithRoleList = {
   accounts: Array<AccountWithRole>
 }
 
 export type ParserPostDefault = {
   model_settings: Array<Inner>
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type EndpointCreatePayload = {
@@ -99,8 +163,19 @@ export type OwnerTransferCheckPayload = {
   token: string
 }
 
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
+  token: string
+}
+
 export type OwnerTransferEmailPayload = {
   language?: string | null
+}
+
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
 }
 
 export type OwnerTransferPayload = {
@@ -204,6 +279,18 @@ export type ParserPreferredProviderType = {
   preferred_provider_type: 'custom' | 'system'
 }
 
+export type WorkspacePermissionResponse = {
+  allow_member_invite: boolean
+  allow_owner_transfer: boolean
+  workspace_id: string
+}
+
+export type PluginDebuggingKeyResponse = {
+  host: string
+  key: string
+  port: number
+}
+
 export type ParserGithubInstall = {
   package: string
   plugin_unique_identifier: string
@@ -233,6 +320,10 @@ export type ParserDynamicOptionsWithCredentials = {
 export type ParserPermissionChange = {
   debug_permission: DebugPermission
   install_permission: InstallPermission
+}
+
+export type SuccessResponse = {
+  success: boolean
 }
 
 export type ParserExcludePlugin = {
@@ -325,6 +416,7 @@ export type BuiltinToolAddPayload = {
   }
   name?: string | null
   type: CredentialType
+  visibility?: string | null
 }
 
 export type BuiltinProviderDefaultCredentialPayload = {
@@ -469,6 +561,64 @@ export type SwitchWorkspacePayload = {
   tenant_id: string
 }
 
+export type WorkspaceCustomConfigResponse = {
+  remove_webapp_brand?: boolean | null
+  replace_webapp_logo?: string | null
+}
+
+export type AnonymousInlineModel7B67Ac8A4Db8 = {
+  author_name?: string
+  created_at?: {
+    [key: string]: unknown
+  }
+  created_by?: string
+  description?: string
+  icon_info?: {
+    [key: string]: unknown
+  }
+  id?: string
+  is_published?: boolean
+  name?: string
+  tags?: Array<AnonymousInlineModel7B8B49Ca164e>
+  type?: string
+  updated_at?: {
+    [key: string]: unknown
+  }
+  updated_by?: string
+  use_count?: number
+  version?: number
+}
+
+export type IconInfo = {
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | null
+  icon_url?: string | null
+}
+
+export type InputFieldDefinition = {
+  default?: string | null
+  hint?: boolean | null
+  label?: string | null
+  max_length?: number | null
+  options?: Array<string> | null
+  placeholder?: string | null
+  required?: boolean | null
+  type?: string | null
+}
+
+export type AnonymousInlineModelB0Fd3F86D9D5 = {
+  email?: string
+  id?: string
+  name?: string
+}
+
+export type AnonymousInlineModel7B8B49Ca164e = {
+  id?: string
+  name?: string
+  type?: string
+}
+
 export type AccountWithRole = {
   avatar?: string | null
   created_at?: number | null
@@ -594,6 +744,266 @@ export type GetWorkspacesCurrentAgentProvidersResponses = {
 export type GetWorkspacesCurrentAgentProvidersResponse
   = GetWorkspacesCurrentAgentProvidersResponses[keyof GetWorkspacesCurrentAgentProvidersResponses]
 
+export type GetWorkspacesCurrentCustomizedSnippetsData = {
+  body?: never
+  path?: never
+  query?: {
+    creators?: Array<string> | null
+    is_published?: boolean | null
+    keyword?: string | null
+    limit?: number
+    page?: number
+    tag_ids?: Array<string> | null
+  }
+  url: '/workspaces/current/customized-snippets'
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsResponses = {
+  200: SnippetPagination
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsResponse
+  = GetWorkspacesCurrentCustomizedSnippetsResponses[keyof GetWorkspacesCurrentCustomizedSnippetsResponses]
+
+export type PostWorkspacesCurrentCustomizedSnippetsData = {
+  body: CreateSnippetPayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/customized-snippets'
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsErrors = {
+  400: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsError
+  = PostWorkspacesCurrentCustomizedSnippetsErrors[keyof PostWorkspacesCurrentCustomizedSnippetsErrors]
+
+export type PostWorkspacesCurrentCustomizedSnippetsResponses = {
+  201: Snippet
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsResponse
+  = PostWorkspacesCurrentCustomizedSnippetsResponses[keyof PostWorkspacesCurrentCustomizedSnippetsResponses]
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsData = {
+  body: SnippetImportPayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/customized-snippets/imports'
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsErrors = {
+  400: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsError
+  = PostWorkspacesCurrentCustomizedSnippetsImportsErrors[keyof PostWorkspacesCurrentCustomizedSnippetsImportsErrors]
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+  202: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsResponse
+  = PostWorkspacesCurrentCustomizedSnippetsImportsResponses[keyof PostWorkspacesCurrentCustomizedSnippetsImportsResponses]
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmData = {
+  body?: never
+  path: {
+    import_id: string
+  }
+  query?: never
+  url: '/workspaces/current/customized-snippets/imports/{import_id}/confirm'
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors = {
+  400: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmError
+  = PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors[keyof PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors]
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
+  = PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses[keyof PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses]
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
+  body?: never
+  path: {
+    snippet_id: string
+  }
+  query?: never
+  url: '/workspaces/current/customized-snippets/{snippet_id}'
+}
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdError
+  = DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
+  204: {
+    [key: string]: never
+  }
+}
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
+  = DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses[keyof DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses]
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
+  body?: never
+  path: {
+    snippet_id: string
+  }
+  query?: never
+  url: '/workspaces/current/customized-snippets/{snippet_id}'
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdError
+  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
+  200: Snippet
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
+  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses]
+
+export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
+  body: UpdateSnippetPayload
+  path: {
+    snippet_id: string
+  }
+  query?: never
+  url: '/workspaces/current/customized-snippets/{snippet_id}'
+}
+
+export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
+  400: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdError
+  = PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
+
+export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
+  200: Snippet
+}
+
+export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
+  = PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses[keyof PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses]
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesData = {
+  body?: never
+  path: {
+    snippet_id: string
+  }
+  query?: never
+  url: '/workspaces/current/customized-snippets/{snippet_id}/check-dependencies'
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesError
+  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors]
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse
+  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses]
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
+  body?: never
+  path: {
+    snippet_id: string
+  }
+  query?: never
+  url: '/workspaces/current/customized-snippets/{snippet_id}/export'
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportError
+  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors]
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse
+  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses]
+
+export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementData = {
+  body?: never
+  path: {
+    snippet_id: string
+  }
+  query?: never
+  url: '/workspaces/current/customized-snippets/{snippet_id}/use-count/increment'
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementError
+  = PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors[keyof PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors]
+
+export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse
+  = PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponses[keyof PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponses]
+
 export type GetWorkspacesCurrentDatasetOperatorsData = {
   body?: never
   path?: never
@@ -634,9 +1044,7 @@ export type PostWorkspacesCurrentDefaultModelData = {
 }
 
 export type PostWorkspacesCurrentDefaultModelResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentDefaultModelResponse
@@ -903,9 +1311,7 @@ export type PostWorkspacesCurrentMembersOwnerTransferCheckData = {
 }
 
 export type PostWorkspacesCurrentMembersOwnerTransferCheckResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: VerificationTokenResponse
 }
 
 export type PostWorkspacesCurrentMembersOwnerTransferCheckResponse
@@ -919,9 +1325,7 @@ export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse
@@ -1027,8 +1431,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1101,9 +1505,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchData =
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse
@@ -1137,8 +1539,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1191,8 +1593,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1268,9 +1670,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitch
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponse
@@ -1304,9 +1704,7 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableData = {
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse
@@ -1322,9 +1720,7 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableData = {
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse
@@ -1401,9 +1797,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeDa
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse
@@ -1435,9 +1829,7 @@ export type GetWorkspacesCurrentPermissionData = {
 }
 
 export type GetWorkspacesCurrentPermissionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkspacePermissionResponse
 }
 
 export type GetWorkspacesCurrentPermissionResponse
@@ -1470,9 +1862,7 @@ export type GetWorkspacesCurrentPluginDebuggingKeyData = {
 }
 
 export type GetWorkspacesCurrentPluginDebuggingKeyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDebuggingKeyResponse
 }
 
 export type GetWorkspacesCurrentPluginDebuggingKeyResponse
@@ -1679,9 +2069,7 @@ export type PostWorkspacesCurrentPluginPermissionChangeData = {
 }
 
 export type PostWorkspacesCurrentPluginPermissionChangeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginPermissionChangeResponse
@@ -1797,9 +2185,7 @@ export type PostWorkspacesCurrentPluginTasksDeleteAllData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllResponse
@@ -1833,9 +2219,7 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse
@@ -1852,9 +2236,7 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse
@@ -1868,9 +2250,7 @@ export type PostWorkspacesCurrentPluginUninstallData = {
 }
 
 export type PostWorkspacesCurrentPluginUninstallResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginUninstallResponse
@@ -2363,9 +2743,7 @@ export type DeleteWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type DeleteWorkspacesCurrentToolProviderMcpResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentToolProviderMcpResponse
@@ -2895,9 +3273,7 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDel
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse

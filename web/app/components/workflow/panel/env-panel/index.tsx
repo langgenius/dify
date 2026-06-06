@@ -257,11 +257,11 @@ const EnvPanel = () => {
         {t('env.envPanelTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowEnvPanel(false)}
           >
             {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>

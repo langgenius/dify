@@ -13,16 +13,22 @@ and malformed SSE frames fail immediately.
 from __future__ import annotations
 
 import asyncio
+import inspect
+import json
 import time
 from collections.abc import AsyncIterator, Iterator
+from json import JSONDecodeError
 from types import TracebackType
-from typing import Self, TypeVar, cast
+from typing import Any, Self, TypeVar, cast
 from urllib.parse import quote
 
 import httpx
 from pydantic import BaseModel, ValidationError
+from pydantic_ai.messages import FunctionToolResultEvent
 
 from dify_agent.protocol.schemas import (
+    CancelRunRequest,
+    CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
     RUN_EVENT_ADAPTER,
@@ -32,8 +38,9 @@ from dify_agent.protocol.schemas import (
 )
 
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
-_TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed"}
-_TERMINAL_RUN_STATUSES = {"succeeded", "failed"}
+_TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
+_TERMINAL_RUN_STATUSES = {"succeeded", "failed", "cancelled"}
+_FUNCTION_TOOL_RESULT_PAYLOAD_KEY: str | None = None
 
 
 class DifyAgentClientError(RuntimeError):
@@ -136,8 +143,9 @@ class _SSEDecoder:
         self._reset()
 
         try:
-            event = RUN_EVENT_ADAPTER.validate_json(data)
-        except ValidationError as exc:
+            payload = _normalize_run_event_payload_for_local_pydantic_ai(json.loads(data))
+            event = RUN_EVENT_ADAPTER.validate_python(payload)
+        except (JSONDecodeError, ValidationError) as exc:
             raise DifyAgentStreamError("malformed SSE data frame") from exc
         if frame_event_type is not None and frame_event_type != event.type:
             raise DifyAgentStreamError(
@@ -152,6 +160,44 @@ class _SSEDecoder:
         self._event_id = None
         self._event_type = None
         self._data_lines = []
+
+
+def _function_tool_result_payload_key() -> str:
+    """Return the local pydantic-ai wire key for function tool results.
+
+    ``pydantic-ai`` renamed the field from ``part`` to ``result`` across
+    versions. Dify Agent server and API may temporarily run different versions
+    during local development or rolling deploys, so the client normalizes the
+    remote frame into the local schema before Pydantic validation.
+    """
+    global _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
+    if _FUNCTION_TOOL_RESULT_PAYLOAD_KEY is not None:
+        return _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
+
+    parameters = list(inspect.signature(FunctionToolResultEvent).parameters)
+    _FUNCTION_TOOL_RESULT_PAYLOAD_KEY = "part" if parameters and parameters[0] == "part" else "result"
+    return _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
+
+
+def _normalize_run_event_payload_for_local_pydantic_ai(payload: Any) -> Any:
+    """Normalize known pydantic-ai event field renames in one SSE frame."""
+    if not isinstance(payload, dict) or payload.get("type") != "pydantic_ai_event":
+        return payload
+
+    data = payload.get("data")
+    if not isinstance(data, dict) or data.get("event_kind") != "function_tool_result":
+        return payload
+
+    target_key = _function_tool_result_payload_key()
+    source_key = "result" if target_key == "part" else "part"
+    if target_key not in data and source_key in data:
+        normalized_payload = dict(payload)
+        normalized_data = dict(data)
+        normalized_data[target_key] = normalized_data.pop(source_key)
+        normalized_payload["data"] = normalized_data
+        return normalized_payload
+
+    return payload
 
 
 class Client:
@@ -278,6 +324,42 @@ class Client:
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"create_run_sync request failed: {exc}") from exc
         return _parse_model_response(response, CreateRunResponse)
+
+    async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        """Request explicit cancellation for ``run_id``.
+
+        The server may accept cancellation only for active runs; unsupported
+        deployments return an HTTP error rather than overloading ``run_failed``.
+        """
+        request_model = request or CancelRunRequest()
+        try:
+            response = await self._get_async_http_client().post(
+                self._url(f"/runs/{quote(run_id, safe='')}/cancel"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("cancel_run timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"cancel_run request failed: {exc}") from exc
+        return _parse_model_response(response, CancelRunResponse)
+
+    def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        """Synchronous variant of ``cancel_run``."""
+        request_model = request or CancelRunRequest()
+        try:
+            response = self._get_sync_http_client().post(
+                self._url(f"/runs/{quote(run_id, safe='')}/cancel"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("cancel_run_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"cancel_run_sync request failed: {exc}") from exc
+        return _parse_model_response(response, CancelRunResponse)
 
     async def get_run(self, run_id: str) -> RunStatusResponse:
         """Return the current status for ``run_id`` or raise a mapped client error."""

@@ -4,8 +4,87 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type CustomizedPipelineTemplatePayload = {
+  description?: string
+  icon_info?: {
+    [key: string]: unknown
+  }
+  name: string
+}
+
+export type SimpleDataResponse = {
+  data: string
+}
+
 export type RagPipelineDatasetImportPayload = {
   yaml_content: string
+}
+
+export type RagPipelineImportResponse = {
+  current_dsl_version: string
+  dataset_id?: string | null
+  error?: string
+  id: string
+  imported_dsl_version: string
+  pipeline_id?: string | null
+  status: ImportStatus
+}
+
+export type DatasetDetailResponse = {
+  app_count: number
+  author_name: string | null
+  built_in_field_enabled: boolean
+  chunk_structure: string | null
+  created_at: number
+  created_by: string
+  data_source_type: string | null
+  description: string | null
+  doc_form: string | null
+  doc_metadata: Array<DatasetDocMetadataResponse>
+  document_count: number
+  embedding_available?: boolean | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  enable_api: boolean
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse
+  icon_info?: DatasetIconInfoResponse
+  id: string
+  indexing_technique: string | null
+  is_multimodal: boolean
+  is_published: boolean
+  name: string
+  permission: string
+  pipeline_id: string | null
+  provider: string
+  retrieval_model_dict: DatasetRetrievalModelResponse
+  runtime_mode: string | null
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
+  tags: Array<DatasetTagResponse>
+  total_available_documents: number
+  total_documents: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
+}
+
+export type PipelineTemplateListResponse = {
+  pipeline_templates: Array<PipelineTemplateItemResponse>
+}
+
+export type PipelineTemplateDetailResponse = {
+  chunk_structure: string
+  created_by?: string | null
+  description: string
+  export_data: string
+  graph: {
+    [key: string]: unknown
+  }
+  icon_info: {
+    [key: string]: unknown
+  }
+  id: string
+  name: string
 }
 
 export type RagPipelineImportPayload = {
@@ -20,18 +99,18 @@ export type RagPipelineImportPayload = {
   yaml_url?: string | null
 }
 
-export type Payload = {
-  description?: string
-  icon_info?: {
-    [key: string]: unknown
-  } | null
-  name: string
+export type RagPipelineImportCheckDependenciesResponse = {
+  leaked_dependencies?: Array<PluginDependency>
 }
 
 export type WorkflowRunPaginationResponse = {
   data: Array<WorkflowRunForListResponse>
   has_more: boolean
   limit: number
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type WorkflowRunDetailResponse = {
@@ -84,6 +163,12 @@ export type WorkflowResponse = {
   updated_at: number
   updated_by?: SimpleAccount
   version: string
+}
+
+export type RagPipelineWorkflowSyncResponse = {
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type DatasourceNodeRunPayload = {
@@ -151,6 +236,16 @@ export type DraftWorkflowRunPayload = {
   start_node_id: string
 }
 
+export type WorkflowDraftVariablePatchPayload = {
+  name?: string | null
+  value?: unknown
+}
+
+export type RagPipelineWorkflowPublishResponse = {
+  created_at: number
+  result: string
+}
+
 export type Parser = {
   credential_id?: string | null
   datasource_type: string
@@ -171,6 +266,77 @@ export type PublishedWorkflowRunPayload = {
   original_document_id?: string | null
   response_mode?: 'blocking' | 'streaming'
   start_node_id: string
+}
+
+export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type DatasetDocMetadataResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type DatasetExternalKnowledgeInfoResponse = {
+  external_knowledge_api_endpoint?: string | null
+  external_knowledge_api_id?: string | null
+  external_knowledge_api_name?: string | null
+  external_knowledge_id?: string | null
+}
+
+export type DatasetExternalRetrievalModelResponse = {
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k: number
+}
+
+export type DatasetIconInfoResponse = {
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  icon_url?: string | null
+}
+
+export type DatasetRetrievalModelResponse = {
+  reranking_enable: boolean
+  reranking_mode?: string | null
+  reranking_model?: DatasetRerankingModelResponse
+  score_threshold?: number | null
+  score_threshold_enabled: boolean
+  search_method: string
+  top_k: number
+  weights?: DatasetWeightedScoreResponse
+}
+
+export type DatasetSummaryIndexSettingResponse = {
+  enable?: boolean | null
+  model_name?: string | null
+  model_provider_name?: string | null
+  summary_prompt?: string | null
+}
+
+export type DatasetTagResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type PipelineTemplateItemResponse = {
+  chunk_structure: string
+  copyright?: string | null
+  description: string
+  icon: {
+    [key: string]: unknown
+  }
+  id: string
+  name: string
+  position: number
+  privacy_policy?: string | null
+}
+
+export type PluginDependency = {
+  current_identifier?: string | null
+  type: Type
+  value: unknown
 }
 
 export type WorkflowRunForListResponse = {
@@ -239,6 +405,46 @@ export type PipelineVariableResponse = {
   variable: string
 }
 
+export type DatasetRerankingModelResponse = {
+  reranking_model_name?: string | null
+  reranking_provider_name?: string | null
+}
+
+export type DatasetWeightedScoreResponse = {
+  keyword_setting?: DatasetKeywordSettingResponse
+  vector_setting?: DatasetVectorSettingResponse
+  weight_type?: string | null
+}
+
+export type Type = 'github' | 'marketplace' | 'package'
+
+export type Github = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
+export type Marketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type Package = {
+  plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type DatasetKeywordSettingResponse = {
+  keyword_weight?: number | null
+}
+
+export type DatasetVectorSettingResponse = {
+  embedding_model_name?: string | null
+  embedding_provider_name?: string | null
+  vector_weight?: number | null
+}
+
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
   body?: never
   path: {
@@ -249,8 +455,8 @@ export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -258,7 +464,7 @@ export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponse
   = DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses]
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
-  body?: never
+  body: CustomizedPipelineTemplatePayload
   path: {
     template_id: string
   }
@@ -267,8 +473,8 @@ export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -285,9 +491,7 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleDataResponse
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponse
@@ -301,9 +505,7 @@ export type PostRagPipelineDatasetData = {
 }
 
 export type PostRagPipelineDatasetResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: RagPipelineImportResponse
 }
 
 export type PostRagPipelineDatasetResponse
@@ -317,9 +519,7 @@ export type PostRagPipelineEmptyDatasetData = {
 }
 
 export type PostRagPipelineEmptyDatasetResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: DatasetDetailResponse
 }
 
 export type PostRagPipelineEmptyDatasetResponse
@@ -328,14 +528,15 @@ export type PostRagPipelineEmptyDatasetResponse
 export type GetRagPipelineTemplatesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: string
+    type?: string
+  }
   url: '/rag/pipeline/templates'
 }
 
 export type GetRagPipelineTemplatesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PipelineTemplateListResponse
 }
 
 export type GetRagPipelineTemplatesResponse
@@ -346,14 +547,14 @@ export type GetRagPipelineTemplatesByTemplateIdData = {
   path: {
     template_id: string
   }
-  query?: never
+  query?: {
+    type?: string
+  }
   url: '/rag/pipeline/templates/{template_id}'
 }
 
 export type GetRagPipelineTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PipelineTemplateDetailResponse
 }
 
 export type GetRagPipelineTemplatesByTemplateIdResponse
@@ -382,10 +583,16 @@ export type PostRagPipelinesImportsData = {
   url: '/rag/pipelines/imports'
 }
 
+export type PostRagPipelinesImportsErrors = {
+  400: RagPipelineImportResponse
+}
+
+export type PostRagPipelinesImportsError
+  = PostRagPipelinesImportsErrors[keyof PostRagPipelinesImportsErrors]
+
 export type PostRagPipelinesImportsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineImportResponse
+  202: RagPipelineImportResponse
 }
 
 export type PostRagPipelinesImportsResponse
@@ -400,10 +607,15 @@ export type PostRagPipelinesImportsByImportIdConfirmData = {
   url: '/rag/pipelines/imports/{import_id}/confirm'
 }
 
+export type PostRagPipelinesImportsByImportIdConfirmErrors = {
+  400: RagPipelineImportResponse
+}
+
+export type PostRagPipelinesImportsByImportIdConfirmError
+  = PostRagPipelinesImportsByImportIdConfirmErrors[keyof PostRagPipelinesImportsByImportIdConfirmErrors]
+
 export type PostRagPipelinesImportsByImportIdConfirmResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineImportResponse
 }
 
 export type PostRagPipelinesImportsByImportIdConfirmResponse
@@ -419,9 +631,7 @@ export type GetRagPipelinesImportsByPipelineIdCheckDependenciesData = {
 }
 
 export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineImportCheckDependenciesResponse
 }
 
 export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponse
@@ -462,7 +672,7 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdResponse
   = PostRagPipelinesTransformDatasetsByDatasetIdResponses[keyof PostRagPipelinesTransformDatasetsByDatasetIdResponses]
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
-  body: Payload
+  body: CustomizedPipelineTemplatePayload
   path: {
     pipeline_id: string
   }
@@ -471,8 +681,8 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -484,14 +694,14 @@ export type GetRagPipelinesByPipelineIdExportsData = {
   path: {
     pipeline_id: string
   }
-  query?: never
+  query?: {
+    include_secret?: string
+  }
   url: '/rag/pipelines/{pipeline_id}/exports'
 }
 
 export type GetRagPipelinesByPipelineIdExportsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleDataResponse
 }
 
 export type GetRagPipelinesByPipelineIdExportsResponse
@@ -524,9 +734,7 @@ export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse
@@ -663,9 +871,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponse
@@ -981,7 +1187,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdRespon
   = GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
-  body?: never
+  body: WorkflowDraftVariablePatchPayload
   path: {
     pipeline_id: string
     variable_id: string
@@ -1044,9 +1250,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowPublishResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse
@@ -1156,8 +1360,8 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1207,9 +1411,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse

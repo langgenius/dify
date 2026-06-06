@@ -11,9 +11,9 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { LanguagesSupported } from '@/i18n-config/language'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
 import EditWorkspaceModal from './edit-workspace-modal'
 import InviteButton from './invite-button'
@@ -79,7 +79,7 @@ const MembersPage = () => {
                         >
                           <span
                             aria-hidden="true"
-                            className="i-ri-pencil-line h-4 w-4 text-text-tertiary"
+                            className="i-ri-pencil-line size-4 text-text-tertiary"
                           />
                         </button>
                       )}

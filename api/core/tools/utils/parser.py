@@ -6,7 +6,7 @@ from json.decoder import JSONDecodeError
 from typing import Any, TypedDict
 
 import httpx
-from flask import request
+from flask import has_request_context, request
 from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
@@ -44,7 +44,7 @@ class ApiBasedToolSchemaParser:
             raise ToolProviderNotFoundError("No server found in the openapi yaml.")
 
         server_url = openapi["servers"][0]["url"]
-        request_env = request.headers.get("X-Request-Env")
+        request_env = request.headers.get("X-Request-Env") if has_request_context() else None
         if request_env:
             matched_servers = [server["url"] for server in openapi["servers"] if server["env"] == request_env]
             server_url = matched_servers[0] if matched_servers else server_url

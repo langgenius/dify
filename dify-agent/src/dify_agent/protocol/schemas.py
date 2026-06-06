@@ -17,7 +17,8 @@ public ``id``/``run_id``/``type``/``data``/``created_at`` shape, while each
 ``type`` has a typed ``data`` model so OpenAPI, Redis replay, and clients parse
 the same payload contract. Model/provider selection is part of the submitted
 composition, not a top-level run field; the runtime reads the model layer named
-by ``DIFY_AGENT_MODEL_LAYER_ID`` and the optional structured output layer named
+by ``DIFY_AGENT_MODEL_LAYER_ID``, the optional history layer named by
+``DIFY_AGENT_HISTORY_LAYER_ID``, and the optional structured output layer named
 by ``DIFY_AGENT_OUTPUT_LAYER_ID``. Request-level ``on_exit`` signals decide
 whether each active layer is suspended or deleted when the run exits, with
 suspend as the default so successful terminal events can include resumable
@@ -42,13 +43,17 @@ from agenton.layers import ExitIntent
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
+DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
-RunStatus = Literal["running", "succeeded", "failed"]
+RunStatus = Literal["running", "paused", "succeeded", "failed", "cancelled"]
+RunPurpose = Literal["workflow_node", "single_step", "agent_app", "babysit", "fasten_preview"]
 RunEventType = Literal[
     "run_started",
     "pydantic_ai_event",
+    "run_paused",
     "run_succeeded",
     "run_failed",
+    "run_cancelled",
 ]
 
 
@@ -104,19 +109,41 @@ class CreateRunRequest(BaseModel):
     """Request body for creating one async agent run.
 
     Model/provider configuration must be supplied through the composition layer
-    named by ``DIFY_AGENT_MODEL_LAYER_ID``. Structured output may be supplied
-    through the optional composition layer named by
+    named by ``DIFY_AGENT_MODEL_LAYER_ID``. Optional persisted conversation
+    history may be supplied through the composition layer named by
+    ``DIFY_AGENT_HISTORY_LAYER_ID``. Structured output may be supplied through
+    the optional composition layer named by
     ``DIFY_AGENT_OUTPUT_LAYER_ID``. ``on_exit`` defaults every active layer to
     suspend so callers receive a resumable success snapshot unless they
     explicitly request delete for one or more layers. Session snapshots do not
     preserve output-layer config, so resume requests that rely on structured
     output must include the same ``output`` layer in ``composition.layers[]`` to
-    keep snapshot compatibility and rebuild the output schema.
+    keep snapshot compatibility and rebuild the output schema. Dify tenant,
+    user, and run-correlation identifiers must be submitted through a
+    ``dify.execution_context`` entry in ``composition.layers[]``; there is no
+    parallel top-level ``execution_context`` request field.
     """
 
     composition: RunComposition
+    purpose: RunPurpose = "workflow_node"
+    idempotency_key: str | None = None
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: CompositorSessionSnapshot | None = None
     on_exit: LayerExitSignals = Field(default_factory=LayerExitSignals)
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class CancelRunRequest(BaseModel):
+    """Request body for cancelling a run.
+
+    Runtime cancellation is intentionally a separate protocol operation from
+    failed execution so API callers can distinguish user/operator cancellation
+    from model, tool, or infrastructure failures.
+    """
+
+    reason: str | None = None
+    message: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -159,6 +186,15 @@ class CreateRunResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class CancelRunResponse(BaseModel):
+    """Response returned after a cancel request is accepted."""
+
+    run_id: str
+    status: Literal["cancelled"]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 class RunStatusResponse(BaseModel):
     """Current server-side status for one run."""
 
@@ -191,6 +227,25 @@ class RunFailedEventData(BaseModel):
 
     error: str
     reason: str | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class RunPausedEventData(BaseModel):
+    """Pause payload used for human handoff or other resumable waits."""
+
+    reason: str
+    message: str | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class RunCancelledEventData(BaseModel):
+    """Terminal cancellation payload for explicit user/operator cancellation."""
+
+    reason: str | None = None
+    message: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -233,8 +288,27 @@ class RunFailedEvent(BaseRunEvent):
     data: RunFailedEventData
 
 
+class RunPausedEvent(BaseRunEvent):
+    """Resumable pause event emitted when a run waits for outside input."""
+
+    type: Literal["run_paused"] = "run_paused"
+    data: RunPausedEventData
+
+
+class RunCancelledEvent(BaseRunEvent):
+    """Terminal cancellation event emitted after an explicit cancel request."""
+
+    type: Literal["run_cancelled"] = "run_cancelled"
+    data: RunCancelledEventData = Field(default_factory=RunCancelledEventData)
+
+
 RunEvent: TypeAlias = Annotated[
-    RunStartedEvent | PydanticAIStreamRunEvent | RunSucceededEvent | RunFailedEvent,
+    RunStartedEvent
+    | PydanticAIStreamRunEvent
+    | RunPausedEvent
+    | RunSucceededEvent
+    | RunFailedEvent
+    | RunCancelledEvent,
     Field(discriminator="type"),
 ]
 RUN_EVENT_ADAPTER: TypeAdapter[RunEvent] = TypeAdapter(RunEvent)
@@ -252,20 +326,28 @@ class RunEventsResponse(BaseModel):
 
 __all__ = [
     "BaseRunEvent",
+    "CancelRunRequest",
+    "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
+    "DIFY_AGENT_HISTORY_LAYER_ID",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
     "LayerExitSignals",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",
+    "RunCancelledEvent",
+    "RunCancelledEventData",
     "RunComposition",
     "RunEvent",
     "RunEventType",
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
+    "RunPausedEvent",
+    "RunPausedEventData",
+    "RunPurpose",
     "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",

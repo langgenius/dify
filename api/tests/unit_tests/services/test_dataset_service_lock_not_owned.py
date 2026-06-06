@@ -39,7 +39,7 @@ def fake_features(monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(
         "services.dataset_service.FeatureService.get_features",
-        lambda tenant_id: features,
+        lambda tenant_id, **_kwargs: features,
     )
     return features
 

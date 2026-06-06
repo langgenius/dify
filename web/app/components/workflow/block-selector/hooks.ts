@@ -26,22 +26,29 @@ export const useTabs = ({
   noBlocks,
   noSources,
   noTools,
+  noSnippets,
   noStart = true,
   defaultActiveTab,
   hasUserInputNode = false,
+  disableStartTab = false,
   forceEnableStartTab = false, // When true, Start tab remains enabled even if trigger/user input nodes already exist.
 }: {
   noBlocks?: boolean
   noSources?: boolean
   noTools?: boolean
+  noSnippets?: boolean
   noStart?: boolean
   defaultActiveTab?: TabsEnum
   hasUserInputNode?: boolean
+  disableStartTab?: boolean
   forceEnableStartTab?: boolean
 }) => {
   const { t } = useTranslation()
   const shouldShowStartTab = !noStart
-  const shouldDisableStartTab = !forceEnableStartTab && hasUserInputNode
+  const shouldDisableStartTab = disableStartTab || (!forceEnableStartTab && hasUserInputNode)
+  const startDisabledTip = disableStartTab
+    ? t('tabs.startNotSupportedTip', { ns: 'workflow' })
+    : t('tabs.startDisabledTip', { ns: 'workflow' })
   const tabs = useMemo(() => {
     const tabConfigs = [{
       key: TabsEnum.Blocks,
@@ -60,10 +67,15 @@ export const useTabs = ({
       name: t('tabs.start', { ns: 'workflow' }),
       show: shouldShowStartTab,
       disabled: shouldDisableStartTab,
+      disabledTip: shouldDisableStartTab ? startDisabledTip : undefined,
+    }, {
+      key: TabsEnum.Snippets,
+      name: t('tabs.snippets', { ns: 'workflow' }),
+      show: !noSnippets,
     }]
 
     return tabConfigs.filter(tab => tab.show)
-  }, [t, noBlocks, noSources, noTools, shouldShowStartTab, shouldDisableStartTab])
+  }, [t, noBlocks, noSources, noTools, noSnippets, shouldShowStartTab, shouldDisableStartTab, startDisabledTip])
 
   const getValidTabKey = useCallback((targetKey?: TabsEnum) => {
     if (!targetKey)
@@ -89,6 +101,8 @@ export const useTabs = ({
       preferredOrder.push(TabsEnum.Sources)
     if (!noStart)
       preferredOrder.push(TabsEnum.Start)
+    if (!noSnippets)
+      preferredOrder.push(TabsEnum.Snippets)
 
     for (const tabKey of preferredOrder) {
       const validKey = getValidTabKey(tabKey)
@@ -97,7 +111,7 @@ export const useTabs = ({
     }
 
     return fallbackTab
-  }, [defaultActiveTab, noBlocks, noSources, noTools, noStart, tabs, getValidTabKey])
+  }, [defaultActiveTab, noBlocks, noSources, noTools, noSnippets, noStart, tabs, getValidTabKey])
   const [activeTab, setActiveTab] = useState(initialTab)
 
   useEffect(() => {

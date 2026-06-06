@@ -65,6 +65,9 @@ jobs:
           # Save structured data for the fork-PR comment workflow
           cp /tmp/pyrefly_report_pr.json pr_report.json
           cp /tmp/pyrefly_report_base.json base_report.json
+          # Keep fork-PR comments correct while the trusted workflow_run job is
+          # still using the default-branch renderer, which resolves --base from api/.
+          cp /tmp/pyrefly_report_base.json api/base_report.json
 
       - name: Save PR number
         run: |
@@ -77,6 +80,7 @@ jobs:
           path: |
             pr_report.json
             base_report.json
+            api/base_report.json
             pr_number.txt
 
       - name: Comment PR with type coverage

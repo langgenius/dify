@@ -83,8 +83,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: () => <span data-testid="indicator" />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: () => <span data-testid="indicator" />,
 }))
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({

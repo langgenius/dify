@@ -75,7 +75,7 @@ export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick 
       <PlanBadgeShell size="s" color="blue" allowHover={allowHover} onClick={onClick}>
         <div className="system-2xs-medium-uppercase">
           <span className="inline-flex items-center gap-1 p-1">
-            {isEducationWorkspace && <RiGraduationCapFill aria-hidden="true" className="h-3 w-3" />}
+            {isEducationWorkspace && <RiGraduationCapFill aria-hidden="true" className="size-3" />}
             pro
           </span>
         </div>

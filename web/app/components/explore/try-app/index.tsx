@@ -10,7 +10,7 @@ import { useState } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { IS_CLOUD_EDITION } from '@/config'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import App from './app'
 import AppInfo from './app-info'
@@ -55,11 +55,11 @@ const TryApp: FC<Props> = ({
           </div>
         ) : isError ? (
           <div className="flex h-full items-center justify-center">
-            <AppUnavailable className="h-auto w-auto" isUnknownReason={!error} unknownReason={error instanceof Error ? error.message : undefined} />
+            <AppUnavailable className="size-auto" isUnknownReason={!error} unknownReason={error instanceof Error ? error.message : undefined} />
           </div>
         ) : !appDetail ? (
           <div className="flex h-full items-center justify-center">
-            <AppUnavailable className="h-auto w-auto" isUnknownReason />
+            <AppUnavailable className="size-auto" isUnknownReason />
           </div>
         ) : (
           <div className="flex h-full flex-col">

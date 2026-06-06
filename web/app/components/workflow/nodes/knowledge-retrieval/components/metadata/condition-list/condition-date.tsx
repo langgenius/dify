@@ -4,11 +4,12 @@ import {
   RiCalendarLine,
   RiCloseCircleFill,
 } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import { useAppContext } from '@/context/app-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 type ConditionDateProps = {
   value?: number
@@ -19,7 +20,10 @@ const ConditionDate = ({
   onChange,
 }: ConditionDateProps) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
 
   const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
     if (date)
@@ -49,7 +53,7 @@ const ConditionDate = ({
           <span className="grow">{triggerText}</span>
           <RiCalendarLine
             className={cn(
-              'block h-4 w-4 shrink-0',
+              'block size-4 shrink-0',
               hasValue ? 'text-text-quaternary' : 'text-text-tertiary',
               hasValue && 'group-hover:hidden',
             )}
@@ -61,13 +65,13 @@ const ConditionDate = ({
               <button
                 type="button"
                 aria-label={t('operation.clear', { ns: 'common' })}
-                className="hidden h-4 w-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="hidden size-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={(e) => {
                   e.stopPropagation()
                   handleDateChange()
                 }}
               >
-                <RiCloseCircleFill className="h-4 w-4" aria-hidden="true" />
+                <RiCloseCircleFill className="size-4" aria-hidden="true" />
               </button>
             )
           : null}

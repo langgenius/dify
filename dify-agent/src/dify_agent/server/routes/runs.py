@@ -1,10 +1,13 @@
 """FastAPI routes for asynchronous agent runs.
 
-Controllers translate known validation and shutdown errors into HTTP status codes.
-Unexpected scheduler or storage failures are intentionally left for FastAPI's
-server-error handling so infrastructure problems are not reported as client input
-errors. Created runs are scheduled in the current process and observed through
-status polling or SSE replay backed by Redis event streams.
+Controllers translate shutdown errors into HTTP status codes. Runtime request
+failures are intentionally not pre-mapped here: once a request passes DTO
+validation it is accepted for background execution, and bad compositions or
+snapshots fail later through normal run events/status. Unexpected scheduler or
+storage failures are intentionally left for FastAPI's server-error handling so
+infrastructure problems are not reported as client input errors. Created runs
+are scheduled in the current process and observed through status polling or SSE
+replay backed by Redis event streams.
 """
 
 from collections.abc import Callable
@@ -13,8 +16,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from dify_agent.protocol.schemas import CreateRunRequest, CreateRunResponse, RunEventsResponse, RunStatusResponse
-from dify_agent.runtime.run_scheduler import RunRequestValidationError, RunScheduler, SchedulerStoppingError
+from dify_agent.protocol.schemas import (
+    CancelRunRequest,
+    CancelRunResponse,
+    CreateRunRequest,
+    CreateRunResponse,
+    RunEventsResponse,
+    RunStatusResponse,
+)
+from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
 from dify_agent.server.sse import sse_event_stream
 from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 
@@ -39,8 +49,6 @@ def create_runs_router(
     ) -> CreateRunResponse:
         try:
             record = await scheduler.create_run(request)
-        except RunRequestValidationError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
         except SchedulerStoppingError as exc:
             raise HTTPException(status_code=503, detail="run scheduler is shutting down") from exc
         return CreateRunResponse(run_id=record.run_id, status=record.status)
@@ -58,6 +66,18 @@ def create_runs_router(
             updated_at=record.updated_at,
             error=record.error,
         )
+
+    @router.post("/{run_id}/cancel", response_model=CancelRunResponse)
+    async def cancel_run(run_id: str, request: CancelRunRequest) -> CancelRunResponse:
+        """Reserve the cancellation endpoint in the public protocol.
+
+        Runtime cancellation requires scheduler task lookup and persistence
+        semantics that are outside the current server implementation. Exposing a
+        typed endpoint now lets clients bind to the final route while receiving
+        an explicit 501 until execution support lands.
+        """
+        del run_id, request
+        raise HTTPException(status_code=501, detail="run cancellation is not implemented")
 
     @router.get("/{run_id}/events", response_model=RunEventsResponse)
     async def get_run_events(

@@ -55,7 +55,7 @@ const CardWrapperComponent = ({
             />
           )}
         />
-        <div className="absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent px-4 pt-4 pb-4 group-hover:flex">
+        <div className="absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-hover:flex">
           <Button
             variant="primary"
             className="w-[calc(50%-4px)]"
@@ -68,7 +68,7 @@ const CardWrapperComponent = ({
               className="w-full gap-0.5"
             >
               {t('detailPanel.operation.detail', { ns: 'plugin' })}
-              <RiArrowRightUpLine className="ml-1 h-4 w-4" />
+              <RiArrowRightUpLine className="ml-1 size-4" />
             </Button>
           </a>
         </div>

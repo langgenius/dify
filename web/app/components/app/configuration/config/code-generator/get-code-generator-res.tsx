@@ -78,7 +78,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const [model, setModel] = React.useState<Model>(localModel || {
     name: '',
     provider: '',
-    mode: mode as unknown as ModelModeType.chat,
+    mode: mode as unknown as ModelModeType,
     completion_params: defaultCompletionParams,
   })
   const {
@@ -254,7 +254,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                   onClick={onGenerate}
                   disabled={isLoading}
                 >
-                  <Generator className="h-4 w-4" />
+                  <Generator className="size-4" />
                   <span className="text-xs font-semibold">{t('codegen.generate', { ns: 'appDebug' })}</span>
                 </Button>
               </div>

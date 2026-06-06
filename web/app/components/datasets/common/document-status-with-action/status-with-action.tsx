@@ -56,7 +56,7 @@ const StatusAction: FC<Props> = ({
       }
       />
       <div className="relative z-10 flex h-full items-center space-x-2">
-        <Icon className={cn('h-4 w-4', color)} />
+        <Icon className={cn('size-4', color)} />
         <div className="text-[13px] font-normal text-text-secondary">{description}</div>
         {onAction && actionText && (
           <>

@@ -11,6 +11,11 @@ export type LoginPayload = {
   remember_me?: boolean
 }
 
+export type SimpleResultOptionalDataResponse = {
+  data?: string | null
+  result: string
+}
+
 export type PostLoginData = {
   body: LoginPayload
   path?: never
@@ -19,9 +24,7 @@ export type PostLoginData = {
 }
 
 export type PostLoginResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultOptionalDataResponse
 }
 
 export type PostLoginResponse = PostLoginResponses[keyof PostLoginResponses]

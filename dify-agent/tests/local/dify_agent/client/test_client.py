@@ -11,6 +11,7 @@ import pytest
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
+from dify_agent.client import _client as client_module
 from dify_agent.client import (
     Client,
     DifyAgentHTTPError,
@@ -20,8 +21,11 @@ from dify_agent.client import (
     DifyAgentValidationError,
 )
 from dify_agent.protocol.schemas import (
+    CancelRunRequest,
+    CancelRunResponse,
     CreateRunRequest,
     RUN_EVENT_ADAPTER,
+    RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
     RunStartedEvent,
@@ -61,6 +65,23 @@ def _run_status_json(status: str) -> dict[str, object]:
     return {"run_id": "run-1", "status": status, "created_at": now, "updated_at": now, "error": None}
 
 
+def _function_tool_result_payload(key: str) -> dict[str, object]:
+    return {
+        "type": "pydantic_ai_event",
+        "run_id": "run-1",
+        "created_at": datetime(2026, 5, 11, tzinfo=UTC).isoformat(),
+        "data": {
+            "event_kind": "function_tool_result",
+            key: {
+                "tool_name": "shell_run",
+                "content": "ok",
+                "tool_call_id": "call-1",
+                "part_kind": "tool-return",
+            },
+        },
+    }
+
+
 class DisconnectingSyncStream(httpx.SyncByteStream):
     chunks: list[bytes]
 
@@ -71,6 +92,32 @@ class DisconnectingSyncStream(httpx.SyncByteStream):
     def __iter__(self) -> Iterator[bytes]:
         yield from self.chunks
         raise httpx.ReadError("stream disconnected")
+
+
+def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "result")
+    decoder = client_module._SSEDecoder()
+    payload = _function_tool_result_payload("part")
+
+    assert decoder.feed_line(f"data: {json.dumps(payload)}") is None
+    event = decoder.feed_line("")
+
+    assert event is not None
+    assert event.type == "pydantic_ai_event"
+    assert event.data.event_kind == "function_tool_result"
+    assert event.data.result.tool_name == "shell_run"
+
+
+def test_function_tool_result_payload_normalization_supports_old_part_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "part")
+    payload = _function_tool_result_payload("result")
+
+    normalized = client_module._normalize_run_event_payload_for_local_pydantic_ai(payload)
+
+    assert normalized["data"]["part"]["tool_name"] == "shell_run"
+    assert "result" not in normalized["data"]
 
 
 def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
@@ -97,6 +144,10 @@ def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
                     "next_cursor": "1-0",
                 },
             )
+        if request.method == "POST" and request.url.path == "/runs/run-1/cancel":
+            payload = cast(dict[str, object], json.loads(request.content))
+            assert payload == {"reason": "user_cancelled", "message": None}
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     http_client = httpx.Client(transport=httpx.MockTransport(handler))
@@ -105,11 +156,14 @@ def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
     created = client.create_run_sync(CreateRunRequest.model_validate(_create_run_payload()))
     status = client.get_run_sync(created.run_id)
     events = client.get_events_sync(created.run_id, after="0-0", limit=10)
+    cancelled = client.cancel_run_sync(created.run_id, CancelRunRequest(reason="user_cancelled"))
 
     assert created.status == "running"
     assert status.status == "running"
     assert isinstance(events, RunEventsResponse)
     assert [event.type for event in events.events] == ["run_started"]
+    assert isinstance(cancelled, CancelRunResponse)
+    assert cancelled.status == "cancelled"
 
 
 def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
@@ -248,6 +302,31 @@ def test_stream_events_stops_after_terminal_event() -> None:
     events = list(client.stream_events_sync("run-1", reconnect_delay_seconds=0))
 
     assert [event.type for event in events] == ["run_started", "run_succeeded"]
+    assert calls == 1
+
+
+def test_stream_events_stops_after_cancelled_terminal_event() -> None:
+    calls = 0
+    body = "".join(
+        [
+            _event_frame(RunStartedEvent(id="1-0", run_id="run-1")),
+            _event_frame(RunCancelledEvent(id="2-0", run_id="run-1")),
+        ]
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content=body)
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", reconnect_delay_seconds=0))
+
+    assert [event.type for event in events] == ["run_started", "run_cancelled"]
     assert calls == 1
 
 

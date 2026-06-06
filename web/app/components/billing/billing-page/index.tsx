@@ -49,7 +49,7 @@ const Billing: FC = () => {
           </div>
           <span className="inline-flex h-8 w-24 items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-saas-dify-blue-accessible shadow-[0_1px_2px_rgba(9,9,11,0.05)] backdrop-blur-[5px]">
             <span className="system-sm-medium leading-none">{t('viewBillingAction', { ns: 'billing' })}</span>
-            <RiArrowRightUpLine className="h-4 w-4" />
+            <RiArrowRightUpLine className="size-4" />
           </span>
         </button>
       )}

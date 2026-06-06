@@ -72,6 +72,7 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
     ),
     SelectGroup: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     SelectLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectGroupLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     SelectItem: ({
       children,
       value,

@@ -62,6 +62,8 @@ const HeaderInRestoring = ({
       return ''
     if (configsMap.flowType === FlowType.ragPipeline)
       return `/rag/pipelines/${configsMap.flowId}/workflows/${versionId}/restore`
+    if (configsMap.flowType === FlowType.snippet)
+      return `/snippets/${configsMap.flowId}/workflows/${versionId}/restore`
     return `/apps/${configsMap.flowId}/workflows/${versionId}/restore`
   }, [configsMap?.flowId, configsMap?.flowType])
 
@@ -163,7 +165,7 @@ const HeaderInRestoring = ({
           )}
         >
           <div className="flex items-center gap-x-0.5">
-            <RiHistoryLine className="h-4 w-4" />
+            <RiHistoryLine className="size-4" />
             <span className="px-0.5">{t('common.exitVersions', { ns: 'workflow' })}</span>
           </div>
         </Button>

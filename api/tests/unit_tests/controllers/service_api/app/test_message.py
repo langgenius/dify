@@ -194,18 +194,18 @@ class TestMessageAppModeValidation:
 
     def test_chat_modes_are_valid_for_message_endpoints(self):
         """Test that all chat modes are valid."""
-        valid_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        valid_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         for mode in valid_modes:
             assert mode in valid_modes
 
     def test_completion_mode_is_invalid_for_message_endpoints(self):
         """Test that COMPLETION mode is invalid."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         assert AppMode.COMPLETION not in chat_modes
 
     def test_workflow_mode_is_invalid_for_message_endpoints(self):
         """Test that WORKFLOW mode is invalid."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         assert AppMode.WORKFLOW not in chat_modes
 
     def test_not_chat_app_error_can_be_raised(self):

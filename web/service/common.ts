@@ -1,9 +1,4 @@
 import type {
-  ApiBasedExtensionListResponse,
-  ApiBasedExtensionPayload,
-  ApiBasedExtensionResponse,
-} from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type {
   DefaultModelResponse,
   Model,
   ModelItem,
@@ -275,26 +270,6 @@ export const fetchDataSourceNotionBinding = (url: string): Promise<{ result: str
   return get<{ result: string }>(url)
 }
 
-export const fetchApiBasedExtensionList = (url: string): Promise<ApiBasedExtensionListResponse> => {
-  return get<ApiBasedExtensionListResponse>(url)
-}
-
-export const fetchApiBasedExtensionDetail = (url: string): Promise<ApiBasedExtensionResponse> => {
-  return get<ApiBasedExtensionResponse>(url)
-}
-
-export const addApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtensionPayload }): Promise<ApiBasedExtensionResponse> => {
-  return post<ApiBasedExtensionResponse>(url, { body })
-}
-
-export const updateApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtensionPayload }): Promise<ApiBasedExtensionResponse> => {
-  return post<ApiBasedExtensionResponse>(url, { body })
-}
-
-export const deleteApiBasedExtension = (url: string): Promise<{ result: string }> => {
-  return del<{ result: string }>(url)
-}
-
 export const fetchCodeBasedExtensionList = (url: string): Promise<CodeBasedExtension> => {
   return get<CodeBasedExtension>(url)
 }
@@ -396,5 +371,5 @@ export const checkEmailExisted = (body: { email: string }): Promise<CommonRespon
 
 export const getAvatar = async ({ avatar }: { avatar: string }): Promise<{ avatar_url: string }> => {
   const { consoleClient } = await import('./client')
-  return consoleClient.account.avatar({ query: { avatar } })
+  return consoleClient.account.avatar.get({ query: { avatar } })
 }

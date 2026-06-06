@@ -27,8 +27,8 @@ const ExploreNav = ({
     >
       {
         activated
-          ? <RiPlanetFill className="h-4 w-4" />
-          : <RiPlanetLine className="h-4 w-4" />
+          ? <RiPlanetFill className="size-4" />
+          : <RiPlanetLine className="size-4" />
       }
       <div className="ml-2 max-[1024px]:hidden">
         {t('menus.explore', { ns: 'common' })}

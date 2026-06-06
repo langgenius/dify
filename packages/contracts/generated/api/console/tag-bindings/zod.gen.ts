@@ -3,11 +3,18 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * TagType
  *
  * Tag type
  */
-export const zTagType = z.enum(['app', 'knowledge'])
+export const zTagType = z.enum(['app', 'knowledge', 'snippet'])
 
 /**
  * TagBindingPayload
@@ -32,11 +39,11 @@ export const zPostTagBindingsBody = zTagBindingPayload
 /**
  * Success
  */
-export const zPostTagBindingsResponse = z.record(z.string(), z.unknown())
+export const zPostTagBindingsResponse = zSimpleResultResponse
 
 export const zPostTagBindingsRemoveBody = zTagBindingRemovePayload
 
 /**
  * Success
  */
-export const zPostTagBindingsRemoveResponse = z.record(z.string(), z.unknown())
+export const zPostTagBindingsRemoveResponse = zSimpleResultResponse

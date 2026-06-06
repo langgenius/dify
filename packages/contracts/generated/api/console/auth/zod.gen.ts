@@ -11,6 +11,13 @@ export const zDatasourceCredentialPayload = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * DatasourceCustomClientPayload
  */
 export const zDatasourceCustomClientPayload = z.object({
@@ -86,10 +93,7 @@ export const zDeleteAuthPluginDatasourceByProviderIdCustomClientPath = z.object(
 /**
  * Success
  */
-export const zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse = zSimpleResultResponse
 
 export const zPostAuthPluginDatasourceByProviderIdCustomClientBody = zDatasourceCustomClientPayload
 
@@ -114,10 +118,7 @@ export const zPostAuthPluginDatasourceByProviderIdDefaultPath = z.object({
 /**
  * Success
  */
-export const zPostAuthPluginDatasourceByProviderIdDefaultResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostAuthPluginDatasourceByProviderIdDefaultResponse = zSimpleResultResponse
 
 export const zPostAuthPluginDatasourceByProviderIdDeleteBody = zDatasourceCredentialDeletePayload
 
@@ -128,7 +129,7 @@ export const zPostAuthPluginDatasourceByProviderIdDeletePath = z.object({
 /**
  * Success
  */
-export const zPostAuthPluginDatasourceByProviderIdDeleteResponse = z.record(z.string(), z.unknown())
+export const zPostAuthPluginDatasourceByProviderIdDeleteResponse = zSimpleResultResponse
 
 export const zPostAuthPluginDatasourceByProviderIdUpdateBody = zDatasourceCredentialUpdatePayload
 
@@ -150,7 +151,4 @@ export const zPostAuthPluginDatasourceByProviderIdUpdateNamePath = z.object({
 /**
  * Success
  */
-export const zPostAuthPluginDatasourceByProviderIdUpdateNameResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostAuthPluginDatasourceByProviderIdUpdateNameResponse = zSimpleResultResponse

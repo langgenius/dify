@@ -60,7 +60,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
                         render={(
                           <div key={id}>
                             <FileImageRender
-                              className="h-8 w-8"
+                              className="size-8"
                               imageUrl={base64Url || url || ''}
                             />
                           </div>
@@ -100,7 +100,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
           onClick={() => setExpanded(!expanded)}
         >
           {!expanded && <div className="system-xs-medium-uppercase text-text-tertiary">{t('runDetail.fileListDetail', { ns: 'appLog' })}</div>}
-          <RiArrowRightSLine className={cn('h-4 w-4 text-text-tertiary', expanded && 'rotate-90')} aria-hidden="true" />
+          <RiArrowRightSLine className={cn('size-4 text-text-tertiary', expanded && 'rotate-90')} aria-hidden="true" />
         </button>
       </div>
       {expanded && (

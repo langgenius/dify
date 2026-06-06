@@ -1,8 +1,10 @@
 'use client'
 
 import type { NotionPageRow, NotionPageSelectionMode } from './types'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import PageRow from './page-row'
 
 type VirtualPageListProps = {
@@ -32,6 +34,7 @@ const VirtualPageList = ({
   selectionMode,
   showPreview,
 }: VirtualPageListProps) => {
+  const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const rowVirtualizer = useVirtualizer({
@@ -44,6 +47,35 @@ const VirtualPageList = ({
   })
 
   const virtualRows = rowVirtualizer.getVirtualItems()
+  const selectedPageId = checkedIds.values().next().value
+  const rowNodes = virtualRows.map((virtualRow) => {
+    const row = rows[virtualRow.index]!
+    const pageId = row.page.page_id
+
+    return (
+      <PageRow
+        key={pageId}
+        checked={checkedIds.has(pageId)}
+        disabled={disabledValue.has(pageId)}
+        isPreviewed={previewPageId === pageId}
+        onPreview={onPreview}
+        onSelect={onSelect}
+        onToggle={onToggle}
+        row={row}
+        searchValue={searchValue}
+        selectionMode={selectionMode}
+        showPreview={showPreview}
+        style={{
+          height: `${virtualRow.size}px`,
+          left: 8,
+          position: 'absolute',
+          top: 0,
+          transform: `translateY(${virtualRow.start}px)`,
+          width: 'calc(100% - 16px)',
+        }}
+      />
+    )
+  })
 
   return (
     <div
@@ -57,34 +89,18 @@ const VirtualPageList = ({
           position: 'relative',
         }}
       >
-        {virtualRows.map((virtualRow) => {
-          const row = rows[virtualRow.index]!
-          const pageId = row!.page.page_id
-
-          return (
-            <PageRow
-              key={pageId}
-              checked={checkedIds.has(pageId)}
-              disabled={disabledValue.has(pageId)}
-              isPreviewed={previewPageId === pageId}
-              onPreview={onPreview}
-              onSelect={onSelect}
-              onToggle={onToggle}
-              row={row}
-              searchValue={searchValue}
-              selectionMode={selectionMode}
-              showPreview={showPreview}
-              style={{
-                height: `${virtualRow.size}px`,
-                left: 8,
-                position: 'absolute',
-                top: 0,
-                transform: `translateY(${virtualRow.start}px)`,
-                width: 'calc(100% - 16px)',
-              }}
-            />
-          )
-        })}
+        {selectionMode === 'single'
+          ? (
+              <RadioGroup
+                aria-label={t('dataSource.notion.selector.headerTitle', { ns: 'common' })}
+                value={selectedPageId}
+                onValueChange={onSelect}
+                className="contents"
+              >
+                {rowNodes}
+              </RadioGroup>
+            )
+          : rowNodes}
       </div>
     </div>
   )

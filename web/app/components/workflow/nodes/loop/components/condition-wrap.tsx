@@ -128,7 +128,7 @@ const ConditionWrap: FC<Props> = ({
                         size="small"
                         disabled={readOnly}
                       >
-                        <RiAddLine className="mr-1 h-3.5 w-3.5" />
+                        <RiAddLine className="mr-1 size-3.5" />
                         {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
                       </Button>
                     </SelectTrigger>
