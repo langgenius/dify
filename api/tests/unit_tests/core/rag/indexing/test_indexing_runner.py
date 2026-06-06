@@ -49,6 +49,7 @@ for the full indexing pipeline are handled separately in the integration test su
 
 import json
 import uuid
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
