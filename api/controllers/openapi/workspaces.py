@@ -5,9 +5,8 @@ endpoints. Account bearers (dfoa_) see every tenant they're a member of.
 External SSO bearers (dfoe_) have no account_id and so see an empty list —
 that matches /openapi/v1/account.
 
-Member-management endpoints are gated by both `accept_subjects` (SSO out)
-and `require_workspace_role` (membership / role lookup against the path's
-``workspace_id``).
+Member-management endpoints use ``guard_workspace`` which enforces
+workspace membership and optional role requirements via the auth pipeline.
 """
 
 from __future__ import annotations
@@ -37,7 +36,6 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
-from controllers.openapi.auth.role_gate import require_workspace_role
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, Tenant, TenantAccountJoin
@@ -152,8 +150,7 @@ class WorkspaceSwitchApi(Resource):
     """
 
     @openapi_ns.response(200, "Workspace detail", openapi_ns.models[WorkspaceDetailResponse.__name__])
-    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @require_workspace_role()
+    @auth_router.guard_workspace(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     def post(self, workspace_id: str, *, auth_data: AuthData):
         account = _load_account(auth_data.account_id)
 
@@ -179,8 +176,7 @@ class WorkspaceMembersApi(Resource):
 
     @openapi_ns.doc(params=query_params_from_model(MemberListQuery))
     @openapi_ns.response(200, "Member list", openapi_ns.models[MemberListResponse.__name__])
-    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @require_workspace_role()
+    @auth_router.guard_workspace(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     def get(self, workspace_id: str, *, auth_data: AuthData):
         try:
             query = MemberListQuery.model_validate(request.args.to_dict(flat=True))
@@ -202,8 +198,11 @@ class WorkspaceMembersApi(Resource):
 
     @openapi_ns.expect(openapi_ns.models[MemberInvitePayload.__name__])
     @openapi_ns.response(201, "Member invited", openapi_ns.models[MemberInviteResponse.__name__])
-    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
+    @auth_router.guard_workspace(
+        scope=Scope.WORKSPACE_WRITE,
+        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+    )
     def post(self, workspace_id: str, *, auth_data: AuthData):
         payload = _validate_body(MemberInvitePayload)
         inviter = _load_account(auth_data.account_id)
@@ -253,8 +252,11 @@ class WorkspaceMemberApi(Resource):
     """
 
     @openapi_ns.response(200, "Member removed", openapi_ns.models[MemberActionResponse.__name__])
-    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
+    @auth_router.guard_workspace(
+        scope=Scope.WORKSPACE_WRITE,
+        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+    )
     def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
         operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
@@ -284,8 +286,11 @@ class WorkspaceMemberRoleApi(Resource):
 
     @openapi_ns.expect(openapi_ns.models[MemberRoleUpdatePayload.__name__])
     @openapi_ns.response(200, "Role updated", openapi_ns.models[MemberActionResponse.__name__])
-    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
+    @auth_router.guard_workspace(
+        scope=Scope.WORKSPACE_WRITE,
+        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+    )
     def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
         payload = _validate_body(MemberRoleUpdatePayload)
         operator = _load_account(auth_data.account_id)

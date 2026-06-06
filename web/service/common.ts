@@ -371,5 +371,5 @@ export const checkEmailExisted = (body: { email: string }): Promise<CommonRespon
 
 export const getAvatar = async ({ avatar }: { avatar: string }): Promise<{ avatar_url: string }> => {
   const { consoleClient } = await import('./client')
-  return consoleClient.account.avatar({ query: { avatar } })
+  return consoleClient.account.avatar.get({ query: { avatar } })
 }

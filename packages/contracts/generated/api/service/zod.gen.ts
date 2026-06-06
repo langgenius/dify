@@ -72,6 +72,7 @@ export const zChatRequestPayload = z.object({
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('dev'),
+  trace_session_id: z.string().nullish(),
   workflow_id: z.string().nullish(),
 })
 
@@ -139,6 +140,7 @@ export const zCompletionRequestPayload = z.object({
   query: z.string().optional().default(''),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('dev'),
+  trace_session_id: z.string().nullish(),
 })
 
 /**
@@ -893,6 +895,13 @@ export const zPreProcessingRule = z.object({
 })
 
 /**
+ * ProcessRuleMode
+ *
+ * Dataset Process Rule Mode
+ */
+export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
+
+/**
  * RerankingModel
  */
 export const zRerankingModel = z.object({
@@ -1060,7 +1069,7 @@ export const zRule = z.object({
  * ProcessRule
  */
 export const zProcessRule = z.object({
-  mode: z.enum(['automatic', 'custom', 'hierarchical']),
+  mode: zProcessRuleMode,
   rules: zRule.optional(),
 })
 
@@ -1351,6 +1360,7 @@ export const zWorkflowRunPayload = z.object({
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
+  trace_session_id: z.string().nullish(),
 })
 
 /**

@@ -2682,6 +2682,7 @@ class TestWorkflowServiceHumanInputOperations:
             SimpleNamespace(id="submit", title="card_visa_enterprise_001"),
         ]
         mock_node.node_data.outputs_field_names.return_value = ["field1"]
+        mock_node.node_data.inputs = []
         mock_node.render_form_content_before_submission.return_value = "Ticket: {{#$output.field1#}}"
         mock_node.render_form_content_with_outputs.return_value = "Ticket: val1"
 
@@ -2691,7 +2692,10 @@ class TestWorkflowServiceHumanInputOperations:
             patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.HUMAN_INPUT),
             patch.object(service, "_build_human_input_variable_pool"),
             patch("services.workflow_service.HumanInputNode", return_value=mock_node),
-            patch("services.workflow_service.validate_human_input_submission"),
+            patch(
+                "services.workflow_service.HumanInputService.validate_and_normalize_submission",
+                return_value={"field1": "val1"},
+            ) as mock_validate,
             patch("services.workflow_service.Session"),
             patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
         ):
@@ -2699,6 +2703,7 @@ class TestWorkflowServiceHumanInputOperations:
                 app_model=app_model, account=account, node_id="node-1", form_inputs={"field1": "val1"}, action="submit"
             )
             assert result["__action_id"] == "submit"
+            mock_validate.assert_called_once()
             assert result["__action_value"] == "card_visa_enterprise_001"
             assert result["__rendered_content"] == "Ticket: val1"
             mock_saver_cls.return_value.save.assert_called_once()
@@ -2714,7 +2719,7 @@ class TestWorkflowServiceHumanInputOperations:
             patch.object(service, "_resolve_human_input_delivery_method") as mock_resolve,
             patch("services.workflow_service.apply_dify_debug_email_recipient"),
             patch.object(service, "_build_human_input_variable_pool"),
-            patch.object(service, "_build_human_input_node"),
+            patch.object(service, "_build_human_input_node_for_debugging"),
             patch.object(service, "_create_human_input_delivery_test_form", return_value=("form-1", [])),
             patch("services.workflow_service.HumanInputDeliveryTestService") as mock_test_srv,
         ):
@@ -2842,8 +2847,8 @@ class TestWorkflowServiceFreeNodeExecution:
         with pytest.raises(Exception, match="unreachable"):
             _rebuild_single_file("tenant-1", {}, cast(Any, "invalid_type"))
 
-    def test_build_human_input_node(self, service: WorkflowService) -> None:
-        """Cover _build_human_input_node (lines 1065-1088)."""
+    def test_build_human_input_node_for_debugging(self, service: WorkflowService) -> None:
+        """Cover _build_human_input_node_for_debugging."""
         workflow = MagicMock()
         workflow.id = "wf-1"
         workflow.tenant_id = "t-1"
@@ -2863,10 +2868,11 @@ class TestWorkflowServiceFreeNodeExecution:
             patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
             patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
             patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
+            patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
         ):
             mock_node_cls.validate_node_data.return_value = sentinel.node_data
-            node = service._build_human_input_node(
+            node = service._build_human_input_node_for_debugging(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
             assert node == mock_node_cls.return_value
@@ -2878,11 +2884,10 @@ class TestWorkflowServiceFreeNodeExecution:
                 call_depth=0,
             )
             mock_runtime_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
+            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
             mock_adapt_node_data.assert_called_once_with(node_config["data"])
             mock_node_cls.validate_node_data.assert_called_once_with(sentinel.adapted_node_data)
-            mock_file_reference_factory_cls.assert_called_once_with(
-                mock_graph_init_context_cls.return_value.to_graph_init_params.return_value.run_context
-            )
+            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
             mock_node_cls.assert_called_once_with(
                 node_id="n-1",
                 data=sentinel.node_data,

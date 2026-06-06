@@ -21,3 +21,13 @@ class AgentBackendConfig(BaseSettings):
         description="Scenario used by the fake Agent backend client.",
         default="success",
     )
+
+    AGENT_SHELL_ENABLED: bool = Field(
+        description=(
+            "Inject the dify.shell layer (sandboxed bash workspace) into Agent runs. "
+            "Requires the agent backend to be wired with a shellctl entrypoint; keep it "
+            "off until shellctl is deployed, otherwise every agent run that includes the "
+            "shell layer will fail."
+        ),
+        default=False,
+    )

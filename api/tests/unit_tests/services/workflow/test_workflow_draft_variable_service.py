@@ -343,6 +343,34 @@ class TestWorkflowDraftVariableService:
             rag_pipeline_variables=[],
         )
 
+    def test_list_variables_without_values_excludes_node_ids(self, mock_session):
+        service = WorkflowDraftVariableService(mock_session)
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id="app-1",
+            node_id="node-1",
+            name="output",
+            value=StringSegment(value="value"),
+            node_execution_id="execution-1",
+        )
+        mock_session.scalar.return_value = 1
+        mock_session.scalars.return_value = [variable]
+
+        result = service.list_variables_without_values(
+            app_id="app-1",
+            page=1,
+            limit=20,
+            user_id="user-1",
+            exclude_node_ids={SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID},
+        )
+
+        assert result.total == 1
+        assert result.variables == [variable]
+
+        stmt = mock_session.scalars.call_args.args[0]
+        compiled = stmt.compile()
+        excluded_node_ids = next(value for value in compiled.params.values() if isinstance(value, (list, tuple)))
+        assert set(excluded_node_ids) == {SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
+
     def test_reset_conversation_variable(self, mock_session):
         """Test resetting a conversation variable"""
         service = WorkflowDraftVariableService(mock_session)

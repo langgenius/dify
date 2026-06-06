@@ -212,7 +212,7 @@ class ChatConversationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
     def get(self, current_user: Account, app_model: App):
@@ -323,7 +323,7 @@ class ChatConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
@@ -340,7 +340,7 @@ class ChatConversationDetailApi(Resource):
     @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @account_initialization_required
     @edit_permission_required
     @with_current_user

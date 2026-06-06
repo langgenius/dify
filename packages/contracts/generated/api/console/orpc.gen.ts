@@ -38,6 +38,7 @@ import { resetPassword } from './reset-password/orpc.gen'
 import { ruleCodeGenerate } from './rule-code-generate/orpc.gen'
 import { ruleGenerate } from './rule-generate/orpc.gen'
 import { ruleStructuredOutputGenerate } from './rule-structured-output-generate/orpc.gen'
+import { snippets } from './snippets/orpc.gen'
 import { spec } from './spec/orpc.gen'
 import { systemFeatures } from './system-features/orpc.gen'
 import { tagBindings } from './tag-bindings/orpc.gen'
@@ -46,6 +47,7 @@ import { test } from './test/orpc.gen'
 import { trialApps } from './trial-apps/orpc.gen'
 import { trialModels } from './trial-models/orpc.gen'
 import { website } from './website/orpc.gen'
+import { workflowGenerate } from './workflow-generate/orpc.gen'
 import { workflow } from './workflow/orpc.gen'
 import { workspaces } from './workspaces/orpc.gen'
 
@@ -88,6 +90,7 @@ export const contract = {
   ruleCodeGenerate,
   ruleGenerate,
   ruleStructuredOutputGenerate,
+  snippets,
   spec,
   systemFeatures,
   tagBindings,
@@ -97,5 +100,6 @@ export const contract = {
   trialModels,
   website,
   workflow,
+  workflowGenerate,
   workspaces,
 }

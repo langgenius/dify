@@ -1,9 +1,9 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { CompatVerdict } from './compat.js'
 import type { Channel } from './info.js'
-import type { HostsBundle } from '@/auth/hosts'
+import type { ActiveContext } from '@/auth/hosts'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
-import { loadHosts } from '@/auth/hosts'
+import { Registry } from '@/auth/hosts'
 import { createHttpClient } from '@/http/client'
 import { arch, platform } from '@/sys/index'
 import { hostWithScheme, openAPIBase } from '@/util/host'
@@ -43,11 +43,13 @@ export type MetaProbe = (endpoint: string) => Promise<ServerVersionResponse>
 
 export type RunVersionProbeOptions = {
   readonly skipServer: boolean
-  readonly loadBundle?: () => Promise<HostsBundle | undefined>
+  readonly loadActive?: () => Promise<ActiveContext | undefined>
   readonly probe?: MetaProbe
 }
 
-const defaultLoadBundle = async (): Promise<HostsBundle | undefined> => loadHosts()
+const defaultLoadActive = async (): Promise<ActiveContext | undefined> => {
+  return Registry.load().resolveActive()
+}
 
 const defaultProbe: MetaProbe = async (endpoint) => {
   const http = createHttpClient({ baseURL: openAPIBase(endpoint), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
@@ -89,19 +91,19 @@ export async function runVersionProbe(opts: RunVersionProbeOptions): Promise<Ver
     }
   }
 
-  const loadBundle = opts.loadBundle ?? defaultLoadBundle
+  const loadActive = opts.loadActive ?? defaultLoadActive
   const probe = opts.probe ?? defaultProbe
 
-  let bundle: HostsBundle | undefined
+  let active: ActiveContext | undefined
   let loadFailed = false
   try {
-    bundle = await loadBundle()
+    active = await loadActive()
   }
   catch {
     loadFailed = true
   }
 
-  if (bundle === undefined || bundle.current_host === '') {
+  if (active === undefined || active.host === '') {
     const detail = loadFailed ? 'hosts file unreadable' : 'no host configured'
     return {
       client,
@@ -110,7 +112,7 @@ export async function runVersionProbe(opts: RunVersionProbeOptions): Promise<Ver
     }
   }
 
-  const endpoint = hostWithScheme(bundle.current_host, bundle.scheme)
+  const endpoint = hostWithScheme(active.host, active.scheme)
 
   let serverInfo: ServerVersionResponse | undefined
   try {

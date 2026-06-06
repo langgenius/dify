@@ -6,6 +6,7 @@ from core.rag.entities import Rule
 from core.rag.entities.metadata_entities import MetadataFilteringCondition
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from models.enums import ProcessRuleMode
 
 
 class RerankingModel(BaseModel):
@@ -55,7 +56,7 @@ class DataSource(BaseModel):
 
 
 class ProcessRule(BaseModel):
-    mode: Literal["automatic", "custom", "hierarchical"]
+    mode: ProcessRuleMode
     rules: Rule | None = None
 
 

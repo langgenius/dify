@@ -24,7 +24,7 @@ export const zChatMessagePayload = z.object({
   conversation_id: z.string().nullish(),
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  model_config: z.record(z.string(), z.unknown()),
+  model_config: z.record(z.string(), z.unknown()).optional(),
   parent_message_id: z.string().nullish(),
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),

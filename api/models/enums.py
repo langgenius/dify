@@ -224,6 +224,7 @@ class TagType(StrEnum):
 
     KNOWLEDGE = "knowledge"
     APP = "app"
+    SNIPPET = "snippet"
 
 
 class DatasetMetadataType(StrEnum):

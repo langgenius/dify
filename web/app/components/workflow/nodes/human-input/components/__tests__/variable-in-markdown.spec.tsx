@@ -1,4 +1,7 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 import { Note, rehypeNotes, rehypeVariable, Variable } from '../variable-in-markdown'
 
 describe('variable-in-markdown', () => {
@@ -86,10 +89,14 @@ describe('variable-in-markdown', () => {
     it('should render note values and replace node ids with labels for variable defaults', () => {
       const { rerender } = render(
         <Note
-          defaultInput={{
-            type: 'variable',
-            selector: ['node-1', 'output'],
-            value: '',
+          input={{
+            type: InputVarType.paragraph,
+            output_variable_name: 'approval',
+            default: {
+              type: 'variable',
+              selector: ['node-1', 'output'],
+              value: '',
+            },
           }}
           nodeName={nodeId => nodeId === 'node-1' ? 'Start Node' : nodeId}
         />,
@@ -99,16 +106,103 @@ describe('variable-in-markdown', () => {
 
       rerender(
         <Note
-          defaultInput={{
-            type: 'constant',
-            value: 'Plain value',
-            selector: [],
+          input={{
+            type: InputVarType.paragraph,
+            output_variable_name: 'approval',
+            default: {
+              type: 'constant',
+              value: 'Plain value',
+              selector: [],
+            },
           }}
           nodeName={nodeId => nodeId}
         />,
       )
 
       expect(screen.getByText('Plain value')).toBeInTheDocument()
+    })
+
+    it('should render a select preview control for select inputs', () => {
+      render(
+        <Note
+          input={{
+            type: InputVarType.select,
+            output_variable_name: 'approval',
+            option_source: {
+              type: 'constant',
+              selector: [],
+              value: ['Approved', 'Rejected'],
+            },
+          }}
+          nodeName={nodeId => nodeId}
+        />,
+      )
+
+      expect(screen.getByTestId('human-input-note-select-preview')).toBeInTheDocument()
+      expect(screen.getByText('Approved')).toBeInTheDocument()
+    })
+
+    it('should render dynamic select inputs as variable information without a select control', () => {
+      render(
+        <Note
+          input={{
+            type: InputVarType.select,
+            output_variable_name: 'approval',
+            option_source: {
+              type: 'variable',
+              selector: ['node-1', 'options'],
+              value: [],
+            },
+          }}
+          nodeName={nodeId => nodeId === 'node-1' ? 'Start Node' : nodeId}
+        />,
+      )
+
+      expect(screen.queryByTestId('human-input-note-select-preview')).not.toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: 'human-input-note-select' })).not.toBeInTheDocument()
+      expect(screen.getByText('{{Start Node/options}}')).toBeInTheDocument()
+    })
+
+    it('should open the select preview and show option items', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <Note
+          input={{
+            type: InputVarType.select,
+            output_variable_name: 'approval',
+            option_source: {
+              type: 'constant',
+              selector: [],
+              value: ['Approved', 'Rejected'],
+            },
+          }}
+          nodeName={nodeId => nodeId}
+        />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: 'human-input-note-select' }))
+
+      expect(await screen.findByRole('option', { name: 'Rejected' })).toBeInTheDocument()
+    })
+
+    it('should render upload placeholders for file inputs', () => {
+      render(
+        <Note
+          input={{
+            type: InputVarType.singleFile,
+            output_variable_name: 'attachment',
+            allowed_file_extensions: ['.pdf'],
+            allowed_file_types: [],
+            allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+          }}
+          nodeName={nodeId => nodeId}
+        />,
+      )
+
+      expect(screen.getByTestId('human-input-note-file-preview')).toBeInTheDocument()
+      expect(screen.getByText('common.fileUploader.uploadFromComputer')).toBeInTheDocument()
+      expect(screen.getByText('common.fileUploader.pasteFileLink')).toBeInTheDocument()
     })
   })
 })
