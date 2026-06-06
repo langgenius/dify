@@ -101,16 +101,19 @@ export function AccessPermissionsSection({
                     </DetailTableRow>
                   </DetailTableHeader>
                   <DetailTableBody className="block pc:table-row-group">
-                    {policyRows.map(environmentPolicy => (
-                      <EnvironmentPermissionRow
-                        key={environmentPolicy.environment!.id}
-                        appInstanceId={appInstanceId}
-                        disabled={permissionsDisabled}
-                        environment={environmentPolicy.environment!}
-                        summaryPolicy={environmentPolicy.policy}
-                        resolvedSubjects={environmentPolicy.resolvedSubjects}
-                      />
-                    ))}
+                    {policyRows.map((environmentPolicy) => {
+                      const environment = environmentPolicy.environment!
+                      return (
+                        <EnvironmentPermissionRow
+                          key={environment.id}
+                          appInstanceId={appInstanceId}
+                          disabled={permissionsDisabled}
+                          environment={environment}
+                          summaryPolicy={environmentPolicy.policy}
+                          resolvedSubjects={environmentPolicy.resolvedSubjects}
+                        />
+                      )
+                    })}
                   </DetailTableBody>
                 </DetailTable>
               )}

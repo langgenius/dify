@@ -112,9 +112,6 @@ export function ApiTokenSummarySection({
   const { t } = useTranslation('deployments')
   const apiEnabled = Boolean(accessChannels?.developerApiEnabled)
   const apiKeyCount = apiKeySummary?.apiKeyCount ?? 0
-  // The label reads "deployed environments"; count environments with an active
-  // runtime deployment, not the api-key summary's environments-with-keys count.
-  const apiKeyEnvironmentCount = deployedEnvironmentCount
   const isLoading = isEnvironmentLoading
   const isError = isEnvironmentError
 
@@ -158,8 +155,9 @@ export function ApiTokenSummarySection({
                           <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
                             {t('overview.apiKeysCount', { count: apiKeyCount })}
                           </span>
+                          {/* "deployed environments" = envs with a runtime deployment, not envs-with-keys */}
                           <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
-                            {t('overview.apiTokenSummary.environments', { count: apiKeyEnvironmentCount })}
+                            {t('overview.apiTokenSummary.environments', { count: deployedEnvironmentCount })}
                           </span>
                         </span>
                       )
