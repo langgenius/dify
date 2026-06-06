@@ -1,4 +1,3 @@
-import logging
 from typing import override
 
 from core.app.apps.base_app_queue_manager import GRAPH_ENGINE_BACKED_APP_MODES, AppQueueManager, PublishFrom
@@ -14,9 +13,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
 )
-
-logger = logging.getLogger(__name__)
-WF_STOP_DIAG_MARKER = "WF_STOP_DIAG_7B9C2F"
 
 
 class WorkflowAppQueueManager(AppQueueManager):
@@ -35,13 +31,6 @@ class WorkflowAppQueueManager(AppQueueManager):
         """
         message = WorkflowQueueMessage(task_id=self._task_id, app_mode=self._app_mode, event=event)
 
-        logger.warning(
-            "%s workflow_queue_publish task_id=%s event=%s pub_from=%s",
-            WF_STOP_DIAG_MARKER,
-            self._task_id,
-            type(event).__name__,
-            pub_from,
-        )
         self._q.put(message)
 
         if isinstance(
@@ -57,19 +46,5 @@ class WorkflowAppQueueManager(AppQueueManager):
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
             if self._app_mode in GRAPH_ENGINE_BACKED_APP_MODES:
-                logger.warning(
-                    "%s workflow_queue_skip_legacy_stop_raise_for_graph_engine task_id=%s app_mode=%s event=%s",
-                    WF_STOP_DIAG_MARKER,
-                    self._task_id,
-                    self._app_mode,
-                    type(event).__name__,
-                )
                 return
-
-            logger.warning(
-                "%s workflow_queue_raise_stopped task_id=%s event=%s",
-                WF_STOP_DIAG_MARKER,
-                self._task_id,
-                type(event).__name__,
-            )
             raise GenerateTaskStoppedError()

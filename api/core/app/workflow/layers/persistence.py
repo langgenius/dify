@@ -9,7 +9,6 @@ allowing presentation layers to remain read-only observers of repository
 state.
 """
 
-import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -54,9 +53,6 @@ from services.workflow.inspector_events import (
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
-
-logger = logging.getLogger(__name__)
-WF_STOP_DIAG_MARKER = "WF_STOP_DIAG_7B9C2F"
 
 
 @dataclass(slots=True)
@@ -200,13 +196,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_graph_run_aborted(self, event: GraphRunAbortedEvent) -> None:
         execution = self._get_workflow_execution()
-        logger.warning(
-            "%s persistence_graph_run_aborted workflow_execution_id=%s workflow_id=%s reason=%s",
-            WF_STOP_DIAG_MARKER,
-            execution.id_,
-            execution.workflow_id,
-            event.reason,
-        )
         execution.status = WorkflowExecutionStatus.STOPPED
         execution.error_message = event.reason or "Workflow execution aborted"
         self._populate_completion_statistics(execution)
@@ -252,13 +241,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._node_execution_cache[event.id] = domain_execution
         self._workflow_node_execution_repository.save(domain_execution)
-        logger.warning(
-            "%s persistence_node_started workflow_execution_id=%s node_id=%s node_execution_id=%s",
-            WF_STOP_DIAG_MARKER,
-            execution.id_,
-            event.node_id,
-            event.id,
-        )
 
         snapshot = _NodeRuntimeSnapshot(
             node_id=event.node_id,

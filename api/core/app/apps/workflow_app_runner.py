@@ -86,7 +86,6 @@ from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
-WF_STOP_DIAG_MARKER = "WF_STOP_DIAG_7B9C2F"
 
 
 class WorkflowBasedAppRunner:
@@ -421,11 +420,6 @@ class WorkflowBasedAppRunner:
                     QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
                 )
             case GraphRunAbortedEvent():
-                logger.warning(
-                    "%s workflow_runner_graph_run_aborted reason=%s",
-                    WF_STOP_DIAG_MARKER,
-                    event.reason,
-                )
                 self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
