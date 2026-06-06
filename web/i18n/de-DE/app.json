@@ -302,9 +302,10 @@
   "typeSelector.workflow": "Workflow",
   "types.advanced": "Chatflow",
   "types.agent": "Agent",
-  "types.all": "Typen",
+  "types.all": "Alle",
   "types.basic": "Grundlegend",
   "types.chatbot": "Chatbot",
   "types.completion": "Vervollständigung",
+  "types.filter": "Typen",
   "types.workflow": "Arbeitsablauf"
 }

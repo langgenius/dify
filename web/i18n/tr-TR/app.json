@@ -302,9 +302,10 @@
   "typeSelector.workflow": "İş Akışı",
   "types.advanced": "Sohbet akışı",
   "types.agent": "Ajan",
-  "types.all": "Türler",
+  "types.all": "Hepsi",
   "types.basic": "Temel",
   "types.chatbot": "Chatbot",
   "types.completion": "Tamamlama",
+  "types.filter": "Türler",
   "types.workflow": "İş Akışı"
 }

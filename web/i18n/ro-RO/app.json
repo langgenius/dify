@@ -302,9 +302,10 @@
   "typeSelector.workflow": "Flux de lucru",
   "types.advanced": "Fluxul de chat",
   "types.agent": "Agent",
-  "types.all": "Tipuri",
+  "types.all": "Toate",
   "types.basic": "Bază",
   "types.chatbot": "Chatbot",
   "types.completion": "Finalizare",
+  "types.filter": "Tipuri",
   "types.workflow": "Flux de lucru"
 }

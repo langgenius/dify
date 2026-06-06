@@ -302,9 +302,10 @@
   "typeSelector.workflow": "Quy trình",
   "types.advanced": "Dòng trò chuyện",
   "types.agent": "Tác nhân",
-  "types.all": "Loại",
+  "types.all": "Tất cả",
   "types.basic": "Cơ bản",
   "types.chatbot": "Chatbot",
   "types.completion": "Hoàn thành",
+  "types.filter": "Loại",
   "types.workflow": "Quy trình"
 }

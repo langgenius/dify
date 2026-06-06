@@ -48,7 +48,7 @@ export function AppListHeaderFilters({
 }: AppListHeaderFiltersProps) {
   const { t } = useTranslation()
   const appTypeItems = useMemo<Item<AppTypeChipValue>[]>(() => [
-    { value: '', name: t('types.all', { ns: 'app' }) },
+    { value: '', name: t('types.all', { ns: 'app' }), triggerName: t('types.filter', { ns: 'app' }) },
     { value: AppModeEnum.WORKFLOW, name: t('types.workflow', { ns: 'app' }) },
     { value: AppModeEnum.ADVANCED_CHAT, name: t('types.advanced', { ns: 'app' }) },
     { value: AppModeEnum.CHAT, name: t('types.chatbot', { ns: 'app' }) },
@@ -63,6 +63,7 @@ export function AppListHeaderFilters({
         <Chip
           value={appTypeValue}
           items={appTypeItems}
+          showLeftIcon={false}
           className="[&_.system-sm-regular]:text-text-secondary"
           panelClassName="rounded-lg"
           onSelect={item => onCategoryChange(item.value || 'all')}

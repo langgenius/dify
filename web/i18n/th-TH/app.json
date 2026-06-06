@@ -302,9 +302,10 @@
   "typeSelector.workflow": "เวิร์กโฟลว์",
   "types.advanced": "แชทโฟลว์",
   "types.agent": "ตัวแทน",
-  "types.all": "ประเภท",
+  "types.all": "ทั้งหมด",
   "types.basic": "พื้นฐาน",
   "types.chatbot": "แชทบอท",
   "types.completion": "เสร็จสมบูรณ์",
+  "types.filter": "ประเภท",
   "types.workflow": "กระบวนการทำงาน"
 }

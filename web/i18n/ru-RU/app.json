@@ -302,9 +302,10 @@
   "typeSelector.workflow": "Рабочий процесс",
   "types.advanced": "Чатфлоу",
   "types.agent": "Агент",
-  "types.all": "Типы",
+  "types.all": "Все",
   "types.basic": "Основной",
   "types.chatbot": "Чат-бот",
   "types.completion": "Завершение",
+  "types.filter": "Типы",
   "types.workflow": "Рабочий процесс"
 }

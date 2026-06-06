@@ -311,9 +311,10 @@
   "typeSelector.workflow": "工作流",
   "types.advanced": "Chatflow",
   "types.agent": "Agent",
-  "types.all": "类型",
+  "types.all": "全部",
   "types.basic": "基础编排",
   "types.chatbot": "聊天助手",
   "types.completion": "文本生成",
+  "types.filter": "类型",
   "types.workflow": "工作流"
 }

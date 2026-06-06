@@ -302,9 +302,10 @@
   "typeSelector.workflow": "سير العمل",
   "types.advanced": "Chatflow",
   "types.agent": "Agent",
-  "types.all": "الأنواع",
+  "types.all": "الكل",
   "types.basic": "أساسي",
   "types.chatbot": "روبوت دردشة",
   "types.completion": "إكمال",
+  "types.filter": "الأنواع",
   "types.workflow": "سير العمل (Workflow)"
 }

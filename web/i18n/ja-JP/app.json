@@ -302,9 +302,10 @@
   "typeSelector.workflow": "ワークフロー",
   "types.advanced": "チャットフロー",
   "types.agent": "エージェント",
-  "types.all": "タイプ",
+  "types.all": "全て",
   "types.basic": "基本的な",
   "types.chatbot": "チャットボット",
   "types.completion": "テキスト生成",
+  "types.filter": "タイプ",
   "types.workflow": "ワークフロー"
 }

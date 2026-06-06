@@ -7,6 +7,14 @@ import { AppModeEnum } from '@/types/app'
 
 import List from '../list'
 
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'app.types.all': 'All',
+    'app.types.filter': 'Types',
+  })
+})
+
 const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
   onlineUsersMap: {},
@@ -283,7 +291,7 @@ type AppListInfiniteOptions = {
 }
 
 const openAppTypeSelect = async (user = userEvent.setup()) => {
-  await user.click(screen.getByRole('combobox', { name: /^app\.types\./ }))
+  await user.click(screen.getByRole('combobox', { name: /^(Types|app\.types\.)/ }))
   return user
 }
 
@@ -310,15 +318,16 @@ describe('List', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const { container } = renderList()
-      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
-      expect(container.querySelector('.i-ri-filter-3-line')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(container.querySelector('.i-ri-filter-3-line')).not.toBeInTheDocument()
     })
 
     it('should render app type select with all app types', async () => {
       renderList()
       await openAppTypeSelect()
 
-      expect(await screen.findByRole('option', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'All' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: 'Types' })).not.toBeInTheDocument()
       expect(await screen.findByRole('option', { name: 'app.types.workflow' }))!.toBeInTheDocument()
       expect(await screen.findByRole('option', { name: 'app.types.advanced' }))!.toBeInTheDocument()
       expect(await screen.findByRole('option', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
@@ -376,7 +385,7 @@ describe('List', () => {
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.or'))!.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
       expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
@@ -388,7 +397,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
     })
 
     it('should keep the regular empty state for empty filtered results', () => {
@@ -398,7 +407,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
     })
@@ -453,7 +462,7 @@ describe('List', () => {
       renderList()
       await openAppTypeSelect(user)
 
-      await user.click(await screen.findByRole('option', { name: 'app.types.all' }))
+      await user.click(await screen.findByRole('option', { name: 'All' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
@@ -638,11 +647,11 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { unmount } = renderList()
-      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
 
       unmount()
       renderList()
-      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
@@ -679,7 +688,7 @@ describe('List', () => {
       renderList()
       await openAppTypeSelect()
 
-      expect(await screen.findByRole('option', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'All' }))!.toBeInTheDocument()
       expect(await screen.findByRole('option', { name: 'app.types.workflow' }))!.toBeInTheDocument()
       expect(await screen.findByRole('option', { name: 'app.types.advanced' }))!.toBeInTheDocument()
       expect(await screen.findByRole('option', { name: 'app.types.chatbot' }))!.toBeInTheDocument()

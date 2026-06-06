@@ -302,9 +302,10 @@
   "typeSelector.workflow": "Alur Kerja",
   "types.advanced": "Alur obrolan",
   "types.agent": "Agen",
-  "types.all": "Jenis",
+  "types.all": "Semua",
   "types.basic": "Dasar",
   "types.chatbot": "Chatbot",
   "types.completion": "Penyelesaian",
+  "types.filter": "Jenis",
   "types.workflow": "Alur Kerja"
 }
