@@ -12,7 +12,7 @@ Other routes mirror `workflow_draft_variable` app APIs under `/snippets/...`.
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, Concatenate
 
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
@@ -23,22 +23,28 @@ from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_draft_variable import (
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
-    _ensure_variable_access,
-    _file_access_controller,
+    ensure_variable_access,
     validate_node_id,
     workflow_draft_variable_list_model,
     workflow_draft_variable_list_without_value_model,
     workflow_draft_variable_model,
 )
 from controllers.console.snippets.snippet_workflow import get_snippet
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_user,
+)
 from controllers.web.error import InvalidArgumentError, NotFoundError
+from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from graphon.variables.types import SegmentType
-from libs.login import current_user, login_required
+from libs.login import login_required
+from models import Account
 from models.snippet import CustomizedSnippet
 from models.workflow import WorkflowDraftVariable
 from services.snippet_service import SnippetService
@@ -47,6 +53,7 @@ from services.workflow_draft_variable_service import WorkflowDraftVariableList, 
 _SNIPPET_EXCLUDED_DRAFT_VARIABLE_NODE_IDS: frozenset[str] = frozenset(
     {SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
 )
+_file_access_controller = DatabaseFileAccessController()
 
 
 def _snippet_service() -> SnippetService:
@@ -63,7 +70,9 @@ def _ensure_snippet_draft_variable_row_allowed(
         raise NotFoundError(description=f"variable not found, id={variable_id}")
 
 
-def _snippet_draft_var_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
+def _snippet_draft_var_prerequisite[T, **P, R](
+    f: Callable[Concatenate[T, Account, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
     """Setup, auth, snippet resolution, and tenant edit permission (same stack as snippet workflow APIs)."""
 
     @setup_required
@@ -71,9 +80,10 @@ def _snippet_draft_var_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R 
     @account_initialization_required
     @get_snippet
     @edit_permission_required
+    @with_current_user
     @wraps(f)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
-        return f(*args, **kwargs)
+    def wrapper(self: T, current_user: Account, *args: P.args, **kwargs: P.kwargs) -> R | Response:
+        return f(self, current_user, *args, **kwargs)
 
     return wrapper
 
@@ -90,7 +100,7 @@ class SnippetWorkflowVariableCollectionApi(Resource):
     )
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
-    def get(self, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
+    def get(self, current_user: Account, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
         args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         snippet_service = _snippet_service()
@@ -113,7 +123,7 @@ class SnippetWorkflowVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all draft workflow variables for the current user (snippet scope)")
     @console_ns.response(204, "Workflow variables deleted successfully")
     @_snippet_draft_var_prerequisite
-    def delete(self, snippet: CustomizedSnippet) -> Response:
+    def delete(self, current_user: Account, snippet: CustomizedSnippet) -> Response:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         draft_var_srv.delete_user_workflow_variables(snippet.id, user_id=current_user.id)
         db.session.commit()
@@ -127,7 +137,7 @@ class SnippetNodeVariableCollectionApi(Resource):
     @console_ns.response(200, "Node variables retrieved successfully", workflow_draft_variable_list_model)
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    def get(self, snippet: CustomizedSnippet, node_id: str) -> WorkflowDraftVariableList:
+    def get(self, current_user: Account, snippet: CustomizedSnippet, node_id: str) -> WorkflowDraftVariableList:
         validate_node_id(node_id)
         with Session(bind=db.engine, expire_on_commit=False) as session:
             draft_var_srv = WorkflowDraftVariableService(session=session)
@@ -139,7 +149,7 @@ class SnippetNodeVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all variables for a specific node (snippet draft workflow)")
     @console_ns.response(204, "Node variables deleted successfully")
     @_snippet_draft_var_prerequisite
-    def delete(self, snippet: CustomizedSnippet, node_id: str) -> Response:
+    def delete(self, current_user: Account, snippet: CustomizedSnippet, node_id: str) -> Response:
         validate_node_id(node_id)
         srv = WorkflowDraftVariableService(db.session())
         srv.delete_node_variables(snippet.id, node_id, user_id=current_user.id)
@@ -155,12 +165,13 @@ class SnippetVariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def get(self, snippet: CustomizedSnippet, variable_id: str) -> WorkflowDraftVariable:
+    def get(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> WorkflowDraftVariable:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
-        variable = _ensure_variable_access(
+        variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id),
             app_id=snippet.id,
             variable_id=variable_id,
+            current_user_id=current_user.id,
         )
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
         return variable
@@ -172,14 +183,15 @@ class SnippetVariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def patch(self, snippet: CustomizedSnippet, variable_id: str) -> WorkflowDraftVariable:
+    def patch(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> WorkflowDraftVariable:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
-        variable = _ensure_variable_access(
+        variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id),
             app_id=snippet.id,
             variable_id=variable_id,
+            current_user_id=current_user.id,
         )
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
 
@@ -193,21 +205,21 @@ class SnippetVariableApi(Resource):
             if variable.value_type == SegmentType.FILE:
                 if not isinstance(raw_value, dict):
                     raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
-                raw_value = build_from_mapping(
-                    mapping=raw_value,
-                    tenant_id=snippet.tenant_id,
-                    access_controller=_file_access_controller,
-                )
+                    raw_value = build_from_mapping(
+                        mapping=raw_value,
+                        tenant_id=snippet.tenant_id,
+                        access_controller=_file_access_controller,
+                    )
             elif variable.value_type == SegmentType.ARRAY_FILE:
                 if not isinstance(raw_value, list):
                     raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
                 if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
                     raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
-                raw_value = build_from_mappings(
-                    mappings=raw_value,
-                    tenant_id=snippet.tenant_id,
-                    access_controller=_file_access_controller,
-                )
+                    raw_value = build_from_mappings(
+                        mappings=raw_value,
+                        tenant_id=snippet.tenant_id,
+                        access_controller=_file_access_controller,
+                    )
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
@@ -218,12 +230,13 @@ class SnippetVariableApi(Resource):
     @console_ns.response(204, "Variable deleted successfully")
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
-    def delete(self, snippet: CustomizedSnippet, variable_id: str) -> Response:
+    def delete(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> Response:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
-        variable = _ensure_variable_access(
+        variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id),
             app_id=snippet.id,
             variable_id=variable_id,
+            current_user_id=current_user.id,
         )
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
         draft_var_srv.delete_variable(variable)
@@ -239,7 +252,7 @@ class SnippetVariableResetApi(Resource):
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
-    def put(self, snippet: CustomizedSnippet, variable_id: str) -> Response | Any:
+    def put(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> Response | Any:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         snippet_service = _snippet_service()
         draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
@@ -247,10 +260,11 @@ class SnippetVariableResetApi(Resource):
             raise NotFoundError(
                 f"Draft workflow not found, snippet_id={snippet.id}",
             )
-        variable = _ensure_variable_access(
+        variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id),
             app_id=snippet.id,
             variable_id=variable_id,
+            current_user_id=current_user.id,
         )
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
 
@@ -270,7 +284,7 @@ class SnippetConversationVariableCollectionApi(Resource):
     @console_ns.response(200, "Conversation variables retrieved successfully", workflow_draft_variable_list_model)
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    def get(self, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
+    def get(self, _current_user: Account, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
         return WorkflowDraftVariableList(variables=[])
 
 
@@ -283,7 +297,7 @@ class SnippetSystemVariableCollectionApi(Resource):
     @console_ns.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    def get(self, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
+    def get(self, _current_user: Account, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
         return WorkflowDraftVariableList(variables=[])
 
 
@@ -294,7 +308,7 @@ class SnippetEnvironmentVariableCollectionApi(Resource):
     @console_ns.response(200, "Environment variables retrieved successfully")
     @console_ns.response(404, "Draft workflow not found")
     @_snippet_draft_var_prerequisite
-    def get(self, snippet: CustomizedSnippet) -> dict[str, list[dict[str, Any]]]:
+    def get(self, _current_user: Account, snippet: CustomizedSnippet) -> dict[str, list[dict[str, Any]]]:
         snippet_service = _snippet_service()
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if workflow is None:
