@@ -241,10 +241,10 @@ def regenerate_summary_index_task(
                         )
 
                         for segment in segments:
-                            summary_record: DocumentSegmentSummary | None = None
+                            existing_summary_record: DocumentSegmentSummary | None = None
                             try:
                                 # Get existing summary record
-                                summary_record = session.scalar(
+                                existing_summary_record = session.scalar(
                                     select(DocumentSegmentSummary)
                                     .where(
                                         DocumentSegmentSummary.chunk_id == segment.id,
@@ -253,7 +253,7 @@ def regenerate_summary_index_task(
                                     .limit(1)
                                 )
 
-                                if not summary_record:
+                                if not existing_summary_record:
                                     logger.warning("Summary record not found for segment %s, skipping", segment.id)
                                     continue
 
@@ -273,10 +273,10 @@ def regenerate_summary_index_task(
                                 )
                                 total_segments_failed += 1
                                 # Update summary record with error status
-                                if summary_record is not None:
-                                    summary_record.status = SummaryStatus.ERROR
-                                    summary_record.error = f"Regeneration failed: {str(e)}"
-                                    session.add(summary_record)
+                                if existing_summary_record is not None:
+                                    existing_summary_record.status = SummaryStatus.ERROR
+                                    existing_summary_record.error = f"Regeneration failed: {str(e)}"
+                                    session.add(existing_summary_record)
                                     session.commit()
                                 continue
 
