@@ -407,9 +407,6 @@
     }
   },
   "web/app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
-    "no-restricted-globals": {
-      "count": 6
-    },
     "react/set-state-in-effect": {
       "count": 4
     },
@@ -438,9 +435,6 @@
     }
   },
   "web/app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
-    "no-restricted-globals": {
-      "count": 6
-    },
     "react/set-state-in-effect": {
       "count": 4
     },
@@ -510,9 +504,6 @@
     }
   },
   "web/app/components/app/configuration/debug/hooks.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
