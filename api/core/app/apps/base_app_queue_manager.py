@@ -25,6 +25,7 @@ from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 WF_STOP_DIAG_MARKER = "WF_STOP_DIAG_7B9C2F"
+GRAPH_ENGINE_BACKED_APP_MODES = {"advanced-chat", "workflow"}
 
 
 class PublishFrom(IntEnum):
