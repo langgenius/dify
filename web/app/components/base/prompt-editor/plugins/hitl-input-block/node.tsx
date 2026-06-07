@@ -109,6 +109,11 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return self.__readonly || false
   }
 
+  setReadonly(readonly?: boolean): void {
+    const self = this.getWritable()
+    self.__readonly = readonly
+  }
+
   static override clone(node: HITLInputNode): HITLInputNode {
     return new HITLInputNode(
       node.__variableName,

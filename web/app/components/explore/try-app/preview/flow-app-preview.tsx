@@ -7,8 +7,8 @@ import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { useGetTryAppFlowPreview } from '@/service/use-try-app'
 
 type Props = {
-  appId: string
-  className?: string
+  readonly appId: string
+  readonly className?: string
 }
 
 const FlowAppPreview: FC<Props> = ({

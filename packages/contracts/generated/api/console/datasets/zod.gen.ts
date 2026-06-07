@@ -82,13 +82,6 @@ export const zIndexingEstimatePayload = z.object({
 })
 
 /**
- * TextContentResponse
- */
-export const zTextContentResponse = z.object({
-  content: z.string(),
-})
-
-/**
  * NotionEstimatePayload
  */
 export const zNotionEstimatePayload = z.object({
@@ -484,6 +477,32 @@ export const zDatasetMetadataBuiltInFieldsResponse = z.object({
 })
 
 /**
+ * PreviewDetail
+ */
+export const zPreviewDetail = z.object({
+  child_chunks: z.array(z.string()).nullish(),
+  content: z.string(),
+  summary: z.string().nullish(),
+})
+
+/**
+ * QAPreviewDetail
+ */
+export const zQaPreviewDetail = z.object({
+  answer: z.string(),
+  question: z.string(),
+})
+
+/**
+ * IndexingEstimate
+ */
+export const zIndexingEstimate = z.object({
+  preview: z.array(zPreviewDetail),
+  qa_preview: z.array(zQaPreviewDetail).nullish(),
+  total_segments: z.int(),
+})
+
+/**
  * DocumentMetadataResponse
  */
 export const zDocumentMetadataResponse = z.object({
@@ -689,6 +708,13 @@ export const zDatasetRerankingModel = z.object({
   reranking_model_name: z.string().optional(),
   reranking_provider_name: z.string().optional(),
 })
+
+/**
+ * ProcessRuleMode
+ *
+ * Dataset Process Rule Mode
+ */
+export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
 
 /**
  * RerankingModel
@@ -1109,7 +1135,7 @@ export const zRule = z.object({
  * ProcessRule
  */
 export const zProcessRule = z.object({
-  mode: z.enum(['automatic', 'custom', 'hierarchical']),
+  mode: zProcessRuleMode,
   rules: zRule.optional(),
 })
 
@@ -1530,17 +1556,12 @@ export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
  */
 export const zGetDatasetsMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
-/**
- * Success
- */
-export const zGetDatasetsNotionIndexingEstimateResponse = zTextContentResponse
-
 export const zPostDatasetsNotionIndexingEstimateBody = zNotionEstimatePayload
 
 /**
  * Success
  */
-export const zPostDatasetsNotionIndexingEstimateResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsNotionIndexingEstimateResponse = zIndexingEstimate
 
 export const zGetDatasetsProcessRuleQuery = z.object({
   document_id: z.string().optional(),

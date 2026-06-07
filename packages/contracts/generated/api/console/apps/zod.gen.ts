@@ -93,6 +93,17 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * WorkspacePreviewResponse
+ */
+export const zWorkspacePreviewResponse = z.object({
+  binary: z.boolean(),
+  path: z.string(),
+  size: z.int(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
  * AnnotationReplyPayload
  */
 export const zAnnotationReplyPayload = z.object({
@@ -566,10 +577,11 @@ export const zWorkflowDraftVariableUpdatePayload = z.object({
 
 /**
  * PublishWorkflowPayload
+ *
+ * Payload for publishing snippet workflow.
  */
 export const zPublishWorkflowPayload = z.object({
-  marked_comment: z.string().max(100).nullish(),
-  marked_name: z.string().max(20).nullish(),
+  knowledge_base_setting: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -742,7 +754,7 @@ export const zSite = z.object({
  */
 export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   summary: z.string().nullish(),
@@ -823,6 +835,25 @@ export const zAgentReferencingWorkflowResponse = z.object({
  */
 export const zAgentReferencingWorkflowsResponse = z.object({
   data: z.array(zAgentReferencingWorkflowResponse).optional(),
+})
+
+/**
+ * WorkspaceFileEntryResponse
+ */
+export const zWorkspaceFileEntryResponse = z.object({
+  mtime: z.int(),
+  name: z.string(),
+  size: z.int(),
+  type: z.enum(['dir', 'file', 'symlink']),
+})
+
+/**
+ * WorkspaceListResponse
+ */
+export const zWorkspaceListResponse = z.object({
+  entries: z.array(zWorkspaceFileEntryResponse).optional(),
+  path: z.string(),
+  truncated: z.boolean().optional().default(false),
 })
 
 /**
@@ -1661,16 +1692,6 @@ export const zAgentComposerNodeJobCandidatesResponse = z.object({
 })
 
 /**
- * AgentCliToolConfig
- */
-export const zAgentCliToolConfig = z.object({
-  command: z.string().nullish(),
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  name: z.string().max(255).nullish(),
-})
-
-/**
  * AgentComposerDifyToolCandidateResponse
  */
 export const zAgentComposerDifyToolCandidateResponse = z.object({
@@ -1700,27 +1721,6 @@ export const zAgentSkillRefConfig = z.object({
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
   path: z.string().nullish(),
-})
-
-/**
- * AgentComposerSoulCandidatesResponse
- */
-export const zAgentComposerSoulCandidatesResponse = z.object({
-  cli_tools: z.array(zAgentCliToolConfig).optional(),
-  dify_tools: z.array(zAgentComposerDifyToolCandidateResponse).optional(),
-  human_contacts: z.array(zAgentHumanContactConfig).optional(),
-  knowledge_datasets: z.array(zAgentKnowledgeDatasetConfig).optional(),
-  skills_files: z.array(zAgentSkillRefConfig).optional(),
-})
-
-/**
- * AgentComposerCandidatesResponse
- */
-export const zAgentComposerCandidatesResponse = z.object({
-  allowed_node_job_candidates: zAgentComposerNodeJobCandidatesResponse.optional(),
-  allowed_soul_candidates: zAgentComposerSoulCandidatesResponse.optional(),
-  capabilities: zComposerCandidateCapabilities.optional(),
-  variant: zComposerVariant,
 })
 
 /**
@@ -1816,17 +1816,6 @@ export const zConversationPagination = z.object({
   page: z.int(),
   per_page: z.int(),
   total: z.int(),
-})
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
 })
 
 /**
@@ -1959,6 +1948,8 @@ export const zDeclaredOutputFileConfig = z.object({
 export const zAgentSecretRefConfig = z.object({
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  permission_status: z.string().max(64).nullish(),
   provider: z.string().max(255).nullish(),
   type: z.string().max(64).nullish(),
 })
@@ -2096,6 +2087,71 @@ export const zWorkflowNodeJobMetadata = z.object({
 })
 
 /**
+ * AgentCliToolAuthorizationStatus
+ *
+ * Authorization state for Agent-scoped CLI tools.
+ *
+ * Missing status keeps backward compatibility with draft rows and CLI tools that
+ * do not need pre-authorization. Explicit denied-like states are blocked by the
+ * composer/publish validators and skipped by runtime request builders.
+ */
+export const zAgentCliToolAuthorizationStatus = z.enum([
+  'allowed',
+  'authorized',
+  'denied',
+  'forbidden',
+  'not_required',
+  'pending',
+  'pre_authorized',
+  'unauthorized',
+])
+
+/**
+ * AgentCliToolRiskLevel
+ *
+ * Risk marker for CLI tool bootstrap commands.
+ */
+export const zAgentCliToolRiskLevel = z.enum(['dangerous', 'safe', 'unknown'])
+
+/**
+ * AgentCliToolConfig
+ */
+export const zAgentCliToolConfig = z.object({
+  authorization_status: zAgentCliToolAuthorizationStatus.optional(),
+  command: z.string().nullish(),
+  dangerous: z.boolean().optional().default(false),
+  dangerous_acknowledged: z.boolean().optional().default(false),
+  description: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  invoke_metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().max(255).nullish(),
+  permission: z.record(z.string(), z.unknown()).optional(),
+  pre_authorized: z.boolean().nullish(),
+  risk_level: zAgentCliToolRiskLevel.optional(),
+})
+
+/**
+ * AgentComposerSoulCandidatesResponse
+ */
+export const zAgentComposerSoulCandidatesResponse = z.object({
+  cli_tools: z.array(zAgentCliToolConfig).optional(),
+  dify_tools: z.array(zAgentComposerDifyToolCandidateResponse).optional(),
+  human_contacts: z.array(zAgentHumanContactConfig).optional(),
+  knowledge_datasets: z.array(zAgentKnowledgeDatasetConfig).optional(),
+  skills_files: z.array(zAgentSkillRefConfig).optional(),
+})
+
+/**
+ * AgentComposerCandidatesResponse
+ */
+export const zAgentComposerCandidatesResponse = z.object({
+  allowed_node_job_candidates: zAgentComposerNodeJobCandidatesResponse.optional(),
+  allowed_soul_candidates: zAgentComposerSoulCandidatesResponse.optional(),
+  capabilities: zComposerCandidateCapabilities.optional(),
+  variant: zComposerVariant,
+})
+
+/**
  * AgentModerationIOConfig
  */
 export const zAgentModerationIoConfig = z.object({
@@ -2123,6 +2179,20 @@ export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
 })
 
 export const zFormInputConfig = z.unknown()
+
+export const zJsonValue2 = z.unknown()
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+})
 
 /**
  * OutputErrorStrategy
@@ -2641,6 +2711,7 @@ export const zWorkflowCommentDetailWritable = z.object({
 })
 
 export const zGetAppsQuery = z.object({
+  creator_ids: z.array(z.string()).nullish(),
   is_created_by_me: z.boolean().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z
@@ -2901,6 +2972,48 @@ export const zGetAppsByAppIdAgentReferencingWorkflowsPath = z.object({
  * Referencing workflows listed successfully
  */
 export const zGetAppsByAppIdAgentReferencingWorkflowsResponse = zAgentReferencingWorkflowsResponse
+
+export const zGetAppsByAppIdAgentWorkspaceFilesPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentWorkspaceFilesQuery = z.object({
+  conversation_id: z.string().min(1),
+  path: z.string().optional().default('.'),
+})
+
+/**
+ * Listing returned
+ */
+export const zGetAppsByAppIdAgentWorkspaceFilesResponse = zWorkspaceListResponse
+
+export const zGetAppsByAppIdAgentWorkspaceFilesDownloadPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentWorkspaceFilesDownloadQuery = z.object({
+  conversation_id: z.string().min(1),
+  path: z.string().min(1),
+})
+
+/**
+ * File bytes
+ */
+export const zGetAppsByAppIdAgentWorkspaceFilesDownloadResponse = z.custom<Blob | File>()
+
+export const zGetAppsByAppIdAgentWorkspaceFilesPreviewPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentWorkspaceFilesPreviewQuery = z.object({
+  conversation_id: z.string().min(1),
+  path: z.string().min(1),
+})
+
+/**
+ * Preview returned
+ */
+export const zGetAppsByAppIdAgentWorkspaceFilesPreviewResponse = zWorkspacePreviewResponse
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),
@@ -3787,6 +3900,63 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
  */
 export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
   = zWorkflowRunNodeExecutionListResponse
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    workflow_run_id: z.string(),
+  })
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesQuery
+  = z.object({
+    node_execution_id: z.string().optional(),
+    path: z.string().optional().default('.'),
+  })
+
+/**
+ * Listing returned
+ */
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse
+  = zWorkspaceListResponse
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    workflow_run_id: z.string(),
+  })
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadQuery
+  = z.object({
+    node_execution_id: z.string().optional(),
+    path: z.string().min(1),
+  })
+
+/**
+ * File bytes
+ */
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponse
+  = z.custom<Blob | File>()
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    workflow_run_id: z.string(),
+  })
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewQuery
+  = z.object({
+    node_execution_id: z.string().optional(),
+    path: z.string().min(1),
+  })
+
+/**
+ * Preview returned
+ */
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse
+  = zWorkspacePreviewResponse
 
 export const zGetAppsByAppIdWorkflowCommentsPath = z.object({
   app_id: z.string(),
