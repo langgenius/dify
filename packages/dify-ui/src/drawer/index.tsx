@@ -32,7 +32,7 @@ export function DrawerBackdrop({
   return (
     <BaseDrawer.Backdrop
       className={cn(
-        'fixed inset-0 z-50 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
+        'absolute inset-0 z-50 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
         'transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-swiping:duration-0 motion-reduce:transition-none',
         className,
       )}
