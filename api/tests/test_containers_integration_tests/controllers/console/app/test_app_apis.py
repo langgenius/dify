@@ -60,8 +60,8 @@ from controllers.console.app.workflow_draft_variable import WorkflowDraftVariabl
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
 from models import Site
-from models.enums import CustomizeTokenStrategy
 from models.account import Account, AccountStatus
+from models.enums import CustomizeTokenStrategy
 from models.model import AppMode
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
