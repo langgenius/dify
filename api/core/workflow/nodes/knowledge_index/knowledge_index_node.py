@@ -46,7 +46,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         self.index_processor = IndexProcessor()
         self.summary_index_service = SummaryIndex()
 
-    def _run(self) -> NodeRunResult:  # type: ignore
+    def _run(self) -> NodeRunResult:
         node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
 
