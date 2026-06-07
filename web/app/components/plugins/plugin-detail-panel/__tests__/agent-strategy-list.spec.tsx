@@ -51,7 +51,7 @@ const createPluginDetail = (): PluginDetail => ({
         tags: [],
       },
     },
-  } as unknown as PluginDetail['declaration'],
+  } as PluginDetail['declaration'],
   installation_id: 'install-1',
   tenant_id: 'tenant-1',
   endpoints_setups: 0,
