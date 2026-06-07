@@ -7,16 +7,14 @@ import UpdateFromMarketplace from '../from-market-place'
 const {
   mockStop,
   mockCheck,
-  mockHandleRefetch,
-  mockInvalidateReferenceSettings,
+  mockHandleInstallTaskStart,
   mockRemoveAutoUpgrade,
   mockUpdateFromMarketPlace,
   mockToastError,
 } = vi.hoisted(() => ({
   mockStop: vi.fn(),
   mockCheck: vi.fn(),
-  mockHandleRefetch: vi.fn(),
-  mockInvalidateReferenceSettings: vi.fn(),
+  mockHandleInstallTaskStart: vi.fn(),
   mockRemoveAutoUpgrade: vi.fn(),
   mockUpdateFromMarketPlace: vi.fn(),
   mockToastError: vi.fn(),
@@ -81,12 +79,11 @@ vi.mock('@/service/plugins', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   usePluginTaskList: () => ({
-    handleRefetch: mockHandleRefetch,
+    handleInstallTaskStart: mockHandleInstallTaskStart,
   }),
   useRemoveAutoUpgrade: () => ({
     mutateAsync: mockRemoveAutoUpgrade,
   }),
-  useInvalidateReferenceSettings: () => mockInvalidateReferenceSettings,
 }))
 
 vi.mock('../install-plugin/base/use-get-icon', () => ({
@@ -219,7 +216,6 @@ describe('UpdateFromMarketplace', () => {
 
     await waitFor(() => {
       expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({ plugin_id: 'plugin-1', category: PluginCategoryEnum.tool })
-      expect(mockInvalidateReferenceSettings).toHaveBeenCalled()
       expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
     })
   })
