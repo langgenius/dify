@@ -2,13 +2,14 @@ import logging
 import math
 import time
 
-import app
 import click
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+import app
 from core.helper.marketplace import fetch_global_plugin_manifest
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
 
 logger = logging.getLogger(__name__)
