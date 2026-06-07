@@ -6,8 +6,8 @@ import click
 from sqlalchemy import select
 
 import app
+from core.db.session_factory import session_factory
 from core.helper.marketplace import fetch_global_plugin_manifest
-from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
 from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
 
@@ -29,15 +29,22 @@ def check_upgradable_plugin_task():
     now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style(f"Now seconds of day: {now_seconds_of_day}", fg="green"))
 
-    strategies = db.session.scalars(
-        select(TenantPluginAutoUpgradeStrategy).where(
-            TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
-            TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
-            < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
-            TenantPluginAutoUpgradeStrategy.strategy_setting
-            != TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
-        )
-    ).all()
+    # Narrow session scope to just the query; release the connection before
+    # any network I/O (marketplace fetch) or sleeping between batches.
+    with session_factory.create_session() as session:
+        strategies = session.scalars(
+            select(TenantPluginAutoUpgradeStrategy).where(
+                TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
+                TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
+                < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
+                TenantPluginAutoUpgradeStrategy.strategy_setting
+                != TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
+            )
+        ).all()
+        # Detach objects so their column attributes remain accessible after
+        # the session closes (avoids holding a connection during network/sleep).
+        for strategy in strategies:
+            session.expunge(strategy)
 
     total_strategies = len(strategies)
     click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))
