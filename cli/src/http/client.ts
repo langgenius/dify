@@ -9,6 +9,7 @@ import type {
   RequestOptions,
   ResolvedOptions,
 } from './types.js'
+import { isVerbose } from '@/framework/context'
 import { userAgent as defaultUserAgent } from '@/version/info'
 import { buildBody } from './body.js'
 import { classifyResponse } from './error-mapper.js'
@@ -133,11 +134,11 @@ async function dispatch(state: ClientState, path: string, opts: RequestOptions, 
 
   await runHooks(state.hooks.onRequest, ctx)
 
-  // `dispatcher` is an undici extension to RequestInit, not in @types/node's fetch
-  // signature — hence the local type. Carries proxy routing when a proxy env var is set.
-  const init: RequestInit & { dispatcher?: unknown } = { signal }
+  const init: RequestInit & { dispatcher?: unknown, verbose?: boolean } = { signal }
   if (state.dispatcher !== undefined)
     init.dispatcher = state.dispatcher
+  if (isVerbose())
+    init.verbose = true
 
   try {
     ctx.response = await fetch(ctx.request, init)

@@ -7,7 +7,7 @@ from hmac import new as hmac_new
 from flask import abort, request
 
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.model import EndUser
 
 
@@ -44,6 +44,8 @@ def enterprise_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 
 def enterprise_inner_api_user_auth[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Inject an EndUser for valid inner API HMAC auth, otherwise pass the request through unchanged."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.INNER_API:
@@ -72,9 +74,9 @@ def enterprise_inner_api_user_auth[**P, R](view: Callable[P, R]) -> Callable[P, 
         if signature_base64 != token:
             return view(*args, **kwargs)
 
-        kwargs["user"] = db.session.get(EndUser, user_id)
-
-        return view(*args, **kwargs)
+        with session_factory.create_session() as session:
+            kwargs["user"] = session.get(EndUser, user_id)
+            return view(*args, **kwargs)
 
     return decorated
 

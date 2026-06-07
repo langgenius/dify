@@ -25,6 +25,8 @@ from agenton.layers import ExitIntent, LifecycleState
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID, PydanticAIHistoryRuntimeState
 from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
@@ -48,10 +50,58 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
+from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 
 class StaticToolsTestLayer(ToolsLayer):
     type_id: ClassVar[str] = "test.static.tools"
+
+
+class FakeRunnerShellctlClient:
+    run_calls: list[tuple[str, str | None, float]]
+    closed: bool
+
+    def __init__(self) -> None:
+        self.run_calls = []
+        self.closed = False
+
+    async def run(self, script: str, *, cwd: str | None = None, timeout: float = 10.0) -> JobResult:
+        self.run_calls.append((script, cwd, timeout))
+        return JobResult(
+            job_id="mkdir-job",
+            status=JobStatusName.EXITED,
+            done=True,
+            exit_code=0,
+            output_path="/tmp/output.log",
+            output="",
+            offset=0,
+            truncated=False,
+        )
+
+    async def close(self) -> None:
+        self.closed = True
+
+    async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> JobResult:
+        del job_id, offset, timeout
+        raise AssertionError("wait() should not be called in this test")
+
+    async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> JobResult:
+        del job_id, text, offset, timeout
+        raise AssertionError("input() should not be called in this test")
+
+    async def terminate(self, job_id: str, grace_seconds: float = 2.0) -> JobStatusView:
+        del job_id, grace_seconds
+        raise AssertionError("terminate() should not be called in this test")
+
+    async def delete(
+        self,
+        job_id: str,
+        *,
+        force: bool = False,
+        grace_seconds: float | None = None,
+    ) -> DeleteJobResponse:
+        del job_id, force, grace_seconds
+        raise AssertionError("delete() should not be called in this test")
 
 
 def _request(
@@ -595,6 +645,117 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
     assert create_agent_called is False
     assert [event.type for event in sink.events["run-static-dynamic-duplicate-tools"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-static-dynamic-duplicate-tools"] == "failed"
+
+
+def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    create_agent_called = False
+    shell_client = FakeRunnerShellctlClient()
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    async def fake_get_tools(_self: DifyPluginToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+        assert http_client.is_closed is False
+
+        async def duplicate_shell_run() -> str:
+            return "tool"
+
+        return [Tool(duplicate_shell_run, name="shell_run")]
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> object:
+        del model, tools, output_type
+        nonlocal create_agent_called
+        create_agent_called = True
+        raise AssertionError("create_agent should not be called when duplicate tool names are detected")
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr(DifyPluginToolsLayer, "get_tools", fake_get_tools)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+
+    shell_provider = LayerProvider.from_factory(
+        layer_type=DifyShellLayer,
+        create=lambda config: DifyShellLayer.from_config_with_settings(
+            DifyShellLayerConfig.model_validate(config),
+            shellctl_entrypoint="http://shellctl",
+            shellctl_client_factory=lambda _entrypoint: shell_client,
+        ),
+    )
+    layer_providers = tuple(
+        provider
+        for provider in create_default_layer_providers(shellctl_entrypoint="http://unused")
+        if provider.type_id != DIFY_SHELL_LAYER_TYPE_ID
+    ) + (shell_provider,)
+
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(name="shell", type=DIFY_SHELL_LAYER_TYPE_ID, config=DifyShellLayerConfig()),
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"execution_context": "execution_context"},
+                    config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="openai",
+                        model="demo-model",
+                        credentials={"api_key": "secret"},
+                    ),
+                ),
+                RunLayerSpec(
+                    name="tools",
+                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyPluginToolsLayerConfig(
+                        tools=[
+                            DifyPluginToolConfig(
+                                plugin_id="langgenius/tools",
+                                provider="search",
+                                tool_name="web_search",
+                                credential_type="api-key",
+                                parameters=_prepared_plugin_tool_parameters(),
+                                parameters_json_schema=_prepared_plugin_tool_schema(),
+                            )
+                        ]
+                    ),
+                ),
+            ]
+        )
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(
+                AgentRunValidationError,
+                match="unique tool names across all layers, got duplicates: shell_run",
+            ):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-shell-duplicate-tools",
+                    plugin_daemon_http_client=client,
+                    layer_providers=layer_providers,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert create_agent_called is False
+    assert shell_client.closed is True
+    assert [event.type for event in sink.events["run-shell-duplicate-tools"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-shell-duplicate-tools"] == "failed"
 
 
 def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1433,3 +1594,123 @@ def test_runner_rejects_closed_session_snapshot_as_validation_error() -> None:
 
     assert [event.type for event in sink.events["run-closed-snapshot"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-closed-snapshot"] == "failed"
+
+
+def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(name="shell", type=DIFY_SHELL_LAYER_TYPE_ID, config=DifyShellLayerConfig()),
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"execution_context": "execution_context"},
+                    config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="openai",
+                        model="demo-model",
+                        credentials={"api_key": "secret"},
+                    ),
+                ),
+            ]
+        )
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(AgentRunValidationError, match="DIFY_AGENT_SHELLCTL_ENTRYPOINT"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-missing-shell-entrypoint",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-missing-shell-entrypoint"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-missing-shell-entrypoint"] == "failed"
+
+
+def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> None:
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(name="shell", type=DIFY_SHELL_LAYER_TYPE_ID, config=DifyShellLayerConfig()),
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"execution_context": "execution_context"},
+                    config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="openai",
+                        model="demo-model",
+                        credentials={"api_key": "secret"},
+                    ),
+                ),
+            ]
+        ),
+        session_snapshot=CompositorSessionSnapshot(
+            layers=[
+                LayerSessionSnapshot(name="prompt", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+                LayerSessionSnapshot(
+                    name="shell",
+                    lifecycle_state=LifecycleState.SUSPENDED,
+                    runtime_state={
+                        "session_id": "abc12ff",
+                        "workspace_cwd": "~/workspace/abc12ff",
+                        "job_ids": ["job-1"],
+                        "job_offsets": {"job-1": -1},
+                    },
+                ),
+                LayerSessionSnapshot(
+                    name="execution_context",
+                    lifecycle_state=LifecycleState.SUSPENDED,
+                    runtime_state={},
+                ),
+                LayerSessionSnapshot(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    lifecycle_state=LifecycleState.SUSPENDED,
+                    runtime_state={},
+                ),
+            ]
+        ),
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(AgentRunValidationError, match="job_offsets"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-invalid-shell-offset",
+                    plugin_daemon_http_client=client,
+                    layer_providers=create_default_layer_providers(shellctl_entrypoint="http://shellctl"),
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-invalid-shell-offset"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-invalid-shell-offset"] == "failed"

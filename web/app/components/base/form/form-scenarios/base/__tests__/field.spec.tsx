@@ -8,6 +8,7 @@ import { BaseFieldType } from '../types'
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
+  usePathname: () => '/',
 }))
 
 const createConfig = (overrides: Partial<BaseConfiguration> = {}): BaseConfiguration => ({

@@ -196,10 +196,6 @@ export type DatasetMetadataBuiltInFieldsResponse = {
   fields: Array<DatasetMetadataBuiltInFieldResponse>
 }
 
-export type TextContentResponse = {
-  content: string
-}
-
 export type NotionEstimatePayload = {
   doc_form?: string
   doc_language?: string
@@ -209,6 +205,12 @@ export type NotionEstimatePayload = {
   process_rule: {
     [key: string]: unknown
   }
+}
+
+export type IndexingEstimate = {
+  preview: Array<PreviewDetail>
+  qa_preview?: Array<QaPreviewDetail> | null
+  total_segments: number
 }
 
 export type RetrievalSettingResponse = {
@@ -662,7 +664,7 @@ export type DataSource = {
 }
 
 export type ProcessRule = {
-  mode: 'automatic' | 'custom' | 'hierarchical'
+  mode: ProcessRuleMode
   rules?: Rule
 }
 
@@ -692,6 +694,17 @@ export type DatasetResponse = {
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
   type: string
+}
+
+export type PreviewDetail = {
+  child_chunks?: Array<string> | null
+  content: string
+  summary?: string | null
+}
+
+export type QaPreviewDetail = {
+  answer: string
+  question: string
 }
 
 export type DocumentWithSegmentsResponse = {
@@ -852,6 +865,8 @@ export type InfoList = {
   notion_info_list?: Array<NotionInfo> | null
   website_info_list?: WebsiteInfo
 }
+
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
 
 export type Rule = {
   parent_mode?: 'full-doc' | 'paragraph' | null
@@ -1387,20 +1402,6 @@ export type GetDatasetsMetadataBuiltInResponses = {
 export type GetDatasetsMetadataBuiltInResponse
   = GetDatasetsMetadataBuiltInResponses[keyof GetDatasetsMetadataBuiltInResponses]
 
-export type GetDatasetsNotionIndexingEstimateData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/datasets/notion-indexing-estimate'
-}
-
-export type GetDatasetsNotionIndexingEstimateResponses = {
-  200: TextContentResponse
-}
-
-export type GetDatasetsNotionIndexingEstimateResponse
-  = GetDatasetsNotionIndexingEstimateResponses[keyof GetDatasetsNotionIndexingEstimateResponses]
-
 export type PostDatasetsNotionIndexingEstimateData = {
   body: NotionEstimatePayload
   path?: never
@@ -1409,9 +1410,7 @@ export type PostDatasetsNotionIndexingEstimateData = {
 }
 
 export type PostDatasetsNotionIndexingEstimateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: IndexingEstimate
 }
 
 export type PostDatasetsNotionIndexingEstimateResponse

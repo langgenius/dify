@@ -1,3 +1,4 @@
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -97,7 +98,7 @@ const WorkflowPreview = () => {
     }
   }, [resize, stopResizing])
 
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
     await submitHumanInputForm(formToken, formData)
   }, [])
 

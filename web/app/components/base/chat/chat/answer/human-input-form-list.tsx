@@ -1,3 +1,4 @@
+import type { HumanInputFormSubmitData } from './human-input-content/type'
 import type { DeliveryMethod, HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
@@ -8,7 +9,7 @@ import { UnsubmittedHumanInputContent } from './human-input-content/unsubmitted'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
-  onHumanInputFormSubmit?: (formToken: string, formData: { inputs: Record<string, string>, action: string }) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
 

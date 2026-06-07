@@ -444,6 +444,88 @@ describe('DSL Import with Human Input Node', () => {
       expect(result.isValid).toBe(false)
     })
 
+    it('should validate that enabled email delivery methods have complete configuration', () => {
+      const t = (key: string) => key
+      const payload = {
+        ...humanInputDefault.defaultValue,
+        delivery_methods: [
+          {
+            id: 'dm-email',
+            type: DeliveryMethodType.Email,
+            enabled: true,
+          },
+        ],
+        user_actions: [
+          { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+        ],
+      } as HumanInputNodeType
+
+      const result = humanInputDefault.checkValid(payload, t)
+
+      expect(result.isValid).toBe(false)
+      expect(result.errorMessage).toBe('nodes.humanInput.errorMsg.emailConfigIncomplete')
+    })
+
+    it('should validate email delivery config fields before user actions', () => {
+      const t = (key: string) => key
+      const payload = {
+        ...humanInputDefault.defaultValue,
+        delivery_methods: [
+          {
+            id: 'dm-email',
+            type: DeliveryMethodType.Email,
+            enabled: true,
+            config: {
+              recipients: { whole_workspace: false, items: [] },
+              subject: 'Review request',
+              body: 'Please review {{#url#}}',
+              debug_mode: false,
+            },
+          },
+        ],
+        user_actions: [
+          { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+        ],
+      } as HumanInputNodeType
+
+      const result = humanInputDefault.checkValid(payload, t)
+
+      expect(result.isValid).toBe(false)
+      expect(result.errorMessage).toBe('nodes.humanInput.errorMsg.emailConfigIncomplete')
+    })
+
+    it('should validate enabled email subject and body content', () => {
+      const t = (key: string) => key
+      const createPayload = (body: string, subject = 'Review request') => ({
+        ...humanInputDefault.defaultValue,
+        delivery_methods: [
+          {
+            id: 'dm-email',
+            type: DeliveryMethodType.Email,
+            enabled: true,
+            config: {
+              recipients: { whole_workspace: true, items: [] },
+              subject,
+              body,
+              debug_mode: false,
+            },
+          },
+        ],
+        user_actions: [
+          { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+        ],
+      }) as HumanInputNodeType
+
+      expect(humanInputDefault.checkValid(createPayload('{{#url#}}', '  '), t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.emailConfigIncomplete',
+      })
+      expect(humanInputDefault.checkValid(createPayload('Please review'), t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.emailConfigIncomplete',
+      })
+    })
+
     it('should validate that user actions are required', () => {
       const t = (key: string) => key
       const payload = {
@@ -477,6 +559,30 @@ describe('DSL Import with Human Input Node', () => {
       expect(result.isValid).toBe(false)
     })
 
+    it('should validate that user action ids and titles are not empty', () => {
+      const t = (key: string) => key
+      const createPayload = (userActions: HumanInputNodeType['user_actions']) => ({
+        ...humanInputDefault.defaultValue,
+        delivery_methods: [
+          { id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true },
+        ],
+        user_actions: userActions,
+      }) as HumanInputNodeType
+
+      expect(humanInputDefault.checkValid(createPayload([
+        { id: '  ', title: 'Approve', button_style: UserActionButtonType.Primary },
+      ]), t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.emptyActionId',
+      })
+      expect(humanInputDefault.checkValid(createPayload([
+        { id: 'approve', title: '  ', button_style: UserActionButtonType.Primary },
+      ]), t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.emptyActionTitle',
+      })
+    })
+
     it('should pass validation with correct configuration', () => {
       const t = (key: string) => key
       const payload = {
@@ -503,8 +609,10 @@ describe('DSL Import with Human Input Node', () => {
       const payload = {
         ...humanInputDefault.defaultValue,
         inputs: [
-          { type: 'text-input', output_variable_name: 'review_result', default: { selector: [], type: 'constant' as const, value: '' } },
-          { type: 'text-input', output_variable_name: 'comment', default: { selector: [], type: 'constant' as const, value: '' } },
+          { type: 'paragraph', output_variable_name: 'review_result', default: { selector: [], type: 'constant' as const, value: '' } },
+          { type: 'file', output_variable_name: 'attachment', allowed_file_extensions: [], allowed_file_types: [], allowed_file_upload_methods: [] },
+          { type: 'file-list', output_variable_name: 'attachments', allowed_file_extensions: [], allowed_file_types: [], allowed_file_upload_methods: [], number_limits: 3 },
+          { type: 'select', output_variable_name: 'comment', option_source: { type: 'constant', selector: [], value: ['A', 'B'] } },
         ],
       } as HumanInputNodeType
 
@@ -512,6 +620,8 @@ describe('DSL Import with Human Input Node', () => {
 
       expect(outputVars).toEqual([
         { variable: 'review_result', type: 'string' },
+        { variable: 'attachment', type: 'file' },
+        { variable: 'attachments', type: 'array[file]' },
         { variable: 'comment', type: 'string' },
       ])
     })
