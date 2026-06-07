@@ -35,7 +35,7 @@ jobs:
       dify_tag: ${{ steps.resolve.outputs.dify_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -98,7 +98,7 @@ jobs:
       DIFY_TAG: ${{ needs.validate.outputs.dify_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
           fetch-depth: 1
@@ -114,7 +114,7 @@ jobs:
         run: node scripts/release-naming.mjs github-env >> "$GITHUB_ENV"
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.0.2
         with:
           bun-version-file: cli/.bun-version
 
