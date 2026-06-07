@@ -2,13 +2,13 @@ import logging
 import math
 import time
 
-import click
-from sqlalchemy import select
-
 import app
+import click
 from core.helper.marketplace import fetch_global_plugin_manifest
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
 
 logger = logging.getLogger(__name__)
@@ -29,15 +29,16 @@ def check_upgradable_plugin_task():
     now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style(f"Now seconds of day: {now_seconds_of_day}", fg="green"))
 
-    strategies = db.session.scalars(
-        select(TenantPluginAutoUpgradeStrategy).where(
-            TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
-            TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
-            < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
-            TenantPluginAutoUpgradeStrategy.strategy_setting
-            != TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
-        )
-    ).all()
+    with Session(db.engine, expire_on_commit=False) as session:
+        strategies = session.scalars(
+            select(TenantPluginAutoUpgradeStrategy).where(
+                TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
+                TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
+                < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
+                TenantPluginAutoUpgradeStrategy.strategy_setting
+                != TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
+            )
+        ).all()
 
     total_strategies = len(strategies)
     click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))
