@@ -41,7 +41,7 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-[120px] flex flex-col items-center px-4 py-2 text-[13px] leading-[18px] text-gray-500">
-          <ImageIndentLeft className="h-6 w-6 text-gray-400" />
+          <ImageIndentLeft className="size-6 text-gray-400" />
           <div className="mr-2">{t('resultEmpty.title', { ns: 'runLog' })}</div>
           <div>
             {t('resultEmpty.tipLeft', { ns: 'runLog' })}

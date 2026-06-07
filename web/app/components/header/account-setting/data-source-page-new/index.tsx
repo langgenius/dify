@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo } from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'

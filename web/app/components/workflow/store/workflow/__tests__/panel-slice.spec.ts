@@ -6,12 +6,12 @@ describe('createPanelSlice', () => {
     localStorage.clear()
   })
 
-  it('uses the persisted panel width when present', () => {
+  it('uses the static panel width default', () => {
     localStorage.setItem('workflow-node-panel-width', '480')
 
     const store = createStore(createPanelSlice)
 
-    expect(store.getState().panelWidth).toBe(480)
+    expect(store.getState().panelWidth).toBe(420)
   })
 
   it('updates panel visibility and context menus through the slice setters', () => {
@@ -19,12 +19,10 @@ describe('createPanelSlice', () => {
 
     store.getState().setShowFeaturesPanel(true)
     store.getState().setShowDebugAndPreviewPanel(true)
-    store.getState().setPanelMenu({ clientX: 48, clientY: 24 })
-    store.getState().setEdgeMenu({ clientX: 80, clientY: 120, edgeId: 'edge-1' })
+    store.getState().setContextMenuTarget({ type: 'edge', edgeId: 'edge-1' })
 
     expect(store.getState().showFeaturesPanel).toBe(true)
     expect(store.getState().showDebugAndPreviewPanel).toBe(true)
-    expect(store.getState().panelMenu).toEqual({ clientX: 48, clientY: 24 })
-    expect(store.getState().edgeMenu).toEqual({ clientX: 80, clientY: 120, edgeId: 'edge-1' })
+    expect(store.getState().contextMenuTarget).toEqual({ type: 'edge', edgeId: 'edge-1' })
   })
 })

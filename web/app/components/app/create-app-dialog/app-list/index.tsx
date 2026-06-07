@@ -17,6 +17,7 @@ import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { importDSL } from '@/service/apps'
@@ -46,6 +47,8 @@ const Apps = ({
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { push } = useRouter()
   const allCategoriesEn = AppCategories.RECOMMENDED
+
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -127,7 +130,7 @@ const Apps = ({
         icon_background,
         description,
       })
-      trackCreateApp({ appMode: mode })
+      trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
 
       setIsShowCreateModal(false)
       toast.success(t('newApp.appCreated', { ns: 'app' }))
@@ -135,7 +138,7 @@ const Apps = ({
         onSuccess()
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
       getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
     }
     catch {
@@ -237,8 +240,8 @@ function NoTemplateFound() {
   const { t } = useTranslation()
   return (
     <div className="w-full rounded-lg bg-workflow-process-bg p-4">
-      <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
-        <RiRobot2Line className="h-5 w-5 text-text-tertiary" />
+      <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
+        <RiRobot2Line className="size-5 text-text-tertiary" />
       </div>
       <p className="title-md-semi-bold text-text-primary">{t('newApp.noTemplateFound', { ns: 'app' })}</p>
       <p className="system-sm-regular text-text-tertiary">{t('newApp.noTemplateFoundTip', { ns: 'app' })}</p>

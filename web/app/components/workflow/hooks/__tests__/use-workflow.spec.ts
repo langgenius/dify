@@ -78,6 +78,16 @@ describe('useWorkflowReadOnly', () => {
     expect(result.current.workflowReadOnly).toBe(false)
   })
 
+  it('should return workflowReadOnly true when canvas is read only', () => {
+    const { result } = renderWorkflowHook(() => useWorkflowReadOnly(), {
+      initialStoreState: {
+        canvasReadOnly: true,
+      },
+    })
+
+    expect(result.current.workflowReadOnly).toBe(true)
+  })
+
   it('should expose getWorkflowReadOnly that reads from store state', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowReadOnly())
 
@@ -129,6 +139,16 @@ describe('useNodesReadOnly', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
       initialStoreState: { isRestoring: true },
     })
+    expect(result.current.nodesReadOnly).toBe(true)
+  })
+
+  it('should return true when canvas is read only', () => {
+    const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
+      initialStoreState: {
+        canvasReadOnly: true,
+      },
+    })
+
     expect(result.current.nodesReadOnly).toBe(true)
   })
 

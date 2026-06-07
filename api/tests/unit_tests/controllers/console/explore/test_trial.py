@@ -88,6 +88,11 @@ def valid_parameters():
     }
 
 
+def test_trial_workflow_uses_trial_scoped_simple_account_model():
+    assert module.simple_account_model.name == "TrialSimpleAccount"
+    assert hasattr(module.simple_account_model, "items")
+
+
 class TestTrialAppWorkflowRunApi:
     def test_not_workflow_app(self, app: Flask):
         api = module.TrialAppWorkflowRunApi()
@@ -97,7 +102,7 @@ class TestTrialAppWorkflowRunApi:
             with pytest.raises(NotWorkflowAppError):
                 method(api, MagicMock(mode=AppMode.CHAT))
 
-    def test_success(self, app, trial_app_workflow, account):
+    def test_success(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -111,7 +116,7 @@ class TestTrialAppWorkflowRunApi:
 
         assert result is not None
 
-    def test_workflow_provider_not_init(self, app, trial_app_workflow, account):
+    def test_workflow_provider_not_init(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -127,7 +132,7 @@ class TestTrialAppWorkflowRunApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api, trial_app_workflow)
 
-    def test_workflow_quota_exceeded(self, app, trial_app_workflow, account):
+    def test_workflow_quota_exceeded(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -143,7 +148,7 @@ class TestTrialAppWorkflowRunApi:
             with pytest.raises(ProviderQuotaExceededError):
                 method(api, trial_app_workflow)
 
-    def test_workflow_model_not_support(self, app, trial_app_workflow, account):
+    def test_workflow_model_not_support(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -159,7 +164,7 @@ class TestTrialAppWorkflowRunApi:
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
                 method(api, trial_app_workflow)
 
-    def test_workflow_invoke_error(self, app, trial_app_workflow, account):
+    def test_workflow_invoke_error(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -175,7 +180,7 @@ class TestTrialAppWorkflowRunApi:
             with pytest.raises(CompletionRequestError):
                 method(api, trial_app_workflow)
 
-    def test_workflow_rate_limit_error(self, app, trial_app_workflow, account):
+    def test_workflow_rate_limit_error(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -191,7 +196,7 @@ class TestTrialAppWorkflowRunApi:
             with pytest.raises(InvokeRateLimitHttpError):
                 method(api, trial_app_workflow)
 
-    def test_workflow_value_error(self, app, trial_app_workflow, account):
+    def test_workflow_value_error(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -207,7 +212,7 @@ class TestTrialAppWorkflowRunApi:
             with pytest.raises(ValueError):
                 method(api, trial_app_workflow)
 
-    def test_workflow_generic_exception(self, app, trial_app_workflow, account):
+    def test_workflow_generic_exception(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -233,7 +238,7 @@ class TestTrialChatApi:
             with pytest.raises(NotChatAppError):
                 method(api, MagicMock(mode="completion"))
 
-    def test_success(self, app, trial_app_chat, account):
+    def test_success(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -247,7 +252,7 @@ class TestTrialChatApi:
 
         assert result is not None
 
-    def test_chat_conversation_not_exists(self, app, trial_app_chat, account):
+    def test_chat_conversation_not_exists(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -263,7 +268,7 @@ class TestTrialChatApi:
             with pytest.raises(NotFound):
                 method(api, trial_app_chat)
 
-    def test_chat_conversation_completed(self, app, trial_app_chat, account):
+    def test_chat_conversation_completed(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -279,7 +284,7 @@ class TestTrialChatApi:
             with pytest.raises(ConversationCompletedError):
                 method(api, trial_app_chat)
 
-    def test_chat_app_config_broken(self, app, trial_app_chat, account):
+    def test_chat_app_config_broken(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -295,7 +300,7 @@ class TestTrialChatApi:
             with pytest.raises(AppUnavailableError):
                 method(api, trial_app_chat)
 
-    def test_chat_provider_not_init(self, app, trial_app_chat, account):
+    def test_chat_provider_not_init(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -311,7 +316,7 @@ class TestTrialChatApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api, trial_app_chat)
 
-    def test_chat_quota_exceeded(self, app, trial_app_chat, account):
+    def test_chat_quota_exceeded(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -327,7 +332,7 @@ class TestTrialChatApi:
             with pytest.raises(ProviderQuotaExceededError):
                 method(api, trial_app_chat)
 
-    def test_chat_model_not_support(self, app, trial_app_chat, account):
+    def test_chat_model_not_support(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -343,7 +348,7 @@ class TestTrialChatApi:
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
                 method(api, trial_app_chat)
 
-    def test_chat_invoke_error(self, app, trial_app_chat, account):
+    def test_chat_invoke_error(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -359,7 +364,7 @@ class TestTrialChatApi:
             with pytest.raises(CompletionRequestError):
                 method(api, trial_app_chat)
 
-    def test_chat_rate_limit_error(self, app, trial_app_chat, account):
+    def test_chat_rate_limit_error(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -375,7 +380,7 @@ class TestTrialChatApi:
             with pytest.raises(InvokeRateLimitHttpError):
                 method(api, trial_app_chat)
 
-    def test_chat_value_error(self, app, trial_app_chat, account):
+    def test_chat_value_error(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -391,7 +396,7 @@ class TestTrialChatApi:
             with pytest.raises(ValueError):
                 method(api, trial_app_chat)
 
-    def test_chat_generic_exception(self, app, trial_app_chat, account):
+    def test_chat_generic_exception(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -417,7 +422,7 @@ class TestTrialCompletionApi:
             with pytest.raises(NotCompletionAppError):
                 method(api, MagicMock(mode=AppMode.CHAT))
 
-    def test_success(self, app, trial_app_completion, account):
+    def test_success(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -431,7 +436,7 @@ class TestTrialCompletionApi:
 
         assert result is not None
 
-    def test_completion_app_config_broken(self, app, trial_app_completion, account):
+    def test_completion_app_config_broken(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -447,7 +452,7 @@ class TestTrialCompletionApi:
             with pytest.raises(AppUnavailableError):
                 method(api, trial_app_completion)
 
-    def test_completion_provider_not_init(self, app, trial_app_completion, account):
+    def test_completion_provider_not_init(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -463,7 +468,7 @@ class TestTrialCompletionApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api, trial_app_completion)
 
-    def test_completion_quota_exceeded(self, app, trial_app_completion, account):
+    def test_completion_quota_exceeded(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -479,7 +484,7 @@ class TestTrialCompletionApi:
             with pytest.raises(ProviderQuotaExceededError):
                 method(api, trial_app_completion)
 
-    def test_completion_model_not_support(self, app, trial_app_completion, account):
+    def test_completion_model_not_support(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -495,7 +500,7 @@ class TestTrialCompletionApi:
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
                 method(api, trial_app_completion)
 
-    def test_completion_invoke_error(self, app, trial_app_completion, account):
+    def test_completion_invoke_error(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -511,7 +516,7 @@ class TestTrialCompletionApi:
             with pytest.raises(CompletionRequestError):
                 method(api, trial_app_completion)
 
-    def test_completion_rate_limit_error(self, app, trial_app_completion, account):
+    def test_completion_rate_limit_error(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -527,7 +532,7 @@ class TestTrialCompletionApi:
             with pytest.raises(InternalServerError):
                 method(api, trial_app_completion)
 
-    def test_completion_value_error(self, app, trial_app_completion, account):
+    def test_completion_value_error(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -543,7 +548,7 @@ class TestTrialCompletionApi:
             with pytest.raises(ValueError):
                 method(api, trial_app_completion)
 
-    def test_completion_generic_exception(self, app, trial_app_completion, account):
+    def test_completion_generic_exception(self, app: Flask, trial_app_completion, account):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -569,7 +574,7 @@ class TestTrialMessageSuggestedQuestionApi:
             with pytest.raises(NotChatAppError):
                 method(MagicMock(mode="completion"), str(uuid4()))
 
-    def test_success(self, app, trial_app_chat, account):
+    def test_success(self, app: Flask, trial_app_chat, account):
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
@@ -586,7 +591,7 @@ class TestTrialMessageSuggestedQuestionApi:
 
         assert result == {"data": ["q1", "q2"]}
 
-    def test_conversation_not_exists(self, app, trial_app_chat, account):
+    def test_conversation_not_exists(self, app: Flask, trial_app_chat, account):
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
@@ -638,7 +643,7 @@ class TestTrialAppParameterApi:
 
 
 class TestTrialChatAudioApi:
-    def test_success(self, app, trial_app_chat, account):
+    def test_success(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -657,7 +662,7 @@ class TestTrialChatAudioApi:
 
         assert result == {"text": "hello"}
 
-    def test_app_config_broken(self, app, trial_app_chat, account):
+    def test_app_config_broken(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -678,7 +683,7 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.AppUnavailableError):
                 method(api, trial_app_chat)
 
-    def test_no_audio_uploaded(self, app, trial_app_chat, account):
+    def test_no_audio_uploaded(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -699,7 +704,7 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.NoAudioUploadedError):
                 method(api, trial_app_chat)
 
-    def test_audio_too_large(self, app, trial_app_chat, account):
+    def test_audio_too_large(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -720,7 +725,7 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.AudioTooLargeError):
                 method(api, trial_app_chat)
 
-    def test_unsupported_audio_type(self, app, trial_app_chat, account):
+    def test_unsupported_audio_type(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -741,7 +746,7 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.UnsupportedAudioTypeError):
                 method(api, trial_app_chat)
 
-    def test_provider_not_support_tts(self, app, trial_app_chat, account):
+    def test_provider_not_support_tts(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -762,7 +767,7 @@ class TestTrialChatAudioApi:
             with pytest.raises(module.ProviderNotSupportSpeechToTextError):
                 method(api, trial_app_chat)
 
-    def test_provider_not_init(self, app, trial_app_chat, account):
+    def test_provider_not_init(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -779,7 +784,7 @@ class TestTrialChatAudioApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api, trial_app_chat)
 
-    def test_quota_exceeded(self, app, trial_app_chat, account):
+    def test_quota_exceeded(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -798,7 +803,7 @@ class TestTrialChatAudioApi:
 
 
 class TestTrialChatTextApi:
-    def test_success(self, app, trial_app_chat, account):
+    def test_success(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -812,7 +817,7 @@ class TestTrialChatTextApi:
 
         assert result == {"audio": "base64_data"}
 
-    def test_app_config_broken(self, app, trial_app_chat, account):
+    def test_app_config_broken(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -828,7 +833,7 @@ class TestTrialChatTextApi:
             with pytest.raises(module.AppUnavailableError):
                 method(api, trial_app_chat)
 
-    def test_provider_not_support(self, app, trial_app_chat, account):
+    def test_provider_not_support(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -844,7 +849,7 @@ class TestTrialChatTextApi:
             with pytest.raises(module.ProviderNotSupportSpeechToTextError):
                 method(api, trial_app_chat)
 
-    def test_audio_too_large(self, app, trial_app_chat, account):
+    def test_audio_too_large(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -860,7 +865,7 @@ class TestTrialChatTextApi:
             with pytest.raises(module.AudioTooLargeError):
                 method(api, trial_app_chat)
 
-    def test_no_audio_uploaded(self, app, trial_app_chat, account):
+    def test_no_audio_uploaded(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -876,7 +881,7 @@ class TestTrialChatTextApi:
             with pytest.raises(module.NoAudioUploadedError):
                 method(api, trial_app_chat)
 
-    def test_provider_not_init(self, app, trial_app_chat, account):
+    def test_provider_not_init(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -888,7 +893,7 @@ class TestTrialChatTextApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api, trial_app_chat)
 
-    def test_quota_exceeded(self, app, trial_app_chat, account):
+    def test_quota_exceeded(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -900,7 +905,7 @@ class TestTrialChatTextApi:
             with pytest.raises(ProviderQuotaExceededError):
                 method(api, trial_app_chat)
 
-    def test_model_not_support(self, app, trial_app_chat, account):
+    def test_model_not_support(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -912,7 +917,7 @@ class TestTrialChatTextApi:
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
                 method(api, trial_app_chat)
 
-    def test_invoke_error(self, app, trial_app_chat, account):
+    def test_invoke_error(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -926,7 +931,7 @@ class TestTrialChatTextApi:
 
 
 class TestTrialAppWorkflowTaskStopApi:
-    def test_not_workflow_app(self, app, trial_app_chat):
+    def test_not_workflow_app(self, app: Flask, trial_app_chat):
         api = module.TrialAppWorkflowTaskStopApi()
         method = unwrap(api.post)
 
@@ -934,7 +939,7 @@ class TestTrialAppWorkflowTaskStopApi:
             with pytest.raises(NotWorkflowAppError):
                 method(api, trial_app_chat, str(uuid4()))
 
-    def test_success(self, app, trial_app_workflow, account):
+    def test_success(self, app: Flask, trial_app_workflow, account):
         api = module.TrialAppWorkflowTaskStopApi()
         method = unwrap(api.post)
 
@@ -1004,7 +1009,7 @@ class TestTrialSitApi:
 
 
 class TestTrialChatAudioApiExceptionHandlers:
-    def test_provider_not_init(self, app, trial_app_chat, account):
+    def test_provider_not_init(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1025,7 +1030,7 @@ class TestTrialChatAudioApiExceptionHandlers:
             with pytest.raises(ProviderNotInitializeError):
                 method(api, trial_app_chat)
 
-    def test_quota_exceeded(self, app, trial_app_chat, account):
+    def test_quota_exceeded(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1046,7 +1051,7 @@ class TestTrialChatAudioApiExceptionHandlers:
             with pytest.raises(ProviderQuotaExceededError):
                 method(api, trial_app_chat)
 
-    def test_invoke_error(self, app, trial_app_chat, account):
+    def test_invoke_error(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1069,7 +1074,7 @@ class TestTrialChatAudioApiExceptionHandlers:
 
 
 class TestTrialChatTextApiExceptionHandlers:
-    def test_app_config_broken(self, app, trial_app_chat, account):
+    def test_app_config_broken(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1085,7 +1090,7 @@ class TestTrialChatTextApiExceptionHandlers:
             with pytest.raises(module.AppUnavailableError):
                 method(api, trial_app_chat)
 
-    def test_unsupported_audio_type(self, app, trial_app_chat, account):
+    def test_unsupported_audio_type(self, app: Flask, trial_app_chat, account):
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 

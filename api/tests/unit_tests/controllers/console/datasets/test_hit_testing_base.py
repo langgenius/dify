@@ -22,6 +22,7 @@ from core.errors.error import (
 )
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.account import Account
+from models.dataset import Dataset
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
 
@@ -43,7 +44,45 @@ def patch_current_user(mocker, account):
 
 @pytest.fixture
 def dataset():
-    return MagicMock(id="dataset-1")
+    return Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="account-1")
+
+
+def hit_testing_record() -> dict[str, object]:
+    return {
+        "segment": {
+            "id": "segment-1",
+            "position": 1,
+            "document_id": "document-1",
+            "content": "Chunk text",
+            "answer": None,
+            "word_count": 2,
+            "tokens": 3,
+            "keywords": None,
+            "index_node_id": None,
+            "index_node_hash": None,
+            "hit_count": 0,
+            "enabled": True,
+            "disabled_at": None,
+            "disabled_by": None,
+            "status": "completed",
+            "created_by": "account-1",
+            "created_at": 1_700_000_000,
+            "indexing_at": None,
+            "completed_at": None,
+            "error": None,
+            "stopped_at": None,
+            "document": {
+                "id": "document-1",
+                "data_source_type": "upload_file",
+                "name": "guide.md",
+                "doc_type": None,
+                "doc_metadata": None,
+            },
+        },
+        "child_chunks": None,
+        "files": None,
+        "score": 0.8,
+    }
 
 
 class TestGetAndValidateDataset:
@@ -116,11 +155,18 @@ class TestParseArgs:
         with pytest.raises(ValueError):
             DatasetsHitTestingBase.parse_args(payload)
 
+    def test_parse_args_ignores_unknown_fields_for_compatibility(self):
+        payload = {"query": "hello", "top_k": 3}
+
+        result = DatasetsHitTestingBase.parse_args(payload)
+
+        assert result == {"query": "hello"}
+
 
 class TestPerformHitTesting:
     def test_success(self, dataset):
         response = {
-            "query": "hello",
+            "query": {"content": "hello"},
             "records": [],
         }
 
@@ -131,44 +177,50 @@ class TestPerformHitTesting:
         ):
             result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
 
-        assert result["query"] == "hello"
+        assert result["query"] == {"content": "hello"}
         assert result["records"] == []
 
-    def test_success_normalizes_legacy_query_and_nullable_list_fields(self, dataset):
+    def test_success_prepares_nullable_list_fields(self, dataset):
         response = {
             "query": {"content": "hello"},
-            "records": [
-                {
-                    "segment": {"id": "segment-1", "keywords": None},
-                    "child_chunks": None,
-                    "files": None,
-                    "score": 0.8,
-                }
-            ],
+            "records": [hit_testing_record()],
         }
 
+        with patch.object(
+            HitTestingService,
+            "retrieve",
+            return_value=response,
+        ):
+            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+
+        assert result["query"] == {"content": "hello"}
+        record = result["records"][0]
+        assert record["segment"]["keywords"] == []
+        assert record["segment"]["sign_content"] is None
+        assert record["child_chunks"] == []
+        assert record["files"] == []
+        assert record["score"] == 0.8
+        assert record["tsne_position"] is None
+        assert record["summary"] is None
+
+    def test_invalid_query_response_raises_value_error(self, dataset):
         with (
             patch.object(
                 HitTestingService,
                 "retrieve",
-                return_value=response,
+                return_value={"query": "hello", "records": []},
             ),
-            patch(
-                "controllers.console.datasets.hit_testing_base.marshal",
-                return_value=response["records"],
-            ),
+            pytest.raises(ValueError, match="Invalid hit testing query response"),
         ):
-            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+            DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
 
-        assert result["query"] == "hello"
-        assert result["records"] == [
-            {
-                "segment": {"id": "segment-1", "keywords": []},
-                "child_chunks": [],
-                "files": [],
-                "score": 0.8,
-            }
-        ]
+    def test_invalid_records_response_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid hit testing records response"):
+            DatasetsHitTestingBase._prepare_hit_testing_records({"records": []})
+
+    def test_invalid_record_response_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid hit testing record response"):
+            DatasetsHitTestingBase._prepare_hit_testing_records(["record"])
 
     def test_index_not_initialized(self, dataset):
         with patch.object(

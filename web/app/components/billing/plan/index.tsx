@@ -18,6 +18,7 @@ import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
@@ -70,12 +71,13 @@ const PlanComp: FC<Props> = ({
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
     if (isPending)
       return
     mutateAsync().then((res) => {
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      setEducationVerifying(null)
       if (unmountedRef.current)
         return
       router.push(`/education-apply?token=${res.token}`)
@@ -113,14 +115,14 @@ const PlanComp: FC<Props> = ({
           <div className="flex shrink-0 items-center gap-1">
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <RiGraduationCapLine className="mr-1 size-4" />
                 {t('toVerified', { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
             {enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <RiGraduationCapLine className="mr-1 size-4" />
                 {t('useEducationDiscount', { ns: 'education' })}
                 {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
               </Button>

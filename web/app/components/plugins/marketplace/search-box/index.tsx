@@ -77,12 +77,12 @@ const SearchBox = ({
         {
           !usedInMarketplace && (
             <>
-              <div className="flex grow items-center py-[7px] pr-3 pl-2">
+              <div className="flex h-8 min-w-0 grow items-center pr-2 pl-2">
                 <RiSearchLine className="size-4 text-components-input-text-placeholder" />
                 <input
                   autoFocus={autoFocus}
                   className={cn(
-                    'mr-1 ml-1.5 inline-block grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
+                    'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none truncate bg-transparent system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder',
                     search && 'mr-2',
                   )}
                   value={search}
@@ -94,6 +94,7 @@ const SearchBox = ({
                 {
                   search && (
                     <ActionButton
+                      size="xs"
                       onClick={() => onSearchChange('')}
                       className="shrink-0"
                     >
@@ -117,7 +118,7 @@ const SearchBox = ({
             className="ml-2 rounded-full bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text"
             onClick={onShowAddCustomCollectionModal}
           >
-            <RiAddLine className="h-4 w-4" />
+            <RiAddLine className="size-4" />
           </ActionButton>
         </div>
       )}

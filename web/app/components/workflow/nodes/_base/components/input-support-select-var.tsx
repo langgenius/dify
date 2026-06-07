@@ -123,7 +123,7 @@ const Editor: FC<Props> = ({
               <TooltipTrigger
                 render={(
                   <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
-                    <Variable02 className="h-3.5 w-3.5 text-components-button-secondary-accent-text" />
+                    <Variable02 className="size-3.5 text-components-button-secondary-accent-text" />
                   </div>
                 )}
               />

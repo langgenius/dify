@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type PostLogoutData = {
   body?: never
   path?: never
@@ -12,9 +16,7 @@ export type PostLogoutData = {
 }
 
 export type PostLogoutResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostLogoutResponse = PostLogoutResponses[keyof PostLogoutResponses]

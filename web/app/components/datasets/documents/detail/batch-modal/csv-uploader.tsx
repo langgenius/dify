@@ -184,7 +184,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
                 </button>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
+            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
           </div>
         )}
         {file && (
@@ -209,7 +209,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
                 aria-label={t('operation.delete', { ns: 'common' })}
                 onClick={removeFile}
               >
-                <RiDeleteBinLine className="h-4 w-4 text-text-secondary" aria-hidden="true" />
+                <RiDeleteBinLine className="size-4 text-text-secondary" aria-hidden="true" />
               </button>
             </div>
           </div>

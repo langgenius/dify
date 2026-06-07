@@ -13,7 +13,7 @@ export type RecommendedAppResponse = {
   app?: RecommendedAppInfoResponse
   app_id: string
   can_trial?: boolean | null
-  category?: string | null
+  categories?: Array<string>
   copyright?: string | null
   custom_disclaimer?: string | null
   description?: string | null
@@ -35,7 +35,7 @@ export type GetExploreAppsData = {
   body?: never
   path?: never
   query?: {
-    language?: string | null
+    language?: string
   }
   url: '/explore/apps'
 }

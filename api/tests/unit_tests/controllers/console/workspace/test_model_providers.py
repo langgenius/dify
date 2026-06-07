@@ -34,15 +34,11 @@ class TestModelProviderListApi:
         with (
             app.test_request_context("/?model_type=llm"),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.get_provider_list",
                 return_value=[{"name": "openai"}],
             ),
         ):
-            result = method(api)
+            result = method(api, "tenant1")
 
         assert "data" in result
 
@@ -55,15 +51,11 @@ class TestModelProviderCredentialApi:
         with (
             app.test_request_context(f"/?credential_id={VALID_UUID}"),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.get_provider_credential",
                 return_value={"key": "value"},
             ),
         ):
-            result = method(api, provider="openai")
+            result = method(api, "tenant1", provider="openai")
 
         assert "credentials" in result
 
@@ -71,15 +63,9 @@ class TestModelProviderCredentialApi:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
-        with (
-            app.test_request_context(f"/?credential_id={INVALID_UUID}"),
-            patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-        ):
+        with app.test_request_context(f"/?credential_id={INVALID_UUID}"):
             with pytest.raises(ValidationError):
-                method(api, provider="openai")
+                method(api, "tenant1", provider="openai")
 
     def test_post_create_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -90,15 +76,11 @@ class TestModelProviderCredentialApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.create_provider_credential",
                 return_value=None,
             ),
         ):
-            result, status = method(api, provider="openai")
+            result, status = method(api, "tenant1", provider="openai")
 
         assert result["result"] == "success"
         assert status == 201
@@ -112,16 +94,12 @@ class TestModelProviderCredentialApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.create_provider_credential",
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, provider="openai")
+                method(api, "tenant1", provider="openai")
 
     def test_put_update_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -132,15 +110,11 @@ class TestModelProviderCredentialApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.update_provider_credential",
                 return_value=None,
             ),
         ):
-            result = method(api, provider="openai")
+            result = method(api, "tenant1", provider="openai")
 
         assert result["result"] == "success"
 
@@ -150,15 +124,9 @@ class TestModelProviderCredentialApi:
 
         payload = {"credential_id": INVALID_UUID, "credentials": {"a": "b"}}
 
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-        ):
+        with app.test_request_context("/", json=payload):
             with pytest.raises(ValidationError):
-                method(api, provider="openai")
+                method(api, "tenant1", provider="openai")
 
     def test_delete_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -169,18 +137,14 @@ class TestModelProviderCredentialApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.remove_provider_credential",
                 return_value=None,
             ),
         ):
-            result, status = method(api, provider="openai")
+            result, status = method(api, "tenant1", provider="openai")
 
-        assert result["result"] == "success"
         assert status == 204
+        assert result == ""
 
 
 class TestModelProviderCredentialSwitchApi:
@@ -193,15 +157,11 @@ class TestModelProviderCredentialSwitchApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.switch_active_provider_credential",
                 return_value=None,
             ),
         ):
-            result = method(api, provider="openai")
+            result = method(api, "tenant1", provider="openai")
 
         assert result["result"] == "success"
 
@@ -211,15 +171,9 @@ class TestModelProviderCredentialSwitchApi:
 
         payload = {"credential_id": INVALID_UUID}
 
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-        ):
+        with app.test_request_context("/", json=payload):
             with pytest.raises(ValidationError):
-                method(api, provider="openai")
+                method(api, "tenant1", provider="openai")
 
 
 class TestModelProviderValidateApi:
@@ -232,15 +186,11 @@ class TestModelProviderValidateApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.validate_provider_credentials",
                 return_value=None,
             ),
         ):
-            result = method(api, provider="openai")
+            result = method(api, "tenant1", provider="openai")
 
         assert result["result"] == "success"
 
@@ -253,15 +203,11 @@ class TestModelProviderValidateApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.validate_provider_credentials",
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
         ):
-            result = method(api, provider="openai")
+            result = method(api, "tenant1", provider="openai")
 
         assert result["result"] == "error"
 
@@ -305,15 +251,11 @@ class TestPreferredProviderTypeUpdateApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.switch_preferred_provider",
                 return_value=None,
             ),
         ):
-            result = method(api, provider="openai")
+            result = method(api, "tenant1", provider="openai")
 
         assert result["result"] == "success"
 
@@ -323,15 +265,9 @@ class TestPreferredProviderTypeUpdateApi:
 
         payload = {"preferred_provider_type": "invalid"}
 
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
-        ):
+        with app.test_request_context("/", json=payload):
             with pytest.raises(ValidationError):
-                method(api, provider="openai")
+                method(api, "tenant1", provider="openai")
 
 
 class TestModelProviderPaymentCheckoutUrlApi:
@@ -344,10 +280,6 @@ class TestModelProviderPaymentCheckoutUrlApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(user, "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.BillingService.is_tenant_owner_or_admin",
                 return_value=None,
             ),
@@ -356,7 +288,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
                 return_value={"url": "x"},
             ),
         ):
-            result = method(api, provider="anthropic")
+            result = method(api, "tenant1", user, provider="anthropic")
 
         assert "url" in result
 
@@ -366,7 +298,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
 
         with app.test_request_context("/"):
             with pytest.raises(ValueError):
-                method(api, provider="openai")
+                method(api, "tenant1", MagicMock(), provider="openai")
 
     def test_permission_denied(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
@@ -377,13 +309,9 @@ class TestModelProviderPaymentCheckoutUrlApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.model_providers.current_account_with_tenant",
-                return_value=(user, "tenant1"),
-            ),
-            patch(
                 "controllers.console.workspace.model_providers.BillingService.is_tenant_owner_or_admin",
                 side_effect=Forbidden(),
             ),
         ):
             with pytest.raises(Forbidden):
-                method(api, provider="anthropic")
+                method(api, "tenant1", user, provider="anthropic")

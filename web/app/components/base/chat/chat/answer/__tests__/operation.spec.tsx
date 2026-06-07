@@ -248,6 +248,13 @@ describe('Operation', () => {
       expect(screen.getByTestId('log-btn'))!.toBeInTheDocument()
     })
 
+    it('should keep hover-only controls visible when a descendant popup is open', () => {
+      renderOperation({ ...baseProps, showPromptLog: true })
+
+      expect(screen.getByTestId('operation-actions')).toHaveClass('group-has-[[data-popup-open]]:flex')
+      expect(screen.getByTestId('log-btn').parentElement).toHaveClass('group-has-[[data-popup-open]]:block')
+    })
+
     it('should not show prompt log for opening statements', () => {
       const item = { ...baseItem, isOpeningStatement: true }
       renderOperation({ ...baseProps, item, showPromptLog: true })

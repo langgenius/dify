@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
@@ -42,17 +43,8 @@ const ClassList: FC<Props> = ({
   const [shouldScrollToEnd, setShouldScrollToEnd] = useState(false)
   const prevListLength = useRef(list.length)
   const [collapsed, setCollapsed] = useState(false)
-  const [isRenameHintDismissed, setIsRenameHintDismissed] = useState(() => {
-    if (typeof window === 'undefined')
-      return true
-
-    try {
-      return window.localStorage.getItem(INLINE_LABEL_HINT_STORAGE_KEY) === 'true'
-    }
-    catch {
-      return false
-    }
-  })
+  const [storedRenameHintDismissed, setIsRenameHintDismissed] = useLocalStorage<boolean>(INLINE_LABEL_HINT_STORAGE_KEY)
+  const isRenameHintDismissed = storedRenameHintDismissed ?? false
 
   const handleClassChange = useCallback((index: number) => {
     return (value: Topic) => {
@@ -104,12 +96,7 @@ const ClassList: FC<Props> = ({
       return
 
     setIsRenameHintDismissed(true)
-    try {
-      window.localStorage.setItem(INLINE_LABEL_HINT_STORAGE_KEY, 'true')
-    }
-    catch {
-    }
-  }, [isRenameHintDismissed])
+  }, [isRenameHintDismissed, setIsRenameHintDismissed])
 
   const shouldShowRenameHint = !readonly && !isRenameHintDismissed && list.some((item, index) => {
     return isDefaultClassLabel(item.label, index + 1, t)
@@ -129,7 +116,7 @@ const ClassList: FC<Props> = ({
           {list.length > 0 && (
             <ArrowDownRoundFill
               className={cn(
-                'h-4 w-4 text-text-quaternary transition-transform duration-200',
+                'size-4 text-text-quaternary transition-transform duration-200',
                 collapsed && '-rotate-90',
               )}
               aria-hidden="true"
@@ -174,7 +161,7 @@ const ClassList: FC<Props> = ({
                     <div>
                       {canDrag && (
                         <RiDraggable className={cn(
-                          'handle absolute top-3 left-2 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+                          'handle absolute top-3 left-2 hidden size-3 cursor-pointer text-text-tertiary',
                           'group-hover:block',
                         )}
                         />

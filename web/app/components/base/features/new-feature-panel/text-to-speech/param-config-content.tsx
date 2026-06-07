@@ -83,7 +83,7 @@ const VoiceParamConfig = ({
           aria-label={t('appDebug:voice.voiceSettings.close')}
           onClick={onClose}
         >
-          <span aria-hidden className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
         </button>
       </div>
       <div className="mb-3">

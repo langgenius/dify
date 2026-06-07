@@ -50,7 +50,7 @@ export const CustomContent: Story = {
   render: args => (
     <Badge {...args} uppercase={false}>
       <span className="flex items-center gap-1">
-        <span className="h-2 w-2 rounded-full bg-emerald-400" />
+        <span className="size-2 rounded-full bg-emerald-400" />
         Production
       </span>
     </Badge>

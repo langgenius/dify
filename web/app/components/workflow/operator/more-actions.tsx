@@ -178,12 +178,12 @@ const MoreActions: FC = () => {
       >
         <DropdownMenuTrigger
           className={cn(
-            'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
+            'flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
             isReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
         >
           <TipPopup title={t('common.moreActions', { ns: 'workflow' })}>
-            <RiMoreFill className="h-4 w-4" />
+            <RiMoreFill className="size-4" />
           </TipPopup>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -193,7 +193,7 @@ const MoreActions: FC = () => {
           popupClassName="min-w-[180px]"
         >
           <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
-            <RiExportLine className="h-3 w-3" />
+            <RiExportLine className="size-3" />
             {t('common.exportImage', { ns: 'workflow' })}
           </div>
           <div className="px-2 py-1 text-xs font-medium text-text-tertiary">

@@ -10,7 +10,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -284,8 +284,8 @@ class HumanInputRequiredResponse(StreamResponse):
         node_id: str
         node_title: str
         form_content: str
-        inputs: Sequence[FormInput] = Field(default_factory=list)
-        actions: Sequence[UserAction] = Field(default_factory=list)
+        inputs: Sequence[FormInputConfig] = Field(default_factory=list)
+        actions: Sequence[UserActionConfig] = Field(default_factory=list)
         display_in_ui: bool = False
         form_token: str | None = None
         resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
@@ -307,8 +307,8 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     node_id: str
     node_title: str
     form_content: str
-    inputs: Sequence[FormInput] = Field(default_factory=list)
-    actions: Sequence[UserAction] = Field(default_factory=list)
+    inputs: Sequence[FormInputConfig] = Field(default_factory=list)
+    actions: Sequence[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool = False
     form_token: str | None = None
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
@@ -341,6 +341,8 @@ class HumanInputFormFilledResponse(StreamResponse):
         rendered_content: str
         action_id: str
         action_text: str
+
+        submitted_data: Mapping[str, Any] | None = None
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_FILLED
     workflow_run_id: str

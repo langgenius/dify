@@ -65,7 +65,7 @@ function ComplianceDocActionVisual({
         disabled={!canShowUpgradeTooltip}
         render={(
           <PremiumBadge color="blue" allowHover={true}>
-            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+            <SparklesSoft aria-hidden="true" className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
             <div className="px-1 system-xs-medium">
               {upgradeText}
             </div>

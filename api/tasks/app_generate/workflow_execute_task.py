@@ -52,20 +52,21 @@ class _EndUser(BaseModel):
 
 
 def _get_user_type_descriminator(value: Any):
-    if isinstance(value, (_Account, _EndUser)):
-        return value.TYPE
-    elif isinstance(value, dict):
-        user_type_str = value.get("TYPE")
-        if user_type_str is None:
+    match value:
+        case _Account() | _EndUser():
+            return value.TYPE
+        case dict():
+            user_type_str = value.get("TYPE")
+            if user_type_str is None:
+                return None
+            try:
+                user_type = _UserType(user_type_str)
+            except ValueError:
+                return None
+            return user_type
+        case _:
+            # return None if the discriminator value isn't found
             return None
-        try:
-            user_type = _UserType(user_type_str)
-        except ValueError:
-            return None
-        return user_type
-    else:
-        # return None if the discriminator value isn't found
-        return None
 
 
 type User = Annotated[
@@ -102,12 +103,13 @@ class AppExecutionParams(BaseModel):
         workflow_run_id: str | None = None,
     ):
         user_params: _Account | _EndUser
-        if isinstance(user, Account):
-            user_params = _Account(user_id=user.id)
-        elif isinstance(user, EndUser):
-            user_params = _EndUser(end_user_id=user.id)
-        else:
-            raise AssertionError("this statement should be unreachable.")
+        match user:
+            case Account():
+                user_params = _Account(user_id=user.id)
+            case EndUser():
+                user_params = _EndUser(end_user_id=user.id)
+            case _:
+                raise AssertionError("this statement should be unreachable.")
         return cls(
             app_id=app_model.id,
             workflow_id=workflow.id,
@@ -162,12 +164,18 @@ class _AppRunner:
         user = self._resolve_user()
 
         with self._setup_flask_context(user):
-            response = self._run_app(
-                app=app,
-                workflow=workflow,
-                user=user,
-                pause_state_config=pause_config,
-            )
+            try:
+                response = self._run_app(
+                    app=app,
+                    workflow=workflow,
+                    user=user,
+                    pause_state_config=pause_config,
+                )
+            except Exception as exc:
+                if exec_params.streaming:
+                    _publish_error_event(exc, exec_params.workflow_run_id, exec_params.app_mode)
+                raise
+
             if not exec_params.streaming:
                 return response
 
@@ -214,17 +222,17 @@ class _AppRunner:
     def _resolve_user(self) -> Account | EndUser:
         user_params = self._exec_params.user
 
-        if isinstance(user_params, _EndUser):
-            with self._session() as session:
-                return session.get(EndUser, user_params.end_user_id)
-        elif not isinstance(user_params, _Account):
-            raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
-
-        with self._session() as session:
-            user: Account = session.get(Account, user_params.user_id)
-            user.set_tenant_id(self._exec_params.tenant_id)
-
-        return user
+        match user_params:
+            case _EndUser():
+                with self._session() as session:
+                    return session.get(EndUser, user_params.end_user_id)
+            case _Account():
+                with self._session() as session:
+                    user: Account = session.get(Account, user_params.user_id)
+                    user.set_tenant_id(self._exec_params.tenant_id)
+                return user
+            case _:
+                raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
 
 
 def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Account | EndUser | None:
@@ -236,6 +244,12 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
         return user
 
     return session.get(EndUser, workflow_run.created_by)
+
+
+def _publish_error_event(exc: Exception, workflow_run_id: str, app_mode: AppMode) -> None:
+    topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
+    payload = json.dumps({"event": "error", "message": str(exc), "status": 500})
+    topic.publish(payload.encode())
 
 
 def _publish_streaming_response(
@@ -353,36 +367,37 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         state_owner_user_id=workflow.created_by,
     )
 
-    if isinstance(generate_entity, AdvancedChatAppGenerateEntity):
-        assert conversation is not None
-        assert message is not None
-        _resume_advanced_chat(
-            app_model=app_model,
-            workflow=workflow,
-            user=user,
-            conversation=conversation,
-            message=message,
-            generate_entity=generate_entity,
-            graph_runtime_state=graph_runtime_state,
-            session_factory=session_factory,
-            pause_state_config=pause_config,
-            workflow_run_id=workflow_run_id,
-            workflow_run=workflow_run,
-        )
-    elif isinstance(generate_entity, WorkflowAppGenerateEntity):
-        _resume_workflow(
-            app_model=app_model,
-            workflow=workflow,
-            user=user,
-            generate_entity=generate_entity,
-            graph_runtime_state=graph_runtime_state,
-            session_factory=session_factory,
-            pause_state_config=pause_config,
-            workflow_run_id=workflow_run_id,
-            workflow_run=workflow_run,
-            workflow_run_repo=workflow_run_repo,
-            pause_entity=pause_entity,
-        )
+    match generate_entity:
+        case AdvancedChatAppGenerateEntity():
+            assert conversation is not None
+            assert message is not None
+            _resume_advanced_chat(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                conversation=conversation,
+                message=message,
+                generate_entity=generate_entity,
+                graph_runtime_state=graph_runtime_state,
+                session_factory=session_factory,
+                pause_state_config=pause_config,
+                workflow_run_id=workflow_run_id,
+                workflow_run=workflow_run,
+            )
+        case WorkflowAppGenerateEntity():
+            _resume_workflow(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                generate_entity=generate_entity,
+                graph_runtime_state=graph_runtime_state,
+                session_factory=session_factory,
+                pause_state_config=pause_config,
+                workflow_run_id=workflow_run_id,
+                workflow_run=workflow_run,
+                workflow_run_repo=workflow_run_repo,
+                pause_entity=pause_entity,
+            )
 
 
 def _resume_advanced_chat(

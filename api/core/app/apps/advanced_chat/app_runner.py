@@ -27,6 +27,7 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
+from core.workflow.nodes.agent_v2.session_cleanup_layer import build_workflow_agent_session_cleanup_layer
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     build_system_variables,
@@ -130,6 +131,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 invoke_from=invoke_from,
                 user_from=user_from,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
@@ -138,6 +140,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -198,6 +201,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
 
         db.session.close()
@@ -239,6 +243,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
+        workflow_entry.graph_engine.layer(build_workflow_agent_session_cleanup_layer())
         conversation_variable_layer = ConversationVariablePersistenceLayer(
             ConversationVariableUpdater(session_factory.get_session_maker())
         )

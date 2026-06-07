@@ -19,6 +19,7 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
@@ -326,6 +327,7 @@ class DatasetRetrieval:
                         if record.summary:
                             source.summary = record.summary
 
+                        grant_retriever_segment_access([str(segment.id)])
                         retrieval_resource_list.append(source)
 
         if retrieval_resource_list:
@@ -515,6 +517,9 @@ class DatasetRetrieval:
                             )
                         ).all()
                         if attachments_with_bindings:
+                            grant_upload_file_access(
+                                str(upload_file.id) for _, upload_file in attachments_with_bindings
+                            )
                             for _, upload_file in attachments_with_bindings:
                                 attachment_info = File(
                                     file_id=upload_file.id,
@@ -1520,16 +1525,18 @@ class DatasetRetrieval:
                 filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
 
             case "is" | "=":
-                if isinstance(value, str):
-                    filters.append(json_field == value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
+                match value:
+                    case str():
+                        filters.append(json_field == value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
 
             case "is not" | "≠":
-                if isinstance(value, str):
-                    filters.append(json_field != value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                match value:
+                    case str():
+                        filters.append(json_field != value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -1549,12 +1556,13 @@ class DatasetRetrieval:
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
             case "in" | "not in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
+                match value:
+                    case str():
+                        value_list = [v.strip() for v in value.split(",") if v.strip()]
+                    case list() | tuple():
+                        value_list = [str(v) for v in value if v is not None]
+                    case _:
+                        value_list = [str(value)] if value is not None else []
 
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
@@ -1701,12 +1709,13 @@ class DatasetRetrieval:
         usage = None
         for result in invoke_result:
             text = result.delta.message.content
-            if isinstance(text, str):
-                full_text += text
-            elif isinstance(text, list):
-                for i in text:
-                    if i.data:
-                        full_text += i.data
+            match text:
+                case str():
+                    full_text += text
+                case list():
+                    for i in text:
+                        if i.data:
+                            full_text += i.data
 
             if not model:
                 model = result.model

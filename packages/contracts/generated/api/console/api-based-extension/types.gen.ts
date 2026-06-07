@@ -59,7 +59,7 @@ export type DeleteApiBasedExtensionByIdData = {
 
 export type DeleteApiBasedExtensionByIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 

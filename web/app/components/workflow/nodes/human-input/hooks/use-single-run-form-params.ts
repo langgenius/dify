@@ -1,14 +1,16 @@
 import type { HumanInputNodeType } from '../types'
+import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
-import { isOutput } from '../utils'
+import { getHumanInputFormDependencySelectors, isOutput } from '../utils'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -19,6 +21,7 @@ type Params = {
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, string>) => void
 }
+
 const useSingleRunFormParams = ({
   id,
   payload,
@@ -32,13 +35,9 @@ const useSingleRunFormParams = ({
   const [formData, setFormData] = useState<HumanInputFormData | null>(null)
   const [requiredInputs, setRequiredInputs] = useState<Record<string, string>>({})
   const generatedInputs = useMemo(() => {
-    const defaultInputs = inputs.inputs.reduce((acc, input) => {
-      if (input.default.type === 'variable') {
-        acc.push(`{{#${input.default.selector.join('.')}#}}`)
-      }
-      return acc
-    }, [] as string[])
-    const allInputs = getInputVars([...defaultInputs, inputs.form_content || '']).filter(item => !isOutput(item.value_selector || []))
+    const formInputDependencyInputs = getHumanInputFormDependencySelectors(inputs.inputs)
+      .map(selector => `{{#${selector.join('.')}#}}`)
+    const allInputs = getInputVars([...formInputDependencyInputs, inputs.form_content || '']).filter(item => !isOutput(item.value_selector || []))
     return allInputs
   }, [getInputVars, inputs.form_content, inputs.inputs])
 
@@ -92,17 +91,19 @@ const useSingleRunFormParams = ({
     return data
   }, [fetchURL])
 
-  const handleSubmitHumanInputForm = useCallback(async (formData: {
-    inputs: Record<string, string> | undefined
-    form_inputs: Record<string, string> | undefined
+  const handleSubmitHumanInputForm = useCallback(async (submission: {
+    inputs: Record<string, HumanInputFieldValue> | undefined
+    form_inputs: Record<string, HumanInputFieldValue> | undefined
     action: string
   }) => {
+    const formInputs = formData?.inputs?.length ? formData.inputs : inputs.inputs
+
     await submitHumanInputNodeStepRunForm(fetchURL, {
       inputs: requiredInputs,
-      form_inputs: formData.inputs,
-      action: formData.action,
+      form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs),
+      action: submission.action,
     })
-  }, [fetchURL, requiredInputs])
+  }, [fetchURL, formData?.inputs, inputs.inputs, requiredInputs])
 
   const handleShowGeneratedForm = async (formValue: Record<string, string>) => {
     setShowGeneratedForm(true)

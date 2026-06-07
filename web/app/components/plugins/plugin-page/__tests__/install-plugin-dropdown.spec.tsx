@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import InstallPluginDropdown from '../install-plugin-dropdown'
 
-let portalOpen = false
 const {
   mockSystemFeatures,
 } = vi.hoisted(() => ({
@@ -60,16 +59,25 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     DropdownMenu: ({
       open,
       onOpenChange,
+      modal,
       children,
     }: {
-      open: boolean
+      open?: boolean
       onOpenChange?: (open: boolean) => void
+      modal?: boolean
       children: React.ReactNode
     }) => {
-      portalOpen = open
+      const [internalOpen, setInternalOpen] = React.useState(open ?? false)
+      const isOpen = open ?? internalOpen
+      const setOpen = (nextOpen: boolean) => {
+        if (open === undefined)
+          setInternalOpen(nextOpen)
+        onOpenChange?.(nextOpen)
+      }
+
       return (
-        <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-          <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+        <DropdownMenuContext value={{ isOpen, setOpen }}>
+          <div data-testid="dropdown-menu" data-open={isOpen} data-modal={modal}>{children}</div>
         </DropdownMenuContext>
       )
     },
@@ -97,7 +105,10 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       children,
     }: {
       children: React.ReactNode
-    }) => portalOpen ? <div data-testid="dropdown-content">{children}</div> : null,
+    }) => {
+      const { isOpen } = useDropdownMenuContext()
+      return isOpen ? <div data-testid="dropdown-content">{children}</div> : null
+    },
     DropdownMenuItem: ({
       children,
       onClick,
@@ -148,7 +159,6 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', ()
 describe('InstallPluginDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpen = false
     mockSystemFeatures.enable_marketplace = true
     mockSystemFeatures.plugin_installation_permission.restrict_to_marketplace_only = false
   })
@@ -158,6 +168,7 @@ describe('InstallPluginDropdown', () => {
 
     fireEvent.click(screen.getByTestId('dropdown-trigger'))
 
+    expect(screen.getByTestId('dropdown-menu')).toHaveAttribute('data-modal', 'false')
     expect(screen.getByText('plugin.installFrom')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.github')).toBeInTheDocument()

@@ -10,10 +10,16 @@ import {
 
 /**
  * Generate structured output rules using LLM
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post = oc
   .route({
-    description: 'Generate structured output rules using LLM',
+    deprecated: true,
+    description:
+      'Generate structured output rules using LLM\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRuleStructuredOutputGenerate',

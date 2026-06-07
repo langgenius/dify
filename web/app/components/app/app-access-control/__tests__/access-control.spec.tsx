@@ -254,9 +254,7 @@ describe('AddMemberOrGroupDialog', () => {
     await user.click(expandButton)
     expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([baseGroup])
 
-    const memberLabel = screen.getByText(baseMember.name)
-    const memberCheckbox = memberLabel.parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
+    await user.click(screen.getByRole('option', { name: /Member One/ }))
 
     expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
   })
@@ -277,13 +275,13 @@ describe('AddMemberOrGroupDialog', () => {
     await user.type(screen.getByPlaceholderText('app.accessControlDialog.operateGroupAndMember.searchPlaceholder'), 'Group')
     expect(document.querySelector('.spin-animation')).toBeInTheDocument()
 
-    const groupCheckbox = screen.getByText(baseGroup.name).closest('div')?.previousElementSibling as HTMLElement
-    fireEvent.click(groupCheckbox)
-    fireEvent.click(groupCheckbox)
+    const groupOption = screen.getByRole('option', { name: /Group One/ })
+    fireEvent.click(groupOption)
+    fireEvent.click(groupOption)
 
-    const memberCheckbox = screen.getByText(baseMember.name).parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
-    fireEvent.click(memberCheckbox)
+    const memberOption = screen.getByRole('option', { name: /Member One/ })
+    fireEvent.click(memberOption)
+    fireEvent.click(memberOption)
 
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.expand'))
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.allMembers'))
@@ -307,7 +305,7 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(screen.getByText('app.accessControlDialog.operateGroupAndMember.noResult')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('app.accessControlDialog.operateGroupAndMember.noResult')
   })
 })
 

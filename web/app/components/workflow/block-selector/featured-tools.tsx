@@ -1,9 +1,10 @@
 'use client'
+import type { TFunction } from 'i18next'
 import type { ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { RiMoreLine } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,8 +13,8 @@ import Loading from '@/app/components/base/loading'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import Link from '@/next/link'
-import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
 import BlockIcon from '../block-icon'
@@ -33,6 +34,11 @@ type FeaturedToolsProps = {
   isLoading?: boolean
   onInstallSuccess?: () => void
 }
+type FeaturedToolPreviewPayload = {
+  plugin: Plugin
+  label: string
+  description: string
+}
 
 const STORAGE_KEY = 'workflow_tools_featured_collapsed'
 
@@ -46,31 +52,15 @@ const FeaturedTools = ({
 }: FeaturedToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<FeaturedToolPreviewPayload>(), [])
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (isServer)
-      return false
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored === 'true'
-  })
+  const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
+  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
 
-  useEffect(() => {
-    if (isServer)
-      return
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored !== null)
-      setIsCollapsed(stored === 'true')
-  }, [])
-
-  useEffect(() => {
-    if (isServer)
-      return
-    window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
-  }, [isCollapsed])
-
-  useEffect(() => {
+  if (visibleCountPlugins !== plugins) {
+    setVisibleCountPlugins(plugins)
     setVisibleCount(INITIAL_VISIBLE_COUNT)
-  }, [plugins])
+  }
 
   const limitedPlugins = useMemo(
     () => plugins.slice(0, MAX_RECOMMENDED_COUNT),
@@ -133,7 +123,7 @@ const FeaturedTools = ({
         onClick={() => setIsCollapsed(prev => !prev)}
       >
         <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
-        <ArrowDownRoundFill className={`ml-0.5 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <ArrowDownRoundFill className={`ml-0.5 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
 
       {!isCollapsed && (
@@ -174,10 +164,11 @@ const FeaturedTools = ({
                       key={plugin.plugin_id}
                       plugin={plugin}
                       language={language}
+                      previewCardHandle={previewCardHandle}
                       onInstallSuccess={async () => {
                         await onInstallSuccess?.()
                       }}
-                      t={t as any}
+                      t={t}
                     />
                   ))}
                 </div>
@@ -214,6 +205,11 @@ const FeaturedTools = ({
           )}
         </>
       )}
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <FeaturedToolPreviewCard payload={payload as FeaturedToolPreviewPayload | undefined} />
+        )}
+      </PreviewCard>
     </div>
   )
 }
@@ -221,13 +217,15 @@ const FeaturedTools = ({
 type FeaturedToolUninstalledItemProps = {
   plugin: Plugin
   language: Locale
+  previewCardHandle: ReturnType<typeof createPreviewCardHandle<FeaturedToolPreviewPayload>>
   onInstallSuccess?: () => Promise<void> | void
-  t: (key: string, options?: Record<string, any>) => string
+  t: TFunction
 }
 
 function FeaturedToolUninstalledItem({
   plugin,
   language,
+  previewCardHandle,
   onInstallSuccess,
   t,
 }: FeaturedToolUninstalledItemProps) {
@@ -265,7 +263,7 @@ function FeaturedToolUninstalledItem({
       <div className="ml-auto flex h-full items-center gap-1 pl-1">
         <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
         <div
-          className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
+          className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
         >
           <button
             type="button"
@@ -296,16 +294,13 @@ function FeaturedToolUninstalledItem({
             // Preview is supplementary: icon / label / brief are all reachable from
             // the InstallFromMarketplace modal that opens on click, so hover/focus-only
             // activation is a11y-safe. See packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-            <PreviewCard>
-              <PreviewCardTrigger delay={150} closeDelay={150} render={row} />
-              <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
-                <div>
-                  <BlockIcon size="md" className="mb-2" type={BlockEnum.Tool} toolIcon={plugin.icon} />
-                  <div className="mb-1 text-sm leading-5 text-text-primary">{label}</div>
-                  <div className="text-xs leading-[18px] text-text-secondary">{description}</div>
-                </div>
-              </PreviewCardContent>
-            </PreviewCard>
+            <PreviewCardTrigger
+              delay={150}
+              closeDelay={150}
+              handle={previewCardHandle}
+              payload={{ plugin, label, description }}
+              render={row}
+            />
           )
         : row}
       {isInstallModalOpen && (
@@ -322,6 +317,27 @@ function FeaturedToolUninstalledItem({
         />
       )}
     </>
+  )
+}
+
+type FeaturedToolPreviewCardProps = {
+  payload?: FeaturedToolPreviewPayload
+}
+
+function FeaturedToolPreviewCard({
+  payload,
+}: FeaturedToolPreviewCardProps) {
+  if (!payload)
+    return null
+
+  return (
+    <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
+      <div>
+        <BlockIcon size="md" className="mb-2" type={BlockEnum.Tool} toolIcon={payload.plugin.icon} />
+        <div className="mb-1 text-sm/5 text-text-primary">{payload.label}</div>
+        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.description}</div>
+      </div>
+    </PreviewCardContent>
   )
 }
 

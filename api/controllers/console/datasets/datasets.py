@@ -1,14 +1,17 @@
-from typing import Any, cast
+from datetime import datetime
+from typing import Any
+from uuid import UUID
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field, field_validator
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.schema import get_or_create_model, register_schema_models
+from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
@@ -29,26 +32,10 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from fields.app_fields import app_detail_kernel_fields, related_app_list
-from fields.dataset_fields import (
-    content_fields,
-    dataset_detail_fields,
-    dataset_fields,
-    dataset_query_detail_fields,
-    dataset_retrieval_model_fields,
-    doc_metadata_fields,
-    external_knowledge_info_fields,
-    external_retrieval_model_fields,
-    file_info_fields,
-    icon_info_fields,
-    keyword_setting_fields,
-    reranking_model_fields,
-    tag_fields,
-    vector_setting_fields,
-    weighted_score_fields,
-)
-from fields.document_fields import document_status_fields
+from fields.base import ResponseModel
+from fields.dataset_fields import DatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from libs.url_utils import normalize_api_base_url
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
@@ -58,57 +45,7 @@ from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
-# Register models for flask_restx to avoid dict type issues in Swagger
-dataset_base_model = get_or_create_model("DatasetBase", dataset_fields)
-
-tag_model = get_or_create_model("Tag", tag_fields)
-
-keyword_setting_model = get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
-vector_setting_model = get_or_create_model("DatasetVectorSetting", vector_setting_fields)
-
-weighted_score_fields_copy = weighted_score_fields.copy()
-weighted_score_fields_copy["keyword_setting"] = fields.Nested(keyword_setting_model)
-weighted_score_fields_copy["vector_setting"] = fields.Nested(vector_setting_model)
-weighted_score_model = get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
-
-reranking_model = get_or_create_model("DatasetRerankingModel", reranking_model_fields)
-
-dataset_retrieval_model_fields_copy = dataset_retrieval_model_fields.copy()
-dataset_retrieval_model_fields_copy["reranking_model"] = fields.Nested(reranking_model)
-dataset_retrieval_model_fields_copy["weights"] = fields.Nested(weighted_score_model, allow_null=True)
-dataset_retrieval_model = get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
-
-external_knowledge_info_model = get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
-
-external_retrieval_model = get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
-
-doc_metadata_model = get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
-
-icon_info_model = get_or_create_model("DatasetIconInfo", icon_info_fields)
-
-dataset_detail_fields_copy = dataset_detail_fields.copy()
-dataset_detail_fields_copy["retrieval_model_dict"] = fields.Nested(dataset_retrieval_model)
-dataset_detail_fields_copy["tags"] = fields.List(fields.Nested(tag_model))
-dataset_detail_fields_copy["external_knowledge_info"] = fields.Nested(external_knowledge_info_model)
-dataset_detail_fields_copy["external_retrieval_model"] = fields.Nested(external_retrieval_model, allow_null=True)
-dataset_detail_fields_copy["doc_metadata"] = fields.List(fields.Nested(doc_metadata_model))
-dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
-dataset_detail_model = get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
-
-file_info_model = get_or_create_model("DatasetFileInfo", file_info_fields)
-
-content_fields_copy = content_fields.copy()
-content_fields_copy["file_info"] = fields.Nested(file_info_model, allow_null=True)
-content_model = get_or_create_model("DatasetContent", content_fields_copy)
-
-dataset_query_detail_fields_copy = dataset_query_detail_fields.copy()
-dataset_query_detail_fields_copy["queries"] = fields.Nested(content_model)
-dataset_query_detail_model = get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields_copy)
-
-app_detail_kernel_model = get_or_create_model("AppDetailKernel", app_detail_kernel_fields)
-related_app_list_copy = related_app_list.copy()
-related_app_list_copy["data"] = fields.List(fields.Nested(app_detail_kernel_model))
-related_app_list_model = get_or_create_model("RelatedAppList", related_app_list_copy)
+register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
@@ -205,8 +142,164 @@ class ConsoleDatasetListQuery(BaseModel):
     tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
 
 
+class DatasetListItemResponse(DatasetDetailResponse):
+    partial_member_list: list[str]
+
+
+class DatasetListResponse(ResponseModel):
+    data: list[DatasetListItemResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
+
+
+class DatasetDetailWithPartialMembersResponse(DatasetDetailResponse):
+    partial_member_list: list[str] | None = None
+
+
+class DatasetQueryFileInfoResponse(ResponseModel):
+    id: str
+    name: str
+    size: int
+    extension: str
+    mime_type: str
+    source_url: str
+
+
+class DatasetQueryContentResponse(ResponseModel):
+    content_type: str
+    content: str
+    file_info: DatasetQueryFileInfoResponse | None = None
+
+
+class DatasetQueryDetailResponse(ResponseModel):
+    id: str
+    queries: list[DatasetQueryContentResponse]
+    source: str
+    source_app_id: str | None
+    created_by_role: str
+    created_by: str
+    created_at: int
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class DatasetQueryListResponse(ResponseModel):
+    data: list[DatasetQueryDetailResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
+
+
+class RelatedAppResponse(ResponseModel):
+    id: str
+    name: str
+    description: str
+    mode: str = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: str | None
+    icon: str | None
+    icon_background: str | None
+    icon_url: str | None = None
+
+    @model_validator(mode="after")
+    def _set_icon_url(self) -> "RelatedAppResponse":
+        self.icon_url = self.icon_url or build_icon_url(self.icon_type, self.icon)
+        return self
+
+
+class RelatedAppListResponse(ResponseModel):
+    data: list[RelatedAppResponse]
+    total: int
+
+
+class DocumentStatusResponse(ResponseModel):
+    id: str
+    indexing_status: str
+    processing_started_at: int | None
+    parsing_completed_at: int | None
+    cleaning_completed_at: int | None
+    splitting_completed_at: int | None
+    completed_at: int | None
+    paused_at: int | None
+    error: str | None
+    stopped_at: int | None
+    completed_segments: int | None = None
+    total_segments: int | None = None
+
+    @field_validator(
+        "processing_started_at",
+        "parsing_completed_at",
+        "cleaning_completed_at",
+        "splitting_completed_at",
+        "completed_at",
+        "paused_at",
+        "stopped_at",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class DocumentStatusListResponse(ResponseModel):
+    data: list[DocumentStatusResponse]
+
+
+class ErrorDocsResponse(DocumentStatusListResponse):
+    total: int
+
+
+class IndexingEstimatePreviewItemResponse(ResponseModel):
+    content: str
+    child_chunks: list[str] | None = None
+    summary: str | None = None
+
+
+class IndexingEstimateQaPreviewItemResponse(ResponseModel):
+    question: str
+    answer: str
+
+
+class IndexingEstimateResponse(ResponseModel):
+    total_segments: int
+    preview: list[IndexingEstimatePreviewItemResponse]
+    qa_preview: list[IndexingEstimateQaPreviewItemResponse] | None = None
+
+
+class RetrievalSettingResponse(ResponseModel):
+    retrieval_method: list[str]
+
+
+class PartialMemberListResponse(ResponseModel):
+    data: list[str]
+
+
+class AutoDisableLogsResponse(ResponseModel):
+    document_ids: list[str]
+    count: int
+
+
 register_schema_models(
     console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+)
+register_response_schema_models(
+    console_ns,
+    DatasetDetailResponse,
+    DatasetDetailWithPartialMembersResponse,
+    DatasetListResponse,
+    DatasetQueryListResponse,
+    IndexingEstimateResponse,
+    RelatedAppListResponse,
+    DocumentStatusListResponse,
+    ErrorDocsResponse,
+    RetrievalSettingResponse,
+    PartialMemberListResponse,
+    AutoDisableLogsResponse,
 )
 
 
@@ -290,17 +383,8 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
 class DatasetListApi(Resource):
     @console_ns.doc("get_datasets")
     @console_ns.doc(description="Get list of datasets")
-    @console_ns.doc(
-        params={
-            "page": "Page number (default: 1)",
-            "limit": "Number of items per page (default: 20)",
-            "ids": "Filter by dataset IDs (list)",
-            "keyword": "Search keyword",
-            "tag_ids": "Filter by tag IDs (list)",
-            "include_all": "Include all datasets (default: false)",
-        }
-    )
-    @console_ns.response(200, "Datasets retrieved successfully")
+    @console_ns.doc(params=query_params_from_model(ConsoleDatasetListQuery))
+    @console_ns.response(200, "Datasets retrieved successfully", console_ns.models[DatasetListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -339,7 +423,7 @@ class DatasetListApi(Resource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = cast(list[dict[str, Any]], marshal(datasets, dataset_detail_fields))
+        data = [dump_response(DatasetDetailResponse, dataset) for dataset in datasets]
         dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
         partial_members_map: dict[str, list[str]] = {}
         if dataset_ids:
@@ -376,12 +460,12 @@ class DatasetListApi(Resource):
             "total": total,
             "page": query.page,
         }
-        return response, 200
+        return dump_response(DatasetListResponse, response), 200
 
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
     @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
-    @console_ns.response(201, "Dataset created successfully")
+    @console_ns.response(201, "Dataset created successfully", console_ns.models[DatasetDetailResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
@@ -410,7 +494,7 @@ class DatasetListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return marshal(dataset, dataset_detail_fields), 201
+        return dump_response(DatasetDetailResponse, dataset), 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
@@ -418,13 +502,17 @@ class DatasetApi(Resource):
     @console_ns.doc("get_dataset")
     @console_ns.doc(description="Get dataset details")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Dataset retrieved successfully", dataset_detail_model)
+    @console_ns.response(
+        200,
+        "Dataset retrieved successfully",
+        console_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
+    )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -434,7 +522,7 @@ class DatasetApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
+        data = dump_response(DatasetDetailResponse, dataset)
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
                 provider_id = ModelProviderID(dataset.embedding_model_provider)
@@ -467,14 +555,18 @@ class DatasetApi(Resource):
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
     @console_ns.expect(console_ns.models[DatasetUpdatePayload.__name__])
-    @console_ns.response(200, "Dataset updated successfully", dataset_detail_model)
+    @console_ns.response(
+        200,
+        "Dataset updated successfully",
+        console_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
+    )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id):
+    def patch(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -503,7 +595,7 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        result_data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
+        result_data = dump_response(DatasetDetailResponse, dataset)
         tenant_id = current_tenant_id
 
         if payload.partial_member_list is not None and payload.permission == DatasetPermissionEnum.PARTIAL_TEAM:
@@ -521,7 +613,8 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def delete(self, dataset_id):
+    @console_ns.response(204, "Dataset deleted successfully")
+    def delete(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         current_user, _ = current_account_with_tenant()
 
@@ -531,7 +624,7 @@ class DatasetApi(Resource):
         try:
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-                return {"result": "success"}, 204
+                return "", 204
             else:
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
@@ -543,11 +636,15 @@ class DatasetUseCheckApi(Resource):
     @console_ns.doc("check_dataset_use")
     @console_ns.doc(description="Check if dataset is in use")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Dataset use status retrieved successfully")
+    @console_ns.response(
+        200,
+        "Dataset use status retrieved successfully",
+        console_ns.models[UsageCheckResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
 
         dataset_is_using = DatasetService.dataset_use_check(dataset_id_str)
@@ -559,11 +656,15 @@ class DatasetQueryApi(Resource):
     @console_ns.doc("get_dataset_queries")
     @console_ns.doc(description="Get dataset query history")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Query history retrieved successfully", dataset_query_detail_model)
+    @console_ns.response(
+        200,
+        "Query history retrieved successfully",
+        console_ns.models[DatasetQueryListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -581,20 +682,24 @@ class DatasetQueryApi(Resource):
         dataset_queries, total = DatasetService.get_dataset_queries(dataset_id=dataset.id, page=page, per_page=limit)
 
         response = {
-            "data": marshal(dataset_queries, dataset_query_detail_model),
+            "data": dataset_queries,
             "has_more": len(dataset_queries) == limit,
             "limit": limit,
             "total": total,
             "page": page,
         }
-        return response, 200
+        return dump_response(DatasetQueryListResponse, response), 200
 
 
 @console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
     @console_ns.doc("estimate_dataset_indexing")
     @console_ns.doc(description="Estimate dataset indexing cost")
-    @console_ns.response(200, "Indexing estimate calculated successfully")
+    @console_ns.response(
+        200,
+        "Indexing estimate calculated successfully",
+        console_ns.models[IndexingEstimateResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -606,63 +711,63 @@ class DatasetIndexingEstimateApi(Resource):
         # validate args
         DocumentService.estimate_args_validate(args)
         extract_settings = []
-        if args["info_list"]["data_source_type"] == "upload_file":
-            file_ids = args["info_list"]["file_info_list"]["file_ids"]
-            file_details = db.session.scalars(
-                select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
-            ).all()
+        match args["info_list"]["data_source_type"]:
+            case "upload_file":
+                file_ids = args["info_list"]["file_info_list"]["file_ids"]
+                file_details = db.session.scalars(
+                    select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
+                ).all()
+                if file_details is None:
+                    raise NotFound("File not found.")
 
-            if file_details is None:
-                raise NotFound("File not found.")
-
-            if file_details:
-                for file_detail in file_details:
+                if file_details:
+                    for file_detail in file_details:
+                        extract_setting = ExtractSetting(
+                            datasource_type=DatasourceType.FILE,
+                            upload_file=file_detail,
+                            document_model=args["doc_form"],
+                        )
+                        extract_settings.append(extract_setting)
+            case "notion_import":
+                notion_info_list = args["info_list"]["notion_info_list"]
+                for notion_info in notion_info_list:
+                    workspace_id = notion_info["workspace_id"]
+                    credential_id = notion_info.get("credential_id")
+                    for page in notion_info["pages"]:
+                        extract_setting = ExtractSetting(
+                            datasource_type=DatasourceType.NOTION,
+                            notion_info=NotionInfo.model_validate(
+                                {
+                                    "credential_id": credential_id,
+                                    "notion_workspace_id": workspace_id,
+                                    "notion_obj_id": page["page_id"],
+                                    "notion_page_type": page["type"],
+                                    "tenant_id": current_tenant_id,
+                                }
+                            ),
+                            document_model=args["doc_form"],
+                        )
+                        extract_settings.append(extract_setting)
+            case "website_crawl":
+                website_info_list = args["info_list"]["website_info_list"]
+                for url in website_info_list["urls"]:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE,
-                        upload_file=file_detail,
-                        document_model=args["doc_form"],
-                    )
-                    extract_settings.append(extract_setting)
-        elif args["info_list"]["data_source_type"] == "notion_import":
-            notion_info_list = args["info_list"]["notion_info_list"]
-            for notion_info in notion_info_list:
-                workspace_id = notion_info["workspace_id"]
-                credential_id = notion_info.get("credential_id")
-                for page in notion_info["pages"]:
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION,
-                        notion_info=NotionInfo.model_validate(
+                        datasource_type=DatasourceType.WEBSITE,
+                        website_info=WebsiteInfo.model_validate(
                             {
-                                "credential_id": credential_id,
-                                "notion_workspace_id": workspace_id,
-                                "notion_obj_id": page["page_id"],
-                                "notion_page_type": page["type"],
+                                "provider": website_info_list["provider"],
+                                "job_id": website_info_list["job_id"],
+                                "url": url,
                                 "tenant_id": current_tenant_id,
+                                "mode": "crawl",
+                                "only_main_content": website_info_list["only_main_content"],
                             }
                         ),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
-        elif args["info_list"]["data_source_type"] == "website_crawl":
-            website_info_list = args["info_list"]["website_info_list"]
-            for url in website_info_list["urls"]:
-                extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE,
-                    website_info=WebsiteInfo.model_validate(
-                        {
-                            "provider": website_info_list["provider"],
-                            "job_id": website_info_list["job_id"],
-                            "url": url,
-                            "tenant_id": current_tenant_id,
-                            "mode": "crawl",
-                            "only_main_content": website_info_list["only_main_content"],
-                        }
-                    ),
-                    document_model=args["doc_form"],
-                )
-                extract_settings.append(extract_setting)
-        else:
-            raise ValueError("Data source type not support")
+            case _:
+                raise ValueError("Data source type not support")
         indexing_runner = IndexingRunner()
         try:
             response = indexing_runner.indexing_estimate(
@@ -691,12 +796,15 @@ class DatasetRelatedAppListApi(Resource):
     @console_ns.doc("get_dataset_related_apps")
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Related apps retrieved successfully", related_app_list_model)
+    @console_ns.response(
+        200,
+        "Related apps retrieved successfully",
+        console_ns.models[RelatedAppListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(related_app_list_model)
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -716,7 +824,7 @@ class DatasetRelatedAppListApi(Resource):
             if app_model:
                 related_apps.append(app_model)
 
-        return {"data": related_apps, "total": len(related_apps)}, 200
+        return dump_response(RelatedAppListResponse, {"data": related_apps, "total": len(related_apps)}), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
@@ -724,15 +832,19 @@ class DatasetIndexingStatusApi(Resource):
     @console_ns.doc("get_dataset_indexing_status")
     @console_ns.doc(description="Get dataset indexing status")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Indexing status retrieved successfully")
+    @console_ns.response(
+        200,
+        "Indexing status retrieved successfully",
+        console_ns.models[DocumentStatusListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
+        dataset_id_str = str(dataset_id)
         documents = db.session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == current_tenant_id)
+            select(Document).where(Document.dataset_id == dataset_id_str, Document.tenant_id == current_tenant_id)
         ).all()
         documents_status = []
         for document in documents:
@@ -770,9 +882,8 @@ class DatasetIndexingStatusApi(Resource):
                 "completed_segments": completed_segments,
                 "total_segments": total_segments,
             }
-            documents_status.append(marshal(document_dict, document_status_fields))
-        data = {"data": documents_status}
-        return data, 200
+            documents_status.append(document_dict)
+        return dump_response(DocumentStatusListResponse, {"data": documents_status}), 200
 
 
 @console_ns.route("/datasets/api-keys")
@@ -841,15 +952,15 @@ class DatasetApiDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def delete(self, api_key_id):
+    def delete(self, api_key_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
-        api_key_id = str(api_key_id)
+        api_key_id_str = str(api_key_id)
         key = db.session.scalar(
             select(ApiToken)
             .where(
                 ApiToken.tenant_id == current_tenant_id,
                 ApiToken.type == self.resource_type,
-                ApiToken.id == api_key_id,
+                ApiToken.id == api_key_id_str,
             )
             .limit(1)
         )
@@ -865,7 +976,7 @@ class DatasetApiDeleteApi(Resource):
         db.session.delete(key)
         db.session.commit()
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<string:status>")
@@ -873,7 +984,8 @@ class DatasetEnableApiApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id, status):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def post(self, dataset_id: UUID, status: str):
         dataset_id_str = str(dataset_id)
 
         DatasetService.update_dataset_api_status(dataset_id_str, status == "enable")
@@ -885,7 +997,7 @@ class DatasetEnableApiApi(Resource):
 class DatasetApiBaseUrlApi(Resource):
     @console_ns.doc("get_dataset_api_base_info")
     @console_ns.doc(description="Get dataset API base information")
-    @console_ns.response(200, "API base info retrieved successfully")
+    @console_ns.response(200, "API base info retrieved successfully", console_ns.models[ApiBaseUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -898,13 +1010,18 @@ class DatasetApiBaseUrlApi(Resource):
 class DatasetRetrievalSettingApi(Resource):
     @console_ns.doc("get_dataset_retrieval_setting")
     @console_ns.doc(description="Get dataset retrieval settings")
-    @console_ns.response(200, "Retrieval settings retrieved successfully")
+    @console_ns.response(
+        200, "Retrieval settings retrieved successfully", console_ns.models[RetrievalSettingResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         vector_type = dify_config.VECTOR_STORE
-        return _get_retrieval_methods_by_vector_type(vector_type, is_mock=False)
+        return dump_response(
+            RetrievalSettingResponse,
+            _get_retrieval_methods_by_vector_type(vector_type, is_mock=False),
+        )
 
 
 @console_ns.route("/datasets/retrieval-setting/<string:vector_type>")
@@ -912,12 +1029,19 @@ class DatasetRetrievalSettingMockApi(Resource):
     @console_ns.doc("get_dataset_retrieval_setting_mock")
     @console_ns.doc(description="Get mock dataset retrieval settings by vector type")
     @console_ns.doc(params={"vector_type": "Vector store type"})
-    @console_ns.response(200, "Mock retrieval settings retrieved successfully")
+    @console_ns.response(
+        200,
+        "Mock retrieval settings retrieved successfully",
+        console_ns.models[RetrievalSettingResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, vector_type):
-        return _get_retrieval_methods_by_vector_type(vector_type, is_mock=True)
+    def get(self, vector_type: str):
+        return dump_response(
+            RetrievalSettingResponse,
+            _get_retrieval_methods_by_vector_type(vector_type, is_mock=True),
+        )
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
@@ -925,19 +1049,19 @@ class DatasetErrorDocs(Resource):
     @console_ns.doc("get_dataset_error_docs")
     @console_ns.doc(description="Get dataset error documents")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Error documents retrieved successfully")
+    @console_ns.response(200, "Error documents retrieved successfully", console_ns.models[ErrorDocsResponse.__name__])
     @console_ns.response(404, "Dataset not found")
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
         results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
 
-        return {"data": [marshal(item, document_status_fields) for item in results], "total": len(results)}, 200
+        return dump_response(ErrorDocsResponse, {"data": results, "total": len(results)}), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/permission-part-users")
@@ -945,13 +1069,17 @@ class DatasetPermissionUserListApi(Resource):
     @console_ns.doc("get_dataset_permission_users")
     @console_ns.doc(description="Get dataset permission user list")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Permission users retrieved successfully")
+    @console_ns.response(
+        200,
+        "Permission users retrieved successfully",
+        console_ns.models[PartialMemberListResponse.__name__],
+    )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -964,9 +1092,7 @@ class DatasetPermissionUserListApi(Resource):
 
         partial_members_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
 
-        return {
-            "data": partial_members_list,
-        }, 200
+        return dump_response(PartialMemberListResponse, {"data": partial_members_list}), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/auto-disable-logs")
@@ -974,14 +1100,18 @@ class DatasetAutoDisableLogApi(Resource):
     @console_ns.doc("get_dataset_auto_disable_logs")
     @console_ns.doc(description="Get dataset auto disable logs")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Auto disable logs retrieved successfully")
+    @console_ns.response(
+        200,
+        "Auto disable logs retrieved successfully",
+        console_ns.models[AutoDisableLogsResponse.__name__],
+    )
     @console_ns.response(404, "Dataset not found")
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        return DatasetService.get_dataset_auto_disable_logs(dataset_id_str), 200
+        return dump_response(AutoDisableLogsResponse, DatasetService.get_dataset_auto_disable_logs(dataset_id_str)), 200

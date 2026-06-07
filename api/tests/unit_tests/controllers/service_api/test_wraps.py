@@ -29,6 +29,11 @@ from tests.unit_tests.conftest import (
 )
 
 
+def _configure_current_app_mock(mock_current_app):
+    mock_current_app.login_manager = Mock()
+    mock_current_app._get_current_object = Mock(return_value=Mock())
+
+
 class TestValidateAndGetApiToken:
     """Test suite for validate_and_get_api_token function"""
 
@@ -120,8 +125,7 @@ class TestValidateAppToken:
     ):
         """Test that valid app token allows access to decorated view."""
         # Arrange
-        # Use standard Mock for login_manager to avoid AsyncMockMixin warnings
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_api_token = Mock()
         mock_api_token.app_id = str(uuid.uuid4())
@@ -261,6 +265,65 @@ class TestCloudEditionBillingResourceCheck:
 
         # Assert
         assert result == "member_added"
+        mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.FeatureService.get_features")
+    @patch("controllers.service_api.wraps.FeatureService.get_vector_space")
+    def test_loads_vector_space_from_dedicated_quota_api(
+        self, mock_get_vector_space, mock_get_features, mock_validate_token, app: Flask
+    ):
+        """Test vector-space resource checks avoid loading the full feature payload."""
+        # Arrange
+        mock_validate_token.return_value = Mock(tenant_id="tenant123")
+
+        mock_vector_space = Mock()
+        mock_vector_space.limit = 10
+        mock_vector_space.size = 5
+        mock_get_vector_space.return_value = mock_vector_space
+
+        @cloud_edition_billing_resource_check("vector_space", "dataset")
+        def add_segment():
+            return "segment_added"
+
+        # Act
+        with (
+            app.test_request_context("/", method="GET"),
+            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+        ):
+            result = add_segment()
+
+        # Assert
+        assert result == "segment_added"
+        mock_get_vector_space.assert_called_once_with("tenant123")
+        mock_get_features.assert_not_called()
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.FeatureService.get_features")
+    def test_loads_features_when_checking_non_vector_space_limit(
+        self, mock_get_features, mock_validate_token, app: Flask
+    ):
+        """Test non-vector-space resource checks keep using the light feature payload."""
+        # Arrange
+        mock_validate_token.return_value = Mock(tenant_id="tenant123")
+
+        mock_features = Mock()
+        mock_features.billing.enabled = True
+        mock_features.documents_upload_quota.limit = 10
+        mock_features.documents_upload_quota.size = 5
+        mock_get_features.return_value = mock_features
+
+        @cloud_edition_billing_resource_check("documents", "dataset")
+        def upload_document():
+            return "document_uploaded"
+
+        # Act
+        with app.test_request_context("/", method="GET"):
+            result = upload_document()
+
+        # Assert
+        assert result == "document_uploaded"
+        mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
@@ -448,8 +511,7 @@ class TestValidateDatasetToken:
     def test_valid_dataset_token(self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app: Flask):
         """Test that valid dataset token allows access."""
         # Arrange
-        # Use standard Mock for login_manager
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         tenant_id = str(uuid.uuid4())
         mock_api_token = Mock()

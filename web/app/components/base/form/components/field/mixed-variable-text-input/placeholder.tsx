@@ -1,3 +1,4 @@
+import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $insertNodes, FOCUS_COMMAND } from 'lexical'
 import { useCallback } from 'react'
@@ -17,7 +18,7 @@ const Placeholder = () => {
 
   return (
     <div
-      className="pointer-events-auto flex h-full w-full cursor-text items-center px-2"
+      className="pointer-events-auto flex size-full cursor-text items-center px-2"
       onClick={(e) => {
         e.stopPropagation()
         handleInsert('')
@@ -25,7 +26,7 @@ const Placeholder = () => {
     >
       <div className="flex grow items-center">
         Type or press
-        <div className="mx-0.5 flex h-4 w-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</div>
+        <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>
         <div
           className="cursor-pointer system-sm-regular text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
           onClick={((e) => {

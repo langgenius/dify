@@ -160,7 +160,7 @@ const ChunkPreview = ({
           </div>
         </PreviewHeader>
       )}
-      className="relative flex h-full w-full shrink-0"
+      className="relative flex size-full shrink-0"
       mainClassName="space-y-6"
     >
       {!isPending && currentDocForm === ChunkingMode.qa && estimateData?.qa_preview && (
@@ -216,7 +216,7 @@ const ChunkPreview = ({
         })
       )}
       {isIdle && (
-        <div className="flex h-full w-full items-center justify-center">
+        <div className="flex size-full items-center justify-center">
           <div className="flex flex-col items-center justify-center gap-3 pb-4">
             <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
             <p className="text-sm text-text-tertiary">
@@ -229,7 +229,7 @@ const ChunkPreview = ({
         </div>
       )}
       {isPending && (
-        <div className="h-full w-full space-y-6 overflow-hidden">
+        <div className="size-full space-y-6 overflow-hidden">
           {Array.from({ length: 10 }, (_, i) => (
             <SkeletonContainer key={i}>
               <SkeletonRow>

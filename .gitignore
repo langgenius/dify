@@ -115,6 +115,12 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# cli/ has a src/env/ module (DIFY_* registry) — don't treat it as a venv
+!/cli/src/env/
+!/cli/src/commands/env/
+# cli/scripts/lib/ holds TS build helpers (resolve-buildinfo etc.) — don't treat as Python lib/
+!/cli/scripts/lib/
 .conda/
 
 # Spyder project settings
@@ -247,8 +253,12 @@ scripts/stress-test/reports/
 # settings
 *.local.json
 *.local.md
+*.local.toml
 
 # Code Agent Folder
 .qoder/*
-
+.context/
 .eslintcache
+
+# Vitest local reports
+web/.vitest-reports/

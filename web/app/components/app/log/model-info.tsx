@@ -55,7 +55,7 @@ const ModelInfo: FC<Props> = ({
     <div className={cn('flex items-center rounded-lg')}>
       <div className="mr-px flex h-8 shrink-0 items-center gap-1 rounded-l-lg bg-components-input-bg-normal pr-2 pl-1.5">
         <ModelIcon
-          className="h-5! w-5!"
+          className="size-5!"
           provider={currentProvider}
           modelName={currentModel?.model}
         />
@@ -71,13 +71,13 @@ const ModelInfo: FC<Props> = ({
         <div className="relative">
           <PopoverTrigger
             render={(
-              <button type="button" className="block border-none bg-transparent p-0">
+              <button type="button" className="group block border-none bg-transparent p-0">
                 <div className={cn(
                   'cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover',
-                  open && 'bg-components-button-tertiary-bg-hover',
+                  'group-data-popup-open:bg-components-button-tertiary-bg-hover',
                 )}
                 >
-                  <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
+                  <RiInformation2Line className="size-4 text-text-tertiary" />
                 </div>
               </button>
             )}

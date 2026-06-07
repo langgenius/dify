@@ -1,11 +1,10 @@
-import type { FC } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { pick } from 'es-toolkit/object'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-label'
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
@@ -23,12 +22,10 @@ type DocumentTableRowProps = {
   doc: LocalDoc
   index: number
   datasetId: string
-  isSelected: boolean
   isGeneralMode: boolean
   isQAMode: boolean
   embeddingAvailable: boolean
   selectedIds: string[]
-  onSelectOne: (docId: string) => void
   onSelectedIdChange: (ids: string[]) => void
   onShowRenameModal: (doc: LocalDoc) => void
   onUpdate: () => void
@@ -44,24 +41,23 @@ const renderCount = (count: number | undefined) => {
   return `${formatNumber((count / 1000).toFixed(1))}k`
 }
 
-const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
+const DocumentTableRow = React.memo(({
   doc,
   index,
   datasetId,
-  isSelected,
   isGeneralMode,
   isQAMode,
   embeddingAvailable,
   selectedIds,
-  onSelectOne,
   onSelectedIdChange,
   onShowRenameModal,
   onUpdate,
-}) => {
+}: DocumentTableRowProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const documentNameId = React.useId()
 
   const isFile = doc.data_source_type === DataSourceType.FILE
   const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
@@ -89,9 +85,8 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
         <div className="flex items-center" onClick={handleCheckboxClick}>
           <Checkbox
             className="mr-2 shrink-0"
-            checked={isSelected}
-            onCheck={() => onSelectOne(doc.id)}
-            id={`doc-row-${doc.id}`}
+            value={doc.id}
+            aria-labelledby={documentNameId}
           />
           {index + 1}
         </div>
@@ -104,7 +99,7 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
           <Tooltip>
             <TooltipTrigger
               render={(
-                <span className="grow truncate text-sm">{doc.name}</span>
+                <span id={documentNameId} className="grow truncate text-sm">{doc.name}</span>
               )}
             />
             <TooltipContent>
@@ -124,7 +119,7 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
                     className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
                     onClick={handleRenameClick}
                   >
-                    <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+                    <span className="i-ri-edit-line size-4 text-text-tertiary" />
                   </div>
                 )}
               />

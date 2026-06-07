@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
+import type { ToolActionPreviewCardHandle } from '../action-item'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +11,7 @@ import Item from './item'
 
 type Props = {
   payload: Record<string, ToolWithProvider[]>
+  previewCardHandle: ToolActionPreviewCardHandle
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
@@ -19,6 +21,7 @@ type Props = {
 
 const ToolListTreeView: FC<Props> = ({
   payload,
+  previewCardHandle,
   hasSearchText,
   onSelect,
   canNotSelectMultiple,
@@ -49,6 +52,7 @@ const ToolListTreeView: FC<Props> = ({
           key={groupName}
           groupName={getI18nGroupName(groupName)}
           toolList={payload[groupName]!}
+          previewCardHandle={previewCardHandle}
           hasSearchText={hasSearchText}
           onSelect={onSelect}
           canNotSelectMultiple={canNotSelectMultiple}

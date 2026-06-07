@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import logging
 import uuid
 from datetime import datetime
@@ -24,10 +25,22 @@ VALID_LICENSE_CACHE_TTL = 600  # 10 minutes — valid licenses are stable
 INVALID_LICENSE_CACHE_TTL = 30  # 30 seconds — short so admin fixes are picked up quickly
 
 
+class WebAppAccessMode(enum.StrEnum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    PRIVATE_ALL = "private_all"
+    SSO_VERIFIED = "sso_verified"
+
+
+PERMISSION_CHECK_MODES: frozenset[WebAppAccessMode] = frozenset(
+    {WebAppAccessMode.PRIVATE, WebAppAccessMode.PRIVATE_ALL}
+)
+
+
 class WebAppSettings(BaseModel):
     access_mode: str = Field(
-        description="Access mode for the web app. Can be 'public', 'private', 'private_all', 'sso_verified'",
-        default="private",
+        description=f"Access mode for the web app. One of: {', '.join(m.value for m in WebAppAccessMode)}",
+        default=WebAppAccessMode.PRIVATE.value,
         alias="accessMode",
     )
 
@@ -107,6 +120,15 @@ class EnterpriseService:
     @classmethod
     def get_workspace_info(cls, tenant_id: str):
         return EnterpriseRequest.send_request("GET", f"/workspace/{tenant_id}/info")
+
+    @classmethod
+    def initiate_device_flow_sso(cls, signed_state: str) -> dict:
+        return EnterpriseRequest.send_request(
+            "POST",
+            "/device-flow/sso-initiate",
+            json={"signed_state": signed_state},
+            raise_for_status=True,
+        )
 
     @classmethod
     def join_default_workspace(cls, *, account_id: str) -> DefaultWorkspaceJoinResult:
@@ -219,8 +241,9 @@ class EnterpriseService:
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
-            if access_mode not in ["public", "private", "private_all"]:
-                raise ValueError("access_mode must be either 'public', 'private', or 'private_all'")
+            allowed = {WebAppAccessMode.PUBLIC, WebAppAccessMode.PRIVATE, WebAppAccessMode.PRIVATE_ALL}
+            if access_mode not in allowed:
+                raise ValueError(f"access_mode must be one of: {', '.join(m.value for m in allowed)}")
 
             data = {"appId": app_id, "accessMode": access_mode}
 
@@ -235,6 +258,32 @@ class EnterpriseService:
 
             params = {"appId": app_id}
             EnterpriseRequest.send_request("DELETE", "/webapp/clean", params=params)
+
+        @classmethod
+        def list_externally_accessible_apps(
+            cls,
+            *,
+            page: int,
+            limit: int,
+            mode: str | None = None,
+            name: str | None = None,
+        ) -> dict:
+            """Call EE InnerListExternallyAccessibleApps; returns raw camelCase response.
+
+            Response shape: ``{"data": [{"appId", "tenantId", "mode", "name", "updatedAt"}],
+            "total": int, "hasMore": bool}``.
+            """
+            body: dict[str, str | int] = {"page": page, "limit": limit}
+            if mode is not None:
+                body["mode"] = mode
+            if name is not None:
+                body["name"] = name
+            return EnterpriseRequest.send_request(
+                "POST",
+                "/webapp/externally-accessible-apps",
+                json=body,
+                timeout=5.0,
+            )
 
     @classmethod
     def get_cached_license_status(cls) -> LicenseStatus | None:

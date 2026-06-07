@@ -33,9 +33,6 @@
   background: linear-gradient(to left, white, 90%, transparent);
   @apply text-primary-600 font-semibold text-xs absolute right-0 hidden h-12 pl-12 items-center;
 }
-.select {
-  @apply !h-8 !w-[100px] !py-0 !pr-5 !shadow-none;
-}
 .segModalContent {
   @apply h-96 text-gray-800 text-base break-all overflow-y-scroll;
   white-space: pre-line;

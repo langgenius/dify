@@ -8,7 +8,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console import console_ns
@@ -59,6 +61,13 @@ from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
 from models import Site
 from models.enums import CustomizeTokenStrategy
+from models.account import Account, AccountStatus
+from models.model import AppMode
+from tests.test_containers_integration_tests.controllers.console.helpers import (
+    authenticate_console_client,
+    create_console_account_and_tenant,
+    create_console_app,
+)
 
 
 def _unwrap(func):
@@ -68,6 +77,16 @@ def _unwrap(func):
     if bound_self is not None:
         return func.__get__(bound_self, bound_self.__class__)
     return func
+
+
+def _make_account() -> Account:
+    account = Account(
+        name="tester",
+        email="tester@example.com",
+        status=AccountStatus.ACTIVE,
+    )
+    account.id = "user-1"  # type: ignore[assignment]
+    return account
 
 
 class TestCompletionEndpoints:
@@ -93,13 +112,6 @@ class TestCompletionEndpoints:
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
-        class DummyAccount:
-            pass
-
-        dummy_account = DummyAccount()
-
-        monkeypatch.setattr(completion_module, "current_user", dummy_account)
-        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -115,7 +127,7 @@ class TestCompletionEndpoints:
             "/",
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
-            resp = method(app_model=MagicMock(id="app-1"))
+            resp = method(_make_account(), app_model=MagicMock(id="app-1"))
 
         assert resp == {"result": {"text": "ok"}}
 
@@ -123,13 +135,6 @@ class TestCompletionEndpoints:
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
-        class DummyAccount:
-            pass
-
-        dummy_account = DummyAccount()
-
-        monkeypatch.setattr(completion_module, "current_user", dummy_account)
-        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -143,19 +148,12 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(NotFound):
-                method(app_model=MagicMock(id="app-1"))
+                method(_make_account(), app_model=MagicMock(id="app-1"))
 
     def test_completion_api_provider_not_initialized(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
-        class DummyAccount:
-            pass
-
-        dummy_account = DummyAccount()
-
-        monkeypatch.setattr(completion_module, "current_user", dummy_account)
-        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -167,19 +165,12 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(app_model=MagicMock(id="app-1"))
+                method(_make_account(), app_model=MagicMock(id="app-1"))
 
     def test_completion_api_quota_exceeded(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
-        class DummyAccount:
-            pass
-
-        dummy_account = DummyAccount()
-
-        monkeypatch.setattr(completion_module, "current_user", dummy_account)
-        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -191,7 +182,7 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(app_model=MagicMock(id="app-1"))
+                method(_make_account(), app_model=MagicMock(id="app-1"))
 
 
 class TestAppEndpoints:
@@ -272,6 +263,35 @@ class TestOpsTraceEndpoints:
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
+    @pytest.mark.parametrize(
+        "path_template",
+        [
+            "/console/api/apps/{app_id}/trace-config?tracing_provider=langfuse",
+            "/console/api/apps/{app_id}/trace",
+        ],
+    )
+    def test_trace_endpoints_hide_apps_from_other_tenants(
+        self,
+        db_session_with_containers: Session,
+        test_client_with_containers: FlaskClient,
+        path_template: str,
+    ):
+        account, _tenant = create_console_account_and_tenant(db_session_with_containers)
+        foreign_account, foreign_tenant = create_console_account_and_tenant(db_session_with_containers)
+        foreign_app = create_console_app(
+            db_session_with_containers,
+            tenant_id=foreign_tenant.id,
+            account_id=foreign_account.id,
+            mode=AppMode.CHAT,
+        )
+
+        response = test_client_with_containers.get(
+            path_template.format(app_id=foreign_app.id),
+            headers=authenticate_console_client(test_client_with_containers, account),
+        )
+
+        assert response.status_code == 404
+
     def test_ops_trace_query_basic(self):
         query = TraceProviderQuery(tracing_provider="langfuse")
         assert query.tracing_provider == "langfuse"
@@ -291,7 +311,7 @@ class TestOpsTraceEndpoints:
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(app_id="app-1")
+            result = method(app_model=MagicMock(id="app-1"))
 
         assert result == {"has_not_configured": True}
 
@@ -310,7 +330,7 @@ class TestOpsTraceEndpoints:
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
             with pytest.raises(BadRequest):
-                method(app_id="app-1")
+                method(app_model=MagicMock(id="app-1"))
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
@@ -324,7 +344,7 @@ class TestOpsTraceEndpoints:
 
         with app.test_request_context("/?tracing_provider=langfuse"):
             with pytest.raises(BadRequest):
-                method(app_id="app-1")
+                method(app_model=MagicMock(id="app-1"))
 
 
 class TestSiteEndpoints:
@@ -366,15 +386,10 @@ class TestSiteEndpoints:
             "session",
             MagicMock(scalar=lambda *_args, **_kwargs: site, commit=lambda: None),
         )
-        monkeypatch.setattr(
-            site_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "t1"),
-        )
         monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
         with app.test_request_context("/", json={"title": "My Site"}):
-            result = method(app_model=SimpleNamespace(id="app-1"))
+            result = method(SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
         assert result["title"] == "My Site"
@@ -406,15 +421,10 @@ class TestSiteEndpoints:
             MagicMock(scalar=lambda *_args, **_kwargs: site, commit=lambda: None),
         )
         monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
-        monkeypatch.setattr(
-            site_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "t1"),
-        )
         monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
         with app.test_request_context("/"):
-            result = method(app_model=SimpleNamespace(id="app-1"))
+            result = method(SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
         assert result["access_token"] == "code"
@@ -494,7 +504,6 @@ class TestWorkflowDraftVariableEndpoints:
         method = _unwrap(api.get)
 
         monkeypatch.setattr(workflow_draft_variable_module, "db", SimpleNamespace(engine=MagicMock()))
-        monkeypatch.setattr(workflow_draft_variable_module, "current_user", SimpleNamespace(id="user-1"))
 
         class DummySessionCtx:
             def __enter__(self):
@@ -527,7 +536,7 @@ class TestWorkflowDraftVariableEndpoints:
         monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
 
         with app.test_request_context("/?page=1&limit=20"):
-            result = method(app_model=SimpleNamespace(id="app-1"))
+            result = method(_make_account(), app_model=SimpleNamespace(id="app-1"))
 
         assert result == {"items": [], "total": 0}
 
@@ -555,11 +564,6 @@ class TestWorkflowStatisticEndpoints:
         )
         monkeypatch.setattr(
             workflow_statistic_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(timezone="UTC"), "t1"),
-        )
-        monkeypatch.setattr(
-            workflow_statistic_module,
             "parse_time_range",
             lambda *_args, **_kwargs: (None, None),
         )
@@ -568,7 +572,7 @@ class TestWorkflowStatisticEndpoints:
         method = _unwrap(api.get)
 
         with app.test_request_context("/"):
-            response = method(app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
+            response = method(SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
@@ -583,11 +587,6 @@ class TestWorkflowStatisticEndpoints:
         )
         monkeypatch.setattr(
             workflow_statistic_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(timezone="UTC"), "t1"),
-        )
-        monkeypatch.setattr(
-            workflow_statistic_module,
             "parse_time_range",
             lambda *_args, **_kwargs: (None, None),
         )
@@ -596,7 +595,7 @@ class TestWorkflowStatisticEndpoints:
         method = _unwrap(api.get)
 
         with app.test_request_context("/"):
-            response = method(app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
+            response = method(SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 

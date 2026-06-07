@@ -202,10 +202,6 @@ export type LogMessageAnnotationsRequest = Omit<LogMessageFeedbacksRequest, 'rat
 
 export type LogMessageAnnotationsResponse = LogMessageFeedbacksResponse
 
-export type AnnotationsCountResponse = {
-  count: number
-}
-
 export enum WorkflowRunTriggeredFrom {
   DEBUGGING = 'debugging',
   APP_RUN = 'app-run',

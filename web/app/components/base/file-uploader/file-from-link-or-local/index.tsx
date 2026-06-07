@@ -119,7 +119,7 @@ const FileFromLinkOrLocal = ({
                 variant="secondary-accent"
                 disabled={disabled}
               >
-                <RiUploadCloud2Line className="mr-1 h-4 w-4" />
+                <RiUploadCloud2Line className="mr-1 size-4" />
                 {t('fileUploader.uploadFromComputer', { ns: 'common' })}
                 <FileInput fileConfig={fileConfig} />
               </Button>

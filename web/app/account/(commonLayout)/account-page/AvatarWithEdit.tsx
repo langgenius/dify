@@ -8,7 +8,6 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,9 +28,9 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [isShowDeleteConfirm, setIsShowDeleteConfirm] = useState(false)
-  const [hoverArea, setHoverArea] = useState<string>('left')
 
   const [onAvatarError, setOnAvatarError] = useState(false)
+  const canDeleteAvatar = !!props.avatar && !onAvatarError
 
   const handleImageInput: OnImageInput = useCallback(async (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => {
     setInputImageInfo(
@@ -65,11 +64,16 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
     }
   }, [onSave, t])
 
+  const handleDeleteAvatarClick = useCallback(() => {
+    setIsShowAvatarPicker(false)
+    setIsShowDeleteConfirm(true)
+  }, [])
+
   const { handleLocalFileUpload } = useLocalFileUploader({
     limit: 3,
     disabled: false,
     onUpload: (imageFile: ImageFile) => {
-      if (imageFile.progress === 100) {
+      if (imageFile.progress === 100 && imageFile.fileId) {
         setUploading(false)
         setInputImageInfo(undefined)
         handleSaveAvatar(imageFile.fileId)
@@ -100,36 +104,17 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   return (
     <>
       <div>
-        <div className="group relative">
+        <button
+          type="button"
+          aria-label={t('avatar.editAction', { ns: 'common' })}
+          className="group relative inline-flex overflow-hidden rounded-full border-none bg-transparent p-0 outline-hidden hover:opacity-90 focus-visible:ring-2 focus-visible:ring-components-input-border-hover active:opacity-80"
+          onClick={() => setIsShowAvatarPicker(true)}
+        >
           <Avatar {...props} onLoadingStatusChange={status => setOnAvatarError(status === 'error')} />
-          <div
-            className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
-            onClick={() => {
-              if (hoverArea === 'right' && !onAvatarError)
-                setIsShowDeleteConfirm(true)
-              else
-                setIsShowAvatarPicker(true)
-            }}
-            onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              const x = e.clientX - rect.left
-              const isRight = x > rect.width / 2
-              setHoverArea(isRight ? 'right' : 'left')
-            }}
-          >
-            {hoverArea === 'right' && !onAvatarError
-              ? (
-                  <span className="text-xs text-white">
-                    <RiDeleteBin5Line />
-                  </span>
-                )
-              : (
-                  <span className="text-xs text-white">
-                    <RiPencilLine />
-                  </span>
-                )}
-          </div>
-        </div>
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 motion-safe:transition-opacity">
+            <span aria-hidden="true" className="i-ri-pencil-line size-5" />
+          </span>
+        </button>
       </div>
 
       <Dialog open={isShowAvatarPicker} onOpenChange={open => !open && setIsShowAvatarPicker(false)}>
@@ -138,11 +123,16 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
           <Divider className="m-0" />
 
           <div className="flex w-full items-center justify-center gap-2 p-3">
-            <Button className="w-full" onClick={() => setIsShowAvatarPicker(false)}>
+            {canDeleteAvatar && (
+              <Button tone="destructive" className="shrink-0" onClick={handleDeleteAvatarClick}>
+                {t('operation.delete', { ns: 'common' })}
+              </Button>
+            )}
+            <Button className="min-w-0 flex-1" onClick={() => setIsShowAvatarPicker(false)}>
               {t('iconPicker.cancel', { ns: 'app' })}
             </Button>
 
-            <Button variant="primary" className="w-full" disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
+            <Button variant="primary" className="min-w-0 flex-1" disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
               {t('iconPicker.ok', { ns: 'app' })}
             </Button>
           </div>

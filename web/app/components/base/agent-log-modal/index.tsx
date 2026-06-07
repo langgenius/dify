@@ -52,7 +52,7 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
         className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onCancel}
       >
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+        <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       <AgentLogDetail
         conversationID={currentLogItem.conversationId}

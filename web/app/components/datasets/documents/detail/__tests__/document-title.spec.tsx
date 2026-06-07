@@ -1,6 +1,7 @@
+import type { SimpleDocumentDetail } from '@/models/datasets'
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ChunkingMode } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
 
 import { DocumentTitle } from '../document-title'
 
@@ -11,19 +12,65 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-// Mock DocumentPicker
 vi.mock('../../../common/document-picker', () => ({
-  default: ({ datasetId, value, onChange }: { datasetId: string, value: unknown, onChange: (doc: { id: string }) => void }) => (
+  DocumentPicker: ({
+    datasetId,
+    value,
+    parentMode,
+    onChange,
+  }: {
+    datasetId: string
+    value?: SimpleDocumentDetail | null
+    parentMode?: string
+    onChange: (doc: { id: string }) => void
+  }) => (
     <div
       data-testid="document-picker"
       data-dataset-id={datasetId}
-      data-value={JSON.stringify(value)}
+      data-value-id={value?.id ?? ''}
+      data-parent-mode={parentMode ?? ''}
       onClick={() => onChange({ id: 'new-doc-id' })}
     >
       Document Picker
     </div>
   ),
 }))
+
+const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail => ({
+  id: 'doc-1',
+  batch: 'batch-1',
+  position: 1,
+  dataset_id: 'dataset-1',
+  data_source_type: DataSourceType.FILE,
+  data_source_info: {
+    upload_file: {
+      id: 'file-1',
+      name: 'document.pdf',
+      size: 1024,
+      extension: 'pdf',
+      mime_type: 'application/pdf',
+      created_by: 'user-1',
+      created_at: Date.now(),
+    },
+    job_id: 'job-1',
+    url: '',
+  },
+  dataset_process_rule_id: 'rule-1',
+  name: 'Document 1',
+  created_from: 'web',
+  created_by: 'user-1',
+  created_at: Date.now(),
+  indexing_status: 'completed',
+  display_status: 'enabled',
+  doc_form: ChunkingMode.text,
+  doc_language: 'en',
+  enabled: true,
+  word_count: 1000,
+  archived: false,
+  updated_at: Date.now(),
+  hit_count: 0,
+  ...overrides,
+})
 
 describe('DocumentTitle', () => {
   beforeEach(() => {
@@ -69,31 +116,26 @@ describe('DocumentTitle', () => {
       expect(getByTestId('document-picker').getAttribute('data-dataset-id')).toBe('test-dataset-id')
     })
 
-    it('should pass value props to DocumentPicker', () => {
+    it('should pass the selected document to DocumentPicker', () => {
+      const document = createDocument({ id: 'doc-current' })
       const { getByTestId } = render(
         <DocumentTitle
           datasetId="dataset-1"
-          name="test-document"
-          extension="pdf"
-          chunkingMode={ChunkingMode.text}
-          parent_mode="paragraph"
+          document={document}
+          parentMode="paragraph"
         />,
       )
 
-      const value = JSON.parse(getByTestId('document-picker').getAttribute('data-value') || '{}')
-      expect(value.name).toBe('test-document')
-      expect(value.extension).toBe('pdf')
-      expect(value.chunkingMode).toBe(ChunkingMode.text)
-      expect(value.parentMode).toBe('paragraph')
+      expect(getByTestId('document-picker')).toHaveAttribute('data-value-id', 'doc-current')
+      expect(getByTestId('document-picker')).toHaveAttribute('data-parent-mode', 'paragraph')
     })
 
-    it('should default parentMode to paragraph when parent_mode is undefined', () => {
+    it('should pass no parent mode when it is undefined', () => {
       const { getByTestId } = render(
         <DocumentTitle datasetId="dataset-1" />,
       )
 
-      const value = JSON.parse(getByTestId('document-picker').getAttribute('data-value') || '{}')
-      expect(value.parentMode).toBe('paragraph')
+      expect(getByTestId('document-picker')).toHaveAttribute('data-parent-mode', '')
     })
 
     it('should apply custom wrapperCls', () => {
@@ -119,24 +161,23 @@ describe('DocumentTitle', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle undefined optional props', () => {
+    it('should handle an empty document value', () => {
       const { getByTestId } = render(
         <DocumentTitle datasetId="dataset-1" />,
       )
 
-      const value = JSON.parse(getByTestId('document-picker').getAttribute('data-value') || '{}')
-      expect(value.name).toBeUndefined()
-      expect(value.extension).toBeUndefined()
+      expect(getByTestId('document-picker')).toHaveAttribute('data-value-id', '')
     })
 
     it('should maintain structure when rerendered', () => {
       const { rerender, getByTestId } = render(
-        <DocumentTitle datasetId="dataset-1" name="doc1" />,
+        <DocumentTitle datasetId="dataset-1" document={createDocument({ id: 'doc-1' })} />,
       )
 
-      rerender(<DocumentTitle datasetId="dataset-2" name="doc2" />)
+      rerender(<DocumentTitle datasetId="dataset-2" document={createDocument({ id: 'doc-2' })} />)
 
       expect(getByTestId('document-picker').getAttribute('data-dataset-id')).toBe('dataset-2')
+      expect(getByTestId('document-picker').getAttribute('data-value-id')).toBe('doc-2')
     })
   })
 })

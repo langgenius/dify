@@ -5,6 +5,7 @@ Part of #32454 — replaces the mock-based unit tests with real database interac
 
 from __future__ import annotations
 
+import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import timedelta
@@ -15,7 +16,7 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from graphon.nodes.human_input.entities import FormDefinition, UserAction
+from graphon.nodes.human_input.entities import FormDefinition, UserActionConfig
 from graphon.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -174,12 +175,16 @@ def _create_submitted_form(
     action_id: str = "approve",
     action_title: str = "Approve",
     node_title: str = "Approval",
+    form_content: str = "content",
+    rendered_content: str | None = None,
+    inputs: list[dict] | None = None,
+    submitted_data: dict | None = None,
 ) -> HumanInputForm:
     expiration_time = naive_utc_now() + timedelta(days=1)
     form_definition = FormDefinition(
-        form_content="content",
-        inputs=[],
-        user_actions=[UserAction(id=action_id, title=action_title)],
+        form_content=form_content,
+        inputs=inputs or [],
+        user_actions=[UserActionConfig(id=action_id, title=action_title)],
         rendered_content="rendered",
         expiration_time=expiration_time,
         node_title=node_title,
@@ -191,10 +196,12 @@ def _create_submitted_form(
         workflow_run_id=workflow_run_id,
         node_id="node-id",
         form_definition=form_definition.model_dump_json(),
-        rendered_content=f"Rendered {action_title}",
+        rendered_content=rendered_content or f"Rendered {action_title}",
         status=HumanInputFormStatus.SUBMITTED,
         expiration_time=expiration_time,
         selected_action_id=action_id,
+        submitted_data=None if submitted_data is None else json.dumps(submitted_data),
+        submitted_at=naive_utc_now(),
     )
     session.add(form)
     session.flush()
@@ -212,7 +219,7 @@ def _create_waiting_form(
     form_definition = FormDefinition(
         form_content="content",
         inputs=[],
-        user_actions=[UserAction(id="approve", title="Approve")],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
         rendered_content="rendered",
         expiration_time=expiration_time,
         default_values=default_values or {"name": "John"},
@@ -348,6 +355,127 @@ class TestGetByMessageIds:
         assert content.form_submission_data.node_title == "Approval"
         # msg2 has no content
         assert result[1] == []
+
+    def test_submitted_content_populates_submission_data_from_stored_form_data(
+        self,
+        db_session_with_containers: Session,
+        repository: SQLAlchemyExecutionExtraContentRepository,
+        test_scope: _TestScope,
+    ) -> None:
+        workflow_run_id = str(uuid4())
+        conversation = _create_conversation(db_session_with_containers, test_scope)
+        msg = _create_message(db_session_with_containers, test_scope, conversation.id, workflow_run_id)
+        stored_submission_data = {"decision": "approve", "comment": "Looks good"}
+        form = _create_submitted_form(
+            db_session_with_containers,
+            test_scope,
+            workflow_run_id=workflow_run_id,
+            submitted_data=stored_submission_data,
+        )
+        _create_human_input_content(
+            db_session_with_containers,
+            workflow_run_id=workflow_run_id,
+            message_id=msg.id,
+            form_id=form.id,
+        )
+        db_session_with_containers.commit()
+
+        result = repository.get_by_message_ids([msg.id])
+
+        content = result[0][0]
+        assert content.form_submission_data is not None
+        assert content.form_submission_data.submitted_data == stored_submission_data
+
+    def test_submitted_content_exposes_select_and_file_form_data(
+        self,
+        db_session_with_containers: Session,
+        repository: SQLAlchemyExecutionExtraContentRepository,
+        test_scope: _TestScope,
+    ) -> None:
+        workflow_run_id = str(uuid4())
+        conversation = _create_conversation(db_session_with_containers, test_scope)
+        msg = _create_message(db_session_with_containers, test_scope, conversation.id, workflow_run_id)
+        submitted_data = {
+            "decision": "approve",
+            "attachment": {
+                "type": "document",
+                "transfer_method": "remote_url",
+                "remote_url": "https://example.com/file.txt",
+                "filename": "file.txt",
+                "extension": ".txt",
+                "mime_type": "text/plain",
+            },
+            "attachments": [
+                {
+                    "type": "document",
+                    "transfer_method": "remote_url",
+                    "remote_url": "https://example.com/first.txt",
+                    "filename": "first.txt",
+                    "extension": ".txt",
+                    "mime_type": "text/plain",
+                },
+                {
+                    "type": "document",
+                    "transfer_method": "remote_url",
+                    "remote_url": "https://example.com/second.txt",
+                    "filename": "second.txt",
+                    "extension": ".txt",
+                    "mime_type": "text/plain",
+                },
+            ],
+        }
+        form = _create_submitted_form(
+            db_session_with_containers,
+            test_scope,
+            workflow_run_id=workflow_run_id,
+            form_content=(
+                "Decision: {{#$output.decision#}}\n"
+                "Attachment: {{#$output.attachment#}}\n"
+                "Attachments: {{#$output.attachments#}}"
+            ),
+            rendered_content=(
+                "Decision: {{#$output.decision#}}\n"
+                "Attachment: {{#$output.attachment#}}\n"
+                "Attachments: {{#$output.attachments#}}"
+            ),
+            inputs=[
+                {
+                    "type": "select",
+                    "output_variable_name": "decision",
+                    "option_source": {"type": "constant", "value": ["approve", "reject"]},
+                },
+                {
+                    "type": "file",
+                    "output_variable_name": "attachment",
+                    "allowed_file_types": ["document"],
+                    "allowed_file_upload_methods": ["remote_url"],
+                },
+                {
+                    "type": "file-list",
+                    "output_variable_name": "attachments",
+                    "allowed_file_types": ["document"],
+                    "allowed_file_upload_methods": ["remote_url"],
+                    "number_limits": 3,
+                },
+            ],
+            submitted_data=submitted_data,
+        )
+        _create_human_input_content(
+            db_session_with_containers,
+            workflow_run_id=workflow_run_id,
+            message_id=msg.id,
+            form_id=form.id,
+        )
+        db_session_with_containers.commit()
+
+        result = repository.get_by_message_ids([msg.id])
+
+        content = result[0][0]
+        assert content.form_submission_data is not None
+        assert content.form_submission_data.submitted_data == submitted_data
+        assert content.form_submission_data.rendered_content == (
+            "Decision: approve\nAttachment: [file]\nAttachments: [2 files]"
+        )
 
     def test_returns_unsubmitted_form_definition(
         self,

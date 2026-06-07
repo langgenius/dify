@@ -30,7 +30,6 @@ export type AutocompleteRootHighlightEventDetails = BaseAutocomplete.Root.Highli
 
 const autocompletePopupClassName = [
   'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
-  'data-side-top:origin-bottom data-side-bottom:origin-top data-side-left:origin-right data-side-right:origin-left',
 ]
 
 const autocompleteListClassName = [
@@ -317,7 +316,7 @@ export function AutocompleteItemText({
   )
 }
 
-export function AutocompleteLabel({
+export function AutocompleteGroupLabel({
   className,
   ...props
 }: BaseAutocomplete.GroupLabel.Props) {
@@ -347,7 +346,7 @@ export function AutocompleteEmpty({
 }: BaseAutocomplete.Empty.Props) {
   return (
     <BaseAutocomplete.Empty
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
+      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0', className)}
       {...props}
     />
   )

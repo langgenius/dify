@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * AvatarUrlResponse
+ */
+export const zAvatarUrlResponse = z.object({
+  avatar_url: z.string(),
+})
+
+/**
  * AccountAvatarPayload
  */
 export const zAccountAvatarPayload = z.object({
@@ -14,6 +21,7 @@ export const zAccountAvatarPayload = z.object({
  */
 export const zAccount = z.object({
   avatar: z.string().nullish(),
+  avatar_url: z.string().readonly().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
@@ -37,10 +45,25 @@ export const zChangeEmailSendPayload = z.object({
 })
 
 /**
+ * SimpleResultDataResponse
+ */
+export const zSimpleResultDataResponse = z.object({
+  data: z.string(),
+  result: z.string(),
+})
+
+/**
  * CheckEmailUniquePayload
  */
 export const zCheckEmailUniquePayload = z.object({
   email: z.string(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
 })
 
 /**
@@ -57,6 +80,15 @@ export const zChangeEmailResetPayload = z.object({
 export const zChangeEmailValidityPayload = z.object({
   code: z.string(),
   email: z.string(),
+  token: z.string(),
+})
+
+/**
+ * VerificationTokenResponse
+ */
+export const zVerificationTokenResponse = z.object({
+  email: z.string(),
+  is_valid: z.boolean(),
   token: z.string(),
 })
 
@@ -131,7 +163,7 @@ export const zAccountInterfaceLanguagePayload = z.object({
  * AccountInterfaceThemePayload
  */
 export const zAccountInterfaceThemePayload = z.object({
-  interface_theme: z.enum(['light', 'dark']),
+  interface_theme: z.enum(['dark', 'light']),
 })
 
 /**
@@ -174,6 +206,23 @@ export const zAccountIntegrateListResponse = z.object({
   data: z.array(zAccountIntegrateResponse),
 })
 
+/**
+ * Account
+ */
+export const zAccountWritable = z.object({
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
 export const zGetAccountAvatarQuery = z.object({
   avatar: z.string(),
 })
@@ -181,7 +230,7 @@ export const zGetAccountAvatarQuery = z.object({
 /**
  * Success
  */
-export const zGetAccountAvatarResponse = z.record(z.string(), z.unknown())
+export const zGetAccountAvatarResponse = zAvatarUrlResponse
 
 export const zPostAccountAvatarBody = zAccountAvatarPayload
 
@@ -195,14 +244,14 @@ export const zPostAccountChangeEmailBody = zChangeEmailSendPayload
 /**
  * Success
  */
-export const zPostAccountChangeEmailResponse = z.record(z.string(), z.unknown())
+export const zPostAccountChangeEmailResponse = zSimpleResultDataResponse
 
 export const zPostAccountChangeEmailCheckEmailUniqueBody = zCheckEmailUniquePayload
 
 /**
  * Success
  */
-export const zPostAccountChangeEmailCheckEmailUniqueResponse = z.record(z.string(), z.unknown())
+export const zPostAccountChangeEmailCheckEmailUniqueResponse = zSimpleResultResponse
 
 export const zPostAccountChangeEmailResetBody = zChangeEmailResetPayload
 
@@ -216,26 +265,26 @@ export const zPostAccountChangeEmailValidityBody = zChangeEmailValidityPayload
 /**
  * Success
  */
-export const zPostAccountChangeEmailValidityResponse = z.record(z.string(), z.unknown())
+export const zPostAccountChangeEmailValidityResponse = zVerificationTokenResponse
 
 export const zPostAccountDeleteBody = zAccountDeletePayload
 
 /**
  * Success
  */
-export const zPostAccountDeleteResponse = z.record(z.string(), z.unknown())
+export const zPostAccountDeleteResponse = zSimpleResultResponse
 
 export const zPostAccountDeleteFeedbackBody = zAccountDeletionFeedbackPayload
 
 /**
  * Success
  */
-export const zPostAccountDeleteFeedbackResponse = z.record(z.string(), z.unknown())
+export const zPostAccountDeleteFeedbackResponse = zSimpleResultResponse
 
 /**
  * Success
  */
-export const zGetAccountDeleteVerifyResponse = z.record(z.string(), z.unknown())
+export const zGetAccountDeleteVerifyResponse = zSimpleResultDataResponse
 
 /**
  * Success
@@ -270,7 +319,7 @@ export const zPostAccountInitBody = zAccountInitPayload
 /**
  * Success
  */
-export const zPostAccountInitResponse = z.record(z.string(), z.unknown())
+export const zPostAccountInitResponse = zSimpleResultResponse
 
 /**
  * Success

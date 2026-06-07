@@ -2,8 +2,7 @@ import logging
 import re
 import uuid
 from datetime import datetime
-from typing import Any, Literal
-from uuid import UUID
+from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource
@@ -13,10 +12,11 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
@@ -25,8 +25,10 @@ from controllers.console.wraps import (
     enterprise_license_required,
     is_admin_or_owner_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
+    with_current_user_id,
 )
-from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -34,12 +36,12 @@ from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
-from libs.helper import build_icon_url
-from libs.login import current_account_with_tenant, login_required
-from models import App, DatasetPermissionEnum, Workflow
+from libs.helper import build_icon_url, to_timestamp
+from libs.login import login_required
+from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
-from services.app_service import AppService
+from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -56,22 +58,23 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.feature_service import FeatureService
 
-ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
 
 register_enum_models(console_ns, IconType)
 
 _logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
+_CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
+AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 
 
 class AppListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"] = Field(
-        default="all", description="App mode filter"
-    )
+    mode: AppListMode = Field(default=cast(AppListMode, "all"), description="App mode filter")
     name: str | None = Field(default=None, description="Filter by app name")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
+    creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
 
     @field_validator("tag_ids", mode="before")
@@ -92,15 +95,39 @@ class AppListQuery(BaseModel):
         except ValueError as exc:
             raise ValueError("Invalid UUID format in tag_ids.") from exc
 
+    @field_validator("creator_ids", mode="before")
+    @classmethod
+    def validate_creator_ids(cls, value: list[str] | None) -> list[str] | None:
+        if not value:
+            return None
+
+        if not isinstance(value, list):
+            raise ValueError("Unsupported creator_ids type.")
+
+        items = [str(item).strip() for item in value if item and str(item).strip()]
+        if not items:
+            return None
+
+        try:
+            return [str(uuid.UUID(item)) for item in items]
+        except ValueError as exc:
+            raise ValueError("Invalid UUID format in creator_ids.") from exc
+
 
 def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
     normalized: dict[str, str | list[str]] = {}
     indexed_tag_ids: list[tuple[int, str]] = []
+    indexed_creator_ids: list[tuple[int, str]] = []
 
     for key in query_args:
         match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
         if match:
             indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
+            continue
+
+        match = _CREATOR_IDS_BRACKET_PATTERN.fullmatch(key)
+        if match:
+            indexed_creator_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
             continue
 
         value = query_args.get(key)
@@ -109,6 +136,8 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
 
     if indexed_tag_ids:
         normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
+    if indexed_creator_ids:
+        normalized["creator_ids"] = [value for _, value in sorted(indexed_creator_ids)]
 
     return normalized
 
@@ -116,7 +145,9 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
+    mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"] = Field(
+        ..., description="App mode"
+    )
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
@@ -178,12 +209,6 @@ class AppTracePayload(BaseModel):
 type JSONValue = Any
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 class Tag(ResponseModel):
     id: str
     name: str
@@ -200,7 +225,7 @@ class WorkflowPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ModelConfigPartial(ResponseModel):
@@ -214,7 +239,7 @@ class ModelConfigPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class ModelConfig(ResponseModel):
@@ -275,7 +300,7 @@ class ModelConfig(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class Site(ResponseModel):
@@ -318,7 +343,7 @@ class Site(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class DeletedTool(ResponseModel):
@@ -361,7 +386,7 @@ class AppPartial(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AppDetail(ResponseModel):
@@ -391,7 +416,7 @@ class AppDetail(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AppDetailWithSite(AppDetail):
@@ -400,6 +425,8 @@ class AppDetailWithSite(AppDetail):
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
     site: Site | None = None
+    # For Agent App type: the roster Agent backing this app (None otherwise).
+    bound_agent_id: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -420,6 +447,7 @@ class AppExportResponse(ResponseModel):
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
     console_ns,
@@ -473,16 +501,25 @@ class AppListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def get(self):
+    @with_session(write=False)
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user_id: str, session: Session):
         """Get app list"""
-        current_user, current_tenant_id = current_account_with_tenant()
-
         args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
-        args_dict = args.model_dump()
+        params = AppListParams(
+            page=args.page,
+            limit=args.limit,
+            mode=args.mode,
+            name=args.name,
+            tag_ids=args.tag_ids,
+            creator_ids=args.creator_ids,
+            is_created_by_me=args.is_created_by_me,
+        )
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, args_dict)
+        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
@@ -503,7 +540,7 @@ class AppListApi(Resource):
         draft_trigger_app_ids: set[str] = set()
         if workflow_capable_app_ids:
             draft_workflows = (
-                db.session.execute(
+                session.execute(
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),
@@ -542,13 +579,22 @@ class AppListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
         """Create app"""
-        current_user, current_tenant_id = current_account_with_tenant()
         args = CreateAppPayload.model_validate(console_ns.payload)
+        params = CreateAppParams(
+            name=args.name,
+            description=args.description,
+            mode=args.mode,
+            icon_type=args.icon_type,
+            icon=args.icon,
+            icon_background=args.icon_background,
+        )
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, args.model_dump(), current_user)
+        app = app_service.create_app(current_tenant_id, params, current_user)
         app_detail = AppDetail.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
 
@@ -564,7 +610,7 @@ class AppApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @get_app_model(mode=None)
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Get app detail"""
         app_service = AppService()
 
@@ -572,7 +618,7 @@ class AppApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-            app_model.access_mode = app_setting.access_mode
+            app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
@@ -589,7 +635,7 @@ class AppApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def put(self, app_model):
+    def put(self, app_model: App):
         """Update app"""
         args = UpdateAppPayload.model_validate(console_ns.payload)
 
@@ -618,12 +664,12 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_model):
+    def delete(self, app_model: App):
         """Delete app"""
         app_service = AppService()
         app_service.delete_app(app_model)
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/copy")
@@ -639,11 +685,10 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -700,7 +745,7 @@ class AppExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -716,12 +761,14 @@ class AppExportApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
 class AppPublishToCreatorsPlatformApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RedirectUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    @with_current_user_id
+    def post(self, current_user_id: str, app_model: App):
         """Publish app to Creators Platform"""
         from configs import dify_config
         from core.helper.creators import get_redirect_url, upload_dsl
@@ -729,13 +776,11 @@ class AppPublishToCreatorsPlatformApi(Resource):
         if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
             return {"error": "Creators Platform features are not enabled"}, 403
 
-        current_user, _ = current_account_with_tenant()
-
         dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)
-        redirect_url = get_redirect_url(str(current_user.id), claim_code)
+        redirect_url = get_redirect_url(current_user_id, claim_code)
 
         return {"redirect_url": redirect_url}
 
@@ -752,7 +797,7 @@ class AppNameApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -774,7 +819,7 @@ class AppIconApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
@@ -801,7 +846,7 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -823,7 +868,7 @@ class AppApiStatus(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model(mode=None)
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -841,10 +886,11 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id: UUID):
+    @with_session
+    @get_app_model
+    def get(self, session: Session, app_model: App):
         """Get app trace"""
-        with session_factory.create_session() as session:
-            app_trace_config = OpsTraceManager.get_app_tracing_config(str(app_id), session)
+        app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
 
         return app_trace_config
 
@@ -852,18 +898,23 @@ class AppTraceApi(Resource):
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppTracePayload.__name__])
-    @console_ns.response(200, "Trace configuration updated successfully")
+    @console_ns.response(
+        200,
+        "Trace configuration updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id: UUID):
+    @get_app_model
+    def post(self, app_model: App):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
-            app_id=str(app_id),
+            app_id=app_model.id,
             enabled=args.enabled,
             tracing_provider=args.tracing_provider,
         )

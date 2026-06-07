@@ -62,7 +62,7 @@ function ModelAuthDropdown({
             variant={buttonConfig.variant}
             title={buttonConfig.text}
           >
-            <span className="mr-1 i-ri-equalizer-2-line h-3.5 w-3.5 shrink-0" />
+            <span className="mr-1 i-ri-equalizer-2-line size-3.5 shrink-0" />
             <span className="w-0 grow truncate text-left">
               {buttonConfig.text}
             </span>

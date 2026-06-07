@@ -435,7 +435,7 @@ class LLMGenerator:
             stream=False,
         )
 
-        # Runtime type check since pyright has issues with the overload
+        # Runtime type check for overload narrowing.
         if not isinstance(result, LLMResult):
             raise TypeError("Expected LLMResult when stream=False")
         response = result

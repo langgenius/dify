@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -36,9 +37,9 @@ class TestAppGenerateService:
                 "services.app_generate_service.MessageBasedAppGenerator", autospec=True
             ) as mock_message_based_generator,
             patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
-            patch("services.app_generate_service.dify_config", autospec=True) as mock_dify_config,
-            patch("services.quota_service.dify_config", autospec=True) as mock_quota_dify_config,
-            patch("configs.dify_config", autospec=True) as mock_global_dify_config,
+            patch("services.app_generate_service.dify_config") as mock_dify_config,
+            patch("services.quota_service.dify_config") as mock_quota_dify_config,
+            patch("configs.dify_config") as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
             mock_billing_service.quota_reserve.return_value = {
@@ -133,7 +134,10 @@ class TestAppGenerateService:
             }
 
     def _create_test_app_and_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, mode="chat"
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = "chat",
     ):
         """
         Helper method to create a test app and account for testing.
@@ -165,20 +169,20 @@ class TestAppGenerateService:
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
-        # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": mode,
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-            "max_active_requests": 5,
-        }
+        from services.app_service import AppService, CreateAppParams
 
-        from services.app_service import AppService
+        # Create app with realistic data
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode=mode,
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+            max_active_requests=5,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)

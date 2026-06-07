@@ -189,11 +189,8 @@ describe('FileList', () => {
 
         render(<FileList {...props} />)
 
-        // Assert - The checkbox for file-1 should be checked (check icon present)
-        expect(screen.getByTestId('checkbox-file-1')).toBeInTheDocument()
-        expect(screen.getByTestId('check-icon-file-1')).toBeInTheDocument()
-        expect(screen.getByTestId('checkbox-file-2')).toBeInTheDocument()
-        expect(screen.queryByTestId('check-icon-file-2')).not.toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: 'file1.txt' })).toHaveAttribute('aria-checked', 'true')
+        expect(screen.getByRole('checkbox', { name: 'file2.txt' })).toHaveAttribute('aria-checked', 'false')
       })
     })
 
@@ -236,8 +233,7 @@ describe('FileList', () => {
 
         render(<FileList {...props} />)
 
-        // Assert - Checkbox component has data-testid="checkbox-{id}"
-        expect(screen.getByTestId('checkbox-file-1')).toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: 'file1.txt' })).toBeInTheDocument()
       })
 
       it('should render radio buttons when supportBatchUpload is false', () => {
@@ -249,7 +245,7 @@ describe('FileList', () => {
         // Assert - Radio is rendered as a div with rounded-full class
         expect(container.querySelector('.rounded-full')).toBeInTheDocument()
         // And checkbox should not be present
-        expect(screen.queryByTestId('checkbox-file-1')).not.toBeInTheDocument()
+        expect(screen.queryByRole('checkbox', { name: 'file1.txt' })).not.toBeInTheDocument()
       })
     })
   })

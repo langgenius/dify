@@ -121,7 +121,7 @@ const OptionCard = memo(({
             {
               enableRadio && (
                 <div className={cn(
-                  'ml-2 h-4 w-4 shrink-0 rounded-full border border-components-radio-border bg-components-radio-bg',
+                  'ml-2 size-4 shrink-0 rounded-full border border-components-radio-border bg-components-radio-bg',
                   isActive && 'border-[5px] border-components-radio-border-checked',
                 )}
                 >
