@@ -1,13 +1,14 @@
 import datetime
 import time
 
-import app
 import click
+from sqlalchemy import select, text
+from sqlalchemy.orm import Session
+
+import app
 from configs import dify_config
 from extensions.ext_database import db
 from models.dataset import Embedding
-from sqlalchemy import select, text
-from sqlalchemy.orm import Session
 
 
 @app.celery.task(queue="dataset")
