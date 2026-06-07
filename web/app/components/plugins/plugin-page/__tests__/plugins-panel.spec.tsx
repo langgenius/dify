@@ -218,7 +218,27 @@ describe('PluginsPanel', () => {
 
     render(<PluginsPanel />)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    const loadingState = screen.getByRole('status')
+
+    expect(loadingState).toHaveClass('px-12')
+    expect(screen.getAllByTestId('plugin-card-skeleton')).toHaveLength(6)
+  })
+
+  it('uses compact skeleton spacing while an integrations plugin category is pending', () => {
+    mockUseInstalledPluginList.mockReturnValue({
+      data: { plugins: [] },
+      isLoading: true,
+      isFetching: false,
+      isLastPage: true,
+      loadNextPage: mockLoadNextPage,
+    })
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
+
+    const loadingState = screen.getByRole('status')
+
+    expect(loadingState).toHaveClass('px-6', 'max-w-[1600px]')
+    expect(screen.getAllByTestId('plugin-card-skeleton')).toHaveLength(6)
   })
 
   it('uses default content inset for the standalone plugins page', () => {

@@ -96,9 +96,9 @@ const MCPList = ({
           isLoading && 'h-[calc(100vh-136px)] overflow-hidden',
         )}
       >
-        {showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
+        {!isLoading && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
         {isLoading
-          ? <ToolCardSkeletonGrid />
+          ? <ToolCardSkeletonGrid variant="mcp" />
           : filteredList.map(provider => (
               <MCPCard
                 key={provider.id}
