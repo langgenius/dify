@@ -43,6 +43,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const {
     modalClassName,
     foldAnimInto,
+    foldIntoTaskTrigger,
     setIsInstalling,
     handleStartToInstall,
   } = useHideLogic(onClose)
@@ -114,6 +115,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                         onInstalled={handleInstalled}
                         onFailed={handleFailed}
                         onStartToInstall={handleStartToInstall}
+                        onTaskStarted={foldIntoTaskTrigger}
                       />
                     )
                   }
