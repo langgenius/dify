@@ -2415,11 +2415,6 @@
       "count": 1
     }
   },
-  "web/app/components/goto-anything/actions/recent-store.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "web/app/components/goto-anything/actions/types.ts": {
     "ts/no-explicit-any": {
       "count": 2
