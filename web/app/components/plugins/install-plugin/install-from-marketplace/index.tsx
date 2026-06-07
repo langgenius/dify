@@ -120,7 +120,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                     )
                   }
                   {
-                    [InstallStep.installed, InstallStep.installFailed].includes(step) && (
+                    ([InstallStep.installed, InstallStep.installFailed] as InstallStep[]).includes(step) && (
                       <Installed
                         payload={manifest!}
                         isMarketPayload

@@ -64,10 +64,10 @@ const ReadyToInstall: FC<Props> = ({
         )
       }
       {
-        ([InstallStep.uploadFailed, InstallStep.installed, InstallStep.installFailed].includes(step)) && (
+        ([InstallStep.uploadFailed, InstallStep.installed, InstallStep.installFailed] as InstallStep[]).includes(step) && (
           <Installed
             payload={manifest}
-            isFailed={[InstallStep.uploadFailed, InstallStep.installFailed].includes(step)}
+            isFailed={([InstallStep.uploadFailed, InstallStep.installFailed] as InstallStep[]).includes(step)}
             errMsg={errorMsg}
             installContextCategory={installContextCategory}
             onCancel={onClose}

@@ -27,6 +27,12 @@ import Description from '@/app/components/plugins/card/base/description'
 import { API_PREFIX } from '@/config'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 
+type OutputSchemaItem = {
+  name: string
+  type: string
+  description?: string
+}
+
 type Props = {
   provider: {
     author: string
@@ -50,16 +56,17 @@ const StrategyDetail: FC<Props> = ({
   const { t } = useTranslation()
 
   const outputSchema = useMemo(() => {
-    const res: any[] = []
-    if (!detail.output_schema || !detail.output_schema.properties)
+    const res: OutputSchemaItem[] = []
+    const properties = detail.output_schema?.properties
+    if (!properties)
       return []
-    Object.keys(detail.output_schema.properties).forEach((outputKey) => {
-      const output = detail.output_schema.properties[outputKey]
+    Object.entries(properties).forEach(([outputKey, output]) => {
+      const outputType = Array.isArray(output.type) ? output.type.join(' | ') : output.type
       res.push({
         name: outputKey,
-        type: output.type === 'array'
+        type: outputType === 'array'
           ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]`
-          : `${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}`,
+          : `${outputType ? outputType.slice(0, 1).toLocaleUpperCase() + outputType.slice(1) : 'Unknown'}`,
         description: output.description,
       })
     })
@@ -123,7 +130,7 @@ const StrategyDetail: FC<Props> = ({
                   <div className="px-4">
                     {detail.parameters.length > 0 && (
                       <div className="space-y-1 py-2">
-                        {detail.parameters.map((item: any, index) => (
+                        {detail.parameters.map((item, index) => (
                           <div key={index} className="py-1">
                             <div className="flex items-center gap-2">
                               <div className="code-sm-semibold text-text-secondary">{getValueFromI18nObject(item.label)}</div>

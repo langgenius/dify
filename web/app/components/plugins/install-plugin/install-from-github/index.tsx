@@ -28,6 +28,17 @@ type SelectOption = {
   name: string
 }
 
+type ErrorWithResponseMessage = {
+  response?: {
+    message?: string
+  }
+}
+
+type UploadedGitHubPackage = {
+  uniqueIdentifier: string
+  manifest: PluginDeclaration
+}
+
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
   installContextCategory?: PluginCategoryEnum
@@ -108,13 +119,14 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
     }
   }
 
-  const handleError = (e: any, isInstall: boolean) => {
-    const message = e?.response?.message || t('installModal.installFailedDesc', { ns: 'plugin' })
+  const handleError = (error: unknown, isInstall: boolean) => {
+    const responseMessage = (error as ErrorWithResponseMessage).response?.message
+    const message = responseMessage || t('installModal.installFailedDesc', { ns: 'plugin' })
     setErrorMsg(message)
     setState(prevState => ({ ...prevState, step: isInstall ? InstallStepFromGitHub.installFailed : InstallStepFromGitHub.uploadFailed }))
   }
 
-  const handleUploaded = async (GitHubPackage: any) => {
+  const handleUploaded = async (GitHubPackage: UploadedGitHubPackage) => {
     try {
       const icon = await getIconUrl(GitHubPackage.manifest.icon)
       setManifest({
@@ -183,15 +195,15 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
               {getTitle()}
             </div>
             <div className="self-stretch system-xs-regular text-text-tertiary">
-              {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t('installFromGitHub.installNote', { ns: 'plugin' })}
+              {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed] as InstallStepFromGitHub[]).includes(state.step) && t('installFromGitHub.installNote', { ns: 'plugin' })}
             </div>
           </div>
         </div>
-        {([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step))
+        {([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed] as InstallStepFromGitHub[]).includes(state.step)
           ? (
               <Installed
                 payload={manifest}
-                isFailed={[InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installFailed].includes(state.step)}
+                isFailed={([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installFailed] as InstallStepFromGitHub[]).includes(state.step)}
                 errMsg={errorMsg}
                 installContextCategory={installContextCategory}
                 onCancel={onClose}

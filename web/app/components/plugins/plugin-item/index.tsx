@@ -62,7 +62,7 @@ const PluginItem: FC<Props> = ({
   const hasEndpointDeclaration = !!plugin.declaration.endpoint
 
   const orgName = useMemo(() => {
-    return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
+    return ([PluginSource.github, PluginSource.marketplace] as PluginSource[]).includes(source) ? author : ''
   }, [source, author])
 
   const { langGeniusVersionInfo } = useAppContext()
@@ -78,7 +78,7 @@ const PluginItem: FC<Props> = ({
   }, [status, deprecated_reason])
 
   const handleDelete = useCallback(() => {
-    refreshPluginList({ category } as any)
+    refreshPluginList({ category })
   }, [category, refreshPluginList])
 
   const getValueFromI18nObject = useRenderI18nObject()

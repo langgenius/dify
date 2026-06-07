@@ -1,4 +1,4 @@
-import type { FormTypeEnum } from '../base/form/types'
+import type { FormOption, FormSchema, FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
@@ -6,21 +6,48 @@ import type { Collection, ToolCredential } from '@/app/components/tools/types'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { Locale } from '@/i18n-config'
 
-export enum PluginCategoryEnum {
-  tool = 'tool',
-  model = 'model',
-  extension = 'extension',
-  agent = 'agent-strategy',
-  datasource = 'datasource',
-  trigger = 'trigger',
+export const PluginCategoryEnum = {
+  tool: 'tool',
+  model: 'model',
+  extension: 'extension',
+  agent: 'agent-strategy',
+  datasource: 'datasource',
+  trigger: 'trigger',
+} as const
+
+export type PluginCategoryEnum = typeof PluginCategoryEnum[keyof typeof PluginCategoryEnum]
+
+export const PluginSource = {
+  marketplace: 'marketplace',
+  github: 'github',
+  local: 'package',
+  debugging: 'remote',
+} as const
+
+export type PluginSource = typeof PluginSource[keyof typeof PluginSource]
+
+type PluginModelDeclaration = {
+  provider?: string
+} & Record<string, unknown>
+
+type PluginStrategyDeclaration = {
+  identity?: Partial<Identity>
+  plugin_id?: string
+  strategies?: StrategyDetail[]
+} & Record<string, unknown>
+
+type OutputSchemaProperty = {
+  type?: string | string[]
+  description?: string
+  items?: {
+    type?: string
+  }
 }
 
-export enum PluginSource {
-  marketplace = 'marketplace',
-  github = 'github',
-  local = 'package',
-  debugging = 'remote',
-}
+type OutputSchema = {
+  properties?: Record<string, OutputSchemaProperty>
+  required?: string[]
+} & Record<string, unknown>
 
 type PluginToolDeclaration = {
   identity: {
@@ -49,7 +76,7 @@ export type EndpointListItem = {
   id: string
   created_at: string
   updated_at: string
-  settings: Record<string, any>
+  settings: Record<string, unknown>
   tenant_id: string
   plugin_id: string
   expired_at: string
@@ -77,15 +104,15 @@ export type PluginDeclaration = {
   label: Record<Locale, string>
   description: Record<Locale, string>
   created_at: string
-  resource: any // useless in frontend
-  plugins: any // useless in frontend
+  resource: unknown
+  plugins: unknown
   verified: boolean
   endpoint?: PluginEndpointDeclaration | null
   tool?: PluginToolDeclaration
   datasource?: PluginToolDeclaration
-  model: any
+  model: PluginModelDeclaration | null
   tags: string[]
-  agent_strategy: any
+  agent_strategy: PluginStrategyDeclaration | null
   meta: PluginDeclarationMeta
   trigger: PluginTriggerDefinition
 }
@@ -108,10 +135,10 @@ type CredentialsSchema = {
   label: Record<Locale, string>
   description: Record<Locale, string>
   type: FormTypeEnum
-  scope: any
+  scope?: FormSchema['scope']
   required: boolean
-  default: any
-  options: any
+  default?: FormSchema['default']
+  options?: FormOption[]
   help: Record<Locale, string>
   url: string
   placeholder: Record<Locale, string>
@@ -126,15 +153,15 @@ export type ParametersSchema = {
   name: string
   label: Record<Locale, string>
   type: FormTypeEnum
-  auto_generate: any
-  template: any
-  scope: any
+  auto_generate: unknown
+  template: unknown
+  scope?: FormSchema['scope']
   required: boolean
   multiple: boolean
   default?: string | string[]
-  min: any
-  max: any
-  precision: any
+  min?: number
+  max?: number
+  precision?: number
   options?: Array<{
     value: string
     label: Record<Locale, string>
@@ -147,15 +174,15 @@ export type TriggerEventParameter = {
   name: string
   label: TypeWithI18N
   type: string
-  auto_generate: any
-  template: any
-  scope: any
+  auto_generate: unknown
+  template: unknown
+  scope?: string
   required: boolean
   multiple: boolean
-  default: any
-  min: any
-  max: any
-  precision: any
+  default?: string
+  min?: number
+  max?: number
+  precision?: number
   options?: Array<{
     value: string
     label: TypeWithI18N
@@ -174,7 +201,7 @@ export type TriggerEvent = {
   }
   description: TypeWithI18N
   parameters: TriggerEventParameter[]
-  output_schema: Record<string, any>
+  output_schema: OutputSchema
 }
 
 export type PluginManifestInMarket = {
@@ -197,11 +224,13 @@ export type PluginManifestInMarket = {
   from: Dependency['type']
 }
 
-export enum SupportedCreationMethods {
-  OAUTH = 'OAUTH',
-  APIKEY = 'APIKEY',
-  MANUAL = 'MANUAL',
-}
+export const SupportedCreationMethods = {
+  OAUTH: 'OAUTH',
+  APIKEY: 'APIKEY',
+  MANUAL: 'MANUAL',
+} as const
+
+export type SupportedCreationMethods = typeof SupportedCreationMethods[keyof typeof SupportedCreationMethods]
 
 export type PluginDetail = {
   id: string
@@ -262,11 +291,13 @@ export type Plugin = {
   from: Dependency['type']
 }
 
-export enum PermissionType {
-  everyone = 'everyone',
-  admin = 'admins',
-  noOne = 'noone',
-}
+export const PermissionType = {
+  everyone: 'everyone',
+  admin: 'admins',
+  noOne: 'noone',
+} as const
+
+export type PermissionType = typeof PermissionType[keyof typeof PermissionType]
 
 export type Permissions = {
   install_permission: PermissionType
@@ -312,14 +343,16 @@ export type UpdatePluginModalType = UpdatePluginPayload & {
   onSave: () => void
 }
 
-export enum InstallStepFromGitHub {
-  setUrl = 'url',
-  selectPackage = 'selecting',
-  readyToInstall = 'readyToInstall',
-  uploadFailed = 'uploadFailed',
-  installed = 'installed',
-  installFailed = 'failed',
-}
+export const InstallStepFromGitHub = {
+  setUrl: 'url',
+  selectPackage: 'selecting',
+  readyToInstall: 'readyToInstall',
+  uploadFailed: 'uploadFailed',
+  installed: 'installed',
+  installFailed: 'failed',
+} as const
+
+export type InstallStepFromGitHub = typeof InstallStepFromGitHub[keyof typeof InstallStepFromGitHub]
 
 export type InstallState = {
   step: InstallStepFromGitHub
@@ -343,14 +376,16 @@ export type EndpointsResponse = {
   total: number
   page: number
 }
-export enum InstallStep {
-  uploading = 'uploading',
-  uploadFailed = 'uploadFailed',
-  readyToInstall = 'readyToInstall',
-  installing = 'installing',
-  installed = 'installed',
-  installFailed = 'failed',
-}
+export const InstallStep = {
+  uploading: 'uploading',
+  uploadFailed: 'uploadFailed',
+  readyToInstall: 'readyToInstall',
+  installing: 'installing',
+  installed: 'installed',
+  installFailed: 'failed',
+} as const
+
+export type InstallStep = typeof InstallStep[keyof typeof InstallStep]
 
 type GitHubAsset = {
   id: number
@@ -398,12 +433,14 @@ export type DebugInfo = {
   port: number
 }
 
-export enum TaskStatus {
-  pending = 'pending',
-  running = 'running',
-  success = 'success',
-  failed = 'failed',
-}
+export const TaskStatus = {
+  pending: 'pending',
+  running: 'running',
+  success: 'success',
+  failed: 'failed',
+} as const
+
+export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus]
 
 export type PluginStatus = {
   plugin_unique_identifier: string
@@ -538,13 +575,14 @@ export type VersionProps = {
 export type StrategyParamItem = {
   name: string
   label: Record<Locale, string>
+  human_description?: Record<Locale, string>
   help: Record<Locale, string>
   placeholder: Record<Locale, string>
   type: string
   scope: string
   required: boolean
-  default: any
-  options: any[]
+  default?: FormSchema['default']
+  options: FormOption[]
   template: {
     enabled: boolean
   }
@@ -563,7 +601,7 @@ export type StrategyDetail = {
   }
   parameters: StrategyParamItem[]
   description: Record<Locale, string>
-  output_schema: Record<string, any>
+  output_schema: OutputSchema
   features: AgentFeature[]
 }
 
