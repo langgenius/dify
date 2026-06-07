@@ -10,13 +10,13 @@ import logging
 import time
 from datetime import UTC, datetime, timedelta
 
-import click
-from sqlalchemy import delete, or_, select
-
 import app
+import click
 from configs import dify_config
 from extensions.ext_database import db
 from models.oauth import OAuthAccessToken
+from sqlalchemy import delete, or_, select
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +37,14 @@ def clean_oauth_access_tokens_task():
     )
 
     total = 0
-    while True:
-        ids = db.session.scalars(select(OAuthAccessToken.id).where(candidates).limit(DELETE_BATCH_SIZE)).all()
-        if not ids:
-            break
-        db.session.execute(delete(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids)))
-        db.session.commit()
-        total += len(ids)
+    with Session(db.engine, expire_on_commit=False) as session:
+        while True:
+            ids = session.scalars(select(OAuthAccessToken.id).where(candidates).limit(DELETE_BATCH_SIZE)).all()
+            if not ids:
+                break
+            session.execute(delete(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids)))
+            session.commit()
+            total += len(ids)
 
     end_at = time.perf_counter()
     click.echo(
