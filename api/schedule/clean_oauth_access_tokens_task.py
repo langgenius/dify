@@ -10,13 +10,14 @@ import logging
 import time
 from datetime import UTC, datetime, timedelta
 
-import app
 import click
+from sqlalchemy import delete, or_, select
+from sqlalchemy.orm import Session
+
+import app
 from configs import dify_config
 from extensions.ext_database import db
 from models.oauth import OAuthAccessToken
-from sqlalchemy import delete, or_, select
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
