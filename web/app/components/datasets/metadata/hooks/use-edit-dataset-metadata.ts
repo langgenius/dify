@@ -4,6 +4,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useBuiltInMetaDataFields, useCreateMetaData, useDatasetMetaData, useDeleteMetaData, useRenameMeta, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
 import { isShowManageMetadataLocalStorageKey } from '../types'
 import useCheckMetadataName from './use-check-metadata-name'
@@ -17,13 +18,17 @@ const useEditDatasetMetadata = ({ datasetId,
 }) => {
   const { t } = useTranslation()
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
+  const [isShowManageMetadata, setIsShowManageMetadata] = useLocalStorage<string>(
+    isShowManageMetadataLocalStorageKey,
+    undefined,
+    { raw: true },
+  )
   useEffect(() => {
-    const isShowManageMetadata = localStorage.getItem(isShowManageMetadataLocalStorageKey)
     if (isShowManageMetadata) {
       showEditModal()
-      localStorage.removeItem(isShowManageMetadataLocalStorageKey)
+      setIsShowManageMetadata(null)
     }
-  }, [])
+  }, [isShowManageMetadata, setIsShowManageMetadata, showEditModal])
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
   const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
   const { checkName } = useCheckMetadataName()
