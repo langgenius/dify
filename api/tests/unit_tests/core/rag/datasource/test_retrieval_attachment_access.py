@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import cast
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -21,7 +22,7 @@ from core.rag.retrieval import dataset_retrieval as dataset_retrieval_module
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
-from models import UploadFile
+from models import Dataset, UploadFile
 
 
 class _ScalarResult:
@@ -192,7 +193,7 @@ def test_retrieve_hybrid_attachment_only_reranks_with_image_query_type(app, monk
     RetrievalService()._retrieve(
         flask_app=app,
         retrieval_method=RetrievalMethod.HYBRID_SEARCH,
-        dataset=dataset,
+        dataset=cast(Dataset, dataset),
         all_documents=[],
         exceptions=[],
         query=None,
