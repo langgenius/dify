@@ -433,6 +433,17 @@ describe('AccountSetting', () => {
       expect(screen.getByText('common.account.general')).toBeInTheDocument()
       expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
     })
+
+    it('should switch the preferences icon when the tab is active', () => {
+      renderAccountSetting()
+
+      const preferencesButton = screen.getByRole('button', { name: 'common.settings.preferences' })
+      expect(preferencesButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
+
+      fireEvent.click(preferencesButton)
+
+      expect(preferencesButton.querySelector('.i-ri-equalizer-2-fill')).toBeInTheDocument()
+    })
   })
 
   describe('Interactions', () => {

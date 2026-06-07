@@ -95,7 +95,7 @@ export default function AccountSetting({
       name: t('settings.preferences', { ns: 'common' }),
       title: t('account.general', { ns: 'common' }),
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
     },
   ]
   const activeItem = settingItems.find(item => item.key === activeMenu)
