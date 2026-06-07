@@ -150,7 +150,10 @@ jobs:
         env:
           DIFY_E2E_MODE: local
         run: |
-          ${{ inputs.test_scope == 'smoke' && "pnpm test:e2e -- -t '\\[P0\\]' test/e2e/suites/framework/help.e2e.ts test/e2e/suites/config" || "pnpm test:e2e -- test/e2e/suites/framework/help.e2e.ts test/e2e/suites/config" }}
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then FILTER_ARGS=(-t "\[P0\]"); else FILTER_ARGS=(); fi
+          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
+            test/e2e/suites/framework/help.e2e.ts \
+            test/e2e/suites/config
 
 # ════════════════════════════════════════════════════════════════════════════
 # 1-B. framework + output + error-handling (parallel with run/discovery)
@@ -199,7 +202,7 @@ jobs:
             test/e2e/suites/error-handling/error-messages.e2e.ts
             test/e2e/suites/error-handling/exit-codes.e2e.ts
           )
-          FILTER=${{ inputs.test_scope == 'smoke' && "'-t' '\\[P0\\]'" || "''" }}
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then FILTER_ARGS=(-t "\[P0\]"); else FILTER_ARGS=(); fi
           pnpm test:e2e -- ${FILTER} "${FILES[@]}"
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -243,7 +246,7 @@ jobs:
           DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
           DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
         run: |
-          ${{ inputs.test_scope == 'smoke' && "pnpm test:e2e -- -t '\\[P0\\]'" || "pnpm test:e2e --" }} \
+          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
             $(find test/e2e/suites/discovery -name '*.e2e.ts' | sort)
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -308,7 +311,7 @@ jobs:
           DIFY_E2E_HITL_SINGLE_ACTION_APP_ID: ${{ needs.provision.outputs.hitl_single_action_app_id }}
           DIFY_E2E_HITL_MULTI_NODE_APP_ID:    ${{ needs.provision.outputs.hitl_multi_node_app_id }}
         run: |
-          ${{ inputs.test_scope == 'smoke' && "pnpm test:e2e -- -t '\\[P0\\]'" || "pnpm test:e2e --" }} \
+          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
             test/e2e/suites/run/${{ matrix.file }}
 
       - name: Upload results on failure
@@ -358,7 +361,7 @@ jobs:
           DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
           DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
         run: |
-          ${{ inputs.test_scope == 'smoke' && "pnpm test:e2e -- -t '\\[P0\\]'" || "pnpm test:e2e --" }} \
+          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
             test/e2e/suites/auth/login.e2e.ts \
             test/e2e/suites/auth/status.e2e.ts \
             test/e2e/suites/auth/whoami.e2e.ts
@@ -436,7 +439,7 @@ jobs:
           [ ${#FILES[@]} -eq 0 ] && { echo "Nothing to run."; exit 0; }
 
           # Serial: fileParallelism is already false in vitest.e2e.config.ts
-          ${{ inputs.test_scope == 'smoke' && "pnpm test:e2e -- -t '\\[P0\\]'" || "pnpm test:e2e --" }} \
+          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
             "${FILES[@]}"
 
       - name: Upload results on failure
