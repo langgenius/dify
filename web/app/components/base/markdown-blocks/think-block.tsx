@@ -71,7 +71,7 @@ const useThinkTimer = (children: React.ReactNode) => {
     timerRef.current = setInterval(() => {
       setElapsedTime(() => {
         const currentElapsedTime = Math.floor((Date.now() - startTime) / 100) / 10
-        completedThinkDurations.set(contentKey, currentElapsedTime)
+        completedThinkDurations.set(contentKey, Math.max(completedThinkDurations.get(contentKey) ?? 0, currentElapsedTime))
         return currentElapsedTime
       })
     }, 100)
@@ -89,7 +89,7 @@ const useThinkTimer = (children: React.ReactNode) => {
     if (endThinkDetected || !isResponding) {
       const finalElapsedTime = Math.floor((Date.now() - startTime) / 100) / 10
 
-      completedThinkDurations.set(contentKey, elapsedTime || finalElapsedTime)
+      completedThinkDurations.set(contentKey, Math.max(completedThinkDurations.get(contentKey) ?? 0, elapsedTime || finalElapsedTime))
     }
   }, [contentKey, elapsedTime, endThinkDetected, isResponding, startTime])
 
