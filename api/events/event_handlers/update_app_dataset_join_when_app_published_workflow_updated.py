@@ -1,6 +1,7 @@
 from typing import cast
 
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from events.app_event import app_published_workflow_was_updated
@@ -17,30 +18,33 @@ def handle(sender, **kwargs):
     published_workflow = cast(Workflow, published_workflow)
 
     dataset_ids = get_dataset_ids_from_workflow(published_workflow)
-    app_dataset_joins = db.session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
+    with Session(db.engine, expire_on_commit=False) as session:
+        app_dataset_joins = session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
 
-    removed_dataset_ids: set[str] = set()
-    if not app_dataset_joins:
-        added_dataset_ids = dataset_ids
-    else:
-        old_dataset_ids: set[str] = set()
-        old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
+        removed_dataset_ids: set[str] = set()
+        if not app_dataset_joins:
+            added_dataset_ids = dataset_ids
+        else:
+            old_dataset_ids: set[str] = set()
+            old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
 
-        added_dataset_ids = dataset_ids - old_dataset_ids
-        removed_dataset_ids = old_dataset_ids - dataset_ids
+            added_dataset_ids = dataset_ids - old_dataset_ids
+            removed_dataset_ids = old_dataset_ids - dataset_ids
 
-    if removed_dataset_ids:
-        for dataset_id in removed_dataset_ids:
-            db.session.execute(
-                delete(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id)
-            )
+        if removed_dataset_ids:
+            for dataset_id in removed_dataset_ids:
+                session.execute(
+                    delete(AppDatasetJoin).where(
+                        AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id
+                    )
+                )
 
-    if added_dataset_ids:
-        for dataset_id in added_dataset_ids:
-            app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
-            db.session.add(app_dataset_join)
+        if added_dataset_ids:
+            for dataset_id in added_dataset_ids:
+                app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
+                session.add(app_dataset_join)
 
-    db.session.commit()
+        session.commit()
 
 
 def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set[str]:

@@ -505,6 +505,7 @@ class AppDslService:
                     app.app_model_config_id = app_model_config.id
 
                     self._session.add(app_model_config)
+                    self._session.flush()
                     app_model_config_was_updated.send(app, app_model_config=app_model_config)
             case _:
                 raise ValueError("Invalid app mode")
