@@ -455,16 +455,22 @@ describe('E2E / difyctl run app', () => {
       //   2. Assert the cache file now exists.
       //   3. Delete the cache file.
       //   4. Run again — must still succeed (cache miss → fresh fetch).
+      //
+      // DIFY_CACHE_DIR redirects the CLI's cache directory into the isolated
+      // temp dir so the test can observe and manipulate it without touching
+      // ~/Library/Caches/difyctl (macOS platform default).
+      // New cache layout: {DIFY_CACHE_DIR}/app-info.yml  (was: cache/app-info.json)
+      const cacheEnv = { DIFY_CACHE_DIR: fx.configDir, DIFY_E2E_NO_KEYRING: '1' }
 
       // Step 1: prime the cache
-      const prime = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'cache-prime']), {
+      const prime = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'cache-prime'], cacheEnv), {
         attempts: 3,
         delayMs: 2000,
       })
       assertExitCode(prime, 0)
 
-      // Step 2: cache file must have been written
-      const cacheFile = join(fx.configDir, 'cache', 'app-info.json')
+      // Step 2: cache file must have been written at {configDir}/app-info.yml
+      const cacheFile = join(fx.configDir, 'app-info.yml')
       const { access } = await import('node:fs/promises')
       await expect(access(cacheFile)).resolves.toBeUndefined()
 
@@ -472,7 +478,7 @@ describe('E2E / difyctl run app', () => {
       await rm(cacheFile, { force: true })
 
       // Step 4: run again — cache miss must not cause failure
-      const result = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'cache-miss']), {
+      const result = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'cache-miss'], cacheEnv), {
         attempts: 3,
         delayMs: 2000,
       })

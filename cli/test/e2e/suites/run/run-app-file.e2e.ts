@@ -11,7 +11,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, inject, it } from 'vitest'
 import { assertExitCode, assertJson, assertNoAnsi } from '../../helpers/assert.js'
 import { injectAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
@@ -41,6 +41,7 @@ describeSuite('E2E / difyctl run app --file', () => {
     await injectAuth(configDir, {
       host: E.host,
       bearer: E.token,
+      email: E.email,
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
     })
@@ -208,26 +209,16 @@ describeSuite('E2E / difyctl run app --file', () => {
     // Spec 4.4.23: an SSO-provisioned token must be able to run a file app.
     // Note: DIFY_E2E_SSO_TOKEN may be a dfoa_ token in dev environments;
     // the test verifies the token can execute the app regardless of prefix.
-    const { mkdir, writeFile: wf } = await import('node:fs/promises')
     const { join: pjoin } = await import('node:path')
     const ssoTmp = await withTempConfig()
     try {
-      await mkdir(ssoTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: ${E.host}`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: ${E.ssoToken}`,
-        `workspace:`,
-        `  id: ${E.workspaceId}`,
-        `  name: "E2E SSO Workspace"`,
-        `  role: owner`,
-        `available_workspaces:`,
-        `  - id: ${E.workspaceId}`,
-        `    name: "E2E SSO Workspace"`,
-        `    role: owner`,
-      ].join('\n')}\n`
-      await wf(pjoin(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectAuth(ssoTmp.configDir, {
+        host: E.host,
+        bearer: E.ssoToken,
+        email: 'sso-e2e@example.com',
+        workspaceId: E.workspaceId,
+        workspaceName: E.workspaceName,
+      })
       const docPath = pjoin(fileDir, 'sso-doc.txt')
       const picPath = pjoin(fileDir, 'sso-pic.png')
       await writeFile(docPath, 'sso file run test')

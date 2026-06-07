@@ -21,7 +21,7 @@ import {
   assertNoAnsi,
   assertStderrContains,
 } from '../../helpers/assert.js'
-import { BIN, BUN, run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { BIN, BUN, injectAuth, run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -49,7 +49,7 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
     await withRetry(async () => {
       const query = 'chunk-order-test'
       const proc = spawn(BUN, [BIN, 'run', 'app', E.chatAppId, query, '--stream'], {
-        env: { ...process.env, DIFY_CONFIG_DIR: fx.configDir, CI: '1', NO_COLOR: '1' },
+        env: { ...process.env, DIFY_CONFIG_DIR: fx.configDir, CI: '1', NO_COLOR: '1', DIFY_E2E_NO_KEYRING: '1' },
       })
 
       const chunks: string[] = []
@@ -162,7 +162,7 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
     // ⚠️  Depends on feat/cli API version (server-side pre-validation of missing required inputs).
     //     Current local server 1.14.1 does not support this check; test passes once upgraded.
     const proc = spawn(BUN, [BIN, 'run', 'app', E.workflowAppId, '--stream'], {
-      env: { ...process.env, DIFY_CONFIG_DIR: fx.configDir, CI: '1', NO_COLOR: '1' },
+      env: { ...process.env, DIFY_CONFIG_DIR: fx.configDir, CI: '1', NO_COLOR: '1', DIFY_E2E_NO_KEYRING: '1' },
     })
     let stderr = ''
     proc.stderr.on('data', (d: Buffer) => {
@@ -294,21 +294,15 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
 
   itWithSso('[P0] streaming with SSO (dfoe_) token succeeds (exit code 0, stdout non-empty)', async () => {
     // Spec 4.2.18: dfoe_ token can invoke streaming run on an authorised app
-    const { writeFile, mkdir } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const ssoTmp = await withTempConfig()
     try {
-      await mkdir(ssoTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: ${E.host}`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: ${E.ssoToken}`,
-        `external_subject:`,
-        `  email: sso@example.com`,
-        `  issuer: https://issuer.example.com`,
-      ].join('\n')}\n`
-      await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectAuth(ssoTmp.configDir, {
+        host: E.host,
+        bearer: E.ssoToken,
+        email: 'sso-e2e@example.com',
+        workspaceId: E.workspaceId,
+        workspaceName: E.workspaceName,
+      })
       const result = await withRetry(
         () => run(['run', 'app', E.chatAppId, 'sso-stream-test', '--stream'], {
           configDir: ssoTmp.configDir,

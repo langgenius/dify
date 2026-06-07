@@ -5,29 +5,30 @@
  *
  * Community Edition (CE) — default, set DIFY_E2E_EDITION=ce or leave unset.
  *   Required: DIFY_E2E_HOST, DIFY_E2E_EMAIL, DIFY_E2E_PASSWORD
- *   global-setup registers the account, mints tokens, imports all DSL fixtures
- *   into the single workspace, publishes apps.
+ *   global-setup registers the account (idempotent), mints tokens, imports
+ *   all DSL fixtures into the single workspace, and publishes apps.
  *
  * Enterprise Edition (EE) — set DIFY_E2E_EDITION=ee.
- *   Required: DIFY_E2E_HOST, DIFY_E2E_EMAIL, DIFY_E2E_PASSWORD,
- *             DIFY_E2E_ENTERPRISE_API_URL, DIFY_E2E_ENTERPRISE_API_SECRET_KEY,
- *             DIFY_E2E_CONSOLE_URL (if different from DIFY_E2E_HOST)
- *   global-setup uses the enterprise admin API to create a member account,
- *   creates two workspaces, imports DSL fixtures into both workspaces,
- *   publishes apps and sets access_mode → public via the enterprise API.
+ *   Required: DIFY_E2E_HOST, DIFY_E2E_EMAIL, DIFY_E2E_PASSWORD
+ *   The operator must pre-create two workspaces for the test account:
+ *     primary   → named "auto_test0"
+ *     secondary → named "auto_test1"
+ *   global-setup logs in, discovers the two workspaces by name, imports DSL
+ *   fixtures into both, publishes apps, and sets access_mode → public.
  *
  * ── EE-only test cases ────────────────────────────────────────────────────
  *   Tests that require multiple workspaces or EE-specific features are tagged
  *   [EE] and wrapped with enterpriseOnlyIt() / enterpriseOnlyDescribe() from
  *   helpers/skip.ts. They are automatically skipped in CE mode.
  *
- * ── Optional env-var overrides ────────────────────────────────────────────
+ * ── Optional env-var overrides (both editions) ────────────────────────────
  *   DIFY_E2E_TOKEN           Pre-minted bearer token — skips device-flow mint
  *   DIFY_E2E_SSO_TOKEN       External SSO bearer token (dfoe_ prefix)
+ *   DIFY_E2E_CONSOLE_URL     Console URL when different from DIFY_E2E_HOST
  *   DIFY_E2E_WORKSPACE_ID    Override primary workspace ID
  *   DIFY_E2E_WORKSPACE_NAME  Override primary workspace name
- *   DIFY_E2E_WS2_ID          Override secondary workspace ID
- *   DIFY_E2E_WS2_APP_ID      Override secondary workspace app ID
+ *   DIFY_E2E_WS2_ID          Override secondary workspace ID (EE)
+ *   DIFY_E2E_WS2_APP_ID      Override secondary workspace app ID (EE)
  *   DIFY_E2E_CHAT_APP_ID     Override echo-chat app ID
  *   DIFY_E2E_WORKFLOW_APP_ID Override echo-workflow app ID
  *   DIFY_E2E_FILE_APP_ID     Override file-upload app ID
@@ -42,7 +43,7 @@
 export type DifyEdition = 'ce' | 'ee'
 
 export type E2EEnv = {
-  /** Staging server base URL */
+  /** Staging server base URL (API endpoint) */
   host: string
   /**
    * Edition: "ce" (Community Edition, default) or "ee" (Enterprise Edition).
@@ -65,38 +66,28 @@ export type E2EEnv = {
   hitlAppId: string
   /** Workflow app with HITL node (display_in_ui=false) — empty when not configured */
   hitlExternalAppId: string
-  /** Workflow app with HITL node (display_in_ui=true, exactly 1 action) — empty when not configured */
+  /** Workflow app with HITL node (display_in_ui=true, exactly 1 action) */
   hitlSingleActionAppId: string
-  /** Workflow app with 2 serial Human-Input nodes — empty when not configured */
+  /** Workflow app with 2 serial Human-Input nodes */
   hitlMultiNodeAppId: string
-  /** Workflow app with file input (doc variable) — empty when not configured */
+  /** Workflow app with file input (doc variable) */
   fileAppId: string
-  /** Chat app (advanced-chat) with a file input variable — empty when not configured */
+  /** Chat app (advanced-chat) with a file input variable */
   fileChatAppId: string
   /**
-   * Secondary workspace ID — EE only.
-   * CE environments have a single workspace; this field is empty in CE mode.
+   * Secondary workspace ID — EE only ("auto_test1").
+   * Empty in CE mode (CE has a single workspace).
    */
   ws2Id: string
-  /**
-   * App ID inside the secondary workspace — EE only.
-   * Empty in CE mode.
-   */
+  /** App ID inside the secondary workspace — EE only. Empty in CE mode. */
   ws2AppId: string
-  /** Console account email — used by global-setup to mint tokens */
+  /** Console account email */
   email: string
   /** Console account password (plain-text; Base64-encoded before sending) */
   password: string
   /**
-   * Enterprise admin API base URL — EE only.
-   * e.g. https://<enterprise-api-host>/inner/api
-   */
-  enterpriseApiUrl: string
-  /** Enterprise admin API secret key — EE only. */
-  enterpriseApiSecretKey: string
-  /**
-   * Console URL for EE (may differ from DIFY_E2E_HOST which points to the API).
-   * Falls back to `host` when not set.
+   * Console URL — defaults to `host` when not set separately.
+   * Useful when the API host and the console host differ.
    */
   consoleUrl: string
 }
@@ -109,35 +100,20 @@ export type E2ECapabilities = {
    * Injected into every test file so helpers/skip.ts can gate EE-only cases.
    */
   edition: DifyEdition
-  /**
-   * Primary bearer token minted by global-setup via the device flow.
-   * Replaces DIFY_E2E_TOKEN — tests should prefer caps.token.
-   */
+  /** Primary bearer token minted by global-setup via the device flow. */
   token: string
   /**
-   * Per-suite dedicated tokens minted by global-setup via the device flow.
-   * Each destructive suite (logout, devices) gets its own fresh dfoa_ token so
-   * that revoking it never invalidates the main token used by other suites.
-   * Empty string when DIFY_E2E_EMAIL/PASSWORD are not configured.
+   * Per-suite dedicated tokens — each destructive suite (logout, devices)
+   * gets its own fresh dfoa_ token so revoking it never kills the main token.
    */
   logoutToken: string
   devicesToken: string
-  /**
-   * Workspace info resolved by global-setup login.
-   * Always populated when EMAIL/PASSWORD are set.
-   */
+  /** Primary workspace info. */
   workspaceId: string
   workspaceName: string
-  /**
-   * Secondary workspace ID resolved by provisionApps (EE only).
-   * Empty string in CE mode — falls back to env var.
-   */
+  /** Secondary workspace ID (EE only). Empty string in CE mode. */
   ws2Id: string
-  /**
-   * App IDs resolved by provisionApps in global-setup.
-   * When non-empty, these override the corresponding DIFY_E2E_*_APP_ID env vars.
-   * Empty string means provisionApps was not run; test falls back to env var.
-   */
+  /** App IDs resolved by provisionApps. Empty = fall back to env var. */
   chatAppId: string
   workflowAppId: string
   fileAppId: string
@@ -163,20 +139,12 @@ export function loadE2EEnv(): E2EEnv {
 
   const edition: DifyEdition = isEnterpriseEdition() ? 'ee' : 'ce'
 
-  // Base required vars — same for both editions.
+  // Same 3 required vars for both CE and EE.
   const required: Array<[keyof NodeJS.ProcessEnv, string]> = [
     ['DIFY_E2E_HOST', 'Staging server URL'],
     ['DIFY_E2E_EMAIL', 'Console account email'],
     ['DIFY_E2E_PASSWORD', 'Console account password'],
   ]
-
-  // EE requires enterprise admin API credentials in addition to the base vars.
-  if (edition === 'ee') {
-    required.push(
-      ['DIFY_E2E_ENTERPRISE_API_URL', 'Enterprise admin API URL'],
-      ['DIFY_E2E_ENTERPRISE_API_SECRET_KEY', 'Enterprise admin API secret key'],
-    )
-  }
 
   const missing = required.filter(([k]) => !process.env[k])
   if (missing.length > 0) {
@@ -191,7 +159,6 @@ export function loadE2EEnv(): E2EEnv {
   _cached = {
     host: process.env.DIFY_E2E_HOST!,
     edition,
-    // Optional overrides — global-setup provides these via capabilities
     token: process.env.DIFY_E2E_TOKEN ?? '',
     ssoToken: process.env.DIFY_E2E_SSO_TOKEN ?? '',
     workspaceId: process.env.DIFY_E2E_WORKSPACE_ID ?? '',
@@ -208,9 +175,6 @@ export function loadE2EEnv(): E2EEnv {
     ws2AppId: process.env.DIFY_E2E_WS2_APP_ID ?? '',
     email: process.env.DIFY_E2E_EMAIL!,
     password: process.env.DIFY_E2E_PASSWORD!,
-    // EE-only
-    enterpriseApiUrl: process.env.DIFY_E2E_ENTERPRISE_API_URL ?? '',
-    enterpriseApiSecretKey: process.env.DIFY_E2E_ENTERPRISE_API_SECRET_KEY ?? '',
     consoleUrl: process.env.DIFY_E2E_CONSOLE_URL ?? process.env.DIFY_E2E_HOST!,
   }
   return _cached
@@ -222,18 +186,12 @@ export function isE2ELocalMode(): boolean {
 
 /**
  * Resolve the E2E environment, merging capabilities (from global-setup) on top
- * of the optional env-var overrides.  Capabilities always take priority.
- *
- * Usage in test files:
- *   // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
- *   const caps = inject('e2eCapabilities') as E2ECapabilities
- *   const E = resolveEnv(caps)
+ * of the optional env-var overrides. Capabilities always take priority.
  */
 export function resolveEnv(caps: E2ECapabilities): E2EEnv {
   const env = loadE2EEnv()
   return {
     ...env,
-    // caps fields always win; fall back to env-var override when cap is empty
     edition: caps.edition || env.edition,
     token: caps.token || env.token,
     workspaceId: caps.workspaceId || env.workspaceId,

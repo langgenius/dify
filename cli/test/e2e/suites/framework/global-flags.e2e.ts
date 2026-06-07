@@ -85,12 +85,16 @@ describe('E2E / global flags (spec 5.5)', () => {
     expect(result.stdout).toMatch(/\$ difyctl/i)
   })
 
-  // ── 5.123  --help has no GLOBAL FLAGS section yet (WTA-252) ───────────────
+  // ── 5.123  --help contains GLOBAL FLAGS section ──────────────────────────
 
-  it.skip('[P1] 5.123 difyctl --help contains a GLOBAL FLAGS section (pending WTA-252)', async () => {
+  it('[P1] 5.123 difyctl --help contains a GLOBAL FLAGS section', async () => {
     // Spec 5.123: --help must include a dedicated GLOBAL FLAGS chapter listing
     // -o/--output, --workspace, --http-retry.
-    // Blocked by WTA-252. Activate once fixed.
+    const result = await fx.r(['--help'])
+    assertExitCode(result, 0)
+    expect(result.stdout).toMatch(/GLOBAL FLAGS/i)
+    expect(result.stdout).toContain('-o, --output')
+    expect(result.stdout).toContain('--http-retry')
   })
 
   // ── 5.124b  --version flag does not exist → exit 1 ───────────────────────
@@ -263,17 +267,35 @@ describe('E2E / global flags (spec 5.5)', () => {
     expect(result.stdout.trimStart()).toMatch(/^\{/)
   })
 
-  // ── WTA-252  Pending help improvements ────────────────────────────────────
+  // ── WTA-252  Help improvements ────────────────────────────────────────────
 
-  it.skip('[P1] 5.149 difyctl --help shows auth devices description (pending WTA-252)', async () => {
-    // Blocked by WTA-252 — auth devices row in help is missing description.
+  it('[P1] 5.149 difyctl --help shows auth devices description', async () => {
+    const result = await fx.r(['--help'])
+    assertExitCode(result, 0)
+    expect(result.stdout).toContain('auth devices list')
+    expect(result.stdout).toContain('List active sessions for the current bearer')
+    expect(result.stdout).toContain('auth devices revoke')
+    expect(result.stdout).toContain('Revoke one or all session devices')
   })
 
-  it.skip('[P1] 5.150 difyctl --help contains GLOBAL FLAGS section with -o --workspace --http-retry (pending WTA-252)', async () => {
-    // Blocked by WTA-252 — no GLOBAL FLAGS chapter in current help output.
+  it('[P1] 5.150 help surfaces contain global flags and command-level --workspace', async () => {
+    const result = await fx.r(['--help'])
+    assertExitCode(result, 0)
+    expect(result.stdout).toMatch(/GLOBAL FLAGS/i)
+    expect(result.stdout).toContain('-o, --output')
+    expect(result.stdout).toContain('--http-retry')
+
+    const commandHelp = await fx.r(['get', 'app', '--help'])
+    assertExitCode(commandHelp, 0)
+    expect(commandHelp.stdout).toContain('--workspace')
   })
 
-  it.skip('[P1] 5.151 difyctl --help contains quick-start example flow (pending WTA-252)', async () => {
-    // Blocked by WTA-252 — no quick-start examples in current help output.
+  it('[P1] 5.151 difyctl --help contains quick-start example flow', async () => {
+    const result = await fx.r(['--help'])
+    assertExitCode(result, 0)
+    expect(result.stdout).toMatch(/EXAMPLES/i)
+    expect(result.stdout).toContain('$ difyctl auth login')
+    expect(result.stdout).toContain('$ difyctl get app')
+    expect(result.stdout).toContain('$ difyctl run app')
   })
 })

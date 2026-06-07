@@ -28,6 +28,7 @@ describe('E2E / difyctl auth devices', () => {
     await injectAuth(configDir, {
       host: E.host,
       bearer: E.token,
+      email: E.email,
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
       tokenId,
@@ -109,6 +110,7 @@ describe('E2E / difyctl auth devices', () => {
       await injectAuth(revokeTmp.configDir, {
         host: E.host,
         bearer: freshToken,
+        email: E.email,
         workspaceId: E.workspaceId,
         workspaceName: E.workspaceName,
       })
@@ -178,6 +180,7 @@ describe('E2E / difyctl auth devices', () => {
       await injectAuth(revokeTmp.configDir, {
         host: E.host,
         bearer: freshToken,
+        email: E.email,
         workspaceId: E.workspaceId,
         workspaceName: E.workspaceName,
       })
@@ -219,6 +222,7 @@ describe('E2E / difyctl auth devices', () => {
       await injectAuth(selfTmp.configDir, {
         host: E.host,
         bearer: selfToken,
+        email: E.email,
         workspaceId: E.workspaceId,
         workspaceName: E.workspaceName,
       })
@@ -264,6 +268,7 @@ describe('E2E / difyctl auth devices', () => {
       await injectAuth(freshTmp.configDir, {
         host: E.host,
         bearer: freshToken,
+        email: E.email,
         workspaceId: E.workspaceId,
         workspaceName: E.workspaceName,
       })
@@ -290,6 +295,7 @@ describe('E2E / difyctl auth devices', () => {
       await injectAuth(freshTmp.configDir, {
         host: E.host,
         bearer: freshToken,
+        email: E.email,
         workspaceId: E.workspaceId,
         workspaceName: E.workspaceName,
       })
@@ -315,22 +321,15 @@ describe('E2E / difyctl auth devices', () => {
 
   it('[P1] revoke returns a network error when the host is unreachable', async () => {
     // Spec 1.104: revoke returns a network error when the host is unreachable
-    const { writeFile, mkdir } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const netTmp = await withTempConfig()
     try {
-      await mkdir(netTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: http://unreachable-host-xyz.invalid`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: dfoa_network_test_token`,
-        `workspace:`,
-        `  id: ws-1`,
-        `  name: Test`,
-        `  role: owner`,
-      ].join('\n')}\n`
-      await writeFile(join(netTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectAuth(netTmp.configDir, {
+        host: 'http://unreachable-host-xyz.invalid',
+        bearer: 'dfoa_network_test_token',
+        email: E.email,
+        workspaceId: 'ws-1',
+        workspaceName: 'Test',
+      })
       const result = await run(
         ['auth', 'devices', 'revoke', 'any-device-id', '--yes'],
         { configDir: netTmp.configDir, timeout: 10_000 },
@@ -354,6 +353,7 @@ describe('E2E / difyctl auth devices', () => {
       await injectAuth(ssoTmp.configDir, {
         host: E.host,
         bearer: E.ssoToken,
+        email: E.email,
         workspaceId: E.workspaceId,
         workspaceName: E.workspaceName,
       })
@@ -382,6 +382,7 @@ describe('E2E / difyctl auth devices', () => {
       await injectAuth(revokeTmp.configDir, {
         host: E.host,
         bearer: freshToken,
+        email: E.email,
         workspaceId: E.workspaceId,
         workspaceName: E.workspaceName,
       })

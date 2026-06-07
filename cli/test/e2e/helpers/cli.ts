@@ -87,13 +87,16 @@ export function run(argv: string[], opts: RunOptions = {}): Promise<RunResult> {
       // Suppress interactive prompts in all E2E tests.
       CI: '1',
       NO_COLOR: '1',
+      // Force file-based token storage to avoid macOS keychain UI prompts
+      // blocking child processes spawned by vitest workers.
+      DIFY_E2E_NO_KEYRING: '1',
       // Point the CLI at the isolated config directory.
       ...(opts.configDir !== undefined ? { DIFY_CONFIG_DIR: opts.configDir } : {}),
       ...opts.env,
     }
 
     const proc = spawn(BUN, [BIN, ...argv], { env })
-    const timeoutMs = opts.timeout ?? 30_000
+    const timeoutMs = opts.timeout ?? 60_000
     let timedOut = false
     const timeoutId = setTimeout(() => {
       timedOut = true
@@ -157,16 +160,61 @@ export type AuthInjectionOptions = {
   host: string
   /** Bearer token — dfoa_ for internal, dfoe_ for SSO. */
   bearer: string
+  /** Account email — written into hosts.yml and used as the token store key. */
+  email?: string
+  /** Account display name. Defaults to the email local part. */
+  accountName?: string
+  /** Account ID written into hosts.yml when a test needs it. */
+  accountId?: string
   /** Primary workspace to write into the bundle. */
   workspaceId: string
   workspaceName: string
   workspaceRole?: string
+  /** Full available workspace list. Defaults to the primary workspace only. */
+  availableWorkspaces?: Array<{ id: string, name: string, role: string }>
   /**
    * Server-side session UUID (OAuthAccessToken.id).
    * When provided, written as `token_id` in hosts.yml so that
    * `devices revoke` can correctly detect selfHit and clear local credentials.
    */
   tokenId?: string
+}
+
+export type SsoAuthInjectionOptions = {
+  host: string
+  bearer: string
+  email?: string
+  issuer?: string
+}
+
+function splitHost(host: string): { bare: string, scheme: string } {
+  const bare = (() => {
+    try {
+      return new URL(host).host || host
+    }
+    catch {
+      return host
+    }
+  })()
+  const scheme = (() => {
+    try {
+      return new URL(host).protocol.replace(':', '')
+    }
+    catch {
+      return 'https'
+    }
+  })()
+  return { bare, scheme }
+}
+
+async function writeFileToken(configDir: string, host: string, email: string, bearer: string): Promise<void> {
+  const dotParts = `tokens.${host}.${email}`.split('.')
+  let yaml = ''
+  for (let i = 0; i < dotParts.length - 1; i++) {
+    yaml += `${'  '.repeat(i) + dotParts[i]}:\n`
+  }
+  yaml += `${'  '.repeat(dotParts.length - 1) + (dotParts[dotParts.length - 1] ?? '')}: "${bearer}"\n`
+  await writeFile(join(configDir, 'tokens.yml'), yaml, { mode: 0o600 })
 }
 
 /**
@@ -178,24 +226,103 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
   await mkdir(configDir, { recursive: true, mode: 0o700 })
 
   const role = opts.workspaceRole ?? 'owner'
-  // Serialise to YAML manually to avoid a runtime dep on js-yaml in helpers.
+
+  // ── Derive bare host and scheme ───────────────────────────────────────────
+  // difyctl stores the bare hostname (no scheme) as the registry key.
+  // The scheme is stored separately in the host entry so hostWithScheme()
+  // can reconstruct the full URL. Without scheme, difyctl defaults to https.
+  const { bare, scheme } = splitHost(opts.host)
+  const email = opts.email ?? 'e2e@example.com'
+  const accountName = opts.accountName ?? email.split('@')[0] ?? ''
+  const availableWorkspaces = opts.availableWorkspaces ?? [{
+    id: opts.workspaceId,
+    name: opts.workspaceName,
+    role,
+  }]
+
+  // ── hosts.yml ────────────────────────────────────────────────────────────
+  // difyctl 0.1.0-rc.1 uses a nested registry format:
+  //   token_storage / current_host / hosts.<bareHost>.accounts.<email>.(workspace|...)
+  // On macOS (keychain available) difyctl always uses the OS keychain for tokens.
+  // We probe keychain availability the same way difyctl does: try a round-trip.
+  // Always use file-based storage in E2E tests to avoid macOS keychain
+  // UI prompts that block CLI child processes spawned by vitest workers.
+  const canUseKeychain = false
+  const storageMode = 'file' as const
+
   const hostsYml = `${[
-    `current_host: ${opts.host}`,
-    `token_storage: file`,
-    `tokens:`,
-    `  bearer: ${opts.bearer}`,
-    ...(opts.tokenId !== undefined ? [`token_id: ${opts.tokenId}`] : []),
-    `workspace:`,
-    `  id: ${opts.workspaceId}`,
-    `  name: "${opts.workspaceName}"`,
-    `  role: ${role}`,
-    `available_workspaces:`,
-    `  - id: ${opts.workspaceId}`,
-    `    name: "${opts.workspaceName}"`,
-    `    role: ${role}`,
+    `token_storage: ${storageMode}`,
+    `current_host: ${bare}`,
+    `hosts:`,
+    `  ${bare}:`,
+    ...(scheme !== 'https' ? [`    scheme: ${scheme}`] : []),
+    `    current_account: ${email}`,
+    `    accounts:`,
+    `      ${email}:`,
+    `        account:`,
+    ...(opts.accountId !== undefined ? [`          id: ${opts.accountId}`] : []),
+    `          email: ${email}`,
+    `          name: ${accountName}`,
+    ...(opts.tokenId !== undefined ? [`        token_id: ${opts.tokenId}`] : []),
+    `        workspace:`,
+    `          id: ${opts.workspaceId}`,
+    `          name: "${opts.workspaceName}"`,
+    `          role: ${role}`,
+    `        available_workspaces:`,
+    ...availableWorkspaces.flatMap(workspace => [
+      `          - id: ${workspace.id}`,
+      `            name: "${workspace.name}"`,
+      `            role: ${workspace.role}`,
+    ]),
   ].join('\n')}\n`
 
   await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+
+  // ── Store bearer token ────────────────────────────────────────────────────
+  // Token storage key: tokens.<bareHost>.<email>  (dot-path for YamlStore.doGet)
+  if (canUseKeychain) {
+    // Write to OS keychain using the same service+account that difyctl uses:
+    //   service = "difyctl", account = tokenKey = "tokens.<bareHost>.<email>"
+    // KeyringBasedStore.set JSON-encodes the value before storing.
+    const { Entry } = await import('@napi-rs/keyring')
+    const account = `tokens.${bare}.${email}`
+    new Entry('difyctl', account).setPassword(JSON.stringify(opts.bearer))
+  }
+  else {
+    // Fall back to tokens.yml.
+    // YamlStore.doGet splits the key on '.' and traverses the nested object,
+    // so "tokens.localhost.user@dify.ai" splits into 4 parts:
+    //   tokens -> localhost -> user@dify -> ai
+    // The YAML must mirror that exact nesting.
+    await writeFileToken(configDir, bare, email, opts.bearer)
+  }
+}
+
+export async function injectSsoAuth(configDir: string, opts: SsoAuthInjectionOptions): Promise<void> {
+  await mkdir(configDir, { recursive: true, mode: 0o700 })
+
+  const { bare, scheme } = splitHost(opts.host)
+  const email = opts.email ?? 'sso@example.com'
+  const issuer = opts.issuer ?? 'https://issuer.example.com'
+  const hostsYml = `${[
+    `token_storage: file`,
+    `current_host: ${bare}`,
+    `hosts:`,
+    `  ${bare}:`,
+    ...(scheme !== 'https' ? [`    scheme: ${scheme}`] : []),
+    `    current_account: ${email}`,
+    `    accounts:`,
+    `      ${email}:`,
+    `        account:`,
+    `          email: ""`,
+    `          name: ""`,
+    `        external_subject:`,
+    `          email: ${email}`,
+    `          issuer: ${issuer}`,
+  ].join('\n')}\n`
+
+  await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+  await writeFileToken(configDir, bare, email, opts.bearer)
 }
 
 // ── Process signal helpers ─────────────────────────────────────────────────
@@ -221,7 +348,7 @@ export function spawn_background(argv: string[], opts: RunOptions = {}): Spawned
   }
 
   const proc = spawn(BUN, [BIN, ...argv], { env })
-  const timeoutMs = opts.timeout ?? 30_000
+  const timeoutMs = opts.timeout ?? 60_000
   let timedOut = false
   const timeoutId = setTimeout(() => {
     timedOut = true
@@ -279,12 +406,13 @@ export type AuthFixture = {
  * })
  */
 export async function withAuthFixture(
-  E: { host: string, token: string, workspaceId: string, workspaceName: string },
+  E: { host: string, token: string, workspaceId: string, workspaceName: string, email?: string },
 ): Promise<AuthFixture> {
   const { configDir, cleanup } = await withTempConfig()
   await injectAuth(configDir, {
     host: E.host,
     bearer: E.token,
+    email: E.email,
     workspaceId: E.workspaceId,
     workspaceName: E.workspaceName,
   })

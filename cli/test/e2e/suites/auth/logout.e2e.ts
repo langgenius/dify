@@ -8,7 +8,7 @@ import { access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import { assertExitCode } from '../../helpers/assert.js'
-import { injectAuth, run, withTempConfig } from '../../helpers/cli.js'
+import { injectAuth, injectSsoAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'
 
 // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
@@ -38,10 +38,11 @@ describe('E2E / difyctl auth logout', () => {
    * never revokes the shared DIFY_E2E_TOKEN used by other suites.
    */
   async function withAuth() {
-    const token = caps.logoutToken || E.token
+    const token = caps.logoutToken || 'dfoa_logout_suite_unavailable'
     await injectAuth(configDir, {
       host: E.host,
       bearer: token,
+      email: E.email,
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
     })
@@ -55,6 +56,12 @@ describe('E2E / difyctl auth logout', () => {
     catch { return false }
   }
 
+  async function expectNoActiveSession(): Promise<void> {
+    const result = await r(['auth', 'whoami'])
+    assertExitCode(result, 4)
+    expect(result.stderr).toMatch(/not.?logged.?in/i)
+  }
+
   // ── Basic logout ────────────────────────────────────────────────────────────
 
   it('[P0] logged-in user can logout successfully — stdout contains success message', async () => {
@@ -65,28 +72,28 @@ describe('E2E / difyctl auth logout', () => {
     expect(result.stdout).toMatch(/logged out/i)
   })
 
-  it('[P0] local hosts.yml is deleted after logout', async () => {
+  it('[P0] local active session is cleared after logout', async () => {
     // Spec: local token deleted after logout
     await withAuth()
     expect(await hostsFileExists()).toBe(true)
     await r(['auth', 'logout'])
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
   })
 
   it('[P0] auth status returns "Not logged in" after logout', async () => {
     // Spec: auth status returns not-logged-in after logout
     await withAuth()
     await r(['auth', 'logout'])
-    const statusResult = await r(['auth', 'status'])
+    const statusResult = await r(['auth', 'whoami'])
     expect(statusResult.exitCode).toBe(4)
-    expect(statusResult.stdout).toMatch(/not logged in/i)
+    expect(statusResult.stderr).toMatch(/not.?logged.?in/i)
   })
 
   it('[P1] auth status exit code is 4 after logout', async () => {
     // Spec: auth status exit code is 4 after logout
     await withAuth()
     await r(['auth', 'logout'])
-    const statusResult = await r(['auth', 'status'])
+    const statusResult = await r(['auth', 'whoami'])
     expect(statusResult.exitCode).toBe(4)
   })
 
@@ -97,7 +104,7 @@ describe('E2E / difyctl auth logout', () => {
     const result = await r(['auth', 'logout'])
     // Local token must be cleared regardless of whether server revoke succeeds
     assertExitCode(result, 0)
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
   })
 
   it('[P0] local credentials are cleared even when server revoke fails (best-effort)', async () => {
@@ -106,13 +113,14 @@ describe('E2E / difyctl auth logout', () => {
     await injectAuth(configDir, {
       host: E.host,
       bearer: 'dfoa_invalid_will_fail_revoke',
+      email: E.email,
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
     })
     const result = await r(['auth', 'logout'])
     // exit 0 (best-effort); local file is cleared
     assertExitCode(result, 0)
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
   })
 
   // ── Unauthenticated (idempotent) ─────────────────────────────────────────────
@@ -129,21 +137,16 @@ describe('E2E / difyctl auth logout', () => {
 
   it('[P0] external SSO user logout works correctly — local token cleared', async () => {
     // Spec: external SSO user logout works correctly
-    const { writeFile } = await import('node:fs/promises')
-    const hostsYml = `${[
-      `current_host: ${E.host}`,
-      `token_storage: file`,
-      `tokens:`,
-      `  bearer: dfoe_sso_test_token`,
-      `external_subject:`,
-      `  email: sso@example.com`,
-      `  issuer: https://issuer.example.com`,
-    ].join('\n')}\n`
-    await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+    await injectSsoAuth(configDir, {
+      host: E.host,
+      bearer: E.ssoToken || 'dfoe_sso_test_token',
+      email: 'sso@example.com',
+      issuer: 'https://issuer.example.com',
+    })
 
     const result = await r(['auth', 'logout'])
     assertExitCode(result, 0)
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
   })
 
   // ── Network error scenario ───────────────────────────────────────────────────
@@ -151,24 +154,18 @@ describe('E2E / difyctl auth logout', () => {
   it('[P0] local token is cleared even when logout encounters a network error', async () => {
     // Spec: local credentials cleared even when network is unavailable
     // Use an unreachable host to simulate network failure
-    const { writeFile, mkdir } = await import('node:fs/promises')
-    await mkdir(configDir, { recursive: true })
-    const hostsYml = `${[
-      `current_host: http://unreachable-host-xyz.invalid`,
-      `token_storage: file`,
-      `tokens:`,
-      `  bearer: dfoa_test_network_error`,
-      `workspace:`,
-      `  id: ws-1`,
-      `  name: Test`,
-      `  role: owner`,
-    ].join('\n')}\n`
-    await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+    await injectAuth(configDir, {
+      host: 'http://unreachable-host-xyz.invalid',
+      bearer: 'dfoa_test_network_error',
+      email: E.email,
+      workspaceId: 'ws-1',
+      workspaceName: 'Test',
+    })
 
     const result = await run(['auth', 'logout'], { configDir, timeout: 10_000 })
     // Local token is cleared even if network request fails
     assertExitCode(result, 0)
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
   })
 
   // ── Post-logout operations ───────────────────────────────────────────────────
@@ -189,6 +186,7 @@ describe('E2E / difyctl auth logout', () => {
     await injectAuth(configDir, {
       host: E.host,
       bearer: 'dfoa_invalid_will_fail_revoke',
+      email: E.email,
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
     })
@@ -199,7 +197,7 @@ describe('E2E / difyctl auth logout', () => {
     const combined = result.stdout + result.stderr
     expect(combined).toMatch(/warning|revoke|failed|could not/i)
     // Local credentials must still be cleared
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
   })
 
   // ── Keychain token storage ───────────────────────────────────────────────────
@@ -211,53 +209,39 @@ describe('E2E / difyctl auth logout', () => {
     // CLI falls back to file storage, so we accept either:
     //   (a) exit 0 + hosts.yml removed (file-fallback path), OR
     //   (b) exit 0 + hosts.yml absent (keychain-only path)
-    const { writeFile } = await import('node:fs/promises')
-    const hostsYml = `${[
-      `current_host: ${E.host}`,
-      `token_storage: keychain`,
-      `tokens:`,
-      `  bearer: dfoa_keychain_test_token`,
-      `workspace:`,
-      `  id: ${E.workspaceId}`,
-      `  name: "${E.workspaceName}"`,
-      `  role: owner`,
-    ].join('\n')}\n`
-    await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+    await injectAuth(configDir, {
+      host: E.host,
+      bearer: 'dfoa_keychain_test_token',
+      email: E.email,
+      workspaceId: E.workspaceId,
+      workspaceName: E.workspaceName,
+    })
 
     const result = await r(['auth', 'logout'])
     assertExitCode(result, 0)
-    // Regardless of storage backend, the hosts.yml session file must be gone
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
   })
 
   // ── Multiple workspace sessions ──────────────────────────────────────────────
 
   it('[P1] logout clears only the current session when multiple workspace sessions exist', async () => {
     // Spec 1.62: current session is cleared on logout when multiple workspace sessions exist
-    const { writeFile } = await import('node:fs/promises')
-    const hostsYml = `${[
-      `current_host: ${E.host}`,
-      `token_storage: file`,
-      `tokens:`,
-      `  bearer: dfoa_multi_ws_test_token`,
-      `workspace:`,
-      `  id: ${E.workspaceId}`,
-      `  name: "${E.workspaceName}"`,
-      `  role: owner`,
-      `available_workspaces:`,
-      `  - id: ${E.workspaceId}`,
-      `    name: "${E.workspaceName}"`,
-      `    role: owner`,
-      `  - id: ws-secondary-001`,
-      `    name: "Secondary Workspace"`,
-      `    role: member`,
-    ].join('\n')}\n`
-    await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+    await injectAuth(configDir, {
+      host: E.host,
+      bearer: 'dfoa_multi_ws_test_token',
+      email: E.email,
+      workspaceId: E.workspaceId,
+      workspaceName: E.workspaceName,
+      availableWorkspaces: [
+        { id: E.workspaceId, name: E.workspaceName, role: 'owner' },
+        { id: 'ws-secondary-001', name: 'Secondary Workspace', role: 'member' },
+      ],
+    })
 
     const result = await r(['auth', 'logout'])
     assertExitCode(result, 0)
     // The current session (hosts.yml) must be cleared after logout
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
   })
 
   // ── Re-login after logout ────────────────────────────────────────────────────
@@ -267,20 +251,21 @@ describe('E2E / difyctl auth logout', () => {
     // Use disposableToken so the shared DIFY_E2E_TOKEN is not revoked.
     await withAuth()
     await r(['auth', 'logout'])
-    expect(await hostsFileExists()).toBe(false)
+    await expectNoActiveSession()
 
     // Simulate a new login by injecting fresh credentials
     const token = caps.logoutToken || E.token
     await injectAuth(configDir, {
       host: E.host,
       bearer: token,
+      email: E.email,
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
     })
 
     // New session must be recognised as valid
-    const statusResult = await r(['auth', 'status'])
+    const statusResult = await r(['auth', 'whoami'])
     assertExitCode(statusResult, 0)
-    expect(statusResult.stdout).toMatch(/logged in/i)
+    expect(statusResult.stdout).toContain(E.email)
   })
 })

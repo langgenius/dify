@@ -35,6 +35,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
+  assertErrorEnvelope,
   assertNoAnsi,
   assertNonZeroExit,
 } from '../../helpers/assert.js'
@@ -270,17 +271,42 @@ describe('E2E / error message standards (spec 5.3)', () => {
     }
   })
 
-  // ── 5.88 / 5.89  Pending — WTA bug fixes required ────────────────────────
+  // ── 5.88 / 5.89  Corrupt local state handling ────────────────────────────
 
-  it.skip('[P1] 5.88 corrupt app-info.json cache produces JSON error envelope (pending WTA-257)', async () => {
-    // Spec 5.88: a corrupted app-info.json cache must produce a JSON error
-    // envelope on stderr, not a bare TypeError.
-    // Blocked by WTA-257 — activate once fixed.
+  it('[P1] 5.88 corrupt app-info cache does not produce a bare TypeError', async () => {
+    const cacheDir = await mkdtemp(join(tmpdir(), 'difyctl-e2e-cache-'))
+    try {
+      await writeFile(join(cacheDir, 'app-info.yml'), ': : not valid yaml', 'utf8')
+      const result = await fx.r(['describe', 'app', E.chatAppId, '-o', 'json'], {
+        DIFY_CACHE_DIR: cacheDir,
+      })
+      expect(result.stderr).not.toMatch(/TypeError|SyntaxError|^\s+at\s+\S/m)
+      if (result.exitCode !== 0) {
+        assertErrorEnvelope(result)
+      }
+      else {
+        expect(result.stdout.trim()).toMatch(/^\{/)
+      }
+    }
+    finally {
+      await rm(cacheDir, { recursive: true, force: true })
+    }
   })
 
-  it.skip('[P1] 5.89 corrupt hosts.yml produces JSON error envelope (pending WTA-255)', async () => {
-    // Spec 5.89: invalid YAML in hosts.yml must produce a JSON error envelope
-    // on stderr, not a raw YAML parse error string.
-    // Blocked by WTA-255 — activate once fixed.
+  it('[P1] 5.89 corrupt hosts.yml produces JSON error envelope', async () => {
+    const corruptTmp = await withTempConfig()
+    try {
+      await writeFile(join(corruptTmp.configDir, 'hosts.yml'), ': : not valid yaml', { mode: 0o600 })
+      const result = await run(['get', 'app', '-o', 'json'], {
+        configDir: corruptTmp.configDir,
+      })
+      assertNonZeroExit(result)
+      const envelope = assertErrorEnvelope(result)
+      expect(envelope.error.message).toContain('hosts.yml')
+      expect(result.stderr).not.toMatch(/YAMLException|^\s+at\s+\S/m)
+    }
+    finally {
+      await corruptTmp.cleanup()
+    }
   })
 })

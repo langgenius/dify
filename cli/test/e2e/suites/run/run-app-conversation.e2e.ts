@@ -18,7 +18,7 @@ import {
   assertStderrContains,
 } from '../../helpers/assert.js'
 import { registerConversation } from '../../helpers/cleanup-registry.js'
-import { run, spawn_background, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { injectAuth, run, spawn_background, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -179,21 +179,15 @@ describe('E2E / difyctl run app --conversation', () => {
   itWithSso('[P0] SSO (dfoe_) token can run conversation mode (exit code 0)', async () => {
     // Spec 4.3.17: an external SSO token (dfoe_) must be able to start a new
     // conversation and receive a valid response; exit code must be 0.
-    const { mkdir, writeFile } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const ssoTmp = await withTempConfig()
     try {
-      await mkdir(ssoTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: ${E.host}`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: ${E.ssoToken}`,
-        `external_subject:`,
-        `  email: sso@example.com`,
-        `  issuer: https://issuer.example.com`,
-      ].join('\n')}\n`
-      await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectAuth(ssoTmp.configDir, {
+        host: E.host,
+        bearer: E.ssoToken,
+        email: 'sso-e2e@example.com',
+        workspaceId: E.workspaceId,
+        workspaceName: E.workspaceName,
+      })
       const result = await withRetry(
         () => run(['run', 'app', E.chatAppId, 'sso-conv-test', '-o', 'json'], {
           configDir: ssoTmp.configDir,

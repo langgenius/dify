@@ -2,110 +2,127 @@
  * Vitest global setup — runs once before all E2E suites.
  *
  * ── CE path (DIFY_E2E_EDITION=ce or unset) ───────────────────────────────
- *  1. Register a new account with EMAIL/PASSWORD (POST /console/api/init or
- *     POST /console/api/register if the server is already initialised).
- *  2. Login with EMAIL/PASSWORD to obtain a session cookie.
+ *  1. Register a new account with EMAIL/PASSWORD (idempotent).
+ *  2. Login to obtain a session cookie.
  *  3. Mint the primary bearer token via the device flow.
- *  4. Validate the token (GET /openapi/v1/account/sessions).
- *  5. Discover the single workspace.
+ *  4. Validate the token.
+ *  5. Discover the single workspace (falls back to first available).
  *  6. Mint per-suite dedicated tokens (logout / devices suites).
  *  7. Import all DSL fixtures into the workspace, publish & set public.
  *
  * ── EE path (DIFY_E2E_EDITION=ee) ────────────────────────────────────────
- *  1. Use ENTERPRISE_API to create a member account.
- *  2. Login with EMAIL/PASSWORD to obtain a session cookie.
- *  3. Use the enterprise admin API to create two workspaces for the member.
- *  4. Mint the primary bearer token via the device flow.
- *  5. Validate the token.
- *  6. Mint per-suite dedicated tokens.
- *  7. Import DSL fixtures into BOTH workspaces (primary + secondary),
- *     publish & set access_mode → public via the enterprise API.
+ *  Workspaces are pre-created by the operator and must be named:
+ *    primary   → "auto_test0"
+ *    secondary → "auto_test1"
  *
- * All resolved values are written into E2ECapabilities and injected into every
- * test file via vitest's provide/inject mechanism.
+ *  1. Login with EMAIL/PASSWORD to obtain a session cookie.
+ *  2. Mint the primary bearer token via the device flow.
+ *  3. Validate the token.
+ *  4. Discover "auto_test0" (primary) and "auto_test1" (secondary) workspaces.
+ *  5. Mint per-suite dedicated tokens.
+ *  6. Import DSL fixtures into primary workspace; import ws2-workflow.yml
+ *     into the secondary workspace. Publish & set access_mode → public.
  */
 
 import type { TestProject } from 'vitest/node'
 import type { E2ECapabilities } from './env.js'
 import { Buffer } from 'node:buffer'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadE2EEnv } from './env.js'
+
+const TOKEN_MINT_APPROVE_ATTEMPTS = 5
+const TOKEN_MINT_RETRY_BASE_MS = 2_000
 
 export async function setup(project: TestProject): Promise<void> {
   if (process.env.DIFY_E2E_MODE === 'local')
     return
 
   const E = loadE2EEnv()
-  const base = E.host.replace(/\/$/, '')
   const consoleBase = E.consoleUrl.replace(/\/$/, '')
+  const apiBase = E.host.replace(/\/$/, '')
 
   console.warn(`[E2E global-setup] Edition: ${E.edition.toUpperCase()}`)
 
-  // ── Edition-specific account & workspace bootstrapping ───────────────────
-  let cookieString: string
-  let csrfToken: string
-  let primaryWsId: string
-  let primaryWsName: string
-  let secondaryWsId: string
-
-  if (E.edition === 'ee') {
-    // ── EE: create member via enterprise API, then create two workspaces ──
-
-    // Step EE-1: create member account via enterprise admin API
-    await eeCreateMember(E.enterpriseApiUrl, E.enterpriseApiSecretKey, E.email, E.password)
-
-    // Step EE-2: login with the new account
-    ;({ cookieString, csrfToken } = await consoleLogin(consoleBase, E.email, E.password))
-
-    // Step EE-3: create two workspaces via enterprise admin API
-    ;({ primaryWsId, primaryWsName, secondaryWsId } = await eeCreateWorkspaces(
-      E.enterpriseApiUrl,
-      E.enterpriseApiSecretKey,
-      E.email,
-      consoleBase,
-      cookieString,
-      csrfToken,
-    ))
-  }
-  else {
-    // ── CE: register account (idempotent), then login ──────────────────────
-
-    // Step CE-1: register / ensure the account exists
+  // ── Account bootstrap ────────────────────────────────────────────────────
+  if (E.edition === 'ce') {
     await ceRegisterAccount(consoleBase, E.email, E.password)
+  }
+  // EE: account & workspaces are pre-provisioned by the operator — just login.
 
-    // Step CE-2: login
-    ;({ cookieString, csrfToken } = await consoleLogin(consoleBase, E.email, E.password))
+  // ── Login ────────────────────────────────────────────────────────────────
+  const { cookieString, csrfToken } = await consoleLogin(consoleBase, E.email, E.password)
 
-    // Step CE-3: discover the single workspace (CE has only one)
-    ;({ primaryWsId, primaryWsName, secondaryWsId } = await discoverWorkspaces(
-      consoleBase,
-      cookieString,
-      csrfToken,
-    ))
+  // ── Mint primary token (with local cache to avoid rate-limit) ──────────
+  // Priority: DIFY_E2E_TOKEN env → .token-cache.json → fresh mint
+  // The cache file lives next to .env.e2e and is git-ignored.
+  // logoutToken/devicesToken are intentionally NOT cached — those suites
+  // revoke their token, so they always need a fresh one.
+  const TOKEN_CACHE = join(process.cwd(), '.token-cache.json')
+
+  async function loadCachedToken(): Promise<string> {
+    try {
+      const raw = await readFile(TOKEN_CACHE, 'utf8')
+      const { token, host } = JSON.parse(raw) as { token?: string, host?: string }
+      // Invalidate if host changed (different staging env)
+      if (!token || host !== E.host)
+        return ''
+      return token
+    }
+    catch { return '' }
   }
 
-  // ── Mint primary token via device flow ───────────────────────────────────
-  let primaryToken = E.token
-  if (!primaryToken) {
+  async function saveCachedToken(token: string): Promise<void> {
     try {
-      primaryToken = await mintTokenWithSession(consoleBase, cookieString, csrfToken, 'e2e-primary')
-      console.warn(`[E2E] primaryToken minted: ${primaryToken.slice(0, 20)}…`)
+      await writeFile(TOKEN_CACHE, JSON.stringify({ token, host: E.host }, null, 2), 'utf8')
     }
     catch (err) {
-      throw new Error(
-        `[E2E global-setup] Failed to mint primary token: ${err}\n`
-        + 'Ensure DIFY_E2E_EMAIL and DIFY_E2E_PASSWORD are correct.',
-      )
+      console.warn(`[E2E] Could not save token cache: ${err}`)
     }
   }
-  else {
+
+  async function validateToken(token: string): Promise<boolean> {
+    try {
+      const r = await fetch(`${apiBase}/openapi/v1/account/sessions?page=1&limit=100`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(8_000),
+      })
+      return r.ok
+    }
+    catch { return false }
+  }
+
+  let primaryToken = E.token
+  if (primaryToken) {
     console.warn(`[E2E] primaryToken from env: ${primaryToken.slice(0, 20)}…`)
+  }
+  else {
+    // Try cache first
+    const cached = await loadCachedToken()
+    if (cached && await validateToken(cached)) {
+      primaryToken = cached
+      console.warn(`[E2E] primaryToken from cache: ${primaryToken.slice(0, 20)}…`)
+    }
+    else {
+      if (cached)
+        console.warn('[E2E] Cached token invalid or expired — re-minting…')
+      try {
+        primaryToken = await mintTokenWithSession(consoleBase, cookieString, csrfToken, 'e2e-primary')
+        await saveCachedToken(primaryToken)
+        console.warn(`[E2E] primaryToken minted and cached: ${primaryToken.slice(0, 20)}…`)
+      }
+      catch (err) {
+        throw new Error(
+          `[E2E global-setup] Failed to mint primary token: ${err}\n`
+          + 'Ensure DIFY_E2E_EMAIL and DIFY_E2E_PASSWORD are correct.',
+        )
+      }
+    }
   }
 
   // ── Validate primary token ───────────────────────────────────────────────
-  const sessionsUrl = `${base}/openapi/v1/account/sessions?page=1&limit=100`
+  const sessionsUrl = `${apiBase}/openapi/v1/account/sessions?page=1&limit=100`
   let res: Response
   try {
     res = await fetch(sessionsUrl, {
@@ -127,7 +144,7 @@ export async function setup(project: TestProject): Promise<void> {
     )
   }
 
-  console.warn(`[E2E] Staging server is healthy and primary token is valid at ${E.host}`)
+  console.warn(`[E2E] Server healthy, primary token valid at ${E.host}`)
 
   // ── Resolve token_id ─────────────────────────────────────────────────────
   const body = await res.json() as { data: Array<{ id: string, prefix: string }> }
@@ -138,6 +155,14 @@ export async function setup(project: TestProject): Promise<void> {
   else {
     console.warn(`[E2E] Resolved token_id: ${match.id}`)
   }
+
+  // ── Discover workspaces ──────────────────────────────────────────────────
+  const { primaryWsId, primaryWsName, secondaryWsId } = await discoverWorkspaces(
+    consoleBase,
+    cookieString,
+    csrfToken,
+    E.edition,
+  )
 
   // ── Mint per-suite dedicated tokens ──────────────────────────────────────
   let logoutToken = ''
@@ -177,8 +202,6 @@ export async function setup(project: TestProject): Promise<void> {
       secondaryWsId,
       fixturesDir,
       E.edition,
-      E.edition === 'ee' ? E.enterpriseApiUrl : '',
-      E.edition === 'ee' ? E.enterpriseApiSecretKey : '',
     )
     console.warn(`[E2E global-setup] Provisioned ${Object.keys(provisionedIds).length} fixture apps`)
   }
@@ -186,7 +209,7 @@ export async function setup(project: TestProject): Promise<void> {
     console.warn(`[E2E global-setup] provisionApps failed (non-fatal): ${err}`)
   }
 
-  // ── Build and provide capabilities ───────────────────────────────────────
+  // ── Provide capabilities ─────────────────────────────────────────────────
   const capabilities: E2ECapabilities = {
     tokenValid: true,
     tokenId: match?.id,
@@ -216,27 +239,18 @@ export async function setup(project: TestProject): Promise<void> {
 export { teardown } from './global-teardown.js'
 
 // ══════════════════════════════════════════════════════════════════════════════
-// CE helpers
+// CE — account registration
 // ══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Register a new CE account idempotently.
- *
- * On a fresh server:  POST /console/api/init  (first-time setup)
- * On an existing server: POST /console/api/register (subsequent accounts)
- *
- * Both paths accept { email, name, password } and return 2xx on success or
- * when the account already exists (409 is treated as non-fatal).
+ * Register a CE account idempotently.
+ * Tries /init (fresh server) first, then falls back to /register.
+ * A 409 "already exists" response is treated as success.
  */
-async function ceRegisterAccount(
-  consoleBase: string,
-  email: string,
-  password: string,
-): Promise<void> {
+async function ceRegisterAccount(consoleBase: string, email: string, password: string): Promise<void> {
   const passwordB64 = Buffer.from(password, 'utf8').toString('base64')
   const name = email.split('@')[0] ?? 'e2e-user'
 
-  // Try /init first (works on a brand-new server)
   const initRes = await fetch(`${consoleBase}/console/api/init`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -249,7 +263,6 @@ async function ceRegisterAccount(
     return
   }
 
-  // Fall back to /register (server already has an owner account)
   const registerRes = await fetch(`${consoleBase}/console/api/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -268,85 +281,10 @@ async function ceRegisterAccount(
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// EE helpers
-// ══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Create a member account via the enterprise admin API.
- * Idempotent — a 409 "already exists" response is treated as success.
- */
-async function eeCreateMember(
-  enterpriseApiUrl: string,
-  secretKey: string,
-  email: string,
-  password: string,
-): Promise<void> {
-  const passwordB64 = Buffer.from(password, 'utf8').toString('base64')
-  const name = email.split('@')[0] ?? 'e2e-member'
-
-  const res = await fetch(`${enterpriseApiUrl}/members`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${secretKey}`,
-    },
-    body: JSON.stringify({ email, name, password: passwordB64, role: 'normal' }),
-    signal: AbortSignal.timeout(15_000),
-  })
-
-  if (!res.ok && res.status !== 409) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`[E2E EE] Failed to create member: HTTP ${res.status} ${body.slice(0, 200)}`)
-  }
-
-  console.warn(`[E2E EE] Member account ready (status ${res.status})`)
-}
-
-/**
- * Create two named workspaces for the member via the enterprise admin API,
- * then resolve their IDs by listing workspaces through the console API.
- *
- * Returns primary and secondary workspace info.
- */
-async function eeCreateWorkspaces(
-  enterpriseApiUrl: string,
-  secretKey: string,
-  email: string,
-  consoleBase: string,
-  cookieString: string,
-  csrfToken: string,
-): Promise<{ primaryWsId: string, primaryWsName: string, secondaryWsId: string }> {
-  const WS_NAMES = ['e2e-primary-auto', 'e2e-secondary-auto']
-
-  for (const wsName of WS_NAMES) {
-    const res = await fetch(`${enterpriseApiUrl}/workspaces`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${secretKey}`,
-      },
-      body: JSON.stringify({ name: wsName, owner_email: email }),
-      signal: AbortSignal.timeout(15_000),
-    })
-
-    if (!res.ok && res.status !== 409) {
-      const body = await res.text().catch(() => '')
-      console.warn(`[E2E EE] Failed to create workspace "${wsName}": HTTP ${res.status} ${body.slice(0, 200)}`)
-    }
-    else {
-      console.warn(`[E2E EE] Workspace "${wsName}" ready (status ${res.status})`)
-    }
-  }
-
-  // Discover the two workspaces via the console API (same as CE path)
-  return discoverWorkspaces(consoleBase, cookieString, csrfToken)
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
 // Shared helpers
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Console login ──────────────────────────────────────────────────────────
+// ── Console login ─────────────────────────────────────────────────────────
 
 async function consoleLogin(
   consoleBase: string,
@@ -369,21 +307,27 @@ async function consoleLogin(
   return { cookieString, csrfToken }
 }
 
-// ── Workspace discovery ────────────────────────────────────────────────────
+// ── Workspace discovery ───────────────────────────────────────────────────
 
+/**
+ * Discover primary and secondary workspaces.
+ *
+ * CE: looks for any workspace with "auto" in its name; falls back to the
+ *     first available workspace. secondaryWsId === primaryWsId when only
+ *     one workspace exists.
+ *
+ * EE: looks for workspaces named exactly "auto_test0" (primary) and
+ *     "auto_test1" (secondary). These must be pre-created by the operator.
+ *     Throws if "auto_test0" is not found.
+ */
 async function discoverWorkspaces(
   consoleBase: string,
   cookieString: string,
   csrfToken: string,
+  edition: 'ce' | 'ee',
 ): Promise<{ primaryWsId: string, primaryWsName: string, secondaryWsId: string }> {
-  const mkHeaders = (extra: Record<string, string> = {}): Record<string, string> => ({
-    'Cookie': cookieString,
-    'X-CSRF-Token': csrfToken,
-    ...extra,
-  })
-
   const wsRes = await fetch(`${consoleBase}/console/api/workspaces`, {
-    headers: mkHeaders(),
+    headers: { 'Cookie': cookieString, 'X-CSRF-Token': csrfToken },
     signal: AbortSignal.timeout(10_000),
   })
   if (!wsRes.ok)
@@ -392,36 +336,62 @@ async function discoverWorkspaces(
   const wsBody = await wsRes.json() as {
     workspaces?: Array<{ id: string, name: string }>
   }
+  const all = wsBody.workspaces ?? []
 
-  const autoWorkspaces = (wsBody.workspaces ?? [])
+  if (edition === 'ee') {
+    // EE: must find the two pre-created workspaces by exact name
+    const ws0 = all.find(w => w.name === 'auto_test0')
+    const ws1 = all.find(w => w.name === 'auto_test1')
+
+    if (!ws0) {
+      throw new Error(
+        '[E2E EE] Workspace "auto_test0" not found. '
+        + 'Please pre-create it for the test account before running E2E tests.',
+      )
+    }
+
+    if (!ws1) {
+      console.warn(
+        '[E2E EE] Workspace "auto_test1" not found — secondary workspace will reuse primary. '
+        + 'Cross-workspace [EE] tests may not work correctly.',
+      )
+    }
+
+    const primaryWsId = ws0.id
+    const primaryWsName = ws0.name
+    const secondaryWsId = ws1?.id ?? ws0.id
+
+    console.warn(`[E2E EE] primary   workspace: ${primaryWsName} (${primaryWsId})`)
+    console.warn(`[E2E EE] secondary workspace: ${ws1?.name ?? 'reuses primary'} (${secondaryWsId})`)
+
+    return { primaryWsId, primaryWsName, secondaryWsId }
+  }
+
+  // CE: look for workspaces with "auto" in the name, sorted alphabetically
+  const autoWorkspaces = all
     .filter(w => w.name.toLowerCase().includes('auto'))
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  if (autoWorkspaces.length === 0) {
-    // CE: fall back to the first available workspace when no "auto" workspace exists
-    const allWorkspaces = wsBody.workspaces ?? []
-    if (allWorkspaces.length === 0)
-      throw new Error('No workspaces found for this account')
-
-    const primaryWsId = allWorkspaces[0]!.id
-    const primaryWsName = allWorkspaces[0]!.name
-    console.warn(`[E2E provision] primary workspace (fallback): ${primaryWsName} (${primaryWsId})`)
-    return { primaryWsId, primaryWsName, secondaryWsId: primaryWsId }
+  if (autoWorkspaces.length > 0) {
+    const primaryWsId = autoWorkspaces[0]!.id
+    const primaryWsName = autoWorkspaces[0]!.name
+    const secondaryWsId = autoWorkspaces[1]?.id ?? primaryWsId
+    console.warn(`[E2E CE] primary workspace: ${primaryWsName} (${primaryWsId})`)
+    if (autoWorkspaces[1])
+      console.warn(`[E2E CE] secondary workspace: ${autoWorkspaces[1].name} (${secondaryWsId})`)
+    else
+      console.warn('[E2E CE] only one "auto" workspace found — ws2 reuses primary')
+    return { primaryWsId, primaryWsName, secondaryWsId }
   }
 
-  const primaryWsId = autoWorkspaces[0]!.id
-  const primaryWsName = autoWorkspaces[0]!.name
-  const secondaryWsId = autoWorkspaces[1]?.id ?? primaryWsId
+  // CE fallback: use the first available workspace
+  if (all.length === 0)
+    throw new Error('[E2E CE] No workspaces found for this account')
 
-  console.warn(`[E2E provision] primary workspace: ${primaryWsName} (${primaryWsId})`)
-  if (autoWorkspaces[1]) {
-    console.warn(`[E2E provision] secondary workspace: ${autoWorkspaces[1].name} (${secondaryWsId})`)
-  }
-  else {
-    console.warn('[E2E provision] only one "auto" workspace found — ws2 reuses primary')
-  }
-
-  return { primaryWsId, primaryWsName, secondaryWsId }
+  const primaryWsId = all[0]!.id
+  const primaryWsName = all[0]!.name
+  console.warn(`[E2E CE] primary workspace (fallback): ${primaryWsName} (${primaryWsId})`)
+  return { primaryWsId, primaryWsName, secondaryWsId: primaryWsId }
 }
 
 // ── App provisioning ──────────────────────────────────────────────────────
@@ -429,21 +399,19 @@ async function discoverWorkspaces(
 /**
  * Idempotently provision all E2E fixture apps.
  *
- * CE: imports all fixtures into the single workspace (ws2-workflow.yml is
- *     skipped because there is no secondary workspace).
+ * CE: imports all primary-workspace fixtures; skips ws2-workflow.yml
+ *     (no real secondary workspace).
  *
- * EE: imports primary-workspace fixtures into primaryWsId and
- *     ws2-workflow.yml into secondaryWsId.
+ * EE: imports primary-workspace fixtures into auto_test0, and
+ *     ws2-workflow.yml into auto_test1.
  *
  * Per app:
- *   1. Switch to the app's workspace
+ *   1. Switch to the target workspace
  *   2. Search by app name — reuse existing app when found
- *   3. If not found → import from local DSL fixture file
+ *   3. If not found → import from DSL file
  *   4. Enable Service API
  *   5. Publish (workflow / advanced-chat / agent-chat only)
  *   6. Set access_mode → public
- *
- * Returns envVar → resolvedAppId map.
  */
 async function provisionApps(
   consoleBase: string,
@@ -453,8 +421,6 @@ async function provisionApps(
   secondaryWsId: string,
   fixturesDir: string,
   edition: 'ce' | 'ee',
-  enterpriseApiUrl: string,
-  enterpriseApiSecretKey: string,
 ): Promise<Record<string, string>> {
   const NEEDS_PUBLISH = new Set(['workflow', 'advanced-chat', 'agent-chat'])
 
@@ -464,7 +430,7 @@ async function provisionApps(
     ...extra,
   })
 
-  // ws2-workflow.yml is only provisioned in EE mode (secondary workspace)
+  // ws2-workflow.yml is only provisioned in EE mode (real secondary workspace)
   const APP_SPECS: Array<[string, string, string]> = [
     ['echo-chat.yml', 'DIFY_E2E_CHAT_APP_ID', primaryWsId],
     ['echo-workflow.yml', 'DIFY_E2E_WORKFLOW_APP_ID', primaryWsId],
@@ -474,7 +440,6 @@ async function provisionApps(
     ['hitl-single-action.yml', 'DIFY_E2E_HITL_SINGLE_ACTION_APP_ID', primaryWsId],
     ['hitl-multi-node.yml', 'DIFY_E2E_HITL_MULTI_NODE_APP_ID', primaryWsId],
     ['file-chat.yml', 'DIFY_E2E_FILE_CHAT_APP_ID', primaryWsId],
-    // ws2-workflow is only meaningful when there is a real secondary workspace
     ...(edition === 'ee'
       ? [['ws2-workflow.yml', 'DIFY_E2E_WS2_APP_ID', secondaryWsId] as [string, string, string]]
       : []),
@@ -542,6 +507,28 @@ async function provisionApps(
     })
   }
 
+  async function setAppPublic(appId: string): Promise<void> {
+    try {
+      const r = await fetch(`${consoleBase}/console/api/enterprise/webapp/app/access-mode`, {
+        method: 'POST',
+        headers: mkHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ appId, accessMode: 'public' }),
+        signal: AbortSignal.timeout(10_000),
+      })
+      if (r.ok) {
+        console.warn(`[E2E provision] setAppPublic(${appId}): access_mode → public`)
+      }
+      else {
+        // CE servers return 404 here — non-fatal
+        const text = await r.text().catch(() => '')
+        console.warn(`[E2E provision] setAppPublic(${appId}) skipped: HTTP ${r.status} ${text.slice(0, 100)}`)
+      }
+    }
+    catch (err) {
+      console.warn(`[E2E provision] setAppPublic(${appId}) error (non-fatal): ${err}`)
+    }
+  }
+
   const results: Record<string, string> = {}
   let currentWs = ''
 
@@ -553,8 +540,10 @@ async function provisionApps(
       }
 
       const dsl = await readFile(join(fixturesDir, dslFile), 'utf8')
-      const appName = (dsl.match(/^[ \t]+name:[ \t]*(\S[^\n]*)$/m) ?? [])[1]?.trim().replace(/^['"]|['"]$/g, '') ?? dslFile
-      const appMode = (dsl.match(/^[ \t]+mode:[ \t]*(\S+)/m) ?? [])[1] ?? ''
+      const appName = (dsl.match(/^[ \t]+name:[ \t]*(\\S[^\\n]*)$/m) ?? [])[1]
+        ?.trim()
+        .replace(/^['"]|['"]$/g, '') ?? dslFile
+      const appMode = (dsl.match(/^\s+mode:\s*(\S+)/m) ?? [])[1] ?? ''
 
       let appId = await findAppByName(appName)
       if (appId) {
@@ -566,15 +555,7 @@ async function provisionApps(
       }
 
       await enableApi(appId)
-      await setAppPublic(
-        consoleBase,
-        cookieString,
-        csrfToken,
-        appId,
-        edition,
-        enterpriseApiUrl,
-        enterpriseApiSecretKey,
-      )
+      await setAppPublic(appId)
       if (NEEDS_PUBLISH.has(appMode))
         await publishWorkflow(appId)
 
@@ -588,7 +569,7 @@ async function provisionApps(
   return results
 }
 
-// ── Token minting via device flow ──────────────────────────────────────────
+// ── Token minting via device flow ─────────────────────────────────────────
 
 async function mintTokenWithSession(
   consoleBase: string,
@@ -607,21 +588,17 @@ async function mintTokenWithSession(
     throw new Error(`device/code failed: HTTP ${codeRes.status}`)
   const { device_code, user_code } = await codeRes.json() as { device_code: string, user_code: string }
 
-  // Step 2 — approve the device code
-  const approveRes = await fetch(`${consoleBase}/openapi/v1/oauth/device/approve`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cookie': cookieString,
-      'X-CSRFToken': csrfToken,
-    },
-    body: JSON.stringify({ user_code }),
-    signal: AbortSignal.timeout(10_000),
+  // Step 2 — approve
+  const approveRes = await approveDeviceCodeWithRetry({
+    consoleBase,
+    cookieString,
+    csrfToken,
+    userCode: user_code,
   })
   if (!approveRes.ok)
     throw new Error(`device/approve failed: HTTP ${approveRes.status}`)
 
-  // Step 3 — exchange device code for bearer token
+  // Step 3 — exchange for bearer token
   const tokenRes = await fetch(`${consoleBase}/openapi/v1/oauth/device/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -638,87 +615,39 @@ async function mintTokenWithSession(
   return tokenBody.token
 }
 
-// ── App access-mode helper ─────────────────────────────────────────────────
-
-/**
- * Set an app's WebApp access_mode to "public".
- *
- * CE:  calls POST /console/api/enterprise/webapp/app/access-mode via the
- *      console session cookie. This endpoint returns 404 on CE servers —
- *      the warning is non-fatal and tests still pass because access_mode
- *      is not enforced on CE.
- *
- * EE:  calls the same endpoint first (console cookie path), then falls
- *      back to the enterprise admin API if needed.
- */
-async function setAppPublic(
-  consoleBase: string,
-  cookieString: string,
-  csrfToken: string,
-  appId: string,
-  edition: 'ce' | 'ee',
-  enterpriseApiUrl: string,
-  enterpriseApiSecretKey: string,
-): Promise<void> {
-  try {
-    const res = await fetch(`${consoleBase}/console/api/enterprise/webapp/app/access-mode`, {
+async function approveDeviceCodeWithRetry(opts: {
+  readonly consoleBase: string
+  readonly cookieString: string
+  readonly csrfToken: string
+  readonly userCode: string
+}): Promise<Response> {
+  let lastResponse: Response | undefined
+  for (let attempt = 1; attempt <= TOKEN_MINT_APPROVE_ATTEMPTS; attempt++) {
+    const response = await fetch(`${opts.consoleBase}/openapi/v1/oauth/device/approve`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': cookieString,
-        'X-CSRF-Token': csrfToken,
+        'Cookie': opts.cookieString,
+        'X-CSRFToken': opts.csrfToken,
       },
-      body: JSON.stringify({ appId, accessMode: 'public' }),
+      body: JSON.stringify({ user_code: opts.userCode }),
       signal: AbortSignal.timeout(10_000),
     })
+    if (response.ok || !isRetryableApproveStatus(response.status))
+      return response
 
-    if (res.ok) {
-      console.warn(`[E2E provision] setAppPublic(${appId}): access_mode → public (console)`)
-      return
-    }
-
-    // CE: 404 is expected — access_mode is not enforced
-    if (edition === 'ce') {
-      const body = await res.text().catch(() => '')
-      console.warn(`[E2E provision] setAppPublic(${appId}) skipped on CE: HTTP ${res.status} ${body.slice(0, 100)}`)
-      return
-    }
-
-    // EE: fall back to enterprise admin API
-    console.warn(`[E2E provision] setAppPublic console path returned ${res.status}; trying enterprise API`)
+    lastResponse = response
+    const delayMs = TOKEN_MINT_RETRY_BASE_MS * attempt
+    console.warn(`[E2E] device approve HTTP ${response.status}; retrying in ${delayMs}ms (${attempt}/${TOKEN_MINT_APPROVE_ATTEMPTS})`)
+    await sleep(delayMs)
   }
-  catch (err) {
-    if (edition === 'ce') {
-      console.warn(`[E2E provision] setAppPublic(${appId}) non-fatal on CE: ${err}`)
-      return
-    }
-    console.warn(`[E2E provision] setAppPublic console path error: ${err}; trying enterprise API`)
-  }
+  return lastResponse ?? new Response(null, { status: 429 })
+}
 
-  // EE fallback: enterprise admin API
-  if (!enterpriseApiUrl)
-    return
+function isRetryableApproveStatus(status: number): boolean {
+  return status === 429 || status >= 500
+}
 
-  try {
-    const res = await fetch(`${enterpriseApiUrl}/apps/${appId}/access-mode`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${enterpriseApiSecretKey}`,
-      },
-      body: JSON.stringify({ access_mode: 'public' }),
-      signal: AbortSignal.timeout(10_000),
-    })
-
-    if (res.ok) {
-      console.warn(`[E2E provision] setAppPublic(${appId}): access_mode → public (enterprise API)`)
-    }
-    else {
-      const body = await res.text().catch(() => '')
-      console.warn(`[E2E provision] setAppPublic enterprise API(${appId}): HTTP ${res.status} ${body.slice(0, 100)}`)
-    }
-  }
-  catch (err) {
-    console.warn(`[E2E provision] setAppPublic enterprise API(${appId}) error (non-fatal): ${err}`)
-  }
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }

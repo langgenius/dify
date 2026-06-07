@@ -19,7 +19,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { run } from '../helpers/cli.js'
+import { run } from '../../helpers/cli.js'
 
 // ── 1. Top-level help overview ────────────────────────────────────────────────
 
@@ -41,12 +41,13 @@ describe('E2E / difyctl help — top-level overview', () => {
     expect(r.stdout).toContain('version')
   })
 
-  it('[P0] `difyctl help` lists auth subcommands (login, logout, status, whoami)', async () => {
+  it('[P0] `difyctl help` lists auth subcommands (login, logout, list, whoami)', async () => {
     const r = await run(['help'])
     expect(r.exitCode).toBe(0)
     expect(r.stdout).toContain('login')
     expect(r.stdout).toContain('logout')
-    expect(r.stdout).toContain('status')
+    expect(r.stdout).toContain('list')
+    expect(r.stdout).toContain('devices')
     expect(r.stdout).toContain('whoami')
   })
 
@@ -168,11 +169,11 @@ describe('E2E / difyctl help — per-command --help flag', () => {
     expect(r.stdout).toContain('auth logout')
   })
 
-  it('[P0] `auth status --help` exits 0 and prints USAGE for auth status', async () => {
-    const r = await run(['auth', 'status', '--help'])
+  it('[P0] `auth whoami --help` exits 0 and prints USAGE for auth whoami', async () => {
+    const r = await run(['auth', 'whoami', '--help'])
     expect(r.exitCode).toBe(0)
     expect(r.stdout).toContain('USAGE')
-    expect(r.stdout).toContain('auth status')
+    expect(r.stdout).toContain('auth whoami')
   })
 
   it('[P0] `get app --help` exits 0 and prints per-command help', async () => {
@@ -220,49 +221,46 @@ describe('E2E / difyctl help — per-command --help flag', () => {
 // ── 3. help <topic> subcommands ───────────────────────────────────────────────
 
 describe('E2E / difyctl help — topic subcommands', () => {
-  // NOTE: `help account`, `help external`, `help environment` all route via:
-  //   run.ts:  argv[0] === 'help' → helpArgv = ['account']
-  //   resolveCommand(tree, ['account']) → NOT found (account is a subgroup, not a leaf)
-  //   → falls back to printTopLevelHelp()
-  // This is current behaviour — tests document actual output, not aspirational output.
-
-  it('[P0] `difyctl help account` exits 0 and prints COMMANDS (falls back to top-level help)', async () => {
+  it('[P0] `difyctl help account` exits 0 and prints account onboarding topic', async () => {
     const r = await run(['help', 'account'])
     expect(r.exitCode).toBe(0)
-    expect(r.stdout).toContain('COMMANDS')
+    expect(r.stdout).toContain('account-bearer onboarding')
+    expect(r.stdout).toContain('difyctl auth login')
   })
 
-  it('[P0] `difyctl help external` exits 0 and prints COMMANDS', async () => {
+  it('[P0] `difyctl help external` exits 0 and prints external SSO topic', async () => {
     const r = await run(['help', 'external'])
     expect(r.exitCode).toBe(0)
-    expect(r.stdout).toContain('COMMANDS')
+    expect(r.stdout).toContain('external-SSO bearer onboarding')
+    expect(r.stdout).toContain('dfoe_')
   })
 
-  it('[P0] `difyctl help environment` exits 0 and prints COMMANDS', async () => {
+  it('[P0] `difyctl help environment` exits 0 and prints environment topic', async () => {
     const r = await run(['help', 'environment'])
     expect(r.exitCode).toBe(0)
-    expect(r.stdout).toContain('COMMANDS')
+    expect(r.stdout).toContain('ENVIRONMENT VARIABLES')
+    expect(r.stdout).toContain('DIFY_CONFIG_DIR')
   })
 
-  it('[P0] `difyctl help account` output is identical to `difyctl help`', async () => {
+  it('[P0] `difyctl help account` output differs from `difyctl help`', async () => {
     const base = await run(['help'])
     const topic = await run(['help', 'account'])
     expect(topic.exitCode).toBe(0)
-    expect(topic.stdout).toBe(base.stdout)
+    expect(topic.stdout).not.toBe(base.stdout)
   })
 
-  it('[P0] `difyctl help external` output is identical to `difyctl help`', async () => {
+  it('[P0] `difyctl help external` output differs from `difyctl help`', async () => {
     const base = await run(['help'])
     const topic = await run(['help', 'external'])
     expect(topic.exitCode).toBe(0)
-    expect(topic.stdout).toBe(base.stdout)
+    expect(topic.stdout).not.toBe(base.stdout)
   })
 
-  it('[P0] `difyctl help environment` output is identical to `difyctl help`', async () => {
+  it('[P0] `difyctl help environment` output differs from `difyctl help`', async () => {
     const base = await run(['help'])
     const topic = await run(['help', 'environment'])
     expect(topic.exitCode).toBe(0)
-    expect(topic.stdout).toBe(base.stdout)
+    expect(topic.stdout).not.toBe(base.stdout)
   })
 
   it('[P1] `difyctl help account` has no output on stderr', async () => {
@@ -271,12 +269,10 @@ describe('E2E / difyctl help — topic subcommands', () => {
     expect(r.stderr).toBe('')
   })
 
-  it('[P1] `difyctl help unknowntopic` exits 0 and falls back to top-level help', async () => {
-    // Same routing: resolveCommand(tree, ['unknowntopic']) → null → printTopLevelHelp
-    const base = await run(['help'])
+  it('[P1] `difyctl help unknowntopic` exits 1 and reports unknown help topic', async () => {
     const r = await run(['help', 'unknowntopic'])
-    expect(r.exitCode).toBe(0)
-    expect(r.stdout).toBe(base.stdout)
+    expect(r.exitCode).toBe(1)
+    expect(r.stderr).toContain('unknown help topic')
   })
 })
 
