@@ -10,11 +10,11 @@ import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
 
-type AudioBtnProps = {
+type AudioBtnProps = Readonly<{
   id?: string
   voice?: string
   value?: string
-}
+}>
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
