@@ -88,7 +88,9 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
       case ChunkStructureEnum.parent_child:
         return variable.schemaType === 'parent_child_structure' || variable.schemaType === 'multimodal_parent_child_structure'
       case ChunkStructureEnum.question_answer:
-        return variable.schemaType === 'qa_structure'
+        // Accept variables with explicit qa_schema type OR Array[Object] outputs
+        // from Code nodes (which don't carry schemaType metadata).
+        return variable.schemaType === 'qa_structure' || variable.type === 'array[object]'
       default:
         return false
     }
