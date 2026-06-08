@@ -673,9 +673,7 @@ def test_is_globally_expired_zero_timeout(
     assert service._is_globally_expired(Form(sample_form_record)) is False
 
 
-def test_submit_form_by_token_normalizes_select_and_files(
-    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker
-) -> None:
+def test_submit_form_by_token_normalizes_select_and_files(sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture) -> None:
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
@@ -812,9 +810,7 @@ def test_submit_form_by_token_invalid_file_list_item(
         )
 
 
-def test_submit_form_by_token_rejects_cross_tenant_file(
-    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker
-) -> None:
+def test_submit_form_by_token_rejects_cross_tenant_file(sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture) -> None:
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
@@ -845,9 +841,7 @@ def test_submit_form_by_token_rejects_cross_tenant_file(
     repo.mark_submitted.assert_not_called()
 
 
-def test_submit_form_by_token_rejects_cross_tenant_file_list(
-    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker
-) -> None:
+def test_submit_form_by_token_rejects_cross_tenant_file_list(sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture) -> None:
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
