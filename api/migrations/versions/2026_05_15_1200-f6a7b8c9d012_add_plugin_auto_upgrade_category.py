@@ -1,7 +1,7 @@
 """add plugin auto upgrade category
 
 Revision ID: f6a7b8c9d012
-Revises: a4f2d8c9b731
+Revises: 8d4c2a1b9f03
 Create Date: 2026-05-15 12:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "f6a7b8c9d012"
-down_revision = "a4f2d8c9b731"
+down_revision = "8d4c2a1b9f03"
 branch_labels = None
 depends_on = None
 
