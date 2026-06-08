@@ -10,6 +10,7 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
@@ -17,6 +18,8 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
+from services.summary_index_service import SummaryIndexService
+from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
 
@@ -139,11 +142,12 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                 ).all()
                 if segments:
                     index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                    segment_ids = [segment.id for segment in segments]
 
                     # delete from vector index
                     index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids=segment_ids)
 
-                    segment_ids = [segment.id for segment in segments]
                     segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
                     session.execute(segment_delete_stmt)
                     session.commit()
@@ -157,6 +161,41 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             indexing_runner.run(list(documents))
             end_at = time.perf_counter()
             logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+
+            # Rebuild summary indexes for duplicate uploads after the replacement segments are indexed.
+            session.expire_all()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            if not dataset:
+                logger.warning("Dataset %s not found after duplicate indexing", dataset_id)
+                return
+
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                summary_index_setting = dataset.summary_index_setting
+                if summary_index_setting and summary_index_setting.get("enable"):
+                    documents = list(
+                        session.scalars(
+                            select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                        ).all()
+                    )
+
+                    for document in documents:
+                        if (
+                            document.indexing_status == IndexingStatus.COMPLETED
+                            and document.doc_form != IndexStructureType.QA_INDEX
+                            and document.need_summary is True
+                        ):
+                            try:
+                                generate_summary_index_task.delay(dataset.id, document.id, None)
+                                logger.info(
+                                    "Queued summary index generation task for duplicate document %s in dataset %s",
+                                    document.id,
+                                    dataset.id,
+                                )
+                            except Exception:
+                                logger.exception(
+                                    "Failed to queue summary index generation task for duplicate document %s",
+                                    document.id,
+                                )
         except DocumentIsPausedError as ex:
             logger.info(click.style(str(ex), fg="yellow"))
         except Exception:

@@ -1,12 +1,14 @@
-"""Unit tests for queue/wrapper behaviors in duplicate document indexing tasks (non-database logic)."""
+"""Unit tests for duplicate document indexing task behavior."""
 
 import uuid
-from unittest.mock import Mock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from tasks.duplicate_document_indexing_task import (
+    _duplicate_document_indexing_task,
     _duplicate_document_indexing_task_with_tenant_queue,
     duplicate_document_indexing_task,
     normal_duplicate_document_indexing_task,
@@ -40,6 +42,17 @@ def mock_tenant_isolated_queue():
         yield mock_queue
 
 
+class _SessionContext:
+    def __init__(self, session):
+        self.session = session
+
+    def __enter__(self):
+        return self.session
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
 class TestDuplicateDocumentIndexingTask:
     """Tests for the deprecated duplicate_document_indexing_task function."""
 
@@ -51,6 +64,86 @@ class TestDuplicateDocumentIndexingTask:
 
         # Assert
         mock_core_func.assert_called_once_with(dataset_id, document_ids)
+
+    def test_core_task_deletes_old_summaries_and_queues_summary_regeneration(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Duplicate indexing should refresh summary index data for replaced segments."""
+        # Arrange
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            indexing_technique="high_quality",
+            summary_index_setting={"enable": True},
+        )
+        document = SimpleNamespace(
+            id="doc-1",
+            dataset_id="dataset-1",
+            doc_form="text",
+            indexing_status="completed",
+            need_summary=True,
+        )
+        indexed_document = SimpleNamespace(
+            id="doc-1",
+            dataset_id="dataset-1",
+            doc_form="text",
+            indexing_status="completed",
+            need_summary=True,
+        )
+        segment = SimpleNamespace(id="segment-1", index_node_id="node-1")
+
+        session = MagicMock()
+        session.scalar.return_value = dataset
+        session.scalars.side_effect = [
+            MagicMock(all=MagicMock(return_value=[document])),
+            MagicMock(all=MagicMock(return_value=[segment])),
+            MagicMock(all=MagicMock(return_value=[indexed_document])),
+        ]
+        monkeypatch.setattr(
+            "tasks.duplicate_document_indexing_task.session_factory.create_session",
+            MagicMock(return_value=_SessionContext(session)),
+        )
+
+        features = SimpleNamespace(
+            billing=SimpleNamespace(enabled=False),
+            vector_space=SimpleNamespace(limit=0, size=0),
+        )
+        monkeypatch.setattr(
+            "tasks.duplicate_document_indexing_task.FeatureService.get_features",
+            MagicMock(return_value=features),
+        )
+
+        index_processor = MagicMock()
+        monkeypatch.setattr(
+            "tasks.duplicate_document_indexing_task.IndexProcessorFactory",
+            MagicMock(return_value=MagicMock(init_index_processor=MagicMock(return_value=index_processor))),
+        )
+
+        indexing_runner = MagicMock()
+        monkeypatch.setattr(
+            "tasks.duplicate_document_indexing_task.IndexingRunner",
+            MagicMock(return_value=indexing_runner),
+        )
+
+        delete_summaries_mock = MagicMock()
+        monkeypatch.setattr(
+            "tasks.duplicate_document_indexing_task.SummaryIndexService",
+            SimpleNamespace(delete_summaries_for_segments=delete_summaries_mock),
+            raising=False,
+        )
+        delay_mock = MagicMock()
+        monkeypatch.setattr(
+            "tasks.duplicate_document_indexing_task.generate_summary_index_task",
+            SimpleNamespace(delay=delay_mock),
+            raising=False,
+        )
+
+        # Act
+        _duplicate_document_indexing_task("dataset-1", ["doc-1"])
+
+        # Assert
+        delete_summaries_mock.assert_called_once_with(dataset, segment_ids=["segment-1"])
+        delay_mock.assert_called_once_with("dataset-1", "doc-1", None)
 
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_duplicate_document_indexing_task_with_empty_document_ids(self, mock_core_func, dataset_id):
