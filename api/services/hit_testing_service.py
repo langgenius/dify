@@ -57,7 +57,9 @@ class HitTestingService:
 
     @classmethod
     def _dump_retrieval_records(cls, records: list[RetrievalSegments]) -> list[dict[str, Any]]:
-        document_ids = {record.segment.document_id for record in records if record.segment and record.segment.document_id}
+        document_ids = {
+            record.segment.document_id for record in records if record.segment and record.segment.document_id
+        }
         if not document_ids:
             return [record.model_dump() for record in records]
 
