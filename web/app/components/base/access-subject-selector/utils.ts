@@ -1,3 +1,4 @@
+import type { AccessSubjectSelectionValue } from './types'
 import type {
   AccessControlAccount,
   AccessControlGroup,
@@ -36,4 +37,28 @@ export function getSubjectValue(subject: Subject) {
 
 export function isSameSubject(item: Subject, value: Subject) {
   return item.subjectId === value.subjectId && item.subjectType === value.subjectType
+}
+
+export function selectionValueToSubjects({
+  groups,
+  members,
+}: AccessSubjectSelectionValue) {
+  return [
+    ...groups.map(groupToSubject),
+    ...members.map(memberToSubject),
+  ]
+}
+
+export function subjectsToSelectionValue(subjects: Subject[]): AccessSubjectSelectionValue {
+  const groups: AccessControlGroup[] = []
+  const members: AccessControlAccount[] = []
+
+  subjects.forEach((subject) => {
+    if (subject.subjectType === SubjectType.GROUP)
+      groups.push((subject as SubjectGroup).groupData)
+    else
+      members.push((subject as SubjectAccount).accountData)
+  })
+
+  return { groups, members }
 }

@@ -3,11 +3,8 @@
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { AccessSubjectSelectionProps } from './types'
 import type {
-  AccessControlAccount,
   AccessControlGroup,
   Subject,
-  SubjectAccount,
-  SubjectGroup,
 } from '@/models/access-control'
 import {
   Combobox,
@@ -22,16 +19,16 @@ import {
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SubjectType } from '@/models/access-control'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import Loading from '../loading'
 import { SelectedGroupsBreadCrumb, SubjectItem } from './subject-options'
 import {
   getSubjectLabel,
   getSubjectValue,
-  groupToSubject,
   isSameSubject,
-  memberToSubject,
+  selectionValueToSubjects,
+  subjectsToSelectionValue,
 } from './utils'
 
 type AccessSubjectAddButtonProps = AccessSubjectSelectionProps & {
@@ -66,10 +63,10 @@ export function AccessSubjectAddButton({
   }, open && !disabled)
   const pages = data?.pages ?? []
   const subjects = pages.flatMap(page => page.subjects ?? [])
-  const selectedSubjects = [
-    ...selectedGroups.map(groupToSubject),
-    ...selectedMembers.map(memberToSubject),
-  ]
+  const selectedSubjects = selectionValueToSubjects({
+    groups: selectedGroups,
+    members: selectedMembers,
+  })
   const hasResults = pages.length > 0 && subjects.length > 0
   const shouldShowBreadcrumb = hasResults || selectedGroupsForBreadcrumb.length > 0
   const hasMore = pages[pages.length - 1]?.hasMore ?? false
@@ -101,20 +98,7 @@ export function AccessSubjectAddButton({
   }
 
   const handleValueChange = (nextSubjects: Subject[]) => {
-    const nextGroups: AccessControlGroup[] = []
-    const nextMembers: AccessControlAccount[] = []
-
-    for (const subject of nextSubjects) {
-      if (subject.subjectType === SubjectType.GROUP)
-        nextGroups.push((subject as SubjectGroup).groupData)
-      else
-        nextMembers.push((subject as SubjectAccount).accountData)
-    }
-
-    onChange({
-      groups: nextGroups,
-      members: nextMembers,
-    })
+    onChange(subjectsToSelectionValue(nextSubjects))
   }
 
   return (
@@ -164,7 +148,7 @@ export function AccessSubjectAddButton({
           {isLoading
             ? (
                 <ComboboxStatus className="p-1">
-                  <Loading />
+                  <SubjectOptionsSkeleton />
                 </ComboboxStatus>
               )
             : (
@@ -205,5 +189,20 @@ export function AccessSubjectAddButton({
         </div>
       </ComboboxContent>
     </Combobox>
+  )
+}
+
+function SubjectOptionsSkeleton() {
+  return (
+    <div className="flex flex-col gap-1">
+      {[0, 1, 2, 3, 4].map(index => (
+        <div key={index} className="flex min-h-8 items-center gap-2 rounded-lg p-1 pl-2">
+          <SkeletonRectangle className="my-0 size-4 shrink-0 animate-pulse rounded-sm" />
+          <SkeletonRectangle className="my-0 size-5 shrink-0 animate-pulse rounded-full" />
+          <SkeletonRectangle className="my-0 h-3.5 w-32 animate-pulse" />
+          <SkeletonRectangle className="my-0 h-3 w-16 animate-pulse" />
+        </div>
+      ))}
+    </div>
   )
 }

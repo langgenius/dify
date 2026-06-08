@@ -1,40 +1,22 @@
 import type { CreateReleaseReply } from '@dify/contracts/enterprise/types.gen'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import type { SourceAppPickerValue } from '../../components/create-instance-modal'
 import type { UnsupportedDslNode } from '../../error'
 import type { ReleaseSourceMode } from './create-release-form-sections'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { isWorkflowApp, isWorkflowAppMode } from '../../app-mode'
+import { isWorkflowApp } from '../../app-mode'
 import { encodeDslContent, isWorkflowDsl } from '../../dsl'
 import { deploymentErrorMessage, unsupportedDslNodeError } from '../../error'
 import { releaseLabel } from '../../release'
+import { useDslFileReader } from '../../use-dsl-file-reader'
+import { workflowSourceAppPickerValue } from './source-app-picker'
 
 const DEFAULT_RELEASE_SOURCE_MODE: ReleaseSourceMode = 'sourceApp'
 const DEFAULT_SOURCE_RELEASE_PAGE_SIZE = 1
-
-function workflowSourceAppPickerValue(value: unknown, fallbackId: string): SourceAppPickerValue | undefined {
-  if (!value || typeof value !== 'object')
-    return undefined
-
-  const record = value as Record<string, unknown>
-  const mode = typeof record.mode === 'string' ? record.mode : undefined
-  if (!isWorkflowAppMode(mode))
-    return undefined
-
-  const id = typeof record.id === 'string' && record.id ? record.id : fallbackId
-  const name = typeof record.name === 'string' && record.name ? record.name : id
-
-  return {
-    id,
-    name,
-    mode,
-  }
-}
 
 export function useCreateReleaseControl(appInstanceId: string) {
   const { t } = useTranslation('deployments')
@@ -43,15 +25,18 @@ export function useCreateReleaseControl(appInstanceId: string) {
   const [isCreating, setIsCreating] = useState(false)
   const [releaseSourceMode, setReleaseSourceMode] = useState<ReleaseSourceMode>(DEFAULT_RELEASE_SOURCE_MODE)
   const [sourceApp, setSourceApp] = useState<App>()
-  const [dslFile, setDslFile] = useState<File>()
-  const [dslContent, setDslContent] = useState('')
-  const [isReadingDsl, setIsReadingDsl] = useState(false)
-  const [dslReadError, setDslReadError] = useState(false)
   const [releaseName, setReleaseName] = useState('')
   const [releaseNameTouched, setReleaseNameTouched] = useState(false)
   const [description, setDescription] = useState('')
   const [unsupportedDslNodes, setUnsupportedDslNodes] = useState<UnsupportedDslNode[]>([])
-  const dslReadTokenRef = useRef(0)
+  const {
+    dslContent,
+    dslFile,
+    dslReadError,
+    isReadingDsl,
+    resetDslFileState,
+    selectDslFile,
+  } = useDslFileReader()
 
   const latestReleaseQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
     input: {
@@ -117,14 +102,6 @@ export function useCreateReleaseControl(appInstanceId: string) {
   const isCreatePending = createReleaseFromSourceApp.isPending || createReleaseFromDsl.isPending
   const isBusy = isCheckingReleaseContent || isCreatePending
 
-  function resetDslState() {
-    dslReadTokenRef.current += 1
-    setDslFile(undefined)
-    setDslContent('')
-    setIsReadingDsl(false)
-    setDslReadError(false)
-  }
-
   function clearCreateError() {
     setUnsupportedDslNodes([])
   }
@@ -133,7 +110,7 @@ export function useCreateReleaseControl(appInstanceId: string) {
     setIsCreating(false)
     setReleaseSourceMode(DEFAULT_RELEASE_SOURCE_MODE)
     setSourceApp(undefined)
-    resetDslState()
+    resetDslFileState()
     setReleaseName('')
     setReleaseNameTouched(false)
     setDescription('')
@@ -171,40 +148,14 @@ export function useCreateReleaseControl(appInstanceId: string) {
     clearCreateError()
     setReleaseSourceMode(nextMode)
     if (nextMode === 'sourceApp')
-      resetDslState()
+      resetDslFileState()
     else
       setSourceApp(undefined)
   }
 
   function handleDslFileChange(file?: File) {
     clearCreateError()
-    const readToken = dslReadTokenRef.current + 1
-    dslReadTokenRef.current = readToken
-    setDslFile(file)
-    setDslContent('')
-    setIsReadingDsl(false)
-    setDslReadError(false)
-
-    if (!file)
-      return
-
-    setIsReadingDsl(true)
-    void file.text()
-      .then((content) => {
-        if (dslReadTokenRef.current !== readToken)
-          return
-        setDslContent(content)
-      })
-      .catch(() => {
-        if (dslReadTokenRef.current !== readToken)
-          return
-        setDslReadError(true)
-      })
-      .finally(() => {
-        if (dslReadTokenRef.current !== readToken)
-          return
-        setIsReadingDsl(false)
-      })
+    selectDslFile(file)
   }
 
   function handleReleaseNameBlur() {

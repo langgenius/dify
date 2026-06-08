@@ -9,7 +9,7 @@ import type {
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import Loading from '../loading'
+import { SkeletonRectangle } from '../skeleton'
 
 type AccessSubjectSelectionListProps = AccessSubjectSelectionProps & {
   loading?: boolean
@@ -26,7 +26,7 @@ export function AccessSubjectSelectionList({
   return (
     <div className={cn('flex max-h-[400px] flex-col gap-y-2 overflow-y-auto rounded-lg bg-background-section p-2', className)}>
       {loading
-        ? <Loading />
+        ? <AccessSubjectSelectionListSkeleton />
         : (
             <RenderGroupsAndMembers
               selectedGroups={selectedGroups}
@@ -34,6 +34,38 @@ export function AccessSubjectSelectionList({
               onChange={onChange}
             />
           )}
+    </div>
+  )
+}
+
+function AccessSubjectSelectionListSkeleton() {
+  return (
+    <>
+      <SkeletonRectangle className="my-0 h-3 w-14 animate-pulse" />
+      <div className="flex flex-row flex-wrap gap-1">
+        {[0, 1].map(index => (
+          <SelectedItemSkeleton key={index} withMeta />
+        ))}
+      </div>
+      <SkeletonRectangle className="my-0 h-3 w-16 animate-pulse" />
+      <div className="flex flex-row flex-wrap gap-1">
+        {[0, 1, 2].map(index => (
+          <SelectedItemSkeleton key={index} />
+        ))}
+      </div>
+    </>
+  )
+}
+
+function SelectedItemSkeleton({ withMeta = false }: {
+  withMeta?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
+      <SkeletonRectangle className="my-0 size-5 animate-pulse rounded-full" />
+      <SkeletonRectangle className="my-0 h-3 w-20 animate-pulse" />
+      {withMeta && <SkeletonRectangle className="my-0 h-3 w-5 animate-pulse" />}
+      <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-full" />
     </div>
   )
 }
