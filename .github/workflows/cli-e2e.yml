@@ -30,7 +30,7 @@ on:
       suite_framework_output_error:
         description: "framework + output + error-handling suites"
         type: boolean
-        default: false
+        default: true
       suite_discovery:
         description: "discovery suite (get app / describe app)"
         type: boolean
@@ -42,7 +42,7 @@ on:
       suite_auth:
         description: "auth suite (login / status / whoami / use / devices / logout)"
         type: boolean
-        default: false
+        default: true
       suite_agent:
         description: "agent suite"
         type: boolean
