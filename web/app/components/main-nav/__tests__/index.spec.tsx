@@ -336,6 +336,9 @@ describe('MainNav', () => {
   })
 
   it('keeps the global navigation account section expanded on home routes', () => {
+    localStorage.setItem('app-detail-collapse-or-expand', 'collapse')
+    mockPathname = '/'
+
     renderMainNav()
 
     const accountButton = screen.getByRole('button', { name: 'common.account.account' })
