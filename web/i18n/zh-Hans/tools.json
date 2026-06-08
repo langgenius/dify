@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "添加并授权",
   "mcp.modal.editTitle": "修改 MCP 服务 (HTTP)",
   "mcp.modal.forwardUserIdentity": "转发用户身份",
-  "mcp.modal.forwardUserIdentityTip": "将调用用户的已验证 SSO 身份作为 Authorization Bearer token 转发到该 MCP 服务器。需要 Dify Enterprise SSO。",
+  "mcp.modal.forwardUserIdentityTip": "将调用用户的已验证 SSO 身份通过 X-Dify-SSO-Access-Token 请求头转发到该 MCP 服务器。需要 Dify Enterprise SSO。",
   "mcp.modal.headerKey": "请求头名称",
   "mcp.modal.headerKeyPlaceholder": "例如：Authorization",
   "mcp.modal.headerValue": "请求头值",
