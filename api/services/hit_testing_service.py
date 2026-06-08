@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
+from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -55,17 +56,10 @@ class HitTestingService:
         }
 
     @classmethod
-    def _dump_retrieval_records(cls, records: list[Any]) -> list[dict[str, Any]]:
-        dumped_records = [record.model_dump() for record in records]
-        document_ids = {
-            segment.get("document_id")
-            for record in dumped_records
-            if isinstance(record, dict)
-            for segment in [record.get("segment")]
-            if isinstance(segment, dict) and segment.get("document_id")
-        }
+    def _dump_retrieval_records(cls, records: list[RetrievalSegments]) -> list[dict[str, Any]]:
+        document_ids = {record.segment.document_id for record in records if record.segment and record.segment.document_id}
         if not document_ids:
-            return dumped_records
+            return [record.model_dump() for record in records]
 
         documents = {
             document.id: cls._dump_dataset_document(document)
@@ -76,18 +70,19 @@ class HitTestingService:
 
         records_with_documents: list[dict[str, Any]] = []
         missing_document_ids: set[str] = set()
-        for record in dumped_records:
-            segment = record.get("segment")
-            if not isinstance(segment, dict):
-                records_with_documents.append(record)
+        for retrieval_record in records:
+            segment = retrieval_record.segment
+            document_id = segment.document_id
+            document = documents.get(document_id)
+            if document is None:
+                missing_document_ids.add(document_id)
                 continue
 
-            document_id = segment.get("document_id")
-            if document_id in documents:
-                segment["document"] = documents[document_id]
-                records_with_documents.append(record)
-            elif document_id:
-                missing_document_ids.add(document_id)
+            record = retrieval_record.model_dump()
+            segment_dict = record["segment"]
+            segment_dict["created_at"] = segment.created_at
+            segment_dict["document"] = document
+            records_with_documents.append(record)
 
         if missing_document_ids:
             logger.warning(
