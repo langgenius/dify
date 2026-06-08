@@ -1,5 +1,4 @@
-from typing import override
-from typing import Any
+from typing import Any, override
 
 import pytest
 
