@@ -124,19 +124,20 @@ class DatadogDataTrace(BaseTraceInstance):
         )
         self._session_factory: sessionmaker | None = None
 
-    _IGNORED_TRACE_TYPES = (ModerationTraceInfo, SuggestedQuestionTraceInfo, GenerateNameTraceInfo)
-
     def trace(self, trace_info: BaseTraceInfo) -> None:
-        if isinstance(trace_info, self._IGNORED_TRACE_TYPES):
-            return
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        elif isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        elif isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        elif isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case ModerationTraceInfo() | SuggestedQuestionTraceInfo() | GenerateNameTraceInfo():
+                return
+            case _:
+                return
 
         if self.trace_client.span_processor is not None:
             self.trace_client.span_processor.force_flush(timeout_millis=10000)
