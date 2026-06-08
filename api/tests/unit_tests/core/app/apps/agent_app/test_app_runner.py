@@ -3,6 +3,7 @@ stream is republished as chat queue events and the conversation snapshot is
 saved, using the deterministic fake backend client (no live stack)."""
 
 from __future__ import annotations
+from typing import override
 
 from types import SimpleNamespace
 from typing import Any
@@ -48,6 +49,7 @@ class _FakeQueueManager:
 
 
 class _StoppedQueueManager(_FakeQueueManager):
+    @override
     def is_stopped(self) -> bool:
         return True
 
@@ -56,7 +58,7 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cancelled_run_ids: list[str] = []
-
+    @override
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancelled_run_ids.append(run_id)
         return super().cancel_run(run_id, request=request)
