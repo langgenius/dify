@@ -641,6 +641,15 @@ importers:
       '@napi-rs/keyring':
         specifier: 'catalog:'
         version: 1.3.0
+      '@orpc/client':
+        specifier: 'catalog:'
+        version: 1.14.5
+      '@orpc/contract':
+        specifier: 'catalog:'
+        version: 1.14.5
+      '@orpc/openapi-client':
+        specifier: 'catalog:'
+        version: 1.14.5
       cli-table3:
         specifier: 'catalog:'
         version: 0.6.5

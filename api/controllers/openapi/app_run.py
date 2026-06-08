@@ -15,7 +15,7 @@ from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, 
 import services
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._models import AppRunRequest
+from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from controllers.service_api.app.error import (
@@ -159,7 +159,7 @@ class AppRunApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
 class AppRunTaskStopApi(Resource):
-    @openapi_ns.response(200, "Task stopped")
+    @openapi_ns.response(200, "Task stopped", openapi_ns.models[TaskStopResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()
