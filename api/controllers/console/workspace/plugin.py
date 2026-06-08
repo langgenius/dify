@@ -13,7 +13,13 @@ from controllers.common.fields import SuccessResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
-from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    is_admin_or_owner_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user_id,
+)
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from fields.base import ResponseModel
@@ -219,11 +225,12 @@ class PluginListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user_id: str):
         args = ParserList.model_validate(request.args.to_dict(flat=True))
         try:
-            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
+            plugins_with_total = PluginService.list_with_total(tenant_id, user_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 

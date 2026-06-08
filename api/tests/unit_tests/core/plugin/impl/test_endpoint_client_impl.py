@@ -27,7 +27,7 @@ class TestPluginEndpointClientImpl:
 
         assert result == ["endpoint"]
         assert request_mock.call_args.args[1] == "plugin/tenant-1/endpoint/list"
-        assert request_mock.call_args.kwargs["params"] == {"page": 2, "page_size": 20}
+        assert request_mock.call_args.kwargs["params"] == {"user_id": "user-1", "page": 2, "page_size": 20}
 
     def test_list_endpoints_for_single_plugin(self, mocker: MockerFixture):
         client = PluginEndpointClient()
@@ -37,7 +37,12 @@ class TestPluginEndpointClientImpl:
 
         assert result == ["endpoint"]
         assert request_mock.call_args.args[1] == "plugin/tenant-1/endpoint/list/plugin"
-        assert request_mock.call_args.kwargs["params"] == {"plugin_id": "org/plugin", "page": 1, "page_size": 10}
+        assert request_mock.call_args.kwargs["params"] == {
+            "user_id": "user-1",
+            "plugin_id": "org/plugin",
+            "page": 1,
+            "page_size": 10,
+        }
 
     def test_update_endpoint(self, mocker: MockerFixture):
         client = PluginEndpointClient()

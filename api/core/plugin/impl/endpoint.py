@@ -42,7 +42,7 @@ class PluginEndpointClient(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/endpoint/list",
             list[EndpointEntityWithInstance],
-            params={"page": page, "page_size": page_size},
+            params={"user_id": user_id, "page": page, "page_size": page_size},
         )
 
     def list_endpoints_for_single_plugin(self, tenant_id: str, user_id: str, plugin_id: str, page: int, page_size: int):
@@ -53,7 +53,7 @@ class PluginEndpointClient(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/endpoint/list/plugin",
             list[EndpointEntityWithInstance],
-            params={"plugin_id": plugin_id, "page": page, "page_size": page_size},
+            params={"user_id": user_id, "plugin_id": plugin_id, "page": page, "page_size": page_size},
         )
 
     def update_endpoint(
