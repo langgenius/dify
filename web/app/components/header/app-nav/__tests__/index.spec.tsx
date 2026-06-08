@@ -206,7 +206,7 @@ describe('AppNav', () => {
     expect(options.getNextPageParam({ has_more: false, page: 3 })).toBeUndefined()
   })
 
-  it('should configure snippets as an active studio child link', () => {
+  it('should keep snippets configured as an active studio child link after rerender setup', () => {
     setupDefaultMocks()
     render(<AppNav />)
 

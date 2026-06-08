@@ -1,6 +1,5 @@
 'use client'
 import type { Reducer } from 'react'
-import type { LanguagesSupported } from '@/i18n-config/language'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'

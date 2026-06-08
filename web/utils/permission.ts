@@ -26,9 +26,6 @@ export const DatasetACLPermission = {
   AccessConfig: 'dataset.acl.access_config',
 } as const
 
-type AppACLPermissionKey = typeof AppACLPermission[keyof typeof AppACLPermission]
-type DatasetACLPermissionKey = typeof DatasetACLPermission[keyof typeof DatasetACLPermission]
-
 export type CreatorPermissionOptions = {
   currentUserId?: string | null
   resourceCreatedBy?: string | null

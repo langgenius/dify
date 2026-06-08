@@ -92,18 +92,18 @@ export function PanelContextmenu({
       sideOffset={4}
     >
       <ContextMenuGroup>
-          {canEditWorkflow && (
+        {canEditWorkflow && (
           <AddBlock
             renderTrigger={renderAddBlockTrigger}
-          renderTriggerAsButtonRoot
-          onClose={onClose}
+            renderTriggerAsButtonRoot
+            onClose={onClose}
             offset={{
               mainAxis: -36,
               crossAxis: -4,
             }}
           />
-          )}
-          {canCommentWorkflow && (
+        )}
+        {canCommentWorkflow && (
           <ContextMenuItem
             className="justify-between gap-4 px-3 text-text-secondary"
             onClick={(e) => {
@@ -114,7 +114,7 @@ export function PanelContextmenu({
           >
             {t('nodes.note.addNote', { ns: 'workflow' })}
           </ContextMenuItem>
-          )}
+        )}
         {canCommentWorkflow && isCommentModeAvailable && (
           <ContextMenuItem
             disabled={!!pendingComment}
@@ -134,7 +134,7 @@ export function PanelContextmenu({
             {t('comments.actions.addComment', { ns: 'workflow' })}
           </ContextMenuItem>
         )}
-          {accessControl.canRun && (
+        {accessControl.canRun && (
           <ContextMenuItem
             className="justify-between gap-4 px-3 text-text-secondary"
             onClick={handleRunAction}
@@ -142,10 +142,10 @@ export function PanelContextmenu({
             {isChatMode ? t('common.debugAndPreview', { ns: 'workflow' }) : t('common.run', { ns: 'workflow' })}
             {!isChatMode && <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} />}
           </ContextMenuItem>
-          )}
+        )}
       </ContextMenuGroup>
-        {canEditWorkflow && (
-          <>
+      {canEditWorkflow && (
+        <>
           <ContextMenuSeparator />
           <ContextMenuGroup>
             <ContextMenuItem
@@ -165,10 +165,10 @@ export function PanelContextmenu({
               <ShortcutKbd shortcut="workflow.paste" />
             </ContextMenuItem>
           </ContextMenuGroup>
-          </>
-        )}
-        {accessControl.canImportExportDSL && (
-          <>
+        </>
+      )}
+      {accessControl.canImportExportDSL && (
+        <>
           <ContextMenuSeparator />
           <ContextMenuGroup>
             <ContextMenuItem
@@ -184,8 +184,8 @@ export function PanelContextmenu({
               {t('importApp', { ns: 'app' })}
             </ContextMenuItem>
           </ContextMenuGroup>
-          </>
-        )}
+        </>
+      )}
     </ContextMenuContent>
   )
 }

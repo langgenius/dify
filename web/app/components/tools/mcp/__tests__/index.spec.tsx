@@ -20,8 +20,8 @@ vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: (...args: unknown[]) => {
     mockUseAllToolProviders(...args)
     return {
-    data: mockProviders,
-    refetch: mockRefetch,
+      data: mockProviders,
+      refetch: mockRefetch,
     }
   },
 }))

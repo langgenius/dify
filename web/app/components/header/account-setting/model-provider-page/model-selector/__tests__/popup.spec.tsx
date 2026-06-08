@@ -264,7 +264,7 @@ describe('Popup', () => {
     expect(input).toHaveFocus()
   })
 
-  it('should show matching models when searching by model name', () => {
+  it('should show matching models when searching by model name with direct props', () => {
     renderPopup(
       <PopupHarness
         modelList={[
@@ -293,7 +293,7 @@ describe('Popup', () => {
     expect(screen.queryByText('No model found for \u201Cclaude\u201D')).not.toBeInTheDocument()
   })
 
-  it('should show empty search placeholder when no provider or model name matches', () => {
+  it('should show empty search placeholder when direct props have no provider or model match', () => {
     renderPopup(
       <PopupHarness
         modelList={[
@@ -318,7 +318,7 @@ describe('Popup', () => {
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
   })
 
-  it('should show all models of a provider when searching by provider label', () => {
+  it('should show all models of a provider when searching by provider label with direct props', () => {
     renderPopup(
       <PopupHarness
         modelList={[
@@ -528,7 +528,7 @@ describe('Popup', () => {
     expect(screen.queryByText('langgenius/tongyi/tongyi')).not.toBeInTheDocument()
   })
 
-  it('should match by model provider key when model label does not contain the search text', () => {
+  it('should match by model provider key when direct props model label does not contain the search text', () => {
     renderPopup(
       <PopupHarness
         modelList={[
@@ -553,7 +553,7 @@ describe('Popup', () => {
     expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
   })
 
-  it('should still apply scope features when matching by provider label', () => {
+  it('should still apply scope features when direct props match by provider label', () => {
     mockSupportFunctionCall.mockReturnValue(false)
 
     renderPopup(

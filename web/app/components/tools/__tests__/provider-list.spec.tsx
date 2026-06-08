@@ -95,9 +95,9 @@ vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: (...args: unknown[]) => {
     mockUseAllToolProviders(...args)
     return {
-    data: mockCollectionData,
-    isLoading: mockIsLoadingToolProviders,
-    refetch: mockRefetch,
+      data: mockCollectionData,
+      isLoading: mockIsLoadingToolProviders,
+      refetch: mockRefetch,
     }
   },
 }))

@@ -247,7 +247,7 @@ describe('ApiKeyModal', () => {
     expect(mockOnClose).toHaveBeenCalled()
   })
 
-  it('should close through controlled open state when cancel is clicked', async () => {
+  it('should call onClose after controlled cancel closes the modal', async () => {
     const mockOnClose = vi.fn()
     render(<ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />)
 

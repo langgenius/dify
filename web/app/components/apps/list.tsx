@@ -2,7 +2,6 @@
 
 import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'

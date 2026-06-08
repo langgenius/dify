@@ -1,8 +1,8 @@
 import type { AccessPolicyWithBindings, RemoveBindingPayload } from '@/models/access-control'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useQueryClient } from '@tanstack/react-query'
 import {
   useBindingLock,
   useBindingUnlock,

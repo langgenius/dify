@@ -18,8 +18,8 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   updateAppSiteAccessToken,
   updateAppSiteConfig,

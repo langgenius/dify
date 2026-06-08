@@ -20,8 +20,8 @@ import {
 } from '@/context/app-context'
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useWorkspacePermissionKeys } from '@/service/access-control/use-permission-keys'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useWorkspacePermissionKeys } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import {
   useLangGeniusVersion,
