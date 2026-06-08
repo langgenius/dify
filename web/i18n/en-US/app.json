@@ -282,7 +282,7 @@
   "tracing.configProviderTitle.notConfigured": "Config provider to enable tracing",
   "tracing.databricks.description": "Databricks offers fully-managed MLflow with strong governance and security for storing trace data.",
   "tracing.databricks.title": "Databricks",
-  "tracing.datadog.description": "Send LLM traces to Datadog for observability and monitoring.",
+  "tracing.datadog.description": "Send traces to Datadog Agent Observability for monitoring and evaluation.",
   "tracing.datadog.title": "Datadog",
   "tracing.description": "Configuring a Third-Party LLMOps provider and tracing app performance.",
   "tracing.disabled": "Disabled",

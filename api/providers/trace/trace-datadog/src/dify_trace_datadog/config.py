@@ -6,7 +6,7 @@ from dify_trace_datadog.constants import DEFAULT_DD_SITE, DEFAULT_SERVICE_NAME, 
 
 class DatadogConfig(BaseTracingConfig):
     """
-    Datadog LLM observability tracing config.
+    Datadog Agent Observability tracing config.
     """
 
     api_key: str
