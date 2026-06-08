@@ -56,6 +56,7 @@ type AuthorizedProps = {
   selectedCredentialId?: string
   onUpdate?: () => void
   notAllowCustomCredential?: boolean
+  disabled?: boolean
 }
 const Authorized = ({
   pluginPayload,
@@ -76,6 +77,7 @@ const Authorized = ({
   selectedCredentialId,
   onUpdate,
   notAllowCustomCredential,
+  disabled,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
@@ -337,6 +339,7 @@ const Authorized = ({
                       showDivider={false}
                       canOAuth={canOAuth}
                       canApiKey={canApiKey}
+                      disabled={disabled}
                       onUpdate={onUpdate}
                       onApiKeyClick={handleAddApiKeyClick}
                     />

@@ -17,17 +17,17 @@ export const AccessMode = {
 export type AccessMode = typeof AccessMode[keyof typeof AccessMode]
 
 export type AccessControlGroup = {
-  id: 'string'
-  name: 'string'
-  groupSize: 5
+  id: string
+  name: string
+  groupSize: number
 }
 
 export type AccessControlAccount = {
-  id: 'string'
-  name: 'string'
-  email: 'string'
-  avatar: 'string'
-  avatarUrl: 'string'
+  id: string
+  name: string
+  email: string
+  avatar: string
+  avatarUrl: string
 }
 
 export type SubjectGroup = { subjectId: string, subjectType: SubjectType, groupData: AccessControlGroup }

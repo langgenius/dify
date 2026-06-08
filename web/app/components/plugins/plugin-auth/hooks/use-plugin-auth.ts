@@ -20,6 +20,7 @@ export const usePluginAuth = (
     isAuthorized,
     canOAuth,
     canApiKey,
+    disabled: false,
     credentials: data?.credentials || [],
     notAllowCustomCredential: data?.allow_custom_token === false,
     invalidPluginCredentialInfo,

@@ -21,6 +21,7 @@ type AuthorizeProps = {
   canApiKey?: boolean
   onUpdate?: () => void
   notAllowCustomCredential?: boolean
+  disabled?: boolean
   /**
    * If provided, the API-key button delegates modal-opening to the parent
    * instead of rendering it inline. Used when this Authorize is mounted
@@ -37,6 +38,7 @@ const Authorize = ({
   canApiKey,
   onUpdate,
   notAllowCustomCredential,
+  disabled,
   onApiKeyClick,
 }: AuthorizeProps) => {
   const { t } = useTranslation()
@@ -84,7 +86,7 @@ const Authorize = ({
       <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddOAuthButton
           {...oAuthButtonProps}
-          disabled={!canManageCredential || notAllowCustomCredential}
+          disabled={disabled || !canManageCredential || notAllowCustomCredential}
           onUpdate={onUpdate}
         />
       </div>
@@ -101,14 +103,14 @@ const Authorize = ({
       )
     }
     return Item
-  }, [notAllowCustomCredential, oAuthButtonProps, canManageCredential, onUpdate, t])
+  }, [disabled, notAllowCustomCredential, oAuthButtonProps, canManageCredential, onUpdate, t])
 
   const ApiKeyButton = useMemo(() => {
     const Item = (
       <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddApiKeyButton
           {...apiKeyButtonProps}
-          disabled={!canManageCredential || notAllowCustomCredential}
+          disabled={disabled || !canManageCredential || notAllowCustomCredential}
           onUpdate={onUpdate}
         />
       </div>
@@ -125,7 +127,7 @@ const Authorize = ({
       )
     }
     return Item
-  }, [notAllowCustomCredential, apiKeyButtonProps, canManageCredential, onUpdate, t])
+  }, [disabled, notAllowCustomCredential, apiKeyButtonProps, canManageCredential, onUpdate, t])
 
   return (
     <>

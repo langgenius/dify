@@ -35,6 +35,7 @@ type ItemProps = {
   onItemClick?: (id: string) => void
   showSelectedIcon?: boolean
   selectedCredentialId?: string
+  disabled?: boolean
 }
 const Item = ({
   credential,
@@ -49,6 +50,7 @@ const Item = ({
   onItemClick,
   showSelectedIcon,
   selectedCredentialId,
+  disabled,
 }: ItemProps) => {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
@@ -79,10 +81,10 @@ const Item = ({
       className={cn(
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
         renaming && 'bg-state-base-hover',
-        (!canUseCredential || credential.not_allowed_to_use) && 'cursor-not-allowed opacity-50',
+        (disabled || !canUseCredential || credential.not_allowed_to_use) && 'cursor-not-allowed opacity-50',
       )}
       onClick={() => {
-        if (credential.not_allowed_to_use || !canUseCredential)
+        if (disabled || credential.not_allowed_to_use || !canUseCredential)
           return
         onItemClick?.(credential.id === '__workspace_default__' ? '' : credential.id)
       }}
@@ -188,7 +190,7 @@ const Item = ({
               !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && !isBorrowed && (
                 <Button
                   size="small"
-                  disabled={!canManageCredential}
+                  disabled={disabled || !canManageCredential}
                   onClick={(e) => {
                     e.stopPropagation()
                     onSetDefault?.(credential.id)
@@ -204,7 +206,7 @@ const Item = ({
                   <TooltipTrigger
                     render={(
                       <ActionButton
-                        disabled={!canManageCredential}
+                        disabled={disabled || !canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           setRenaming(true)
@@ -227,7 +229,7 @@ const Item = ({
                   <TooltipTrigger
                     render={(
                       <ActionButton
-                        disabled={!canManageCredential}
+                        disabled={disabled || !canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           onEdit?.(
@@ -257,7 +259,7 @@ const Item = ({
                     render={(
                       <ActionButton
                         className="hover:bg-transparent"
-                        disabled={!canManageCredential}
+                        disabled={disabled || !canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           onDelete?.(credential.id)

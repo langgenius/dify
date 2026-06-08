@@ -585,7 +585,7 @@ describe('Popup', () => {
 
   it('should show matching models when searching by model name', () => {
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[
           makeModel({
             models: [makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } })],
@@ -596,7 +596,6 @@ describe('Popup', () => {
             models: [makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } })],
           }),
         ]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -615,7 +614,7 @@ describe('Popup', () => {
 
   it('should show empty search placeholder when no provider or model name matches', () => {
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[
           makeModel({
             label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -624,7 +623,6 @@ describe('Popup', () => {
             ],
           }),
         ]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -641,7 +639,7 @@ describe('Popup', () => {
 
   it('should show all models of a provider when searching by provider label', () => {
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[
           makeModel({
             provider: 'openai',
@@ -659,7 +657,6 @@ describe('Popup', () => {
             ],
           }),
         ]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -678,7 +675,7 @@ describe('Popup', () => {
 
   it('should match by model provider key when model label does not contain the search text', () => {
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[
           makeModel({
             provider: 'azure_openai',
@@ -688,7 +685,6 @@ describe('Popup', () => {
             ],
           }),
         ]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -706,7 +702,7 @@ describe('Popup', () => {
     mockSupportFunctionCall.mockReturnValue(false)
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[
           makeModel({
             provider: 'openai',
@@ -717,7 +713,6 @@ describe('Popup', () => {
             ],
           }),
         ]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.toolCall]}
       />,

@@ -81,6 +81,7 @@ describe('Support', () => {
     useSelector: vi.fn(),
     isLoadingCurrentWorkspace: false,
     isValidatingCurrentWorkspace: false,
+    workspacePermissionKeys: [],
   }
 
   beforeEach(() => {

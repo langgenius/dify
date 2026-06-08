@@ -17,10 +17,10 @@ vi.mock('@/context/app-context', () => ({
 
 describe('PermissionSelector', () => {
   const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' }!,
-    { id: 'user-2', name: 'John Doe', email: 'john@example.com', avatar: '', avatar_url: '', role: 'admin', last_login_at: '', created_at: '', status: 'active' }!,
-    { id: 'user-3', name: 'Jane Smith', email: 'jane@example.com', avatar: '', avatar_url: '', role: 'editor', last_login_at: '', created_at: '', status: 'active' }!,
-    { id: 'user-4', name: 'Dataset Operator', email: 'operator@example.com', avatar: '', avatar_url: '', role: 'dataset_operator', last_login_at: '', created_at: '', status: 'active' }!,
+    { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', roles: [], last_login_at: '', created_at: '', status: 'active' }!,
+    { id: 'user-2', name: 'John Doe', email: 'john@example.com', avatar: '', avatar_url: '', role: 'admin', roles: [], last_login_at: '', created_at: '', status: 'active' }!,
+    { id: 'user-3', name: 'Jane Smith', email: 'jane@example.com', avatar: '', avatar_url: '', role: 'editor', roles: [], last_login_at: '', created_at: '', status: 'active' }!,
+    { id: 'user-4', name: 'Dataset Operator', email: 'operator@example.com', avatar: '', avatar_url: '', role: 'dataset_operator', roles: [], last_login_at: '', created_at: '', status: 'active' }!,
   ]
 
   const defaultProps = {
@@ -482,7 +482,7 @@ describe('PermissionSelector', () => {
       // This is tested indirectly through the memberList filtering
       const memberListWithNormalUser: Member[] = [
         ...mockMemberList,
-        { id: 'user-5', name: 'Normal User', email: 'normal@example.com', avatar: '', avatar_url: '', role: 'normal', last_login_at: '', created_at: '', status: 'active' },
+        { id: 'user-5', name: 'Normal User', email: 'normal@example.com', avatar: '', avatar_url: '', role: 'normal', roles: [], last_login_at: '', created_at: '', status: 'active' },
       ]
 
       renderWithSystemFeatures(

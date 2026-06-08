@@ -501,7 +501,7 @@ const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const [initialized, setInitialized] = useState(false)
   const {
-    canManagement,
+    canManagePlugin,
   } = useReferenceSetting()
   const { refreshPluginList } = useRefreshPluginList()
   const {
@@ -511,7 +511,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     refetch,
     ...rest
   } = useQuery({
-    enabled: canManagement,
+    enabled: canManagePlugin,
     queryKey: usePluginTaskListKey,
     queryFn: () => get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
     refetchInterval: (lastQuery) => {

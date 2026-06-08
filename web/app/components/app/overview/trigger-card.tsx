@@ -56,7 +56,7 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: TriggerWithProvider
       || triggerWithProvider.id.includes(provider_name)
       || triggerWithProvider.name === provider_name,
     )
-    triggerIcon = foundTrigger?.icon
+    triggerIcon = typeof foundTrigger?.icon === 'string' ? foundTrigger.icon : undefined
   }
 
   return (
