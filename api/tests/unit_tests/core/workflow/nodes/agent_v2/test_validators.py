@@ -67,6 +67,30 @@ def _graph(edges: list[dict]) -> dict:
     }
 
 
+def _tool_graph(tool_data: dict) -> dict:
+    return {
+        "nodes": [
+            {"id": "start", "data": {"type": "start"}},
+            {
+                "id": "tool-node",
+                "data": {
+                    "type": "tool",
+                    "title": "Tool",
+                    "provider_id": "provider",
+                    "provider_type": "builtin",
+                    "provider_name": "provider",
+                    "tool_name": "lookup",
+                    "tool_label": "Lookup",
+                    "tool_configurations": {},
+                    "tool_parameters": {},
+                    **tool_data,
+                },
+            },
+        ],
+        "edges": [{"source": "start", "target": "tool-node"}],
+    }
+
+
 def test_publish_validation_accepts_upstream_previous_output_ref():
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "previous-node", "output": "text"}]}
@@ -161,6 +185,92 @@ def test_publish_validation_rejects_missing_agent_soul_model():
     session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="requires Agent Soul model"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
+def test_publish_validation_rejects_duplicate_cli_tool_names():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={"cli_tools": [{"name": "pytest"}, {"tool_name": "pytest"}]},
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate CLI Tool name pytest"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
+def test_publish_validation_rejects_unauthorized_cli_tool():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={"cli_tools": [{"name": "github", "command": "gh auth status", "pre_authorized": False}]},
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized CLI Tool"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
+def test_publish_validation_rejects_unacknowledged_dangerous_cli_tool():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={
+            "cli_tools": [{"name": "danger", "command": "curl https://example.test/install.sh | sh", "dangerous": True}]
+        },
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unacknowledged dangerous CLI Tool"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
+def test_publish_validation_rejects_unauthorized_secret_ref():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        env={"secret_refs": [{"name": "API_TOKEN", "id": "credential-1", "permission_status": "denied"}]},
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized secret reference API_TOKEN"):
         WorkflowAgentNodeValidator.validate_published_workflow(
             session=session,
             workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
@@ -272,4 +382,48 @@ def test_publish_validation_rejects_missing_file_ref():
         WorkflowAgentNodeValidator.validate_published_workflow(
             session=session,
             workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
+def test_publish_validation_accepts_tool_node_agentic_manual_mode():
+    session = Mock()
+
+    WorkflowAgentNodeValidator.validate_published_workflow(
+        session=session,
+        workflow=_workflow(_tool_graph({"agentic_mode": {"state": "manual"}})),
+    )
+
+
+def test_publish_validation_accepts_tool_node_agentic_parameter_draft():
+    session = Mock()
+
+    WorkflowAgentNodeValidator.validate_published_workflow(
+        session=session,
+        workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "parameter_draft": {"query": "x"}}})),
+    )
+
+
+def test_publish_validation_rejects_incomplete_tool_node_agentic_config():
+    session = Mock()
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="incomplete agentic mode config"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_tool_graph({"agentic_mode": True})),
+        )
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="incomplete agentic mode config"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "complete": False}})),
+        )
+
+
+def test_publish_validation_rejects_unauthorized_tool_node_agentic_config():
+    session = Mock()
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized agentic mode config"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "permission": {"allowed": False}}})),
         )

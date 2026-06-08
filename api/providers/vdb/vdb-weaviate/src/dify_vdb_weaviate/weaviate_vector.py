@@ -11,7 +11,7 @@ import json
 import logging
 import threading
 import uuid as _uuid
-from typing import Any
+from typing import Any, override
 from urllib.parse import urlparse
 
 import weaviate
@@ -165,6 +165,7 @@ class WeaviateVector(BaseVector):
             _weaviate_client = client
             return client
 
+    @override
     def get_type(self) -> str:
         """Returns the vector database type identifier."""
         return VectorType.WEAVIATE
@@ -192,6 +193,7 @@ class WeaviateVector(BaseVector):
         }
         return result
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         """
         Creates a new collection and adds initial documents with embeddings.
@@ -275,6 +277,7 @@ class WeaviateVector(BaseVector):
             except Exception as e:
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
+    @override
     def _get_uuids(self, documents: list[Document]) -> list[str]:
         """
         Generates deterministic UUIDs for documents based on their content.
@@ -290,6 +293,7 @@ class WeaviateVector(BaseVector):
 
         return uuids
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         """
         Adds documents with their embeddings to the collection.
@@ -340,6 +344,7 @@ class WeaviateVector(BaseVector):
         except Exception:
             return False
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         """Deletes all objects matching a specific metadata field value."""
         if not self._client.collections.exists(self._collection_name):
@@ -348,11 +353,13 @@ class WeaviateVector(BaseVector):
         col = self._client.collections.use(self._collection_name)
         col.data.delete_many(where=Filter.by_property(key).equal(value))
 
+    @override
     def delete(self):
         """Deletes the entire collection from Weaviate."""
         if self._client.collections.exists(self._collection_name):
             self._client.collections.delete(self._collection_name)
 
+    @override
     def text_exists(self, id: str) -> bool:
         """Checks if a document with the given doc_id exists in the collection."""
         if not self._client.collections.exists(self._collection_name):
@@ -367,6 +374,7 @@ class WeaviateVector(BaseVector):
 
         return len(res.objects) > 0
 
+    @override
     def delete_by_ids(self, ids: list[str]) -> None:
         """
         Deletes objects by their UUID identifiers.
@@ -385,6 +393,7 @@ class WeaviateVector(BaseVector):
                 if getattr(e, "status_code", None) != 404:
                     raise
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Performs vector similarity search using the provided query vector.
@@ -445,6 +454,7 @@ class WeaviateVector(BaseVector):
         docs.sort(key=lambda d: d.metadata.get("score", 0.0), reverse=True)
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """
         Performs BM25 full-text search on document content.
@@ -506,6 +516,7 @@ class WeaviateVector(BaseVector):
 class WeaviateVectorFactory(AbstractVectorFactory):
     """Factory class for creating WeaviateVector instances."""
 
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> WeaviateVector:
         """
         Initializes a WeaviateVector instance for the given dataset.

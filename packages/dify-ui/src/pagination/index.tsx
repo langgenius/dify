@@ -245,7 +245,7 @@ type PaginationButtonProps = Omit<BaseButtonNS.Props, 'children'> & {
 const paginationArrowButtonClassName = [
   'inline-flex size-7 shrink-0 touch-manipulation items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[10px] transition-[background-color,border-color,color,box-shadow]',
   'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
-  'focus-visible:ring-2 focus-visible:ring-components-input-border-hover',
+  'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
   'disabled:cursor-not-allowed disabled:border-components-button-secondary-border-disabled disabled:bg-components-button-secondary-bg-disabled disabled:text-components-button-secondary-text-disabled disabled:shadow-none',
   'motion-reduce:transition-none',
 ]
@@ -391,7 +391,7 @@ export function PaginationPageJump({
       type="button"
       aria-label={ariaLabel ?? `Edit page number, current page ${pagination.page} of ${pagination.totalPages}`}
       className={cn(
-        'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium tabular-nums text-text-secondary outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-components-input-border-hover motion-reduce:transition-none',
+        'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium tabular-nums text-text-secondary outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
         className,
       )}
       onClick={(event) => {
@@ -464,7 +464,7 @@ export function PaginationPage({
       aria-current={current ? 'page' : undefined}
       aria-label={ariaLabel ?? (current ? `Page ${page}, current page` : `Go to page ${page}`)}
       className={cn(
-        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden transition-colors hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-components-input-border-hover',
+        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden transition-colors hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         current && 'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
         'motion-reduce:transition-none',
         className,

@@ -10,6 +10,7 @@ import type { FileUploadConfigResponse } from '@/models/common'
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
   resultText?: string
+  resultTextSelectorKey?: string
   // human input form schema or data cached when node is in 'Paused' status
   extraContentAndFormData?: Record<string, unknown>
 }
@@ -26,6 +27,8 @@ export type WorkflowSliceShape = {
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   isListening: boolean
   setIsListening: (listening: boolean) => void
+  canvasReadOnly: boolean
+  setCanvasReadOnly: (readOnly: boolean) => void
   listeningTriggerType: TriggerNodeType | null
   setListeningTriggerType: (triggerType: TriggerNodeType | null) => void
   listeningTriggerNodeId: string | null
@@ -70,6 +73,8 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
   isListening: false,
   setIsListening: listening => set(() => ({ isListening: listening })),
+  canvasReadOnly: false,
+  setCanvasReadOnly: canvasReadOnly => set(() => ({ canvasReadOnly })),
   listeningTriggerType: null,
   setListeningTriggerType: triggerType => set(() => ({ listeningTriggerType: triggerType })),
   listeningTriggerNodeId: null,

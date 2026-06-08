@@ -1,3 +1,5 @@
+from typing import override
+
 from dify_vdb_analyticdb.analyticdb_vector import AnalyticdbVector
 from dify_vdb_analyticdb.analyticdb_vector_openapi import AnalyticdbVectorOpenAPIConfig
 from dify_vdb_analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySqlConfig
@@ -40,6 +42,7 @@ class AnalyticdbVectorTest(AbstractVectorTest):
                 ),
             )
 
+    @override
     def run_all_tests(self):
         self.vector.delete()
         return super().run_all_tests()

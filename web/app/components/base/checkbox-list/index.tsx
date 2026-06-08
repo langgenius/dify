@@ -8,7 +8,7 @@ import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import SearchMenu from '@/assets/search-menu.svg'
 
 type CheckboxListOption = {
@@ -134,7 +134,7 @@ export const CheckboxList = ({
               {showSearch && (
                 <SearchInput
                   value={searchQuery}
-                  onChange={setSearchQuery}
+                  onValueChange={setSearchQuery}
                   placeholder={t('placeholder.search', { ns: 'common' })}
                   className="w-40"
                 />

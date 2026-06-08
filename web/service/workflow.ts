@@ -131,7 +131,7 @@ export const updateFeatures = ({ appId, features }: {
 }
 
 export const submitHumanInputForm = (token: string, data: {
-  inputs: Record<string, string>
+  inputs: Record<string, unknown>
   action: string
 }) => {
   return post(`/form/human_input/${token}`, { body: data })
@@ -140,7 +140,7 @@ export const submitHumanInputForm = (token: string, data: {
 export const fetchHumanInputNodeStepRunForm = (
   url: string,
   data: {
-    inputs: Record<string, string>
+    inputs: Record<string, unknown>
   },
 ) => {
   return post<HumanInputFormData>(`${url}/preview`, { body: data })
@@ -149,8 +149,8 @@ export const fetchHumanInputNodeStepRunForm = (
 export const submitHumanInputNodeStepRunForm = (
   url: string,
   data: {
-    inputs: Record<string, string> | undefined
-    form_inputs: Record<string, string> | undefined
+    inputs: Record<string, unknown> | undefined
+    form_inputs: Record<string, unknown> | undefined
     action: string
   },
 ) => {

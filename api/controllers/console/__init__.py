@@ -53,6 +53,7 @@ from .app import (
     agent,
     agent_app_access,
     agent_app_feature,
+    agent_app_workspace,
     annotation,
     app,
     audio,
@@ -121,6 +122,7 @@ from .explore import (
     saved_message,
     trial,
 )
+from .snippets import snippet_workflow, snippet_workflow_draft_variable
 from .socketio import workflow as socketio_workflow
 
 # Import tag controllers
@@ -136,6 +138,7 @@ from .workspace import (
     model_providers,
     models,
     plugin,
+    snippets,
     tool_providers,
     trigger_providers,
     workspace,
@@ -150,6 +153,7 @@ __all__ = [
     "agent",
     "agent_app_access",
     "agent_app_feature",
+    "agent_app_workspace",
     "agent_composer",
     "agent_providers",
     "agent_roster",
@@ -210,6 +214,9 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "snippet_workflow",
+    "snippet_workflow_draft_variable",
+    "snippets",
     "socketio_workflow",
     "spec",
     "statistic",

@@ -29,11 +29,12 @@ from core.workflow.node_runtime import (
     build_dify_llm_file_saver,
     resolve_dify_run_context,
 )
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from graphon.variables.segments import ArrayFileSegment, FileSegment
 from tests.workflow_test_utils import build_test_run_context
 
 
@@ -469,6 +470,46 @@ def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools
     get_runtime.assert_called_once()
 
 
+def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
+    get_runtime = MagicMock(return_value=runtime_tool)
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    monkeypatch.setattr(
+        node_runtime,
+        "get_system_text",
+        lambda _pool, key: (
+            "outer-workflow-run-id" if key == node_runtime.SystemVariableKey.WORKFLOW_EXECUTION_ID else None
+        ),
+    )
+
+    run_context = _build_run_context()
+    run_context[DIFY_RUN_CONTEXT_KEY].trace_session_id = "session-1"
+    runtime = node_runtime.DifyToolNodeRuntime(run_context)
+    node_data = ToolNodeData(
+        title="Workflow Tool Node",
+        desc=None,
+        provider_id="workflow-provider-id",
+        provider_type=ToolProviderType.WORKFLOW,
+        provider_name="workflow-provider",
+        tool_name="workflow-tool",
+        tool_label="Workflow Tool",
+        tool_configurations={},
+        tool_parameters={},
+    )
+
+    handle = runtime.get_runtime(
+        node_id="tool-node",
+        node_data=node_data,
+        variable_pool=object(),
+        node_execution_id="node-execution-id",
+    )
+
+    assert handle.raw.trace_session_id == "session-1"
+    assert runtime_tool.runtime.runtime_parameters == {}
+
+
 def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_workflow_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -619,6 +660,70 @@ def test_dify_human_input_runtime_preserves_webapp_delivery_for_web_invocations(
         DeliveryMethodType.EMAIL,
     ]
     assert params.delivery_methods[1].config.recipients.include_bound_group is True
+
+
+def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files() -> None:
+    runtime = DifyHumanInputNodeRuntime(_build_run_context())
+    file_value = File(
+        file_id="file-1",
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="upload-1",
+        filename="resume.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=128,
+    )
+    file_list_value = [
+        File(
+            file_id="file-2",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="upload-2",
+            filename="first.pdf",
+            extension=".pdf",
+            mime_type="application/pdf",
+            size=64,
+        ),
+        File(
+            file_id="file-3",
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/second.pdf",
+            filename="second.pdf",
+            extension=".pdf",
+            mime_type="application/pdf",
+            size=96,
+        ),
+    ]
+    runtime._file_reference_factory.build_from_mapping = MagicMock(side_effect=[file_value, *file_list_value])  # type: ignore[method-assign]
+    node_data = HumanInputNodeData(
+        title="Human Input",
+        inputs=[
+            FileInputConfig(output_variable_name="attachment"),
+            FileListInputConfig(output_variable_name="attachments", number_limits=2),
+        ],
+    )
+
+    restored = runtime.restore_submitted_data(
+        node_data=node_data,
+        submitted_data={
+            "attachment": {"upload_file_id": "upload-1", "type": "document", "transfer_method": "local_file"},
+            "attachments": [
+                {"upload_file_id": "upload-2", "type": "document", "transfer_method": "local_file"},
+                {
+                    "url": "https://example.com/second.pdf",
+                    "type": "document",
+                    "transfer_method": "remote_url",
+                },
+            ],
+        },
+    )
+
+    assert restored["attachment"] is file_value
+    assert restored["attachments"] == file_list_value
+    assert isinstance(FileSegment(value=restored["attachment"]), FileSegment)
+    assert isinstance(ArrayFileSegment(value=restored["attachments"]), ArrayFileSegment)
 
 
 def test_build_dify_llm_file_saver_wires_runtime_adapters(monkeypatch: pytest.MonkeyPatch) -> None:
