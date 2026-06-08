@@ -121,6 +121,29 @@ class TestRoles:
         assert call.endpoint == "/rbac/roles/item"
         assert call.params == {"id": "role-1"}
 
+    def test_members_forwards_role_id_and_pagination(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "role_id": "role-1",
+            "data": [{"account_id": "acct-2", "account_name": "Alice"}],
+            "pagination": {"total_count": 1, "per_page": 20, "current_page": 1, "total_pages": 1},
+        }
+
+        out = svc.RBACService.Roles.members(
+            "tenant-1",
+            "acct-1",
+            "role-1",
+            options=svc.ListOption(page_number=1, results_per_page=20),
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/roles/members"
+        assert call.params == {"page_number": 1, "results_per_page": 20, "role_id": "role-1"}
+        assert out.data[0].account_id == "acct-2"
+        assert out.data[0].account_name == "Alice"
+        assert out.pagination is not None
+        assert out.pagination.total_count == 1
+
     def test_create_sends_body(self, mock_send: MagicMock):
         mock_send.return_value = {"id": "role-1", "type": "workspace", "name": "Owner"}
         payload = svc.RoleMutation(name="Owner", description="full access", permission_keys=["workspace.member.manage"])

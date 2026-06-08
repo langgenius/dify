@@ -233,6 +233,23 @@ class TestPaginationMapping:
         assert options.results_per_page == 50
         assert options.reverse is True
 
+    def test_role_members_get_forwards_outer_pagination_params(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/roles/role-1/members?page=2&limit=50&reverse=true"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.members") as mock_members,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACRoleMembersApi.get)(rbac_mod.RBACRoleMembersApi(), "role-1")
+
+        _, _, role_id = mock_members.call_args.args
+        _, kwargs = mock_members.call_args
+        assert role_id == "role-1"
+        options = kwargs["options"]
+        assert options.page_number == 2
+        assert options.results_per_page == 50
+        assert options.reverse is True
+
     def test_access_policies_get_forwards_outer_pagination_params(self, app):
         with (
             app.test_request_context(

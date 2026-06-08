@@ -4,9 +4,9 @@ from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
 from flask import has_request_context, request
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from pydantic import BaseModel, ConfigDict, Field, AliasChoices, field_validator
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -79,6 +79,11 @@ class RBACRole(_RBACModel):
         if value is None:
             return []
         return value
+
+
+class RBACRoleAccount(_RBACModel):
+    account_id: str
+    account_name: str = ""
 
 
 class MemberRoleSummary(_RBACModel):
@@ -693,6 +698,28 @@ class RBACService:
                 params={"id": role_id},
             )
             return RBACRole.model_validate(data or {})
+
+        @staticmethod
+        def members(
+            tenant_id: str,
+            account_id: str | None,
+            role_id: str,
+            *,
+            options: ListOption | None = None,
+        ) -> Paginated[RBACRoleAccount]:
+            params = (options or ListOption()).to_params({"role_id": role_id})
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/roles/members",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params=params,
+            )
+            data = data or {}
+            return Paginated[RBACRoleAccount](
+                data=[RBACRoleAccount.model_validate(item) for item in data.get("data") or []],
+                pagination=Pagination.model_validate(data["pagination"]) if data.get("pagination") else None,
+            )
 
     # ------------------------------------------------------------------
     # Access policies (Settings > Access Rules: create/edit permission sets).
