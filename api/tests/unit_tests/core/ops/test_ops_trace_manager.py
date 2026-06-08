@@ -412,7 +412,27 @@ def test_get_app_tracing_config_errors_when_missing(mock_db):
 
 def test_get_app_tracing_config_returns_defaults(mock_db):
     mock_db.get.return_value = SimpleNamespace(tracing=None)
+    mock_db.scalar.return_value = None
     assert OpsTraceManager.get_app_tracing_config("app-id", mock_db) == {"enabled": False, "tracing_provider": None}
+
+
+def test_get_app_tracing_config_falls_back_to_active_provider(mock_db):
+    mock_db.get.return_value = SimpleNamespace(tracing=None)
+    mock_db.scalar.return_value = "langfuse"
+    assert OpsTraceManager.get_app_tracing_config("app-id", mock_db) == {
+        "enabled": False,
+        "tracing_provider": "langfuse",
+    }
+
+
+def test_get_app_tracing_config_keeps_disabled_status_with_active_provider(mock_db):
+    payload = {"enabled": False, "tracing_provider": None}
+    mock_db.get.return_value = SimpleNamespace(tracing=json.dumps(payload))
+    mock_db.scalar.return_value = "langfuse"
+    assert OpsTraceManager.get_app_tracing_config("app-id", mock_db) == {
+        "enabled": False,
+        "tracing_provider": "langfuse",
+    }
 
 
 def test_get_app_tracing_config_returns_payload(mock_db):
