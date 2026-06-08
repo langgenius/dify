@@ -472,6 +472,20 @@ describe('MainNav', () => {
     expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
   })
 
+  it('shows app detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+    mockPathname = '/app/app-1/overview'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+    fireEvent.mouseEnter(screen.getByTestId('app-detail-top').parentElement!)
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(screen.getAllByTestId('app-detail-top')).toHaveLength(1)
+    expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
+  })
+
   it('replaces global navigation with dataset detail navigation on dataset routes', () => {
     mockPathname = '/datasets/dataset-1/documents'
 
@@ -500,6 +514,20 @@ describe('MainNav', () => {
     expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'false')
     expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+  })
+
+  it('shows dataset detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+    mockPathname = '/datasets/dataset-1/documents'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('dataset-detail-toggle'))
+    fireEvent.mouseEnter(screen.getByTestId('dataset-detail-top').parentElement!)
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(screen.getAllByTestId('dataset-detail-top')).toHaveLength(1)
+    expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
   })
 
   it.each([
