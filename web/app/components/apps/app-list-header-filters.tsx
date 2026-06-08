@@ -60,7 +60,7 @@ export function AppListHeaderFilters({
       <div className="flex items-center gap-2">
         <Link
           href="/snippets"
-          className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
+          className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           {t('studio.viewSnippets', { ns: 'app' })}
         </Link>

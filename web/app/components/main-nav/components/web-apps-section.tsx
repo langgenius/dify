@@ -181,7 +181,7 @@ const WebAppsSection = () => {
               <button
                 type="button"
                 aria-expanded={appsExpanded}
-                className="flex min-w-0 items-center rounded-md px-2 py-1 text-left system-xs-medium-uppercase text-text-tertiary hover:text-text-secondary"
+                className="flex min-w-0 items-center rounded-md px-2 py-1 text-left system-xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => setAppsExpanded(value => !value)}
               >
                 <span>{t('sidebar.webApps', { ns: 'explore' })}</span>
@@ -191,7 +191,7 @@ const WebAppsSection = () => {
                 <button
                   type="button"
                   aria-label={t('operation.search', { ns: 'common' })}
-                  className={cn('flex h-6 w-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', searchVisible && 'bg-state-base-hover text-text-secondary')}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid', searchVisible && 'bg-state-base-hover text-text-secondary')}
                   onClick={() => {
                     setAppsExpanded(true)
                     setSearchVisible(value => !value)

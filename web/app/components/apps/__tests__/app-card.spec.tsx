@@ -472,8 +472,8 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
       const cardLink = screen.getByRole('link', { name: 'Test App' })
 
-      expect(cardLink).toHaveClass('focus-visible:ring-1')
-      expect(cardLink).toHaveClass('focus-visible:ring-components-input-border-hover')
+      expect(cardLink).toHaveClass('focus-visible:ring-2')
+      expect(cardLink).toHaveClass('focus-visible:ring-state-accent-solid')
     })
   })
 
@@ -497,8 +497,8 @@ describe('AppCard', () => {
       expect(operationsTriggerWrapper).toHaveClass('group-focus-within:pointer-events-auto')
       expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
       expect(operationsTriggerWrapper).not.toHaveClass('w-[120px]')
-      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-1')
-      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-components-input-border-hover')
+      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-2')
+      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-state-accent-solid')
     })
 
     it('should show edit option when dropdown menu is opened', async () => {

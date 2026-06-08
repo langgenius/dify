@@ -50,8 +50,8 @@ describe('AppNavItem', () => {
 
       const row = screen.getByText('My App').closest('.group')
 
-      expect(row).toHaveClass('has-[>a:focus-visible]:ring-1')
-      expect(row).toHaveClass('has-[>a:focus-visible]:ring-components-input-border-hover')
+      expect(row).toHaveClass('has-[>a:focus-visible]:ring-2')
+      expect(row).toHaveClass('has-[>a:focus-visible]:ring-state-accent-solid')
       expect(row).not.toHaveClass('focus-within:ring-2')
     })
 
