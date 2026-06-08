@@ -4,8 +4,9 @@ Datadog trace client for OTLP HTTP span export.
 
 import hashlib
 import logging
+import random
 import socket
-from collections import OrderedDict
+from contextvars import ContextVar
 
 import httpx
 from opentelemetry import trace as trace_api
@@ -13,6 +14,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.id_generator import IdGenerator
 from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
     DEPLOYMENT_ENVIRONMENT,
 )
@@ -27,7 +29,8 @@ from configs import dify_config
 from dify_trace_datadog.constants import UNSUPPORTED_DD_SITES
 
 logger = logging.getLogger(__name__)
-MAX_SPAN_CONTEXTS = 1024
+_trace_id_context: ContextVar[int | None] = ContextVar("datadog_trace_id", default=None)
+_span_id_context: ContextVar[int | None] = ContextVar("datadog_span_id", default=None)
 
 
 def _normalize_site(site: str) -> str:
@@ -57,6 +60,32 @@ def _get_api_host(site: str) -> str:
     return f"api.{site}"
 
 
+class DatadogIdGenerator(IdGenerator):
+    """
+    ID generator that can use explicit trace and span IDs for exported spans.
+    """
+
+    def generate_trace_id(self) -> int:
+        trace_id = _trace_id_context.get()
+        if trace_id:
+            return trace_id
+
+        generated_trace_id = random.getrandbits(128)
+        while generated_trace_id == 0:
+            generated_trace_id = random.getrandbits(128)
+        return generated_trace_id
+
+    def generate_span_id(self) -> int:
+        span_id = _span_id_context.get()
+        if span_id:
+            return span_id
+
+        span_id = random.getrandbits(64)
+        while span_id == 0:
+            span_id = random.getrandbits(64)
+        return span_id
+
+
 class DatadogTraceClient:
     """
     Datadog OTLP HTTP client with deterministic trace correlation support.
@@ -72,7 +101,6 @@ class DatadogTraceClient:
         self.tracer_provider: TracerProvider | None = None
         self.span_processor: BatchSpanProcessor | None = None
         self.tracer: trace_api.Tracer | None = None
-        self.span_contexts: OrderedDict[str, trace_api.SpanContext] = OrderedDict()
 
     def _ensure_tracer(self) -> None:
         if self.tracer is not None:
@@ -90,10 +118,13 @@ class DatadogTraceClient:
         )
         exporter = OTLPSpanExporter(
             endpoint=self.endpoint,
-            headers={"dd-api-key": self.api_key},
+            headers={
+                "dd-api-key": self.api_key,
+                "dd-otlp-source": "llmobs",
+            },
             timeout=30,
         )
-        self.tracer_provider = TracerProvider(resource=resource)
+        self.tracer_provider = TracerProvider(resource=resource, id_generator=DatadogIdGenerator())
         self.span_processor = BatchSpanProcessor(
             span_exporter=exporter,
             max_queue_size=1000,
@@ -103,12 +134,6 @@ class DatadogTraceClient:
         self.tracer_provider.add_span_processor(self.span_processor)
         self.tracer = self.tracer_provider.get_tracer("dify-sdk", dify_config.project.version)
 
-    def _remember_span_context(self, key: str, span_context: trace_api.SpanContext) -> None:
-        self.span_contexts[key] = span_context
-        self.span_contexts.move_to_end(key)
-        if len(self.span_contexts) > MAX_SPAN_CONTEXTS:
-            self.span_contexts.popitem(last=False)
-
     @staticmethod
     def compute_trace_id(key: str) -> int:
         """
@@ -116,6 +141,15 @@ class DatadogTraceClient:
         """
         digest = hashlib.md5(key.encode(), usedforsecurity=False).digest()
         return int.from_bytes(digest, byteorder="big")
+
+    @staticmethod
+    def compute_span_id(key: str) -> int:
+        """
+        Compute a deterministic non-zero 64-bit span ID from a logical span key.
+        """
+        digest = hashlib.sha256(key.encode()).digest()
+        span_id = int.from_bytes(digest[:8], byteorder="big", signed=False)
+        return span_id or 1
 
     def add_span(
         self,
@@ -125,6 +159,7 @@ class DatadogTraceClient:
         end_time_ns: int,
         trace_id: int | None = None,
         store_key: str | None = None,
+        span_key: str | None = None,
         parent_key: str | None = None,
         status: Status | None = None,
     ) -> None:
@@ -135,18 +170,13 @@ class DatadogTraceClient:
             self._ensure_tracer()
 
             parent_context = None
-            if parent_key and parent_key in self.span_contexts:
-                self.span_contexts.move_to_end(parent_key)
-                parent_context = trace_api.set_span_in_context(
-                    trace_api.NonRecordingSpan(self.span_contexts[parent_key])
-                )
-            elif trace_id is not None:
+            if parent_key and trace_id is not None:
                 parent_context = trace_api.set_span_in_context(
                     trace_api.NonRecordingSpan(
                         trace_api.SpanContext(
                             trace_id=trace_id,
-                            span_id=trace_id & 0xFFFFFFFFFFFFFFFF or 1,
-                            is_remote=True,
+                            span_id=self.compute_span_id(parent_key),
+                            is_remote=False,
                             trace_flags=TraceFlags(TraceFlags.SAMPLED),
                         )
                     )
@@ -155,16 +185,26 @@ class DatadogTraceClient:
             if self.tracer is None:
                 raise ValueError("Datadog tracer is not initialized")
 
-            span = self.tracer.start_span(
-                name=name,
-                context=parent_context,
-                kind=SpanKind.INTERNAL,
-                attributes=attributes,
-                start_time=start_time_ns,
-            )
+            trace_token = None
+            span_token = None
+            try:
+                if parent_context is None and trace_id is not None:
+                    trace_token = _trace_id_context.set(trace_id)
+                if resolved_span_key := span_key or store_key:
+                    span_token = _span_id_context.set(self.compute_span_id(resolved_span_key))
 
-            if store_key:
-                self._remember_span_context(store_key, span.get_span_context())
+                span = self.tracer.start_span(
+                    name=name,
+                    context=parent_context,
+                    kind=SpanKind.INTERNAL,
+                    attributes=attributes,
+                    start_time=start_time_ns,
+                )
+            finally:
+                if span_token is not None:
+                    _span_id_context.reset(span_token)
+                if trace_token is not None:
+                    _trace_id_context.reset(trace_token)
 
             if status:
                 span.set_status(status)
@@ -204,4 +244,3 @@ class DatadogTraceClient:
             self.tracer_provider = None
             self.span_processor = None
             self.tracer = None
-            self.span_contexts.clear()

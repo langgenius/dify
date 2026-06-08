@@ -68,6 +68,20 @@ def _node_key(node_execution_id: str) -> str:
     return f"node:{node_execution_id}"
 
 
+def _datetime_key(dt: datetime | None) -> str:
+    if dt is None:
+        return "none"
+    return str(int(dt.timestamp() * 1_000_000_000))
+
+
+def _tool_key(trace_info: ToolTraceInfo) -> str:
+    return f"tool:{trace_info.message_id}:{trace_info.tool_name}:{_datetime_key(trace_info.start_time)}"
+
+
+def _retrieval_key(trace_info: DatasetRetrievalTraceInfo) -> str:
+    return f"retrieval:{trace_info.message_id}:{_datetime_key(trace_info.start_time)}"
+
+
 def _trace_key(trace_info: BaseTraceInfo) -> str:
     if trace_info.trace_id:
         return f"trace:{trace_info.trace_id}"
@@ -178,6 +192,7 @@ class DatadogDataTrace(BaseTraceInstance):
                 start_time_ns=_datetime_to_ns(trace_info.start_time),
                 end_time_ns=_datetime_to_ns(trace_info.end_time),
                 trace_id=DatadogTraceClient.compute_trace_id(trace_key),
+                span_key=_tool_key(trace_info),
                 parent_key=_message_key(trace_info.message_id),
                 status=_status_from_error(trace_info.error),
             )
@@ -197,6 +212,7 @@ class DatadogDataTrace(BaseTraceInstance):
                 start_time_ns=_datetime_to_ns(trace_info.start_time),
                 end_time_ns=_datetime_to_ns(trace_info.end_time),
                 trace_id=DatadogTraceClient.compute_trace_id(trace_key),
+                span_key=_retrieval_key(trace_info),
                 parent_key=_message_key(trace_info.message_id),
                 status=_status_from_error(trace_info.error),
             )

@@ -3,12 +3,15 @@ from unittest.mock import MagicMock
 
 import pytest
 from dify_trace_datadog import semconv
-from dify_trace_datadog.client import DatadogTraceClient
+from dify_trace_datadog.client import DatadogIdGenerator, DatadogTraceClient
 from dify_trace_datadog.config import DatadogConfig
 from dify_trace_datadog.datadog_trace import (
     DatadogDataTrace,
     _workflow_node_status_to_otel_status,
 )
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode
 
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, ToolTraceInfo, WorkflowTraceInfo
@@ -101,6 +104,18 @@ def _build_retrieval_trace_info(message_id: str | None = "msg-1") -> DatasetRetr
     )
 
 
+def _build_memory_trace_client() -> tuple[DatadogTraceClient, InMemorySpanExporter]:
+    exporter = InMemorySpanExporter()
+    span_processor = SimpleSpanProcessor(exporter)
+    tracer_provider = TracerProvider(id_generator=DatadogIdGenerator())
+    tracer_provider.add_span_processor(span_processor)
+    client = DatadogTraceClient(api_key="test-key", site="datadoghq.com", service_name="test")
+    client.tracer_provider = tracer_provider
+    client.span_processor = span_processor  # type: ignore[assignment]
+    client.tracer = tracer_provider.get_tracer("test")
+    return client, exporter
+
+
 class TestWorkflowNodeProcessing:
     """Verify workflow node iteration is resilient and correctly correlated."""
 
@@ -168,6 +183,35 @@ class TestWorkflowNodeProcessing:
 
         assert client.endpoint == expected_endpoint
 
+    def test_child_can_reference_parent_span_before_parent_is_exported(self):
+        client, exporter = _build_memory_trace_client()
+        trace_id = DatadogTraceClient.compute_trace_id("message:msg-1")
+
+        client.add_span(
+            name="tool",
+            attributes={},
+            start_time_ns=3,
+            end_time_ns=4,
+            trace_id=trace_id,
+            span_key="tool:msg-1:search:3",
+            parent_key="message:msg-1",
+        )
+        client.add_span(
+            name="message",
+            attributes={},
+            start_time_ns=1,
+            end_time_ns=2,
+            trace_id=trace_id,
+            store_key="message:msg-1",
+        )
+
+        tool_span, message_span = exporter.get_finished_spans()
+        assert message_span.context.trace_id == trace_id
+        assert message_span.parent is None
+        assert tool_span.context.trace_id == trace_id
+        assert tool_span.parent is not None
+        assert tool_span.parent.span_id == message_span.context.span_id
+
     @pytest.mark.parametrize(
         ("site", "expected_url"),
         [
@@ -187,7 +231,7 @@ class TestWorkflowNodeProcessing:
             timeout=10,
         )
 
-    def test_span_contexts_parent_child_linking(self, datadog_trace: DatadogDataTrace):
+    def test_trace_events_pass_deterministic_parent_keys(self, datadog_trace: DatadogDataTrace):
         message_trace = _build_message_trace_info(message_id="msg-42")
         tool_trace = _build_tool_trace_info(message_id="msg-42")
 
