@@ -2269,3 +2269,229 @@ class TestWorkflowGeneratorRefine:
         assert result["error"] == ""
         types = [n["data"]["type"] for n in result["graph"]["nodes"]]
         assert types == ["start", "llm", "end"]
+
+
+class TestWorkflowGeneratorFileVariables:
+    """The reported bug: a file-input workflow ("takes in a file, extract its
+    content, summarize") generated a start node whose file variable lacked the
+    required ``allowed_file_types``, so Studio rejected the draft with
+    "supported file types is required". The builder now documents the field and
+    the postprocessor backfills it as a final safety net."""
+
+    @staticmethod
+    def _planner() -> str:
+        return json.dumps(
+            {
+                "title": "File Summarizer",
+                "description": "Summarize an uploaded document into bullet points",
+                "app_name": "File Summarizer",
+                "icon": "📄",
+                "start_inputs": [{"variable": "doc", "label": "Document", "type": "file"}],
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "Take a file"},
+                    {"label": "Extract", "node_type": "document-extractor", "purpose": "Extract text"},
+                    {"label": "Summarize", "node_type": "llm", "purpose": "Bullet points"},
+                    {"label": "End", "node_type": "end", "purpose": "Return"},
+                ],
+            }
+        )
+
+    @staticmethod
+    def _builder_file_var_missing_allowed_types() -> str:
+        # The builder declares a file variable but (the bug) omits
+        # allowed_file_types / upload methods.
+        return json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [{"variable": "doc", "label": "Document", "type": "file"}],
+                        },
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "document-extractor",
+                            "title": "Extract",
+                            "variable_selector": ["node1", "doc"],
+                            "is_array_file": False,
+                        },
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "llm",
+                            "title": "Summarize",
+                            "prompt_template": [{"role": "user", "text": "Summarize {{#node2.text#}}"}],
+                        },
+                    },
+                    {
+                        "id": "node4",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "summary", "value_selector": ["node3", "text"]}],
+                        },
+                    },
+                ],
+                "edges": [
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
+                    {"id": "e3", "source": "node3", "target": "node4", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+
+    def test_backfills_allowed_file_types_so_draft_loads(self):
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(self._planner()),
+            _llm_result(self._builder_file_var_missing_allowed_types()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="takes in a file, extracting its content, then summarizing into bullet points",
+        )
+
+        assert result["error"] == ""
+        start = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "start")
+        doc = next(v for v in start["data"]["variables"] if v["variable"] == "doc")
+        assert doc["type"] == "file"
+        # The required field is now present and non-empty — the whole point.
+        assert doc["allowed_file_types"]
+        assert doc["allowed_file_upload_methods"] == ["local_file", "remote_url"]
+
+    def test_builder_prompt_is_scoped_to_planned_node_types(self):
+        # Capture the system prompt handed to the builder and assert it only
+        # carries the planned node types' schemas (dynamic assembly).
+        captured: list[str] = []
+
+        def _capture(*args, **kwargs):
+            prompt_messages = kwargs.get("prompt_messages") or (args[1] if len(args) > 1 else [])
+            captured.append("\n".join(getattr(m, "content", "") or "" for m in prompt_messages))
+            # Return planner then builder responses in order.
+            idx = len(captured) - 1
+            return _llm_result(self._planner() if idx == 0 else self._builder_file_var_missing_allowed_types())
+
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = _capture
+
+        WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize an uploaded file",
+        )
+
+        builder_prompt = captured[1]
+        assert "- document-extractor:" in builder_prompt
+        assert "- start:" in builder_prompt
+        # No schema for node types absent from the plan.
+        assert "- if-else:" not in builder_prompt
+        assert "- tool" not in builder_prompt
+
+    def test_promotes_mistyped_var_consumed_by_document_extractor(self):
+        # A direct unit test of the backstop: a document-extractor reading a
+        # paragraph-typed start var forces it to a file type.
+        nodes = [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "doc", "label": "Doc", "type": "paragraph"}],
+                },
+            },
+            {
+                "id": "x",
+                "data": {
+                    "type": "document-extractor",
+                    "variable_selector": ["s", "doc"],
+                    "is_array_file": False,
+                },
+            },
+        ]
+        WorkflowGenerator._normalize_start_file_variables(nodes=nodes)
+        doc = nodes[0]["data"]["variables"][0]
+        assert doc["type"] == "file"
+        assert doc["allowed_file_types"] == ["document"]
+
+    def test_drops_custom_file_type_without_extensions(self):
+        nodes = [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {
+                            "variable": "f",
+                            "label": "F",
+                            "type": "file",
+                            "allowed_file_types": ["custom"],
+                            "allowed_file_extensions": [],
+                        }
+                    ],
+                },
+            }
+        ]
+        WorkflowGenerator._normalize_start_file_variables(nodes=nodes)
+        f = nodes[0]["data"]["variables"][0]
+        assert "custom" not in f["allowed_file_types"]
+        assert f["allowed_file_types"]  # non-empty fallback
+
+    def test_leaves_valid_file_variable_untouched(self):
+        nodes = [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {
+                            "variable": "img",
+                            "label": "Img",
+                            "type": "file",
+                            "allowed_file_types": ["image"],
+                            "allowed_file_upload_methods": ["local_file"],
+                            "allowed_file_extensions": [],
+                        }
+                    ],
+                },
+            }
+        ]
+        WorkflowGenerator._normalize_start_file_variables(nodes=nodes)
+        img = nodes[0]["data"]["variables"][0]
+        assert img["allowed_file_types"] == ["image"]
+        assert img["allowed_file_upload_methods"] == ["local_file"]
+
+    def test_ignores_non_file_variables(self):
+        nodes = [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "t", "label": "T", "type": "text-input"}],
+                },
+            }
+        ]
+        WorkflowGenerator._normalize_start_file_variables(nodes=nodes)
+        assert "allowed_file_types" not in nodes[0]["data"]["variables"][0]

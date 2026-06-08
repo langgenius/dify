@@ -95,6 +95,61 @@ class TestGetBuilderSystemPrompt:
         assert prompt is BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT
         assert 'exactly one "answer" node' in prompt
 
+    def test_scopes_cheatsheet_to_planned_node_types(self):
+        # When the runner pins the plan's node-type set, the builder prompt
+        # carries ONLY those types' schemas — no schema for unrelated nodes.
+        prompt = get_builder_system_prompt("workflow", {"start", "llm", "end"})
+        assert "- start:" in prompt
+        assert "- llm:" in prompt
+        assert "- if-else:" not in prompt
+        assert "- tool" not in prompt
+        assert "## Containers" not in prompt
+        # Still a valid, mode-correct prompt.
+        assert 'exactly one "end" node' in prompt
+
+    def test_scoped_prompt_pulls_in_containers_for_iteration(self):
+        prompt = get_builder_system_prompt("workflow", {"start", "iteration", "llm", "end"})
+        assert "## Containers" in prompt
+
+    def test_scoped_prompt_is_smaller_than_full(self):
+        # The whole point of dynamic assembly: a small plan ships a smaller
+        # builder prompt than the full cheatsheet.
+        scoped = get_builder_system_prompt("workflow", {"start", "llm", "end"})
+        assert len(scoped) < len(BUILDER_SYSTEM_PROMPT_WORKFLOW)
+
+
+class TestBuildNodeConfigCheatsheet:
+    def test_none_returns_full_cheatsheet(self):
+        from core.workflow.generator.prompts.builder_prompts import (
+            NODE_CONFIG_CHEATSHEET,
+            build_node_config_cheatsheet,
+        )
+
+        full = build_node_config_cheatsheet(None)
+        assert full == NODE_CONFIG_CHEATSHEET
+        # Full cheatsheet documents every node type + containers.
+        assert "- tool" in full
+        assert "- if-else:" in full
+        assert "## Containers" in full
+
+    def test_always_includes_start_even_when_omitted(self):
+        # Every workflow has a start node; the assembler force-includes it so
+        # the builder can always declare input variables.
+        from core.workflow.generator.prompts.builder_prompts import build_node_config_cheatsheet
+
+        out = build_node_config_cheatsheet({"llm", "end"})
+        assert "- start:" in out
+
+    def test_start_snippet_documents_file_upload_schema(self):
+        # The bug this fixes: a file start variable needs allowed_file_types,
+        # which the builder never knew about. The snippet must now teach it.
+        from core.workflow.generator.prompts.builder_prompts import build_node_config_cheatsheet
+
+        out = build_node_config_cheatsheet({"start", "document-extractor", "llm", "end"})
+        assert "allowed_file_types" in out
+        assert "allowed_file_upload_methods" in out
+        assert "supported file types" in out  # the exact Studio error wording
+
 
 class TestFormatPlanBlockParentHints:
     def test_resolves_parent_label_to_node_id(self):
