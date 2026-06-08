@@ -57,6 +57,58 @@ env:
 jobs:
 
 # ════════════════════════════════════════════════════════════════════════════
+# 0. PROVISION — mint token + import DSL fixtures (runs once, outputs IDs)
+# ════════════════════════════════════════════════════════════════════════════
+  provision:
+    name: "Provision: mint token + DSL apps"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      token:                      ${{ steps.out.outputs.DIFY_E2E_TOKEN }}
+      workspace_id:               ${{ steps.out.outputs.DIFY_E2E_WORKSPACE_ID }}
+      workspace_name:             ${{ steps.out.outputs.DIFY_E2E_WORKSPACE_NAME }}
+      ws2_id:                     ${{ steps.out.outputs.DIFY_E2E_WS2_ID }}
+      chat_app_id:                ${{ steps.out.outputs.DIFY_E2E_CHAT_APP_ID }}
+      workflow_app_id:            ${{ steps.out.outputs.DIFY_E2E_WORKFLOW_APP_ID }}
+      file_app_id:                ${{ steps.out.outputs.DIFY_E2E_FILE_APP_ID }}
+      file_chat_app_id:           ${{ steps.out.outputs.DIFY_E2E_FILE_CHAT_APP_ID }}
+      hitl_app_id:                ${{ steps.out.outputs.DIFY_E2E_HITL_APP_ID }}
+      hitl_external_app_id:       ${{ steps.out.outputs.DIFY_E2E_HITL_EXTERNAL_APP_ID }}
+      hitl_single_action_app_id:  ${{ steps.out.outputs.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID }}
+      hitl_multi_node_app_id:     ${{ steps.out.outputs.DIFY_E2E_HITL_MULTI_NODE_APP_ID }}
+      ws2_app_id:                 ${{ steps.out.outputs.DIFY_E2E_WS2_APP_ID }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          package_json_field: packageManager
+          run_install: false
+
+      - name: Install CLI dependencies
+        working-directory: cli
+        run: pnpm install --frozen-lockfile
+
+      - name: Mint token & provision apps
+        id: out
+        working-directory: cli
+        env:
+          DIFY_E2E_HOST:     ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL:    ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD: ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_TOKEN:    ${{ secrets.DIFY_E2E_TOKEN }}
+          DIFY_E2E_EDITION:  ${{ inputs.edition || 'ee' }}
+        run: bun scripts/e2e-provision.ts
+
+# ════════════════════════════════════════════════════════════════════════════
 # 1-B. framework + output + error-handling (parallel with run/discovery)
 # ════════════════════════════════════════════════════════════════════════════
   suite-framework-output-error:
