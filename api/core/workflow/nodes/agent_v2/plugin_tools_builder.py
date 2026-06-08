@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 from dify_agent.layers.dify_plugin import (
     DifyPluginCredentialValue,
@@ -197,7 +197,7 @@ class WorkflowAgentPluginToolsBuilder:
             credentials=self._normalize_credentials(runtime.credentials, tool_name=tool_config.tool_name),
             runtime_parameters=runtime_parameters,
             parameters=parameters,
-            parameters_json_schema=cast(dict[str, Any], tool_runtime.get_llm_parameters_json_schema()),
+            parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
         )
 
     @staticmethod

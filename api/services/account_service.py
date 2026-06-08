@@ -1488,7 +1488,7 @@ class TenantService:
             .limit(1)
         )
         if ta:
-            tenant.role = ta.role
+            object.__setattr__(tenant, "role", ta.role)
         else:
             raise TenantNotFoundError("Tenant not found for the account.")
         return tenant

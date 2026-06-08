@@ -128,6 +128,8 @@ class ConversationService:
         if auto_generate:
             return cls.auto_generate_name(app_model, conversation)
         else:
+            if name is None:
+                raise ValueError("name is required when auto_generate is false")
             conversation.name = name
             conversation.updated_at = naive_utc_now()
             db.session.commit()

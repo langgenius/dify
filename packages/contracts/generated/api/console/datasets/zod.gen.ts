@@ -710,6 +710,13 @@ export const zDatasetRerankingModel = z.object({
 })
 
 /**
+ * ProcessRuleMode
+ *
+ * Dataset Process Rule Mode
+ */
+export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
+
+/**
  * RerankingModel
  */
 export const zRerankingModel = z.object({
@@ -1132,7 +1139,7 @@ export const zRule = z.object({
  * ProcessRule
  */
 export const zProcessRule = z.object({
-  mode: z.enum(['automatic', 'custom', 'hierarchical']),
+  mode: zProcessRuleMode,
   rules: zRule.optional(),
 })
 

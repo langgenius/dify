@@ -76,7 +76,7 @@ class EmailRegisterSendEmailApi(Resource):
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
         language = "en-US"
-        if args.language in languages:
+        if args.language is not None and args.language in languages:
             language = args.language
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):

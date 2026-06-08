@@ -114,6 +114,14 @@ export const zDraftWorkflowRunPayload = z.object({
 })
 
 /**
+ * WorkflowDraftVariablePatchPayload
+ */
+export const zWorkflowDraftVariablePatchPayload = z.object({
+  name: z.string().nullish(),
+  value: z.unknown().optional(),
+})
+
+/**
  * RagPipelineWorkflowPublishResponse
  */
 export const zRagPipelineWorkflowPublishResponse = z.object({
@@ -1006,6 +1014,9 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResp
   z.string(),
   z.unknown(),
 )
+
+export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody
+  = zWorkflowDraftVariablePatchPayload
 
 export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath = z.object({
   pipeline_id: z.string(),

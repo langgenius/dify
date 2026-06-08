@@ -2,7 +2,7 @@ import logging
 import re
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource
@@ -67,14 +67,13 @@ register_enum_models(console_ns, IconType)
 _logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
+AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 
 
 class AppListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = Field(
-        default="all", description="App mode filter"
-    )
+    mode: AppListMode = Field(default=cast(AppListMode, "all"), description="App mode filter")
     name: str | None = Field(default=None, description="Filter by app name")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")

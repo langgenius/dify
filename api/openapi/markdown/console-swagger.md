@@ -7476,6 +7476,10 @@ Set datasource variables
 ### /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
 
 #### GET
+##### Summary
+
+Get draft workflow
+
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -7686,6 +7690,10 @@ Run draft workflow
 | 200 | Success |
 
 #### GET
+##### Summary
+
+Get draft workflow
+
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -7735,6 +7743,7 @@ Run draft workflow
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
+| payload | body |  | Yes | [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload) |
 
 ##### Responses
 
@@ -16071,8 +16080,16 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | string | *Enum:* `"automatic"`, `"custom"`, `"hierarchical"` | Yes |
+| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
+
+#### ProcessRuleMode
+
+Dataset Process Rule Mode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProcessRuleMode | string | Dataset Process Rule Mode |  |
 
 #### PublishWorkflowPayload
 

@@ -237,6 +237,11 @@ export type DraftWorkflowRunPayload = {
   start_node_id: string
 }
 
+export type WorkflowDraftVariablePatchPayload = {
+  name?: string | null
+  value?: unknown
+}
+
 export type RagPipelineWorkflowPublishResponse = {
   created_at: number
   result: string
@@ -1183,7 +1188,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdRespon
   = GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
-  body?: never
+  body: WorkflowDraftVariablePatchPayload
   path: {
     pipeline_id: string
     variable_id: string
