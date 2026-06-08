@@ -117,14 +117,14 @@ const DatasetListHeader = ({
                   onClick={onCreateDataset}
                 >
                   <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
-                  <span className="min-w-0 flex-1 truncate px-1">{t('createDataset', { ns: 'dataset' })}</span>
+                  <span className="min-w-0 flex-1 truncate px-1">{t('firstEmpty.createTitle', { ns: 'dataset' })}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                   onClick={onCreateFromPipeline}
                 >
                   <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0 text-text-secondary" />
-                  <span className="min-w-0 flex-1 truncate px-1">{t('createFromPipeline', { ns: 'dataset' })}</span>
+                  <span className="min-w-0 flex-1 truncate px-1">{t('firstEmpty.pipelineTitle', { ns: 'dataset' })}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
