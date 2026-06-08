@@ -1,12 +1,13 @@
 """Tests: openapi /run always streams; response_mode removed from AppRunRequest."""
 
-from flask import Flask
-import pytest
 from __future__ import annotations
 
 import sys
 from types import SimpleNamespace
 from unittest.mock import Mock
+
+import pytest
+from flask import Flask
 
 from controllers.openapi._models import AppRunRequest
 
@@ -32,7 +33,9 @@ def test_app_run_request_with_query():
     assert req.query == "hello"
 
 
-def test_run_chat_always_calls_generate_with_streaming_true(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
+def test_run_chat_always_calls_generate_with_streaming_true(
+    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+):
     """_run_chat must always invoke AppGenerateService.generate with streaming=True."""
     from controllers.openapi.app_run import _run_chat
 

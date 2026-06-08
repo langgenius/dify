@@ -1,6 +1,7 @@
 """Meta endpoint /openapi/v1/_version — no auth, returns version + edition."""
 
 from __future__ import annotations
+
 import pytest
 
 

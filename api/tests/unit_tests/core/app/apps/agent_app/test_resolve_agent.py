@@ -6,7 +6,6 @@ that returns queued rows.
 """
 
 from __future__ import annotations
-import pytest
 
 from types import SimpleNamespace
 from typing import Any

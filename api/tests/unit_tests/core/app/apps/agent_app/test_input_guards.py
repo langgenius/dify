@@ -6,12 +6,12 @@ blocked/preset moderation answer or a matched annotation) and publish a direct
 answer, or pass through a possibly moderation-sanitized query.
 """
 
-import pytest
-import pytest
 from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
+
+import pytest
 
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod

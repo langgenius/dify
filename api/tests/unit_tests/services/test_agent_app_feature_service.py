@@ -7,7 +7,6 @@ update_features persists those flags as a new app_model_config version without
 touching model / prompt / agent_mode.
 """
 
-import pytest
 from types import SimpleNamespace
 from typing import Any
 

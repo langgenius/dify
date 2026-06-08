@@ -1,4 +1,3 @@
-from flask import Request
 import json
 import logging
 import re
@@ -15,7 +14,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, over
 from uuid import UUID
 from zoneinfo import available_timezones
 
-from flask import Response, stream_with_context
+from flask import Request, Response, stream_with_context
 from flask_restx import fields
 from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
 from pydantic.functional_validators import AfterValidator

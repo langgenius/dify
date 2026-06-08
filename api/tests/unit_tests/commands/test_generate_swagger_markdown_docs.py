@@ -1,10 +1,11 @@
 """Unit tests for the Markdown API docs generator."""
 
-import pytest
 import importlib.util
 import json
 import sys
 from pathlib import Path
+
+import pytest
 
 
 def _load_generate_swagger_markdown_docs_module():
@@ -21,7 +22,9 @@ def _load_generate_swagger_markdown_docs_module():
     return module
 
 
-def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_console(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_console(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     module = _load_generate_swagger_markdown_docs_module()
     swagger_dir = tmp_path / "openapi"
     markdown_dir = tmp_path / "markdown"
@@ -70,7 +73,9 @@ def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_con
     assert "FastOpenAPI Preview" not in (markdown_dir / "service-swagger.md").read_text(encoding="utf-8")
 
 
-def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagger_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagger_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     module = _load_generate_swagger_markdown_docs_module()
     swagger_dir = tmp_path / "swagger"
     markdown_dir = tmp_path / "markdown"

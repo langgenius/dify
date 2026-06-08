@@ -222,7 +222,9 @@ class TestMessageServicePaginationByFirstId:
     @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_with_first_id(self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory):
+    def test_pagination_by_first_id_with_first_id(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
+    ):
         """Test pagination with first_id to get messages before a specific message."""
         # Arrange
         app = factory.create_app_mock()
@@ -265,7 +267,9 @@ class TestMessageServicePaginationByFirstId:
     # Test 06: First message not found
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_first_message_not_exists(self, mock_conversation_service, mock_db, factory: TestMessageServiceFactory):
+    def test_pagination_by_first_id_first_message_not_exists(
+        self, mock_conversation_service, mock_db, factory: TestMessageServiceFactory
+    ):
         """Test error handling when first_id doesn't exist."""
         # Arrange
         app = factory.create_app_mock()
@@ -290,7 +294,9 @@ class TestMessageServicePaginationByFirstId:
     @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_has_more_true(self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory):
+    def test_pagination_by_first_id_has_more_true(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
+    ):
         """Test has_more flag is True when results exceed limit."""
         # Arrange
         app = factory.create_app_mock()
@@ -327,7 +333,9 @@ class TestMessageServicePaginationByFirstId:
     # Test 08: Empty conversation
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_empty_conversation(self, mock_conversation_service, mock_db, factory: TestMessageServiceFactory):
+    def test_pagination_by_first_id_empty_conversation(
+        self, mock_conversation_service, mock_db, factory: TestMessageServiceFactory
+    ):
         """Test pagination with conversation that has no messages."""
         # Arrange
         app = factory.create_app_mock()
@@ -479,7 +487,9 @@ class TestMessageServicePaginationByLastId:
     # Test 13: Pagination with conversation_id filter
     @patch("services.message_service.ConversationService")
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_with_conversation_filter(self, mock_db, mock_conversation_service, factory: TestMessageServiceFactory):
+    def test_pagination_by_last_id_with_conversation_filter(
+        self, mock_db, mock_conversation_service, factory: TestMessageServiceFactory
+    ):
         """Test pagination filtered by conversation_id."""
         # Arrange
         app = factory.create_app_mock()
@@ -618,7 +628,9 @@ class TestMessageServiceUtilities:
 
     # Test 18: attach_message_extra_contents with index out of bounds
     @patch("services.message_service._create_execution_extra_content_repository")
-    def test_attach_message_extra_contents_index_out_of_bounds(self, mock_create_repo, factory: TestMessageServiceFactory):
+    def test_attach_message_extra_contents_index_out_of_bounds(
+        self, mock_create_repo, factory: TestMessageServiceFactory
+    ):
         """Test attach_message_extra_contents handles missing content lists."""
         # Arrange
         messages = [factory.create_message_mock(message_id="msg-1")]
@@ -1174,7 +1186,12 @@ class TestMessageServiceSuggestedQuestions:
     @patch.object(MessageService, "get_message")
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_disabled_error(
-        self, mock_conversation_service, mock_get_message, mock_config_manager, mock_workflow_service, factory: TestMessageServiceFactory
+        self,
+        mock_conversation_service,
+        mock_get_message,
+        mock_config_manager,
+        mock_workflow_service,
+        factory: TestMessageServiceFactory,
     ):
         """Test SuggestedQuestionsAfterAnswerDisabledError is raised when feature is disabled."""
         # Arrange

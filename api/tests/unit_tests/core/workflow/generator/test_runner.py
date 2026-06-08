@@ -7,7 +7,6 @@ Workflow and Advanced-Chat modes, plus that obvious failure paths surface a
 readable error envelope.
 """
 
-import pytest
 import json
 from unittest.mock import MagicMock
 

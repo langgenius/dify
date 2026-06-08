@@ -1,4 +1,3 @@
-import pytest
 import uuid
 
 import pytest

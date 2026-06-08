@@ -1,8 +1,9 @@
-import pytest
 import os
 import time
 import uuid
 from unittest.mock import MagicMock
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance

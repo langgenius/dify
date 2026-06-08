@@ -1,9 +1,8 @@
-from flask import Flask
-import pytest
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.console.workspace import snippets as snippets_module

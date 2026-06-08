@@ -1,6 +1,5 @@
 """Tests for openapi human input form endpoints."""
 
-import pytest
 from __future__ import annotations
 
 import json

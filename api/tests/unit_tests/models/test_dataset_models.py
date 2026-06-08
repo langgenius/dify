@@ -9,7 +9,6 @@ This test suite covers:
 - Embedding storage validation
 """
 
-import pytest
 import json
 import pickle
 from datetime import UTC, datetime
@@ -17,6 +16,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
+
+import pytest
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import (

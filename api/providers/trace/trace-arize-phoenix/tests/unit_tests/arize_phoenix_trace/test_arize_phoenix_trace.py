@@ -1,4 +1,3 @@
-import pytest
 import json
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta

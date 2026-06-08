@@ -1,4 +1,3 @@
-import pytest
 import collections
 from datetime import datetime, timedelta
 from typing import override
@@ -522,7 +521,9 @@ def test_update_run_error(trace_instance: LangSmithDataTrace):
         trace_instance.update_run(update_data)
 
 
-def test_workflow_trace_usage_extraction_error(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch, caplog):
+def test_workflow_trace_usage_extraction_error(
+    trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch, caplog
+):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
     workflow_data.finished_at = _dt() + timedelta(seconds=1)
@@ -655,7 +656,9 @@ def _patch_workflow_trace_deps(monkeypatch, trace_instance):
     trace_instance.add_run = MagicMock()
 
 
-def test_workflow_trace_id_uses_message_id_not_external(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
+def test_workflow_trace_id_uses_message_id_not_external(
+    trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch
+):
     """Chatflow with external trace_id: LangSmith trace_id must be message_id, not external."""
     trace_info = _make_workflow_trace_info(
         message_id="msg-abc",
@@ -676,7 +679,9 @@ def test_workflow_trace_id_uses_message_id_not_external(trace_instance: LangSmit
     assert trace_info.metadata.get("external_trace_id") == "external-999"
 
 
-def test_workflow_trace_id_pure_workflow_uses_run_id(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
+def test_workflow_trace_id_pure_workflow_uses_run_id(
+    trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch
+):
     """Pure workflow (no message_id) with external trace_id: trace_id must be workflow_run_id."""
     trace_info = _make_workflow_trace_info(
         message_id=None,

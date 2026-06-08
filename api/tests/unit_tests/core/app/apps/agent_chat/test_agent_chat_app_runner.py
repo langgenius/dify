@@ -243,7 +243,9 @@ class TestAgentChatAppRunnerRun:
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), conversation, message)
 
-    def test_run_function_calling_strategy_selected_by_features(self, runner: AgentChatAppRunner, mocker: MockerFixture):
+    def test_run_function_calling_strategy_selected_by_features(
+        self, runner: AgentChatAppRunner, mocker: MockerFixture
+    ):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT)
