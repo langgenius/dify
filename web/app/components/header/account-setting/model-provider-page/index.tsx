@@ -8,7 +8,7 @@ import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -169,7 +169,7 @@ const ModelProviderPage = ({
         className="w-50 shrink-0"
         placeholder={t('modelProvider.searchModels', { ns: 'common' })}
         value={searchText}
-        onChange={onSearchTextChange ?? noop}
+        onValueChange={onSearchTextChange ?? noop}
       />
       <div className="flex shrink-0 items-center justify-end gap-2">
         {showWarning

@@ -306,5 +306,6 @@
   "types.basic": "اساسی",
   "types.chatbot": "چت‌بات",
   "types.completion": "تکمیل",
+  "types.filter": "انواع",
   "types.workflow": "گردش کار"
 }

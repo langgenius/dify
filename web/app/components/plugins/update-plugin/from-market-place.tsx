@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import type { UpdateFromMarketPlacePayload } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -43,19 +42,21 @@ type FailedUpgradeResponse = {
   }
 }
 
-enum UploadStep {
-  notStarted = 'notStarted',
-  upgrading = 'upgrading',
-  installed = 'installed',
-}
+const UploadStep = {
+  notStarted: 'notStarted',
+  upgrading: 'upgrading',
+  installed: 'installed',
+} as const
 
-const UpdatePluginModal: FC<Props> = ({
+type UploadStep = typeof UploadStep[keyof typeof UploadStep]
+
+const UpdatePluginModal = ({
   payload,
   pluginId,
   onSave,
   onCancel,
   isShowDowngradeWarningModal,
-}) => {
+}: Props) => {
   const {
     originalPackageInfo,
     targetPackageInfo,
@@ -79,7 +80,7 @@ const UpdatePluginModal: FC<Props> = ({
   }
 
   const [uploadStep, setUploadStep] = useState<UploadStep>(UploadStep.notStarted)
-  const { handleRefetch } = usePluginTaskList(payload.category)
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
 
   const configBtnText = useMemo(() => {
     return ({
@@ -115,7 +116,7 @@ const UpdatePluginModal: FC<Props> = ({
           onSave()
           return
         }
-        handleRefetch()
+        handleInstallTaskStart(response)
         const { status, error } = await check({
           taskId,
           pluginUniqueIdentifier: targetPackageInfo.id,
@@ -135,7 +136,7 @@ const UpdatePluginModal: FC<Props> = ({
     }
     if (uploadStep === UploadStep.installed)
       onSave()
-  }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, t, targetPackageInfo.id])
+  }, [onSave, uploadStep, check, originalPackageInfo.id, handleInstallTaskStart, t, targetPackageInfo.id])
 
   const { mutateAsync } = useRemoveAutoUpgrade()
   const handleExcludeAndDownload = async () => {

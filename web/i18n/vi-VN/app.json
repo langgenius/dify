@@ -306,5 +306,6 @@
   "types.basic": "Cơ bản",
   "types.chatbot": "Chatbot",
   "types.completion": "Hoàn thành",
+  "types.filter": "Loại",
   "types.workflow": "Quy trình"
 }

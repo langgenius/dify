@@ -6,7 +6,7 @@ import Loading from '@/app/components/base/loading'
 import { redirect, usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 
-const datasetOperatorRedirectRoutes = ['/', '/apps', '/app', '/roster', '/explore', '/tools', '/integrations'] as const
+const datasetOperatorRedirectRoutes = ['/', '/apps', '/app', '/snippets', '/roster', '/explore', '/tools', '/integrations'] as const
 
 const isPathUnderRoute = (pathname: string, route: string) => pathname === route || pathname.startsWith(`${route}/`)
 

@@ -306,5 +306,6 @@
   "types.basic": "Основной",
   "types.chatbot": "Чат-бот",
   "types.completion": "Завершение",
+  "types.filter": "Типы",
   "types.workflow": "Рабочий процесс"
 }

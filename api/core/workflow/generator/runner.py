@@ -434,7 +434,7 @@ class WorkflowGenerator:
             if isinstance(parsed, dict):
                 if attempt > 0:
                     logger.info("Workflow generator: %s JSON parse recovered on retry", stage)
-                return cast(dict[str, Any], parsed)
+                return parsed
             last_detail = f"Non-object JSON: {type(parsed).__name__}"
             logger.info("Workflow generator: %s non-object JSON on attempt %s", stage, attempt + 1)
         raise _StageJSONError(stage, last_detail or "JSON parse failed")

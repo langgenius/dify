@@ -664,7 +664,7 @@ export type DataSource = {
 }
 
 export type ProcessRule = {
-  mode: 'automatic' | 'custom' | 'hierarchical'
+  mode: ProcessRuleMode
   rules?: Rule
 }
 
@@ -865,6 +865,8 @@ export type InfoList = {
   notion_info_list?: Array<NotionInfo> | null
   website_info_list?: WebsiteInfo
 }
+
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
 
 export type Rule = {
   parent_mode?: 'full-doc' | 'paragraph' | null

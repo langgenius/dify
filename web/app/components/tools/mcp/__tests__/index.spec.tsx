@@ -24,10 +24,10 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
-  default: () => (
+  default: ({ variant }: { variant?: string }) => (
     <>
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} data-testid="mcp-card-skeleton">Loading MCP</div>
+        <div key={index} data-testid="mcp-card-skeleton" data-variant={variant}>Loading MCP</div>
       ))}
     </>
   ),
@@ -114,6 +114,8 @@ describe('MCPList', () => {
       render(<MCPList searchText="" />)
 
       expect(screen.getAllByTestId('mcp-card-skeleton')).toHaveLength(6)
+      expect(screen.getAllByTestId('mcp-card-skeleton')[0]).toHaveAttribute('data-variant', 'mcp')
+      expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('provider-card-1')).not.toBeInTheDocument()
     })
 

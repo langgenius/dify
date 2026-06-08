@@ -168,10 +168,10 @@ vi.mock('@/app/components/plugins/card', () => ({
 }))
 
 vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
-  default: () => (
+  default: ({ variant }: { variant?: string }) => (
     <>
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} data-testid="tool-card-skeleton">Loading tool</div>
+        <div key={index} data-testid="tool-card-skeleton" data-variant={variant}>Loading tool</div>
       ))}
     </>
   ),
@@ -585,6 +585,13 @@ describe('ProviderList', () => {
       expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
     })
+
+    it('uses labeled integrations skeletons in compact custom tool pages', () => {
+      mockIsLoadingToolProviders = true
+      renderProviderList(undefined, 'api', 'compact')
+
+      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute('data-variant', 'integrations-labeled')
+    })
   })
 
   describe('Workflow Tab', () => {
@@ -640,6 +647,13 @@ describe('ProviderList', () => {
       expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
       expect(screen.queryByTestId('workflow-empty')).not.toBeInTheDocument()
     })
+
+    it('uses labeled integrations skeletons in compact workflow pages', () => {
+      mockIsLoadingToolProviders = true
+      renderProviderList(undefined, 'workflow', 'compact')
+
+      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute('data-variant', 'integrations-labeled')
+    })
   })
 
   describe('Builtin Tab Empty State', () => {
@@ -655,6 +669,13 @@ describe('ProviderList', () => {
       renderProviderList()
       expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
       expect(screen.queryByTestId('empty')).not.toBeInTheDocument()
+    })
+
+    it('uses compact integrations skeletons for built-in tools in compact pages', () => {
+      mockIsLoadingToolProviders = true
+      renderProviderList(undefined, 'builtin', 'compact')
+
+      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute('data-variant', 'integrations-default')
     })
 
     it('renders collection that has no labels property', () => {

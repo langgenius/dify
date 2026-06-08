@@ -1,4 +1,4 @@
-import type { MutateOptions, QueryOptions } from '@tanstack/react-query'
+import type { MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
   ModelProvider,
@@ -22,6 +22,7 @@ import type {
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
   PluginTask,
+  PluginTaskStart,
   ReferenceSetting,
   uploadGitHubResponse,
   VersionInfo,
@@ -48,6 +49,62 @@ import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
 const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
+const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
+
+type PluginTaskListResponse = {
+  tasks: PluginTask[]
+}
+
+const isUnfinishedPluginTask = (task: PluginTask) => task.status === TaskStatus.pending || task.status === TaskStatus.running
+
+const normalizeStartedPluginTask = (task: PluginTaskStart): PluginTask => ({
+  ...task,
+  plugins: task.plugins.map(plugin => ({
+    ...plugin,
+    taskId: plugin.taskId || task.id,
+  })),
+})
+
+const upsertStartedPluginTask = (queryClient: QueryClient, response: InstallPackageResponse) => {
+  if (!response.task)
+    return
+
+  const startedTask = normalizeStartedPluginTask(response.task)
+
+  queryClient.setQueryData<PluginTaskListResponse>(usePluginTaskListKey, (previous) => {
+    if (!previous)
+      return { tasks: [startedTask] }
+
+    const existingTaskIndex = previous.tasks.findIndex(task => task.id === startedTask.id)
+    if (existingTaskIndex === -1)
+      return { tasks: [startedTask, ...previous.tasks] }
+
+    return {
+      tasks: previous.tasks.map(task => task.id === startedTask.id ? startedTask : task),
+    }
+  })
+}
+
+const preserveLocalUnfinishedPluginTasks = (
+  previousData: PluginTaskListResponse | undefined,
+  nextData: PluginTaskListResponse,
+) => {
+  if (!previousData)
+    return nextData
+
+  const nextTaskIds = new Set(nextData.tasks.map(task => task.id))
+  const missingUnfinishedTasks = previousData.tasks.filter(task => !nextTaskIds.has(task.id) && isUnfinishedPluginTask(task))
+  if (!missingUnfinishedTasks.length)
+    return nextData
+
+  return {
+    ...nextData,
+    tasks: [
+      ...missingUnfinishedTasks,
+      ...nextData.tasks,
+    ],
+  }
+}
 
 export const useCheckInstalled = ({
   pluginIds,
@@ -217,21 +274,31 @@ export const useInvalidateInstalledPluginList = () => {
 }
 
 export const useInstallPackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, string>) => {
+  const queryClient = useQueryClient()
   return useMutation({
     ...options,
     mutationFn: (uniqueIdentifier: string) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', { body: { plugin_unique_identifiers: [uniqueIdentifier] } })
     },
+    onSuccess: (data, variables, context, mutation) => {
+      upsertStartedPluginTask(queryClient, data)
+      options?.onSuccess?.(data, variables, context, mutation)
+    },
   })
 }
 
 export const useUpdatePackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, object>) => {
+  const queryClient = useQueryClient()
   return useMutation({
     ...options,
     mutationFn: (body: object) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
         body,
       })
+    },
+    onSuccess: (data, variables, context, mutation) => {
+      upsertStartedPluginTask(queryClient, data)
+      options?.onSuccess?.(data, variables, context, mutation)
     },
   })
 }
@@ -253,16 +320,21 @@ export const useVersionListOfPlugin = (pluginID: string) => {
 }
 
 export const useInstallPackageFromLocal = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (uniqueIdentifier: string) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
         body: { plugin_unique_identifiers: [uniqueIdentifier] },
       })
     },
+    onSuccess: (data) => {
+      upsertStartedPluginTask(queryClient, data)
+    },
   })
 }
 
 export const useInstallPackageFromGitHub = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ repoUrl, selectedVersion, selectedPackage, uniqueIdentifier }: {
       repoUrl: string
@@ -278,6 +350,9 @@ export const useInstallPackageFromGitHub = () => {
           plugin_unique_identifier: uniqueIdentifier,
         },
       })
+    },
+    onSuccess: (data) => {
+      upsertStartedPluginTask(queryClient, data)
     },
   })
 }
@@ -301,6 +376,7 @@ export const useInstallOrUpdate = ({
 }: {
   onSuccess?: (res: InstallStatusResponse[]) => void
 }) => {
+  const queryClient = useQueryClient()
   const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
 
   return useMutation({
@@ -343,7 +419,7 @@ export const useInstallOrUpdate = ({
               }
             }
             if (!isInstalled) {
-              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
+              const response = await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
                 body: {
                   repo: data.value.repo!,
                   version: data.value.release! || data.value.version!,
@@ -351,6 +427,8 @@ export const useInstallOrUpdate = ({
                   plugin_unique_identifier: uniqueIdentifier,
                 },
               })
+              upsertStartedPluginTask(queryClient, response)
+              const { task_id, all_installed } = response
               taskId = task_id
               isFinishedInstallation = all_installed
             }
@@ -366,11 +444,13 @@ export const useInstallOrUpdate = ({
               }
             }
             if (!isInstalled) {
-              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+              const response = await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
                 body: {
                   plugin_unique_identifiers: [uniqueIdentifier],
                 },
               })
+              upsertStartedPluginTask(queryClient, response)
+              const { task_id, all_installed } = response
               taskId = task_id
               isFinishedInstallation = all_installed
             }
@@ -386,11 +466,13 @@ export const useInstallOrUpdate = ({
               }
             }
             if (!isInstalled) {
-              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+              const response = await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
                 body: {
                   plugin_unique_identifiers: [uniqueIdentifier],
                 },
               })
+              upsertStartedPluginTask(queryClient, response)
+              const { task_id, all_installed } = response
               taskId = task_id
               isFinishedInstallation = all_installed
             }
@@ -398,19 +480,22 @@ export const useInstallOrUpdate = ({
           if (isInstalled) {
             if (item.type === 'package') {
               await uninstallPlugin(installedPayload.installedId)
-              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+              const response = await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
                 body: {
                   plugin_unique_identifiers: [uniqueIdentifier],
                 },
               })
+              upsertStartedPluginTask(queryClient, response)
+              const { task_id, all_installed } = response
               taskId = task_id
               isFinishedInstallation = all_installed
             }
             else {
-              const { task_id, all_installed } = await updatePackageFromMarketPlace({
+              const response = await updatePackageFromMarketPlace({
                 original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
                 new_plugin_unique_identifier: uniqueIdentifier,
               })
+              const { task_id, all_installed } = response
               taskId = task_id
               isFinishedInstallation = all_installed
             }
@@ -723,9 +808,9 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoR
   })
 }
 
-const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const initializedRef = useRef(false)
+  const queryClient = useQueryClient()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
   const { data: permissions } = usePluginPermissionSettings()
   const canManagement = hasPluginPermission(
@@ -733,10 +818,14 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     isCurrentWorkspaceManager || isCurrentWorkspaceOwner,
   )
   const { refreshPluginList } = useRefreshPluginList()
-  const query = useQuery({
+  const query = useQuery<PluginTaskListResponse>({
     enabled: canManagement,
     queryKey: usePluginTaskListKey,
     queryFn: () => get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
+    structuralSharing: (previousData, nextData) => preserveLocalUnfinishedPluginTasks(
+      previousData as PluginTaskListResponse | undefined,
+      nextData as PluginTaskListResponse,
+    ),
     refetchInterval: (lastQuery) => {
       const lastData = lastQuery.state.data
       const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
@@ -767,11 +856,20 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     refetch()
   }, [refetch])
 
+  const handleInstallTaskStart = useCallback((response: InstallPackageResponse) => {
+    if (response.all_installed)
+      return
+
+    upsertStartedPluginTask(queryClient, response)
+    refetch()
+  }, [queryClient, refetch])
+
   return {
     data,
     pluginTasks: data?.tasks || [],
     isFetched,
     handleRefetch,
+    handleInstallTaskStart,
   }
 }
 

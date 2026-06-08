@@ -306,5 +306,6 @@
   "types.basic": "Grundlegend",
   "types.chatbot": "Chatbot",
   "types.completion": "Vervollständigung",
+  "types.filter": "Typen",
   "types.workflow": "Arbeitsablauf"
 }

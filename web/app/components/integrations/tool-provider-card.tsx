@@ -77,7 +77,7 @@ function IntegrationsToolProviderCard({
           </div>
         </div>
         <div className="flex h-6 w-full shrink-0 items-center px-4 py-1">
-          <div className="flex h-4 min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1 overflow-hidden whitespace-nowrap system-xs-regular">
+          <div className="flex h-4 min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1 overflow-hidden system-xs-regular whitespace-nowrap">
             {collection.labels?.map(label => (
               <div key={label} className="flex max-w-[120px] shrink-0 items-center gap-0.5">
                 <span className="text-text-quaternary">#</span>

@@ -306,5 +306,6 @@
   "types.basic": "Osnoven",
   "types.chatbot": "Klepetalnik",
   "types.completion": "Dopolnjevanje",
+  "types.filter": "Vrste",
   "types.workflow": "Potek dela"
 }

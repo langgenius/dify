@@ -8,7 +8,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import ProviderDetail from '@/app/components/tools/provider/detail'
@@ -22,6 +21,7 @@ import { pluginPageContentFrameClassNames, pluginPageContentInsetClassNames } fr
 import { usePluginPageContext } from './context'
 import Empty from './empty'
 import FilterManagement from './filter-management'
+import PluginListSkeleton from './plugin-list-skeleton'
 import PluginsPanelResults from './plugins-panel-results'
 import { EMPTY_BUILTIN_TOOLS, filterBuiltinTools } from './plugins-panel-utils'
 
@@ -194,7 +194,7 @@ const PluginsPanel = ({
 
   const body = (
     <>
-      {isPluginListLoading && <Loading type="app" />}
+      {isPluginListLoading && <PluginListSkeleton contentFrameClassName={contentFrameClassName} />}
       {!isPluginListLoading && (
         <>
           {hasVisiblePlugins || hasVisibleBuiltinTools || hasToolMarketplacePanel

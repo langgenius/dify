@@ -306,5 +306,6 @@
   "types.basic": "أساسي",
   "types.chatbot": "روبوت دردشة",
   "types.completion": "إكمال",
+  "types.filter": "الأنواع",
   "types.workflow": "سير العمل (Workflow)"
 }

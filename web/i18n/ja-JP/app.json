@@ -306,5 +306,6 @@
   "types.basic": "基本的な",
   "types.chatbot": "チャットボット",
   "types.completion": "テキスト生成",
+  "types.filter": "タイプ",
   "types.workflow": "ワークフロー"
 }

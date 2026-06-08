@@ -306,5 +306,6 @@
   "types.basic": "Dasar",
   "types.chatbot": "Chatbot",
   "types.completion": "Penyelesaian",
+  "types.filter": "Jenis",
   "types.workflow": "Alur Kerja"
 }

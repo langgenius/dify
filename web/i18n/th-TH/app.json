@@ -306,5 +306,6 @@
   "types.basic": "พื้นฐาน",
   "types.chatbot": "แชทบอท",
   "types.completion": "เสร็จสมบูรณ์",
+  "types.filter": "ประเภท",
   "types.workflow": "กระบวนการทำงาน"
 }

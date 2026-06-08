@@ -306,5 +306,6 @@
   "types.basic": "मूलवर्ती",
   "types.chatbot": "चैटबॉट",
   "types.completion": "समाप्ति",
+  "types.filter": "प्रकार",
   "types.workflow": "वर्कफ़्लो"
 }

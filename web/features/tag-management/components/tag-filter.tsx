@@ -19,12 +19,14 @@ type TagFilterProps = {
   value: string[]
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
+  showLeadingIcon?: boolean
 }
 export const TagFilter = ({
   type,
   value,
   onChange,
   onOpenTagManagement = () => {},
+  showLeadingIcon = true,
 }: TagFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -49,7 +51,8 @@ export const TagFilter = ({
 
   const firstTagId = value[0]
   const currentTagName = firstTagId ? tagById.get(firstTagId)?.name : undefined
-  const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : t('tag.placeholder', { ns: 'common' })
+  const placeholderLabel = t('tag.placeholder', { ns: 'common' })
+  const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : placeholderLabel
   const handleValueChange = useCallback((nextTags: Tag[]) => {
     const unknownTagIds = value.filter(tagId => !tagById.has(tagId))
     onChange([...unknownTagIds, ...nextTags.map(tag => tag.id)])
@@ -79,11 +82,13 @@ export const TagFilter = ({
           )}
         >
           <span className="flex w-full min-w-0 items-center gap-1">
-            <span className="p-px">
-              <Tag01Icon className="size-3.5 text-text-tertiary" aria-hidden="true" />
-            </span>
+            {showLeadingIcon && (
+              <span className="p-px">
+                <Tag01Icon className="size-3.5 text-text-tertiary" aria-hidden="true" />
+              </span>
+            )}
             <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-secondary">
-              {!value.length && t('tag.placeholder', { ns: 'common' })}
+              {!value.length && placeholderLabel}
               {!!value.length && currentTagName}
             </span>
             {value.length > 1 && (

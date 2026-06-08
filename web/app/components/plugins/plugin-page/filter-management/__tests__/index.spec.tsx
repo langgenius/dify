@@ -721,7 +721,7 @@ describe('TagFilter Component', () => {
   })
 
   describe('Rendering', () => {
-    it('should render with "All Tags" text when no selection', () => {
+    it('should render with "Tags" text when no selection', () => {
       // Arrange & Act
       render(<TagFilter value={[]} onChange={vi.fn()} />)
 

@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { Empty } from './empty'
@@ -90,7 +90,7 @@ export function ApiBasedExtensionPage({
       <SearchInput
         className="w-[200px]"
         value={keywords}
-        onChange={setKeywords}
+        onValueChange={setKeywords}
       />
       <Button
         variant="secondary"

@@ -90,6 +90,11 @@ export function ToolProviderGrid({
   const showWorkflowEmptyState = activeTab === 'workflow' && !hasCategoryCollections && !isSearchResultEmpty
   const useCustomToolGrid = activeTab === 'api'
   const useThreeColumnIntegrationsGrid = useIntegrationsCard && activeTab !== 'builtin'
+  const skeletonVariant = useIntegrationsCard
+    ? activeTab === 'workflow' || activeTab === 'api'
+      ? 'integrations-labeled'
+      : 'integrations-default'
+    : 'default'
 
   return (
     <div
@@ -99,15 +104,15 @@ export function ToolProviderGrid({
           ? 'relative grid shrink-0 grid-cols-1 content-start gap-2.5 pt-1 pb-4 md:grid-cols-2 xl:grid-cols-3'
           : useThreeColumnIntegrationsGrid
             ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 sm:grid-cols-2 md:grid-cols-3'
-          : useIntegrationsCard
-            ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 lg:grid-cols-2'
-            : 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
+            : useIntegrationsCard
+              ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 lg:grid-cols-2'
+              : 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
         frameClassName,
         showWorkflowEmptyState && 'grow',
       )}
     >
       {isLoading
-        ? <ToolCardSkeletonGrid />
+        ? <ToolCardSkeletonGrid variant={skeletonVariant} />
         : (
             <>
               {activeTab === 'api' && showCreateCard && <CustomCreateCard onRefreshData={onRefreshData} />}

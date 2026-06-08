@@ -306,5 +306,6 @@
   "types.basic": "基本",
   "types.chatbot": "聊天助手",
   "types.completion": "文字生成",
+  "types.filter": "類型",
   "types.workflow": "工作流"
 }

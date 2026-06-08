@@ -1156,7 +1156,7 @@ class Conversation(Base):
                     tenant_resolver=tenant_resolver,
                 )
             elif isinstance(value, list):
-                value_list = cast(list[Any], value)
+                value_list = value
                 if all(
                     isinstance(item, dict)
                     and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
@@ -1184,7 +1184,7 @@ class Conversation(Base):
             if isinstance(v, File):
                 inputs[k] = v.model_dump()
             elif isinstance(v, list):
-                v_list = cast(list[Any], v)
+                v_list = v
                 if all(isinstance(item, File) for item in v_list):
                     inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
@@ -1498,7 +1498,7 @@ class Message(Base):
                     tenant_resolver=tenant_resolver,
                 )
             elif isinstance(value, list):
-                value_list = cast(list[Any], value)
+                value_list = value
                 if all(
                     isinstance(item, dict)
                     and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
@@ -1525,7 +1525,7 @@ class Message(Base):
             if isinstance(v, File):
                 inputs[k] = v.model_dump()
             elif isinstance(v, list):
-                v_list = cast(list[Any], v)
+                v_list = v
                 if all(isinstance(item, File) for item in v_list):
                     inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
@@ -2502,7 +2502,7 @@ class Tag(TypeBase):
         sa.Index("tag_name_idx", "name"),
     )
 
-    TAG_TYPE_LIST = ["knowledge", "app"]
+    TAG_TYPE_LIST = ["knowledge", "app", "snippet"]
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False

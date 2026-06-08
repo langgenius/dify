@@ -433,6 +433,17 @@ describe('AccountSetting', () => {
       expect(screen.getByText('common.account.general')).toBeInTheDocument()
       expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
     })
+
+    it('should switch the preferences icon when the tab is active', () => {
+      renderAccountSetting()
+
+      const preferencesButton = screen.getByRole('button', { name: 'common.settings.preferences' })
+      expect(preferencesButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
+
+      fireEvent.click(preferencesButton)
+
+      expect(preferencesButton.querySelector('.i-ri-equalizer-2-fill')).toBeInTheDocument()
+    })
   })
 
   describe('Interactions', () => {
@@ -462,7 +473,7 @@ describe('AccountSetting', () => {
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PROVIDER })
 
       // Act
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'test-search' } })
 
       // Assert

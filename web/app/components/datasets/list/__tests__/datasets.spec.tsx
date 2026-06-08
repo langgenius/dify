@@ -48,10 +48,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(() => true),
-}))
-
 vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
     modalState: {
@@ -184,27 +180,9 @@ describe('Datasets', () => {
       expect(screen.getByRole('navigation')).toBeInTheDocument()
     })
 
-    it('should render NewDatasetCard when user is editor', async () => {
-      const { useSelector } = await import('@/context/app-context')
-      vi.mocked(useSelector).mockReturnValue(true)
-
+    it('should not render NewDatasetCard in dataset list', () => {
       render(<Datasets {...defaultProps} />)
-      expect(screen.getByText(/createDataset/)).toBeInTheDocument()
-    })
 
-    it('should NOT render NewDatasetCard when there are no datasets', async () => {
-      const { useSelector } = await import('@/context/app-context')
-      vi.mocked(useSelector).mockReturnValue(true)
-
-      render(<Datasets {...defaultProps} datasetList={createDatasetListData([{ data: [], total: 0 }])} />)
-      expect(screen.queryByText(/createDataset/)).not.toBeInTheDocument()
-    })
-
-    it('should NOT render NewDatasetCard when user is NOT editor', async () => {
-      const { useSelector } = await import('@/context/app-context')
-      vi.mocked(useSelector).mockReturnValue(false)
-
-      render(<Datasets {...defaultProps} />)
       expect(screen.queryByText(/createDataset/)).not.toBeInTheDocument()
     })
 
@@ -410,7 +388,7 @@ describe('Datasets', () => {
     it('should have correct grid styling', () => {
       render(<Datasets {...defaultProps} />)
       const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass('relative', 'grid', 'grow', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'px-6')
+      expect(nav).toHaveClass('relative', 'grid', 'grow', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'content-start', 'gap-3', 'px-8', 'pt-2')
     })
   })
 

@@ -571,9 +571,9 @@ describe('MainNav', () => {
       'backdrop-blur-[5px]',
       'text-saas-dify-blue-inverted',
       activeEdgeClassName,
-      'after:border-[rgba(255,255,255,0.98)]',
+      'after:border-components-main-nav-glass-edge-highlight-first',
     )
-    expect(homeLink.className).toContain('bg-[linear-gradient(98.077deg')
+    expect(homeLink.className).toContain('var(--color-components-main-nav-glass-surface-first)')
   })
 
   it('keeps Home active on the legacy explore apps route only', () => {
@@ -625,8 +625,8 @@ describe('MainNav', () => {
     const labels = [
       'common.mainNav.help.docs',
       'common.userProfile.roadmap',
-      'common.userProfile.compliance',
       'common.mainNav.help.learnDify',
+      'common.userProfile.compliance',
       'common.userProfile.contactUs',
       'common.userProfile.forum',
       'common.userProfile.community',

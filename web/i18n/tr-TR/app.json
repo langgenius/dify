@@ -306,5 +306,6 @@
   "types.basic": "Temel",
   "types.chatbot": "Chatbot",
   "types.completion": "Tamamlama",
+  "types.filter": "Türler",
   "types.workflow": "İş Akışı"
 }

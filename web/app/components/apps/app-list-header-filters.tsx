@@ -1,29 +1,25 @@
 'use client'
 
-import type { AppListCategory } from './hooks/use-apps-query-state'
-import type { Item } from '@/app/components/base/chip'
+import type { AppListCategory } from './app-type-filter-shared'
 import { Button } from '@langgenius/dify-ui/button'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Chip from '@/app/components/base/chip'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import { AppModeEnum } from '@/types/app'
-
-type AppTypeChipValue = Exclude<AppListCategory, 'all'> | ''
+import Link from '@/next/link'
+import { AppTypeFilter } from './app-type-filter'
+import CreatorsFilter from './creators-filter'
 
 type AppListHeaderFiltersProps = {
   category: AppListCategory
   tagIDs: string[]
   keywords: string
-  isCreatedByMe: boolean
-  onCategoryChange: (nextValue: string | null) => void
+  creatorIDs: string[]
+  onCategoryChange: (category: AppListCategory) => void
   onTagIDsChange: (tagIDs: string[]) => void
   onKeywordsChange: (keywords: string) => void
-  onCreatedByMeChange: (checked: boolean) => void
+  onCreatorIDsChange: (creatorIDs: string[]) => void
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
@@ -35,11 +31,11 @@ export function AppListHeaderFilters({
   category,
   tagIDs,
   keywords,
-  isCreatedByMe,
+  creatorIDs,
   onCategoryChange,
   onTagIDsChange,
   onKeywordsChange,
-  onCreatedByMeChange,
+  onCreatorIDsChange,
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
@@ -47,43 +43,27 @@ export function AppListHeaderFilters({
   showCreateButton,
 }: AppListHeaderFiltersProps) {
   const { t } = useTranslation()
-  const appTypeItems = useMemo<Item<AppTypeChipValue>[]>(() => [
-    { value: '', name: t('types.all', { ns: 'app' }) },
-    { value: AppModeEnum.WORKFLOW, name: t('types.workflow', { ns: 'app' }) },
-    { value: AppModeEnum.ADVANCED_CHAT, name: t('types.advanced', { ns: 'app' }) },
-    { value: AppModeEnum.CHAT, name: t('types.chatbot', { ns: 'app' }) },
-    { value: AppModeEnum.AGENT_CHAT, name: t('types.agent', { ns: 'app' }) },
-    { value: AppModeEnum.COMPLETION, name: t('types.completion', { ns: 'app' }) },
-  ], [t])
-  const appTypeValue: AppTypeChipValue = category === 'all' ? '' : category
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2">
-        <Chip
-          value={appTypeValue}
-          items={appTypeItems}
-          leftIcon={<span aria-hidden className="i-ri-apps-2-line block size-3.5 text-text-tertiary" />}
-          className="[&_.system-sm-regular]:text-text-secondary"
-          panelClassName="rounded-lg"
-          onSelect={item => onCategoryChange(item.value || 'all')}
-          onClear={() => onCategoryChange('all')}
-        />
+        <AppTypeFilter value={category} onChange={onCategoryChange} />
+        <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
         <TagFilter type="app" value={tagIDs} onChange={onTagIDsChange} onOpenTagManagement={onOpenTagManagement} />
         <SearchInput
           className="w-50"
           value={keywords}
-          onChange={onKeywordsChange}
+          onValueChange={onKeywordsChange}
+          aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
         />
-        <div className="h-3.5 w-px bg-divider-regular" />
-        <label className="flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-components-input-bg-normal px-2 text-text-secondary">
-          <Checkbox checked={isCreatedByMe} onCheckedChange={onCreatedByMeChange} />
-          <span className="system-sm-regular whitespace-nowrap">
-            {t('showMyCreatedAppsOnly', { ns: 'app' })}
-          </span>
-        </label>
       </div>
       <div className="flex items-center gap-2">
+        <Link
+          href="/snippets"
+          className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
+        >
+          {t('studio.viewSnippets', { ns: 'app' })}
+        </Link>
         {showCreateButton && (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger

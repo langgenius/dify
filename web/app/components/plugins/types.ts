@@ -364,9 +364,10 @@ export type GitHubRepoReleaseResponse = {
 }
 
 export type InstallPackageResponse = {
-  plugin_unique_identifier: string
+  plugin_unique_identifier?: string
   all_installed: boolean
   task_id: string
+  task?: PluginTaskStart
 }
 
 export type InstallStatusResponse = {
@@ -383,6 +384,7 @@ export type InstallStatus = {
 export type updatePackageResponse = {
   all_installed: boolean
   task_id: string
+  task?: PluginTaskStart
 }
 
 export type uploadGitHubResponse = {
@@ -397,6 +399,7 @@ export type DebugInfo = {
 }
 
 export enum TaskStatus {
+  pending = 'pending',
   running = 'running',
   success = 'success',
   failed = 'failed',
@@ -421,6 +424,10 @@ export type PluginTask = {
   total_plugins: number
   completed_plugins: number
   plugins: PluginStatus[]
+}
+
+export type PluginTaskStart = Omit<PluginTask, 'plugins'> & {
+  plugins: Array<Omit<PluginStatus, 'taskId'> & { taskId?: string }>
 }
 
 export type TaskStatusResponse = {
