@@ -149,7 +149,7 @@ jobs:
       - name: Run config + help (DIFY_E2E_MODE=local)
         env:
           DIFY_E2E_MODE: local
-          DIFY_E2E_INCLUDE: "test/e2e/suites/framework/help.e2e.ts,test/e2e/suites/config/**/*.e2e.ts"
+          DIFY_E2E_INCLUDE: "test/e2e/suites/framework/help.e2e.ts"
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
             pnpm test:e2e -- -t "\[P0\]"

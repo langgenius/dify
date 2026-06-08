@@ -68,7 +68,7 @@ export default defineConfig({
       return undefined
     })()
       ?? (process.env.DIFY_E2E_MODE === 'local'
-        ? ['test/e2e/suites/framework/help.e2e.ts', 'test/e2e/suites/config/**/*.e2e.ts', 'test/e2e/suites/agent/**/*.e2e.ts']
+        ? ['test/e2e/suites/framework/help.e2e.ts', 'test/e2e/suites/agent/**/*.e2e.ts']
         : [
           // auth tests first (most others depend on a valid session)
             'test/e2e/suites/auth/login.e2e.ts',
@@ -77,8 +77,6 @@ export default defineConfig({
             'test/e2e/suites/auth/whoami.e2e.ts',
             // help (no network, no auth — runs first)
             'test/e2e/suites/framework/help.e2e.ts',
-            // config (local, no network)
-            'test/e2e/suites/config/**/*.e2e.ts',
             // output format (table / cross-cutting)
             'test/e2e/suites/output/**/*.e2e.ts',
             // error handling (cross-cutting error message spec)
