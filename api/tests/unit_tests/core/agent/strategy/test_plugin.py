@@ -114,7 +114,7 @@ class TestInitializeParameters:
             {"param1": {}, "param2": "value"},
         ],
     )
-    def test_initialize_parameters_edge_cases(self, strategy:PluginAgentStrategy, input_params) -> None:
+    def test_initialize_parameters_edge_cases(self, strategy: PluginAgentStrategy, input_params) -> None:
         result = strategy.initialize_parameters(input_params.copy())
 
         for param in strategy.declaration.parameters:

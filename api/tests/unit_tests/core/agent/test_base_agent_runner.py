@@ -408,7 +408,9 @@ class TestAdditionalCoverage:
         prompt = runner._convert_dataset_retriever_tool_to_prompt_message_tool(ds_tool)
         assert prompt is not None
 
-    def test_organize_user_prompt_with_file_objects(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+    def test_organize_user_prompt_with_file_objects(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
         mock_db_session.scalars.return_value.all.return_value = [mocker.MagicMock()]
 
         file_config = mocker.MagicMock()
@@ -437,7 +439,9 @@ class TestAdditionalCoverage:
         result = runner.organize_agent_history([])
         assert isinstance(result, list)
 
-    def test_organize_history_multiple_tools_split(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+    def test_organize_history_multiple_tools_split(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
         thought = mocker.MagicMock(
             tool="tool1;tool2",
             tool_input=json.dumps({"tool1": {}, "tool2": {}}),
@@ -530,7 +534,9 @@ class TestBaseAgentRunnerCoverage:
         assert tools["ds"] == dataset_tool
         assert len(prompt_tools) == 1
 
-    def test_save_agent_thought_json_dumps_fallbacks(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+    def test_save_agent_thought_json_dumps_fallbacks(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
         agent = mocker.MagicMock()
         agent.tool = "tool1"
         agent.tool_labels = {}
@@ -568,7 +574,9 @@ class TestBaseAgentRunnerCoverage:
         assert isinstance(agent.observation, str)
         assert isinstance(agent.tool_meta_str, str)
 
-    def test_save_agent_thought_skips_empty_tool_name(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+    def test_save_agent_thought_skips_empty_tool_name(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
         agent = mocker.MagicMock()
         agent.tool = "tool1;;"
         agent.tool_labels = {}
@@ -582,7 +590,9 @@ class TestBaseAgentRunnerCoverage:
         labels = json.loads(agent.tool_labels_str)
         assert "" not in labels
 
-    def test_organize_history_includes_system_prompt(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+    def test_organize_history_includes_system_prompt(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = []
         mocker.patch.object(module, "extract_thread_messages", return_value=[])
 
@@ -592,7 +602,9 @@ class TestBaseAgentRunnerCoverage:
 
         assert system_message in result
 
-    def test_organize_history_tool_inputs_and_observation_none(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
+    def test_organize_history_tool_inputs_and_observation_none(
+        self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture
+    ):
         thought = mocker.MagicMock(
             tool="tool1",
             tool_input=None,

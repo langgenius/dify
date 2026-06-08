@@ -134,7 +134,9 @@ class TestGenerateSuccess:
 
         get_conv.assert_called_once()
 
-    def test_generate_does_not_include_trace_session_id_in_extras(self, generator: AgentAppGenerator, mocker: MockerFixture):
+    def test_generate_does_not_include_trace_session_id_in_extras(
+        self, generator: AgentAppGenerator, mocker: MockerFixture
+    ):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         user = DummyAccount("user")
 
