@@ -215,22 +215,54 @@ export async function setup(project: TestProject): Promise<void> {
   }
 
   // ── Provision fixture apps ───────────────────────────────────────────────
+  // Skip provisionApps when app IDs are already injected via DIFY_E2E_*_APP_ID
+  // environment variables (e.g. from the CI provision job). Running provisionApps
+  // in every parallel suite job causes race conditions: multiple jobs query
+  // findAppByName simultaneously, all get "not found", then each imports the DSL
+  // independently — creating duplicate apps per workspace.
   let provisionedIds: Record<string, string> = {}
-  try {
-    const fixturesDir = join(fileURLToPath(import.meta.url), '..', '..', 'fixtures', 'apps')
-    provisionedIds = await provisionApps(
-      consoleBase,
-      cookieString,
-      csrfToken,
-      primaryWsId,
-      secondaryWsId,
-      fixturesDir,
-      E.edition,
-    )
-    console.warn(`[E2E global-setup] Provisioned ${Object.keys(provisionedIds).length} fixture apps`)
+  const preProvisioned = [
+    'DIFY_E2E_CHAT_APP_ID',
+    'DIFY_E2E_WORKFLOW_APP_ID',
+    'DIFY_E2E_FILE_APP_ID',
+    'DIFY_E2E_FILE_CHAT_APP_ID',
+    'DIFY_E2E_HITL_APP_ID',
+    'DIFY_E2E_HITL_EXTERNAL_APP_ID',
+    'DIFY_E2E_HITL_SINGLE_ACTION_APP_ID',
+    'DIFY_E2E_HITL_MULTI_NODE_APP_ID',
+    'DIFY_E2E_WS2_APP_ID',
+  ]
+  const envAppIds: Record<string, string> = {}
+  for (const key of preProvisioned) {
+    const val = process.env[key]
+    if (val && val !== '')
+      envAppIds[key] = val
   }
-  catch (err) {
-    console.warn(`[E2E global-setup] provisionApps failed (non-fatal): ${err}`)
+  const allPreset = preProvisioned.every(k => envAppIds[k] !== undefined)
+
+  if (allPreset) {
+    // All app IDs already available via env — skip provisioning to avoid
+    // race conditions in parallel CI jobs.
+    provisionedIds = envAppIds
+    console.warn(`[E2E global-setup] App IDs pre-set via env — skipping provisionApps (${Object.keys(provisionedIds).length} apps)`)
+  }
+  else {
+    try {
+      const fixturesDir = join(fileURLToPath(import.meta.url), '..', '..', 'fixtures', 'apps')
+      provisionedIds = await provisionApps(
+        consoleBase,
+        cookieString,
+        csrfToken,
+        primaryWsId,
+        secondaryWsId,
+        fixturesDir,
+        E.edition,
+      )
+      console.warn(`[E2E global-setup] Provisioned ${Object.keys(provisionedIds).length} fixture apps`)
+    }
+    catch (err) {
+      console.warn(`[E2E global-setup] provisionApps failed (non-fatal): ${err}`)
+    }
   }
 
   // ── Provide capabilities ─────────────────────────────────────────────────
@@ -244,15 +276,15 @@ export async function setup(project: TestProject): Promise<void> {
     workspaceId: primaryWsId,
     workspaceName: primaryWsName,
     ws2Id: secondaryWsId,
-    chatAppId: provisionedIds.DIFY_E2E_CHAT_APP_ID ?? '',
-    workflowAppId: provisionedIds.DIFY_E2E_WORKFLOW_APP_ID ?? '',
-    fileAppId: provisionedIds.DIFY_E2E_FILE_APP_ID ?? '',
-    fileChatAppId: provisionedIds.DIFY_E2E_FILE_CHAT_APP_ID ?? '',
-    hitlAppId: provisionedIds.DIFY_E2E_HITL_APP_ID ?? '',
-    hitlExternalAppId: provisionedIds.DIFY_E2E_HITL_EXTERNAL_APP_ID ?? '',
-    hitlSingleActionAppId: provisionedIds.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID ?? '',
-    hitlMultiNodeAppId: provisionedIds.DIFY_E2E_HITL_MULTI_NODE_APP_ID ?? '',
-    ws2AppId: provisionedIds.DIFY_E2E_WS2_APP_ID ?? '',
+    chatAppId:             provisionedIds.DIFY_E2E_CHAT_APP_ID             || E.chatAppId,
+    workflowAppId:         provisionedIds.DIFY_E2E_WORKFLOW_APP_ID         || E.workflowAppId,
+    fileAppId:             provisionedIds.DIFY_E2E_FILE_APP_ID             || E.fileAppId,
+    fileChatAppId:         provisionedIds.DIFY_E2E_FILE_CHAT_APP_ID        || E.fileChatAppId,
+    hitlAppId:             provisionedIds.DIFY_E2E_HITL_APP_ID             || E.hitlAppId,
+    hitlExternalAppId:     provisionedIds.DIFY_E2E_HITL_EXTERNAL_APP_ID   || E.hitlExternalAppId,
+    hitlSingleActionAppId: provisionedIds.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID || E.hitlSingleActionAppId,
+    hitlMultiNodeAppId:    provisionedIds.DIFY_E2E_HITL_MULTI_NODE_APP_ID  || E.hitlMultiNodeAppId,
+    ws2AppId:              provisionedIds.DIFY_E2E_WS2_APP_ID              || E.ws2AppId,
   }
 
   // @ts-expect-error — ProvidedContext augmentation cannot be expressed without
