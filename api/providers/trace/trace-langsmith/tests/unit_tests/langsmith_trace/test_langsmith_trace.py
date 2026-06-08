@@ -1,3 +1,4 @@
+import pytest
 import collections
 from datetime import datetime, timedelta
 from typing import override
@@ -36,7 +37,7 @@ def langsmith_config():
 
 
 @pytest.fixture
-def trace_instance(langsmith_config, monkeypatch: pytest.MonkeyPatch):
+def trace_instance(langsmith_config: LangSmithConfig, monkeypatch: pytest.MonkeyPatch):
     # Mock LangSmith client
     mock_client = MagicMock()
     monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.Client", lambda **kwargs: mock_client)
@@ -45,7 +46,7 @@ def trace_instance(langsmith_config, monkeypatch: pytest.MonkeyPatch):
     return instance
 
 
-def test_init(langsmith_config, monkeypatch: pytest.MonkeyPatch):
+def test_init(langsmith_config: LangSmithConfig, monkeypatch: pytest.MonkeyPatch):
     mock_client_class = MagicMock()
     monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.Client", mock_client_class)
     monkeypatch.setenv("FILES_URL", "http://test.url")
@@ -58,7 +59,7 @@ def test_init(langsmith_config, monkeypatch: pytest.MonkeyPatch):
     assert instance.file_base_url == "http://test.url"
 
 
-def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
+def test_trace_dispatch(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
     methods = [
         "workflow_trace",
         "message_trace",
@@ -108,7 +109,7 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
+def test_workflow_trace(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
     # Setup trace info
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
@@ -228,7 +229,7 @@ def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
     assert call_args[4].run_type == LangSmithRunType.retriever
 
 
-def test_workflow_trace_no_start_time(trace_instance, monkeypatch: pytest.MonkeyPatch):
+def test_workflow_trace_no_start_time(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
     workflow_data.finished_at = _dt() + timedelta(seconds=1)
@@ -271,7 +272,7 @@ def test_workflow_trace_no_start_time(trace_instance, monkeypatch: pytest.Monkey
     assert trace_instance.add_run.called
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+def test_workflow_trace_missing_app_id(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
     trace_info = MagicMock(spec=WorkflowTraceInfo)
     trace_info.trace_id = "trace-1"
     trace_info.message_id = None
@@ -295,7 +296,7 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.Monke
         trace_instance.workflow_trace(trace_info)
 
 
-def test_message_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
+def test_message_trace(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -341,7 +342,7 @@ def test_message_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
     assert call_args[1].name == "llm"
 
 
-def test_message_trace_no_data(trace_instance):
+def test_message_trace_no_data(trace_instance: LangSmithDataTrace):
     trace_info = MagicMock(spec=MessageTraceInfo)
     trace_info.message_data = None
     trace_info.file_list = []
@@ -352,7 +353,7 @@ def test_message_trace_no_data(trace_instance):
     trace_instance.add_run.assert_not_called()
 
 
-def test_moderation_trace_no_data(trace_instance):
+def test_moderation_trace_no_data(trace_instance: LangSmithDataTrace):
     trace_info = MagicMock(spec=ModerationTraceInfo)
     trace_info.message_data = None
     trace_instance.add_run = MagicMock()
@@ -360,7 +361,7 @@ def test_moderation_trace_no_data(trace_instance):
     trace_instance.add_run.assert_not_called()
 
 
-def test_suggested_question_trace_no_data(trace_instance):
+def test_suggested_question_trace_no_data(trace_instance: LangSmithDataTrace):
     trace_info = MagicMock(spec=SuggestedQuestionTraceInfo)
     trace_info.message_data = None
     trace_instance.add_run = MagicMock()
@@ -368,7 +369,7 @@ def test_suggested_question_trace_no_data(trace_instance):
     trace_instance.add_run.assert_not_called()
 
 
-def test_dataset_retrieval_trace_no_data(trace_instance):
+def test_dataset_retrieval_trace_no_data(trace_instance: LangSmithDataTrace):
     trace_info = MagicMock(spec=DatasetRetrievalTraceInfo)
     trace_info.message_data = None
     trace_instance.add_run = MagicMock()
@@ -376,7 +377,7 @@ def test_dataset_retrieval_trace_no_data(trace_instance):
     trace_instance.add_run.assert_not_called()
 
 
-def test_moderation_trace(trace_instance):
+def test_moderation_trace(trace_instance: LangSmithDataTrace):
     message_data = MagicMock()
     message_data.created_at = _dt()
     message_data.updated_at = _dt()
@@ -401,7 +402,7 @@ def test_moderation_trace(trace_instance):
     assert trace_instance.add_run.call_args[0][0].name == TraceTaskName.MODERATION_TRACE
 
 
-def test_suggested_question_trace(trace_instance):
+def test_suggested_question_trace(trace_instance: LangSmithDataTrace):
     message_data = MagicMock()
     message_data.created_at = _dt()
     message_data.updated_at = _dt()
@@ -425,7 +426,7 @@ def test_suggested_question_trace(trace_instance):
     assert trace_instance.add_run.call_args[0][0].name == TraceTaskName.SUGGESTED_QUESTION_TRACE
 
 
-def test_dataset_retrieval_trace(trace_instance):
+def test_dataset_retrieval_trace(trace_instance: LangSmithDataTrace):
     message_data = MagicMock()
     message_data.created_at = _dt()
     message_data.updated_at = _dt()
@@ -447,7 +448,7 @@ def test_dataset_retrieval_trace(trace_instance):
     assert trace_instance.add_run.call_args[0][0].name == TraceTaskName.DATASET_RETRIEVAL_TRACE
 
 
-def test_tool_trace(trace_instance):
+def test_tool_trace(trace_instance: LangSmithDataTrace):
     trace_info = ToolTraceInfo(
         message_id="msg-1",
         message_data=MagicMock(),
@@ -472,7 +473,7 @@ def test_tool_trace(trace_instance):
     assert trace_instance.add_run.call_args[0][0].name == "my_tool"
 
 
-def test_generate_name_trace(trace_instance):
+def test_generate_name_trace(trace_instance: LangSmithDataTrace):
     trace_info = GenerateNameTraceInfo(
         inputs={"q": "hi"},
         outputs={"name": "new"},
@@ -490,7 +491,7 @@ def test_generate_name_trace(trace_instance):
     assert trace_instance.add_run.call_args[0][0].name == TraceTaskName.GENERATE_NAME_TRACE
 
 
-def test_add_run_success(trace_instance):
+def test_add_run_success(trace_instance: LangSmithDataTrace):
     run_data = LangSmithRunModel(
         id="run-1", name="test", inputs={}, outputs={}, run_type=LangSmithRunType.tool, start_time=_dt()
     )
@@ -501,27 +502,27 @@ def test_add_run_success(trace_instance):
     assert kwargs["session_id"] == "proj-1"
 
 
-def test_add_run_error(trace_instance):
+def test_add_run_error(trace_instance: LangSmithDataTrace):
     run_data = LangSmithRunModel(id="run-1", name="test", run_type=LangSmithRunType.tool, start_time=_dt())
     trace_instance.langsmith_client.create_run.side_effect = Exception("failed")
     with pytest.raises(ValueError, match="LangSmith Failed to create run: failed"):
         trace_instance.add_run(run_data)
 
 
-def test_update_run_success(trace_instance):
+def test_update_run_success(trace_instance: LangSmithDataTrace):
     update_data = LangSmithRunUpdateModel(run_id="run-1", outputs={"out": "val"})
     trace_instance.update_run(update_data)
     trace_instance.langsmith_client.update_run.assert_called_once()
 
 
-def test_update_run_error(trace_instance):
+def test_update_run_error(trace_instance: LangSmithDataTrace):
     update_data = LangSmithRunUpdateModel(run_id="run-1")
     trace_instance.langsmith_client.update_run.side_effect = Exception("failed")
     with pytest.raises(ValueError, match="LangSmith Failed to update run: failed"):
         trace_instance.update_run(update_data)
 
 
-def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
+def test_workflow_trace_usage_extraction_error(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch, caplog):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
     workflow_data.finished_at = _dt() + timedelta(seconds=1)
@@ -588,25 +589,25 @@ def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch: pyte
     assert "Failed to extract usage" in caplog.text
 
 
-def test_api_check_success(trace_instance):
+def test_api_check_success(trace_instance: LangSmithDataTrace):
     assert trace_instance.api_check() is True
     assert trace_instance.langsmith_client.create_project.called
     assert trace_instance.langsmith_client.delete_project.called
 
 
-def test_api_check_error(trace_instance):
+def test_api_check_error(trace_instance: LangSmithDataTrace):
     trace_instance.langsmith_client.create_project.side_effect = Exception("error")
     with pytest.raises(ValueError, match="LangSmith API check failed: error"):
         trace_instance.api_check()
 
 
-def test_get_project_url_success(trace_instance):
+def test_get_project_url_success(trace_instance: LangSmithDataTrace):
     trace_instance.langsmith_client.get_run_url.return_value = "https://smith.langchain.com/o/org/p/proj/r/run"
     url = trace_instance.get_project_url()
     assert url == "https://smith.langchain.com/o/org/p/proj"
 
 
-def test_get_project_url_error(trace_instance):
+def test_get_project_url_error(trace_instance: LangSmithDataTrace):
     trace_instance.langsmith_client.get_run_url.side_effect = Exception("error")
     with pytest.raises(ValueError, match="LangSmith get run url failed: error"):
         trace_instance.get_project_url()
@@ -654,7 +655,7 @@ def _patch_workflow_trace_deps(monkeypatch, trace_instance):
     trace_instance.add_run = MagicMock()
 
 
-def test_workflow_trace_id_uses_message_id_not_external(trace_instance, monkeypatch):
+def test_workflow_trace_id_uses_message_id_not_external(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
     """Chatflow with external trace_id: LangSmith trace_id must be message_id, not external."""
     trace_info = _make_workflow_trace_info(
         message_id="msg-abc",
@@ -675,7 +676,7 @@ def test_workflow_trace_id_uses_message_id_not_external(trace_instance, monkeypa
     assert trace_info.metadata.get("external_trace_id") == "external-999"
 
 
-def test_workflow_trace_id_pure_workflow_uses_run_id(trace_instance, monkeypatch):
+def test_workflow_trace_id_pure_workflow_uses_run_id(trace_instance: LangSmithDataTrace, monkeypatch: pytest.MonkeyPatch):
     """Pure workflow (no message_id) with external trace_id: trace_id must be workflow_run_id."""
     trace_info = _make_workflow_trace_info(
         message_id=None,

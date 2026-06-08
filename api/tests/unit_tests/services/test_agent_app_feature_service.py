@@ -7,6 +7,7 @@ update_features persists those flags as a new app_model_config version without
 touching model / prompt / agent_mode.
 """
 
+import pytest
 from types import SimpleNamespace
 from typing import Any
 
@@ -89,7 +90,7 @@ class _FakeWriteSession:
 
 
 class TestUpdateFeatures:
-    def test_persists_new_app_model_config_version(self, monkeypatch):
+    def test_persists_new_app_model_config_version(self, monkeypatch: pytest.MonkeyPatch):
         session = _FakeWriteSession()
         monkeypatch.setattr(svc_mod.db, "session", session)
         app_model = SimpleNamespace(

@@ -1,3 +1,4 @@
+import pytest
 import importlib.util
 import sys
 from pathlib import Path
@@ -115,7 +116,7 @@ class StreamApi(Resource):
     assert {actual.model for actual in checks[0].actual} == {"StreamResponse"}
 
 
-def test_main_is_report_only_by_default_for_mismatches(tmp_path: Path, monkeypatch):
+def test_main_is_report_only_by_default_for_mismatches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     module = _load_lint_response_contracts_module()
     controller_path = tmp_path / "controllers" / "sample.py"
     controller_path.parent.mkdir()

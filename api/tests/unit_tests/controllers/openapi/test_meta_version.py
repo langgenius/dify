@@ -1,6 +1,7 @@
 """Meta endpoint /openapi/v1/_version — no auth, returns version + edition."""
 
 from __future__ import annotations
+import pytest
 
 
 def test_version_endpoint_returns_200_without_auth(openapi_app):
@@ -30,7 +31,7 @@ def test_version_endpoint_ignores_bearer_header(openapi_app):
     assert "edition" in payload
 
 
-def test_version_endpoint_reflects_edition_config(openapi_app, monkeypatch):
+def test_version_endpoint_reflects_edition_config(openapi_app, monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
 
     monkeypatch.setattr(dify_config, "EDITION", "CLOUD")
@@ -42,7 +43,7 @@ def test_version_endpoint_reflects_edition_config(openapi_app, monkeypatch):
     assert response.get_json()["edition"] == "CLOUD"
 
 
-def test_version_endpoint_falls_back_to_self_hosted_on_unexpected_edition(openapi_app, monkeypatch):
+def test_version_endpoint_falls_back_to_self_hosted_on_unexpected_edition(openapi_app, monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
 
     monkeypatch.setattr(dify_config, "EDITION", "EXPERIMENTAL")

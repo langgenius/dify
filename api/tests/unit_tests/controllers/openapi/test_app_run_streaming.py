@@ -1,5 +1,7 @@
 """Tests: openapi /run always streams; response_mode removed from AppRunRequest."""
 
+from flask import Flask
+import pytest
 from __future__ import annotations
 
 import sys
@@ -30,7 +32,7 @@ def test_app_run_request_with_query():
     assert req.query == "hello"
 
 
-def test_run_chat_always_calls_generate_with_streaming_true(app, bypass_pipeline, monkeypatch):
+def test_run_chat_always_calls_generate_with_streaming_true(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """_run_chat must always invoke AppGenerateService.generate with streaming=True."""
     from controllers.openapi.app_run import _run_chat
 
@@ -56,7 +58,7 @@ def test_stop_task_endpoint_registered(openapi_app):
     assert "/openapi/v1/apps/<string:app_id>/tasks/<string:task_id>/stop" in rules
 
 
-def test_stop_task_calls_queue_manager_and_graph_engine(app, bypass_pipeline, monkeypatch):
+def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     import uuid
 
     from controllers.openapi.app_run import AppRunTaskStopApi

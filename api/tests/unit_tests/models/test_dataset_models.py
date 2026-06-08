@@ -9,6 +9,7 @@ This test suite covers:
 - Embedding storage validation
 """
 
+import pytest
 import json
 import pickle
 from datetime import UTC, datetime
@@ -703,7 +704,7 @@ class TestDocumentSegmentIndexing:
         # Assert
         assert segment.hit_count == 5
 
-    def test_document_segment_attachments_prefers_files_url_for_source_url(self, monkeypatch):
+    def test_document_segment_attachments_prefers_files_url_for_source_url(self, monkeypatch: pytest.MonkeyPatch):
         """Test attachment source URLs use FILES_URL before falling back to CONSOLE_API_URL."""
         # Arrange
         segment = DocumentSegment(

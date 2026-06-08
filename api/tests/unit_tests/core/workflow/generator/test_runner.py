@@ -7,6 +7,7 @@ Workflow and Advanced-Chat modes, plus that obvious failure paths surface a
 readable error envelope.
 """
 
+import pytest
 import json
 from unittest.mock import MagicMock
 
@@ -411,7 +412,7 @@ class TestWorkflowGeneratorTransientRetry:
             }
         )
 
-    def test_retries_transient_invoke_error_then_succeeds(self, monkeypatch):
+    def test_retries_transient_invoke_error_then_succeeds(self, monkeypatch: pytest.MonkeyPatch):
         # The planner's first invoke raises a transient connection error; the
         # retry succeeds and the pipeline completes normally. Sleep is patched
         # out so the test doesn't actually wait for the backoff.
@@ -441,7 +442,7 @@ class TestWorkflowGeneratorTransientRetry:
         # planner (failed once + retried) + builder = 3 invocations total.
         assert model_instance.invoke_llm.call_count == 3
 
-    def test_gives_up_after_exhausting_transient_retries(self, monkeypatch):
+    def test_gives_up_after_exhausting_transient_retries(self, monkeypatch: pytest.MonkeyPatch):
         # Every attempt hits the transient error — once we exhaust the retry
         # budget the failure surfaces as a normal error envelope rather than
         # hanging or looping forever.
@@ -469,7 +470,7 @@ class TestWorkflowGeneratorTransientRetry:
 
         assert model_instance.invoke_llm.call_count == _INVOKE_MAX_ATTEMPTS
 
-    def test_does_not_retry_permanent_invoke_error(self, monkeypatch):
+    def test_does_not_retry_permanent_invoke_error(self, monkeypatch: pytest.MonkeyPatch):
         # An auth error is permanent — retrying just burns latency and quota.
         # The runner must fail on the first attempt.
         # If the code wrongly slept here we'd want the test to still be fast;
