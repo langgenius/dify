@@ -7,7 +7,6 @@ import {
   Dialog,
   DialogCloseButton,
   DialogContent,
-  DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -184,9 +183,6 @@ export function EditDeploymentDialog({
           <DialogTitle className="title-xl-semi-bold text-text-primary">
             {t('card.menu.editInfo')}
           </DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t('settings.descriptionHelp')}
-          </DialogDescription>
         </div>
         <div className="px-6 py-5">
           {instanceQuery.isLoading

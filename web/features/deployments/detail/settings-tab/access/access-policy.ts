@@ -7,11 +7,8 @@ import type { AccessSubjectSelectionValue } from '@/app/components/app/app-acces
 import type {
   AccessControlAccount,
   AccessControlGroup,
-  Subject as AccessControlSubject,
-  SubjectAccount as AccessControlSubjectAccount,
-  SubjectGroup as AccessControlSubjectGroup,
 } from '@/models/access-control'
-import { SubjectType as AccessControlSubjectType, AccessMode as AppAccessMode } from '@/models/access-control'
+import { AccessMode as AppAccessMode } from '@/models/access-control'
 
 export type AccessPermissionKind = 'organization' | 'specific' | 'anyone'
 type AccessPolicyMode = NonNullable<AccessPolicy['mode']>
@@ -66,33 +63,6 @@ export function appAccessModeToPermissionKey(mode: AppAccessMode): AccessPermiss
   if (mode === AppAccessMode.PUBLIC)
     return 'anyone'
   return 'organization'
-}
-
-export function normalizeSubject(subject: AccessControlSubject): SelectableAccessSubject | undefined {
-  if (subject.subjectType === AccessControlSubjectType.GROUP) {
-    const groupSubject = subject as AccessControlSubjectGroup
-    const id = groupSubject.subjectId || groupSubject.groupData.id
-    if (!id)
-      return undefined
-
-    return {
-      id,
-      subjectType: SUBJECT_TYPE_GROUP,
-      name: groupSubject.groupData.name,
-      memberCount: groupSubject.groupData.groupSize,
-    }
-  }
-
-  const accountSubject = subject as AccessControlSubjectAccount
-  const id = accountSubject.subjectId || accountSubject.accountData.id
-  if (!id)
-    return undefined
-
-  return {
-    id,
-    subjectType: SUBJECT_TYPE_ACCOUNT,
-    name: accountSubject.accountData.name || accountSubject.accountData.email,
-  }
 }
 
 export function normalizeResolvedSubject(subject: Subject): SelectableAccessSubject | undefined {

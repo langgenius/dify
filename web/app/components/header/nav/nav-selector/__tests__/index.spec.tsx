@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react'
 import type { INavSelectorProps, NavItem } from '../index'
 import type { AppContextValue } from '@/context/app-context'
 import { act, fireEvent, render, screen } from '@testing-library/react'
@@ -9,10 +8,12 @@ import { useAppContext } from '@/context/app-context'
 import { AppModeEnum } from '@/types/app'
 import { NavSelector } from '../index'
 
-vi.mock('@/next/link', () => ({
-  default: ({ href, children, ...props }: ComponentProps<'a'>) => (
-    <a href={href?.toString()} {...props}>{children}</a>
-  ),
+const mockPush = vi.fn()
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }))
 
 // Mock app store
@@ -98,18 +99,18 @@ describe('NavSelector Component', () => {
       expect(screen.getByText('Item 2'))!.toBeInTheDocument()
     })
 
-    it('should render a link and call setAppDetail when an item is clicked', async () => {
+    it('should call setAppDetail and navigate when an item is clicked', async () => {
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
         fireEvent.click(button)
       })
       const item2 = screen.getByText('Item 2')
-      expect(item2.closest('a')).toHaveAttribute('href', '/item2')
       await act(async () => {
         fireEvent.click(item2)
       })
       expect(mockSetAppDetail).toHaveBeenCalled()
+      expect(mockPush).toHaveBeenCalledWith('/item2')
     })
 
     it('should render current item without a route link', async () => {

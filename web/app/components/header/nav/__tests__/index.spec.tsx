@@ -16,9 +16,14 @@ import { useSelectedLayoutSegment } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../index'
 
+const mockPush = vi.fn()
+
 // Mock next/navigation
 vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: vi.fn(),
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }))
 
 // Mock app store
@@ -208,7 +213,7 @@ describe('Nav Component', () => {
       })
     })
 
-    it('should render a link and clear app detail when an item is selected', async () => {
+    it('should clear app detail and navigate when an item is selected', async () => {
       vi.mocked(useSelectedLayoutSegment).mockReturnValue('snippets')
       render(<Nav {...defaultProps} activeSegment={['apps', 'app', 'snippets']} curNav={curNav} />)
       const selectorButton = screen.getByRole('button', { name: /Item 1/i })
@@ -219,12 +224,12 @@ describe('Nav Component', () => {
       mockSetAppDetail.mockClear()
 
       const item2 = await screen.findByText('Item 2')
-      expect(item2.closest('a')).toHaveAttribute('href', '/item2')
       await act(async () => {
         fireEvent.click(item2)
       })
 
       expect(mockSetAppDetail).toHaveBeenCalled()
+      expect(mockPush).toHaveBeenCalledWith('/item2')
     })
 
     it('should not navigate if selecting current nav item', async () => {

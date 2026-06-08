@@ -5,7 +5,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLinkItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -24,7 +23,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
-import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 
 export type NavItem = {
   id: string
@@ -141,7 +140,13 @@ function NavSelectorRouteItem({ nav, isCurrent, onBeforeNavigate }: {
   isCurrent: boolean
   onBeforeNavigate: () => void
 }) {
+  const router = useRouter()
   const className = 'h-auto truncate px-3 py-[6px] text-[14px] font-normal text-text-secondary'
+
+  function handleNavigate() {
+    onBeforeNavigate()
+    router.push(nav.link)
+  }
 
   if (isCurrent) {
     return (
@@ -155,14 +160,13 @@ function NavSelectorRouteItem({ nav, isCurrent, onBeforeNavigate }: {
   }
 
   return (
-    <DropdownMenuLinkItem
-      render={<Link href={nav.link} />}
+    <DropdownMenuItem
       className={className}
       title={nav.name}
-      onClick={onBeforeNavigate}
+      onClick={handleNavigate}
     >
       <NavSelectorItemContent nav={nav} />
-    </DropdownMenuLinkItem>
+    </DropdownMenuItem>
   )
 }
 
@@ -184,11 +188,11 @@ export function NavSelector({ curNav, navigationItems, createText, isApp, onCrea
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         className={cn(
-          'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active outline-hidden',
+          'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 min-w-0 items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active outline-hidden',
           'focus-visible:bg-components-main-nav-nav-button-bg-active focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-components-main-nav-nav-button-bg-active',
         )}
       >
-        <div className="max-w-[157px] truncate" title={curNav?.name}>{curNav?.name}</div>
+        <div className="max-w-[157px] min-w-0 truncate" title={curNav?.name}>{curNav?.name}</div>
         <RiArrowDownSLine
           className="ml-1 size-3 shrink-0 opacity-50 group-hover:opacity-100 group-data-popup-open:opacity-100"
           aria-hidden="true"
