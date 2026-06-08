@@ -12,14 +12,14 @@ type Item = {
   disabled?: boolean
 }
 
-export type ITabHeaderProps = {
+export type ITabHeaderProps = Readonly<{
   items: Item[]
   value: string
   itemClassName?: string
   itemWrapClassName?: string
   activeItemClassName?: string
   onChange: (value: string) => void
-}
+}>
 
 const TabHeader: FC<ITabHeaderProps> = ({
   items,
