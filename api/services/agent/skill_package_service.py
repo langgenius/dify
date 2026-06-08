@@ -117,6 +117,21 @@ class SkillPackageService:
             hash=hashlib.sha256(content).hexdigest(),
         )
 
+    def read_member_bytes(self, *, content: bytes, member_path: str) -> bytes:
+        """Read a single archive member's bytes (used by standardization, ENG-594)."""
+        try:
+            archive = zipfile.ZipFile(io.BytesIO(content))
+        except zipfile.BadZipFile as exc:
+            raise SkillPackageError("invalid_archive", "skill archive is not a valid zip", status_code=400) from exc
+        with archive:
+            member = next(
+                (info for info in archive.infolist() if posixpath.normpath(info.filename) == member_path),
+                None,
+            )
+            if member is None:
+                raise SkillPackageError("member_not_found", f"{member_path} not found in archive", status_code=400)
+            return archive.read(member)
+
     @staticmethod
     def _check_extension(filename: str) -> None:
         lowered = (filename or "").lower()

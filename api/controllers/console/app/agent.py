@@ -12,6 +12,8 @@ from libs.login import login_required
 from models import Account
 from models.model import App, AppMode
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
+from services.agent.skill_standardize_service import SkillStandardizeService
+from services.agent_drive_service import AgentDriveError
 from services.agent_service import AgentService
 from services.file_service import FileService
 
@@ -88,3 +90,40 @@ class AgentSkillUploadApi(Resource):
         )
         skill_ref = manifest.to_skill_ref(file_id=upload_file.id)
         return {"skill": skill_ref.model_dump(exclude_none=True), "manifest": manifest.model_dump()}, 201
+
+
+@console_ns.route("/apps/<uuid:app_id>/agent/skills/standardize")
+class AgentSkillStandardizeApi(Resource):
+    @console_ns.doc("standardize_agent_skill")
+    @console_ns.doc(description="Validate + standardize a Skill into the agent drive (ENG-594)")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(201, "Skill standardized into drive")
+    @console_ns.response(400, "Invalid skill package or no bound agent")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.AGENT])
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
+        """Upload a Skill, validate it, and standardize it into the app agent's drive."""
+        agent_id = app_model.bound_agent_id
+        if not agent_id:
+            return {"code": "no_bound_agent", "message": "app has no bound agent"}, 400
+        if "file" not in request.files:
+            return {"code": "no_file", "message": "no skill file uploaded"}, 400
+        if len(request.files) > 1:
+            return {"code": "too_many_files", "message": "only one skill file is allowed"}, 400
+
+        upload = request.files["file"]
+        content = upload.stream.read()
+        try:
+            result = SkillStandardizeService().standardize(
+                content=content,
+                filename=upload.filename or "",
+                tenant_id=app_model.tenant_id,
+                user_id=current_user.id,
+                agent_id=agent_id,
+            )
+        except (SkillPackageError, AgentDriveError) as exc:
+            return {"code": exc.code, "message": exc.message}, exc.status_code
+        return result, 201
