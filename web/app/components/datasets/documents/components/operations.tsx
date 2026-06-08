@@ -264,6 +264,12 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                       <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </button>
+                    {IS_CE_EDITION && (
+                      <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('summary')}>
+                        <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle size-4 text-text-tertiary" />
+                        <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+                      </button>
+                    )}
                     {settingsMenuItem}
                     {data_source_type === DataSourceType.FILE && (
                       <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
@@ -275,12 +281,6 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                       <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('sync')}>
                         <span aria-hidden className="i-ri-loop-left-line size-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
-                      </button>
-                    )}
-                    {IS_CE_EDITION && (
-                      <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('summary')}>
-                        <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle size-4 text-text-tertiary" />
-                        <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
                       </button>
                     )}
                     <Divider className="my-1" />
