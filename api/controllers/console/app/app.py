@@ -2,7 +2,7 @@ import logging
 import re
 import uuid
 from datetime import datetime
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
@@ -10,7 +10,7 @@ from pydantic import AliasChoices, BaseModel, Field, computed_field, field_valid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
@@ -69,12 +69,13 @@ _logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
+DEFAULT_APP_LIST_MODE: AppListMode = "all"
 
 
 class AppListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
-    mode: AppListMode = Field(default=cast(AppListMode, "all"), description="App mode filter")
+    mode: AppListMode = Field(default=DEFAULT_APP_LIST_MODE, description="App mode filter")
     name: str | None = Field(default=None, description="Filter by app name")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
@@ -563,8 +564,8 @@ class AppListApi(Resource):
                 current_user_id,
                 app_ids,
             )
-            for app in app_pagination.items:
-                app.permission_keys = permission_keys_map.get(str(app.id), [])
+        else:
+            permission_keys_map = {}
 
         workflow_capable_app_ids = [
             str(app.id) for app in app_pagination.items if app.mode in {"workflow", "advanced-chat"}
@@ -598,6 +599,15 @@ class AppListApi(Resource):
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
 
         pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
+        if app_pagination.items:
+            pagination_model = pagination_model.model_copy(
+                update={
+                    "data": [
+                        item.model_copy(update={"permission_keys": permission_keys_map.get(str(item.id), [])})
+                        for item in pagination_model.data
+                    ]
+                }
+            )
         return pagination_model.model_dump(mode="json"), 200
 
     @console_ns.doc("create_app")
@@ -633,8 +643,9 @@ class AppListApi(Resource):
             current_user.id,
             [str(app.id)],
         )
-        app.permission_keys = permission_keys_map.get(str(app.id), [])
-        app_detail = AppDetail.model_validate(app, from_attributes=True)
+        app_detail = AppDetail.model_validate(app, from_attributes=True).model_copy(
+            update={"permission_keys": permission_keys_map.get(str(app.id), [])}
+        )
         return app_detail.model_dump(mode="json"), 201
 
 
@@ -667,9 +678,10 @@ class AppApi(Resource):
             current_user.id,
             [str(app_model.id)],
         )
-        app_model.permission_keys = permission_keys_map.get(str(app_model.id), [])
 
-        response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
+        response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True).model_copy(
+            update={"permission_keys": permission_keys_map.get(str(app_model.id), [])}
+        )
         return response_model.model_dump(mode="json")
 
     @console_ns.doc("update_app")
@@ -783,15 +795,17 @@ class AppCopyApi(Resource):
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)
 
-        if app:
-            permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-                str(current_tenant_id),
-                current_user.id,
-                [str(app.id)],
-            )
-            app.permission_keys = permission_keys_map.get(str(app.id), [])
+        if not app:
+            raise NotFound("App not found")
 
-        response_model = AppDetailWithSite.model_validate(app, from_attributes=True)
+        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [str(app.id)],
+        )
+        response_model = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
+            update={"permission_keys": permission_keys_map.get(str(app.id), [])}
+        )
         return response_model.model_dump(mode="json"), 201
 
 
