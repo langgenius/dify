@@ -27,7 +27,7 @@ function DatasetFirstEmptyState() {
     },
     {
       href: '/datasets/create-from-pipeline',
-      icon: <span aria-hidden className="i-ri-flow-chart size-4" />,
+      icon: <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4" />,
       id: 'pipeline',
       title: t('firstEmpty.pipelineTitle', { ns: 'dataset' }),
       description: t('firstEmpty.pipelineDescription', { ns: 'dataset' }),

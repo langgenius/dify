@@ -142,8 +142,12 @@ vi.mock('@/app/components/app-sidebar/dataset-detail-top', () => ({
 }))
 
 vi.mock('@/features/agent-v2/agent-detail/navigation', () => ({
-  AgentDetailSection: () => <div data-testid="agent-detail-section" />,
-  AgentDetailTop: () => <div data-testid="agent-detail-top" />,
+  AgentDetailSection: ({ expand }: { expand: boolean }) => <div data-testid="agent-detail-section" data-expand={expand} />,
+  AgentDetailTop: ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => (
+    <div data-testid="agent-detail-top" data-expand={expand}>
+      <button type="button" data-testid="agent-detail-toggle" onClick={onToggle}>Toggle</button>
+    </div>
+  ),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -331,6 +335,15 @@ describe('MainNav', () => {
     expect(helpButton.parentElement).toHaveClass('shrink-0', 'rounded-full', 'p-1')
   })
 
+  it('keeps the global navigation account section expanded on home routes', () => {
+    renderMainNav()
+
+    const accountButton = screen.getByRole('button', { name: 'common.account.account' })
+    expect(accountButton).toHaveTextContent('Evan Z')
+    expect(accountButton).toHaveClass('max-w-[180px]', 'gap-3', 'py-1', 'pr-4', 'pl-1')
+    expect(accountButton).not.toHaveClass('justify-center', 'p-1')
+  })
+
   it('renders the desktop environment tag from the old header contract', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
@@ -480,6 +493,20 @@ describe('MainNav', () => {
     expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
   })
 
+  it('shows app detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+    mockPathname = '/app/app-1/overview'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+    fireEvent.mouseEnter(screen.getByTestId('app-detail-top').parentElement!)
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(screen.getAllByTestId('app-detail-top')).toHaveLength(1)
+    expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
+  })
+
   it('replaces global navigation with dataset detail navigation on dataset routes', () => {
     mockPathname = '/datasets/dataset-1/documents'
 
@@ -510,6 +537,20 @@ describe('MainNav', () => {
     expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
   })
 
+  it('shows dataset detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+    mockPathname = '/datasets/dataset-1/documents'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('dataset-detail-toggle'))
+    fireEvent.mouseEnter(screen.getByTestId('dataset-detail-top').parentElement!)
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(screen.getAllByTestId('dataset-detail-top')).toHaveLength(1)
+    expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
+  })
+
   it('replaces global navigation with agent detail navigation on roster detail routes', () => {
     mockPathname = '/roster/agent-1/configure'
 
@@ -517,11 +558,40 @@ describe('MainNav', () => {
 
     expect(screen.getByTestId('agent-detail-top')).toBeInTheDocument()
     expect(screen.getByTestId('agent-detail-section')).toBeInTheDocument()
+    expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+  })
+
+  it('collapses agent detail navigation from the top-right toggle', () => {
+    mockPathname = '/roster/agent-1/configure'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('agent-detail-toggle'))
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+  })
+
+  it('shows agent detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+    mockPathname = '/roster/agent-1/configure'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('agent-detail-toggle'))
+    fireEvent.mouseEnter(screen.getByTestId('agent-detail-top').parentElement!)
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(screen.getAllByTestId('agent-detail-top')).toHaveLength(1)
+    expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')
   })
 
   it.each([
@@ -798,7 +868,6 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.getByText(longName)).toHaveClass('truncate')
-    expect(screen.getByTitle(longName)).toBeInTheDocument()
   })
 
   it('virtualizes large installed web app lists', async () => {
@@ -854,7 +923,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    fireEvent.mouseEnter(screen.getByTitle('Alpha App'))
+    fireEvent.mouseEnter(screen.getByText('Alpha App'))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
     fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
@@ -862,7 +931,7 @@ describe('MainNav', () => {
       expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'installed-1', isPinned: true })
     })
 
-    fireEvent.mouseEnter(screen.getByTitle('Alpha App'))
+    fireEvent.mouseEnter(screen.getByText('Alpha App'))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
     fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
     fireEvent.click(await screen.findByText('common.operation.confirm'))

@@ -1,6 +1,7 @@
 import logging
 import re
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Literal, cast
 
@@ -14,7 +15,12 @@ from werkzeug.exceptions import BadRequest
 
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
@@ -36,12 +42,12 @@ from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
-from libs.helper import build_icon_url, to_timestamp
+from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
-from services.app_service import AppListParams, AppListSortBy, AppService, CreateAppParams
+from services.app_service import AppListParams, AppListSortBy, AppService, CreateAppParams, StarredAppListParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -68,7 +74,7 @@ _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 
 
-class AppListQuery(BaseModel):
+class AppListBaseQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
     mode: AppListMode = Field(default=cast(AppListMode, "all"), description="App mode filter")
@@ -116,6 +122,14 @@ class AppListQuery(BaseModel):
             return [str(uuid.UUID(item)) for item in items]
         except ValueError as exc:
             raise ValueError("Invalid UUID format in creator_ids.") from exc
+
+
+class AppListQuery(AppListBaseQuery):
+    pass
+
+
+class StarredAppListQuery(AppListBaseQuery):
+    pass
 
 
 def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
@@ -381,6 +395,7 @@ class AppPartial(ResponseModel):
     create_user_name: str | None = None
     author_name: str | None = None
     has_draft_trigger: bool | None = None
+    is_starred: bool = False
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -450,12 +465,54 @@ class AppExportResponse(ResponseModel):
     data: str
 
 
+def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
+    if FeatureService.get_system_features().webapp_auth.enabled:
+        app_ids = [str(app.id) for app in apps]
+        res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
+        if len(res) != len(app_ids):
+            raise BadRequest("Invalid app id in webapp auth")
+
+        for app in apps:
+            if str(app.id) in res:
+                app.access_mode = res[str(app.id)].access_mode
+
+    workflow_capable_app_ids = [str(app.id) for app in apps if app.mode in {"workflow", "advanced-chat"}]
+    draft_trigger_app_ids: set[str] = set()
+    if workflow_capable_app_ids:
+        draft_workflows = (
+            session.execute(
+                select(Workflow).where(
+                    Workflow.version == Workflow.VERSION_DRAFT,
+                    Workflow.app_id.in_(workflow_capable_app_ids),
+                    Workflow.tenant_id == tenant_id,
+                )
+            )
+            .scalars()
+            .all()
+        )
+        trigger_node_types = TRIGGER_NODE_TYPES
+        for workflow in draft_workflows:
+            node_id = None
+            try:
+                for node_id, node_data in workflow.walk_nodes():
+                    if node_data.get("type") in trigger_node_types:
+                        draft_trigger_app_ids.add(str(workflow.app_id))
+                        break
+            except Exception:
+                _logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
+                continue
+
+    for app in apps:
+        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
+
+
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
 register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
     console_ns,
     AppListQuery,
+    StarredAppListQuery,
     CreateAppPayload,
     UpdateAppPayload,
     CopyAppPayload,
@@ -499,7 +556,7 @@ register_schema_models(
 class AppListApi(Resource):
     @console_ns.doc("list_apps")
     @console_ns.doc(description="Get list of applications with pagination and filtering")
-    @console_ns.expect(console_ns.models[AppListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AppListQuery))
     @console_ns.response(200, "Success", console_ns.models[AppPagination.__name__])
     @setup_required
     @login_required
@@ -529,46 +586,7 @@ class AppListApi(Resource):
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
 
-        if FeatureService.get_system_features().webapp_auth.enabled:
-            app_ids = [str(app.id) for app in app_pagination.items]
-            res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
-            if len(res) != len(app_ids):
-                raise BadRequest("Invalid app id in webapp auth")
-
-            for app in app_pagination.items:
-                if str(app.id) in res:
-                    app.access_mode = res[str(app.id)].access_mode
-
-        workflow_capable_app_ids = [
-            str(app.id) for app in app_pagination.items if app.mode in {"workflow", "advanced-chat"}
-        ]
-        draft_trigger_app_ids: set[str] = set()
-        if workflow_capable_app_ids:
-            draft_workflows = (
-                session.execute(
-                    select(Workflow).where(
-                        Workflow.version == Workflow.VERSION_DRAFT,
-                        Workflow.app_id.in_(workflow_capable_app_ids),
-                        Workflow.tenant_id == current_tenant_id,
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            trigger_node_types = TRIGGER_NODE_TYPES
-            for workflow in draft_workflows:
-                node_id = None
-                try:
-                    for node_id, node_data in workflow.walk_nodes():
-                        if node_data.get("type") in trigger_node_types:
-                            draft_trigger_app_ids.add(str(workflow.app_id))
-                            break
-                except Exception:
-                    _logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
-                    continue
-
-        for app in app_pagination.items:
-            app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
+        _enrich_app_list_items(session, apps=app_pagination.items, tenant_id=current_tenant_id)
 
         pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
         return pagination_model.model_dump(mode="json"), 200
@@ -602,6 +620,78 @@ class AppListApi(Resource):
         app = app_service.create_app(current_tenant_id, params, current_user)
         app_detail = AppDetail.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
+
+
+@console_ns.route("/apps/starred")
+class StarredAppListApi(Resource):
+    @console_ns.doc("list_starred_apps")
+    @console_ns.doc(description="Get applications starred by the current account")
+    @console_ns.doc(params=query_params_from_model(StarredAppListQuery))
+    @console_ns.response(200, "Success", console_ns.models[AppPagination.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @enterprise_license_required
+    @with_session(write=False)
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user_id: str, session: Session):
+        args = StarredAppListQuery.model_validate(_normalize_app_list_query_args(request.args))
+        params = StarredAppListParams(
+            page=args.page,
+            limit=args.limit,
+            mode=args.mode,
+            sort_by=args.sort_by,
+            name=args.name,
+            tag_ids=args.tag_ids,
+            creator_ids=args.creator_ids,
+            is_created_by_me=args.is_created_by_me,
+        )
+
+        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params)
+        if not app_pagination:
+            empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
+            return empty.model_dump(mode="json"), 200
+
+        _enrich_app_list_items(session, apps=app_pagination.items, tenant_id=current_tenant_id)
+
+        pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
+        return pagination_model.model_dump(mode="json"), 200
+
+
+@console_ns.route("/apps/<uuid:app_id>/star")
+class AppStarApi(Resource):
+    @console_ns.doc("star_app")
+    @console_ns.doc(description="Star an application for the current account")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(404, "App not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @enterprise_license_required
+    @with_current_user_id
+    @with_session
+    @get_app_model(mode=None)
+    def post(self, session: Session, current_user_id: str, app_model: App):
+        AppService.star_app(session, app=app_model, account_id=current_user_id)
+        return dump_response(SimpleResultResponse, {"result": "success"})
+
+    @console_ns.doc("unstar_app")
+    @console_ns.doc(description="Remove the current account's star from an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(404, "App not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @enterprise_license_required
+    @with_current_user_id
+    @with_session
+    @get_app_model(mode=None)
+    def delete(self, session: Session, current_user_id: str, app_model: App):
+        AppService.unstar_app(session, app=app_model, account_id=current_user_id)
+        return dump_response(SimpleResultResponse, {"result": "success"})
 
 
 @console_ns.route("/apps/<uuid:app_id>")

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -27,11 +28,25 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import SupportMenu from './support-menu'
 
 type HelpMenuProps = {
-  compact?: boolean
+  triggerIcon?: ReactNode
+  triggerClassName?: string
 }
 
+const defaultTriggerIcon = (
+  <svg
+    aria-hidden
+    className="size-6 shrink-0"
+    viewBox="0 0 24 24"
+    fill="none"
+  >
+    <path d="M11.9666 16.9985V17.011" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M11.9665 13.2485C11.9665 11.1995 14.4665 11.9134 14.4665 9.49854C14.4665 8.11782 13.3473 6.99854 11.9665 6.99854C11.0412 6.99854 10.2333 7.50129 9.80103 8.24854" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
 const HelpMenu = ({
-  compact = false,
+  triggerIcon = defaultTriggerIcon,
+  triggerClassName,
 }: HelpMenuProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -53,19 +68,11 @@ const HelpMenu = ({
           data-learn-dify-help-target
           className={cn(
             'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-            compact && 'mb-2',
+            triggerClassName,
             open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
           )}
         >
-          <svg
-            aria-hidden
-            className="size-6 shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
-            <path d="M11.9666 16.9985V17.011" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M11.9665 13.2485C11.9665 11.1995 14.4665 11.9134 14.4665 9.49854C14.4665 8.11782 13.3473 6.99854 11.9665 6.99854C11.0412 6.99854 10.2333 7.50129 9.80103 8.24854" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          {triggerIcon}
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="top-end"

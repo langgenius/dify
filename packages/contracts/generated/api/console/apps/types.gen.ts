@@ -936,6 +936,7 @@ export type AppPartial = {
   icon_background?: string | null
   icon_type?: string | null
   id: string
+  is_starred?: boolean
   max_active_requests?: number | null
   mode_compatible_with_agent: string
   name: string
@@ -2029,8 +2030,8 @@ export type GetAppsData = {
   body?: never
   path?: never
   query?: {
-    creator_ids?: Array<string> | null
-    is_created_by_me?: boolean | null
+    creator_ids?: Array<string>
+    is_created_by_me?: boolean
     limit?: number
     mode?:
       | 'advanced-chat'
@@ -2041,9 +2042,10 @@ export type GetAppsData = {
       | 'chat'
       | 'completion'
       | 'workflow'
-    name?: string | null
+    name?: string
     page?: number
-    tag_ids?: Array<string> | null
+    sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
+    tag_ids?: Array<string>
   }
   url: '/apps'
 }
@@ -2136,6 +2138,36 @@ export type PostAppsImportsByImportIdConfirmResponses = {
 
 export type PostAppsImportsByImportIdConfirmResponse
   = PostAppsImportsByImportIdConfirmResponses[keyof PostAppsImportsByImportIdConfirmResponses]
+
+export type GetAppsStarredData = {
+  body?: never
+  path?: never
+  query?: {
+    creator_ids?: Array<string>
+    is_created_by_me?: boolean
+    limit?: number
+    mode?:
+      | 'advanced-chat'
+      | 'agent'
+      | 'agent-chat'
+      | 'all'
+      | 'channel'
+      | 'chat'
+      | 'completion'
+      | 'workflow'
+    name?: string
+    page?: number
+    sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
+    tag_ids?: Array<string>
+  }
+  url: '/apps/starred'
+}
+
+export type GetAppsStarredResponses = {
+  200: AppPagination
+}
+
+export type GetAppsStarredResponse = GetAppsStarredResponses[keyof GetAppsStarredResponses]
 
 export type PostAppsWorkflowsOnlineUsersData = {
   body: WorkflowOnlineUsersPayload
@@ -3749,6 +3781,55 @@ export type PostAppsByAppIdSiteAccessTokenResetResponses = {
 
 export type PostAppsByAppIdSiteAccessTokenResetResponse
   = PostAppsByAppIdSiteAccessTokenResetResponses[keyof PostAppsByAppIdSiteAccessTokenResetResponses]
+
+export type DeleteAppsByAppIdStarData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/star'
+}
+
+export type DeleteAppsByAppIdStarErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type DeleteAppsByAppIdStarError
+  = DeleteAppsByAppIdStarErrors[keyof DeleteAppsByAppIdStarErrors]
+
+export type DeleteAppsByAppIdStarResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteAppsByAppIdStarResponse
+  = DeleteAppsByAppIdStarResponses[keyof DeleteAppsByAppIdStarResponses]
+
+export type PostAppsByAppIdStarData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/star'
+}
+
+export type PostAppsByAppIdStarErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdStarError = PostAppsByAppIdStarErrors[keyof PostAppsByAppIdStarErrors]
+
+export type PostAppsByAppIdStarResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAppsByAppIdStarResponse
+  = PostAppsByAppIdStarResponses[keyof PostAppsByAppIdStarResponses]
 
 export type GetAppsByAppIdStatisticsAverageResponseTimeData = {
   body?: never

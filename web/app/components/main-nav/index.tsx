@@ -4,7 +4,7 @@ import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
@@ -31,6 +31,20 @@ import { WorkspaceCard } from './components/workspace-card'
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
 const DETAIL_SIDEBAR_STORAGE_KEY = 'app-detail-collapse-or-expand'
+const secondarySidebarHelpTriggerIcon = <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
+
+function SecondarySidebarHelpMenu({
+  triggerClassName,
+}: {
+  triggerClassName?: string
+}) {
+  return (
+    <HelpMenu
+      triggerIcon={secondarySidebarHelpTriggerIcon}
+      triggerClassName={triggerClassName}
+    />
+  )
+}
 
 const isDatasetDetailPathname = (pathname: string) => {
   const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
@@ -73,9 +87,39 @@ const MainNav = ({
   const detailNavigationMode = appSidebarExpand === 'collapse' || (!appSidebarExpand && storedDetailSidebarExpand === 'collapse') ? 'collapse' : 'expand'
   const detailNavigationExpanded = detailNavigationMode === 'expand'
   const isCollapsedDetailNavigation = showDetailNavigation && !detailNavigationExpanded
+  const [detailNavigationHoverPreviewOpen, setDetailNavigationHoverPreviewOpen] = useState(false)
+  const closeDetailNavigationHoverPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isDetailNavigationHoverPreviewOpen = isCollapsedDetailNavigation && detailNavigationHoverPreviewOpen
+  const detailNavigationVisibleExpanded = detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
+  const bottomNavigationExpanded = !showDetailNavigation || detailNavigationVisibleExpanded
   const handleToggleDetailNavigation = useCallback(() => {
+    setDetailNavigationHoverPreviewOpen(false)
     setAppSidebarExpand(detailNavigationExpanded ? 'collapse' : 'expand')
   }, [detailNavigationExpanded, setAppSidebarExpand])
+  const openDetailNavigationHoverPreview = useCallback(() => {
+    if (!isCollapsedDetailNavigation)
+      return
+
+    if (closeDetailNavigationHoverPreviewTimerRef.current)
+      clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
+
+    setDetailNavigationHoverPreviewOpen(true)
+  }, [isCollapsedDetailNavigation])
+  const closeDetailNavigationHoverPreview = useCallback(() => {
+    if (closeDetailNavigationHoverPreviewTimerRef.current)
+      clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
+
+    closeDetailNavigationHoverPreviewTimerRef.current = setTimeout(() => {
+      setDetailNavigationHoverPreviewOpen(false)
+    }, 120)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (closeDetailNavigationHoverPreviewTimerRef.current)
+        clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (!showDetailNavigation)
@@ -176,7 +220,8 @@ const MainNav = ({
   return (
     <aside
       className={cn(
-        'flex h-full shrink-0 overflow-hidden transition-all',
+        'relative flex h-full shrink-0 transition-all',
+        isDetailNavigationHoverPreviewOpen ? 'overflow-visible' : 'overflow-hidden',
         showDetailNavigation
           ? detailNavigationExpanded
             ? 'w-[248px] bg-background-body p-1'
@@ -189,24 +234,35 @@ const MainNav = ({
       <div
         className={cn(
           'flex min-h-0 flex-1 flex-col',
-          showDetailNavigation && 'overflow-hidden rounded-lg bg-components-panel-bg',
-          isCollapsedDetailNavigation ? 'w-14' : showDetailNavigation && 'w-60',
+          showDetailNavigation && (
+            isDetailNavigationHoverPreviewOpen
+              ? 'absolute top-1 bottom-1 left-1 z-40 w-60 overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg shadow-lg'
+              : 'overflow-hidden rounded-lg bg-components-panel-bg'
+          ),
+          showDetailNavigation && (detailNavigationVisibleExpanded ? 'w-60' : 'w-14'),
         )}
+        onMouseEnter={isCollapsedDetailNavigation ? openDetailNavigationHoverPreview : undefined}
+        onMouseLeave={isCollapsedDetailNavigation ? closeDetailNavigationHoverPreview : undefined}
       >
         <div className="flex min-h-0 flex-1 flex-col">
           {showDetailNavigation
             ? showAppDetailNavigation
               ? (
                   <AppDetailTop
-                    expand={detailNavigationExpanded}
+                    expand={detailNavigationVisibleExpanded}
                     onToggle={handleToggleDetailNavigation}
                   />
                 )
               : showAgentDetailNavigation
-                ? <AgentDetailTop />
+                ? (
+                    <AgentDetailTop
+                      expand={detailNavigationVisibleExpanded}
+                      onToggle={handleToggleDetailNavigation}
+                    />
+                  )
                 : (
                     <DatasetDetailTop
-                      expand={detailNavigationExpanded}
+                      expand={detailNavigationVisibleExpanded}
                       onToggle={handleToggleDetailNavigation}
                     />
                   )
@@ -223,10 +279,10 @@ const MainNav = ({
               )}
           {showDetailNavigation
             ? showAppDetailNavigation
-              ? <AppDetailSection expand={detailNavigationExpanded} />
+              ? <AppDetailSection expand={detailNavigationVisibleExpanded} />
               : showAgentDetailNavigation
-                ? <AgentDetailSection />
-                : <DatasetDetailSection expand={detailNavigationExpanded} />
+                ? <AgentDetailSection expand={detailNavigationVisibleExpanded} />
+                : <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
             : (
                 <>
                   <nav className="flex flex-col gap-px p-2">
@@ -237,14 +293,14 @@ const MainNav = ({
                   {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
                 </>
               )}
-          {showEnvTag && !isCollapsedDetailNavigation && (
+          {showEnvTag && detailNavigationVisibleExpanded && (
             <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
               <EnvNav />
             </div>
           )}
         </div>
         <div className={cn(
-          isCollapsedDetailNavigation
+          !bottomNavigationExpanded
             ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'
             : cn(
                 'flex w-60 items-center justify-between py-3 pr-1 pl-3',
@@ -254,10 +310,10 @@ const MainNav = ({
               ),
         )}
         >
-          {isCollapsedDetailNavigation
+          {!bottomNavigationExpanded
             ? (
                 <>
-                  <HelpMenu compact />
+                  <SecondarySidebarHelpMenu triggerClassName="mb-2" />
                   <AccountSection compact />
                 </>
               )
@@ -266,9 +322,9 @@ const MainNav = ({
                   <div className="flex min-w-0 items-center gap-1 overflow-hidden">
                     <AccountSection />
                   </div>
-                  {(!showDetailNavigation || detailNavigationExpanded) && (
+                  {(!showDetailNavigation || detailNavigationVisibleExpanded) && (
                     <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-                      <HelpMenu />
+                      {showDetailNavigation ? <SecondarySidebarHelpMenu /> : <HelpMenu />}
                     </div>
                   )}
                 </>
