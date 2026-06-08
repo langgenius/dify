@@ -57,8 +57,8 @@ describe('Category', () => {
     it('should treat unknown value as all categories selection', () => {
       renderComponent({ value: 'Unknown' })
 
-      const allCategoriesItem = screen.getByRole('button', { name: /explore\.apps\.allCategories/ })
-      expect(allCategoriesItem).toHaveAttribute('aria-pressed', 'true')
+      const allCategoriesItem = screen.getByRole('radio', { name: /explore\.apps\.allCategories/ })
+      expect(allCategoriesItem).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should render raw category name when i18n key does not exist', () => {
@@ -69,12 +69,12 @@ describe('Category', () => {
   })
 
   describe('Accessibility', () => {
-    it('should render categories as a segmented control', () => {
+    it('should render categories as a radio group', () => {
       renderComponent({ value: 'Writing' })
 
-      expect(screen.getByRole('group', { name: 'explore.tryApp.category' })).toHaveClass('bg-transparent')
-      expect(screen.getByRole('button', { name: /explore\.apps\.allCategories/ })).toHaveAttribute('aria-pressed', 'false')
-      expect(screen.getByRole('button', { name: 'explore.category.Writing' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('radiogroup', { name: 'explore.tryApp.category' })).toHaveClass('bg-transparent')
+      expect(screen.getByRole('radio', { name: /explore\.apps\.allCategories/ })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByRole('radio', { name: 'explore.category.Writing' })).toHaveAttribute('aria-checked', 'true')
     })
   })
 })
