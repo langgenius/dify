@@ -123,7 +123,7 @@ const DatasetListHeader = ({
                   className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                   onClick={onCreateFromPipeline}
                 >
-                  <span aria-hidden className="i-ri-function-add-line size-4 shrink-0 text-text-secondary" />
+                  <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0 text-text-secondary" />
                   <span className="min-w-0 flex-1 truncate px-1">{t('createFromPipeline', { ns: 'dataset' })}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
