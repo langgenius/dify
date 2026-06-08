@@ -573,26 +573,40 @@ class TestWorkflowTrace:
         assert len(error_calls) == 0
 
     def test_parent_trace_context_injected_into_span_attrs(self, trace_handler, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
+        # Realistic nested context: ParentTraceContext only carries the two ids below
+        # (extra="forbid"). dify.parent.trace_id is DERIVED from the outer run id — there
+        # is no separate parent trace_id field.
+        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
             info = make_workflow_info(
                 metadata={
                     "app_id": "app-001",
                     "tenant_id": "tenant-abc",
                     "parent_trace_context": {
-                        "trace_id": "outer-trace",
                         "parent_node_execution_id": "outer-ne-001",
                         "parent_workflow_run_id": "outer-run-001",
-                        "parent_app_id": "outer-app-001",
                     },
                 }
             )
             trace_handler._workflow_trace(info)
 
         attrs = mock_exporter.export_span.call_args[0][1]
-        assert attrs["dify.parent.trace_id"] == "outer-trace"
+        # Parent trace id is the OUTER workflow run id (derived, matching the span/stdout
+        # trace_id algorithm in the collector L1), NOT a non-existent ``trace_id`` field.
+        assert attrs["dify.parent.trace_id"] == "outer-run-001"
         assert attrs["dify.parent.node.execution_id"] == "outer-ne-001"
         assert attrs["dify.parent.workflow.run_id"] == "outer-run-001"
-        assert attrs["dify.parent.app.id"] == "outer-app-001"
+        # No source for ``dify.parent.app.id`` (ParentTraceContext has no app id) → omitted.
+        assert "dify.parent.app.id" not in attrs
+
+        # The workflow handler is the only emitter that builds dify.parent.* into its
+        # span attrs and then STRIPS them from the companion log; the linkage instead
+        # rides the OTLP-only otlp_parent_* kwargs. Guard that the stdout companion log
+        # never carries dify.parent.* (a content-leak-adjacent invariant).
+        log_kwargs = mock_log.call_args.kwargs
+        assert not any(k.startswith("dify.parent.") for k in log_kwargs["attributes"])
+        assert log_kwargs["otlp_parent_trace_id"] == "outer-run-001"
+        assert log_kwargs["otlp_parent_node_execution_id"] == "outer-ne-001"
+        assert log_kwargs["otlp_parent_workflow_run_id"] == "outer-run-001"
 
 
 # ---------------------------------------------------------------------------

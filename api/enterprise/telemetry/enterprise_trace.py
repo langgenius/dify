@@ -56,6 +56,7 @@ from enterprise.telemetry.entities import (
     EnterpriseTelemetrySpan,
     TokenMetricLabels,
 )
+from enterprise.telemetry.exporter import datetime_to_ns_or_none
 from enterprise.telemetry.telemetry_log import emit_metric_only_event, emit_telemetry_log
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,10 @@ class EnterpriseOtelTrace:
     def _labels(self, **values: AttributeValue) -> dict[str, AttributeValue]:
         return dict(values)
 
+    def _otlp_timing(self, info: BaseTraceInfo) -> tuple[int | None, int | None]:
+        """Return ``(start_unix_nano, end_unix_nano)`` for an event's OTLP log timing."""
+        return datetime_to_ns_or_none(info.start_time), datetime_to_ns_or_none(info.end_time)
+
     def _safe_payload_value(self, value: Any) -> str | dict[str, Any] | list[object] | None:
         if isinstance(value, str):
             return value
@@ -156,6 +161,43 @@ class EnterpriseOtelTrace:
             return json.dumps(value, default=str)
         except (TypeError, ValueError):
             return str(value)
+
+    def _parent_otlp_fields(self, info: BaseTraceInfo, own_trace_id: str | None = None) -> dict[str, str | None]:
+        """Resolve ``dify.parent.*`` linkage values for the **OTLP path only**.
+
+        Returns the raw ids as ``otlp_parent_*`` keyword arguments for
+        ``emit_telemetry_log`` / ``emit_metric_only_event``. These are added to the
+        OTLP log attributes **only** (never to the stdout ``extra``), so the collector
+        L1 can re-attach ``metric_only`` and nested-workflow events to the correct
+        parent span/trace without changing the emit-side ``trace_id_source`` /
+        ``span_id_source`` or polluting the stdout/Loki log.
+
+        Semantics (``resolved_parent_context`` returns ``(parent_workflow_run_id,
+        parent_node_execution_id)`` from the typed ``ParentTraceContext`` — which has
+        **no** ``trace_id`` field, so we derive it from the raw run id, matching the
+        span/stdout trace_id algorithm in the collector L1):
+
+        - ``dify.parent.trace_id``: the raw id of the trace the logical parent belongs
+          to. For a nested sub-workflow this is the **outer** workflow's run id; for a
+          top-level event it is the trace the event's **own** log lands in (so the
+          collector groups the event under the right root). Pass ``own_trace_id`` to
+          match the handler's ``trace_id_source`` exactly when it differs from
+          ``resolved_trace_id`` (e.g. ``_message_trace`` keys off the metadata
+          ``workflow_run_id``); it defaults to ``info.resolved_trace_id``.
+        - ``dify.parent.workflow.run_id``: the raw **outer** workflow run id, present
+          only when this event is nested under another workflow.
+        - ``dify.parent.node.execution_id``: the raw node execution whose span is the
+          direct parent (the outer tool node when nested, else this event's own node).
+        """
+        parent_workflow_run_id, parent_node_execution_id = info.resolved_parent_context
+        own_trace = own_trace_id if own_trace_id is not None else info.resolved_trace_id
+        parent_trace_id = parent_workflow_run_id or own_trace
+        node_execution_id = parent_node_execution_id or info.metadata.get("node_execution_id")
+        return {
+            "otlp_parent_trace_id": parent_trace_id,
+            "otlp_parent_node_execution_id": node_execution_id or None,
+            "otlp_parent_workflow_run_id": parent_workflow_run_id,
+        }
 
     # ------------------------------------------------------------------
     # SPAN-emitting handlers (workflow, node execution, draft node)
@@ -184,13 +226,18 @@ class EnterpriseOtelTrace:
 
         trace_correlation_override, parent_span_id_source = info.resolved_parent_context
 
-        parent_ctx = metadata.get("parent_trace_context")
-        if isinstance(parent_ctx, dict):
-            parent_ctx_dict = cast(dict[str, Any], parent_ctx)
-            span_attrs["dify.parent.trace_id"] = parent_ctx_dict.get("trace_id")
-            span_attrs["dify.parent.node.execution_id"] = parent_ctx_dict.get("parent_node_execution_id")
-            span_attrs["dify.parent.workflow.run_id"] = parent_ctx_dict.get("parent_workflow_run_id")
-            span_attrs["dify.parent.app.id"] = parent_ctx_dict.get("parent_app_id")
+        # Parent linkage (raw ids). ``ParentTraceContext`` has no ``trace_id`` field, so
+        # the parent trace id is derived from the outer workflow run id (matching the
+        # span/stdout trace_id algorithm). These keys are attached to the SPAN (which
+        # goes straight to the collector, not stdout); the companion log carries the
+        # same linkage via ``otlp_parent_*`` so it lands on the OTLP path ONLY.
+        parent_fields = self._parent_otlp_fields(info)
+        if parent_fields["otlp_parent_trace_id"] is not None:
+            span_attrs["dify.parent.trace_id"] = parent_fields["otlp_parent_trace_id"]
+        if parent_fields["otlp_parent_node_execution_id"] is not None:
+            span_attrs["dify.parent.node.execution_id"] = parent_fields["otlp_parent_node_execution_id"]
+        if parent_fields["otlp_parent_workflow_run_id"] is not None:
+            span_attrs["dify.parent.workflow.run_id"] = parent_fields["otlp_parent_workflow_run_id"]
 
         self._exporter.export_span(
             EnterpriseTelemetrySpan.WORKFLOW_RUN,
@@ -203,8 +250,10 @@ class EnterpriseOtelTrace:
             parent_span_id_source=parent_span_id_source,
         )
 
-        # -- Companion log: ALL attrs (span + detail) for full picture --
-        log_attrs: dict[str, Any] = {**span_attrs}
+        # -- Companion log: span attrs (minus OTLP-only ``dify.parent.*``) + detail.
+        # The ``dify.parent.*`` keys are excluded from the stdout payload and re-added
+        # only on the OTLP path via ``otlp_parent_*`` below, keeping stdout pre-M1. --
+        log_attrs: dict[str, Any] = {k: v for k, v in span_attrs.items() if not k.startswith("dify.parent.")}
         log_attrs.update(
             {
                 "dify.app.name": metadata.get("app_name"),
@@ -220,6 +269,7 @@ class EnterpriseOtelTrace:
         log_attrs["dify.workflow.outputs"] = self._content_or_ref(info.workflow_run_outputs, ref)
         log_attrs["dify.workflow.query"] = self._content_or_ref(info.query, ref)
 
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
         emit_telemetry_log(
             event_name=EnterpriseTelemetryEvent.WORKFLOW_RUN,
             attributes=log_attrs,
@@ -228,6 +278,9 @@ class EnterpriseOtelTrace:
             span_id_source=info.workflow_run_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            **parent_fields,
         )
 
         # -- Metrics --
@@ -384,6 +437,12 @@ class EnterpriseOtelTrace:
         log_attrs["dify.node.outputs"] = self._content_or_ref(info.node_outputs, ref)
         log_attrs["dify.node.process_data"] = self._content_or_ref(info.process_data, ref)
 
+        # Nested child nodes have their span re-parented to the outer trace via
+        # ``trace_correlation_override`` above, but the companion log keys off the inner
+        # ``workflow_run_id``. Carry ``dify.parent.*`` (OTLP-only) so the collector L1
+        # can re-map the child-node log onto the outer trace.
+        parent_fields = self._parent_otlp_fields(info)
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
         emit_telemetry_log(
             event_name=span_name.value,
             attributes=log_attrs,
@@ -392,6 +451,9 @@ class EnterpriseOtelTrace:
             span_id_source=info.node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            **parent_fields,
         )
 
         # -- Metrics --
@@ -490,13 +552,21 @@ class EnterpriseOtelTrace:
         attrs["dify.message.inputs"] = self._content_or_ref(inputs, ref)
         attrs["dify.message.outputs"] = self._content_or_ref(outputs, ref)
 
+        message_trace_id = metadata.get("workflow_run_id") or (str(info.message_id) if info.message_id else None)
+        parent_fields = self._parent_otlp_fields(info, own_trace_id=message_trace_id)
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
+        message_seed_base = info.message_id or node_execution_id or message_trace_id or "unknown"
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.MESSAGE_RUN,
             attributes=attrs,
-            trace_id_source=metadata.get("workflow_run_id") or (str(info.message_id) if info.message_id else None),
+            trace_id_source=message_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            otlp_span_seed=f"{message_seed_base}:message",
+            **parent_fields,
         )
 
         labels = self._labels(
@@ -572,6 +642,9 @@ class EnterpriseOtelTrace:
         attrs["dify.tool.parameters"] = self._content_or_ref(info.tool_parameters, ref)
         attrs["dify.tool.config"] = self._content_or_ref(info.tool_config, ref)
 
+        parent_fields = self._parent_otlp_fields(info)
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
+        tool_seed_base = info.message_id or node_execution_id or info.resolved_trace_id or "unknown"
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.TOOL_EXECUTION,
             attributes=attrs,
@@ -579,6 +652,10 @@ class EnterpriseOtelTrace:
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            otlp_span_seed=f"{tool_seed_base}/{node_execution_id}/{info.tool_name}:tool",
+            **parent_fields,
         )
 
         labels = self._labels(
@@ -629,6 +706,10 @@ class EnterpriseOtelTrace:
             f"ref:message_id={info.message_id}",
         )
 
+        parent_fields = self._parent_otlp_fields(info)
+        moderation_type = metadata.get("moderation_type", "input")
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
+        moderation_seed_base = info.message_id or node_execution_id or info.resolved_trace_id or "unknown"
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.MODERATION_CHECK,
             attributes=attrs,
@@ -636,6 +717,10 @@ class EnterpriseOtelTrace:
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            otlp_span_seed=f"{moderation_seed_base}/{node_execution_id}/{moderation_type}:moderation",
+            **parent_fields,
         )
 
         labels = self._labels(
@@ -681,6 +766,9 @@ class EnterpriseOtelTrace:
             f"ref:message_id={info.message_id}",
         )
 
+        parent_fields = self._parent_otlp_fields(info)
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
+        sq_seed_base = info.message_id or node_execution_id or info.resolved_trace_id or "unknown"
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.SUGGESTED_QUESTION_GENERATION,
             attributes=attrs,
@@ -688,6 +776,10 @@ class EnterpriseOtelTrace:
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            otlp_span_seed=f"{sq_seed_base}:suggested_question",
+            **parent_fields,
         )
 
         labels = self._labels(
@@ -781,13 +873,21 @@ class EnterpriseOtelTrace:
         attrs["dify.retrieval.query"] = self._content_or_ref(retrieval_inputs, ref)
         attrs["dify.dataset.documents"] = self._content_or_ref(structured_docs, ref)
 
+        retrieval_trace_id = metadata.get("workflow_run_id") or (str(info.message_id) if info.message_id else None)
+        parent_fields = self._parent_otlp_fields(info, own_trace_id=retrieval_trace_id)
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
+        retrieval_seed_base = info.message_id or node_execution_id or retrieval_trace_id or "unknown"
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.DATASET_RETRIEVAL,
             attributes=attrs,
-            trace_id_source=metadata.get("workflow_run_id") or (str(info.message_id) if info.message_id else None),
+            trace_id_source=retrieval_trace_id,
             span_id_source=node_execution_id or (str(info.message_id) if info.message_id else None),
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            otlp_span_seed=f"{retrieval_seed_base}/{node_execution_id}:dataset_retrieval",
+            **parent_fields,
         )
 
         labels = self._labels(
@@ -850,6 +950,12 @@ class EnterpriseOtelTrace:
         attrs["dify.generate_name.inputs"] = self._content_or_ref(inputs, ref)
         attrs["dify.generate_name.outputs"] = self._content_or_ref(outputs, ref)
 
+        parent_fields = self._parent_otlp_fields(info)
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
+        message_seed = str(info.message_id) if info.message_id else None
+        generate_name_seed_base = (
+            info.conversation_id or node_execution_id or info.resolved_trace_id or message_seed or "unknown"
+        )
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.GENERATE_NAME_EXECUTION,
             attributes=attrs,
@@ -857,6 +963,10 @@ class EnterpriseOtelTrace:
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            otlp_span_seed=f"{generate_name_seed_base}:generate_name",
+            **parent_fields,
         )
 
         labels = self._labels(
@@ -905,6 +1015,10 @@ class EnterpriseOtelTrace:
         attrs["dify.prompt_generation.instruction"] = self._content_or_ref(info.instruction, ref)
         attrs["dify.prompt_generation.output"] = self._content_or_ref(outputs, ref)
 
+        parent_fields = self._parent_otlp_fields(info)
+        message_seed = str(info.message_id) if info.message_id else None
+        prompt_seed_base = info.resolved_trace_id or node_execution_id or message_seed or "unknown"
+        start_unix_nano, end_unix_nano = self._otlp_timing(info)
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.PROMPT_GENERATION_EXECUTION,
             attributes=attrs,
@@ -912,6 +1026,10 @@ class EnterpriseOtelTrace:
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            start_unix_nano=start_unix_nano,
+            end_unix_nano=end_unix_nano,
+            otlp_span_seed=f"{prompt_seed_base}/{info.operation_type}:prompt_generation",
+            **parent_fields,
         )
 
         token_labels = TokenMetricLabels(

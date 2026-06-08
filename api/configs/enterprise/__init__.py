@@ -66,6 +66,13 @@ class EnterpriseTelemetryConfig(BaseSettings):
         default=False,
     )
 
+    ENTERPRISE_OTLP_LOGS_ENABLED: bool = Field(
+        description="Additionally emit enterprise telemetry companion logs as OTLP logs to the "
+        "collector (dual-emit). The existing stdout/Loki log path is unaffected. "
+        "Also requires ENTERPRISE_ENABLED and ENTERPRISE_TELEMETRY_ENABLED.",
+        default=False,
+    )
+
     ENTERPRISE_SERVICE_NAME: str = Field(
         description="Service name for OTEL resource.",
         default="dify",

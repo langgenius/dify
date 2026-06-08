@@ -9,18 +9,24 @@ Accessed via ``ext_enterprise_telemetry.get_enterprise_exporter()`` from any thr
 
 import logging
 import socket
+import threading
 import uuid
 from datetime import UTC, datetime
 from typing import Any, cast
 
 from opentelemetry import trace
+from opentelemetry._logs import LogRecord, SeverityNumber
 from opentelemetry.baggage import get_all
 from opentelemetry.baggage.propagation import W3CBaggagePropagator
 from opentelemetry.context import Context
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter as GRPCLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GRPCMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCSpanExporter
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter as HTTPLogExporter
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter as HTTPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -45,6 +51,14 @@ from enterprise.telemetry.id_generator import (
 
 logger = logging.getLogger(__name__)
 
+# --- OTLP log emit failure throttling ---
+# A down/unreachable collector must not flood stdout with one ERROR + traceback
+# per telemetry event. Log the first failure with a traceback, then summarize at
+# WARNING every ``_EMIT_FAILURE_LOG_INTERVAL`` failures with the aggregate count.
+_EMIT_FAILURE_LOG_INTERVAL = 1000
+_emit_failure_lock = threading.Lock()
+_emit_failure_count = 0
+
 
 def is_enterprise_telemetry_enabled() -> bool:
     return bool(dify_config.ENTERPRISE_ENABLED and dify_config.ENTERPRISE_TELEMETRY_ENABLED)
@@ -63,6 +77,11 @@ def _datetime_to_ns(dt: datetime) -> int:
     else:
         dt = dt.astimezone(UTC)
     return int(dt.timestamp() * 1_000_000_000)
+
+
+def datetime_to_ns_or_none(dt: datetime | None) -> int | None:
+    """Nanoseconds since epoch for *dt*, or None when *dt* is absent (OTLP timing)."""
+    return _datetime_to_ns(dt) if dt is not None else None
 
 
 class _ExporterFactory:
@@ -94,6 +113,16 @@ class _ExporterFactory:
         metric_endpoint = f"{self._endpoint}/v1/metrics" if self._endpoint else ""
         return HTTPMetricExporter(endpoint=metric_endpoint or None, headers=self._http_headers)
 
+    def create_log_exporter(self) -> HTTPLogExporter | GRPCLogExporter:
+        if self._protocol == "grpc":
+            return GRPCLogExporter(
+                endpoint=self._endpoint or None,
+                headers=self._grpc_headers,
+                insecure=self._insecure,
+            )
+        log_endpoint = f"{self._endpoint}/v1/logs" if self._endpoint else ""
+        return HTTPLogExporter(endpoint=log_endpoint or None, headers=self._http_headers)
+
 
 class EnterpriseExporter:
     """Shared OTEL exporter for all enterprise telemetry.
@@ -111,6 +140,7 @@ class EnterpriseExporter:
         sampling_rate: float = getattr(config, "ENTERPRISE_OTEL_SAMPLING_RATE", 1.0)
         self.include_content: bool = getattr(config, "ENTERPRISE_INCLUDE_CONTENT", True)
         api_key: str = getattr(config, "ENTERPRISE_OTLP_API_KEY", "")
+        otlp_logs_enabled: bool = bool(getattr(config, "ENTERPRISE_OTLP_LOGS_ENABLED", False))
 
         # Auto-detect TLS: https:// uses secure, everything else is insecure
         insecure = not endpoint.startswith("https://")
@@ -171,6 +201,86 @@ class EnterpriseExporter:
                 "dify.prompt_generation.duration", unit="s"
             ),
         }
+
+        # OTLP log dual-emit LoggerProvider; built only when enabled.
+        self._logger_provider: LoggerProvider | None = None
+        self._otel_logger = None
+        if otlp_logs_enabled:
+            log_exporter = factory.create_log_exporter()
+            self._logger_provider = LoggerProvider(resource=resource)
+            self._logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+            self._otel_logger = self._logger_provider.get_logger("dify.enterprise")
+
+    def emit_otel_log(
+        self,
+        *,
+        event_name: str,
+        body: str,
+        attributes: dict[str, Any],
+        trace_id_hex: str | None = None,
+        span_id_hex: str | None = None,
+        start_unix_nano: int | None = None,
+        end_unix_nano: int | None = None,
+    ) -> None:
+        """Emit one enterprise telemetry companion log as an OTLP log record.
+
+        Best-effort: any failure (including the LoggerProvider being disabled) is
+        swallowed so it never bubbles into the business thread or disturbs the
+        stdout/Loki log path. No-op when OTLP logs are disabled.
+
+        Args:
+            event_name: Canonical event name (e.g. ``"dify.workflow.run"``); set as
+                the LogRecord ``event_name``.
+            body: Human-readable log body (mirrors the stdout ``"telemetry.<signal>"``).
+            attributes: Full attribute set (``dify.*`` + ``dify.event.signal`` +
+                ``dify.parent.*``); ``None`` values are dropped.
+            trace_id_hex: 32-hex trace id; converted to int for the LogRecord.
+            span_id_hex: 16-hex span id (OTLP-only, may differ from stdout span_id);
+                converted to int for the LogRecord.
+            start_unix_nano: Absolute event start in nanoseconds → ``timestamp``.
+            end_unix_nano: Absolute event end in nanoseconds → ``observed_timestamp``
+                (falls back to ``start_unix_nano`` when absent).
+        """
+        otel_logger = self._otel_logger
+        if otel_logger is None:
+            return
+        try:
+            trace_id = int(trace_id_hex, 16) if trace_id_hex else 0
+            span_id = int(span_id_hex, 16) if span_id_hex else 0
+            clean_attributes: dict[str, Any] = {key: value for key, value in attributes.items() if value is not None}
+            # The OTel logs API is experimental; its typed LogRecord overloads don't
+            # match the keyword form the runtime accepts, hence the type: ignore.
+            record = LogRecord(  # type: ignore[call-overload]
+                timestamp=start_unix_nano,
+                observed_timestamp=end_unix_nano if end_unix_nano is not None else start_unix_nano,
+                trace_id=trace_id,
+                span_id=span_id,
+                trace_flags=TraceFlags(TraceFlags.SAMPLED),
+                severity_number=SeverityNumber.INFO,
+                severity_text="INFO",
+                body=body,
+                attributes=clean_attributes,
+                event_name=str(event_name),
+            )
+            otel_logger.emit(record=record)
+        except Exception:
+            self._record_emit_failure(event_name)
+
+    @staticmethod
+    def _record_emit_failure(event_name: object) -> None:
+        """Throttle OTLP log emit failures: one ERROR then sampled WARNINGs.
+
+        Thread-safe and best-effort so a collector outage never floods the log
+        pipeline with a traceback per telemetry event. Never raises.
+        """
+        global _emit_failure_count
+        with _emit_failure_lock:
+            _emit_failure_count += 1
+            count = _emit_failure_count
+        if count == 1:
+            logger.exception("Failed to emit OTLP telemetry log for event %s (further failures throttled)", event_name)
+        elif count % _EMIT_FAILURE_LOG_INTERVAL == 0:
+            logger.warning("OTLP telemetry log emit still failing: %d failures so far", count)
 
     def export_span(
         self,
@@ -284,3 +394,5 @@ class EnterpriseExporter:
     def shutdown(self) -> None:
         self._tracer_provider.shutdown()
         self._meter_provider.shutdown()
+        if self._logger_provider is not None:
+            self._logger_provider.shutdown()
