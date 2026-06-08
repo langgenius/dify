@@ -81,7 +81,7 @@ def sample_form_record():
     )
 
 
-def test_enqueue_resume_dispatches_task_for_workflow(mocker, mock_session_factory):
+def test_enqueue_resume_dispatches_task_for_workflow(mocker: MockerFixture, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -108,7 +108,7 @@ def test_enqueue_resume_dispatches_task_for_workflow(mocker, mock_session_factor
     assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
 
 
-def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_record, mock_session_factory):
+def test_ensure_form_active_respects_global_timeout(monkeypatch: pytest.MonkeyPatch, sample_form_record: HumanInputFormRecord, mock_session_factory):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
     expired_record = dataclasses.replace(
@@ -122,7 +122,7 @@ def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_rec
         service.ensure_form_active(Form(expired_record))
 
 
-def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker, mock_session_factory):
+def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker: MockerFixture, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -149,7 +149,7 @@ def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker, mock_session_f
     assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
 
 
-def test_enqueue_resume_skips_unsupported_app_mode(mocker, mock_session_factory):
+def test_enqueue_resume_skips_unsupported_app_mode(mocker: MockerFixture, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -215,7 +215,7 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
     return context.dumps().encode()
 
 
-def test_resolve_form_inputs_uses_runtime_select_options(sample_form_record, mock_session_factory, mocker):
+def test_resolve_form_inputs_uses_runtime_select_options(sample_form_record: HumanInputFormRecord, mock_session_factory, mocker):
     session_factory, _ = mock_session_factory
     configured_input = SelectInputConfig(
         output_variable_name="decision",
@@ -253,7 +253,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(sample_form_record, moc
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -282,7 +282,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(
 
 
 def test_submit_form_by_token_skips_enqueue_for_delivery_test(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -307,7 +307,7 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(
 
 
 def test_submit_form_by_token_passes_submission_user_id(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -616,7 +616,7 @@ def test_ensure_not_submitted_raises(sample_form_record, mock_session_factory):
         service._ensure_not_submitted(Form(submitted_record))
 
 
-def test_enqueue_resume_workflow_not_found(mocker, mock_session_factory):
+def test_enqueue_resume_workflow_not_found(mocker: MockerFixture, mock_session_factory):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -632,7 +632,7 @@ def test_enqueue_resume_workflow_not_found(mocker, mock_session_factory):
     assert "WorkflowRun not found" in str(excinfo.value)
 
 
-def test_enqueue_resume_app_not_found(mocker, mock_session_factory):
+def test_enqueue_resume_app_not_found(mocker: MockerFixture, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -653,7 +653,7 @@ def test_enqueue_resume_app_not_found(mocker, mock_session_factory):
     logger_spy.error.assert_called_once()
 
 
-def test_is_globally_expired_zero_timeout(monkeypatch, sample_form_record, mock_session_factory):
+def test_is_globally_expired_zero_timeout(monkeypatch: pytest.MonkeyPatch, sample_form_record: HumanInputFormRecord, mock_session_factory):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
 
