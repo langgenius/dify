@@ -1,3 +1,4 @@
+import pytest
 import json
 import time
 import uuid
@@ -91,7 +92,7 @@ def init_llm_node(config: dict) -> LLMNode:
     return node
 
 
-def _mock_db_session_close(monkeypatch) -> None:
+def _mock_db_session_close(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(db.session, "close", MagicMock())
 
 

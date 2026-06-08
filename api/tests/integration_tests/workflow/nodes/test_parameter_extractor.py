@@ -85,7 +85,7 @@ def init_parameter_extractor_node(config: dict, memory=None):
     return node
 
 
-def _mock_db_session_close(monkeypatch) -> None:
+def _mock_db_session_close(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(db.session, "close", MagicMock())
 
 
