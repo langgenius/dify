@@ -1,7 +1,7 @@
-from typing import override
 import json
 import unittest
 import uuid
+from typing import override
 
 import pytest
 from sqlalchemy import delete, func, select
@@ -36,6 +36,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
     _node1_id = "test_node_1"
     _node2_id = "test_node_2"
     _node_exec_id = str(uuid.uuid4())
+
     @override
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
@@ -102,6 +103,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
 
     def _get_test_srv(self) -> WorkflowDraftVariableService:
         return WorkflowDraftVariableService(session=self._session)
+
     @override
     def tearDown(self):
         self._session.rollback()
@@ -255,6 +257,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         self._node_var_id = node_var.id
         self._sys_var_id = sys_var.id
         self._conv_var_id = conv_var.id
+
     @override
     def tearDown(self):
         with Session(bind=db.engine, expire_on_commit=False) as session:
@@ -568,6 +571,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
     _node_id = "test_reset_node"
     _node_exec_id: str
     _workflow_node_exec_id: str
+
     @override
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
@@ -676,6 +680,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         self._node_var_without_exec_id = self._node_var_without_exec.id
         self._node_var_missing_exec_id = self._node_var_missing_exec.id
         self._conv_var_id = self._conv_var.id
+
     @override
     def tearDown(self):
         self._session.rollback()
