@@ -24,12 +24,6 @@ class DummyToolFile:
         self.filename = filename
 
 
-@pytest.fixture(autouse=True)
-def mock_global_db():
-    fake_db = types.SimpleNamespace(engine=object())
-    module.global_db = fake_db
-
-
 class TestToolFileApi:
     @patch.object(module, "verify_tool_file_signature", return_value=True)
     @patch.object(module, "ToolFileManager")
@@ -37,14 +31,19 @@ class TestToolFileApi:
         self,
         mock_tool_file_manager,
         mock_verify,
+        monkeypatch: pytest.MonkeyPatch,
     ):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "as_attachment": False,
-            }
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "as_attachment": False,
+                }
+            ),
         )
 
         stream = iter([b"data"])
@@ -75,14 +74,19 @@ class TestToolFileApi:
         self,
         mock_tool_file_manager,
         mock_verify,
+        monkeypatch: pytest.MonkeyPatch,
     ):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "as_attachment": True,
-            }
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "as_attachment": True,
+                }
+            ),
         )
 
         stream = iter([b"data"])
@@ -105,14 +109,18 @@ class TestToolFileApi:
         mock_verify.assert_called_once()
 
     @patch.object(module, "verify_tool_file_signature", return_value=False)
-    def test_invalid_signature(self, mock_verify):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "bad-sig",
-                "as_attachment": False,
-            }
+    def test_invalid_signature(self, mock_verify, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "bad-sig",
+                    "as_attachment": False,
+                }
+            ),
         )
 
         api = module.ToolFileApi()
@@ -127,14 +135,19 @@ class TestToolFileApi:
         self,
         mock_tool_file_manager,
         mock_verify,
+        monkeypatch: pytest.MonkeyPatch,
     ):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "as_attachment": False,
-            }
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "as_attachment": False,
+                }
+            ),
         )
 
         mock_tool_file_manager.return_value.get_file_generator_by_tool_file_id.return_value = (
@@ -154,14 +167,19 @@ class TestToolFileApi:
         self,
         mock_tool_file_manager,
         mock_verify,
+        monkeypatch: pytest.MonkeyPatch,
     ):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "as_attachment": False,
-            }
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "as_attachment": False,
+                }
+            ),
         )
 
         mock_tool_file_manager.return_value.get_file_generator_by_tool_file_id.side_effect = Exception("boom")

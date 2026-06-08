@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,14 +10,34 @@ from flask import Flask
 from controllers.web.error import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
 from models.enums import CreatorUserRole
+from models.model import App, EndUser
+from models.workflow import WorkflowRun
 
 
-def _workflow_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
+def _workflow_app() -> App:
+    app = MagicMock(spec=App)
+    app.id = "app-1"
+    app.tenant_id = "tenant-1"
+    app.mode = "workflow"
+    return app
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _end_user() -> EndUser:
+    end_user = MagicMock(spec=EndUser)
+    end_user.id = "eu-1"
+    return end_user
+
+
+def _workflow_run(**overrides: object) -> WorkflowRun:
+    run = MagicMock(spec=WorkflowRun)
+    run.id = "run-1"
+    run.app_id = "app-1"
+    run.created_by_role = CreatorUserRole.END_USER
+    run.created_by = "eu-1"
+    run.finished_at = None
+    for key, value in overrides.items():
+        setattr(run, key, value)
+    return run
 
 
 # ---------------------------------------------------------------------------
@@ -41,13 +60,7 @@ class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_app(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="other-app",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="eu-1",
-            finished_at=None,
-        )
+        run = _workflow_run(app_id="other-app")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -62,13 +75,7 @@ class TestWorkflowEventsApi:
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask
     ) -> None:
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="eu-1",
-            finished_at=None,
-        )
+        run = _workflow_run(created_by_role=CreatorUserRole.ACCOUNT)
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -81,13 +88,7 @@ class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_end_user(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="other-user",
-            finished_at=None,
-        )
+        run = _workflow_run(created_by="other-user")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -105,13 +106,7 @@ class TestWorkflowEventsApi:
         from datetime import datetime
 
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="eu-1",
-            finished_at=datetime(2024, 1, 1),
-        )
+        run = _workflow_run(finished_at=datetime(2024, 1, 1))
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo

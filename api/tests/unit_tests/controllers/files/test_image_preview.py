@@ -14,13 +14,14 @@ def unwrap(func):
 
 
 @pytest.fixture(autouse=True)
-def mock_db():
+def mock_db(monkeypatch: pytest.MonkeyPatch) -> None:
     """
-    Replace Flask-SQLAlchemy db with a plain object
-    to avoid touching Flask app context entirely.
+    Replace Flask-SQLAlchemy db with a plain object to avoid touching Flask app context
+    entirely. monkeypatch.setattr is used so pytest restores the original attribute after
+    the test, and so the type of ``module.db`` is not statically constrained by the fake.
     """
     fake_db = types.SimpleNamespace(engine=object())
-    module.db = fake_db
+    monkeypatch.setattr(module, "db", fake_db)
 
 
 class DummyUploadFile:
@@ -38,13 +39,17 @@ def fake_request(args: dict):
 
 class TestImagePreviewApi:
     @patch.object(module, "FileService")
-    def test_success(self, mock_file_service):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-            }
+    def test_success(self, mock_file_service, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                }
+            ),
         )
 
         generator = iter([b"img"])
@@ -61,13 +66,17 @@ class TestImagePreviewApi:
         assert response.mimetype == "image/png"
 
     @patch.object(module, "FileService")
-    def test_unsupported_file_type(self, mock_file_service):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-            }
+    def test_unsupported_file_type(self, mock_file_service, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                }
+            ),
         )
 
         mock_file_service.return_value.get_image_preview.side_effect = (
@@ -84,14 +93,18 @@ class TestImagePreviewApi:
 class TestFilePreviewApi:
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
-    def test_basic_stream(self, mock_file_service, mock_enforce):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "as_attachment": False,
-            }
+    def test_basic_stream(self, mock_file_service, mock_enforce, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "as_attachment": False,
+                }
+            ),
         )
 
         generator = iter([b"data"])
@@ -114,14 +127,18 @@ class TestFilePreviewApi:
 
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
-    def test_as_attachment(self, mock_file_service, mock_enforce):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "as_attachment": True,
-            }
+    def test_as_attachment(self, mock_file_service, mock_enforce, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "as_attachment": True,
+                }
+            ),
         )
 
         generator = iter([b"data"])
@@ -146,14 +163,18 @@ class TestFilePreviewApi:
         mock_enforce.assert_called_once()
 
     @patch.object(module, "FileService")
-    def test_unsupported_file_type(self, mock_file_service):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "as_attachment": False,
-            }
+    def test_unsupported_file_type(self, mock_file_service, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "as_attachment": False,
+                }
+            ),
         )
 
         mock_file_service.return_value.get_file_generator_by_file_id.side_effect = (
