@@ -327,6 +327,18 @@ async function main() {
   const appIds = await provisionApps(cookieString, csrfToken, primaryWsId, secondaryWsId)
   console.warn(`[provision] Provisioned ${Object.keys(appIds).length} apps`)
 
+  // 4b. Switch back to primaryWsId so the session ends in the correct workspace.
+  //     provisionApps processes ws2-workflow.yml last (EE mode), leaving the server
+  //     session in secondaryWsId. Suite jobs that share this token would then have
+  //     their describe calls rejected with "workspace_id does not match app's workspace".
+  await fetch(`${base}/console/api/workspaces/switch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Cookie': cookieString, 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({ tenant_id: primaryWsId }),
+    signal: AbortSignal.timeout(10_000),
+  }).catch((err: unknown) => console.warn(`[provision] switch-back to primary failed (non-fatal): ${err}`))
+  console.warn(`[provision] Session workspace reset to primary: ${primaryWsId}`)
+
   // 5. Write outputs
   await writeOutputs({
     DIFY_E2E_TOKEN: primaryToken,
