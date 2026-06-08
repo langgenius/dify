@@ -23,10 +23,12 @@ function AccessChannelsSwitch({ appInstanceId, checked, accessChannels, disabled
   accessChannels?: AccessChannels
   disabled?: boolean
 }) {
+  const { t } = useTranslation('deployments')
   const toggleAccessChannel = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch
+      aria-label={t('access.channels.title')}
       checked={checked}
       disabled={disabled}
       loading={toggleAccessChannel.isPending}

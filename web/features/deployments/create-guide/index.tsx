@@ -1,7 +1,9 @@
 'use client'
 
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { GuideActions, GuideCard, GuideFrame } from './layout'
 import { CreationSections } from './source-release-sections'
 import { TargetReviewSections } from './target-step'
@@ -9,6 +11,7 @@ import { useCreateDeploymentGuide } from './use-create-deployment-guide'
 
 export function CreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
+  const router = useRouter()
   const {
     canContinue,
     canSkipDeployment,
@@ -38,8 +41,11 @@ export function CreateDeploymentGuide() {
   )
 
   return (
-    <div className="fixed inset-0 z-50 bg-background-overlay-backdrop p-4 backdrop-blur-[6px]">
-      <div className="mx-auto h-full w-full max-w-[1120px] overflow-hidden rounded-2xl border border-effects-highlight bg-background-default-subtle">
+    <Dialog open onOpenChange={open => !open && router.push('/deployments')}>
+      <DialogContent
+        backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
+        className="top-4 bottom-4 h-auto max-h-none w-[min(calc(100vw-2rem),1120px)] max-w-none translate-y-0 overflow-hidden border-effects-highlight bg-background-default-subtle p-0"
+      >
         <main className="relative flex h-full min-w-0 grow flex-col overflow-hidden">
           <Link
             href="/deployments"
@@ -68,7 +74,7 @@ export function CreateDeploymentGuide() {
             </GuideCard>
           </GuideFrame>
         </main>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

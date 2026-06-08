@@ -65,7 +65,7 @@ export function InstanceCard({ summary }: {
 
   return (
     <div
-      className="group relative col-span-1 inline-flex min-h-40 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-all duration-200 ease-in-out hover:border-components-panel-border-subtle hover:shadow-md"
+      className="group relative col-span-1 inline-flex min-h-40 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-components-panel-border-subtle hover:shadow-md"
     >
       <DeploymentActionsMenu
         appInstanceId={appInstanceId}

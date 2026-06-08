@@ -57,10 +57,12 @@ function DeveloperApiSwitch({ appInstanceId, checked, accessChannels, disabled }
   accessChannels?: AccessChannels
   disabled?: boolean
 }) {
+  const { t } = useTranslation('deployments')
   const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch
+      aria-label={t('access.api.developerTitle')}
       checked={checked}
       disabled={disabled}
       loading={toggleDeveloperAPI.isPending}

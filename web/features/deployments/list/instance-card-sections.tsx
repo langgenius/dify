@@ -7,6 +7,8 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type { ReactElement } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -46,9 +48,9 @@ export function ReleaseMetaTooltip({ release, deployed, children }: {
   ]
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={children} />
-      <TooltipContent>
+    <PreviewCard>
+      <PreviewCardTrigger render={children} />
+      <PreviewCardContent popupClassName="px-3 py-2">
         <div className="flex min-w-48 flex-col gap-1">
           {rows.map(row => (
             <div key={row.label} className="flex justify-between gap-4">
@@ -57,8 +59,8 @@ export function ReleaseMetaTooltip({ release, deployed, children }: {
             </div>
           ))}
         </div>
-      </TooltipContent>
-    </Tooltip>
+      </PreviewCardContent>
+    </PreviewCard>
   )
 }
 
@@ -100,15 +102,18 @@ function EnvironmentOverflow({ rows }: {
   const { t } = useTranslation('deployments')
 
   return (
-    <Tooltip>
-      <TooltipTrigger
+    <Popover>
+      <PopoverTrigger
         render={(
-          <span className="inline-flex h-5 cursor-default items-center rounded-md bg-background-section-burn px-1.5 system-xs-medium text-text-tertiary">
+          <button
+            type="button"
+            className="inline-flex h-5 cursor-pointer items-center rounded-md bg-background-section-burn px-1.5 system-xs-medium text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
             {t('card.envOverflow', { count: rows.length })}
-          </span>
+          </button>
         )}
       />
-      <TooltipContent>
+      <PopoverContent popupClassName="px-3 py-2">
         <div className="flex min-w-40 flex-col gap-1">
           {rows.map((row) => {
             const status = deploymentStatus(row)
@@ -123,8 +128,8 @@ function EnvironmentOverflow({ rows }: {
             )
           })}
         </div>
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   )
 }
 

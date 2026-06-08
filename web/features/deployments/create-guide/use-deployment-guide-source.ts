@@ -1,12 +1,12 @@
 'use client'
 
 import type { App } from '@/types/app'
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { isWorkflowApp } from '../app-mode'
-import { DEPLOYMENT_PAGE_SIZE, SOURCE_APPS_PAGE_SIZE } from '../data'
+import { DEPLOYMENT_PAGE_SIZE, getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 
 export function useDeploymentGuideSource() {
   const [sourceSearchText, setSourceSearchText] = useState('')
@@ -26,20 +26,33 @@ export function useDeploymentGuideSource() {
       placeholderData: keepPreviousData,
     }),
   })
-  const appInstancesQuery = useQuery({
-    ...consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
-      input: {
+  const appInstancesQuery = useInfiniteQuery({
+    ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
+      input: pageParam => ({
         query: {
-          pageNumber: 1,
+          pageNumber: Number(pageParam),
           resultsPerPage: DEPLOYMENT_PAGE_SIZE,
         },
-      },
+      }),
+      getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
+      initialPageParam: 1,
     }),
     placeholderData: keepPreviousData,
   })
+  const {
+    fetchNextPage: fetchNextAppInstancesPage,
+    hasNextPage: hasNextAppInstancesPage,
+    isFetchingNextPage: isFetchingNextAppInstancesPage,
+  } = appInstancesQuery
+
+  useEffect(() => {
+    if (hasNextAppInstancesPage && !isFetchingNextAppInstancesPage)
+      void fetchNextAppInstancesPage()
+  }, [fetchNextAppInstancesPage, hasNextAppInstancesPage, isFetchingNextAppInstancesPage])
+
   const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
   const effectiveSelectedApp = isWorkflowApp(selectedApp) ? selectedApp : sourceApps[0]
-  const existingInstanceNames = appInstancesQuery.data?.data?.map(appInstance => appInstance.name?.trim()).filter((name): name is string => Boolean(name)) ?? []
+  const existingInstanceNames = appInstancesQuery.data?.pages.flatMap(page => page.data ?? []).map(appInstance => appInstance.name?.trim()).filter((name): name is string => Boolean(name)) ?? []
 
   return {
     effectiveSelectedApp,

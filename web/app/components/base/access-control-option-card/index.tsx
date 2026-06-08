@@ -19,6 +19,7 @@ export function AccessControlOptionCard({
   ...props
 }: AccessControlOptionCardProps) {
   const interactive = Boolean(onSelect) && !disabled
+  const focusable = !disabled
 
   const handleClick: ComponentPropsWithoutRef<'div'>['onClick'] = (event) => {
     onClick?.(event)
@@ -39,17 +40,18 @@ export function AccessControlOptionCard({
 
   return (
     <div
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
+      role="radio"
+      tabIndex={focusable ? 0 : undefined}
       aria-disabled={disabled || undefined}
-      aria-pressed={interactive ? selected : undefined}
+      aria-checked={selected}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
         selected
           ? 'rounded-[10px] border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm'
           : 'rounded-[10px] border border-components-option-card-option-border bg-components-option-card-option-bg',
-        interactive && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        focusable && 'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        interactive && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover',
         disabled && 'cursor-not-allowed opacity-50',
         className,
       )}

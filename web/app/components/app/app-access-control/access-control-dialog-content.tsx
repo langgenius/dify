@@ -46,9 +46,9 @@ export function AccessControlDialogContent({
           {description ?? t('accessControlDialog.description', { ns: 'app' })}
         </DialogDescription>
       </div>
-      <div className="flex flex-col gap-y-1 px-6 pb-3">
+      <div className="flex flex-col gap-y-1 px-6 pb-3" role="radiogroup" aria-labelledby="access-control-options-label">
         <div className="leading-6">
-          <p className="system-sm-medium text-text-tertiary">
+          <p id="access-control-options-label" className="system-sm-medium text-text-tertiary">
             {accessLabel ?? t('accessControlDialog.accessLabel', { ns: 'app' })}
           </p>
         </div>

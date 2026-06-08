@@ -95,6 +95,15 @@ describe('RoleRouteGuard', () => {
     expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
   })
 
+  it('should redirect dataset operator on deployments routes', () => {
+    mockPathname = '/deployments/create'
+    setCurrentWorkspaceQuery({ role: 'dataset_operator' })
+
+    expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
+
+    expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
+  })
+
   it('should allow dataset operator on non-guarded routes', () => {
     mockPathname = '/plugins'
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
