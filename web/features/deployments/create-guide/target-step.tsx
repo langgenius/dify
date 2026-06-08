@@ -178,7 +178,7 @@ function TargetStep({
               <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
                 <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
                   <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
-                  <span className="system-xs-regular text-text-quaternary">{t('createGuide.target.bindingHint')}</span>
+                  <span className="system-xs-regular text-text-tertiary">{t('createGuide.target.bindingHint')}</span>
                 </div>
                 {isBindingLoading
                   ? <TargetBindingSkeleton />
