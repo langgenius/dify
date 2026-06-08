@@ -1,3 +1,5 @@
+from typing import override
+
 from flask_restx import fields
 
 from core.helper import encrypter
@@ -11,6 +13,7 @@ ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, 
 
 
 class EnvironmentVariableField(fields.Raw):
+    @override
     def format(self, value):
         # Mask secret variables values in environment_variables
         if isinstance(value, SecretVariable):

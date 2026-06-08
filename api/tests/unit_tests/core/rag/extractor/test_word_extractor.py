@@ -6,6 +6,7 @@ import tempfile
 from collections import UserDict
 from pathlib import Path
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -339,7 +340,7 @@ def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
     assert fake_response.closed is True
 
 
-def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path):
+def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path: Path):
     target_file = tmp_path / "expanded.docx"
     target_file.write_bytes(b"docx")
 
@@ -517,6 +518,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     shape_internal_part = object()
 
     class Rels(UserDict):
+        @override
         def get(self, key, default=None):
             if key == "link-bad":
                 raise RuntimeError("cannot resolve relation")

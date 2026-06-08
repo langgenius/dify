@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 from core.plugin.impl.tool import PluginToolManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
@@ -20,9 +20,11 @@ class PluginTool(Tool):
         self.plugin_unique_identifier = plugin_unique_identifier
         self.runtime_parameters: list[ToolParameter] | None = None
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.PLUGIN
 
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -48,6 +50,7 @@ class PluginTool(Tool):
             message_id=message_id,
         )
 
+    @override
     def fork_tool_runtime(self, runtime: ToolRuntime) -> PluginTool:
         return PluginTool(
             entity=self.entity,
@@ -57,6 +60,7 @@ class PluginTool(Tool):
             plugin_unique_identifier=self.plugin_unique_identifier,
         )
 
+    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,
