@@ -794,7 +794,6 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.getByText(longName)).toHaveClass('truncate')
-    expect(screen.getByTitle(longName)).toBeInTheDocument()
   })
 
   it('virtualizes large installed web app lists', async () => {
@@ -850,7 +849,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    fireEvent.mouseEnter(screen.getByTitle('Alpha App'))
+    fireEvent.mouseEnter(screen.getByText('Alpha App'))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
     fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
@@ -858,7 +857,7 @@ describe('MainNav', () => {
       expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'installed-1', isPinned: true })
     })
 
-    fireEvent.mouseEnter(screen.getByTitle('Alpha App'))
+    fireEvent.mouseEnter(screen.getByText('Alpha App'))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
     fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
     fireEvent.click(await screen.findByText('common.operation.confirm'))

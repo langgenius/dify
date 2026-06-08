@@ -30,6 +30,20 @@ import { WorkspaceCard } from './components/workspace-card'
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
 const DETAIL_SIDEBAR_STORAGE_KEY = 'app-detail-collapse-or-expand'
+const secondarySidebarHelpTriggerIcon = <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
+
+function SecondarySidebarHelpMenu({
+  triggerClassName,
+}: {
+  triggerClassName?: string
+}) {
+  return (
+    <HelpMenu
+      triggerIcon={secondarySidebarHelpTriggerIcon}
+      triggerClassName={triggerClassName}
+    />
+  )
+}
 
 const isDatasetDetailPathname = (pathname: string) => {
   const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
@@ -270,7 +284,7 @@ const MainNav = ({
           {!detailNavigationVisibleExpanded
             ? (
                 <>
-                  <HelpMenu compact />
+                  <SecondarySidebarHelpMenu triggerClassName="mb-2" />
                   <AccountSection compact />
                 </>
               )
@@ -281,7 +295,7 @@ const MainNav = ({
                   </div>
                   {(!showDetailNavigation || detailNavigationVisibleExpanded) && (
                     <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-                      <HelpMenu />
+                      {showDetailNavigation ? <SecondarySidebarHelpMenu /> : <HelpMenu />}
                     </div>
                   )}
                 </>
