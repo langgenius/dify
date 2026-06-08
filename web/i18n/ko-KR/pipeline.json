@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "문서 추가로 이동",
   "common.preparingDataSource": "데이터 소스 준비",
   "common.processing": "가공",
-  "common.publishAs": "지식 파이프라인으로 게시",
+  "common.publishAs": "지식 파이프라인으로 게시하기",
   "common.publishAsPipeline.description": "지식 설명",
   "common.publishAsPipeline.descriptionPlaceholder": "이 지식 파이프라인에 대한 설명을 입력하십시오. (선택 사항)",
   "common.publishAsPipeline.name": "파이프라인 이름 & 아이콘",

@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Belge eklemeye git",
   "common.preparingDataSource": "Veri Kaynağını Hazırlama",
   "common.processing": "İşleme",
-  "common.publishAs": "Bilgi İşlem Hattı Olarak Yayımlama",
+  "common.publishAs": "Bilgi İşlem Hattı olarak yayımla",
   "common.publishAsPipeline.description": "Bilgi açıklaması",
   "common.publishAsPipeline.descriptionPlaceholder": "Lütfen bu Bilgi İşlem Hattının açıklamasını girin. (İsteğe bağlı)",
   "common.publishAsPipeline.name": "İşlem hattı adı & simgesi",

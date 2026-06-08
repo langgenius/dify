@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Vá para adicionar documentos",
   "common.preparingDataSource": "Preparando a fonte de dados",
   "common.processing": "Processamento",
-  "common.publishAs": "Publicar como um funil de conhecimento",
+  "common.publishAs": "Publicar como pipeline de conhecimento",
   "common.publishAsPipeline.description": "Descrição do conhecimento",
   "common.publishAsPipeline.descriptionPlaceholder": "Insira a descrição deste Pipeline de Conhecimento. (Opcional)",
   "common.publishAsPipeline.name": "Nome e ícone do pipeline",

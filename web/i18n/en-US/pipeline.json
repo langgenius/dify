@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Go to add documents",
   "common.preparingDataSource": "Preparing Data Source",
   "common.processing": "Processing",
-  "common.publishAs": "Publish as a Customized Pipeline Template",
+  "common.publishAs": "Publish as a Knowledge Pipeline",
   "common.publishAsPipeline.description": "Knowledge description",
   "common.publishAsPipeline.descriptionPlaceholder": "Please enter the description of this Knowledge Pipeline. (Optional) ",
   "common.publishAsPipeline.name": "Pipeline name & icon",
