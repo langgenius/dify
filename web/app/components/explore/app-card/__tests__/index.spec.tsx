@@ -1,6 +1,7 @@
 import type { AppCardProps } from '../index'
 import type { App } from '@/models/explore'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -124,7 +125,10 @@ describe('AppCard', () => {
         isExplore: true,
       })
 
-      expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
+      const cardButton = screen.getByRole('button', { name: 'Sample App' })
+
+      expect(cardButton).toHaveAttribute('type', 'button')
+      expect(cardButton).toHaveClass('cursor-pointer', 'focus-visible:ring-2', 'focus-visible:ring-inset')
     })
 
     it('should not render hover action buttons in explore mode', () => {
@@ -203,12 +207,14 @@ describe('AppCard', () => {
       expect(mockTrackEvent).not.toHaveBeenCalled()
     })
 
-    it('should call the card action when Enter is pressed on app card', () => {
+    it('should call the card action when Enter is pressed on app card', async () => {
+      const user = userEvent.setup()
       const app = createApp()
 
       renderComponent({ app, canCreate: true, isExplore: true })
 
-      fireEvent.keyDown(screen.getByRole('button', { name: 'Sample App' }), { key: 'Enter' })
+      screen.getByRole('button', { name: 'Sample App' }).focus()
+      await user.keyboard('{Enter}')
 
       expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
     })
