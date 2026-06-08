@@ -62,7 +62,7 @@ const MemberRow = ({
       onClick={openDetails}
       onKeyDown={handleRowKeyDown}
     >
-      <div className="flex grow items-center px-3 py-2">
+      <div className="flex w-65 shrink-0 items-center px-3 py-2">
         <Avatar avatar={member.avatar_url} size="sm" className="mr-2" name={member.name} />
         <div className="">
           <div className="system-sm-medium text-text-secondary">
@@ -85,7 +85,7 @@ const MemberRow = ({
         {formatTimeFromNow(Number((member.last_active_at || member.created_at)) * 1000)}
       </div>
       <div
-        className="flex w-53.75 shrink-0 items-center gap-2 px-3"
+        className="flex min-w-0 grow items-center gap-2 px-3"
         role="presentation"
       >
         <RoleBadges

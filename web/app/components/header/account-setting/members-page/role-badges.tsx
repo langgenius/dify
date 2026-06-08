@@ -15,6 +15,7 @@ const RoleBadge = memo(({ label, className }: RoleBadgeProps) => {
         'inline-flex h-5 max-w-full shrink items-center overflow-hidden rounded-md bg-background-body px-1.5 system-xs-medium text-text-secondary shadow-xs',
         className,
       )}
+      title={label}
     >
       <span className="truncate">{label}</span>
     </span>

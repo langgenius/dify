@@ -149,9 +149,9 @@ const MembersPage = () => {
         </div>
         <div className="overflow-visible lg:overflow-visible">
           <div className="flex min-w-120 items-center border-b border-divider-regular py-1.75">
-            <div className="grow px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
+            <div className="w-65 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
             <div className="w-30 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
-            <div className="w-53.75 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
+            <div className="min-w-0 grow px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
           </div>
           <div className="relative min-w-120">
             {accounts.map(account => (

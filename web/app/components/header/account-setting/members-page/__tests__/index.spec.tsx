@@ -215,6 +215,15 @@ describe('MembersPage', () => {
     expect(screen.getByText('Admin User'))!.toBeInTheDocument()
   })
 
+  it('should render fixed name column and flexible role column layout', () => {
+    renderMembersPage()
+
+    expect(screen.getByText('common.members.name', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('w-65', 'shrink-0')
+    expect(screen.getByText('common.members.role', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('min-w-0', 'grow')
+    expect(screen.getByTestId('member-row-1').children[0])!.toHaveClass('w-65', 'shrink-0')
+    expect(screen.getByTestId('member-row-1').children[2])!.toHaveClass('min-w-0', 'grow')
+  })
+
   it('should open and close invite modal', async () => {
     const user = userEvent.setup()
 
