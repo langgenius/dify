@@ -292,3 +292,4 @@ python-platform = "linux"
 python-version = "3.12.0"
 infer-with-first-use = true
 min-severity = "warn"
+errors = { missing-override-decorator = "error" }

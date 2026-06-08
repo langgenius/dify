@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 from pydantic import BaseModel
 from tcvdb_text.encoder import BM25Encoder  # type: ignore
@@ -93,6 +93,7 @@ class TencentVector(BaseVector):
     def _init_database(self):
         return self._client.create_database_if_not_exists(database_name=self._client_config.database)
 
+    @override
     def get_type(self) -> str:
         return VectorType.TENCENT
 
@@ -181,10 +182,12 @@ class TencentVector(BaseVector):
                 )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self._create_collection(len(embeddings[0]))
         self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
@@ -215,6 +218,7 @@ class TencentVector(BaseVector):
                 timeout=self._client_config.timeout,
             )
 
+    @override
     def text_exists(self, id: str) -> bool:
         docs = self._client.query(
             database_name=self._client_config.database, collection_name=self.collection_name, document_ids=[id]
@@ -223,6 +227,7 @@ class TencentVector(BaseVector):
             return True
         return False
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
@@ -240,6 +245,7 @@ class TencentVector(BaseVector):
                 database_name=self._client_config.database, collection_name=self.collection_name, document_ids=batch_ids
             )
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         self._client.delete(
             database_name=self._client_config.database,
@@ -247,6 +253,7 @@ class TencentVector(BaseVector):
             filter=Filter(Filter.In(f"metadata.{key}", [value])),
         )
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = None
@@ -265,6 +272,7 @@ class TencentVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(res, score_threshold)
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = None
@@ -314,6 +322,7 @@ class TencentVector(BaseVector):
                 docs.append(doc)
         return docs
 
+    @override
     def delete(self):
         if self._has_collection():
             self._client.drop_collection(
@@ -322,6 +331,7 @@ class TencentVector(BaseVector):
 
 
 class TencentVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TencentVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

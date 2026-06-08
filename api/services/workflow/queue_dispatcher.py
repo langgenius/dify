@@ -1,3 +1,5 @@
+from typing import override
+
 """
 Queue dispatcher system for async workflow execution.
 
@@ -37,9 +39,11 @@ class BaseQueueDispatcher(ABC):
 class ProfessionalQueueDispatcher(BaseQueueDispatcher):
     """Dispatcher for professional tier"""
 
+    @override
     def get_queue_name(self) -> str:
         return QueuePriority.PROFESSIONAL
 
+    @override
     def get_priority(self) -> int:
         return 100
 
@@ -47,9 +51,11 @@ class ProfessionalQueueDispatcher(BaseQueueDispatcher):
 class TeamQueueDispatcher(BaseQueueDispatcher):
     """Dispatcher for team tier"""
 
+    @override
     def get_queue_name(self) -> str:
         return QueuePriority.TEAM
 
+    @override
     def get_priority(self) -> int:
         return 50
 
@@ -57,9 +63,11 @@ class TeamQueueDispatcher(BaseQueueDispatcher):
 class SandboxQueueDispatcher(BaseQueueDispatcher):
     """Dispatcher for free/sandbox tier"""
 
+    @override
     def get_queue_name(self) -> str:
         return QueuePriority.SANDBOX
 
+    @override
     def get_priority(self) -> int:
         return 10
 
