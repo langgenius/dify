@@ -56,7 +56,7 @@ after
         assert extractor.remove_images(with_images) == "before  after"
         assert extractor.remove_hyperlinks(with_links) == "OpenAI"
 
-    def test_parse_tups_reads_file_and_applies_options(self, tmp_path):
+    def test_parse_tups_reads_file_and_applies_options(self, tmp_path: Path):
         markdown_file = tmp_path / "doc.md"
         markdown_file.write_text("# Header\nText with [link](https://example.com) and ![[img.png]]", encoding="utf-8")
 

@@ -1,6 +1,6 @@
 import io
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 from core.model_manager import ModelManager
 from core.plugin.entities.parameters import PluginParameterOption
@@ -12,6 +12,7 @@ from services.model_provider_service import ModelProviderService
 
 
 class TTSTool(BuiltinTool):
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -66,6 +67,7 @@ class TTSTool(BuiltinTool):
                 items.append((provider, model.model, voices))
         return items
 
+    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,

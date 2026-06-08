@@ -14907,6 +14907,14 @@ Icon information model.
 | ---- | ---- | ----------- | -------- |
 | IconType | string |  |  |
 
+#### IdentityMode
+
+How Dify forwards the end-user's identity to an MCP server.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IdentityMode | string | How Dify forwards the end-user's identity to an MCP server. |  |
+
 #### Import
 
 | Name | Type | Description | Required |
@@ -15217,6 +15225,7 @@ Enum class for large language model mode.
 | icon | string |  | Yes |
 | icon_background | string |  | No |
 | icon_type | string |  | Yes |
+| identity_mode | [IdentityMode](#identitymode) |  | No |
 | name | string |  | Yes |
 | server_identifier | string |  | Yes |
 | server_url | string |  | Yes |
@@ -15237,6 +15246,7 @@ Enum class for large language model mode.
 | icon | string |  | Yes |
 | icon_background | string |  | No |
 | icon_type | string |  | Yes |
+| identity_mode | [IdentityMode](#identitymode) |  | No |
 | name | string |  | Yes |
 | provider_id | string |  | Yes |
 | server_identifier | string |  | Yes |

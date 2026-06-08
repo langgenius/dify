@@ -195,13 +195,16 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
         snapshot.update(self._overrides)
         return snapshot
 
+    @override
     def __getitem__(self, key: NodeType) -> Mapping[str, type[Node]]:
         return self._snapshot()[key]
 
+    @override
     def __setitem__(self, key: NodeType, value: Mapping[str, type[Node]]) -> None:
         self._deleted.discard(key)
         self._overrides[key] = value
 
+    @override
     def __delitem__(self, key: NodeType) -> None:
         if key in self._overrides:
             del self._overrides[key]
@@ -211,9 +214,11 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
             return
         raise KeyError(key)
 
+    @override
     def __iter__(self) -> Iterator[NodeType]:
         return iter(self._snapshot())
 
+    @override
     def __len__(self) -> int:
         return len(self._snapshot())
 

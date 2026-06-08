@@ -4,15 +4,17 @@ from datetime import UTC, datetime
 
 from flask import request
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
+from pydantic import ValidationError
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
+from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
-    MAX_PAGE_LIMIT,
     AccountPayload,
     AccountResponse,
     PaginationEnvelope,
     RevokeResponse,
+    SessionListQuery,
     SessionListResponse,
     SessionRow,
     WorkspacePayload,
@@ -70,13 +72,21 @@ class AccountSessionsSelfApi(Resource):
 
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
+    @openapi_ns.doc(params=query_params_from_model(SessionListQuery))
     @openapi_ns.response(200, "Session list", openapi_ns.models[SessionListResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     def get(self, *, auth_data: AuthData):
+        # Validate page/limit through the same model the contract advertises (extra='forbid',
+        # page>=1, 1<=limit<=MAX_PAGE_LIMIT) so the server actually enforces those bounds rather
+        # than silently coercing (e.g. page=0 -> empty slice). Mirrors AppDescribeQuery.
+        try:
+            query = SessionListQuery.model_validate(request.args.to_dict(flat=True))
+        except ValidationError as exc:
+            raise UnprocessableEntity(exc.json())
         ctx = get_auth_ctx()
         now = datetime.now(UTC)
-        page = int(request.args.get("page", "1"))
-        limit = min(int(request.args.get("limit", "100")), MAX_PAGE_LIMIT)
+        page = query.page
+        limit = query.limit
 
         all_rows = list_active_sessions(db.session, ctx, now)
 
