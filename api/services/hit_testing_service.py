@@ -58,7 +58,11 @@ class HitTestingService:
     @classmethod
     def _dump_retrieval_records(cls, records: list[RetrievalSegments]) -> list[dict[str, Any]]:
         document_ids = {
-            record.segment.document_id for record in records if record.segment and record.segment.document_id
+            document_id
+            for record in records
+            if record.segment
+            for document_id in [record.segment.document_id]
+            if isinstance(document_id, str) and document_id
         }
         if not document_ids:
             return [record.model_dump() for record in records]
@@ -74,6 +78,10 @@ class HitTestingService:
         missing_document_ids: set[str] = set()
         for retrieval_record in records:
             segment = retrieval_record.segment
+            if not segment or not isinstance(segment.document_id, str) or not segment.document_id:
+                records_with_documents.append(retrieval_record.model_dump())
+                continue
+
             document_id = segment.document_id
             document = documents.get(document_id)
             if document is None:
