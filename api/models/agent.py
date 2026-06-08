@@ -423,7 +423,9 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     # drive ref = agent-<agent_id>; this phase has no standalone drive_id.
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # path-like opaque key; not a filesystem (no dir/permission/parent semantics).
-    key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    # Bounded at 512 so the (tenant_id, agent_id, key) unique index stays within
+    # MySQL's 3072-byte index limit (CHAR(36)*2 + VARCHAR(512) utf8mb4 = 2336).
+    key: Mapped[str] = mapped_column(String(512), nullable=False)
     file_kind: Mapped[AgentDriveFileKind] = mapped_column(EnumText(AgentDriveFileKind, length=32), nullable=False)
     # points at UploadFile.id / ToolFile.id (the value), never the bytes.
     file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

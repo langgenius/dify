@@ -22,7 +22,7 @@ def upgrade():
         'agent_drive_files',
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('agent_id', models.types.StringUUID(), nullable=False),
-        sa.Column('key', sa.String(length=1024), nullable=False),
+        sa.Column('key', sa.String(length=512), nullable=False),
         sa.Column('file_kind', sa.String(length=32), nullable=False),
         sa.Column('file_id', models.types.StringUUID(), nullable=False),
         sa.Column('value_owned_by_drive', sa.Boolean(), server_default=sa.text('false'), nullable=False),

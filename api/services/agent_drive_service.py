@@ -38,7 +38,7 @@ from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
 
-_MAX_KEY_LENGTH = 1024
+_MAX_KEY_LENGTH = 512
 _DRIVE_REF_PREFIX = "agent-"
 
 
