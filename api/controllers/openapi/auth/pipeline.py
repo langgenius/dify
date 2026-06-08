@@ -49,17 +49,17 @@ class AuthPipeline:
         self._prepare = prepare
         self._auth = auth
 
-    def _run(
+    def _run[R](
         self,
         identity: AuthContext,
         args: tuple,
         kwargs: dict,
-        view: Callable,
+        view: Callable[..., R],
         *,
         scope: Scope | None,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
-    ) -> Any:
+    ):
         req_ctx = RequestContext(
             token_type=identity.token_type,
             scope=scope,
@@ -154,7 +154,7 @@ class PipelineRouter:
             allowed_roles=allowed_roles,
         )
 
-    def _make_decorator(
+    def _make_decorator[**P, R](
         self,
         *,
         scope: Scope | None,
@@ -162,10 +162,10 @@ class PipelineRouter:
         edition: frozenset[Edition] | None,
         workspace_membership: bool,
         allowed_roles: frozenset[TenantAccountRole] | None,
-    ) -> Callable:
-        def decorator(view: Callable) -> Callable:
+    ) :
+        def decorator(view: Callable[P, R])  :
             @wraps(view)
-            def decorated(*args: Any, **kwargs: Any) -> Any:
+            def decorated(*args: P.args, **kwargs: P.kwargs) ->R :
                 return self._execute(
                     args,
                     kwargs,
@@ -181,11 +181,11 @@ class PipelineRouter:
 
         return decorator
 
-    def _execute(
+    def _execute[R](
         self,
         args: tuple,
         kwargs: dict,
-        view: Callable,
+        view: Callable[..., R],
         *,
         scope: Scope | None,
         allowed_token_types: frozenset[TokenType] | None,

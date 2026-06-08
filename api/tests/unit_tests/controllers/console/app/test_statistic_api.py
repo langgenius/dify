@@ -119,7 +119,7 @@ def test_daily_message_statistic_with_invalid_time_range(app, monkeypatch: pytes
     api = statistic_module.DailyMessageStatistic()
     method = _unwrap(api.get)
 
-    def mock_parse(*args, **kwargs):
+    def mock_parse[**P](*args: P.args, **kwargs: P.kwargs):
         raise ValueError("Invalid time range")
 
     _install_db(monkeypatch, [])
