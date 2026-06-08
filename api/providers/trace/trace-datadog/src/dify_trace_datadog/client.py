@@ -137,10 +137,11 @@ class DatadogTraceClient:
     @staticmethod
     def compute_trace_id(key: str) -> int:
         """
-        Compute a deterministic 128-bit trace ID from a logical entity key.
+        Compute a deterministic non-zero 128-bit trace ID from a logical entity key.
         """
-        digest = hashlib.md5(key.encode(), usedforsecurity=False).digest()
-        return int.from_bytes(digest, byteorder="big")
+        digest = hashlib.sha256(key.encode()).digest()
+        trace_id = int.from_bytes(digest[:16], byteorder="big", signed=False)
+        return trace_id or 1
 
     @staticmethod
     def compute_span_id(key: str) -> int:
