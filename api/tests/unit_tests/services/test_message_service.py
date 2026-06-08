@@ -908,13 +908,13 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_success(
         self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_trace_manager,
-        mock_llm_gen,
-        mock_memory,
-        mock_model_manager,
-        mock_db,
+        mock_conversation_service: MagicMock,
+        mock_get_message: MagicMock,
+        mock_trace_manager: MagicMock,
+        mock_llm_gen: MagicMock,
+        mock_memory: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_db: MagicMock,
         factory: TestMessageServiceFactory,
     ):
         """Test successful suggested questions generation in basic Chat mode."""
@@ -954,13 +954,13 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_uses_frontend_model_and_prompt(
         self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_trace_manager,
-        mock_llm_gen,
-        mock_memory,
-        mock_model_manager,
-        mock_db,
+        mock_conversation_service: MagicMock,
+        mock_get_message: MagicMock,
+        mock_trace_manager: MagicMock,
+        mock_llm_gen: MagicMock,
+        mock_memory: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_db: MagicMock,
         factory: TestMessageServiceFactory,
     ):
         """Test suggested question generation uses frontend configured model and prompt."""
@@ -1027,13 +1027,13 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_invalid_frontend_model_fallback_to_default(
         self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_trace_manager,
-        mock_llm_gen,
-        mock_memory,
-        mock_model_manager,
-        mock_db,
+        mock_conversation_service: MagicMock,
+        mock_get_message: MagicMock,
+        mock_trace_manager: MagicMock,
+        mock_llm_gen: MagicMock,
+        mock_memory: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_db: MagicMock,
         factory: TestMessageServiceFactory,
     ):
         """Test invalid frontend configured model falls back to tenant default model."""
@@ -1078,13 +1078,13 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_uses_compatible_override_model_config(
         self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_trace_manager,
-        mock_llm_gen,
-        mock_memory,
-        mock_model_manager,
-        mock_db,
+        mock_conversation_service: MagicMock,
+        mock_get_message: MagicMock,
+        mock_trace_manager: MagicMock,
+        mock_llm_gen: MagicMock,
+        mock_memory: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_db: MagicMock,
         factory: TestMessageServiceFactory,
     ):
         """Test legacy override configs are normalized before suggested questions reads them."""
