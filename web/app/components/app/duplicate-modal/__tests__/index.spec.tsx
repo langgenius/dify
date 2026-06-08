@@ -44,7 +44,9 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
     return (
       <div>
         <input placeholder="Search emojis..." />
-        <button type="button" onClick={() => {}}> <em-emoji /> </button>
+        <button type="button" onClick={() => {}}>
+          <em-emoji />
+        </button>
         <button type="button" aria-label="#E4FBCC" onClick={() => { selectedBackground = '#E4FBCC' }} />
         <button
           type="button"
