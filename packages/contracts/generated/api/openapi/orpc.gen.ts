@@ -10,6 +10,7 @@ import {
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath,
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse,
   zGetAccountResponse,
+  zGetAccountSessionsQuery,
   zGetAccountSessionsResponse,
   zGetAppsByAppIdDescribePath,
   zGetAppsByAppIdDescribeQuery,
@@ -132,6 +133,7 @@ export const get3 = oc
     path: '/account/sessions',
     tags: ['openapi'],
   })
+  .input(z.object({ query: zGetAccountSessionsQuery.optional() }))
   .output(zGetAccountSessionsResponse)
 
 export const sessions = {

@@ -359,7 +359,10 @@ export type GetAccountResponse = GetAccountResponses[keyof GetAccountResponses]
 export type GetAccountSessionsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
   url: '/account/sessions'
 }
 

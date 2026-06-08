@@ -46,6 +46,13 @@ User-scoped operations
 ### /account/sessions
 
 #### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+
 ##### Responses
 
 | Code | Description | Schema |

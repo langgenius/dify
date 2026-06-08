@@ -450,6 +450,11 @@ export const zGetVersionResponse = zServerVersionResponse
  */
 export const zGetAccountResponse = zAccountResponse
 
+export const zGetAccountSessionsQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(100),
+  page: z.int().gte(1).optional().default(1),
+})
+
 /**
  * Session list
  */
