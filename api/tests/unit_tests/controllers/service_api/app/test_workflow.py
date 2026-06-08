@@ -500,7 +500,7 @@ class TestWorkflowAppLogApi:
                 return False
 
         class _SessionMakerStub:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def begin(self):

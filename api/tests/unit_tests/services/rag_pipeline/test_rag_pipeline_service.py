@@ -1499,7 +1499,7 @@ def test_run_datasource_node_preview_raises_for_stream_non_string(
 
     runtime = mocker.Mock()
 
-    def _bad_stream_generator(*args, **kwargs):
+    def _bad_stream_generator[**P](*args: P.args, **kwargs: P.kwargs):
         yield DatasourceMessage(
             type=DatasourceMessage.MessageType.VARIABLE,
             message=DatasourceMessage.VariableMessage(variable_name="content", variable_value=1, stream=True),

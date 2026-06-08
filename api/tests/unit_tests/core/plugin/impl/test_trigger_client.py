@@ -67,7 +67,7 @@ class TestPluginTriggerClient:
         client = PluginTriggerClient()
         provider = _trigger_provider("remote")
 
-        def fake_request(*args, **kwargs):
+        def fake_request[**P](*args: P.args, **kwargs: P.kwargs):
             transformer = kwargs["transformer"]
             payload = {
                 "data": [
@@ -94,7 +94,7 @@ class TestPluginTriggerClient:
         client = PluginTriggerClient()
         provider = _trigger_provider("provider")
 
-        def fake_request(*args, **kwargs):
+        def fake_request[**P](*args: P.args, **kwargs: P.kwargs):
             transformer = kwargs["transformer"]
             payload = {"data": {"declaration": {"events": [{"identity": {"provider": "old"}}]}}}
             transformed = transformer(payload)

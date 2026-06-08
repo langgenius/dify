@@ -470,7 +470,7 @@ class IndexingRunner:
         return text_docs
 
     @staticmethod
-    def filter_string(text):
+    def filter_string(text: str):
         text = re.sub(r"<\|", "<", text)
         text = re.sub(r"\|>", ">", text)
         text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xEF\xBF\xBE]", "", text)
@@ -656,7 +656,7 @@ class IndexingRunner:
         )
 
     @staticmethod
-    def _process_keyword_index(flask_app, dataset_id, document_id, documents):
+    def _process_keyword_index(flask_app: Flask, dataset_id: str, document_id: str, documents: list[Document]):
         with flask_app.app_context():
             dataset = db.session.get(Dataset, dataset_id)
             if not dataset:

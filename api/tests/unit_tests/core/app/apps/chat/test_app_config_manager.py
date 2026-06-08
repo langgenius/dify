@@ -45,7 +45,7 @@ class TestChatAppConfigManager:
         config = {"extra": 1}
 
         def _add_key(key, value):
-            def _inner(*args, **kwargs):
+            def _inner[**P](*args: P.args, **kwargs: P.kwargs):
                 config = args[-1]
                 config = {**config, key: value}
                 return config, [key]
