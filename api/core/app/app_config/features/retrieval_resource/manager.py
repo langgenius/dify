@@ -1,6 +1,9 @@
+from typing import Any
+
+
 class RetrievalResourceConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> bool:
+    def convert(cls, config: dict[str, Any]) -> bool:
         show_retrieve_source = False
         retriever_resource_dict = config.get("retriever_resource")
         if retriever_resource_dict:
@@ -10,7 +13,7 @@ class RetrievalResourceConfigManager:
         return show_retrieve_source
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for retriever resource feature
 

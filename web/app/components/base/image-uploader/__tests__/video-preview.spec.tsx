@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import VideoPreview from '../video-preview'
 
 const getOverlay = () => screen.getByTestId('video-preview')
-const getCloseButton = () => screen.getByTestId('close-button')
+const getCloseButton = () => screen.getByRole('button', { name: 'common.operation.close' })
 describe('VideoPreview', () => {
   const defaultProps = {
     url: 'https://example.com/video.mp4',
@@ -51,7 +51,7 @@ describe('VideoPreview', () => {
 
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
-      expect(overlay.parentElement).toBe(document.body)
+      expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
     })
   })
 

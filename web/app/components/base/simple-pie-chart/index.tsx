@@ -1,8 +1,8 @@
 import type { EChartsOption } from 'echarts'
 import type { CSSProperties } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import ReactECharts from 'echarts-for-react'
 import { memo, useMemo } from 'react'
-import { cn } from '@/utils/classnames'
 import style from './index.module.css'
 
 export type SimplePieChartProps = {

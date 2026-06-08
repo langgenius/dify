@@ -1,13 +1,13 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import './style.css'
 
-type ILoadingProps = {
+type ILoadingProps = Readonly<{
   type?: 'area' | 'app'
   className?: string
-}
+}>
 
 const Loading = (props?: ILoadingProps) => {
   const { type = 'area', className } = props || {}

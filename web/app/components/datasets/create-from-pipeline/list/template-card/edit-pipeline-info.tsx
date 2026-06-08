@@ -1,15 +1,15 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { PipelineTemplate } from '@/models/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
 import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {
@@ -31,11 +31,6 @@ const EditPipelineInfo = ({
   )
   const [description, setDescription] = useState(pipeline.description)
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const previousAppIcon = useRef<AppIconSelection>(
-    iconInfo.icon_type === 'image'
-      ? { type: 'image' as const, url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
-      : { type: 'emoji' as const, icon: iconInfo.icon || '', background: iconInfo.icon_background || '' },
-  )
 
   const handleAppNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
@@ -44,21 +39,13 @@ const EditPipelineInfo = ({
 
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
-    previousAppIcon.current = appIcon
-  }, [appIcon])
+  }, [])
 
   const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
     setAppIcon(icon)
-    setShowAppIconPicker(false)
   }, [])
 
-  const handleCloseAppIconPicker = useCallback(() => {
-    setAppIcon(previousAppIcon.current)
-    setShowAppIconPicker(false)
-  }, [])
-
-  const handleDescriptionChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = event.target.value
+  const handleDescriptionChange = useCallback((value: string) => {
     setDescription(value)
   }, [])
 
@@ -67,10 +54,7 @@ const EditPipelineInfo = ({
 
   const handleSave = useCallback(async () => {
     if (!name) {
-      Toast.notify({
-        type: 'error',
-        message: 'Please enter a name for the Knowledge Base.',
-      })
+      toast.error(t('editPipelineInfoNameRequired', { ns: 'datasetPipeline' }))
       return
     }
     const request = {
@@ -95,14 +79,14 @@ const EditPipelineInfo = ({
   return (
     <div className="relative flex flex-col">
       {/* Header */}
-      <div className="pb-3 pl-6 pr-14 pt-6">
+      <div className="pt-6 pr-14 pb-3 pl-6">
         <span className="title-2xl-semi-bold text-text-primary">
           {t('editPipelineInfo', { ns: 'datasetPipeline' })}
         </span>
       </div>
       <button
         type="button"
-        className="absolute right-5 top-5 flex size-8 items-center justify-center"
+        className="absolute top-5 right-5 flex size-8 items-center justify-center"
         onClick={onClose}
       >
         <RiCloseLine className="size-5 text-text-tertiary" />
@@ -111,7 +95,7 @@ const EditPipelineInfo = ({
       <div className="flex flex-col gap-y-5 px-6 py-3">
         <div className="flex items-end gap-x-3 self-stretch">
           <div className="flex grow flex-col gap-y-1 pb-1">
-            <label className="system-sm-medium flex h-6 items-center text-text-secondary">
+            <label className="flex h-6 items-center system-sm-medium text-text-secondary">
               {t('pipelineNameAndIcon', { ns: 'datasetPipeline' })}
             </label>
             <Input
@@ -132,11 +116,12 @@ const EditPipelineInfo = ({
           />
         </div>
         <div className="flex flex-col gap-y-1">
-          <label className="system-sm-medium flex h-6 items-center text-text-secondary">
+          <label className="flex h-6 items-center system-sm-medium text-text-secondary">
             {t('knowledgeDescription', { ns: 'datasetPipeline' })}
           </label>
           <Textarea
-            onChange={handleDescriptionChange}
+            aria-label={t('knowledgeDescription', { ns: 'datasetPipeline' })}
+            onValueChange={handleDescriptionChange}
             value={description}
             placeholder={t('knowledgeDescriptionPlaceholder', { ns: 'datasetPipeline' })}
           />
@@ -159,8 +144,12 @@ const EditPipelineInfo = ({
       </div>
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
+          initialEmoji={appIcon.type === 'emoji'
+            ? { icon: appIcon.icon, background: appIcon.background }
+            : undefined}
+          onOpenChange={setShowAppIconPicker}
           onSelect={handleSelectAppIcon}
-          onClose={handleCloseAppIconPicker}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { useRouter } from 'next/navigation'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +11,8 @@ import WorkflowLog from '@/app/components/app/workflow-log'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
+import { useRouter } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   pageType: PageType

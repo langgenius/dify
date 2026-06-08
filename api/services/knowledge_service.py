@@ -1,12 +1,20 @@
 import boto3
+from pydantic import BaseModel, Field
 
 from configs import dify_config
+
+
+class BedrockRetrievalSetting(BaseModel):
+    """Retrieval settings for Amazon Bedrock knowledge base queries."""
+
+    top_k: int | None = Field(default=None, description="Maximum number of results to retrieve")
+    score_threshold: float = Field(default=0.0, description="Minimum relevance score threshold")
 
 
 class ExternalDatasetTestService:
     # this service is only for internal testing
     @staticmethod
-    def knowledge_retrieval(retrieval_setting: dict, query: str, knowledge_id: str):
+    def knowledge_retrieval(retrieval_setting: BedrockRetrievalSetting, query: str, knowledge_id: str):
         # get bedrock client
         client = boto3.client(
             "bedrock-agent-runtime",
@@ -20,7 +28,7 @@ class ExternalDatasetTestService:
             knowledgeBaseId=knowledge_id,
             retrievalConfiguration={
                 "vectorSearchConfiguration": {
-                    "numberOfResults": retrieval_setting.get("top_k"),
+                    "numberOfResults": retrieval_setting.top_k,
                     "overrideSearchType": "HYBRID",
                 }
             },
@@ -33,7 +41,7 @@ class ExternalDatasetTestService:
                 retrieval_results = response.get("retrievalResults")
                 for retrieval_result in retrieval_results:
                     # filter out results with score less than threshold
-                    if retrieval_result.get("score") < retrieval_setting.get("score_threshold", 0.0):
+                    if retrieval_result.get("score") < retrieval_setting.score_threshold:
                         continue
                     result = {
                         "metadata": retrieval_result.get("metadata"),

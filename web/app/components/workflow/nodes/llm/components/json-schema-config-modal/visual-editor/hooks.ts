@@ -1,9 +1,10 @@
 import type { VisualEditorProps } from '.'
 import type { Field } from '../../../types'
 import type { EditData } from './edit-card'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import Toast from '@/app/components/base/toast'
+import { useTranslation } from 'react-i18next'
 import { ArrayType, Type } from '../../../types'
 import { findPropertyWithPath } from '../../../utils'
 import { useMittContext } from './context'
@@ -22,6 +23,7 @@ type AddEventParams = {
 
 export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   const { schema: jsonSchema, onChange: doOnChange } = props
+  const { t } = useTranslation()
   const onChange = doOnChange || noop
   const backupSchema = useVisualEditorStore(state => state.backupSchema)
   const setBackupSchema = useVisualEditorStore(state => state.setBackupSchema)
@@ -65,10 +67,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       if (schema.type === Type.object) {
         const properties = schema.properties || {}
         if (properties[newName]) {
-          Toast.notify({
-            type: 'error',
-            message: 'Property name already exists',
-          })
+          toast.error(t('nodes.llm.jsonSchema.fieldNameAlreadyExists', { ns: 'workflow' }))
           emit('restorePropertyName')
           return
         }
@@ -92,10 +91,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         const properties = schema.items.properties || {}
         if (properties[newName]) {
-          Toast.notify({
-            type: 'error',
-            message: 'Property name already exists',
-          })
+          toast.error(t('nodes.llm.jsonSchema.fieldNameAlreadyExists', { ns: 'workflow' }))
           emit('restorePropertyName')
           return
         }
@@ -267,10 +263,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldName !== newName) {
           const properties = parentSchema.properties
           if (properties[newName]) {
-            Toast.notify({
-              type: 'error',
-              message: 'Property name already exists',
-            })
+            toast.error(t('nodes.llm.jsonSchema.fieldNameAlreadyExists', { ns: 'workflow' }))
             samePropertyNameError = true
           }
 
@@ -303,28 +296,28 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
 
         // type change
         if (oldType !== newType) {
-          if (schema.type === Type.object) {
-            delete schema.properties
-            delete schema.required
+          if (schema!.type === Type.object) {
+            delete schema!.properties
+            delete schema!.required
           }
-          if (schema.type === Type.array)
-            delete schema.items
+          if (schema!.type === Type.array)
+            delete schema!.items
           switch (newType) {
             case Type.object:
-              schema.type = Type.object
-              schema.properties = {}
-              schema.required = []
-              schema.additionalProperties = false
+              schema!.type = Type.object
+              schema!.properties = {}
+              schema!.required = []
+              schema!.additionalProperties = false
               break
             case ArrayType.string:
-              schema.type = Type.array
-              schema.items = {
+              schema!.type = Type.array
+              schema!.items = {
                 type: Type.string,
               }
               break
             case ArrayType.number:
-              schema.type = Type.array
-              schema.items = {
+              schema!.type = Type.array
+              schema!.items = {
                 type: Type.number,
               }
               break
@@ -335,8 +328,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             //   }
             //   break
             case ArrayType.object:
-              schema.type = Type.array
-              schema.items = {
+              schema!.type = Type.array
+              schema!.items = {
                 type: Type.object,
                 properties: {},
                 required: [],
@@ -344,13 +337,14 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
               }
               break
             default:
-              schema.type = newType as Type
+              schema!.type = newType as Type
           }
         }
 
         // other options change
-        schema.description = fields.description
-        schema.enum = fields.enum
+        // other options change
+        schema!.description = fields.description
+        schema!.enum = fields.enum
       }
 
       if (parentSchema.type === Type.array && parentSchema.items && parentSchema.items.type === Type.object && parentSchema.items.properties) {
@@ -358,10 +352,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldName !== newName) {
           const properties = parentSchema.items.properties || {}
           if (properties[newName]) {
-            Toast.notify({
-              type: 'error',
-              message: 'Property name already exists',
-            })
+            toast.error(t('nodes.llm.jsonSchema.fieldNameAlreadyExists', { ns: 'workflow' }))
             samePropertyNameError = true
           }
 
@@ -392,28 +383,28 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         const schema = parentSchema.items.properties[newName]
         // type change
         if (oldType !== newType) {
-          if (schema.type === Type.object) {
-            delete schema.properties
-            delete schema.required
+          if (schema!.type === Type.object) {
+            delete schema!.properties
+            delete schema!.required
           }
-          if (schema.type === Type.array)
-            delete schema.items
+          if (schema!.type === Type.array)
+            delete schema!.items
           switch (newType) {
             case Type.object:
-              schema.type = Type.object
-              schema.properties = {}
-              schema.required = []
-              schema.additionalProperties = false
+              schema!.type = Type.object
+              schema!.properties = {}
+              schema!.required = []
+              schema!.additionalProperties = false
               break
             case ArrayType.string:
-              schema.type = Type.array
-              schema.items = {
+              schema!.type = Type.array
+              schema!.items = {
                 type: Type.string,
               }
               break
             case ArrayType.number:
-              schema.type = Type.array
-              schema.items = {
+              schema!.type = Type.array
+              schema!.items = {
                 type: Type.number,
               }
               break
@@ -424,8 +415,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             //   }
             //   break
             case ArrayType.object:
-              schema.type = Type.array
-              schema.items = {
+              schema!.type = Type.array
+              schema!.items = {
                 type: Type.object,
                 properties: {},
                 required: [],
@@ -433,13 +424,14 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
               }
               break
             default:
-              schema.type = newType as Type
+              schema!.type = newType as Type
           }
         }
 
         // other options change
-        schema.description = fields.description
-        schema.enum = fields.enum
+        // other options change
+        schema!.description = fields.description
+        schema!.enum = fields.enum
       }
     })
     if (samePropertyNameError)

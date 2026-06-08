@@ -6,14 +6,6 @@ import { ProcessMode } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RuleDetail from '../rule-detail'
 
-// Override global next/image auto-mock: tests assert on data-testid="next-image" and src attributes
-vi.mock('next/image', () => ({
-  default: function MockImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
-    // eslint-disable-next-line next/no-img-element
-    return <img src={src} alt={alt} className={className} data-testid="next-image" />
-  },
-}))
-
 // Mock FieldInfo component
 vi.mock('@/app/components/datasets/documents/detail/metadata', () => ({
   FieldInfo: ({ label, displayedValue, valueIcon }: { label: string, displayedValue: string, valueIcon?: React.ReactNode }) => (
@@ -184,16 +176,16 @@ describe('RuleDetail', () => {
     })
 
     it('should show high_quality icon for qualified indexing', () => {
-      render(<RuleDetail indexingType={IndexingType.QUALIFIED} />)
+      const { container } = render(<RuleDetail indexingType={IndexingType.QUALIFIED} />)
 
-      const images = screen.getAllByTestId('next-image')
+      const images = container.querySelectorAll('img')
       expect(images[0]).toHaveAttribute('src', '/icons/high_quality.svg')
     })
 
     it('should show economical icon for economical indexing', () => {
-      render(<RuleDetail indexingType={IndexingType.ECONOMICAL} />)
+      const { container } = render(<RuleDetail indexingType={IndexingType.ECONOMICAL} />)
 
-      const images = screen.getAllByTestId('next-image')
+      const images = container.querySelectorAll('img')
       expect(images[0]).toHaveAttribute('src', '/icons/economical.svg')
     })
   })
@@ -256,38 +248,38 @@ describe('RuleDetail', () => {
     })
 
     it('should show vector icon for semantic search', () => {
-      render(
+      const { container } = render(
         <RuleDetail
           indexingType={IndexingType.QUALIFIED}
           retrievalMethod={RETRIEVE_METHOD.semantic}
         />,
       )
 
-      const images = screen.getAllByTestId('next-image')
+      const images = container.querySelectorAll('img')
       expect(images[1]).toHaveAttribute('src', '/icons/vector.svg')
     })
 
     it('should show fullText icon for full text search', () => {
-      render(
+      const { container } = render(
         <RuleDetail
           indexingType={IndexingType.QUALIFIED}
           retrievalMethod={RETRIEVE_METHOD.fullText}
         />,
       )
 
-      const images = screen.getAllByTestId('next-image')
+      const images = container.querySelectorAll('img')
       expect(images[1]).toHaveAttribute('src', '/icons/fullText.svg')
     })
 
     it('should show hybrid icon for hybrid search', () => {
-      render(
+      const { container } = render(
         <RuleDetail
           indexingType={IndexingType.QUALIFIED}
           retrievalMethod={RETRIEVE_METHOD.hybrid}
         />,
       )
 
-      const images = screen.getAllByTestId('next-image')
+      const images = container.querySelectorAll('img')
       expect(images[1]).toHaveAttribute('src', '/icons/hybrid.svg')
     })
   })
@@ -308,9 +300,9 @@ describe('RuleDetail', () => {
     })
 
     it('should handle undefined retrievalMethod with defined indexingType', () => {
-      render(<RuleDetail indexingType={IndexingType.QUALIFIED} />)
+      const { container } = render(<RuleDetail indexingType={IndexingType.QUALIFIED} />)
 
-      const images = screen.getAllByTestId('next-image')
+      const images = container.querySelectorAll('img')
       // When retrievalMethod is undefined, vector icon is used as default
       expect(images[1]).toHaveAttribute('src', '/icons/vector.svg')
     })

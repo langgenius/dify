@@ -22,7 +22,7 @@ vi.mock('reactflow', async (importOriginal) => {
     ...actual,
     getConnectedEdges: vi.fn((_nodes: Node[], edges: Edge[]) => {
       const node = _nodes[0]
-      return edges.filter(e => e.source === node.id || e.target === node.id)
+      return edges.filter(e => e.source === node!.id || e.target === node!.id)
     }),
   }
 })
@@ -57,7 +57,7 @@ describe('preprocessNodesAndEdges', () => {
     const result = preprocessNodesAndEdges(nodes as Node[], [])
     const startNodes = result.nodes.filter(n => n.data.type === BlockEnum.IterationStart)
     expect(startNodes).toHaveLength(1)
-    expect(startNodes[0].parentId).toBe('iter-1')
+    expect(startNodes[0]!.parentId).toBe('iter-1')
   })
 
   it('should add iteration start node when iteration has start_node_id but node type does not match', () => {
@@ -142,9 +142,9 @@ describe('preprocessNodesAndEdges', () => {
     const result = preprocessNodesAndEdges(nodes as Node[], [])
     const newEdges = result.edges
     expect(newEdges).toHaveLength(1)
-    expect(newEdges[0].target).toBe('child-1')
-    expect(newEdges[0].data!.sourceType).toBe(BlockEnum.IterationStart)
-    expect(newEdges[0].data!.isInIteration).toBe(true)
+    expect(newEdges[0]!.target).toBe('child-1')
+    expect(newEdges[0]!.data!.sourceType).toBe(BlockEnum.IterationStart)
+    expect(newEdges[0]!.data!.isInIteration).toBe(true)
   })
 
   it('should create edges for loop nodes with start_node_id', () => {
@@ -162,8 +162,8 @@ describe('preprocessNodesAndEdges', () => {
     const result = preprocessNodesAndEdges(nodes as Node[], [])
     const newEdges = result.edges
     expect(newEdges).toHaveLength(1)
-    expect(newEdges[0].target).toBe('child-1')
-    expect(newEdges[0].data!.isInLoop).toBe(true)
+    expect(newEdges[0]!.target).toBe('child-1')
+    expect(newEdges[0]!.data!.isInLoop).toBe(true)
   })
 
   it('should update start_node_id on iteration and loop nodes', () => {
@@ -194,19 +194,19 @@ describe('initialNodes', () => {
     nodes.forEach(n => Reflect.deleteProperty(n, 'position'))
 
     const result = initialNodes(nodes, [])
-    expect(result[0].position).toBeDefined()
-    expect(result[1].position).toBeDefined()
-    expect(result[1].position.x).toBeGreaterThan(result[0].position.x)
+    expect(result[0]!.position).toBeDefined()
+    expect(result[1]!.position).toBeDefined()
+    expect(result[1]!.position.x).toBeGreaterThan(result[0]!.position.x)
   })
 
   it('should set type to CUSTOM_NODE when type is missing', () => {
     const nodes = [
       createNode({ id: 'n1', data: { type: BlockEnum.Start, title: '', desc: '' } }),
     ]
-    Reflect.deleteProperty(nodes[0], 'type')
+    Reflect.deleteProperty(nodes[0]!, 'type')
 
     const result = initialNodes(nodes, [])
-    expect(result[0].type).toBe(CUSTOM_NODE)
+    expect(result[0]!.type).toBe(CUSTOM_NODE)
   })
 
   it('should set connected source and target handle ids', () => {
@@ -219,8 +219,8 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, edges)
-    expect(result[0].data._connectedSourceHandleIds).toContain('source')
-    expect(result[1].data._connectedTargetHandleIds).toContain('target')
+    expect(result[0]!.data._connectedSourceHandleIds).toContain('source')
+    expect(result[1]!.data._connectedTargetHandleIds).toContain('target')
   })
 
   it('should handle IfElse node with cases', () => {
@@ -239,8 +239,8 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect(result[0].data._targetBranches).toBeDefined()
-    expect(result[0].data._targetBranches).toHaveLength(2)
+    expect(result[0]!.data._targetBranches).toBeDefined()
+    expect(result[0]!.data._targetBranches).toHaveLength(2)
   })
 
   it('should migrate legacy IfElse node without cases to cases format', () => {
@@ -259,9 +259,9 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const data = result[0].data as IfElseNodeType
+    const data = result[0]!.data as IfElseNodeType
     expect(data.cases).toHaveLength(1)
-    expect(data.cases[0].case_id).toBe('true')
+    expect(data.cases[0]!.case_id).toBe('true')
   })
 
   it('should delete legacy conditions/logical_operator when cases exist', () => {
@@ -282,7 +282,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const data = result[0].data as IfElseNodeType
+    const data = result[0]!.data as IfElseNodeType
     expect(data.conditions).toBeUndefined()
     expect(data.logical_operator).toBeUndefined()
   })
@@ -302,7 +302,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect(result[0].data._targetBranches).toHaveLength(1)
+    expect(result[0]!.data._targetBranches).toHaveLength(1)
   })
 
   it('should set iteration node defaults', () => {
@@ -382,7 +382,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect((result[0].data as LLMNodeType).model.provider).toBe('corrected/openai')
+    expect((result[0]!.data as LLMNodeType).model.provider).toBe('corrected/openai')
   })
 
   it('should correct model provider for KnowledgeRetrieval reranking_model', () => {
@@ -401,7 +401,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect((result[0].data as KnowledgeRetrievalNodeType).multiple_retrieval_config!.reranking_model!.provider).toBe('corrected/cohere')
+    expect((result[0]!.data as KnowledgeRetrievalNodeType).multiple_retrieval_config!.reranking_model!.provider).toBe('corrected/cohere')
   })
 
   it('should correct model provider for ParameterExtractor nodes', () => {
@@ -418,7 +418,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect((result[0].data as ParameterExtractorNodeType).model.provider).toBe('corrected/anthropic')
+    expect((result[0]!.data as ParameterExtractorNodeType).model.provider).toBe('corrected/anthropic')
   })
 
   it('should add default retry_config for HttpRequest nodes', () => {
@@ -434,7 +434,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect(result[0].data.retry_config).toEqual({
+    expect(result[0]!.data.retry_config).toEqual({
       retry_enabled: true,
       max_retries: DEFAULT_RETRY_MAX,
       retry_interval: DEFAULT_RETRY_INTERVAL,
@@ -456,7 +456,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect(result[0].data.retry_config).toEqual(existingConfig)
+    expect(result[0]!.data.retry_config).toEqual(existingConfig)
   })
 
   it('should migrate legacy Tool node configurations', () => {
@@ -476,7 +476,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const data = result[0].data as ToolNodeType
+    const data = result[0]!.data as ToolNodeType
     expect(data.tool_node_version).toBe('2')
     expect(data.tool_configurations.api_key).toEqual({
       type: 'constant',
@@ -503,7 +503,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const data = result[0].data as ToolNodeType
+    const data = result[0]!.data as ToolNodeType
     expect(data.tool_configurations).toEqual({ key: 'val' })
   })
 
@@ -522,7 +522,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const data = result[0].data as ToolNodeType
+    const data = result[0]!.data as ToolNodeType
     expect(data.tool_configurations).toEqual({ key: 'val' })
   })
 
@@ -540,7 +540,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const data = result[0].data as ToolNodeType
+    const data = result[0]!.data as ToolNodeType
     expect(data.tool_configurations.key).toEqual({ type: 'constant', value: null })
   })
 
@@ -558,7 +558,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const data = result[0].data as ToolNodeType
+    const data = result[0]!.data as ToolNodeType
     expect(data.tool_node_version).toBe('2')
   })
 })
@@ -572,7 +572,7 @@ describe('initialEdges', () => {
     const edges = [createEdge({ source: 'a', target: 'b' })]
 
     const result = initialEdges(edges, nodes)
-    expect(result[0].type).toBe('custom')
+    expect(result[0]!.type).toBe('custom')
   })
 
   it('should set default sourceHandle and targetHandle', () => {
@@ -585,8 +585,8 @@ describe('initialEdges', () => {
     Reflect.deleteProperty(edge, 'targetHandle')
 
     const result = initialEdges([edge], nodes)
-    expect(result[0].sourceHandle).toBe('source')
-    expect(result[0].targetHandle).toBe('target')
+    expect(result[0]!.sourceHandle).toBe('source')
+    expect(result[0]!.targetHandle).toBe('target')
   })
 
   it('should set sourceType and targetType from nodes', () => {
@@ -595,12 +595,12 @@ describe('initialEdges', () => {
       createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
     const edges = [createEdge({ source: 'a', target: 'b' })]
-    Reflect.deleteProperty(edges[0].data!, 'sourceType')
-    Reflect.deleteProperty(edges[0].data!, 'targetType')
+    Reflect.deleteProperty(edges[0]!.data!, 'sourceType')
+    Reflect.deleteProperty(edges[0]!.data!, 'targetType')
 
     const result = initialEdges(edges, nodes)
-    expect(result[0].data!.sourceType).toBe(BlockEnum.Start)
-    expect(result[0].data!.targetType).toBe(BlockEnum.Code)
+    expect(result[0]!.data!.sourceType).toBe(BlockEnum.Start)
+    expect(result[0]!.data!.targetType).toBe(BlockEnum.Code)
   })
 
   it('should set _connectedNodeIsSelected when a node is selected', () => {
@@ -611,7 +611,7 @@ describe('initialEdges', () => {
     const edges = [createEdge({ source: 'a', target: 'b' })]
 
     const result = initialEdges(edges, nodes)
-    expect(result[0].data!._connectedNodeIsSelected).toBe(true)
+    expect(result[0]!.data!._connectedNodeIsSelected).toBe(true)
   })
 
   it('should filter cycle edges', () => {
@@ -648,8 +648,8 @@ describe('initialEdges', () => {
 
     const result = initialEdges(edges, nodes)
     expect(result).toHaveLength(1)
-    expect(result[0].source).toBe('a')
-    expect(result[0].target).toBe('b')
+    expect(result[0]!.source).toBe('a')
+    expect(result[0]!.target).toBe('b')
   })
 
   it('should handle empty edges', () => {
@@ -678,7 +678,7 @@ describe('initialEdges', () => {
     const edges = [createEdge({ source: 'a', target: 'b' })]
 
     const result = initialEdges(edges, nodes)
-    expect(result[0].data!._connectedNodeIsSelected).toBe(true)
+    expect(result[0]!.data!._connectedNodeIsSelected).toBe(true)
   })
 
   it('should not set default sourceHandle when sourceHandle already exists', () => {
@@ -689,8 +689,8 @@ describe('initialEdges', () => {
     const edges = [createEdge({ source: 'a', target: 'b', sourceHandle: 'custom-src', targetHandle: 'custom-tgt' })]
 
     const result = initialEdges(edges, nodes)
-    expect(result[0].sourceHandle).toBe('custom-src')
-    expect(result[0].targetHandle).toBe('custom-tgt')
+    expect(result[0]!.sourceHandle).toBe('custom-src')
+    expect(result[0]!.targetHandle).toBe('custom-tgt')
   })
 
   it('should handle graph with edges referencing nodes not in the node list', () => {

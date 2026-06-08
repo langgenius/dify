@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, override
 
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -23,6 +23,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
         self.plugin_unique_identifier = plugin_unique_identifier
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider
@@ -31,6 +32,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
         """
         return ToolProviderType.PLUGIN
 
+    @override
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider

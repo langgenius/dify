@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { fn } from 'storybook/test'
 import { PreviewMode } from '@/app/components/base/features/types'
-import { ToastProvider } from '@/app/components/base/toast'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import FileUploaderInAttachmentWrapper from './index'
@@ -83,7 +83,8 @@ const AttachmentDemo = (props: React.ComponentProps<typeof FileUploaderInAttachm
   const [files, setFiles] = useState<FileEntity[]>(mockFiles)
 
   return (
-    <ToastProvider>
+    <>
+      <ToastHost />
       <div className="w-[320px] rounded-2xl border border-divider-subtle bg-components-panel-bg p-4 shadow-xs">
         <FileUploaderInAttachmentWrapper
           {...props}
@@ -91,7 +92,7 @@ const AttachmentDemo = (props: React.ComponentProps<typeof FileUploaderInAttachm
           onChange={setFiles}
         />
       </div>
-    </ToastProvider>
+    </>
   )
 }
 

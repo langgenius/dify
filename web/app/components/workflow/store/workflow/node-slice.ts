@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
 import type {
   VariableAssignerNodeType,
 } from '@/app/components/workflow/nodes/variable-assigner/types'
@@ -10,18 +11,13 @@ import type {
 } from '@/types/workflow'
 
 export type NodeSliceShape = {
+  checklistItems: ChecklistItem[]
   showSingleRunPanel: boolean
   setShowSingleRunPanel: (showSingleRunPanel: boolean) => void
   nodeAnimation: boolean
   setNodeAnimation: (nodeAnimation: boolean) => void
   candidateNode?: Node
   setCandidateNode: (candidateNode?: Node) => void
-  nodeMenu?: {
-    top: number
-    left: number
-    nodeId: string
-  }
-  setNodeMenu: (nodeMenu: NodeSliceShape['nodeMenu']) => void
   showAssignVariablePopup?: {
     nodeId: string
     nodeData: Node['data']
@@ -56,14 +52,13 @@ export type NodeSliceShape = {
 }
 
 export const createNodeSlice: StateCreator<NodeSliceShape> = set => ({
+  checklistItems: [],
   showSingleRunPanel: false,
   setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
   nodeAnimation: false,
   setNodeAnimation: nodeAnimation => set(() => ({ nodeAnimation })),
   candidateNode: undefined,
   setCandidateNode: candidateNode => set(() => ({ candidateNode })),
-  nodeMenu: undefined,
-  setNodeMenu: nodeMenu => set(() => ({ nodeMenu })),
   showAssignVariablePopup: undefined,
   setShowAssignVariablePopup: showAssignVariablePopup => set(() => ({ showAssignVariablePopup })),
   hoveringAssignVariableGroupId: undefined,

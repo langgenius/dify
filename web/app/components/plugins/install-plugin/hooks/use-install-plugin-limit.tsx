@@ -1,11 +1,12 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { Plugin, PluginManifestInMarket } from '../../types'
-import type { SystemFeatures } from '@/types/feature'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { InstallationScope } from '@/types/feature'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { InstallationScope } from '@/features/system-features/constants'
 
 type PluginProps = (Plugin | PluginManifestInMarket) & { from: 'github' | 'marketplace' | 'package' }
 
-export function pluginInstallLimit(plugin: PluginProps, systemFeatures: SystemFeatures) {
+export function pluginInstallLimit(plugin: PluginProps, systemFeatures: GetSystemFeaturesResponse) {
   if (systemFeatures.plugin_installation_permission.restrict_to_marketplace_only) {
     if (plugin.from === 'github' || plugin.from === 'package')
       return { canInstall: false }
@@ -41,6 +42,6 @@ export function pluginInstallLimit(plugin: PluginProps, systemFeatures: SystemFe
 }
 
 export default function usePluginInstallLimit(plugin: PluginProps) {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   return pluginInstallLimit(plugin, systemFeatures)
 }

@@ -1,9 +1,10 @@
 import re
+from typing import Any
 
 
 class CleanProcessor:
     @classmethod
-    def clean(cls, text: str, process_rule: dict) -> str:
+    def clean(cls, text: str, process_rule: dict[str, Any] | None) -> str:
         # default clean
         # remove invalid symbol
         text = re.sub(r"<\|", "<", text)

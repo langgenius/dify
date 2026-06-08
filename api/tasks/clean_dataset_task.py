@@ -112,7 +112,9 @@ def clean_dataset_task(
                 segment_ids = [segment.id for segment in segments]
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
-                    image_files = session.query(UploadFile).where(UploadFile.id.in_(image_upload_file_ids)).all()
+                    image_files = session.scalars(
+                        select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
+                    ).all()
                     for image_file in image_files:
                         if image_file is None:
                             continue
@@ -150,20 +152,22 @@ def clean_dataset_task(
                 )
                 session.execute(binding_delete_stmt)
 
-            session.query(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id).delete()
-            session.query(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id).delete()
-            session.query(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset_id).delete()
+            session.execute(delete(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id))
+            session.execute(delete(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id))
+            session.execute(delete(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset_id))
             # delete dataset metadata
-            session.query(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id).delete()
-            session.query(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id).delete()
+            session.execute(delete(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id))
+            session.execute(delete(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id))
             # delete pipeline and workflow
             if pipeline_id:
-                session.query(Pipeline).where(Pipeline.id == pipeline_id).delete()
-                session.query(Workflow).where(
-                    Workflow.tenant_id == tenant_id,
-                    Workflow.app_id == pipeline_id,
-                    Workflow.type == WorkflowType.RAG_PIPELINE,
-                ).delete()
+                session.execute(delete(Pipeline).where(Pipeline.id == pipeline_id))
+                session.execute(
+                    delete(Workflow).where(
+                        Workflow.tenant_id == tenant_id,
+                        Workflow.app_id == pipeline_id,
+                        Workflow.type == WorkflowType.RAG_PIPELINE,
+                    )
+                )
             # delete files
             if documents:
                 file_ids = []
@@ -174,7 +178,7 @@ def clean_dataset_task(
                             if data_source_info and "upload_file_id" in data_source_info:
                                 file_id = data_source_info["upload_file_id"]
                                 file_ids.append(file_id)
-                files = session.query(UploadFile).where(UploadFile.id.in_(file_ids)).all()
+                files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
                 for file in files:
                     storage.delete(file.key)
 

@@ -33,7 +33,7 @@ const LoadingPreview = ({ type }: { type: 'area' | 'app' }) => {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <span className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{title}</span>
+      <span className="text-xs tracking-[0.18em] text-text-tertiary uppercase">{title}</span>
       <div
         className={`flex w-64 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle ${containerHeight}`}
       >

@@ -47,7 +47,7 @@ describe('More', () => {
       const onClick = vi.fn()
       render(<More count={5} onClick={onClick} />)
 
-      fireEvent.click(screen.getByText('+5'))
+      fireEvent.click(screen.getByRole('button', { name: '+5' }))
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
@@ -56,7 +56,7 @@ describe('More', () => {
 
       // Should not throw
       expect(() => {
-        fireEvent.click(screen.getByText('+5'))
+        fireEvent.click(screen.getByRole('button', { name: '+5' }))
       }).not.toThrow()
     })
 
@@ -70,7 +70,7 @@ describe('More', () => {
         </div>,
       )
 
-      fireEvent.click(screen.getByText('+5'))
+      fireEvent.click(screen.getByRole('button', { name: '+5' }))
       expect(childClick).toHaveBeenCalled()
       expect(parentClick).not.toHaveBeenCalled()
     })

@@ -2,12 +2,13 @@ import importlib.util
 import logging
 import sys
 from types import ModuleType
-from typing import AnyStr
 
 logger = logging.getLogger(__name__)
 
 
-def import_module_from_source(*, module_name: str, py_file_path: AnyStr, use_lazy_loader: bool = False) -> ModuleType:
+def import_module_from_source[T: (str, bytes)](
+    *, module_name: str, py_file_path: T, use_lazy_loader: bool = False
+) -> ModuleType:
     """
     Importing a module from the source file directly
     """

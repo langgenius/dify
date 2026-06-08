@@ -1,10 +1,10 @@
 import logging
 
 from flask import request
-from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.controller_schemas import TextToAudioPayload
 from controllers.common.schema import register_schema_model
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -19,7 +19,8 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from dify_graph.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
+from models.model import InstalledApp
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -32,14 +33,6 @@ from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
-
-class TextToAudioPayload(BaseModel):
-    message_id: str | None = None
-    voice: str | None = None
-    text: str | None = None
-    streaming: bool | None = Field(default=None, description="Enable streaming response")
-
-
 register_schema_model(console_ns, TextToAudioPayload)
 
 
@@ -48,8 +41,10 @@ register_schema_model(console_ns, TextToAudioPayload)
     endpoint="installed_app_audio",
 )
 class ChatAudioApi(InstalledAppResource):
-    def post(self, installed_app):
+    def post(self, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
 
         file = request.files["file"]
 
@@ -89,8 +84,10 @@ class ChatAudioApi(InstalledAppResource):
 )
 class ChatTextApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
-    def post(self, installed_app):
+    def post(self, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         try:
             payload = TextToAudioPayload.model_validate(console_ns.payload or {})
 

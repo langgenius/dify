@@ -61,6 +61,7 @@ export enum BlockEnum {
 export enum ControlMode {
   Pointer = 'pointer',
   Hand = 'hand',
+  Comment = 'comment',
 }
 export enum ErrorHandleMode {
   Terminated = 'terminated',
@@ -112,7 +113,6 @@ export type CommonNodeType<T = {}> = {
   subscription_id?: string
   provider_id?: string
   _dimmed?: boolean
-  _pluginInstallLocked?: boolean
 } & T & Partial<PluginDefaultValue>
 
 export type CommonEdgeType = {
@@ -133,7 +133,6 @@ export type CommonEdgeType = {
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
-export type SelectedNode = Pick<Node, 'id' | 'data'>
 export type NodeProps<T = unknown> = { id: string, data: CommonNodeType<T> }
 export type NodePanelProps<T> = {
   id: string
@@ -188,11 +187,6 @@ export type GlobalVariable = {
   description: string
 }
 
-export type VariableWithValue = {
-  key: string
-  value: string
-}
-
 export enum InputVarType {
   textInput = 'text-input',
   paragraph = 'paragraph',
@@ -220,7 +214,7 @@ export type InputVar = {
   }
   variable: string
   max_length?: number
-  default?: string | number
+  default?: string | number | boolean
   required: boolean
   hint?: string
   options?: string[]
@@ -393,11 +387,6 @@ export type OnNodeAdd = (
   },
 ) => void
 
-export type CheckValidRes = {
-  isValid: boolean
-  errorMessage?: string
-}
-
 export type RunFile = {
   type: string
   transfer_method: TransferMethod[]
@@ -509,7 +498,7 @@ export type ChildNodeTypeCount = {
   [key: string]: number
 }
 
-export const TRIGGER_NODE_TYPES = [
+const TRIGGER_NODE_TYPES = [
   BlockEnum.TriggerSchedule,
   BlockEnum.TriggerWebhook,
   BlockEnum.TriggerPlugin,

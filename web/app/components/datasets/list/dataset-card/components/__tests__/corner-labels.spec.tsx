@@ -80,7 +80,7 @@ describe('CornerLabels', () => {
       const dataset = createMockDataset({ embedding_available: false })
       const { container } = render(<CornerLabels dataset={dataset} />)
       const labelContainer = container.firstChild as HTMLElement
-      expect(labelContainer).toHaveClass('absolute', 'right-0', 'top-0', 'z-10')
+      expect(labelContainer).toHaveClass('absolute', 'right-0', 'top-0', 'z-5')
     })
 
     it('should have correct positioning for pipeline label', () => {
@@ -90,7 +90,7 @@ describe('CornerLabels', () => {
       })
       const { container } = render(<CornerLabels dataset={dataset} />)
       const labelContainer = container.firstChild as HTMLElement
-      expect(labelContainer).toHaveClass('absolute', 'right-0', 'top-0', 'z-10')
+      expect(labelContainer).toHaveClass('absolute', 'right-0', 'top-0', 'z-5')
     })
   })
 

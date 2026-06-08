@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import AppIcon from '../../base/app-icon'
 import Effect from '../../base/effect'
 import Dropdown from './dropdown'
@@ -36,7 +36,7 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
   return (
     <div className={cn('relative flex flex-col', expand ? '' : 'p-1')}>
       {expand && (
-        <Effect className="-left-5 top-[-22px] opacity-15" />
+        <Effect className="top-[-22px] -left-5 opacity-15" />
       )}
 
       <div className="flex flex-col gap-2 p-2">
@@ -57,19 +57,19 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
           )}
         </div>
         {!expand && (
-          <div className="-mb-2 -mt-1 flex items-center justify-center">
+          <div className="-mt-1 -mb-2 flex items-center justify-center">
             <Dropdown expand={false} />
           </div>
         )}
         {expand && (
           <div className="flex flex-col gap-y-1 pb-0.5">
             <div
-              className="truncate text-text-secondary system-md-semibold"
+              className="truncate system-md-semibold text-text-secondary"
               title={dataset.name}
             >
               {dataset.name}
             </div>
-            <div className="text-text-tertiary system-2xs-medium-uppercase">
+            <div className="system-2xs-medium-uppercase text-text-tertiary">
               {isExternalProvider && t('externalTag', { ns: 'dataset' })}
               {!!(!isExternalProvider && isPipelinePublished && dataset.doc_form && dataset.indexing_technique) && (
                 <div className="flex items-center gap-x-2">
@@ -79,7 +79,7 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
               )}
             </div>
             {!!dataset.description && (
-              <p className="line-clamp-3 text-text-tertiary system-xs-regular first-letter:capitalize">
+              <p className="line-clamp-3 system-xs-regular text-text-tertiary first-letter:capitalize">
                 {dataset.description}
               </p>
             )}

@@ -1,5 +1,7 @@
+@reference "../../../../../styles/globals.css";
+
 .main {
-  @apply w-full sm:w-96 xl:w-[360px] flex-shrink-0 p-0 sm:px-6 sm:py-5 overflow-y-auto border-none sm:border-l-gray-100 sm:border-l;
+  @apply w-full shrink-0 overflow-y-auto border-none p-0 sm:w-96 sm:px-6 sm:py-5 sm:border-l sm:border-l-gray-100 xl:w-[360px];
 }
 .operationWrapper {
   @apply flex flex-col items-center gap-4 mt-7 mb-8;
@@ -12,7 +14,7 @@
   @apply h-4 w-4 stroke-current stroke-[2px] text-gray-700 group-hover:stroke-primary-600;
 }
 .iconCheck {
-  @apply border-primary-400 border-[1.5px] bg-primary-25 shadow-sm !important;
+  @apply !border-[1.5px] !border-primary-400 !bg-primary-25 !shadow-xs;
 }
 .commonIcon {
   @apply w-4 h-4 inline-block align-middle bg-gray-700 hover:bg-primary-600;
@@ -61,23 +63,23 @@
   @apply flex items-center justify-center gap-1;
 }
 .opBtn {
-  @apply h-6 w-14 px-0 text-xs font-medium rounded-md !important;
+  @apply !h-6 !w-14 !px-0 !text-xs !font-medium rounded-md;
 }
 .opEditBtn {
   box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
-  @apply border-[0.5px] border-gray-200 bg-white !important;
+  @apply !border-[0.5px] !border-gray-200 !bg-white;
 }
 .opCancelBtn {
-  @apply border-none bg-gray-50 font-medium text-gray-700 hover:bg-gray-100 !important;
+  @apply !border-none !bg-gray-50 !font-medium !text-gray-700 hover:!bg-gray-100;
 }
 .opSaveBtn {
-  @apply border-primary-700 border-[0.5px] font-medium hover:border-none !important;
+  @apply !border-[0.5px] !border-primary-700 !font-medium hover:!border-none;
 }
 .opIcon {
   @apply h-3 w-3 stroke-current stroke-2 mr-1;
 }
 .select {
-  @apply h-7 py-0 pl-2 text-xs bg-gray-50 hover:bg-gray-100 rounded-md shadow-none !important;
+  @apply !h-7 !py-0 !pl-2 !text-xs !bg-gray-50 rounded-md !shadow-none hover:!bg-gray-100;
 }
 .selectWrapper {
   @apply !h-7 w-full
@@ -93,11 +95,14 @@
 }
 .iconShow {
   mask-size: contain;
-  @apply w-3 h-3 bg-gray-500 hover:bg-none mr-1 !important;
+  @apply !mr-1 !h-3 !w-3 !bg-gray-500 hover:!bg-none;
 }
 .textArea {
-  @apply placeholder:text-gray-400 bg-gray-50 px-2 py-1 caret-primary-600 rounded-md hover:bg-gray-100 focus-visible:outline-none focus-visible:bg-white focus-visible:border focus-visible:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05);];
+  @apply rounded-md bg-gray-50 px-2 py-1 caret-primary-600 placeholder:text-gray-400 hover:bg-gray-100 focus-visible:border focus-visible:border-gray-300 focus-visible:bg-white focus-visible:outline-hidden;
+}
+.textArea:hover {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 .input {
-  @apply bg-gray-50 hover:bg-gray-100 focus-visible:bg-white !important
+  @apply !bg-gray-50 hover:!bg-gray-100 focus-visible:!bg-white
 }

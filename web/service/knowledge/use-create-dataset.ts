@@ -39,7 +39,7 @@ export const getNotionInfo = (
     return {
       credential_id: credentialId,
       workspace_id: workspace.workspaceId,
-      pages: workspace.pages.map((page) => {
+      pages: workspace.pages!.map((page) => {
         const { page_id, page_name, page_icon, type } = page
         return {
           page_id,
@@ -91,11 +91,15 @@ const getFileIndexingEstimateParamsForFile = ({
   processRule,
   dataset_id,
 }: GetFileIndexingEstimateParamsOptionFile): IndexingEstimateParams => {
+  const fileIds = files
+    .map(file => file.id)
+    .filter((id): id is string => Boolean(id))
+
   return {
     info_list: {
       data_source_type: dataSourceType,
       file_info_list: {
-        file_ids: files.map(file => file.id) as string[],
+        file_ids: fileIds,
       },
     },
     indexing_technique: indexingTechnique,

@@ -4,9 +4,12 @@ import os
 import time
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar
+from typing import Any, Concatenate, overload
 
 from flask import abort, request
+from pydantic import BaseModel, ValidationError
+from sqlalchemy import select
+from werkzeug.exceptions import UnprocessableEntity
 
 from configs import dify_config
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
@@ -16,16 +19,14 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
 from libs.login import current_account_with_tenant
+from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
-from services.operation_service import OperationService
+from services.operation_service import OperationService, UtmInfo
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 # Field names for decryption
 FIELD_NAME_PASSWORD = "password"
@@ -36,9 +37,21 @@ ERROR_MSG_INVALID_ENCRYPTED_DATA = "Invalid encrypted data"
 ERROR_MSG_INVALID_ENCRYPTED_CODE = "Invalid encrypted code"
 
 
-def account_initialization_required(view: Callable[P, R]) -> Callable[P, R]:
+@overload
+def account_initialization_required[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]: ...
+
+
+@overload
+def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+
+
+def account_initialization_required[R](view: Callable[..., R]) -> Callable[..., R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+    def decorated(*args: Any, **kwargs: Any) -> R:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain functions used in tests and utilities.
         # check account initialization
         current_user, _ = current_account_with_tenant()
         if current_user.status == AccountStatus.UNINITIALIZED:
@@ -49,7 +62,7 @@ def account_initialization_required(view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def only_edition_cloud(view: Callable[P, R]):
+def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if dify_config.EDITION != "CLOUD":
@@ -60,7 +73,7 @@ def only_edition_cloud(view: Callable[P, R]):
     return decorated
 
 
-def only_edition_enterprise(view: Callable[P, R]):
+def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if not dify_config.ENTERPRISE_ENABLED:
@@ -71,7 +84,7 @@ def only_edition_enterprise(view: Callable[P, R]):
     return decorated
 
 
-def only_edition_self_hosted(view: Callable[P, R]):
+def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if dify_config.EDITION != "SELF_HOSTED":
@@ -82,38 +95,43 @@ def only_edition_self_hosted(view: Callable[P, R]):
     return decorated
 
 
-def cloud_edition_billing_enabled(view: Callable[P, R]):
+def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        _, current_tenant_id = current_account_with_tenant()
-        features = FeatureService.get_features(current_tenant_id)
-        if not features.billing.enabled:
+        if not dify_config.BILLING_ENABLED:
             abort(403, "Billing feature is not enabled.")
         return view(*args, **kwargs)
 
     return decorated
 
 
-def cloud_edition_billing_resource_check(resource: str):
+def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
-            features = FeatureService.get_features(current_tenant_id)
+            if resource == "vector_space":
+                if not dify_config.BILLING_ENABLED:
+                    return view(*args, **kwargs)
+
+                vector_space = FeatureService.get_vector_space(current_tenant_id)
+                if 0 < vector_space.limit <= vector_space.size:
+                    abort(
+                        403,
+                        "The capacity of the knowledge storage space has reached the limit of your subscription.",
+                    )
+                return view(*args, **kwargs)
+
+            features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
             if features.billing.enabled:
                 members = features.members
                 apps = features.apps
-                vector_space = features.vector_space
                 documents_upload_quota = features.documents_upload_quota
                 annotation_quota_limit = features.annotation_quota_limit
                 if resource == "members" and 0 < members.limit <= members.size:
                     abort(403, "The number of members has reached the limit of your subscription.")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
                     abort(403, "The number of apps has reached the limit of your subscription.")
-                elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    abort(
-                        403, "The capacity of the knowledge storage space has reached the limit of your subscription."
-                    )
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
@@ -136,12 +154,14 @@ def cloud_edition_billing_resource_check(resource: str):
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(resource: str):
+def cloud_edition_billing_knowledge_limit_check[**P, R](
+    resource: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
-            features = FeatureService.get_features(current_tenant_id)
+            features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == CloudPlan.SANDBOX:
@@ -159,7 +179,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
     return interceptor
 
 
-def cloud_edition_billing_rate_limit_check(resource: str):
+def cloud_edition_billing_rate_limit_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -195,36 +215,40 @@ def cloud_edition_billing_rate_limit_check(resource: str):
     return interceptor
 
 
-def cloud_utm_record(view: Callable[P, R]):
+def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
-            _, current_tenant_id = current_account_with_tenant()
-            features = FeatureService.get_features(current_tenant_id)
-
-            if features.billing.enabled:
-                utm_info = request.cookies.get("utm_info")
-
-                if utm_info:
-                    utm_info_dict: dict = json.loads(utm_info)
-                    OperationService.record_utm(current_tenant_id, utm_info_dict)
+            utm_info = request.cookies.get("utm_info")
+            if dify_config.BILLING_ENABLED and utm_info:
+                _, current_tenant_id = current_account_with_tenant()
+                utm_info_dict: UtmInfo = json.loads(utm_info)
+                OperationService.record_utm(current_tenant_id, utm_info_dict)
 
         return view(*args, **kwargs)
 
     return decorated
 
 
-def setup_required(view: Callable[P, R]) -> Callable[P, R]:
+@overload
+def setup_required[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]: ...
+
+
+@overload
+def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+
+
+def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+    def decorated(*args: Any, **kwargs: Any) -> R:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain functions used in tests and utilities.
         # check setup
-        if (
-            dify_config.EDITION == "SELF_HOSTED"
-            and os.environ.get("INIT_PASSWORD")
-            and not db.session.query(DifySetup).first()
-        ):
-            raise NotInitValidateError()
-        elif dify_config.EDITION == "SELF_HOSTED" and not db.session.query(DifySetup).first():
+        if dify_config.EDITION == "SELF_HOSTED" and not db.session.scalar(select(DifySetup).limit(1)):
+            if os.environ.get("INIT_PASSWORD"):
+                raise NotInitValidateError()
             raise NotSetupError()
 
         return view(*args, **kwargs)
@@ -232,7 +256,7 @@ def setup_required(view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def enterprise_license_required(view: Callable[P, R]):
+def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         settings = FeatureService.get_system_features()
@@ -244,7 +268,7 @@ def enterprise_license_required(view: Callable[P, R]):
     return decorated
 
 
-def email_password_login_enabled(view: Callable[P, R]):
+def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
@@ -257,7 +281,7 @@ def email_password_login_enabled(view: Callable[P, R]):
     return decorated
 
 
-def email_register_enabled(view: Callable[P, R]):
+def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
@@ -270,7 +294,7 @@ def email_register_enabled(view: Callable[P, R]):
     return decorated
 
 
-def enable_change_email(view: Callable[P, R]):
+def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
@@ -283,7 +307,7 @@ def enable_change_email(view: Callable[P, R]):
     return decorated
 
 
-def is_allow_transfer_owner(view: Callable[P, R]):
+def is_allow_transfer_owner[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         from libs.workspace_permission import check_workspace_owner_transfer_permission
@@ -296,11 +320,11 @@ def is_allow_transfer_owner(view: Callable[P, R]):
     return decorated
 
 
-def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
+def knowledge_pipeline_publish_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
-        features = FeatureService.get_features(current_tenant_id)
+        features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
         if features.knowledge_pipeline.publish_enabled:
             return view(*args, **kwargs)
         abort(403)
@@ -308,13 +332,12 @@ def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
     return decorated
 
 
-def edit_permission_required(f: Callable[P, R]):
+def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
         from werkzeug.exceptions import Forbidden
 
         from libs.login import current_user
-        from models import Account
 
         user = current_user._get_current_object()  # type: ignore
         if not isinstance(user, Account):
@@ -326,13 +349,12 @@ def edit_permission_required(f: Callable[P, R]):
     return decorated_function
 
 
-def is_admin_or_owner_required(f: Callable[P, R]):
+def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
         from werkzeug.exceptions import Forbidden
 
         from libs.login import current_user
-        from models import Account
 
         user = current_user._get_current_object()
         if not isinstance(user, Account) or not user.is_admin_or_owner:
@@ -342,7 +364,7 @@ def is_admin_or_owner_required(f: Callable[P, R]):
     return decorated_function
 
 
-def annotation_import_rate_limit(view: Callable[P, R]):
+def annotation_import_rate_limit[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     """
     Rate limiting decorator for annotation import operations.
 
@@ -391,7 +413,7 @@ def annotation_import_rate_limit(view: Callable[P, R]):
     return decorated
 
 
-def annotation_import_concurrency_limit(view: Callable[P, R]):
+def annotation_import_concurrency_limit[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     """
     Concurrency control decorator for annotation import operations.
 
@@ -458,7 +480,7 @@ def _decrypt_field(field_name: str, error_class: type[Exception], error_message:
     payload[field_name] = decoded_value
 
 
-def decrypt_password_field(view: Callable[P, R]):
+def decrypt_password_field[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     """
     Decorator to decrypt password field in request payload.
 
@@ -480,7 +502,7 @@ def decrypt_password_field(view: Callable[P, R]):
     return decorated
 
 
-def decrypt_code_field(view: Callable[P, R]):
+def decrypt_code_field[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     """
     Decorator to decrypt verification code field in request payload.
 
@@ -500,3 +522,95 @@ def decrypt_code_field(view: Callable[P, R]):
         return view(*args, **kwargs)
 
     return decorated
+
+
+def with_current_tenant_id[T, **P, R](
+    view: Callable[Concatenate[T, str, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    @wraps(view)
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+        _, current_tenant_id = current_account_with_tenant()
+        return view(self, current_tenant_id, *args, **kwargs)
+
+    return decorated
+
+
+def with_current_user[T, **P, R](
+    view: Callable[Concatenate[T, Account, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    """Inject the current authenticated Account into the handler as the first argument after self.
+
+    Usage::
+
+        class MyResource(Resource):
+            @login_required
+            @with_current_user
+            def get(self, current_user: Account):
+                ...
+    """
+
+    @wraps(view)
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+        current_user, _ = current_account_with_tenant()
+        return view(self, current_user, *args, **kwargs)
+
+    return decorated
+
+
+def with_current_user_id[T, **P, R](
+    view: Callable[Concatenate[T, str, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    """Inject the current authenticated user's ID (as a string) into the handler.
+
+    Use this when the handler only needs the user ID and not the full Account object.
+
+    Usage::
+
+        class MyResource(Resource):
+            @login_required
+            @with_current_user_id
+            def get(self, current_user_id: str):
+                ...
+    """
+
+    @wraps(view)
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+        current_user, _ = current_account_with_tenant()
+        return view(self, current_user.id, *args, **kwargs)
+
+    return decorated
+
+
+def model_validate[T, M: BaseModel, **P, R](
+    model: type[M],
+) -> Callable[
+    [Callable[Concatenate[T, M, P], R]],
+    Callable[Concatenate[T, P], R],
+]:
+    """Validate request data and inject the model instance as the first arg after self.
+
+    Source is determined by HTTP method:
+      GET/DELETE -> request.args
+      POST/PUT/PATCH -> JSON body
+    """
+
+    def decorator(
+        view: Callable[Concatenate[T, M, P], R],
+    ) -> Callable[Concatenate[T, P], R]:
+        @wraps(view)
+        def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+            if request.method in ("GET", "DELETE"):
+                raw = request.args.to_dict(flat=True)
+            else:
+                raw = request.get_json(silent=True) or {}
+
+            try:
+                validated = model.model_validate(raw)
+            except ValidationError as exc:
+                raise UnprocessableEntity(exc.json())
+
+            return view(self, validated, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
