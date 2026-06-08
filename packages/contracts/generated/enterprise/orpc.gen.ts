@@ -25,6 +25,8 @@ import {
   zAccessServiceUpdateAccessChannelsBody,
   zAccessServiceUpdateAccessChannelsPath,
   zAccessServiceUpdateAccessChannelsResponse,
+  zAccessSubjectServiceListAccessSubjectsQuery,
+  zAccessSubjectServiceListAccessSubjectsResponse,
   zAppInstanceServiceCreateAppInstanceBody,
   zAppInstanceServiceCreateAppInstanceResponse,
   zAppInstanceServiceDeleteAppInstancePath,
@@ -40,6 +42,9 @@ import {
   zAppInstanceServiceUpdateAppInstanceBody,
   zAppInstanceServiceUpdateAppInstancePath,
   zAppInstanceServiceUpdateAppInstanceResponse,
+  zConsoleSsoOAuth2LoginResponse,
+  zConsoleSsoOidcLoginResponse,
+  zConsoleSsoSamlLoginResponse,
   zDeploymentServiceCancelDeploymentBody,
   zDeploymentServiceCancelDeploymentPath,
   zDeploymentServiceCancelDeploymentResponse,
@@ -98,7 +103,34 @@ import {
   zReleaseServiceUpdateReleaseBody,
   zReleaseServiceUpdateReleasePath,
   zReleaseServiceUpdateReleaseResponse,
+  zWebAppAuthGetGroupSubjectsQuery,
+  zWebAppAuthGetGroupSubjectsResponse,
+  zWebAppAuthGetWebAppAccessModeQuery,
+  zWebAppAuthGetWebAppAccessModeResponse,
+  zWebAppAuthGetWebAppWhitelistSubjectsQuery,
+  zWebAppAuthGetWebAppWhitelistSubjectsResponse,
+  zWebAppAuthIsUserAllowedToAccessWebAppQuery,
+  zWebAppAuthIsUserAllowedToAccessWebAppResponse,
+  zWebAppAuthSearchForWhilteListCandidatesQuery,
+  zWebAppAuthSearchForWhilteListCandidatesResponse,
+  zWebAppAuthUpdateWebAppWhitelistSubjectsBody,
+  zWebAppAuthUpdateWebAppWhitelistSubjectsResponse,
 } from './zod.gen'
+
+export const listAccessSubjects = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'AccessSubjectService_ListAccessSubjects',
+    path: '/enterprise/access-subjects',
+    tags: ['AccessSubjectService'],
+  })
+  .input(z.object({ query: zAccessSubjectServiceListAccessSubjectsQuery.optional() }))
+  .output(zAccessSubjectServiceListAccessSubjectsResponse)
+
+export const accessSubjectService = {
+  listAccessSubjects,
+}
 
 export const deleteApiKey = oc
   .route({
@@ -642,10 +674,124 @@ export const environmentService = {
   listDeployableEnvironments,
 }
 
+export const oAuth2Login = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ConsoleSSO_OAuth2Login',
+    path: '/enterprise/sso/oauth2/login',
+    tags: ['ConsoleSSO'],
+  })
+  .output(zConsoleSsoOAuth2LoginResponse)
+
+export const oidcLogin = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ConsoleSSO_OIDCLogin',
+    path: '/enterprise/sso/oidc/login',
+    tags: ['ConsoleSSO'],
+  })
+  .output(zConsoleSsoOidcLoginResponse)
+
+export const samlLogin = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'ConsoleSSO_SAMLLogin',
+    path: '/enterprise/sso/saml/login',
+    tags: ['ConsoleSSO'],
+  })
+  .output(zConsoleSsoSamlLoginResponse)
+
+export const consoleSso = {
+  oAuth2Login,
+  oidcLogin,
+  samlLogin,
+}
+
+export const getWebAppAccessMode = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'WebAppAuth_GetWebAppAccessMode',
+    path: '/enterprise/webapp/app/access-mode',
+    tags: ['WebAppAuth'],
+  })
+  .input(z.object({ query: zWebAppAuthGetWebAppAccessModeQuery.optional() }))
+  .output(zWebAppAuthGetWebAppAccessModeResponse)
+
+export const updateWebAppWhitelistSubjects = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'WebAppAuth_UpdateWebAppWhitelistSubjects',
+    path: '/enterprise/webapp/app/access-mode',
+    tags: ['WebAppAuth'],
+  })
+  .input(z.object({ body: zWebAppAuthUpdateWebAppWhitelistSubjectsBody }))
+  .output(zWebAppAuthUpdateWebAppWhitelistSubjectsResponse)
+
+export const searchForWhilteListCandidates = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'WebAppAuth_SearchForWhilteListCandidates',
+    path: '/enterprise/webapp/app/subject/search',
+    tags: ['WebAppAuth'],
+  })
+  .input(z.object({ query: zWebAppAuthSearchForWhilteListCandidatesQuery.optional() }))
+  .output(zWebAppAuthSearchForWhilteListCandidatesResponse)
+
+export const getWebAppWhitelistSubjects = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'WebAppAuth_GetWebAppWhitelistSubjects',
+    path: '/enterprise/webapp/app/subjects',
+    tags: ['WebAppAuth'],
+  })
+  .input(z.object({ query: zWebAppAuthGetWebAppWhitelistSubjectsQuery.optional() }))
+  .output(zWebAppAuthGetWebAppWhitelistSubjectsResponse)
+
+export const getGroupSubjects = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'WebAppAuth_GetGroupSubjects',
+    path: '/enterprise/webapp/group/subjects',
+    tags: ['WebAppAuth'],
+  })
+  .input(z.object({ query: zWebAppAuthGetGroupSubjectsQuery.optional() }))
+  .output(zWebAppAuthGetGroupSubjectsResponse)
+
+export const isUserAllowedToAccessWebApp = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'WebAppAuth_IsUserAllowedToAccessWebApp',
+    path: '/enterprise/webapp/permission',
+    tags: ['WebAppAuth'],
+  })
+  .input(z.object({ query: zWebAppAuthIsUserAllowedToAccessWebAppQuery.optional() }))
+  .output(zWebAppAuthIsUserAllowedToAccessWebAppResponse)
+
+export const webAppAuth = {
+  getWebAppAccessMode,
+  updateWebAppWhitelistSubjects,
+  searchForWhilteListCandidates,
+  getWebAppWhitelistSubjects,
+  getGroupSubjects,
+  isUserAllowedToAccessWebApp,
+}
+
 export const contract = {
+  accessSubjectService,
   accessService,
   appInstanceService,
   deploymentService,
   releaseService,
   environmentService,
+  consoleSso,
+  webAppAuth,
 }

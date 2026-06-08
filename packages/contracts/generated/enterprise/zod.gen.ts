@@ -2,6 +2,45 @@
 
 import * as z from 'zod'
 
+export const zDifyEnterpriseApiEnterpriseEnvironmentError = z.object({
+  code: z.string().optional(),
+  message: z.string().optional(),
+})
+
+export const zDifyEnterpriseApiEnterpriseEnvironment = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  mode: z
+    .enum(['ENVIRONMENT_MODE_UNSPECIFIED', 'ENVIRONMENT_MODE_SHARED', 'ENVIRONMENT_MODE_ISOLATED'])
+    .optional(),
+  backend: z
+    .enum(['RUNTIME_BACKEND_UNSPECIFIED', 'RUNTIME_BACKEND_K8S', 'RUNTIME_BACKEND_EXTERNAL'])
+    .optional(),
+  namespace: z.string().optional(),
+  apiServer: z.string().optional(),
+  status: z
+    .enum([
+      'ENVIRONMENT_STATUS_UNSPECIFIED',
+      'ENVIRONMENT_STATUS_ADMISSION',
+      'ENVIRONMENT_STATUS_BOOTSTRAPPING',
+      'ENVIRONMENT_STATUS_READY',
+      'ENVIRONMENT_STATUS_FAILED',
+    ])
+    .optional(),
+  statusMessage: z.string().optional(),
+  lastError: zDifyEnterpriseApiEnterpriseEnvironmentError.optional(),
+  managedBy: z.string().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  runtimeEndpoint: z.string().optional(),
+  cpuCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+})
+
 export const zAccessChannels = z.object({
   id: z.string().optional(),
   appInstanceId: z.string().optional(),
@@ -239,9 +278,10 @@ export const zEnvVarInput = z.object({
 export const zEnvVarSlot = z.object({
   key: z.string().optional(),
   hasDefaultValue: z.boolean().optional(),
-  maskedDefaultValue: z.string().optional(),
+  defaultValue: z.string().optional(),
   hasLastValue: z.boolean().optional(),
-  maskedLastValue: z.string().optional(),
+  lastValue: z.string().optional(),
+  valueType: z.string().optional(),
 })
 
 export const zDeploymentOptions = z.object({
@@ -806,6 +846,886 @@ export const zUpdateReleaseReq = z.object({
   description: z.string().optional(),
 })
 
+/**
+ * Account represents a basic user account
+ */
+export const zAccount = z.object({
+  id: z.string().optional(),
+  email: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zAccountDetailGroup = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+/**
+ * AccountInWorkspace represents account's role in a workspace
+ */
+export const zAccountInWorkspace = z.object({
+  workspaceId: z.string().optional(),
+  workspaceName: z.string().optional(),
+  role: z.string().optional(),
+})
+
+/**
+ * AccountDetail contains detailed account information
+ */
+export const zAccountDetail = z.object({
+  account: zAccount.optional(),
+  status: z.string().optional(),
+  createdAt: z.iso.datetime().optional(),
+  lastActiveAt: z.iso.datetime().optional(),
+  workspaces: z.array(zAccountInWorkspace).optional(),
+  groups: z.array(zAccountDetailGroup).optional(),
+})
+
+export const zAddGroupAppsRequest = z.object({
+  id: z.string().optional(),
+  app_ids: z.array(z.string()).optional(),
+})
+
+export const zBrandingInfo = z.object({
+  enabled: z.boolean().optional(),
+  applicationTitle: z.string().optional(),
+  loginPageLogo: z.string().optional(),
+  workspaceLogo: z.string().optional(),
+  favicon: z.string().optional(),
+})
+
+export const zCheckPasswordStatusReply = z.object({
+  requirePasswordChange: z.boolean().optional(),
+  changeReason: z
+    .enum([
+      'PASSWORD_CHANGE_REASON_UNSPECIFIED',
+      'PASSWORD_CHANGE_REASON_TEMP',
+      'PASSWORD_CHANGE_REASON_EXPIRED',
+      'PASSWORD_CHANGE_REASON_POLICY',
+    ])
+    .optional(),
+  daysToExpire: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  message: z.string().optional(),
+})
+
+export const zClearDefaultWorkspaceReply = z.record(z.string(), z.unknown())
+
+export const zCreateAppRunnerLaunchProfileReply = z.object({
+  environmentId: z.string().optional(),
+  joinToken: z.string().optional(),
+  configYaml: z.string().optional(),
+  runtimeEndpoint: z.string().optional(),
+  sourceCommands: z.array(z.string()).optional(),
+  dockerCommands: z.array(z.string()).optional(),
+})
+
+export const zCreateAppRunnerLaunchProfileReq = z.object({
+  environmentId: z.string().optional(),
+  mode: z
+    .enum(['APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED', 'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG'])
+    .optional(),
+  controlEndpoint: z.string().optional(),
+  pluginDaemonBaseUrl: z.string().optional(),
+  runtimeListenAddr: z.string().optional(),
+  debugListenAddr: z.string().optional(),
+})
+
+export const zCreateBearerTokenResponse = z.object({
+  token: z.string().optional(),
+})
+
+export const zCreateEnvironmentReply = z.object({
+  environment: zDifyEnterpriseApiEnterpriseEnvironment.optional(),
+})
+
+export const zCreateMemberReply = z.object({
+  id: z.string().optional(),
+  password: z.string().optional(),
+})
+
+/**
+ * Create member messages
+ */
+export const zCreateMemberReq = z.object({
+  name: z.string().optional(),
+  email: z.string().optional(),
+  status: z.string().optional(),
+})
+
+export const zCreateNewGroupsReqGroup = z.object({
+  name: z.string().optional(),
+})
+
+export const zCreateNewGroupsReq = z.object({
+  groups: z.array(zCreateNewGroupsReqGroup).optional(),
+})
+
+export const zCreateResourceGroupRequest = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+})
+
+export const zCreateSecretKeyReply = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  secretKey: z.string().optional(),
+  createdAt: z.iso.datetime().optional(),
+  lastActive: z.iso.datetime().optional(),
+})
+
+export const zCreateSecretKeyReq = z.object({
+  name: z.string().optional(),
+})
+
+export const zCreateUserReply = z.object({
+  id: z.string().optional(),
+  password: z.string().optional(),
+})
+
+export const zCreateUserReq = z.object({
+  name: z.string().optional(),
+  email: z.string().optional(),
+  status: z.string().optional(),
+})
+
+/**
+ * Create workspace messages
+ */
+export const zCreateWorkspaceReq = z.object({
+  name: z.string().optional(),
+  email: z.string().optional(),
+  status: z.string().optional(),
+})
+
+export const zCurrentUserReply = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  email: z.string().optional(),
+  interfaceLanguage: z.string().optional(),
+  timezone: z.string().optional(),
+})
+
+export const zDashboardSsooidcLoginReply = z.object({
+  url: z.string().optional(),
+  state: z.string().optional(),
+})
+
+export const zDashboardSsoOauth2LoginReply = z.object({
+  url: z.string().optional(),
+  state: z.string().optional(),
+})
+
+/**
+ * Dashboard SSO Login messages
+ */
+export const zDashboardSsosamlLoginReply = z.object({
+  url: z.string().optional(),
+})
+
+export const zDeleteEnvironmentReply = z.record(z.string(), z.unknown())
+
+export const zDeleteGroupsRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zDeleteMemberReply = z.object({
+  account: zAccount.optional(),
+})
+
+export const zDeleteSecretKeyReply = z.object({
+  message: z.string().optional(),
+})
+
+export const zDeleteUserReply = z.object({
+  account: zAccount.optional(),
+})
+
+export const zDeleteWorkspaceReply = z.record(z.string(), z.unknown())
+
+/**
+ * System user setting messages
+ */
+export const zEnterpriseSystemUserSettingReply = z.object({
+  ssoEnforcedForSignin: z.boolean().optional(),
+  ssoEnforcedForSigninProtocol: z.string().optional(),
+  enableEmailPasswordLogin: z.boolean().optional(),
+})
+
+export const zExternalAppRunnerConfig = z.object({
+  runtimeEndpoint: z.string().optional(),
+})
+
+export const zExternallyAccessibleApp = z.object({
+  appId: z.string().optional(),
+  tenantId: z.string().optional(),
+  mode: z.string().optional(),
+  name: z.string().optional(),
+  updatedAt: z.string().optional(),
+})
+
+export const zGetBearerTokenResponse = z.object({
+  maskedToken: z.string().optional(),
+})
+
+export const zGetClusterInfoReply = z.object({
+  mode: z.string().optional(),
+  clusterId: z.string().optional(),
+  verifyMode: z.string().optional(),
+})
+
+export const zGetEnvironmentReply = z.object({
+  environment: zDifyEnterpriseApiEnterpriseEnvironment.optional(),
+})
+
+export const zGetLicenseStatusReply = z.object({
+  status: z.string().optional(),
+})
+
+export const zGetMfaInfoReply = z.object({
+  userEnabled: z.boolean().optional(),
+  userSetup: z.boolean().optional(),
+  globalEnabled: z.boolean().optional(),
+})
+
+export const zGetMemberReply = z.object({
+  account: zAccountDetail.optional(),
+})
+
+export const zGetUserReply = z.object({
+  account: zAccountDetail.optional(),
+})
+
+export const zGetWebAppAccessModeRes = z.object({
+  accessMode: z.string().optional(),
+})
+
+export const zGetWebAppAuthInfoRes = z.object({
+  allowSso: z.boolean().optional(),
+  allowEmailCodeLogin: z.boolean().optional(),
+  allowEmailPasswordLogin: z.boolean().optional(),
+})
+
+export const zGetWebAppWhitelistSubjectsResMember = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  email: z.string().optional(),
+  avatar: z.string().optional(),
+})
+
+export const zGroupAppItem = z.object({
+  app_id: z.string().optional(),
+  app_name: z.string().optional(),
+  workspace_id: z.string().optional(),
+  workspace_name: z.string().optional(),
+  app_status: z
+    .enum([
+      'APP_STATUS_UNSPECIFIED',
+      'APP_STATUS_PUBLISHED',
+      'APP_STATUS_UNPUBLISHED',
+      'APP_STATUS_DELETED',
+    ])
+    .optional(),
+  token_usage: z.string().optional(),
+  rpm: z.string().optional(),
+  concurrency: z.string().optional(),
+})
+
+export const zHealthzReply = z.object({
+  message: z.string().optional(),
+  status: z.string().optional(),
+})
+
+export const zInnerAdmission = z.object({
+  marker: z.string().optional(),
+  concurrencyGroupIds: z.array(z.string()).optional(),
+})
+
+export const zInnerBatchGetWebAppAccessModesByIdReq = z.object({
+  appIds: z.array(z.string()).optional(),
+})
+
+export const zInnerBatchGetWebAppAccessModesByIdRes = z.object({
+  accessModes: z.record(z.string(), z.string()).optional(),
+})
+
+export const zInnerBatchIsUserAllowedToAccessWebAppReq = z.object({
+  userId: z.string().optional(),
+  appIds: z.array(z.string()).optional(),
+})
+
+export const zInnerBatchIsUserAllowedToAccessWebAppRes = z.object({
+  permissions: z.record(z.string(), z.boolean()).optional(),
+})
+
+export const zInnerCleanAppRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zInnerGetWebAppAccessModeByCodeRes = z.object({
+  accessMode: z.string().optional(),
+})
+
+export const zInnerGetWebAppAccessModeByIdRes = z.object({
+  accessMode: z.string().optional(),
+})
+
+export const zInnerIsUserAllowedToAccessWebAppRes = z.object({
+  result: z.boolean().optional(),
+})
+
+export const zInnerListExternallyAccessibleAppsReq = z.object({
+  page: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  mode: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zInnerListExternallyAccessibleAppsRes = z.object({
+  data: z.array(zExternallyAccessibleApp).optional(),
+  total: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  hasMore: z.boolean().optional(),
+})
+
+export const zInnerReleaseAdmissionRequest = z.object({
+  admission: zInnerAdmission.optional(),
+})
+
+export const zInnerReleaseAdmissionResponse = z.record(z.string(), z.unknown())
+
+export const zInnerTryAddAccountToDefaultWorkspaceReply = z.object({
+  workspaceId: z.string().optional(),
+  joined: z.boolean().optional(),
+  message: z.string().optional(),
+})
+
+/**
+ * Inner API messages
+ */
+export const zInnerTryAddAccountToDefaultWorkspaceReq = z.object({
+  accountId: z.string().optional(),
+})
+
+export const zIsUserAllowedToAccessWebAppRes = z.object({
+  result: z.boolean().optional(),
+})
+
+export const zJoinWorkspaceReply = z.object({
+  message: z.string().optional(),
+})
+
+/**
+ * Join workspace messages
+ */
+export const zJoinWorkspaceReq = z.object({
+  id: z.string().optional(),
+  email: z.string().optional(),
+  role: z.string().optional(),
+})
+
+export const zK8sEnvironmentConfig = z.object({
+  namespace: z.string().optional(),
+  apiServer: z.string().optional(),
+  caBundle: z.string().optional(),
+  bearerToken: z.string().optional(),
+})
+
+export const zCreateEnvironmentReq = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  mode: z
+    .enum(['ENVIRONMENT_MODE_UNSPECIFIED', 'ENVIRONMENT_MODE_SHARED', 'ENVIRONMENT_MODE_ISOLATED'])
+    .optional(),
+  backend: z
+    .enum(['RUNTIME_BACKEND_UNSPECIFIED', 'RUNTIME_BACKEND_K8S', 'RUNTIME_BACKEND_EXTERNAL'])
+    .optional(),
+  k8s: zK8sEnvironmentConfig.optional(),
+  external: zExternalAppRunnerConfig.optional(),
+  cpuCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+})
+
+export const zLimitConfig = z.object({
+  type: z
+    .enum([
+      'LIMIT_TYPE_UNSPECIFIED',
+      'LIMIT_TYPE_RPM',
+      'LIMIT_TYPE_CONCURRENCY',
+      'LIMIT_TYPE_TOKEN',
+    ])
+    .optional(),
+  threshold: z.string().optional(),
+  action: z
+    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
+    .optional(),
+  reached: z.boolean().optional(),
+})
+
+export const zInnerGroupConfig = z.object({
+  id: z.string().optional(),
+  enabled: z.boolean().optional(),
+  membershipId: z.string().optional(),
+  limits: z.array(zLimitConfig).optional(),
+})
+
+export const zInnerResolveResponse = z.object({
+  appId: z.string().optional(),
+  groups: z.array(zInnerGroupConfig).optional(),
+  blocked: z.boolean().optional(),
+  blockGroupId: z.string().optional(),
+  blockReason: z.string().optional(),
+  admission: zInnerAdmission.optional(),
+})
+
+export const zListEnvironmentsReply = z.object({
+  data: z.array(zDifyEnterpriseApiEnterpriseEnvironment).optional(),
+})
+
+export const zListGroupAppsResponse = z.object({
+  items: z.array(zGroupAppItem).optional(),
+  total: z.string().optional(),
+})
+
+export const zLoginTypesReply = z.object({
+  enabledEmailCodeLogin: z.boolean().optional(),
+  enableEmailPasswordLogin: z.boolean().optional(),
+  isAllowRegister: z.boolean().optional(),
+  isAllowCreateWorkspace: z.boolean().optional(),
+})
+
+export const zLoginTypesReq = z.object({
+  enabledEmailCodeLogin: z.boolean().optional(),
+  enableEmailPasswordLogin: z.boolean().optional(),
+  isAllowRegister: z.boolean().optional(),
+  isAllowCreateWorkspace: z.boolean().optional(),
+})
+
+export const zMfaBackupCodesRes = z.object({
+  codes: z.array(z.string()).optional(),
+  validCounts: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  createdAt: z.iso.datetime().optional(),
+})
+
+export const zMfaDeleteBackupCodesRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zMfaDeleteRes = z.object({
+  token: z.string().optional(),
+})
+
+export const zMfaDownloadBackupCodesSummaryRes = z.object({
+  content: z.string().optional(),
+})
+
+export const zMfaEnrollReq = z.object({
+  code: z.string().optional(),
+})
+
+export const zMfaEnrollRes = z.object({
+  token: z.string().optional(),
+})
+
+export const zMfaGetEnrollInfoRes = z.object({
+  qrCode: z.string().optional(),
+  secret: z.string().optional(),
+})
+
+export const zMfaModifyRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zOAuth2Config = z.object({
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
+  authUrl: z.string().optional(),
+  tokenUrl: z.string().optional(),
+  userinfoUrl: z.string().optional(),
+  scopes: z.string().optional(),
+  enablePkce: z.boolean().optional(),
+})
+
+export const zOAuth2LoginReply = z.object({
+  url: z.string().optional(),
+  state: z.string().optional(),
+})
+
+export const zOidcConfig = z.object({
+  issuerUrl: z.string().optional(),
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
+  enablePkce: z.boolean().optional(),
+})
+
+export const zOidcReply = z.object({
+  url: z.string().optional(),
+  state: z.string().optional(),
+})
+
+export const zOtelExporterEndpoint = z.object({
+  endpoint: z.string().optional(),
+  compression: z.string().optional(),
+  protocol: z.enum(['HTTP_PROTOBUF', 'HTTP_JSON', 'GRPC']).optional(),
+  timeout: z
+    .string()
+    .regex(/^-?(?:0|[1-9]\d{0,11})(?:\.\d{1,9})?s$/)
+    .optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+  tlsCaPem: z.string().optional(),
+  tlsInsecure: z.boolean().optional(),
+  tlsClientCertPem: z.string().optional(),
+  tlsClientKeyPem: z.string().optional(),
+  enabled: z.boolean().optional(),
+  tlsInsecureSkipVerify: z.boolean().optional(),
+})
+
+export const zEndpointReply = z.object({
+  mode: z.enum(['OTEL_ENDPOINT_MODE_UNIFIED', 'OTEL_ENDPOINT_MODE_DEDICATED']).optional(),
+  metricsEndpoint: zOtelExporterEndpoint.optional(),
+  tracesEndpoint: zOtelExporterEndpoint.optional(),
+})
+
+export const zOtelExporterStatusReply = z.object({
+  connectedAt: z.iso.datetime().optional(),
+  bytesPushed: z.string().optional(),
+  itemsInQueue: z.string().optional(),
+  logs: z.string().optional(),
+  status: z.enum(['RUNNING', 'ERROR', 'STOPPED']).optional(),
+})
+
+export const zPasswordPolicyConfig = z.object({
+  minLength: z
+    .int()
+    .min(0, { error: 'Invalid value: Expected uint32 to be >= 0' })
+    .max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' })
+    .optional(),
+  requireDigit: z.boolean().optional(),
+  requireLowercase: z.boolean().optional(),
+  requireUppercase: z.boolean().optional(),
+  requireSpecial: z.boolean().optional(),
+  forbidRepeated: z.boolean().optional(),
+  forbidSequential: z.boolean().optional(),
+  expiryEnabled: z.boolean().optional(),
+  expiryDays: z
+    .int()
+    .min(0, { error: 'Invalid value: Expected uint32 to be >= 0' })
+    .max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' })
+    .optional(),
+})
+
+export const zPasswordStrengthReply = z.object({
+  level: z
+    .enum([
+      'PASSWORD_STRENGTH_LEVEL_UNSPECIFIED',
+      'PASSWORD_STRENGTH_LEVEL_WEAK',
+      'PASSWORD_STRENGTH_LEVEL_MEDIUM',
+      'PASSWORD_STRENGTH_LEVEL_STRONG',
+    ])
+    .optional(),
+})
+
+export const zPasswordStrengthReq = z.object({
+  password: z.string().optional(),
+})
+
+export const zPluginInstallationPermissionInfo = z.object({
+  pluginInstallationScope: z.string().optional(),
+  restrictToMarketplaceOnly: z.boolean().optional(),
+})
+
+export const zPluginInstallationSettingsReply = z.object({
+  pluginInstallationScope: z
+    .enum([
+      'PLUGIN_INSTALLATION_SCOPE_ALL',
+      'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY',
+      'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS',
+      'PLUGIN_INSTALLATION_SCOPE_NONE',
+    ])
+    .optional(),
+  restrictToMarketplaceOnly: z.boolean().optional(),
+})
+
+export const zResetMemberPasswordReply = z.object({
+  id: z.string().optional(),
+  password: z.string().optional(),
+})
+
+/**
+ * Reset member password messages
+ */
+export const zResetMemberPasswordReq = z.object({
+  id: z.string().optional(),
+})
+
+export const zResetPasswordReply = z.object({
+  message: z.string().optional(),
+})
+
+/**
+ * Password reset messages
+ */
+export const zResetPasswordReq = z.object({
+  currentPassword: z.string().optional(),
+  newPassword: z.string().optional(),
+  confirmPassword: z.string().optional(),
+})
+
+export const zResetUserPasswordReply = z.object({
+  id: z.string().optional(),
+  password: z.string().optional(),
+})
+
+export const zResetUserPasswordReq = z.object({
+  id: z.string().optional(),
+})
+
+export const zResourceGroupDetail = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  rpm_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  rpm_action: z
+    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
+    .optional(),
+  concurrency_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  concurrency_action: z
+    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
+    .optional(),
+  token_quota: z.string().optional(),
+  token_action: z
+    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
+    .optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
+export const zResourceGroupItem = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  rpm_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  concurrency_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  token_quota: z.string().optional(),
+  token_usage: z.string().optional(),
+  app_count: z.string().optional(),
+  rpm_status: z
+    .enum([
+      'LIMIT_STATUS_UNSPECIFIED',
+      'LIMIT_STATUS_NA',
+      'LIMIT_STATUS_NORMAL',
+      'LIMIT_STATUS_THROTTLED',
+    ])
+    .optional(),
+  conc_status: z
+    .enum([
+      'LIMIT_STATUS_UNSPECIFIED',
+      'LIMIT_STATUS_NA',
+      'LIMIT_STATUS_NORMAL',
+      'LIMIT_STATUS_THROTTLED',
+    ])
+    .optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
+export const zListResourceGroupsResponse = z.object({
+  items: z.array(zResourceGroupItem).optional(),
+  total: z.string().optional(),
+})
+
+/**
+ * ResourceQuota represents usage quota for a resource
+ */
+export const zResourceQuota = z.object({
+  used: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  enabled: z.boolean().optional(),
+})
+
+export const zLicenseStatus = z.object({
+  status: z.string().optional(),
+  expiredAt: z.string().optional(),
+  workspaces: zResourceQuota.optional(),
+})
+
+export const zLimitFields = z.object({
+  workspaceMembers: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  workspaces: zResourceQuota.optional(),
+  appRunnerEnvCpus: zResourceQuota.optional(),
+})
+
+/**
+ * License information
+ */
+export const zLicenseInfo = z.object({
+  uuid: z.string().optional(),
+  expiredAt: z.iso.datetime().optional(),
+  clusterId: z.string().optional(),
+  product: z.string().optional(),
+  limits: zLimitFields.optional(),
+})
+
+/**
+ * License RPC messages
+ */
+export const zGetLicenseReply = z.object({
+  license: zLicenseInfo.optional(),
+})
+
+/**
+ * SSO Configuration messages
+ */
+export const zSamlConfig = z.object({
+  idpSsoUrl: z.string().optional(),
+  certificate: z.string().optional(),
+})
+
+export const zSamlLoginReply = z.object({
+  url: z.string().optional(),
+})
+
+export const zSsoIdPProvider = z.object({
+  protocol: z.string().optional(),
+  provider: z.string().optional(),
+  samlConfig: zSamlConfig.optional(),
+  oidcConfig: zOidcConfig.optional(),
+  oauth2Config: zOAuth2Config.optional(),
+})
+
+export const zSsoSettings = z.object({
+  ssoEnforced: z.boolean().optional(),
+  sessionTimeout: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  ssoIdpProvider: zSsoIdPProvider.optional(),
+})
+
+export const zAuthSettingsReply = z.object({
+  userSsoSettings: zSsoSettings.optional(),
+  webSsoSettings: zSsoSettings.optional(),
+  dashboardSsoSettings: zSsoSettings.optional(),
+  userSsoSamlAcsUrl: z.string().optional(),
+  userSsoOidcCallbackUrl: z.string().optional(),
+  userSsoOauth2CallbackUrl: z.string().optional(),
+  webSsoSamlAcsUrl: z.string().optional(),
+  webSsoOidcCallbackUrl: z.string().optional(),
+  webSsoOauth2CallbackUrl: z.string().optional(),
+  webSsoMembersSamlAcsUrl: z.string().optional(),
+  webSsoMembersOidcCallbackUrl: z.string().optional(),
+  webSsoMembersOauth2CallbackUrl: z.string().optional(),
+  dashboardSsoSamlAcsUrl: z.string().optional(),
+  dashboardSsoOidcCallbackUrl: z.string().optional(),
+  dashboardSsoOauth2CallbackUrl: z.string().optional(),
+})
+
+export const zAuthSettingsReq = z.object({
+  ssoType: z.string().optional(),
+  ssoSettings: zSsoSettings.optional(),
+})
+
+export const zSsoSettingsReply = z.object({
+  enabled: z.boolean().optional(),
+})
+
+export const zScimSettings = z.object({
+  enabled: z.boolean().optional(),
+  lastSyncTime: z.iso.datetime().optional(),
+})
+
+export const zSearchAppItem = z.object({
+  app_id: z.string().optional(),
+  app_name: z.string().optional(),
+  workspace_id: z.string().optional(),
+  workspace_name: z.string().optional(),
+  app_status: z
+    .enum([
+      'APP_STATUS_UNSPECIFIED',
+      'APP_STATUS_PUBLISHED',
+      'APP_STATUS_UNPUBLISHED',
+      'APP_STATUS_DELETED',
+    ])
+    .optional(),
+  icon: z.string().optional(),
+  icon_type: z.string().optional(),
+  icon_background: z.string().optional(),
+  created_by_name: z.string().optional(),
+})
+
+export const zSearchAppsResponse = z.object({
+  items: z.array(zSearchAppItem).optional(),
+  total: z.string().optional(),
+})
+
+export const zSecretKey = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  secretKeyMasked: z.string().optional(),
+  createdAt: z.iso.datetime().optional(),
+  lastActive: z.iso.datetime().optional(),
+})
+
+export const zSetDefaultWorkspaceReply = z.object({
+  workspaceId: z.string().optional(),
+})
+
+export const zSetDefaultWorkspaceReq = z.object({
+  id: z.string().optional(),
+})
+
 export const zSubjectAccountData = z.object({
   id: z.string().optional(),
   name: z.string().optional(),
@@ -821,6 +1741,23 @@ export const zSubjectGroupData = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+})
+
+export const zCreateNewGroupsRes = z.object({
+  groups: z.array(zSubjectGroupData).optional(),
+})
+
+export const zGetGroupsRes = z.object({
+  groups: z.array(zSubjectGroupData).optional(),
+})
+
+export const zGetJoinedGroupsRes = z.object({
+  groups: z.array(zSubjectGroupData).optional(),
+})
+
+export const zGetWebAppWhitelistSubjectsRes = z.object({
+  groups: z.array(zSubjectGroupData).optional(),
+  members: z.array(zGetWebAppWhitelistSubjectsResMember).optional(),
 })
 
 /**
@@ -846,6 +1783,409 @@ export const zGetAccessSettingsReply = z.object({
   environmentPolicies: z.array(zEnvironmentAccessPolicy).optional(),
   webAppEndpoints: z.array(zAccessEndpoint).optional(),
   cliEndpoint: zAccessEndpoint.optional(),
+})
+
+export const zGetGroupSubjectsRes = z.object({
+  subjects: z.array(zSubject).optional(),
+})
+
+export const zSearchForWhilteListCandidatesRes = z.object({
+  subjects: z.array(zSubject).optional(),
+  currPage: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  hasMore: z.boolean().optional(),
+})
+
+export const zSystemUserSettingReply = z.object({
+  isAllowRegister: z.boolean().optional(),
+  enableEmailPasswordLogin: z.boolean().optional(),
+})
+
+export const zSystemUserSettingReq = z.object({
+  isAllowRegister: z.boolean().optional(),
+  enableEmailPasswordLogin: z.boolean().optional(),
+})
+
+export const zTestConnectionReply = z.object({
+  success: z.boolean().optional(),
+  error: z.string().optional(),
+})
+
+export const zTestEnvironmentConnectionReply = z.object({
+  ok: z.boolean().optional(),
+  message: z.string().optional(),
+})
+
+export const zTestEnvironmentConnectionReq = z.object({
+  environmentId: z.string().optional(),
+})
+
+export const zToggleEndpointRequest = z.object({
+  enabled: z.boolean().optional(),
+})
+
+export const zToggleTraceProviderRequest = z.object({
+  id: z.string().optional(),
+  enabled: z.boolean().optional(),
+})
+
+/**
+ * TraceProvider is one configured trace-export destination. Trace data
+ * collected by the enterprise collector is fanned out to every enabled
+ * destination. Credentials carries per-provider secret values (e.g. Langfuse
+ * public/secret keys); Settings carries non-secret options (e.g. host,
+ * project). Secret credential values are redacted on read and preserved on
+ * write when the client echoes the redaction sentinel back (same round-trip
+ * contract as endpoint headers / TLS keys).
+ */
+export const zTraceProvider = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  provider: z.string().optional(),
+  endpoint: z.string().optional(),
+  protocol: z.string().optional(),
+  credentials: z.record(z.string(), z.string()).optional(),
+  settings: z.record(z.string(), z.string()).optional(),
+  enabled: z.boolean().optional(),
+})
+
+/**
+ * TestTraceProviderRequest tests connectivity/auth for a destination config
+ * before (or without) persisting it. When credentials carry the redaction
+ * sentinel, the stored secret for the destination with the same id is used.
+ */
+export const zTestTraceProviderRequest = z.object({
+  provider: zTraceProvider.optional(),
+})
+
+/**
+ * TraceProviderField describes one credential or setting field of a provider in
+ * the static catalog: the key the dashboard sends back, its display label,
+ * whether it is required, and (for credentials) whether it is a secret that
+ * gets redacted.
+ */
+export const zTraceProviderField = z.object({
+  key: z.string().optional(),
+  displayName: z.string().optional(),
+  required: z.boolean().optional(),
+  secret: z.boolean().optional(),
+})
+
+/**
+ * TraceProviderDescriptor is one entry in the static provider catalog: the
+ * field definitions and transport defaults for a provider type. The dashboard
+ * uses it to render the add/edit form and to know which fields are secret.
+ */
+export const zTraceProviderDescriptor = z.object({
+  provider: z.string().optional(),
+  displayName: z.string().optional(),
+  credentialFields: z.array(zTraceProviderField).optional(),
+  settingFields: z.array(zTraceProviderField).optional(),
+  defaultProtocol: z.string().optional(),
+  supportedProtocols: z.array(z.string()).optional(),
+})
+
+export const zListTraceProvidersReply = z.object({
+  providers: z.array(zTraceProvider).optional(),
+  catalog: z.array(zTraceProviderDescriptor).optional(),
+})
+
+export const zUpdateAccessModeReq = z.object({
+  appId: z.string().optional(),
+  accessMode: z.string().optional(),
+})
+
+export const zUpdateAccessModeRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zUpdateBrandingInfoReq = z.object({
+  enabled: z.boolean().optional(),
+  applicationTitle: z.string().optional(),
+  loginPageLogo: z.string().optional(),
+  workspaceLogo: z.string().optional(),
+  favicon: z.string().optional(),
+})
+
+export const zUpdateEnvironmentReply = z.object({
+  environment: zDifyEnterpriseApiEnterpriseEnvironment.optional(),
+})
+
+export const zUpdateEnvironmentReq = z.object({
+  environmentId: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+})
+
+export const zUpdateGroupSubjectsReq = z.object({
+  groupId: z.string().optional(),
+  subjects: z.array(zSubject).optional(),
+})
+
+export const zUpdateGroupSubjectsRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zUpdateGroupsReqGroup = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zUpdateGroupsReq = z.object({
+  groups: z.array(zUpdateGroupsReqGroup).optional(),
+})
+
+export const zUpdateGroupsRes = z.object({
+  groups: z.array(zSubjectGroupData).optional(),
+})
+
+export const zUpdateJoinedGroupsReq = z.object({
+  accountId: z.string().optional(),
+  groupIds: z.array(z.string()).optional(),
+})
+
+export const zUpdateJoinedGroupsRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zUpdateLicenseReply = z.object({
+  message: z.string().optional(),
+})
+
+export const zUpdateLicenseReq = z.object({
+  licenseId: z.string().optional(),
+})
+
+export const zUpdateMfaStatusReq = z.object({
+  enabled: z.boolean().optional(),
+})
+
+export const zUpdateMfaStatusRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zUpdateMemberReply = z.object({
+  account: zAccount.optional(),
+})
+
+/**
+ * Update member messages
+ */
+export const zUpdateMemberReq = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  email: z.string().optional(),
+  status: z.string().optional(),
+})
+
+export const zUpdateMembersInGroupsReq = z.object({
+  groupId: z.string().optional(),
+  accountIds: z.array(z.string()).optional(),
+})
+
+export const zUpdateMembersInGroupsRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zUpdateOfflineLicenseReply = z.object({
+  message: z.string().optional(),
+})
+
+export const zUpdateOfflineLicenseReq = z.object({
+  offlineCode: z.string().optional(),
+})
+
+export const zUpdatePluginInstallationSettingsRequest = z.object({
+  pluginInstallationScope: z
+    .enum([
+      'PLUGIN_INSTALLATION_SCOPE_ALL',
+      'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY',
+      'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS',
+      'PLUGIN_INSTALLATION_SCOPE_NONE',
+    ])
+    .optional(),
+  restrictToMarketplaceOnly: z.boolean().optional(),
+})
+
+export const zUpdateResourceGroupRequest = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  rpm_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  rpm_action: z
+    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
+    .optional(),
+  concurrency_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  concurrency_action: z
+    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
+    .optional(),
+  token_quota: z.string().optional(),
+  token_action: z
+    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
+    .optional(),
+})
+
+export const zUpdateUserReply = z.object({
+  account: zAccountDetail.optional(),
+})
+
+export const zUpdateUserReq = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  email: z.string().optional(),
+  status: z.string().optional(),
+})
+
+/**
+ * Web app auth info messages
+ */
+export const zUpdateWebAppAuthInfoReq = z.object({
+  allowSso: z.boolean().optional(),
+  allowEmailCodeLogin: z.boolean().optional(),
+  allowEmailPasswordLogin: z.boolean().optional(),
+})
+
+export const zUpdateWebAppAuthInfoRes = z.object({
+  message: z.string().optional(),
+})
+
+export const zUpdateWebAppWhitelistSubjectsReq = z.object({
+  appId: z.string().optional(),
+  subjects: z.array(zSubject).optional(),
+  accessMode: z.string().optional(),
+})
+
+export const zUpdateWebAppWhitelistSubjectsRes = z.object({
+  message: z.string().optional(),
+})
+
+/**
+ * Update workspace messages
+ */
+export const zUpdateWorkspaceReq = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  email: z.string().optional(),
+  status: z.string().optional(),
+})
+
+export const zUpsertTraceProviderReply = z.object({
+  provider: zTraceProvider.optional(),
+})
+
+/**
+ * UpsertTraceProviderRequest creates a destination when id is empty (a new id
+ * is allocated) or updates the destination with the given id otherwise.
+ */
+export const zUpsertTraceProviderRequest = z.object({
+  provider: zTraceProvider.optional(),
+})
+
+export const zWebAppAuthInfo = z.object({
+  allowSso: z.boolean().optional(),
+  allowEmailCodeLogin: z.boolean().optional(),
+  allowEmailPasswordLogin: z.boolean().optional(),
+})
+
+/**
+ * Info configuration messages
+ */
+export const zInfoConfigReply = z.object({
+  SSOEnforcedForSignin: z.boolean().optional(),
+  SSOEnforcedForSigninProtocol: z.string().optional(),
+  SSOEnforcedForWeb: z.boolean().optional(),
+  SSOEnforcedForWebProtocol: z.string().optional(),
+  EnableEmailCodeLogin: z.boolean().optional(),
+  EnableEmailPasswordLogin: z.boolean().optional(),
+  IsAllowRegister: z.boolean().optional(),
+  IsAllowCreateWorkspace: z.boolean().optional(),
+  License: zLicenseStatus.optional(),
+  Branding: zBrandingInfo.optional(),
+  WebAppAuth: zWebAppAuthInfo.optional(),
+  PluginInstallationPermission: zPluginInstallationPermissionInfo.optional(),
+})
+
+export const zWebOAuth2LoginReply = z.object({
+  url: z.string().optional(),
+  state: z.string().optional(),
+})
+
+export const zWebOidcLoginReply = z.object({
+  url: z.string().optional(),
+})
+
+export const zWebSamlLoginReply = z.object({
+  url: z.string().optional(),
+})
+
+/**
+ * Workspace represents a workspace entity
+ */
+export const zWorkspace = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  status: z.string().optional(),
+  createdAt: z.iso.datetime().optional(),
+  owner: zAccount.optional(),
+})
+
+export const zCreateWorkspaceReply = z.object({
+  workspace: zWorkspace.optional(),
+})
+
+export const zGetDefaultWorkspaceReply = z.object({
+  workspaceId: z.string().optional(),
+  workspace: zWorkspace.optional(),
+})
+
+export const zGetWorkspaceReply = z.object({
+  workspace: zWorkspace.optional(),
+})
+
+export const zUpdateWorkspaceReply = z.object({
+  workspace: zWorkspace.optional(),
+})
+
+export const zWorkspaceInfoReply = z.object({
+  WorkspaceMembers: zResourceQuota.optional(),
+})
+
+/**
+ * Workspace permission
+ */
+export const zWorkspacePermission = z.object({
+  workspaceId: z.string().optional(),
+  allowMemberInvite: z.boolean().optional(),
+  allowOwnerTransfer: z.boolean().optional(),
+})
+
+export const zGetWorkspacePermissionReply = z.object({
+  permission: zWorkspacePermission.optional(),
+})
+
+export const zUpdateWorkspacePermissionReply = z.object({
+  message: z.string().optional(),
+  permission: zWorkspacePermission.optional(),
+})
+
+/**
+ * Update workspace permission messages
+ */
+export const zUpdateWorkspacePermissionReq = z.object({
+  id: z.string().optional(),
+  permission: zWorkspacePermission.optional(),
 })
 
 /**
@@ -925,6 +2265,51 @@ export const zListReleasesReply = z.object({
   data: z.array(zRelease).optional(),
   pagination: zPagination.optional(),
 })
+
+export const zListAccessSubjectsReply = z.object({
+  subjects: z.array(zSubject).optional(),
+  pagination: zPagination.optional(),
+})
+
+export const zListMembersReply = z.object({
+  data: z.array(zAccountDetail).optional(),
+  pagination: zPagination.optional(),
+})
+
+export const zListSecretKeysReply = z.object({
+  data: z.array(zSecretKey).optional(),
+  pagination: zPagination.optional(),
+})
+
+export const zListUsersReply = z.object({
+  data: z.array(zAccountDetail).optional(),
+  pagination: zPagination.optional(),
+})
+
+export const zListWorkspacesReply = z.object({
+  data: z.array(zWorkspace).optional(),
+  pagination: zPagination.optional(),
+})
+
+export const zAccessSubjectServiceListAccessSubjectsQuery = z.object({
+  keyword: z.string().optional(),
+  groupId: z.string().optional(),
+  pageNumber: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  resultsPerPage: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+})
+
+/**
+ * OK
+ */
+export const zAccessSubjectServiceListAccessSubjectsResponse = zListAccessSubjectsReply
 
 export const zAccessServiceDeleteApiKeyPath = z.object({
   apiKeyId: z.string(),
@@ -1378,3 +2763,81 @@ export const zReleaseServiceExportReleaseDslPath = z.object({
  * OK
  */
 export const zReleaseServiceExportReleaseDslResponse = zExportReleaseDslReply
+
+/**
+ * OK
+ */
+export const zConsoleSsoOAuth2LoginResponse = zOAuth2LoginReply
+
+/**
+ * OK
+ */
+export const zConsoleSsoOidcLoginResponse = zOidcReply
+
+/**
+ * OK
+ */
+export const zConsoleSsoSamlLoginResponse = zSamlLoginReply
+
+export const zWebAppAuthGetWebAppAccessModeQuery = z.object({
+  appId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zWebAppAuthGetWebAppAccessModeResponse = zGetWebAppAccessModeRes
+
+export const zWebAppAuthUpdateWebAppWhitelistSubjectsBody = zUpdateWebAppWhitelistSubjectsReq
+
+/**
+ * OK
+ */
+export const zWebAppAuthUpdateWebAppWhitelistSubjectsResponse = zUpdateWebAppWhitelistSubjectsRes
+
+export const zWebAppAuthSearchForWhilteListCandidatesQuery = z.object({
+  keyword: z.string().optional(),
+  pageNumber: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  resultsPerPage: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  groupId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zWebAppAuthSearchForWhilteListCandidatesResponse = zSearchForWhilteListCandidatesRes
+
+export const zWebAppAuthGetWebAppWhitelistSubjectsQuery = z.object({
+  appId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zWebAppAuthGetWebAppWhitelistSubjectsResponse = zGetWebAppWhitelistSubjectsRes
+
+export const zWebAppAuthGetGroupSubjectsQuery = z.object({
+  groupId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zWebAppAuthGetGroupSubjectsResponse = zGetGroupSubjectsRes
+
+export const zWebAppAuthIsUserAllowedToAccessWebAppQuery = z.object({
+  appId: z.string().optional(),
+})
+
+/**
+ * OK
+ */
+export const zWebAppAuthIsUserAllowedToAccessWebAppResponse = zIsUserAllowedToAccessWebAppRes

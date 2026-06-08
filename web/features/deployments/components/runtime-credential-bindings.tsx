@@ -116,12 +116,12 @@ export function RuntimeCredentialBindingsPanel({
         <div className="flex min-w-0 items-center gap-2">
           <div className="system-xs-medium-uppercase text-text-tertiary">{title}</div>
           {slots.length > 0 && (
-            <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium text-text-quaternary">
+            <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
               {bindingCountLabel ?? slots.length}
             </span>
           )}
         </div>
-        <span className="system-xs-regular text-text-quaternary">{hint}</span>
+        <span className="system-xs-regular text-text-tertiary">{hint}</span>
       </div>
       {slots.length === 0
         ? (

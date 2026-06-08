@@ -5,7 +5,7 @@ import logging
 import re
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
@@ -45,6 +45,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
     def __init__(self, session_maker: sessionmaker[Session]):
         self._session_maker = session_maker
 
+    @override
     def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[ExecutionExtraContentDomainModel]]:
         if not message_ids:
             return []

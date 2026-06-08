@@ -16,6 +16,19 @@ const DEFAULT_DATASET_ICON_INFO = {
   icon_url: '',
 } satisfies IconInfo
 
+type NullableDatasetIconInfo = Partial<{
+  [Key in keyof IconInfo]: IconInfo[Key] | null
+}>
+
+function normalizeDatasetIconInfo(iconInfo?: NullableDatasetIconInfo | null): IconInfo {
+  return {
+    icon: iconInfo?.icon ?? DEFAULT_DATASET_ICON_INFO.icon,
+    icon_type: iconInfo?.icon_type ?? DEFAULT_DATASET_ICON_INFO.icon_type,
+    icon_background: iconInfo?.icon_background ?? DEFAULT_DATASET_ICON_INFO.icon_background,
+    icon_url: iconInfo?.icon_url ?? DEFAULT_DATASET_ICON_INFO.icon_url,
+  }
+}
+
 function datasetLink(dataset: DataSet) {
   const isPipelineUnpublished = dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
   const link = isPipelineUnpublished
@@ -28,7 +41,7 @@ function datasetLink(dataset: DataSet) {
 }
 
 function currentDatasetNavItem(dataset: DataSet) {
-  const iconInfo = dataset.icon_info ?? DEFAULT_DATASET_ICON_INFO
+  const iconInfo = normalizeDatasetIconInfo(dataset.icon_info)
 
   return {
     id: dataset.id,
@@ -41,7 +54,7 @@ function currentDatasetNavItem(dataset: DataSet) {
 }
 
 function datasetNavItem(dataset: DataSet) {
-  const iconInfo = dataset.icon_info ?? DEFAULT_DATASET_ICON_INFO
+  const iconInfo = normalizeDatasetIconInfo(dataset.icon_info)
 
   return {
     id: dataset.id,

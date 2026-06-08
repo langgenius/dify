@@ -122,11 +122,11 @@ export function EnvVarBindingsPanel({
       <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <div className="system-xs-medium-uppercase text-text-tertiary">{title}</div>
-          <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium text-text-quaternary">
+          <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
             {envVarCountLabel ?? slots.length}
           </span>
         </div>
-        <span className="system-xs-regular text-text-quaternary">{hint}</span>
+        <span className="system-xs-regular text-text-tertiary">{hint}</span>
       </div>
       <div
         className={cn(
