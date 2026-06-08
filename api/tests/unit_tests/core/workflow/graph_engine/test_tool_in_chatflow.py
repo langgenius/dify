@@ -37,14 +37,11 @@ def test_tool_in_chatflow():
     success_events = [e for e in events if isinstance(e, GraphRunSucceededEvent)]
     assert len(success_events) > 0, "Workflow should complete successfully"
 
-    # Check for streaming events
+    # Graphon 0.5.0 renders this tool output directly in the final answer result
+    # instead of emitting an intermediate stream chunk event.
     stream_chunk_events = [e for e in events if isinstance(e, NodeRunStreamChunkEvent)]
-    stream_chunk_count = len(stream_chunk_events)
-
-    assert stream_chunk_count == 1, f"Expected 1 streaming events, but got {stream_chunk_count}"
-    assert stream_chunk_events[0].chunk == "hello, dify!", (
-        f"Expected chunk to be 'hello, dify!', but got {stream_chunk_events[0].chunk}"
-    )
+    assert stream_chunk_events == []
+    assert success_events[-1].outputs["answer"] == "hello, dify!"
 
 
 def test_answer_can_render_llm_structured_output_in_chatflow():

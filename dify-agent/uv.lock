@@ -621,7 +621,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "==0.2.2" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.5.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
@@ -796,7 +796,7 @@ wheels = [
 
 [[package]]
 name = "graphon"
-version = "0.2.2"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
@@ -817,9 +817,9 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/50/e745a79c5f742f88f6011a1f7c9ba2c2f9cc1beedd982f0b192f1ab8c748/graphon-0.2.2.tar.gz", hash = "sha256:141f0de536171850f1af6f738dc66f0285aadd3c097f1dad2a038636789e0aa5", size = 236360, upload-time = "2026-04-17T08:52:28.047Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/97/b23775621e20f2946d5332c688cf4efb166d267fe4b433d92920767069f1/graphon-0.5.0.tar.gz", hash = "sha256:745a519d6acfda71400ac9ddb876d4f8482f5cdb9be0f2f9debe80e49a9b5169", size = 267262, upload-time = "2026-05-29T08:43:42.703Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/89/a6340afdaf5169d17a318e00fc685fb67ed99baa602c2cbbbf6af6a76096/graphon-0.2.2-py3-none-any.whl", hash = "sha256:754e544d08779138f99eac6547ab08559463680e2c76488b05e1c978210392b4", size = 340808, upload-time = "2026-04-17T08:52:26.5Z" },
+    { url = "https://files.pythonhosted.org/packages/65/59/4df11095bb16b516210449cda354169a6c6540d52cfb0791e6458a7b319e/graphon-0.5.0-py3-none-any.whl", hash = "sha256:902f4dbe9bb636712b2736231d22d43bf871851934e217f815fcd2634f355cbc", size = 378978, upload-time = "2026-05-29T08:43:41.31Z" },
 ]
 
 [[package]]

@@ -7,20 +7,21 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CLIENT_SHARED_DTO_DEPENDENCIES = {
-    "httpx>=0.28.1",
-    "pydantic>=2.12.5,<3",
-    "pydantic-ai-slim>=1.85.1",
-    "typing-extensions>=4.12.2",
+    "httpx==0.28.1",
+    "pydantic>=2.12.5,<2.13",
+    "pydantic-ai-slim>=1.85.1,<2.0.0",
+    "typing-extensions>=4.12.2,<5.0.0",
 }
 
 SERVER_RUNTIME_DEPENDENCIES = {
-    "fastapi>=0.136.0",
-    "graphon~=0.2.2",
-    "jsonschema>=4.23.0",
-    "pydantic-ai-slim[anthropic,google,openai]>=1.85.1",
-    "pydantic-settings>=2.12.0",
-    "redis>=5",
-    "uvicorn[standard]>=0.38.0",
+    "fastapi==0.136.0",
+    "graphon==0.5.0",
+    "jsonschema>=4.23.0,<5.0.0",
+    "pydantic-ai-slim[anthropic,google,openai]>=1.85.1,<2.0.0",
+    "pydantic-settings>=2.12.0,<3.0.0",
+    "redis>=7.4.0,<8.0.0",
+    "shell-session-manager==2.1.1",
+    "uvicorn[standard]==0.46.0",
 }
 
 

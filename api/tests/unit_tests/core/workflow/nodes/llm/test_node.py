@@ -1215,7 +1215,10 @@ class TestLLMNodeSaveMultiModalImageOutput:
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
         mock_file_saver.save_binary_string.assert_called_once_with(
-            data=b"test-data", mime_type="image/png", file_type=FileType.IMAGE
+            data=b"test-data",
+            mime_type="image/png",
+            file_type=FileType.IMAGE,
+            extension_override=".png",
         )
 
     def test_llm_node_save_url_output(self, llm_node_for_multimodal: tuple[LLMNode, LLMFileSaver]):
@@ -1249,8 +1252,9 @@ class TestLLMNodeSaveMultiModalImageOutput:
 
 def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
     mock_file = mock.MagicMock(spec=File)
+    mock_file.type = FileType.IMAGE
     mock_file.generate_url.return_value = "https://example.com/image.png"
-    markdown = llm_node._image_file_to_markdown(mock_file)
+    markdown = llm_node._saved_file_to_markdown(mock_file)
     assert markdown == "![](https://example.com/image.png)"
 
 
@@ -1322,6 +1326,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
             data=image_raw_data,
             mime_type="image/png",
             file_type=FileType.IMAGE,
+            extension_override=".png",
         )
         assert mock_saved_file in llm_node._file_outputs
 
