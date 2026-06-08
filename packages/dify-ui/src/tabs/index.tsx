@@ -34,7 +34,7 @@ export function TabsTab({
 }: TabsTabProps) {
   return (
     <BaseTabs.Tab
-      className={cn('touch-manipulation focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-components-input-border-hover data-disabled:cursor-not-allowed data-disabled:text-text-disabled', className)}
+      className={cn('touch-manipulation focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-disabled:cursor-not-allowed data-disabled:text-text-disabled', className)}
       {...props}
     />
   )

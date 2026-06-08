@@ -20,7 +20,7 @@ export type TagUpdateRequestPayload = {
   name: string
 }
 
-export type TagType = 'app' | 'knowledge'
+export type TagType = 'app' | 'knowledge' | 'snippet'
 
 export type GetTagsData = {
   body?: never

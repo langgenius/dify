@@ -577,10 +577,11 @@ export const zWorkflowDraftVariableUpdatePayload = z.object({
 
 /**
  * PublishWorkflowPayload
+ *
+ * Payload for publishing snippet workflow.
  */
 export const zPublishWorkflowPayload = z.object({
-  marked_comment: z.string().max(100).nullish(),
-  marked_name: z.string().max(20).nullish(),
+  knowledge_base_setting: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -753,7 +754,7 @@ export const zSite = z.object({
  */
 export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
-  created_at: z.string().nullish(),
+  created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
   summary: z.string().nullish(),
@@ -2710,6 +2711,7 @@ export const zWorkflowCommentDetailWritable = z.object({
 })
 
 export const zGetAppsQuery = z.object({
+  creator_ids: z.array(z.string()).nullish(),
   is_created_by_me: z.boolean().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z

@@ -2233,6 +2233,7 @@ Returns a list of available models for the specified model type.
 | query | string |  | Yes |
 | response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string |  | No |
+| trace_session_id | string | Trace session ID for observability grouping | No |
 | workflow_id | string | Workflow ID for advanced chat | No |
 
 #### ChildChunkCreatePayload
@@ -2293,6 +2294,7 @@ Returns a list of available models for the specified model type.
 | query | string |  | No |
 | response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string |  | No |
+| trace_session_id | string | Trace session ID for observability grouping | No |
 
 #### Condition
 
@@ -3037,8 +3039,16 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | string | *Enum:* `"automatic"`, `"custom"`, `"hierarchical"` | Yes |
+| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
+
+#### ProcessRuleMode
+
+Dataset Process Rule Mode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProcessRuleMode | string | Dataset Process Rule Mode |  |
 
 #### RerankingModel
 
@@ -3381,6 +3391,7 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
+| trace_session_id | string | Trace session ID for observability grouping | No |
 
 #### WorkflowRunResponse
 

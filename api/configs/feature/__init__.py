@@ -949,6 +949,11 @@ class AuthConfig(BaseSettings):
         default=60,
     )
 
+    DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Max device-flow approve requests per session per hour on /openapi/oauth/device/approve.",
+        default=10,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """

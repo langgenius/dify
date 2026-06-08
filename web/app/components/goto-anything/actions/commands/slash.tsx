@@ -3,14 +3,17 @@ import type { ActionItem } from '../types'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
 import { getI18n } from 'react-i18next'
+import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import { setLocaleOnClient } from '@/i18n-config'
 import { accountCommand } from './account'
 import { executeCommand } from './command-bus'
 import { communityCommand } from './community'
+import { createCommand } from './create'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
 import { goCommand } from './go'
 import { languageCommand } from './language'
+import { refineCommand } from './refine'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 import { zenCommand } from './zen'
@@ -50,6 +53,11 @@ const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
   slashCommandRegistry.register(goCommand, {})
+  // `/create` and `/refine` are preview features, gated behind a flag.
+  if (ENABLE_FEATURE_PREVIEW) {
+    slashCommandRegistry.register(createCommand, {})
+    slashCommandRegistry.register(refineCommand, {})
+  }
 }
 
 const unregisterSlashCommands = () => {
@@ -62,6 +70,9 @@ const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
   slashCommandRegistry.unregister('go')
+  // No-op when the preview flag is off and these were never registered.
+  slashCommandRegistry.unregister('create')
+  slashCommandRegistry.unregister('refine')
 }
 
 export const SlashCommandProvider = () => {

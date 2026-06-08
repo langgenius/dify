@@ -132,6 +132,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 invoke_from=invoke_from,
                 user_from=user_from,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
@@ -140,6 +141,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -200,6 +202,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
 
         db.session.close()
