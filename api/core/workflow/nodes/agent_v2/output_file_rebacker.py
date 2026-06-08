@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 
 from core.db.session_factory import session_factory
+from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from models.tools import ToolFile
 
@@ -50,6 +51,7 @@ def reback_tool_file_output(*, tenant_id: str, tool_file_id: str) -> File | None
         type=get_file_type_by_mime_type(mime_type),
         transfer_method=FileTransferMethod.TOOL_FILE,
         remote_url=None,
+        reference=build_file_reference(record_id=str(tool_file.id)),
         related_id=tool_file.id,
         filename=tool_file.name,
         extension=extension,

@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import delete
 
 from core.db.session_factory import session_factory
+from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
 from graphon.file import FileTransferMethod, FileType
 from models.tools import ToolFile
@@ -48,6 +49,7 @@ def test_reback_resolves_tenant_tool_file_to_file():
     assert file is not None
     assert file.transfer_method == FileTransferMethod.TOOL_FILE
     assert file.related_id == tf
+    assert resolve_file_record_id(file.reference) == tf
     assert file.filename == "chart.png"
     assert file.mime_type == "image/png"
     assert file.size == 99

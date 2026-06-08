@@ -32,7 +32,7 @@ from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
 from factories import file_factory
 from libs.uuid_utils import uuidv7
-from models.agent import AgentDriveFile, AgentDriveFileKind
+from models.agent import Agent, AgentDriveFile, AgentDriveFileKind
 from models.model import UploadFile
 from models.tools import ToolFile
 
@@ -112,14 +112,15 @@ class AgentDriveService:
         prefix: str = "",
         include_download_url: bool = False,
     ) -> list[dict[str, Any]]:
-        stmt = (
-            select(AgentDriveFile)
-            .where(AgentDriveFile.tenant_id == tenant_id, AgentDriveFile.agent_id == agent_id)
-            .order_by(AgentDriveFile.key)
-        )
-        if prefix:
-            stmt = stmt.where(AgentDriveFile.key.startswith(prefix))
         with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            stmt = (
+                select(AgentDriveFile)
+                .where(AgentDriveFile.tenant_id == tenant_id, AgentDriveFile.agent_id == agent_id)
+                .order_by(AgentDriveFile.key)
+            )
+            if prefix:
+                stmt = stmt.where(AgentDriveFile.key.startswith(prefix))
             rows = list(session.scalars(stmt))
             items: list[dict[str, Any]] = []
             for row in rows:
@@ -149,12 +150,23 @@ class AgentDriveService:
         if not items:
             raise AgentDriveError("empty_commit", "commit requires at least one item", status_code=400)
         committed: list[dict[str, Any]] = []
+        pending_storage_deletes: list[str] = []
         with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
             for item in items:
                 committed.append(
-                    self._commit_one(session, tenant_id=tenant_id, user_id=user_id, agent_id=agent_id, item=item)
+                    self._commit_one(
+                        session,
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        agent_id=agent_id,
+                        item=item,
+                        pending_storage_deletes=pending_storage_deletes,
+                    )
                 )
             session.commit()
+        for storage_key in pending_storage_deletes:
+            self._delete_storage(storage_key)
         return committed
 
     def _commit_one(
@@ -165,6 +177,7 @@ class AgentDriveService:
         user_id: str,
         agent_id: str,
         item: DriveCommitItem,
+        pending_storage_deletes: list[str],
     ) -> dict[str, Any]:
         key = normalize_drive_key(item.key)
         file_kind = AgentDriveFileKind(item.file_ref.kind)
@@ -193,6 +206,7 @@ class AgentDriveService:
                     file_kind=existing.file_kind,
                     file_id=existing.file_id,
                     exclude_row_id=existing.id,
+                    pending_storage_deletes=pending_storage_deletes,
                 )
             existing.file_kind = file_kind
             existing.file_id = file_id
@@ -226,6 +240,18 @@ class AgentDriveService:
             "mime_type": row.mime_type,
             "value_owned_by_drive": row.value_owned_by_drive,
         }
+
+    @staticmethod
+    def _assert_agent_belongs_to_tenant(session: Session, *, tenant_id: str, agent_id: str) -> None:
+        try:
+            found_agent_id = session.scalar(select(Agent.id).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
+        except (DataError, SQLAlchemyError) as exc:
+            session.rollback()
+            raise AgentDriveError(
+                "agent_not_found", "agent drive does not belong to this tenant", status_code=404
+            ) from exc
+        if found_agent_id is None:
+            raise AgentDriveError("agent_not_found", "agent drive does not belong to this tenant", status_code=404)
 
     def _validate_source(
         self,
@@ -273,26 +299,32 @@ class AgentDriveService:
         file_kind: AgentDriveFileKind,
         file_id: str,
         exclude_row_id: str,
+        pending_storage_deletes: list[str],
     ) -> None:
         """Physically delete a drive-owned value, unless another drive entry references it."""
         still_referenced = session.scalar(
             select(func.count())
             .select_from(AgentDriveFile)
-            .where(AgentDriveFile.file_id == file_id, AgentDriveFile.id != exclude_row_id)
+            .where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.file_kind == file_kind,
+                AgentDriveFile.file_id == file_id,
+                AgentDriveFile.id != exclude_row_id,
+            )
         )
         if still_referenced:
             return
         if file_kind == AgentDriveFileKind.TOOL_FILE:
             tool_file = session.scalar(select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id))
             if tool_file is not None:
-                self._delete_storage(tool_file.file_key)
+                pending_storage_deletes.append(tool_file.file_key)
                 session.delete(tool_file)
             return
         upload_file = session.scalar(
             select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
         )
         if upload_file is not None:
-            self._delete_storage(upload_file.key)
+            pending_storage_deletes.append(upload_file.key)
             session.delete(upload_file)
 
     @staticmethod

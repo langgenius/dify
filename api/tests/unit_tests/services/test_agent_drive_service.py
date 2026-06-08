@@ -15,7 +15,7 @@ from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType
-from models.agent import AgentDriveFile
+from models.agent import Agent, AgentDriveFile, AgentScope, AgentSource
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
@@ -60,14 +60,29 @@ def test_normalize_drive_key_rejects_unsafe(bad: str):
 @pytest.fixture(autouse=True)
 def _tables() -> Generator[None, None, None]:
     engine = session_factory.get_session_maker().kw["bind"]
-    for model in (ToolFile, UploadFile, AgentDriveFile):
+    for model in (Agent, ToolFile, UploadFile, AgentDriveFile):
         model.__table__.create(bind=engine, checkfirst=True)
+    _seed_agent()
     yield
     with session_factory.create_session() as session:
         session.execute(delete(AgentDriveFile))
         session.execute(delete(ToolFile))
+        session.execute(delete(Agent))
         session.commit()
     AgentDriveFile.__table__.drop(bind=engine, checkfirst=True)
+
+
+def _seed_agent(*, tenant_id: str = TENANT, agent_id: str = AGENT) -> None:
+    agent = Agent(
+        id=agent_id,
+        tenant_id=tenant_id,
+        name="Drive Agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+    )
+    with session_factory.create_session() as session:
+        session.add(agent)
+        session.commit()
 
 
 def _seed_tool_file(*, user_id: str = USER, name: str = "f.txt") -> str:
@@ -124,6 +139,25 @@ def test_commit_rejects_tool_file_not_owned_by_user():
     assert exc_info.value.code == "source_not_found"
 
 
+def test_commit_rejects_agent_from_another_tenant():
+    tf = _seed_tool_file()
+    with pytest.raises(AgentDriveError) as exc_info:
+        AgentDriveService().commit(
+            tenant_id="99999999-9999-9999-9999-999999999999",
+            user_id=USER,
+            agent_id=AGENT,
+            items=[
+                DriveCommitItem(
+                    key="x.txt",
+                    file_ref={"kind": "tool_file", "id": tf},
+                    value_owned_by_drive=True,
+                )
+            ],
+        )
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.code == "agent_not_found"
+
+
 def test_overwrite_cleans_old_drive_owned_value():
     tf1 = _seed_tool_file(name="v1.txt")
     tf2 = _seed_tool_file(name="v2.txt")
@@ -140,6 +174,40 @@ def test_overwrite_cleans_old_drive_owned_value():
         rows = list(session.scalars(select(AgentDriveFile).where(AgentDriveFile.key == "doc.txt")))
     assert len(rows) == 1
     assert rows[0].file_id == tf2
+
+
+def test_batch_failure_does_not_delete_old_storage_before_commit():
+    tf1 = _seed_tool_file(name="v1.txt")
+    tf2 = _seed_tool_file(name="v2.txt")
+    _commit("doc.txt", tf1, owned=True)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        with pytest.raises(AgentDriveError):
+            AgentDriveService().commit(
+                tenant_id=TENANT,
+                user_id=USER,
+                agent_id=AGENT,
+                items=[
+                    DriveCommitItem(
+                        key="doc.txt",
+                        file_ref={"kind": "tool_file", "id": tf2},
+                        value_owned_by_drive=True,
+                    ),
+                    DriveCommitItem(
+                        key="bad.txt",
+                        file_ref={"kind": "tool_file", "id": "44444444-4444-4444-4444-444444444444"},
+                        value_owned_by_drive=True,
+                    ),
+                ],
+            )
+        storage_mock.delete.assert_not_called()
+
+    with session_factory.create_session() as session:
+        row = session.scalar(select(AgentDriveFile).where(AgentDriveFile.key == "doc.txt"))
+        assert row is not None
+        assert row.file_id == tf1
+        assert session.scalar(select(ToolFile).where(ToolFile.id == tf1)) is not None
+        assert session.scalar(select(ToolFile).where(ToolFile.id == tf2)) is not None
 
 
 def test_validate_source_db_error_maps_to_404():
