@@ -14,7 +14,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { environmentId } from '../../environment'
@@ -120,22 +120,16 @@ function DeployReadyForm({
     }),
     retry: false,
   })
-  const deploymentOptionCredentialSlots = useMemo(() => {
-    return deploymentOptionsQuery.data?.options?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
-  }, [deploymentOptionsQuery.data?.options?.credentialSlots])
+  const deploymentOptionCredentialSlots = deploymentOptionsQuery.data?.options?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
   const credentialCandidateSlots = bindingOptions.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
   const bindingSlots = deploymentOptionCredentialSlots.length > 0 ? deploymentOptionCredentialSlots : credentialCandidateSlots
   const deploymentOptionEnvVarSourceSlots = deploymentOptionsQuery.data?.options?.envVarSlots
-  const deploymentOptionEnvVarSlots = useMemo(() => {
-    return envVarSlotsWithoutDefaultValues(deploymentOptionEnvVarSourceSlots?.filter(hasEnvVarSlotKey) ?? [])
-  }, [deploymentOptionEnvVarSourceSlots])
+  const deploymentOptionEnvVarSlots = envVarSlotsWithoutDefaultValues(deploymentOptionEnvVarSourceSlots?.filter(hasEnvVarSlotKey) ?? [])
   const envVarSlots = deploymentOptionEnvVarSlots
   const [manualBindings, setManualBindings] = useState<BindingSelections>({})
   const [envVarValues, setEnvVarValues] = useState<EnvVarValues>({})
   const [showValidationErrors, setShowValidationErrors] = useState(false)
-  const effectiveEnvVarValues = useMemo(() => {
-    return envVarValuesWithDefaults(envVarValues, envVarSlots)
-  }, [envVarSlots, envVarValues])
+  const effectiveEnvVarValues = envVarValuesWithDefaults(envVarValues, envVarSlots)
   const selectedBindings = selectedRuntimeCredentialSelections(bindingSlots, manualBindings)
   const deploymentCredentials = selectedDeploymentRuntimeCredentials(bindingSlots, selectedBindings)
   const deploymentEnvVars = selectedDeploymentEnvVars(envVarSlots, effectiveEnvVarValues)

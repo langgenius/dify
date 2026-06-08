@@ -3,7 +3,7 @@ import type { Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
@@ -38,7 +38,7 @@ export default function AccessControl(props: AccessControlProps) {
   }, [app, setAppId, setCurrentMenu])
 
   const { isPending, mutateAsync: updateAccessMode } = useUpdateAccessMode()
-  const handleConfirm = useCallback(async () => {
+  async function handleConfirm() {
     const submitData: {
       appId: string
       accessMode: AccessMode
@@ -60,7 +60,8 @@ export default function AccessControl(props: AccessControlProps) {
     await updateAccessMode(submitData)
     toast.success(t('accessControlDialog.updateSuccess', { ns: 'app' }))
     onConfirm?.()
-  }, [updateAccessMode, app, specificGroups, specificMembers, t, onConfirm, currentMenu])
+  }
+
   return (
     <AccessControlDialog show onClose={onClose}>
       <AccessControlDialogContent

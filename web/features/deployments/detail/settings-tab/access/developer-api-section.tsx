@@ -30,7 +30,8 @@ import {
 } from '../../table'
 import { API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../../table-styles'
 import { DeveloperApiDocsDrawer } from './api-docs-drawer'
-import { ApiKeyGenerateMenu, ApiKeyList } from './api-keys'
+import { ApiKeyGenerateMenu } from './api-key-generate-menu'
+import { ApiKeyList } from './api-key-list'
 import { CopyPill } from './common'
 
 type CreatedApiToken = {

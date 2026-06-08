@@ -14,7 +14,7 @@ import type {
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -215,22 +215,14 @@ export function useCreateDeploymentGuide() {
     ? deploymentOptions?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
     : []
   const deploymentOptionEnvVarSourceSlots = deploymentOptions?.envVarSlots
-  const deploymentOptionEnvVarSlots = useMemo(() => {
-    return shouldLoadDeploymentTarget
-      ? deploymentOptionEnvVarSourceSlots?.filter(hasEnvVarSlotKey) ?? []
-      : []
-  }, [deploymentOptionEnvVarSourceSlots, shouldLoadDeploymentTarget])
-  const dslEnvVarSlotMetadata = useMemo(() => {
-    return method === 'importDsl' && dslContent ? dslEnvVarSlots(dslContent) : []
-  }, [dslContent, method])
-  const envVarSlots = useMemo(() => {
-    return envVarSlotsWithoutLastDeploymentValues(
-      mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata),
-    )
-  }, [deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata])
-  const effectiveEnvVarValues = useMemo(() => {
-    return envVarValuesWithDefaults(envVarValues, envVarSlots, { preferDefaultValue: true })
-  }, [envVarSlots, envVarValues])
+  const deploymentOptionEnvVarSlots = shouldLoadDeploymentTarget
+    ? deploymentOptionEnvVarSourceSlots?.filter(hasEnvVarSlotKey) ?? []
+    : []
+  const dslEnvVarSlotMetadata = method === 'importDsl' && dslContent ? dslEnvVarSlots(dslContent) : []
+  const envVarSlots = envVarSlotsWithoutLastDeploymentValues(
+    mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata),
+  )
+  const effectiveEnvVarValues = envVarValuesWithDefaults(envVarValues, envVarSlots, { preferDefaultValue: true })
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId)) ?? environments[0]
   const bindingSelections = selectedRuntimeCredentialSelections(bindingSlots, manualBindingSelections)

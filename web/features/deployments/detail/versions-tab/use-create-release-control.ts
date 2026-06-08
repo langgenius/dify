@@ -6,7 +6,7 @@ import type { ReleaseSourceMode } from './create-release-form-sections'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { isWorkflowApp, isWorkflowAppMode } from '../../app-mode'
@@ -80,9 +80,7 @@ export function useCreateReleaseControl(appInstanceId: string) {
   const hasUnsupportedDslMode = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError && !isWorkflowDsl(dslContent)
   const canCheckSourceAppReleaseContent = isCreating && releaseSourceMode === 'sourceApp' && Boolean(selectedSourceAppId)
   const canCheckDslReleaseContent = isCreating && releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError && !hasUnsupportedDslMode
-  const encodedDslContent = useMemo(() => {
-    return canCheckDslReleaseContent ? encodeDslContent(dslContent) : ''
-  }, [canCheckDslReleaseContent, dslContent])
+  const encodedDslContent = canCheckDslReleaseContent ? encodeDslContent(dslContent) : ''
   const sourceAppReleaseContentInput = canCheckSourceAppReleaseContent && selectedSourceAppId
     ? {
         body: {
