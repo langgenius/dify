@@ -26,7 +26,7 @@ type LinkActionCardProps = BaseProps & {
 
 type FirstEmptyActionCardProps = ButtonActionCardProps | LinkActionCardProps
 
-const baseCardClassName = 'relative flex rounded-xl bg-components-button-secondary-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden'
+const baseCardClassName = 'relative flex rounded-xl bg-components-button-secondary-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
 const compactBadgeClassName = {
   basic: {
     corner: 'text-util-colors-orange-orange-50',

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import override
 
 from pydantic import Field
 from sqlalchemy import select
@@ -80,6 +81,7 @@ class WorkflowToolProviderController(ToolProviderController):
         return controller
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
 

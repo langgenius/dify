@@ -7,7 +7,7 @@ import threading
 import time
 from collections.abc import Mapping
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, override
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -221,6 +221,7 @@ class TracingProviderConfigEntry(TypedDict):
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
+    @override
     def __getitem__(self, key: str) -> TracingProviderConfigEntry:
         try:
             match key:

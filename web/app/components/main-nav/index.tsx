@@ -157,7 +157,7 @@ const MainNav = ({
     return (
       <Link
         href="/"
-        className="flex h-8 shrink-0 items-center overflow-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="flex h-8 shrink-0 items-center overflow-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         aria-label={appTitle}
       >
         {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo

@@ -1,6 +1,7 @@
 'use client'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
+import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import { setLocaleOnClient } from '@/i18n-config'
 import { accountCommand } from './account'
 import { communityCommand } from './community'
@@ -26,8 +27,10 @@ const registerSlashCommands = (deps: SlashCommandDeps) => {
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(goCommand, {})
-  slashCommandRegistry.register(createCommand, {})
-  slashCommandRegistry.register(refineCommand, {})
+  if (ENABLE_FEATURE_PREVIEW) {
+    slashCommandRegistry.register(createCommand, {})
+    slashCommandRegistry.register(refineCommand, {})
+  }
 }
 
 const unregisterSlashCommands = () => {

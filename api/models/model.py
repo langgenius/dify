@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast, override
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -2061,10 +2061,12 @@ class EndUser(Base, UserMixin):
     )
 
     @property
+    @override
     def is_anonymous(self) -> Literal[False]:
         return False
 
     @is_anonymous.setter
+    @override
     def is_anonymous(self, value: bool) -> None:
         self._is_anonymous = value
 

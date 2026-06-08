@@ -1,7 +1,7 @@
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -237,20 +237,20 @@ describe('WorkspaceCard', () => {
     expect(screen.queryByText(Plan.sandbox)).not.toBeInTheDocument()
   })
 
-  it('opens workspace actions and switcher in a dropdown menu', async () => {
+  it('opens workspace actions and switcher in a popover panel', async () => {
     renderWorkspaceCard()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
-    const menu = await screen.findByRole('menu')
-    expect(menu).toBeInTheDocument()
-    expect(menu).toHaveClass('w-[280px]')
-    expect(screen.getByRole('menuitem', { name: 'common.mainNav.workspace.settings' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.mainNav.workspace.inviteMembers' })).toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.workspace')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.search' })).toBeInTheDocument()
-    const workspaceItem = screen.getByRole('menuitem', { name: 'Evan Workspace' })
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    expect(panel).toBeInTheDocument()
+    expect(panel).toHaveClass('w-[280px]')
+    expect(within(panel).getByRole('button', { name: 'common.mainNav.workspace.settings' })).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'common.mainNav.workspace.inviteMembers' })).toBeInTheDocument()
+    expect(within(panel).getByText('common.userProfile.workspace')).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' })).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toBeInTheDocument()
+    const workspaceItem = within(panel).getByRole('button', { name: 'Evan Workspace' })
     expect(workspaceItem).toBeInTheDocument()
     expect(workspaceItem.parentElement).toHaveClass('max-h-[240px]', 'overflow-y-auto')
   })
@@ -269,8 +269,9 @@ describe('WorkspaceCard', () => {
       target: { value: 'evan' },
     })
 
-    expect(screen.getByRole('menuitem', { name: 'Evan Workspace' })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'Solar Studio' })).not.toBeInTheDocument()
+    const panel = screen.getByRole('dialog', { name: 'Solar Studio' })
+    expect(within(panel).getByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: 'Solar Studio' })).not.toBeInTheDocument()
   })
 
   it('sorts workspaces by last opened and can sort by created time', async () => {
@@ -283,9 +284,8 @@ describe('WorkspaceCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
-    const defaultWorkspaceOptions = screen.getAllByRole('menuitem')
-      .map(item => item.getAttribute('title'))
-      .filter(Boolean)
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    const defaultWorkspaceOptions = within(panel).getAllByRole('button').map(item => item.getAttribute('title')).filter(Boolean)
 
     expect(defaultWorkspaceOptions).toEqual(['Atlas Workspace', 'Solar Studio', 'Evan Workspace'])
 
@@ -294,9 +294,7 @@ describe('WorkspaceCard', () => {
     expect(await screen.findByRole('menuitemradio', { name: 'common.mainNav.workspace.sort.lastOpened' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'common.mainNav.workspace.sort.createdTime' }))
 
-    const createdTimeWorkspaceOptions = screen.getAllByRole('menuitem')
-      .map(item => item.getAttribute('title'))
-      .filter(Boolean)
+    const createdTimeWorkspaceOptions = within(panel).getAllByRole('button').map(item => item.getAttribute('title')).filter(Boolean)
 
     expect(createdTimeWorkspaceOptions).toEqual(['Evan Workspace', 'Atlas Workspace', 'Solar Studio'])
   })
@@ -305,16 +303,16 @@ describe('WorkspaceCard', () => {
     renderWorkspaceCard()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'common.mainNav.workspace.settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }))
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
   })
 
-  it('switches workspace from the dropdown item', async () => {
+  it('switches workspace from the workspace switcher item', async () => {
     renderWorkspaceCard()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Evan Workspace' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Evan Workspace' }))
 
     await waitFor(() => expect(mockSwitchWorkspace).toHaveBeenCalledWith({ body: { tenant_id: 'workspace-2' } }))
   })
@@ -329,8 +327,9 @@ describe('WorkspaceCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
-    expect(await screen.findByRole('menu')).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'common.mainNav.workspace.settings' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'common.mainNav.workspace.inviteMembers' })).not.toBeInTheDocument()
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    expect(panel).toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: 'common.mainNav.workspace.settings' })).not.toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: 'common.mainNav.workspace.inviteMembers' })).not.toBeInTheDocument()
   })
 })

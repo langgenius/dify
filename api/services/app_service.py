@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast, override
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
@@ -35,6 +35,8 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 
 logger = logging.getLogger(__name__)
 
+AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
+
 
 class AppListParams(BaseModel):
     page: int = Field(default=1, ge=1)
@@ -46,6 +48,7 @@ class AppListParams(BaseModel):
     is_created_by_me: bool | None = None
     status: str | None = None
     openapi_visible: bool = False
+    sort_by: AppListSortBy = "last_modified"
 
 
 class CreateAppParams(BaseModel):
@@ -108,7 +111,7 @@ class AppService:
 
     def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
         """
-        Get app list with pagination
+        Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
         :param tenant_id: tenant id
         :param params: query parameters
@@ -154,8 +157,14 @@ class AppService:
             else:
                 return None
 
+        order_by = {
+            "last_modified": App.updated_at.desc(),
+            "recently_created": App.created_at.desc(),
+            "earliest_created": App.created_at.asc(),
+        }[params.sort_by]
+
         app_models = db.paginate(
-            sa.select(App).where(*filters).order_by(App.updated_at.desc()),
+            sa.select(App).where(*filters).order_by(order_by),
             page=params.page,
             per_page=params.limit,
             error_out=False,
@@ -360,6 +369,7 @@ class AppService:
                     self.__dict__.update(app.__dict__)
 
                 @property
+                @override
                 def app_model_config(self):
                     return model_config
 

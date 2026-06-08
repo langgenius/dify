@@ -8,7 +8,7 @@ from core.rag.extractor.text_extractor import TextExtractor
 
 
 class TestTextExtractor:
-    def test_extract_success(self, tmp_path):
+    def test_extract_success(self, tmp_path: Path):
         file_path = tmp_path / "data.txt"
         file_path.write_text("hello world", encoding="utf-8")
 

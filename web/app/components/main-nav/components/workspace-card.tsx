@@ -3,12 +3,11 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -28,8 +27,6 @@ import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-conten
 import WorkspacePlanBadge from './workspace-plan-badge'
 import { WorkspaceSwitcher } from './workspace-switcher'
 
-const workspaceMenuTriggerHeight = 36
-const workspaceMenuAlignOffset = -28
 const workspaceCardSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
 const workspacePlans = new Set<string>(Object.values(Plan))
 
@@ -95,10 +92,10 @@ function WorkspaceCardTrigger({
 
   return (
     <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs transition-colors hover:bg-components-card-bg-alt">
-      <DropdownMenuTrigger
+      <PopoverTrigger
         aria-label={t('mainNav.workspace.openMenu', { ns: 'common' })}
         className={cn(
-          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
+          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
           open && 'bg-linear-to-b from-background-section-burn to-background-section',
         )}
       >
@@ -110,12 +107,12 @@ function WorkspaceCardTrigger({
           </div>
         </div>
         <span aria-hidden className="i-ri-expand-up-down-line h-4 w-4 shrink-0 text-text-tertiary" />
-      </DropdownMenuTrigger>
+      </PopoverTrigger>
       {showCloudBilling && (
         <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
           <Link
             href={creditsHref}
-            className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset"
+            className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
             aria-label={t('mainNav.workspace.credits', { ns: 'common', count: credits })}
           >
             <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
@@ -125,7 +122,7 @@ function WorkspaceCardTrigger({
           {showPlanAction && (
             <button
               type="button"
-              className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset"
+              className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
               title={planActionLabel}
               onClick={onPlanClick}
             >
@@ -158,33 +155,35 @@ function WorkspaceMenuHeader({
   onInviteMembers: () => void
 }) {
   return (
-    <DropdownMenuGroup className="p-1">
+    <div className="p-1">
       <div className="rounded-xl border-[0.5px] border-components-panel-border bg-linear-to-b from-background-section-burn to-background-section pb-2">
         <div className="flex h-16 items-center gap-2 px-3">
           <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-1">
-            <div className="w-full min-w-0 truncate text-base/5 font-medium text-text-primary" title={name}>{name}</div>
+            <PopoverTitle className="w-full min-w-0 truncate text-base/5 font-medium text-text-primary" title={name}>{name}</PopoverTitle>
             {status}
           </div>
           <WorkspaceIcon name={name} className="h-9 w-9 shrink-0" />
         </div>
         {showWorkspaceSettings && (
-          <DropdownMenuItem
-            className="mx-0 h-8 gap-1 px-3 py-1"
+          <button
+            type="button"
+            className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
             onClick={onOpenSettings}
           >
             <WorkspaceMenuItemContent icon={<span aria-hidden className="i-custom-vender-main-nav-workspace-settings h-4 w-4" />} label={settingsLabel} />
-          </DropdownMenuItem>
+          </button>
         )}
         {showInviteMembers && (
-          <DropdownMenuItem
-            className="mx-0 h-8 gap-1 px-3 py-1"
+          <button
+            type="button"
+            className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
             onClick={onInviteMembers}
           >
             <WorkspaceMenuItemContent icon={<span aria-hidden className="i-ri-user-add-line h-4 w-4" />} label={inviteMembersLabel} />
-          </DropdownMenuItem>
+          </button>
         )}
       </div>
-    </DropdownMenuGroup>
+    </div>
   )
 }
 
@@ -250,7 +249,7 @@ export function WorkspaceCard() {
   }
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
       <>
         <WorkspaceCardTrigger
           open={open}
@@ -263,10 +262,9 @@ export function WorkspaceCard() {
           creditsHref={buildIntegrationPath('provider')}
           onPlanClick={setShowPricingModal}
         />
-        <DropdownMenuContent
+        <PopoverContent
           placement="bottom-start"
-          sideOffset={-workspaceMenuTriggerHeight}
-          alignOffset={workspaceMenuAlignOffset}
+          sideOffset={4}
           popupClassName="w-[280px] overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <WorkspaceMenuHeader
@@ -276,19 +274,28 @@ export function WorkspaceCard() {
             showInviteMembers={showInviteMembers}
             settingsLabel={t('mainNav.workspace.settings', { ns: 'common' })}
             inviteMembersLabel={t('mainNav.workspace.inviteMembers', { ns: 'common' })}
-            onOpenSettings={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })}
-            onInviteMembers={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
+            onOpenSettings={() => {
+              setOpen(false)
+              setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+            }}
+            onInviteMembers={() => {
+              setOpen(false)
+              setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
+            }}
           />
           {workspaces.length > 0 && (
-            <DropdownMenuGroup className="p-1 pb-2">
+            <div className="p-1 pb-2">
               <WorkspaceSwitcher
                 workspaces={workspaces}
-                onSwitchWorkspace={workspaceId => void handleSwitchWorkspace(workspaceId)}
+                onSwitchWorkspace={(workspaceId) => {
+                  setOpen(false)
+                  void handleSwitchWorkspace(workspaceId)
+                }}
               />
-            </DropdownMenuGroup>
+            </div>
           )}
-        </DropdownMenuContent>
+        </PopoverContent>
       </>
-    </DropdownMenu>
+    </Popover>
   )
 }

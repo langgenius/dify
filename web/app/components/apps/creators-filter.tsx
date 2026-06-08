@@ -26,7 +26,7 @@ type CreatorOption = {
   isYou: boolean
 }
 
-const baseChipClassName = 'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
+const baseChipClassName = 'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const CreatorsFilter = ({
   value,
@@ -138,7 +138,7 @@ const CreatorsFilter = ({
               role="button"
               tabIndex={0}
               aria-label={t('studio.filters.reset', { ns: 'app' })}
-              className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-xs text-text-quaternary hover:text-text-tertiary"
+              className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-xs text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={(event) => {
                 event.stopPropagation()
                 resetCreators()
@@ -181,7 +181,7 @@ const CreatorsFilter = ({
           {isSelected && (
             <button
               type="button"
-              className="shrink-0 rounded-sm px-2 py-1 text-xs font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+              className="shrink-0 rounded-sm px-2 py-1 text-xs font-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={resetCreators}
             >
               {t('studio.filters.reset', { ns: 'app' })}
@@ -196,7 +196,7 @@ const CreatorsFilter = ({
               <button
                 key={creator.id}
                 type="button"
-                className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 hover:bg-state-base-hover"
+                className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => toggleCreator(creator.id)}
               >
                 <Checkbox

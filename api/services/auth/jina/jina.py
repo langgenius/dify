@@ -1,4 +1,5 @@
 import json
+from typing import override
 
 import httpx
 
@@ -22,6 +23,7 @@ class JinaAuth(ApiKeyAuthBase):
         if not self.api_key:
             raise ValueError("No API key provided")
 
+    @override
     def validate_credentials(self):
         headers = self._prepare_headers()
         options = {

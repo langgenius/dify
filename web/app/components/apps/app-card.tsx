@@ -495,7 +495,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           href={appHref}
           aria-labelledby={appNameId}
           aria-describedby={app.description ? appDescriptionId : undefined}
-          className="inline-flex h-full w-full cursor-pointer touch-manipulation flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs outline-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset"
+          className="inline-flex h-full w-full cursor-pointer touch-manipulation flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs outline-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           <div className="flex shrink-0 items-center gap-3 pt-4 pb-2 pl-4">
             <div className="relative shrink-0">
@@ -569,7 +569,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                 aria-label={t('operation.more', { ns: 'common' })}
                 className={cn(
                   isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
-                  'flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 backdrop-blur-xs hover:bg-components-actionbar-bg focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
+                  'flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 backdrop-blur-xs hover:bg-components-actionbar-bg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   isOperationsMenuOpen ? 'shadow-none' : 'shadow-lg',
                 )}
                 onClick={(e) => {

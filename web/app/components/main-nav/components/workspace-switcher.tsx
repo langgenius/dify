@@ -5,7 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuRadioItemIndicator,
@@ -16,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
 
-const workspaceSwitchActionButtonClassName = 'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+const workspaceSwitchActionButtonClassName = 'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 const workspaceSwitchActionIconWrapClassName = 'flex size-5 shrink-0 items-center justify-center'
 const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
@@ -60,7 +59,6 @@ function WorkspaceSwitchControls({
               workspaceSwitchActionButtonClassName,
               sortMenuOpen && 'bg-state-base-hover text-text-secondary',
             )}
-            onClick={event => event.stopPropagation()}
           >
             <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>
               <span className={cn('i-ri-sort-desc', workspaceSwitchActionIconClassName)} />
@@ -71,9 +69,15 @@ function WorkspaceSwitchControls({
             sideOffset={4}
             popupClassName="w-40 bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]"
           >
-            <DropdownMenuRadioGroup value={sort} onValueChange={value => onSortChange(value as WorkspaceSort)}>
+            <DropdownMenuRadioGroup
+              value={sort}
+              onValueChange={(value) => {
+                onSortChange(value as WorkspaceSort)
+                setSortMenuOpen(false)
+              }}
+            >
               {sortOptions.map(option => (
-                <DropdownMenuRadioItem key={option.value} value={option.value} closeOnClick={false} className="mx-0 h-8 gap-1 px-2 py-1">
+                <DropdownMenuRadioItem key={option.value} value={option.value} className="mx-0 h-8 gap-1 px-2 py-1">
                   <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
                     {option.label}
                   </span>
@@ -90,10 +94,7 @@ function WorkspaceSwitchControls({
             workspaceSwitchActionButtonClassName,
             searchVisible && 'bg-state-base-hover text-text-secondary',
           )}
-          onClick={(event) => {
-            event.stopPropagation()
-            setSearchVisible(visible => !visible)
-          }}
+          onClick={() => setSearchVisible(visible => !visible)}
         >
           <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>
             <span className={cn('i-ri-search-line', workspaceSwitchActionIconClassName)} />
@@ -101,11 +102,7 @@ function WorkspaceSwitchControls({
         </button>
       </div>
       {searchVisible && (
-        <div
-          className="px-2 pb-2"
-          onClick={event => event.stopPropagation()}
-          onKeyDown={event => event.stopPropagation()}
-        >
+        <div className="px-2 pb-2">
           <SearchInput
             value={searchText}
             onValueChange={onSearchTextChange}
@@ -153,11 +150,13 @@ export function WorkspaceSwitcher({
       />
       <div className={workspaceSwitchListClassName}>
         {displayedWorkspaces.map(workspace => (
-          <DropdownMenuItem
+          <button
+            type="button"
             key={workspace.id}
             title={workspace.name}
+            aria-current={workspace.current ? 'true' : undefined}
             className={cn(
-              'mx-0 h-8 gap-2 px-3 py-1',
+              'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
               workspace.current && 'bg-state-base-hover',
             )}
             onClick={() => {
@@ -169,7 +168,7 @@ export function WorkspaceSwitcher({
               label={workspace.name}
               trailing={workspace.current ? <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" /> : undefined}
             />
-          </DropdownMenuItem>
+          </button>
         ))}
       </div>
     </>
