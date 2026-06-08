@@ -1,15 +1,15 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
+from core.extension.extensible import ModuleExtension
 from services.code_based_extension_service import CodeBasedExtensionService
 
 
 class TestCodeBasedExtensionService:
     def test_should_return_only_non_builtin_extensions_with_public_fields(self, monkeypatch: pytest.MonkeyPatch):
         """Test service returns only non-builtin extensions with name/label/form_schema fields."""
-        moderation_extension = SimpleNamespace(
+        moderation_extension = ModuleExtension(
             name="custom-moderation",
             label={"en-US": "Custom Moderation"},
             form_schema=[{"variable": "api_key"}],
@@ -17,7 +17,7 @@ class TestCodeBasedExtensionService:
             extension_class=object,
             position=20,
         )
-        builtin_extension = SimpleNamespace(
+        builtin_extension = ModuleExtension(
             name="builtin-moderation",
             label={"en-US": "Builtin Moderation"},
             form_schema=[{"variable": "token"}],
@@ -25,7 +25,7 @@ class TestCodeBasedExtensionService:
             extension_class=object,
             position=1,
         )
-        retrieval_extension = SimpleNamespace(
+        retrieval_extension = ModuleExtension(
             name="custom-retrieval",
             label={"en-US": "Custom Retrieval"},
             form_schema=None,
@@ -58,7 +58,7 @@ class TestCodeBasedExtensionService:
 
     def test_should_return_empty_list_when_all_extensions_are_builtin(self, monkeypatch: pytest.MonkeyPatch):
         """Test builtin extensions are filtered out completely."""
-        builtin_extension = SimpleNamespace(
+        builtin_extension = ModuleExtension(
             name="builtin-moderation",
             label={"en-US": "Builtin Moderation"},
             form_schema=[{"variable": "token"}],
