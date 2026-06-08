@@ -1019,6 +1019,72 @@ class TestRetrievalService:
             # Weights might be in positional args (position 3)
             assert len(call_args.args) >= 4
 
+    @pytest.mark.parametrize("empty_query", ["", None])
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_hybrid_search_attachment_only_uses_image_query_type(
+        self,
+        mock_get_dataset,
+        mock_embedding_search,
+        mock_data_processor_class,
+        mock_dataset,
+        sample_documents,
+        empty_query,
+    ):
+        """
+        Regression test for GH #37116: attachment-only hybrid retrieval must use IMAGE_QUERY.
+
+        When HYBRID_SEARCH is invoked with no text query and a non-None attachment_id,
+        DataPostProcessor.invoke must receive query_type=QueryType.IMAGE_QUERY.
+        """
+        from core.rag.index_processor.constant.query_type import QueryType
+
+        # Arrange
+        mock_get_dataset.return_value = mock_dataset
+        attachment_id = "upload-file-uuid-1234"
+
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+            query_type=QueryType.TEXT_QUERY,
+        ):
+            all_documents.extend(sample_documents[:2])
+
+        mock_embedding_search.side_effect = side_effect_embedding
+
+        mock_processor_instance = Mock()
+        mock_processor_instance.invoke.return_value = sample_documents[:2]
+        mock_data_processor_class.return_value = mock_processor_instance
+
+        # Act: call retrieve with attachment_ids only, no text query
+        RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+            dataset_id=mock_dataset.id,
+            query=empty_query,
+            top_k=3,
+            score_threshold=0.5,
+            attachment_ids=[attachment_id],
+        )
+
+        # Assert: invoke must have been called with IMAGE_QUERY
+        mock_processor_instance.invoke.assert_called_once()
+        invoke_kwargs = mock_processor_instance.invoke.call_args.kwargs
+        assert invoke_kwargs["query_type"] == QueryType.IMAGE_QUERY, (
+            "Attachment-only hybrid search must use IMAGE_QUERY for reranking, not TEXT_QUERY"
+        )
+        assert invoke_kwargs["query"] == attachment_id, (
+            "The rerank query must be the attachment_id, not the empty text query"
+        )
+
     # ==================== Full-Text Search Tests ====================
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search")
