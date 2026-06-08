@@ -83,6 +83,7 @@ const MainNav = ({
   const closeDetailNavigationHoverPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDetailNavigationHoverPreviewOpen = isCollapsedDetailNavigation && detailNavigationHoverPreviewOpen
   const detailNavigationVisibleExpanded = detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
+  const bottomNavigationExpanded = !showDetailNavigation || detailNavigationVisibleExpanded
   const handleToggleDetailNavigation = useCallback(() => {
     setDetailNavigationHoverPreviewOpen(false)
     setAppSidebarExpand(detailNavigationExpanded ? 'collapse' : 'expand')
@@ -271,7 +272,7 @@ const MainNav = ({
           )}
         </div>
         <div className={cn(
-          !detailNavigationVisibleExpanded
+          !bottomNavigationExpanded
             ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'
             : cn(
                 'flex w-60 items-center justify-between py-3 pr-1 pl-3',
@@ -281,7 +282,7 @@ const MainNav = ({
               ),
         )}
         >
-          {!detailNavigationVisibleExpanded
+          {!bottomNavigationExpanded
             ? (
                 <>
                   <SecondarySidebarHelpMenu triggerClassName="mb-2" />

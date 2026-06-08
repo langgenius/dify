@@ -325,6 +325,18 @@ describe('MainNav', () => {
     expect(helpButton.parentElement).toHaveClass('shrink-0', 'rounded-full', 'p-1')
   })
 
+  it('keeps the global navigation account section expanded on home routes', () => {
+    localStorage.setItem('app-detail-collapse-or-expand', 'collapse')
+    mockPathname = '/'
+
+    renderMainNav()
+
+    const accountButton = screen.getByRole('button', { name: 'common.account.account' })
+    expect(accountButton).toHaveTextContent('Evan Z')
+    expect(accountButton).toHaveClass('max-w-[180px]', 'gap-3', 'py-1', 'pr-4', 'pl-1')
+    expect(accountButton).not.toHaveClass('justify-center', 'p-1')
+  })
+
   it('renders the desktop environment tag from the old header contract', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
