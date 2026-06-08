@@ -13,7 +13,7 @@ import type {
 } from './types'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
@@ -162,23 +162,25 @@ export function useCreateDeploymentGuide() {
   }))
   const sourceDeploymentOptionsQuery = useQuery({
     ...consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
-      input: {
-        body: {
-          sourceAppId: effectiveSelectedApp?.id ?? '',
-        },
-      },
-      enabled: shouldLoadSourceDeploymentOptions,
+      input: shouldLoadSourceDeploymentOptions && effectiveSelectedApp?.id
+        ? {
+            body: {
+              sourceAppId: effectiveSelectedApp.id,
+            },
+          }
+        : skipToken,
     }),
     retry: false,
   })
   const dslDeploymentOptionsQuery = useQuery({
     ...consoleQuery.enterprise.releaseService.getDeploymentOptionsFromDsl.queryOptions({
-      input: {
-        body: {
-          dsl: encodedDslContent,
-        },
-      },
-      enabled: shouldLoadDslDeploymentOptions,
+      input: shouldLoadDslDeploymentOptions
+        ? {
+            body: {
+              dsl: encodedDslContent,
+            },
+          }
+        : skipToken,
     }),
     retry: false,
   })

@@ -2,7 +2,7 @@
 
 import {
   AccessSubjectAddButton,
-} from '@/app/components/base/access-subject-selector'
+} from '@/app/components/base/access-subject-selector/add-button'
 import useAccessControlStore from '../../../../context/access-control-store'
 
 export default function AddMemberOrGroupDialog() {

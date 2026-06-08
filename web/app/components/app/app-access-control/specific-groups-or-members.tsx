@@ -1,7 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccessSubjectSelectionList } from '@/app/components/base/access-subject-selector'
+import { AccessSubjectSelectionList } from '@/app/components/base/access-subject-selector/selection-list'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
