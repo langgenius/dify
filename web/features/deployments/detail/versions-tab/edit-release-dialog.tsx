@@ -1,0 +1,244 @@
+'use client'
+
+import type { Release } from '@dify/contracts/enterprise/types.gen'
+import type { FormEvent } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { consoleClient, consoleQuery } from '@/service/client'
+import { releaseLabel } from '../../release'
+
+type ReleaseWithId = Release & {
+  id: string
+}
+
+type EditReleaseFormValues = {
+  name: string
+  description: string
+}
+
+type UpdateReleaseInput = Parameters<typeof consoleClient.enterprise.releaseService.updateRelease>[0]
+
+function EditReleaseForm({
+  release,
+  isSaving,
+  onClose,
+  onSubmit,
+}: {
+  release: ReleaseWithId
+  isSaving: boolean
+  onClose: () => void
+  onSubmit: (values: EditReleaseFormValues) => void
+}) {
+  const { t } = useTranslation('deployments')
+  const initialName = releaseLabel(release)
+  const initialDescription = release.description ?? ''
+  const [name, setName] = useState(initialName)
+  const [description, setDescription] = useState(initialDescription)
+  const normalizedName = name.trim()
+  const normalizedDescription = description.trim()
+  const nameRequired = !normalizedName
+  const hasChanges = normalizedName !== initialName || normalizedDescription !== initialDescription
+  const canSave = Boolean(!nameRequired && hasChanges && !isSaving)
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!canSave)
+      return
+
+    onSubmit({
+      name: normalizedName,
+      description: normalizedDescription,
+    })
+  }
+
+  return (
+    <form className="flex flex-col gap-4" noValidate autoComplete="off" onSubmit={handleSubmit}>
+      <div className="flex flex-col gap-2">
+        <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-edit-name">
+          {t('versions.releaseNameLabel')}
+        </label>
+        <Input
+          id="release-edit-name"
+          type="text"
+          value={name}
+          maxLength={128}
+          autoComplete="off"
+          aria-invalid={nameRequired || undefined}
+          aria-describedby={nameRequired ? 'release-edit-name-error' : undefined}
+          onChange={event => setName(event.target.value)}
+          className="h-8"
+        />
+        {nameRequired && (
+          <div id="release-edit-name-error" role="alert" className="system-xs-regular text-text-destructive">
+            {t('versions.releaseNameRequired')}
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5">
+          <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-edit-description">
+            {t('versions.releaseDescriptionLabel')}
+          </label>
+          <span className="system-xs-regular text-text-quaternary">{t('versions.optional')}</span>
+        </div>
+        <Textarea
+          id="release-edit-description"
+          value={description}
+          maxLength={512}
+          autoComplete="off"
+          onValueChange={setDescription}
+          className="min-h-24"
+        />
+      </div>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isSaving}
+          onClick={onClose}
+        >
+          {t('versions.cancelEdit')}
+        </Button>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!canSave}
+          loading={isSaving}
+        >
+          {t('versions.saveEdit')}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+export function EditReleaseDialog({
+  appInstanceId,
+  release,
+  open,
+  onOpenChange,
+}: {
+  appInstanceId: string
+  release: ReleaseWithId
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const { t } = useTranslation('deployments')
+  const queryClient = useQueryClient()
+  const updateRelease = useMutation({
+    mutationFn: (variables: UpdateReleaseInput) =>
+      consoleClient.enterprise.releaseService.updateRelease(variables),
+    onSuccess: async (data, variables) => {
+      const releaseId = variables.params.releaseId
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.releaseService.listReleases.key({
+            type: 'query',
+            input: { params: { appInstanceId } },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.releaseService.listReleaseSummaries.key({
+            type: 'query',
+            input: { params: { appInstanceId } },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.releaseService.getReleaseDeploymentView.key({
+            type: 'query',
+            input: { params: { appInstanceId } },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.releaseService.getRelease.key({
+            type: 'query',
+            input: { params: { releaseId } },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
+            type: 'query',
+            input: { params: { appInstanceId } },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
+            type: 'query',
+            input: { params: { appInstanceId } },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
+        }),
+      ])
+
+      const updatedName = data.release?.name || variables.body.name || releaseLabel(release)
+      toast.success(t('versions.editSuccess', { name: updatedName }))
+      onOpenChange(false)
+    },
+    onError: () => {
+      toast.error(t('versions.editFailed'))
+    },
+  })
+  const formKey = `${release.id}-${release.name ?? ''}-${release.description ?? ''}`
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen && updateRelease.isPending)
+      return
+    onOpenChange(nextOpen)
+  }
+
+  function handleSubmit(values: EditReleaseFormValues) {
+    updateRelease.mutate({
+      params: {
+        releaseId: release.id,
+      },
+      body: {
+        releaseId: release.id,
+        name: values.name,
+        description: values.description,
+      },
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="w-120 max-w-[calc(100vw-32px)] p-0">
+        <DialogCloseButton disabled={updateRelease.isPending} />
+        <div className="border-b border-divider-subtle px-6 py-5 pr-14">
+          <DialogTitle className="title-xl-semi-bold text-text-primary">
+            {t('versions.editRelease')}
+          </DialogTitle>
+          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+            {t('versions.editReleaseDescription')}
+          </DialogDescription>
+        </div>
+        <div className="px-6 py-5">
+          <EditReleaseForm
+            key={formKey}
+            release={release}
+            isSaving={updateRelease.isPending}
+            onClose={() => handleOpenChange(false)}
+            onSubmit={handleSubmit}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

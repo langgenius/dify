@@ -34,6 +34,7 @@ import { releaseDeploymentAction } from '../../release-action'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
+import { EditReleaseDialog } from './edit-release-dialog'
 import { exportReleaseDsl } from './release-dsl-export'
 
 type EnvironmentOption = Environment & {
@@ -85,6 +86,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   const queryClient = useQueryClient()
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const [open, setOpen] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isExportingDsl, setIsExportingDsl] = useState(false)
   const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
@@ -286,6 +288,18 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
         {open && (
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-60">
             <DropdownMenuItem
+              className="gap-2 px-3"
+              onClick={() => {
+                setOpen(false)
+                setShowEditDialog(true)
+              }}
+            >
+              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+              <span className="system-sm-regular text-text-secondary">
+                {t('versions.editRelease')}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
               disabled={isExportingDsl}
               aria-disabled={isExportingDsl}
               className={cn(
@@ -357,6 +371,13 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
           </DropdownMenuContent>
         )}
       </DropdownMenu>
+
+      <EditReleaseDialog
+        appInstanceId={appInstanceId}
+        release={targetRelease}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+      />
 
       <AlertDialog
         open={showDeleteConfirm}
