@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -66,7 +66,7 @@ export function ToolProviderToolbar({
           <SearchInput
             className="w-[200px]"
             value={keywords}
-            onChange={onKeywordsChange}
+            onValueChange={onKeywordsChange}
           />
         </div>
         {toolbarAction}

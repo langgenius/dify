@@ -80,8 +80,8 @@ export const TagFilter = ({
             'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-popup-open:bg-components-input-bg-normal',
             !!value.length && 'pr-6 shadow-xs',
           )}
-        >
-          <span className="flex w-full min-w-0 items-center gap-1">
+          >
+            <span className="flex w-full min-w-0 items-center gap-1">
             {showLeadingIcon && (
               <span className="p-px">
                 <Tag01Icon className="size-3.5 text-text-tertiary" aria-hidden="true" />

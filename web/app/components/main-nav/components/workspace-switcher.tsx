@@ -13,7 +13,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
 
 const workspaceSwitchActionButtonClassName = 'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
@@ -101,13 +101,15 @@ function WorkspaceSwitchControls({
         </button>
       </div>
       {searchVisible && (
-        <div className="px-2 pb-2">
+        <div
+          className="px-2 pb-2"
+          onClick={event => event.stopPropagation()}
+          onKeyDown={event => event.stopPropagation()}
+        >
           <SearchInput
             value={searchText}
-            onChange={onSearchTextChange}
+            onValueChange={onSearchTextChange}
             placeholder={t(workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder'), { ns: 'common' })}
-            onClick={event => event.stopPropagation()}
-            onKeyDown={event => event.stopPropagation()}
           />
         </div>
       )}

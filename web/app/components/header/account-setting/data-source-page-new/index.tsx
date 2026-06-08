@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
@@ -109,7 +109,7 @@ const DataSourcePage = ({
         className="w-[200px]"
         placeholder={t('operation.search', { ns: 'common' })}
         value={searchText}
-        onChange={setSearchText}
+        onValueChange={setSearchText}
       />
       {canSetPermissions && (
         <UpdateSettingDialog

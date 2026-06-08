@@ -38,6 +38,7 @@ import { resetPassword } from './reset-password/orpc.gen'
 import { ruleCodeGenerate } from './rule-code-generate/orpc.gen'
 import { ruleGenerate } from './rule-generate/orpc.gen'
 import { ruleStructuredOutputGenerate } from './rule-structured-output-generate/orpc.gen'
+import { snippets } from './snippets/orpc.gen'
 import { spec } from './spec/orpc.gen'
 import { systemFeatures } from './system-features/orpc.gen'
 import { tagBindings } from './tag-bindings/orpc.gen'
@@ -89,6 +90,7 @@ export const contract = {
   ruleCodeGenerate,
   ruleGenerate,
   ruleStructuredOutputGenerate,
+  snippets,
   spec,
   systemFeatures,
   tagBindings,

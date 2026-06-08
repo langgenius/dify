@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import Category from '@/app/components/explore/category'
 
 export function ExploreAppListHeader({
@@ -50,7 +50,7 @@ export function ExploreAppListHeader({
           <SearchInput
             className="w-40 shrink-0"
             value={keywords}
-            onChange={onKeywordsChange}
+            onValueChange={onKeywordsChange}
           />
         </div>
       </div>

@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '../../hooks'
 
 type TagsFilterProps = {
@@ -90,7 +90,7 @@ const TagsFilter = ({
           <div className="p-2 pb-1">
             <SearchInput
               value={searchText}
-              onChange={setSearchText}
+              onValueChange={setSearchText}
               placeholder={t('searchTags', { ns: 'pluginTags' })}
             />
           </div>

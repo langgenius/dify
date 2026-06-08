@@ -24,7 +24,7 @@ import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
 import Footer from './footer'
-import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
+import { useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 
@@ -39,10 +39,10 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { category, keywords, isCreatedByMe },
+    query: { category, keywords, creatorIDs },
     setCategory,
     setKeywords,
-    setIsCreatedByMe,
+    setCreatorIDs,
   } = useAppsQueryState()
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
@@ -80,9 +80,9 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
     limit: 30,
     name: debouncedKeywords,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
+    ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
     ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, debouncedKeywords, isCreatedByMe, tagIDs])
+  }), [category, creatorIDs, debouncedKeywords, tagIDs])
 
   const {
     data,
@@ -110,9 +110,8 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
   })
 
   useEffect(() => {
-    if (controlRefreshList > 0) {
+    if (controlRefreshList > 0)
       refetch()
-    }
   }, [controlRefreshList, refetch])
 
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -153,22 +152,6 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const handleCreatedByMeChange = useCallback((checked: boolean) => {
-    setIsCreatedByMe(checked)
-  }, [setIsCreatedByMe])
-
-  const categoryRef = useRef(category)
-  useEffect(() => {
-    categoryRef.current = category
-  }, [category])
-
-  const handleCategoryChange = useCallback((nextValue: string | null) => {
-    if (!nextValue || !isAppListCategory(nextValue) || nextValue === categoryRef.current)
-      return
-    categoryRef.current = nextValue
-    setCategory(nextValue)
-  }, [setCategory])
-
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
 
@@ -190,7 +173,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
 
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
-  const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || isCreatedByMe
+  const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || creatorIDs.length > 0
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
   const showFirstEmptyState = !showSkeleton && !hasAnyApp && isCurrentWorkspaceEditor && hasResolvedFirstPage && !hasActiveFilters
 
@@ -212,11 +195,11 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
             category={category}
             tagIDs={tagIDs}
             keywords={keywords}
-            isCreatedByMe={isCreatedByMe}
-            onCategoryChange={handleCategoryChange}
+            creatorIDs={creatorIDs}
+            onCategoryChange={setCategory}
             onTagIDsChange={setTagIDs}
             onKeywordsChange={setKeywords}
-            onCreatedByMeChange={handleCreatedByMeChange}
+            onCreatorIDsChange={setCreatorIDs}
             onCreateBlank={() => setShowNewAppModal(true)}
             onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
             onImportDSL={() => setShowCreateFromDSLModal(true)}

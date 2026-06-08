@@ -14,7 +14,7 @@ export type NavIcon = React.ComponentType<
 
 export type NavLinkProps = {
   name: string
-  href: string
+  href?: string
   iconMap: {
     selected: NavIcon
     normal: NavIcon
@@ -22,6 +22,8 @@ export type NavLinkProps = {
   mode?: string
   disabled?: boolean
   pathname?: string
+  active?: boolean
+  onClick?: () => void
 }
 
 const NavLink = ({
@@ -31,13 +33,29 @@ const NavLink = ({
   mode = 'expand',
   disabled = false,
   pathname,
+  active,
+  onClick,
 }: NavLinkProps) => {
   const segment = useSelectedLayoutSegment()
-  const formattedSegment = pathname ? pathname.toLowerCase().split('/').filter(Boolean).pop() : segment?.toLowerCase()
-  const isActive = href.toLowerCase().split('/')?.pop() === formattedSegment
+  const formattedSegment = (() => {
+    let res = pathname ? pathname.toLowerCase().split('/').filter(Boolean).pop() : segment?.toLowerCase()
+    // logs and annotations use the same nav
+    if (res === 'annotations')
+      res = 'logs'
+
+    return res
+  })()
+  const isActive = active ?? (href ? href.toLowerCase().split('/')?.pop() === formattedSegment : false)
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
 
   const isCollapsed = mode !== 'expand'
+  const linkClassName = cn(
+    isActive
+      ? 'border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active system-sm-semibold text-text-accent-light-mode-only'
+      : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
+    isCollapsed ? 'flex size-8 items-center justify-center p-1.5' : 'flex h-8 items-center rounded-lg pr-1 pl-3',
+    'rounded-lg',
+  )
 
   const renderIcon = () => (
     <div className={cn(isCollapsed && 'flex size-5 items-center justify-center')}>
@@ -70,17 +88,32 @@ const NavLink = ({
     )
   }
 
+  if (!href) {
+    return (
+      <button
+        key={name}
+        type="button"
+        className={linkClassName}
+        title={mode === 'collapse' ? name : ''}
+        onClick={onClick}
+      >
+        {renderIcon()}
+        <span
+          className={cn('overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out', mode === 'expand'
+            ? 'ml-2 max-w-none opacity-100'
+            : 'ml-0 max-w-0 opacity-0')}
+        >
+          {name}
+        </span>
+      </button>
+    )
+  }
+
   return (
     <Link
       key={name}
       href={href}
-      className={cn(
-        isActive
-          ? 'border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active system-sm-semibold text-text-accent-light-mode-only'
-          : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
-        isCollapsed ? 'flex size-8 items-center justify-center p-1.5' : 'flex h-8 items-center rounded-lg pr-1 pl-3',
-        'rounded-lg',
-      )}
+      className={linkClassName}
       title={mode === 'collapse' ? name : ''}
     >
       {renderIcon()}

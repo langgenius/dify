@@ -11,7 +11,9 @@ vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   return createReactI18nextMock({
     'app.types.all': 'All',
-    'app.types.filter': 'Types',
+    'app.studio.filters.types': 'Types',
+    'app.studio.filters.allCreators': 'All creators',
+    'app.studio.filters.creators': 'Creators',
   })
 })
 
@@ -60,6 +62,7 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+    userProfile: { id: 'creator-1' },
   }),
 }))
 
@@ -71,20 +74,30 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockSetKeywords = vi.fn()
-const mockSetIsCreatedByMe = vi.fn()
+const mockSetCreatorIDs = vi.fn()
 const mockSetCategory = vi.fn()
 const mockQueryState = {
   category: 'all',
   keywords: '',
-  isCreatedByMe: false,
+  creatorIDs: [] as string[],
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
-  isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
   useAppsQueryState: () => ({
     query: mockQueryState,
     setCategory: mockSetCategory,
     setKeywords: mockSetKeywords,
-    setIsCreatedByMe: mockSetIsCreatedByMe,
+    setCreatorIDs: mockSetCreatorIDs,
+  }),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
+        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
+      ],
+    },
   }),
 }))
 
@@ -249,14 +262,14 @@ vi.mock('../footer', () => ({
   },
 }))
 
-let intersectionCallback: IntersectionObserverCallback | null = null
+const intersectionCallbacks: IntersectionObserverCallback[] = []
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
 beforeAll(() => {
   globalThis.IntersectionObserver = class MockIntersectionObserver {
     constructor(callback: IntersectionObserverCallback) {
-      intersectionCallback = callback
+      intersectionCallbacks.push(callback)
     }
 
     observe = mockObserve
@@ -285,7 +298,7 @@ type AppListInfiniteOptions = {
 }
 
 const openAppTypeSelect = async (user = userEvent.setup()) => {
-  await user.click(screen.getByRole('combobox', { name: /^(Types|app\.types\.)/ }))
+  await user.click(screen.getByRole('button', { name: /^(Types|app\.types\.)/ }))
   return user
 }
 
@@ -302,17 +315,17 @@ describe('List', () => {
     mockServiceState.isFetchingNextPage = false
     mockQueryState.category = 'all'
     mockQueryState.keywords = ''
-    mockQueryState.isCreatedByMe = false
+    mockQueryState.creatorIDs = []
     mockAppData = defaultAppData
     mockUseWorkflowOnlineUsers.mockClear()
-    intersectionCallback = null
+    intersectionCallbacks.length = 0
     localStorage.clear()
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const { container } = renderList()
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(container.querySelector('.i-ri-filter-3-line')).not.toBeInTheDocument()
     })
 
@@ -320,18 +333,18 @@ describe('List', () => {
       renderList()
       await openAppTypeSelect()
 
-      expect(await screen.findByRole('option', { name: 'All' }))!.toBeInTheDocument()
-      expect(screen.queryByRole('option', { name: 'Types' })).not.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.workflow' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.advanced' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.completion' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'All' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('menuitemradio', { name: 'Types' })).not.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.completion' }))!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -339,14 +352,24 @@ describe('List', () => {
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
 
-    it('should render created by me checkbox', () => {
+    it('should render creators filter', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'All creators' }))!.toBeInTheDocument()
     })
 
     it('should render create button for editors', () => {
       renderList()
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
+    })
+
+    it('should render link to snippets before the create button', () => {
+      renderList()
+
+      const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
+      const createButton = screen.getByRole('button', { name: 'common.operation.create' })
+
+      expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
     it('should render app cards when apps exist', () => {
@@ -379,7 +402,7 @@ describe('List', () => {
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.or'))!.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
       expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
@@ -391,7 +414,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
     })
 
     it('should keep the regular empty state for empty filtered results', () => {
@@ -401,7 +424,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
     })
@@ -437,7 +460,7 @@ describe('List', () => {
 
       renderList()
 
-      expect(screen.getByRole('combobox', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'app.types.workflow' }))!.toBeInTheDocument()
     })
 
     it('should update category when workflow option is selected', async () => {
@@ -445,7 +468,7 @@ describe('List', () => {
       renderList()
       await openAppTypeSelect(user)
 
-      await user.click(await screen.findByRole('option', { name: 'app.types.workflow' }))
+      await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
@@ -456,7 +479,7 @@ describe('List', () => {
       renderList()
       await openAppTypeSelect(user)
 
-      await user.click(await screen.findByRole('option', { name: 'All' }))
+      await user.click(await screen.findByRole('menuitemradio', { name: 'All' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
@@ -465,13 +488,13 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
       renderList()
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(mockSetKeywords).toHaveBeenCalledWith('test search')
@@ -494,7 +517,7 @@ describe('List', () => {
   describe('App List Query', () => {
     it('should build paged query input from active filters', () => {
       mockQueryState.keywords = 'sales'
-      mockQueryState.isCreatedByMe = true
+      mockQueryState.creatorIDs = ['creator-1']
       mockQueryState.category = AppModeEnum.WORKFLOW
 
       renderList()
@@ -508,7 +531,7 @@ describe('List', () => {
           limit: 30,
           name: 'sales',
           tag_ids: ['tag-1'],
-          is_created_by_me: true,
+          creator_ids: ['creator-1'],
           mode: AppModeEnum.WORKFLOW,
         },
       })
@@ -517,11 +540,11 @@ describe('List', () => {
     })
 
     it('should remove legacy tagIDs from URL while preserving other filters', async () => {
-      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales&isCreatedByMe=true')
+      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales')
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith(
-          '/apps?category=workflow&keywords=sales&isCreatedByMe=true',
+          '/apps?category=workflow&keywords=sales',
           { scroll: false },
         )
       })
@@ -535,19 +558,19 @@ describe('List', () => {
     })
   })
 
-  describe('Created By Me Filter', () => {
-    it('should render checkbox with correct label', () => {
+  describe('Creators Filter', () => {
+    it('should render creators filter with correct label', () => {
       renderList()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'All creators' }))!.toBeInTheDocument()
     })
 
-    it('should handle checkbox change', () => {
+    it('should handle creator selection', () => {
       renderList()
 
-      const checkbox = screen.getByRole('checkbox', { name: 'app.showMyCreatedAppsOnly' })
-      fireEvent.click(checkbox)
+      fireEvent.click(screen.getByRole('button', { name: 'All creators' }))
+      fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 
-      expect(mockSetIsCreatedByMe).toHaveBeenCalledWith(true)
+      expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
     })
   })
 
@@ -641,11 +664,11 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { unmount } = renderList()
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
 
       unmount()
       renderList()
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
@@ -658,9 +681,9 @@ describe('List', () => {
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
-      expect(screen.getByText('app.showMyCreatedAppsOnly'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'All creators' }))!.toBeInTheDocument()
     })
   })
 
@@ -682,12 +705,12 @@ describe('List', () => {
       renderList()
       await openAppTypeSelect()
 
-      expect(await screen.findByRole('option', { name: 'All' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.workflow' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.advanced' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('option', { name: 'app.types.completion' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'All' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.completion' }))!.toBeInTheDocument()
     })
 
     it('should update category for each app type option click', async () => {
@@ -704,7 +727,7 @@ describe('List', () => {
         const { unmount } = renderList()
         await openAppTypeSelect(user)
         mockSetCategory.mockClear()
-        await user.click(await screen.findByRole('option', { name: text }))
+        await user.click(await screen.findByRole('menuitemradio', { name: text }))
         expect(mockSetCategory).toHaveBeenCalledWith(mode)
         unmount()
       }
@@ -782,13 +805,17 @@ describe('List', () => {
   })
 
   describe('Infinite Scroll', () => {
-    it('should call fetchNextPage when intersection observer triggers', () => {
+    it('should call fetchNextPage when intersection observer triggers', async () => {
       mockServiceState.hasNextPage = true
       renderList()
 
-      if (intersectionCallback) {
+      await waitFor(() => {
+        expect(mockObserve).toHaveBeenCalled()
+      })
+
+      for (const callback of intersectionCallbacks) {
         act(() => {
-          intersectionCallback!(
+          callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
           )
@@ -802,9 +829,9 @@ describe('List', () => {
       mockServiceState.hasNextPage = true
       renderList()
 
-      if (intersectionCallback) {
+      for (const callback of intersectionCallbacks) {
         act(() => {
-          intersectionCallback!(
+          callback(
             [{ isIntersecting: false } as IntersectionObserverEntry],
             {} as IntersectionObserver,
           )
@@ -819,9 +846,9 @@ describe('List', () => {
       mockServiceState.isLoading = true
       renderList()
 
-      if (intersectionCallback) {
+      for (const callback of intersectionCallbacks) {
         act(() => {
-          intersectionCallback!(
+          callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
           )

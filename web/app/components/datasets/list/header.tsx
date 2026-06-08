@@ -3,7 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import ServiceApi from '../extra-info/service-api'
@@ -75,7 +75,7 @@ const DatasetListHeader = ({
           <SearchInput
             className="w-[200px]"
             value={keywords}
-            onChange={onKeywordsChange}
+            onValueChange={onKeywordsChange}
           />
           {isCurrentWorkspaceOwner && (
             <>

@@ -1,8 +1,9 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from flask import Flask
 
 import controllers.console.explore.recommended_app as module
+from models import Account
 from models.model import AppMode, IconType
 
 
@@ -10,6 +11,13 @@ def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def make_account(interface_language: str | None) -> Account:
+    account = Account(name="Test User", email="user@example.com")
+    account.id = "account-1"
+    account.interface_language = interface_language
+    return account
 
 
 class TestRecommendedAppListApi:
@@ -21,14 +29,13 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/", query_string={"language": "en-US"}),
-            patch.object(module, "current_user", MagicMock(interface_language="fr-FR")),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, make_account("fr-FR"))
 
         service_mock.assert_called_once_with("en-US")
         assert result == result_data
@@ -41,14 +48,13 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/", query_string={"language": "invalid"}),
-            patch.object(module, "current_user", MagicMock(interface_language="fr-FR")),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, make_account("fr-FR"))
 
         service_mock.assert_called_once_with("fr-FR")
         assert result == result_data
@@ -61,14 +67,13 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_user", MagicMock(interface_language=None)),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, make_account(None))
 
         service_mock.assert_called_once_with(module.languages[0])
         assert result == result_data

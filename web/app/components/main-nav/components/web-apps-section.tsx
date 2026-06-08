@@ -23,7 +23,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { Fragment, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
 import { usePathname } from '@/next/navigation'
@@ -208,7 +208,7 @@ const WebAppsSection = () => {
         <div className="px-2 pb-2">
           <SearchInput
             value={searchText}
-            onChange={setSearchText}
+            onValueChange={setSearchText}
             placeholder={t('mainNav.webApps.searchPlaceholder', { ns: 'common' })}
           />
         </div>

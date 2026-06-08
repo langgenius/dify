@@ -473,7 +473,7 @@ describe('AccountSetting', () => {
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PROVIDER })
 
       // Act
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'test-search' } })
 
       // Assert

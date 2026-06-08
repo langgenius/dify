@@ -1,5 +1,6 @@
 'use client'
 import type { ComponentProps } from 'react'
+import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { Features as FeaturesData, OnFeaturesChange } from '@/app/components/base/features/types'
@@ -21,7 +22,6 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
-import type { PublishWorkflowParams } from '@/types/workflow'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
@@ -481,7 +481,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     resolvedModelModeType,
   ])
 
-  const onPublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams, features?: FeaturesData) => {
+  const onPublish = useCallback(async (params?: AppPublisherPublishParams, features?: FeaturesData) => {
     const modelAndParameter = params && 'model' in params && 'provider' in params && 'parameters' in params
       ? params
       : undefined
