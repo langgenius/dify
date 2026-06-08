@@ -380,3 +380,53 @@ def test_tool_labels_list(app: Flask, controller_module, monkeypatch: pytest.Mon
         resp = controller_module.ToolLabelsApi().get()
 
     assert resp == ["a", "b"]
+
+
+# --- _resolve_identity_mode: gating + None-resolution (PR #36839 review) ---
+
+
+def test_resolve_identity_mode_none_keeps_current_when_enterprise(controller_module, monkeypatch: pytest.MonkeyPatch):
+    """None means 'leave unchanged' — fall back to the stored mode (update path)."""
+    identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
+    monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", True)
+
+    resolved = controller_module._resolve_identity_mode(None, current=identity_mode.IDP_TOKEN)
+
+    assert resolved == identity_mode.IDP_TOKEN
+
+
+def test_resolve_identity_mode_explicit_value_overrides_current(controller_module, monkeypatch: pytest.MonkeyPatch):
+    """An explicit value wins over the stored mode."""
+    identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
+    monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", True)
+
+    resolved = controller_module._resolve_identity_mode(identity_mode.OFF, current=identity_mode.IDP_TOKEN)
+
+    assert resolved == identity_mode.OFF
+
+
+def test_resolve_identity_mode_coerces_non_off_to_off_when_not_enterprise(
+    controller_module, monkeypatch: pytest.MonkeyPatch
+):
+    """Gate: a non-EE deployment must never persist a non-OFF mode — the
+    runtime won't forward, so the stored row must not imply it does."""
+    identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
+    monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", False)
+
+    # Both an explicit idp_token request AND an inherited non-OFF current
+    # must collapse to OFF.
+    assert (
+        controller_module._resolve_identity_mode(identity_mode.IDP_TOKEN, current=identity_mode.OFF)
+        == identity_mode.OFF
+    )
+    assert controller_module._resolve_identity_mode(None, current=identity_mode.IDP_TOKEN) == identity_mode.OFF
+
+
+def test_resolve_identity_mode_off_is_passthrough_when_not_enterprise(
+    controller_module, monkeypatch: pytest.MonkeyPatch
+):
+    """OFF is always fine — the gate only neutralizes non-OFF values."""
+    identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
+    monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", False)
+
+    assert controller_module._resolve_identity_mode(None, current=identity_mode.OFF) == identity_mode.OFF

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from agenton.compositor import CompositorSessionSnapshot
 
@@ -101,12 +101,15 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._session_store = session_store
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "2"
 
+    @override
     def populate_start_event(self, event) -> None:
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
 
+    @override
     def _run(self) -> Generator[NodeEventBase, None, None]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         workflow_id = self.graph_init_params.workflow_id
@@ -579,6 +582,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata["agent_backend"] = agent_backend
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,
