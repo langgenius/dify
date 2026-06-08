@@ -11,7 +11,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
@@ -71,7 +71,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     hasSetBlockStatus,
     showSelectDataSet,
     externalDataToolsConfig,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
