@@ -13,6 +13,7 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenuItem: ({ children, className, onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
     <button type="button" className={className} onClick={onClick}>{children}</button>
   ),
+  DropdownMenuSeparator: ({ className }: { className?: string }) => <hr data-testid="create-menu-separator" className={className} />,
   DropdownMenuTrigger: ({ render }: { render: React.ReactNode }) => render,
 }))
 

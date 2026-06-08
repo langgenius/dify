@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
@@ -126,6 +126,7 @@ const DatasetListHeader = ({
                   <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0 text-text-secondary" />
                   <span className="min-w-0 flex-1 truncate px-1">{t('firstEmpty.pipelineTitle', { ns: 'dataset' })}</span>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                   onClick={onConnectDataset}
