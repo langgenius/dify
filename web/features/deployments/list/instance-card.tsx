@@ -7,12 +7,11 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { CreateReleaseControl } from '../components/create-release-control'
 import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { TitleTooltip } from '../components/title-tooltip'
-import { CreateReleaseControl } from '../detail/versions-tab/create-release-control'
 import { releaseLabel } from '../release'
 import { openDeployDrawerAtom } from '../store'
 import {
@@ -32,17 +31,15 @@ export function InstanceCard({ summary }: {
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const app = summary.appInstance
-  const appInstanceId = app?.id ?? ''
-  const appName = app?.name ?? appInstanceId
-  const detailHref = getInstanceTabHref(appInstanceId, 'overview')
-  const instanceIsLoading = false
-  const accessChannelsIsLoading = false
+  const appInstance = summary.appInstance
 
-  if (!app?.id)
+  if (!appInstance?.id)
     return null
 
-  const description = app.description?.trim()
+  const appInstanceId = appInstance.id
+  const appName = appInstance.name ?? appInstanceId
+  const detailHref = getInstanceTabHref(appInstanceId, 'overview')
+  const description = appInstance.description?.trim()
   const access = summary.accessChannels
   const releaseRows = summary.latestRelease?.id ? [summary.latestRelease as Release & { id: string }] : []
   const hasRelease = releaseRows.length > 0
@@ -57,11 +54,8 @@ export function InstanceCard({ summary }: {
         Number.isNaN(latestReleaseTimeMs) ? undefined : formatTimeFromNow(latestReleaseTimeMs),
       ].filter(Boolean).join(' · ')
     : t('card.notDeployed')
-  const releaseHistoryIsLoading = false
-  const statusIsLoading = false
-  const statusHasError = false
-  const showDeployAction = !statusIsLoading && !statusHasError && hasRelease && activeDeploymentRows.length === 0
-  const showFooterCreateReleaseAction = !releaseHistoryIsLoading && !statusIsLoading && !statusHasError && !hasRelease
+  const showDeployAction = hasRelease && activeDeploymentRows.length === 0
+  const showFooterCreateReleaseAction = !hasRelease
 
   return (
     <div
@@ -70,6 +64,8 @@ export function InstanceCard({ summary }: {
       <DeploymentActionsMenu
         appInstanceId={appInstanceId}
         appName={appName}
+        placement="bottom-end"
+        sideOffset={4}
         className="pointer-events-none absolute top-3 right-3 z-10 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
         triggerClassName="data-popup-open:pointer-events-auto data-popup-open:opacity-100"
       />
@@ -83,32 +79,24 @@ export function InstanceCard({ summary }: {
               {appName}
             </h3>
           </TitleTooltip>
-          {instanceIsLoading
+          {description
             ? (
-                <div className="mt-2 flex flex-col gap-1.5">
-                  <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
-                </div>
-              )
-            : description
-              ? (
-                  <TitleTooltip content={description}>
-                    <p className="mt-2 line-clamp-2 system-xs-regular text-text-tertiary">
-                      {description}
-                    </p>
-                  </TitleTooltip>
-                )
-              : (
-                  <p className="mt-2 truncate system-xs-regular text-text-quaternary">
-                    {t('card.noDescription')}
+                <TitleTooltip content={description}>
+                  <p className="mt-2 line-clamp-2 system-xs-regular text-text-tertiary">
+                    {description}
                   </p>
-                )}
+                </TitleTooltip>
+              )
+            : (
+                <p className="mt-2 truncate system-xs-regular text-text-quaternary">
+                  {t('card.noDescription')}
+                </p>
+              )}
         </Link>
 
         <div role="group" aria-label={t('card.tooltip.deploymentStatus')} className="min-h-8 px-4 pt-4 pb-3">
           <DeploymentStatusContent
             rows={activeDeploymentRows}
-            isLoading={statusIsLoading}
-            hasError={statusHasError}
             emptyAction={showDeployAction
               ? (
                   <Button
@@ -136,7 +124,7 @@ export function InstanceCard({ summary }: {
                   />
                 </div>
               )
-            : <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} isLoading={accessChannelsIsLoading} />}
+            : <DeploymentAccessLinks appInstanceId={appInstanceId} access={access} />}
           <ReleaseMetaTooltip release={latestRelease} deployed={latestReleaseDeployed}>
             <Link
               href={latestRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'instances')}

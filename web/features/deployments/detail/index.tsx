@@ -6,12 +6,12 @@ import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
+import { CreateReleaseControl } from '../components/create-release-control'
 import { DeployDrawer } from '../components/deploy-drawer'
 import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
 import { DeploymentSidebar } from './deployment-sidebar'
 import { DeveloperApiHeaderActions, DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
 import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
-import { CreateReleaseControl } from './versions-tab/create-release-control'
 
 function MobileDetailTabs({ appInstanceId, activeTab }: {
   appInstanceId: string

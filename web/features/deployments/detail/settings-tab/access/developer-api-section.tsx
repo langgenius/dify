@@ -13,7 +13,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
-import { DetailEmptyState, SectionState } from '../../common'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
 import { DeveloperApiDocsDrawer } from './api-docs-drawer'
 import { ApiKeyGenerateMenu } from './api-key-generate-menu'
 import { ApiKeyList } from './api-key-list'
@@ -213,11 +213,11 @@ export function DeveloperApiSection({
     return <DeveloperApiSkeleton />
 
   if (isError)
-    return <SectionState>{t('common.loadFailed')}</SectionState>
+    return <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
 
   if (!apiEnabled) {
     return (
-      <DetailEmptyState
+      <DeploymentEmptyState
         variant="section"
         icon="i-ri-toggle-line"
         title={t('access.api.disabled')}
@@ -244,7 +244,7 @@ export function DeveloperApiSection({
             >
               {({ trigger }) => apiKeys.length === 0
                 ? (
-                    <DetailEmptyState
+                    <DeploymentEmptyState
                       variant="section"
                       icon="i-ri-key-2-line"
                       title={t('access.api.noKeysTitle')}
@@ -262,7 +262,7 @@ export function DeveloperApiSection({
           )
         : apiKeys.length === 0
           ? (
-              <DetailEmptyState
+              <DeploymentEmptyState
                 variant="section"
                 icon="i-ri-rocket-line"
                 title={t('access.api.emptyTitle')}

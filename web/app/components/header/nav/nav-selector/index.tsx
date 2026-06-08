@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLinkItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -23,7 +24,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
-import { useRouter } from '@/next/navigation'
+import Link from '@/next/link'
 
 export type NavItem = {
   id: string
@@ -53,14 +54,14 @@ type AppCreateMenuProps = {
   onCreate: (state: string) => void
 }
 
-const AppCreateMenu = ({
+function AppCreateMenu({
   createText,
   startFromBlankText,
   startFromTemplateText,
   importDSLText,
   onCreate,
-}: AppCreateMenuProps) => {
-  const handleCreate = (state: string) => {
+}: AppCreateMenuProps) {
+  function handleCreate(state: string) {
     onCreate(state)
   }
 
@@ -111,9 +112,62 @@ const AppCreateMenu = ({
   )
 }
 
-const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) => {
+function NavSelectorItemContent({ nav }: {
+  nav: NavItem
+}) {
+  return (
+    <>
+      <div className="relative mr-2 size-6 shrink-0 rounded-md">
+        <AppIcon
+          size="tiny"
+          iconType={nav.icon_type}
+          icon={nav.icon}
+          background={nav.icon_background}
+          imageUrl={nav.icon_url}
+        />
+        {!!nav.mode && (
+          <AppTypeIcon type={nav.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 shadow-sm" className="size-2.5" />
+        )}
+      </div>
+      <div className="min-w-0 truncate">
+        {nav.name}
+      </div>
+    </>
+  )
+}
+
+function NavSelectorRouteItem({ nav, isCurrent, onBeforeNavigate }: {
+  nav: NavItem
+  isCurrent: boolean
+  onBeforeNavigate: () => void
+}) {
+  const className = 'h-auto truncate px-3 py-[6px] text-[14px] font-normal text-text-secondary'
+
+  if (isCurrent) {
+    return (
+      <DropdownMenuItem
+        className={className}
+        title={nav.name}
+      >
+        <NavSelectorItemContent nav={nav} />
+      </DropdownMenuItem>
+    )
+  }
+
+  return (
+    <DropdownMenuLinkItem
+      render={<Link href={nav.link} />}
+      className={className}
+      title={nav.name}
+      onClick={onBeforeNavigate}
+    >
+      <NavSelectorItemContent nav={nav} />
+    </DropdownMenuLinkItem>
+  )
+}
+
+export function NavSelector({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) {
   const { t } = useTranslation()
-  const router = useRouter()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
@@ -148,33 +202,12 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
         <div className="max-h-[50vh] overflow-auto px-1 py-1" onScroll={handleScroll}>
           {
             navigationItems.map(nav => (
-              <DropdownMenuItem
+              <NavSelectorRouteItem
                 key={nav.id}
-                className="h-auto truncate px-3 py-[6px] text-[14px] font-normal text-text-secondary"
-                onClick={() => {
-                  if (curNav?.id === nav.id)
-                    return
-                  setAppDetail()
-                  router.push(nav.link)
-                }}
-                title={nav.name}
-              >
-                <div className="relative mr-2 size-6 shrink-0 rounded-md">
-                  <AppIcon
-                    size="tiny"
-                    iconType={nav.icon_type}
-                    icon={nav.icon}
-                    background={nav.icon_background}
-                    imageUrl={nav.icon_url}
-                  />
-                  {!!nav.mode && (
-                    <AppTypeIcon type={nav.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 shadow-sm" className="size-2.5" />
-                  )}
-                </div>
-                <div className="min-w-0 truncate">
-                  {nav.name}
-                </div>
-              </DropdownMenuItem>
+                nav={nav}
+                isCurrent={curNav?.id === nav.id}
+                onBeforeNavigate={setAppDetail}
+              />
             ))
           }
           {isLoadingMore && (
@@ -209,5 +242,3 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
     </DropdownMenu>
   )
 }
-
-export default NavSelector

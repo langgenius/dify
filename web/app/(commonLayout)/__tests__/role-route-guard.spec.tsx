@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import RoleRouteGuard from '../role-route-guard'
+import { RoleRouteGuard } from '../role-route-guard'
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {

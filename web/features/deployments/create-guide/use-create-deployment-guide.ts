@@ -1,10 +1,14 @@
 'use client'
 
+import type { CreationSectionsProps } from './source-release-sections'
+import type { TargetReviewSectionsProps } from './target-step'
 import type {
   GuideMethod,
 } from './types'
 import type { App } from '@/types/app'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/client'
 import { isWorkflowApp } from '../app-mode'
 import {
   hasMissingRequiredEnvVarValue,
@@ -29,10 +33,6 @@ import {
   canContinueGuideStep,
   canSkipDeploymentGuideStep,
 } from './guide-readiness'
-import {
-  createCreationSectionsProps,
-  createTargetReviewSectionsProps,
-} from './guide-section-props'
 import { useCreateDeploymentSubmission } from './use-create-deployment-submission'
 import { useDeploymentGuideProgress } from './use-deployment-guide-progress'
 import { useDeploymentGuideReleaseFields } from './use-deployment-guide-release-fields'
@@ -100,9 +100,28 @@ export function useCreateDeploymentGuide() {
     onFieldChange: () => setStep('release'),
     sourceName,
   })
+  const shouldCheckInstanceNameConflict = step === 'release' && Boolean(releaseFields.submittedInstanceName)
+  const instanceNameConflictQuery = useQuery(consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
+    input: shouldCheckInstanceNameConflict
+      ? {
+          query: {
+            pageNumber: 1,
+            resultsPerPage: 1,
+            name: releaseFields.submittedInstanceName,
+          },
+        }
+      : skipToken,
+  }))
+  const remoteInstanceNameConflict = instanceNameConflictQuery.data?.data?.some(appInstance =>
+    appInstance.name?.trim() === releaseFields.submittedInstanceName,
+  )
+  const isCheckingInstanceNameConflict = shouldCheckInstanceNameConflict && instanceNameConflictQuery.isLoading
   const hasInstanceNameConflict = Boolean(
     releaseFields.submittedInstanceName
-    && source.existingInstanceNames.includes(releaseFields.submittedInstanceName),
+    && (
+      source.existingInstanceNames.includes(releaseFields.submittedInstanceName)
+      || remoteInstanceNameConflict
+    ),
   )
   const instanceNameError = hasInstanceNameConflict ? t('createGuide.release.instanceNameConflict') : undefined
   const isSourceReady = isCreateGuideSourceReady({
@@ -114,7 +133,7 @@ export function useCreateDeploymentGuide() {
     selectedApp: source.effectiveSelectedApp,
   })
   const isInitialReleaseReady = isCreateGuideInitialReleaseReady({
-    hasInstanceNameConflict,
+    hasInstanceNameConflict: hasInstanceNameConflict || isCheckingInstanceNameConflict,
     isSourceReady,
     submittedInstanceName: releaseFields.submittedInstanceName,
     submittedReleaseName: releaseFields.submittedReleaseName,
@@ -249,24 +268,56 @@ export function useCreateDeploymentGuide() {
     }
   }
 
+  const creationSectionsProps = {
+    defaultedReleaseName,
+    dslFile: dslFileReader.dslFile,
+    dslReadError: dslFileReader.dslReadError,
+    dslUnsupportedMode,
+    instanceDescription: releaseFields.instanceDescription,
+    instanceName: releaseFields.instanceName,
+    instanceNameError,
+    isReadingDsl: dslFileReader.isReadingDsl,
+    method,
+    onDslFileChange: handleDslFileChange,
+    onInstanceDescriptionChange: releaseFields.handleInstanceDescriptionChange,
+    onInstanceNameChange: releaseFields.handleInstanceNameChange,
+    onReleaseDescriptionChange: releaseFields.handleReleaseDescriptionChange,
+    onReleaseNameChange: releaseFields.handleReleaseNameChange,
+    onSearchTextChange: source.setSourceSearchText,
+    onSelectMethod: handleSelectMethod,
+    onSelectSourceApp: handleSelectSourceApp,
+    releaseDescription: releaseFields.releaseDescription,
+    releaseName: releaseFields.releaseName,
+    selectedApp: source.effectiveSelectedApp,
+    sourceApps: source.sourceApps,
+    sourceAppsLoading: source.sourceAppsLoading,
+    sourceName,
+    sourceSearchText: source.sourceSearchText,
+    stage: step === 'release' ? 'release' : 'source',
+    unsupportedDslNodes,
+  } satisfies CreationSectionsProps
+
+  const targetReviewSectionsProps = {
+    bindingSelections: targetOptions.bindingSelections,
+    bindingSlots: targetOptions.bindingSlots,
+    environments: targetOptions.environments,
+    envVarSlots: targetOptions.envVarSlots,
+    envVarValues: targetOptions.envVarValues,
+    isBindingError: targetOptions.deploymentOptionsQuery.isError,
+    isBindingLoading: targetOptions.isBindingLoading,
+    isEnvironmentError: targetOptions.deployableEnvironmentsQuery.isError,
+    isEnvironmentLoading: targetOptions.isEnvironmentLoading,
+    onSelectBinding: targetOptions.onSelectBinding,
+    onSelectEnvironment: targetOptions.onSelectEnvironment,
+    onSetEnvVar: targetOptions.onSetEnvVar,
+    selectedEnvironmentId: targetOptions.effectiveSelectedEnvironmentId,
+    unsupportedDslNodes,
+  } satisfies TargetReviewSectionsProps
+
   return {
     canContinue,
     canSkipDeployment,
-    creationSectionsProps: createCreationSectionsProps({
-      defaultedReleaseName,
-      dslFileReader,
-      dslUnsupportedMode,
-      instanceNameError,
-      method,
-      onDslFileChange: handleDslFileChange,
-      onSelectMethod: handleSelectMethod,
-      onSelectSourceApp: handleSelectSourceApp,
-      releaseFields,
-      source,
-      sourceName,
-      step,
-      unsupportedDslNodes,
-    }),
+    creationSectionsProps,
     handleBack,
     handlePrimaryAction,
     handleSkipDeployment,
@@ -274,9 +325,6 @@ export function useCreateDeploymentGuide() {
     isSkippingDeployment: isSkippingReleaseOnly,
     showTargetConfiguration,
     step,
-    targetReviewSectionsProps: createTargetReviewSectionsProps({
-      targetOptions,
-      unsupportedDslNodes,
-    }),
+    targetReviewSectionsProps,
   }
 }

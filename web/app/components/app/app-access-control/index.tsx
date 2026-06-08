@@ -2,15 +2,16 @@
 import type { Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import { useUpdateAccessMode } from '@/service/access-control'
-import useAccessControlStore from '../../../../context/access-control-store'
+import { useAppWhiteListSubjects } from '@/service/access-control'
+import { consoleQuery } from '@/service/client'
 import { AccessControlDialog } from './access-control-dialog'
 import { AccessControlDialogContent } from './access-control-dialog-content'
+import { useAccessControlStore } from './store'
+import { AccessControlDraftProvider } from './store-provider'
 
 type AccessControlProps = {
   app: App
@@ -22,24 +23,67 @@ export function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const initializeAccessControlDraft = useAccessControlStore(s => s.initializeAccessControlDraft)
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const currentMenu = useAccessControlStore(s => s.currentMenu)
   const hideExternalTip = systemFeatures.webapp_auth.enabled
     && (systemFeatures.webapp_auth.allow_sso
       || systemFeatures.webapp_auth.allow_email_password_login
       || systemFeatures.webapp_auth.allow_email_code_login)
+  const initialAccessMode = app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS
+  const whiteListSubjectsQuery = useAppWhiteListSubjects(
+    app.id,
+    initialAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  )
+  const initialSpecificGroups = whiteListSubjectsQuery.data?.groups ?? []
+  const initialSpecificMembers = whiteListSubjectsQuery.data?.members ?? []
+  const draftKey = [
+    app.id,
+    initialAccessMode,
+    initialSpecificGroups.map(group => group.id).join(','),
+    initialSpecificMembers.map(member => member.id).join(','),
+  ].join(':')
 
-  useEffect(() => {
-    initializeAccessControlDraft({
-      appId: app.id,
-      currentMenu: app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS,
-      selectedGroupsForBreadcrumb: [],
-    })
-  }, [app.access_mode, app.id, initializeAccessControlDraft])
+  return (
+    <AccessControlDraftProvider
+      draftKey={draftKey}
+      initialDraft={{
+        appId: app.id,
+        currentMenu: initialAccessMode,
+        specificGroups: initialSpecificGroups,
+        specificMembers: initialSpecificMembers,
+        selectedGroupsForBreadcrumb: [],
+      }}
+    >
+      <AccessControlForm
+        app={app}
+        hideExternalTip={hideExternalTip}
+        subjectsLoading={initialAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && whiteListSubjectsQuery.isPending}
+        onClose={onClose}
+        onConfirm={onConfirm}
+        successMessage={t('accessControlDialog.updateSuccess', { ns: 'app' })}
+      />
+    </AccessControlDraftProvider>
+  )
+}
 
-  const { isPending, mutate: updateAccessMode } = useUpdateAccessMode()
+function AccessControlForm({
+  app,
+  hideExternalTip,
+  subjectsLoading,
+  successMessage,
+  onClose,
+  onConfirm,
+}: {
+  app: App
+  hideExternalTip: boolean
+  subjectsLoading: boolean
+  successMessage: string
+  onClose: () => void
+  onConfirm?: () => void
+}) {
+  const specificGroups = useAccessControlStore(s => s.specificGroups)
+  const specificMembers = useAccessControlStore(s => s.specificMembers)
+  const currentMenu = useAccessControlStore(s => s.currentMenu)
+  const { isPending, mutate: updateAccessMode } = useMutation(consoleQuery.explore.updateAppAccessMode.mutationOptions())
+
   function handleConfirm() {
     const submitData: {
       appId: string
@@ -59,9 +103,11 @@ export function AccessControl(props: AccessControlProps) {
       })
       submitData.subjects = subjects
     }
-    updateAccessMode(submitData, {
+    updateAccessMode({
+      body: submitData,
+    }, {
       onSuccess: () => {
-        toast.success(t('accessControlDialog.updateSuccess', { ns: 'app' }))
+        toast.success(successMessage)
         onConfirm?.()
       },
     })
@@ -72,6 +118,9 @@ export function AccessControl(props: AccessControlProps) {
       <AccessControlDialogContent
         hideExternalTip={hideExternalTip}
         saving={isPending}
+        specificGroupsOrMembersProps={{
+          loading: subjectsLoading,
+        }}
         onClose={onClose}
         onConfirm={handleConfirm}
       />

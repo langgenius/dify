@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { DeploymentStatusBadge } from '../../deployment-ui'
-import { SectionState } from '../common'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 
 type AccessStatusSectionProps = {
@@ -19,8 +18,6 @@ type ApiTokenSummarySectionProps = {
   accessChannels?: AccessChannels
   apiKeySummary?: ApiKeySummary
   deployedEnvironmentCount: number
-  isEnvironmentLoading: boolean
-  isEnvironmentError: boolean
 }
 
 type AccessStatusItem = {
@@ -106,14 +103,10 @@ export function ApiTokenSummarySection({
   accessChannels,
   apiKeySummary,
   deployedEnvironmentCount,
-  isEnvironmentLoading,
-  isEnvironmentError,
 }: ApiTokenSummarySectionProps) {
   const { t } = useTranslation('deployments')
   const apiEnabled = Boolean(accessChannels?.developerApiEnabled)
   const apiKeyCount = apiKeySummary?.apiKeyCount ?? 0
-  const isLoading = isEnvironmentLoading
-  const isError = isEnvironmentError
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
@@ -121,54 +114,48 @@ export function ApiTokenSummarySection({
         {t('overview.api')}
       </h3>
 
-      {isLoading
-        ? <ApiTokenSummaryCardSkeleton />
-        : isError
-          ? <SectionState>{t('common.loadFailed')}</SectionState>
-          : (
-              <Link
-                href={`/deployments/${appInstanceId}/api-tokens`}
-                className={cn(
-                  OVERVIEW_INTERACTIVE_CARD_CLASS_NAME,
-                  'group flex min-h-18 min-w-0 items-start gap-3',
-                )}
-              >
-                <span aria-hidden className={OVERVIEW_ICON_CLASS_NAME}>
-                  <span className="i-ri-code-s-slash-line size-4" />
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-2">
-                  <span className="flex min-w-0 items-center justify-between gap-3">
-                    <span className="truncate system-sm-medium text-text-primary">
-                      {t('card.access.api')}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <StatusBadge enabled={apiEnabled} />
-                      <span
-                        aria-hidden
-                        className="i-ri-arrow-right-line size-4 text-text-quaternary opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:translate-x-0.5 group-focus-visible:opacity-100"
-                      />
-                    </span>
+      <Link
+        href={`/deployments/${appInstanceId}/api-tokens`}
+        className={cn(
+          OVERVIEW_INTERACTIVE_CARD_CLASS_NAME,
+          'group flex min-h-18 min-w-0 items-start gap-3',
+        )}
+      >
+        <span aria-hidden className={OVERVIEW_ICON_CLASS_NAME}>
+          <span className="i-ri-code-s-slash-line size-4" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-2">
+          <span className="flex min-w-0 items-center justify-between gap-3">
+            <span className="truncate system-sm-medium text-text-primary">
+              {t('card.access.api')}
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              <StatusBadge enabled={apiEnabled} />
+              <span
+                aria-hidden
+                className="i-ri-arrow-right-line size-4 text-text-quaternary opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:translate-x-0.5 group-focus-visible:opacity-100"
+              />
+            </span>
+          </span>
+          {apiEnabled
+            ? (
+                <span className="flex min-w-0 flex-wrap gap-2">
+                  <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
+                    {t('overview.apiKeysCount', { count: apiKeyCount })}
                   </span>
-                  {apiEnabled
-                    ? (
-                        <span className="flex min-w-0 flex-wrap gap-2">
-                          <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
-                            {t('overview.apiKeysCount', { count: apiKeyCount })}
-                          </span>
-                          {/* "deployed environments" = envs with a runtime deployment, not envs-with-keys */}
-                          <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
-                            {t('overview.apiTokenSummary.environments', { count: deployedEnvironmentCount })}
-                          </span>
-                        </span>
-                      )
-                    : (
-                        <span className="truncate text-xs text-text-tertiary">
-                          {t('overview.accessMeta.apiTokens')}
-                        </span>
-                      )}
+                  {/* "deployed environments" = envs with a runtime deployment, not envs-with-keys */}
+                  <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
+                    {t('overview.apiTokenSummary.environments', { count: deployedEnvironmentCount })}
+                  </span>
                 </span>
-              </Link>
-            )}
+              )
+            : (
+                <span className="truncate text-xs text-text-tertiary">
+                  {t('overview.accessMeta.apiTokens')}
+                </span>
+              )}
+        </span>
+      </Link>
     </section>
   )
 }

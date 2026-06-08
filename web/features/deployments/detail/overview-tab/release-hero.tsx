@@ -9,10 +9,10 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { CreateReleaseControl } from '../../components/create-release-control'
+import { DeploymentEmptyState } from '../../components/empty-state'
 import { TitleTooltip } from '../../components/title-tooltip'
 import { formatDate, releaseCommit, releaseLabel } from '../../release'
-import { DetailEmptyState } from '../common'
-import { CreateReleaseControl } from '../versions-tab/create-release-control'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from './card-styles'
 
 type ReleaseHeroProps = {
@@ -38,7 +38,7 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
 
   if (!latestRelease?.id) {
     return (
-      <DetailEmptyState
+      <DeploymentEmptyState
         variant="section"
         icon="i-ri-stack-line"
         title={t('overview.hero.empty')}

@@ -67,7 +67,7 @@ function datasetNavItem(dataset: DataSet) {
   } satisfies NavItem
 }
 
-const DatasetNav = () => {
+export function DatasetNav() {
   const { t } = useTranslation()
   const router = useRouter()
   const { datasetId } = useParams()
@@ -112,5 +112,3 @@ const DatasetNav = () => {
     />
   )
 }
-
-export default DatasetNav

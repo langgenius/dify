@@ -3,11 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../components/empty-state'
 import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../runtime-status'
-import {
-  DetailEmptyState,
-  DetailListState,
-} from './common'
 import { DeploymentEnvironmentList } from './deploy-tab/deployment-environment-list'
 import { NewDeploymentButton } from './deploy-tab/new-deployment-button'
 import {
@@ -110,10 +107,10 @@ export function DeployTab({ appInstanceId }: {
       {isLoading
         ? <DeploymentEnvironmentListSkeleton />
         : hasError
-          ? <DetailListState>{t('common.loadFailed')}</DetailListState>
+          ? <DeploymentStateMessage variant="list">{t('common.loadFailed')}</DeploymentStateMessage>
           : rows.length === 0
             ? (
-                <DetailEmptyState
+                <DeploymentEmptyState
                   icon="i-ri-server-line"
                   title={t('deployTab.emptyTitle')}
                   description={t('deployTab.emptyDescription')}

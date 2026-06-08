@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentProps } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -19,17 +20,23 @@ const ACTION_TRIGGER_CLASS_NAME = cn(
   'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary',
 )
 
+type DeploymentActionsMenuProps = {
+  appInstanceId: string
+  appName?: string
+  className?: string
+  triggerClassName?: string
+  placement: ComponentProps<typeof DropdownMenuContent>['placement']
+  sideOffset?: ComponentProps<typeof DropdownMenuContent>['sideOffset']
+}
+
 export function DeploymentActionsMenu({
   appInstanceId,
   appName,
   className,
   triggerClassName,
-}: {
-  appInstanceId: string
-  appName?: string
-  className?: string
-  triggerClassName?: string
-}) {
+  placement,
+  sideOffset,
+}: DeploymentActionsMenuProps) {
   const { t } = useTranslation('deployments')
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -59,7 +66,7 @@ export function DeploymentActionsMenu({
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
         {menuOpen && (
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44">
+          <DropdownMenuContent placement={placement} sideOffset={sideOffset} popupClassName="min-w-44">
             <DropdownMenuItem className="gap-2 px-3" onClick={openEditDialog}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span className="system-sm-regular text-text-secondary">{t('card.menu.editInfo')}</span>

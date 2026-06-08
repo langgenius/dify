@@ -23,9 +23,10 @@ import { getDocLanguage } from '@/i18n-config/language'
 import { AppModeEnum, Theme } from '@/types/app'
 
 type PromptVariable = { key: string, name: string }
+type WorkflowApiDocAppDetail = Pick<App, 'id' | 'mode' | 'api_base_url'>
 
 type WorkflowDocTemplateProps = {
-  appDetail: App
+  appDetail: WorkflowApiDocAppDetail
   variables: PromptVariable[]
   inputs: Record<string, string>
 }
@@ -79,11 +80,11 @@ export function DeveloperApiDocsDrawer({
   const locale = useLocale()
   const { theme } = useTheme()
   const docLanguage = getDocLanguage(locale)
-  const appDetail = {
+  const appDetail: WorkflowApiDocAppDetail = {
     id: appInstanceId,
     mode: AppModeEnum.WORKFLOW,
     api_base_url: apiBaseUrl,
-  } as App
+  }
 
   return (
     <Drawer

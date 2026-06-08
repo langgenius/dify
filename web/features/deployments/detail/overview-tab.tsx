@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { DeploymentStateMessage } from '../components/empty-state'
 import { hasRuntimeInstanceDeployment } from '../runtime-status'
-import { SectionState } from './common'
 import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './overview-tab/access-status-section'
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/environment-strip'
 import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
@@ -50,14 +50,12 @@ function OverviewLoadingSkeleton({ appInstanceId }: {
 }) {
   return (
     <OverviewLayout>
-      <div className="flex min-w-0 flex-col gap-6">
-        <EnvironmentStripSkeleton />
-        <LatestReleaseSection appInstanceId={appInstanceId}>
-          <ReleaseHeroSkeleton />
-        </LatestReleaseSection>
-        <AccessStatusSectionSkeleton />
-        <ApiTokenSummarySectionSkeleton />
-      </div>
+      <EnvironmentStripSkeleton />
+      <LatestReleaseSection appInstanceId={appInstanceId}>
+        <ReleaseHeroSkeleton />
+      </LatestReleaseSection>
+      <AccessStatusSectionSkeleton />
+      <ApiTokenSummarySectionSkeleton />
     </OverviewLayout>
   )
 }
@@ -76,7 +74,7 @@ export function OverviewTab({ appInstanceId }: {
   if (overviewQuery.isError) {
     return (
       <OverviewLayout>
-        <SectionState>{t('common.loadFailed')}</SectionState>
+        <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
       </OverviewLayout>
     )
   }
@@ -84,7 +82,7 @@ export function OverviewTab({ appInstanceId }: {
   if (!instance?.id) {
     return (
       <OverviewLayout>
-        <SectionState>{t('detail.notFound')}</SectionState>
+        <DeploymentStateMessage variant="section">{t('detail.notFound')}</DeploymentStateMessage>
       </OverviewLayout>
     )
   }
@@ -100,31 +98,25 @@ export function OverviewTab({ appInstanceId }: {
 
   return (
     <OverviewLayout>
-      <div className="flex min-w-0 flex-col gap-6">
-        <EnvironmentStrip
+      <EnvironmentStrip
+        appInstanceId={appInstanceId}
+        rows={runtimeRows}
+        releaseRows={releaseRows}
+      />
+      <LatestReleaseSection appInstanceId={appInstanceId}>
+        <ReleaseHero
           appInstanceId={appInstanceId}
-          rows={runtimeRows}
-          releaseRows={releaseRows}
-          isLoading={overviewQuery.isLoading}
-          isError={overviewQuery.isError}
+          latestRelease={latestRelease}
+          releaseCount={releaseCount}
         />
-        <LatestReleaseSection appInstanceId={appInstanceId}>
-          <ReleaseHero
-            appInstanceId={appInstanceId}
-            latestRelease={latestRelease}
-            releaseCount={releaseCount}
-          />
-        </LatestReleaseSection>
-        <AccessStatusSection appInstanceId={appInstanceId} accessChannels={accessChannels} />
-        <ApiTokenSummarySection
-          appInstanceId={appInstanceId}
-          accessChannels={accessChannels}
-          apiKeySummary={apiKeySummary}
-          deployedEnvironmentCount={deployedEnvironmentCount}
-          isEnvironmentLoading={overviewQuery.isLoading}
-          isEnvironmentError={overviewQuery.isError}
-        />
-      </div>
+      </LatestReleaseSection>
+      <AccessStatusSection appInstanceId={appInstanceId} accessChannels={accessChannels} />
+      <ApiTokenSummarySection
+        appInstanceId={appInstanceId}
+        accessChannels={accessChannels}
+        apiKeySummary={apiKeySummary}
+        deployedEnvironmentCount={deployedEnvironmentCount}
+      />
     </OverviewLayout>
   )
 }

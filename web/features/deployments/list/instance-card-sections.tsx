@@ -135,35 +135,13 @@ function EnvironmentOverflow({ rows }: {
 
 export function DeploymentStatusContent({
   rows,
-  isLoading,
-  hasError,
   emptyAction,
 }: {
   rows: EnvironmentDeployment[]
-  isLoading: boolean
-  hasError: boolean
   emptyAction?: ReactElement
 }) {
-  const { t } = useTranslation('deployments')
   const visibleRows = rows.slice(0, VISIBLE_ENVIRONMENT_COUNT)
   const overflowRows = rows.slice(VISIBLE_ENVIRONMENT_COUNT)
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2">
-        <SkeletonRectangle className="my-0 h-5 w-20 animate-pulse rounded-md" />
-        <SkeletonRectangle className="my-0 h-5 w-24 animate-pulse rounded-md" />
-      </div>
-    )
-  }
-
-  if (hasError) {
-    return (
-      <span className="system-xs-regular text-text-tertiary">
-        {t('common.loadFailed')}
-      </span>
-    )
-  }
 
   if (rows.length > 0) {
     return (

@@ -2,17 +2,18 @@
 
 import type { ReleaseContentMatch } from '@dify/contracts/enterprise/types.gen'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import type { SourceAppPickerValue } from '../../components/create-instance-modal'
-import type { UnsupportedDslNode } from '../../error'
+import type { UnsupportedDslNode } from '../error'
+import type { SourceAppPickerValue } from './source-app-picker-value'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
-import { SourceAppPicker } from '../../components/create-instance-modal'
-import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
+import { SourceAppPicker } from './source-app-picker'
+import { UnsupportedDslNodesAlert } from './unsupported-dsl-nodes-alert'
 
 export type ReleaseSourceMode = 'sourceApp' | 'dsl'
 
@@ -222,15 +223,15 @@ export function ReleaseMetadataFields({
             </span>
           </div>
         </div>
-        <textarea
+        <Textarea
           id="release-description"
           name="releaseDescription"
           placeholder={t('versions.releaseDescriptionPlaceholder')}
           maxLength={DESCRIPTION_MAX_LENGTH}
           autoComplete="off"
           value={releaseDescription}
-          onChange={event => onReleaseDescriptionChange(event.target.value)}
-          className="min-h-24 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+          onValueChange={onReleaseDescriptionChange}
+          className="min-h-24 resize-none"
         />
       </div>
     </>
@@ -258,7 +259,7 @@ export function CreateReleaseActions({
         <Button
           type="button"
           variant="secondary"
-          disabled={isCreatePending}
+          disabled={isCreatePending || isCheckingReleaseContent}
           onPointerDown={onCancelPointerDown}
           onClick={onCancelClick}
         >

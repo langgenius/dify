@@ -1,6 +1,6 @@
 'use client'
 
-import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
+import type { Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReleaseRowWithId } from './release-history-types'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useQuery } from '@tanstack/react-query'
@@ -113,12 +113,9 @@ function ReleaseSourceCell({ release }: {
   )
 }
 
-function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError, onReleaseDeleted }: {
+function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted }: {
   appInstanceId: string
   releaseRows: ReleaseRowWithId[]
-  deploymentRows: EnvironmentDeployment[]
-  deployedToLoading?: boolean
-  deployedToHasError?: boolean
   onReleaseDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
@@ -127,8 +124,8 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
     <DetailTableCardList className="pc:hidden">
       {releaseRows.map((row) => {
         const release = row
-        const releaseDeployments = getReleaseDeployments(row, deploymentRows)
-        const hasDeployments = releaseDeployments.length > 0 || deployedToLoading || deployedToHasError
+        const releaseDeployments = getReleaseDeployments(row)
+        const hasDeployments = releaseDeployments.length > 0
 
         return (
           <DetailTableCard key={release.id}>
@@ -164,9 +161,6 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
                 <div className="flex min-w-0 flex-wrap items-center gap-1">
                   <ReleaseDeploymentsContent
                     items={releaseDeployments}
-                    isLoading={deployedToLoading}
-                    hasError={deployedToHasError}
-                    loadFailedLabel={t('common.loadFailed')}
                   />
                 </div>
               )}
@@ -178,12 +172,9 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
   )
 }
 
-export function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError, onReleaseDeleted }: {
+export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDeleted }: {
   appInstanceId: string
   releaseRows: ReleaseRowWithId[]
-  deploymentRows: EnvironmentDeployment[]
-  deployedToLoading?: boolean
-  deployedToHasError?: boolean
   onReleaseDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
@@ -193,9 +184,6 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows,
       <ReleaseHistoryMobileRows
         appInstanceId={appInstanceId}
         releaseRows={releaseRows}
-        deploymentRows={deploymentRows}
-        deployedToLoading={deployedToLoading}
-        deployedToHasError={deployedToHasError}
         onReleaseDeleted={onReleaseDeleted}
       />
       <div className="hidden pc:block">
@@ -213,7 +201,7 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows,
           <DetailTableBody>
             {releaseRows.map((row) => {
               const release = row
-              const releaseDeployments = getReleaseDeployments(row, deploymentRows)
+              const releaseDeployments = getReleaseDeployments(row)
 
               return (
                 <DetailTableRow key={release.id}>
@@ -233,9 +221,6 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows,
                     <div className="flex flex-wrap gap-1">
                       <ReleaseDeploymentsContent
                         items={releaseDeployments}
-                        isLoading={deployedToLoading}
-                        hasError={deployedToHasError}
-                        loadFailedLabel={t('common.loadFailed')}
                       />
                     </div>
                   </DetailTableCell>

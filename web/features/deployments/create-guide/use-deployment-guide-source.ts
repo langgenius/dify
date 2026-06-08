@@ -2,7 +2,7 @@
 
 import type { App } from '@/types/app'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { isWorkflowApp } from '../app-mode'
@@ -39,17 +39,6 @@ export function useDeploymentGuideSource() {
     }),
     placeholderData: keepPreviousData,
   })
-  const {
-    fetchNextPage: fetchNextAppInstancesPage,
-    hasNextPage: hasNextAppInstancesPage,
-    isFetchingNextPage: isFetchingNextAppInstancesPage,
-  } = appInstancesQuery
-
-  useEffect(() => {
-    if (hasNextAppInstancesPage && !isFetchingNextAppInstancesPage)
-      void fetchNextAppInstancesPage()
-  }, [fetchNextAppInstancesPage, hasNextAppInstancesPage, isFetchingNextAppInstancesPage])
-
   const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
   const effectiveSelectedApp = isWorkflowApp(selectedApp) ? selectedApp : sourceApps[0]
   const existingInstanceNames = appInstancesQuery.data?.pages.flatMap(page => page.data ?? []).map(appInstance => appInstance.name?.trim()).filter((name): name is string => Boolean(name)) ?? []

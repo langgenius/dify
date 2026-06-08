@@ -4,13 +4,15 @@ import type {
   AccessPermissionKind,
   SelectableAccessSubject,
 } from './access-policy'
-import type { AccessSubjectSelectionValue } from '@/app/components/base/access-subject-selector/types'
+import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
+import type { AccessControlDraft } from '@/app/components/app/app-access-control/store'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { AccessControlDialog } from '@/app/components/app/app-access-control/access-control-dialog'
 import { AccessControlDialogContent } from '@/app/components/app/app-access-control/access-control-dialog-content'
+import { useAccessControlStore } from '@/app/components/app/app-access-control/store'
+import { AccessControlDraftProvider } from '@/app/components/app/app-access-control/store-provider'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
 import {
   appAccessModeToPermissionKey,
@@ -104,6 +106,37 @@ export function SubjectsSummary({
 }
 
 export function DeploymentAccessControlDialog({
+  initialDraft,
+  subjectsLoading,
+  saving,
+  onClose,
+  onSubmit,
+}: {
+  initialDraft: AccessControlDraft
+  subjectsLoading?: boolean
+  saving?: boolean
+  onClose: () => void
+  onSubmit: (kind: AccessPermissionKind, subjects: AccessSubjectSelectionValue) => void
+}) {
+  const draftKey = [
+    initialDraft.currentMenu,
+    initialDraft.specificGroups?.map(group => group.id).join(',') ?? '',
+    initialDraft.specificMembers?.map(member => member.id).join(',') ?? '',
+  ].join(':')
+
+  return (
+    <AccessControlDraftProvider draftKey={draftKey} initialDraft={initialDraft}>
+      <DeploymentAccessControlDialogBody
+        subjectsLoading={subjectsLoading}
+        saving={saving}
+        onClose={onClose}
+        onSubmit={onSubmit}
+      />
+    </AccessControlDraftProvider>
+  )
+}
+
+function DeploymentAccessControlDialogBody({
   subjectsLoading,
   saving,
   onClose,
@@ -144,7 +177,6 @@ export function DeploymentAccessControlDialog({
         saving={saving}
         confirmDisabled={confirmDisabled}
         specificGroupsOrMembersProps={{
-          loadSubjects: false,
           loading: subjectsLoading,
         }}
         onClose={onClose}

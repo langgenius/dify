@@ -9,9 +9,11 @@ import { consoleQuery } from '@/service/client'
 
 const datasetOperatorRedirectRoutes = ['/apps', '/app', '/deployments', '/snippets', '/explore', '/tools'] as const
 
-const isPathUnderRoute = (pathname: string, route: string) => pathname === route || pathname.startsWith(`${route}/`)
+function isPathUnderRoute(pathname: string, route: string) {
+  return pathname === route || pathname.startsWith(`${route}/`)
+}
 
-export default function RoleRouteGuard({ children }: { children: ReactNode }) {
+export function RoleRouteGuard({ children }: { children: ReactNode }) {
   const currentWorkspaceRoleQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
     select: workspace => workspace.role,
   }))

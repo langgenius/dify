@@ -2,28 +2,29 @@
 
 import type { GuideMethod } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '../components/title-tooltip'
 import { StepShell } from './layout'
 
-function MethodCard({ icon, title, description, badge, selected, onClick }: {
+function MethodCard({ value, icon, title, description, badge }: {
+  value: GuideMethod
   icon: string
   title: string
   description: string
   badge?: string
-  selected: boolean
-  onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <RadioRoot<GuideMethod>
+      value={value}
+      variant="unstyled"
       className={cn(
         `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px]
         border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3
         text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2
         focus-visible:ring-state-accent-solid sm:w-[240px]`,
-        selected && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-md ring-[0.5px] ring-components-option-card-option-selected-border ring-inset',
+        'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:ring-[0.5px] data-checked:ring-components-option-card-option-selected-border data-checked:ring-inset',
       )}
     >
       <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-divider-subtle bg-background-default-subtle">
@@ -44,7 +45,7 @@ function MethodCard({ icon, title, description, badge, selected, onClick }: {
           </span>
         </TitleTooltip>
       </span>
-    </button>
+    </RadioRoot>
   )
 }
 
@@ -61,22 +62,24 @@ export function MethodStep({ method, onSelect }: {
       descriptionClassName="lg:hidden"
       hideHeader
     >
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <RadioGroup<GuideMethod>
+        value={method}
+        onValueChange={onSelect}
+        className="flex flex-col items-stretch gap-2 sm:flex-row"
+      >
         <MethodCard
+          value="bindApp"
           icon="i-ri-stack-line"
           title={t('createGuide.methods.bindApp.title')}
           description={t('createGuide.methods.bindApp.description')}
-          selected={method === 'bindApp'}
-          onClick={() => onSelect('bindApp')}
         />
         <MethodCard
+          value="importDsl"
           icon="i-ri-file-code-line"
           title={t('createGuide.methods.importDsl.title')}
           description={t('createGuide.methods.importDsl.description')}
-          selected={method === 'importDsl'}
-          onClick={() => onSelect('importDsl')}
         />
-      </div>
+      </RadioGroup>
     </StepShell>
   )
 }

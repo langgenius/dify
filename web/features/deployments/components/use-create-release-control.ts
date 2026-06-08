@@ -1,6 +1,6 @@
 import type { CreateReleaseReply } from '@dify/contracts/enterprise/types.gen'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import type { UnsupportedDslNode } from '../../error'
+import type { UnsupportedDslNode } from '../error'
 import type { ReleaseSourceMode } from './create-release-form-sections'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -8,12 +8,12 @@ import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { isWorkflowApp } from '../../app-mode'
-import { encodeDslContent, isWorkflowDsl } from '../../dsl'
-import { deploymentErrorMessage, unsupportedDslNodeError } from '../../error'
-import { releaseLabel } from '../../release'
-import { useDslFileReader } from '../../use-dsl-file-reader'
-import { workflowSourceAppPickerValue } from './source-app-picker'
+import { isWorkflowApp } from '../app-mode'
+import { encodeDslContent, isWorkflowDsl } from '../dsl'
+import { deploymentErrorMessage, unsupportedDslNodeError } from '../error'
+import { releaseLabel } from '../release'
+import { useDslFileReader } from '../use-dsl-file-reader'
+import { workflowSourceAppPickerValue } from './source-app-picker-value'
 
 const DEFAULT_RELEASE_SOURCE_MODE: ReleaseSourceMode = 'sourceApp'
 const DEFAULT_SOURCE_RELEASE_PAGE_SIZE = 1
@@ -118,21 +118,27 @@ export function useCreateReleaseControl(appInstanceId: string) {
   }
 
   function handleDialogOpenChange(open: boolean) {
-    if (!open)
+    if (!open && !isBusy)
       closeDialog()
-    else
+    else if (open)
       setIsCreating(true)
   }
 
   function handleClosePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
+    if (isBusy)
+      return
+
     closeDialog()
   }
 
   function handleCloseClick(event: ReactMouseEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
+    if (isBusy)
+      return
+
     closeDialog()
   }
 
@@ -268,6 +274,7 @@ export function useCreateReleaseControl(appInstanceId: string) {
     hasUnsupportedDslMode,
     isCheckingReleaseContent,
     isCreatePending,
+    isBusy,
     isCreating,
     isReadingDsl,
     matchedRelease,

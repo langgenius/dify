@@ -6,7 +6,7 @@ import type { TileConfig } from './environment-tile-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from '@/next/navigation'
+import Link from '@/next/link'
 import { TitleTooltip } from '../../components/title-tooltip'
 import { DeploymentStatusBadge } from '../../deployment-ui'
 import {
@@ -34,7 +34,6 @@ type EnvironmentTileProps = {
 export function EnvironmentTile({ appInstanceId, row, releaseRows }: EnvironmentTileProps) {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const router = useRouter()
 
   const envId = environmentId(row.environment)
   const drift = computeDrift(row)
@@ -54,30 +53,37 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
       ? t('overview.chip.openInDeployTab')
       : undefined
 
-  function handleAction() {
+  function handleDrawerAction() {
     if (config.intent === 'disabled')
       return
-    if (config.intent === 'navigate') {
-      router.push(`/deployments/${appInstanceId}/instances`)
-      return
-    }
     openDeployDrawer({ appInstanceId, environmentId: envId, releaseId: config.releaseId })
   }
 
-  const actionButton = (
-    <button
-      type="button"
-      disabled={isDisabled}
-      onClick={handleAction}
-      className={cn(
-        'inline-flex h-8 max-w-full min-w-0 shrink-0 items-center justify-center rounded-md px-2.5 system-xs-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
-        config.actionClass,
-        isDisabled && 'cursor-not-allowed opacity-60',
-      )}
-    >
-      <span className="whitespace-nowrap">{renderActionLabel(config.kind, Boolean(currentReleaseId), t)}</span>
-    </button>
+  const actionClassName = cn(
+    'inline-flex h-8 max-w-full min-w-0 shrink-0 items-center justify-center rounded-md px-2.5 system-xs-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
+    config.actionClass,
+    isDisabled && 'cursor-not-allowed opacity-60',
   )
+  const actionLabel = renderActionLabel(config.kind, Boolean(currentReleaseId), t)
+  const actionControl = config.intent === 'navigate'
+    ? (
+        <Link
+          href={`/deployments/${appInstanceId}/instances`}
+          className={actionClassName}
+        >
+          <span className="whitespace-nowrap">{actionLabel}</span>
+        </Link>
+      )
+    : (
+        <button
+          type="button"
+          disabled={isDisabled}
+          onClick={handleDrawerAction}
+          className={actionClassName}
+        >
+          <span className="whitespace-nowrap">{actionLabel}</span>
+        </button>
+      )
 
   return (
     <article
@@ -120,11 +126,11 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
           ? (
               <TitleTooltip content={tooltip}>
                 <span className="inline-flex max-w-full min-w-0 shrink-0">
-                  {actionButton}
+                  {actionControl}
                 </span>
               </TitleTooltip>
             )
-          : actionButton}
+          : actionControl}
       </div>
     </article>
   )

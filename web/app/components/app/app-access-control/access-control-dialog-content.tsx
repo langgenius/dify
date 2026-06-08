@@ -4,10 +4,12 @@ import type { ReactNode } from 'react'
 import type { SpecificGroupsOrMembersProps } from './specific-groups-or-members'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
 import { AccessControlItem } from './access-control-item'
 import { SpecificGroupsOrMembers, WebAppSSONotEnabledTip } from './specific-groups-or-members'
+import { useAccessControlStore } from './store'
 
 type AccessControlDialogContentProps = {
   title?: ReactNode
@@ -35,6 +37,8 @@ export function AccessControlDialogContent({
   onConfirm,
 }: AccessControlDialogContentProps) {
   const { t } = useTranslation()
+  const currentMenu = useAccessControlStore(s => s.currentMenu)
+  const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
 
   return (
     <div className="flex flex-col gap-y-3">
@@ -46,7 +50,12 @@ export function AccessControlDialogContent({
           {description ?? t('accessControlDialog.description', { ns: 'app' })}
         </DialogDescription>
       </div>
-      <div className="flex flex-col gap-y-1 px-6 pb-3" role="radiogroup" aria-labelledby="access-control-options-label">
+      <RadioGroup<AccessMode>
+        value={currentMenu}
+        onValueChange={setCurrentMenu}
+        className="flex flex-col items-stretch gap-y-1 px-6 pb-3"
+        aria-labelledby="access-control-options-label"
+      >
         <div className="leading-6">
           <p id="access-control-options-label" className="system-sm-medium text-text-tertiary">
             {accessLabel ?? t('accessControlDialog.accessLabel', { ns: 'app' })}
@@ -86,7 +95,7 @@ export function AccessControlDialogContent({
             </p>
           </div>
         </AccessControlItem>
-      </div>
+      </RadioGroup>
       <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
         <Button disabled={saving} onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
         <Button disabled={confirmDisabled || saving} loading={saving} variant="primary" onClick={onConfirm}>

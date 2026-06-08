@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { INavSelectorProps, NavItem } from '../index'
 import type { AppContextValue } from '@/context/app-context'
 import { act, fireEvent, render, screen } from '@testing-library/react'
@@ -5,13 +6,13 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import { useRouter } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
-import NavSelector from '../index'
+import { NavSelector } from '../index'
 
-// Mock next/navigation
-vi.mock('@/next/navigation', () => ({
-  useRouter: vi.fn(),
+vi.mock('@/next/link', () => ({
+  default: ({ href, children, ...props }: ComponentProps<'a'>) => (
+    <a href={href?.toString()} {...props}>{children}</a>
+  ),
 }))
 
 // Mock app store
@@ -28,7 +29,6 @@ describe('NavSelector Component', () => {
   const mockSetAppDetail = vi.fn()
   const mockOnCreate = vi.fn()
   const mockOnLoadMore = vi.fn()
-  const mockPush = vi.fn()
 
   const navigationItems: NavItem[] = [
     {
@@ -70,9 +70,6 @@ describe('NavSelector Component', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
     } as unknown as AppContextValue)
-    vi.mocked(useRouter).mockReturnValue({
-      push: mockPush,
-    } as unknown as ReturnType<typeof useRouter>)
   })
 
   describe('Rendering', () => {
@@ -101,21 +98,21 @@ describe('NavSelector Component', () => {
       expect(screen.getByText('Item 2'))!.toBeInTheDocument()
     })
 
-    it('should navigate and call setAppDetail when an item is clicked', async () => {
+    it('should render a link and call setAppDetail when an item is clicked', async () => {
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
         fireEvent.click(button)
       })
       const item2 = screen.getByText('Item 2')
+      expect(item2.closest('a')).toHaveAttribute('href', '/item2')
       await act(async () => {
         fireEvent.click(item2)
       })
       expect(mockSetAppDetail).toHaveBeenCalled()
-      expect(mockPush).toHaveBeenCalledWith('/item2')
     })
 
-    it('should not navigate if current item is clicked', async () => {
+    it('should render current item without a route link', async () => {
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
@@ -128,7 +125,8 @@ describe('NavSelector Component', () => {
           fireEvent.click(listItem)
         })
       }
-      expect(mockPush).not.toHaveBeenCalled()
+      expect(listItem?.closest('a')).toBeNull()
+      expect(mockSetAppDetail).not.toHaveBeenCalled()
     })
 
     it('should call onCreate when create button is clicked (non-app mode)', async () => {

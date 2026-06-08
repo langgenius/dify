@@ -194,9 +194,9 @@ export function DeploymentsList() {
     refetchInterval: query => listDeploymentStatusPollingInterval(query.state.data),
   })
   const pages = data?.pages ?? []
-  const apps = pages.flatMap(page => page.data ?? [])
+  const appInstanceSummaries = pages.flatMap(page => page.data ?? [])
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
-  const showEmptyState = !showSkeleton && !isError && apps.length === 0
+  const showEmptyState = !showSkeleton && !isError && appInstanceSummaries.length === 0
 
   useEffect(() => {
     if (!hasNextPage || isLoading || isFetchingNextPage || error)
@@ -233,12 +233,12 @@ export function DeploymentsList() {
             ? <DeploymentsListSkeleton />
             : isError
               ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
-              : apps.length === 0
+              : appInstanceSummaries.length === 0
                 ? <DeploymentsListEmpty />
-                : apps.map((app, index) => (
+                : appInstanceSummaries.map((summary, index) => (
                     <InstanceCard
-                      key={app.appInstance?.id ?? index}
-                      summary={app}
+                      key={summary.appInstance?.id ?? index}
+                      summary={summary}
                     />
                   ))}
           {isFetchingNextPage && <DeploymentsListSkeleton />}

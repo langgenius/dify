@@ -21,7 +21,7 @@ vi.mock('@/app/components/header/app-nav', () => ({
 }))
 
 vi.mock('@/app/components/header/dataset-nav', () => ({
-  default: createMockComponent('dataset-nav'),
+  DatasetNav: createMockComponent('dataset-nav'),
 }))
 
 vi.mock('@/app/components/header/env-nav', () => ({
@@ -29,7 +29,7 @@ vi.mock('@/app/components/header/env-nav', () => ({
 }))
 
 vi.mock('@/app/components/header/explore-nav', () => ({
-  default: createMockComponent('explore-nav'),
+  ExploreNav: createMockComponent('explore-nav'),
 }))
 
 vi.mock('@/app/components/header/license-env', () => ({
@@ -41,7 +41,7 @@ vi.mock('@/app/components/header/plugins-nav', () => ({
 }))
 
 vi.mock('@/app/components/header/tools-nav', () => ({
-  default: createMockComponent('tools-nav'),
+  ToolsNav: createMockComponent('tools-nav'),
 }))
 
 vi.mock('@/app/components/header/plan-badge', () => ({

@@ -9,13 +9,11 @@ import type {
   AccessPermissionKind,
   SelectableAccessSubject,
 } from './access-policy'
-import type { AccessSubjectSelectionValue } from '@/app/components/base/access-subject-selector/types'
+import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useAccessControlStore from '@/context/access-control-store'
-import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
 import {
@@ -26,7 +24,6 @@ import {
   accessControlSelectionFromSubjects,
   accessModeToPermissionKey,
   normalizeResolvedSubject,
-  normalizeSubject,
   permissionKeyToAccessMode,
   permissionKeyToAppAccessMode,
   policySubjects,
@@ -38,8 +35,6 @@ import {
   PermissionSummaryButton,
   SubjectsSummary,
 } from './permission-row-components'
-
-const ACCESS_SUBJECT_LABEL_PAGE_SIZE = 100
 
 type EnvironmentPermissionRowProps = {
   appInstanceId: string
@@ -58,17 +53,9 @@ export function EnvironmentPermissionRow({
 }: EnvironmentPermissionRowProps) {
   const { t } = useTranslation('deployments')
   const environmentId = environment.id
-  const initializeAccessControlDraft = useAccessControlStore(s => s.initializeAccessControlDraft)
   const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
   const policy = summaryPolicy
   const policyKind = accessModeToPermissionKey(policy?.mode)
-  const accessSubjectsQuery = useSearchForWhiteListCandidates({
-    resultsPerPage: ACCESS_SUBJECT_LABEL_PAGE_SIZE,
-  }, policyKind === 'specific')
-  const accessSubjectCandidates = accessSubjectsQuery.data?.pages.flatMap(page => page.subjects ?? []) ?? []
-  const accessSubjects = accessSubjectCandidates
-    .map(normalizeSubject)
-    .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
   const policySubjectFingerprint = policy?.subjects
     ?.map(subject => `${subject.subjectType ?? ''}:${subject.subjectId ?? ''}`)
     .join(',')
@@ -81,13 +68,11 @@ export function EnvironmentPermissionRow({
     kind?: AccessPermissionKind
     subjects?: SelectableAccessSubject[]
   }>({})
-  const [dialogOpen, setDialogOpen] = useState(false)
   const subjectLabelCandidates = [
     ...(draft.subjects ?? []),
     ...resolvedSubjects
       .map(normalizeResolvedSubject)
       .filter((subject): subject is SelectableAccessSubject => Boolean(subject)),
-    ...accessSubjects,
   ]
   const hasDraft = draft.fingerprint === policyFingerprint
   const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind
@@ -95,8 +80,7 @@ export function EnvironmentPermissionRow({
   const subjects = hasDraft && draft.subjects ? draft.subjects : policySelectedSubjects
   const subjectSelection = accessControlSelectionFromSubjects(subjects)
   const isSaving = setEnvironmentAccessPolicy.isPending
-  const subjectsLoading = permissionKind === 'specific' && accessSubjectsQuery.isLoading
-  const controlsDisabled = disabled || isSaving || subjectsLoading
+  const controlsDisabled = disabled || isSaving
   const envName = environmentName(environment)
 
   const persistPolicy = (
@@ -134,7 +118,13 @@ export function EnvironmentPermissionRow({
     return true
   }
 
-  const handlePermissionSubmit = (nextKind: AccessPermissionKind, nextSelection: AccessSubjectSelectionValue) => {
+  const handlePermissionSubmit = (
+    nextKind: AccessPermissionKind,
+    nextSelection: AccessSubjectSelectionValue,
+    options?: {
+      onSuccess?: () => void
+    },
+  ) => {
     const normalizedSubjects = nextKind === 'specific' ? subjectsFromAccessControlSelection(nextSelection) : []
     setDraft({
       fingerprint: policyFingerprint,
@@ -142,18 +132,8 @@ export function EnvironmentPermissionRow({
       subjects: normalizedSubjects,
     })
     persistPolicy(nextKind, normalizedSubjects, {
-      onSuccess: () => setDialogOpen(false),
+      onSuccess: options?.onSuccess,
     })
-  }
-
-  const handleOpenPermissionDialog = () => {
-    initializeAccessControlDraft({
-      currentMenu: permissionKeyToAppAccessMode(permissionKind),
-      specificGroups: subjectSelection.groups,
-      specificMembers: subjectSelection.members,
-      selectedGroupsForBreadcrumb: [],
-    })
-    setDialogOpen(true)
   }
 
   return (
@@ -172,21 +152,14 @@ export function EnvironmentPermissionRow({
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.permission')}
         </div>
-        <PermissionSummaryButton
-          value={permissionKind}
+        <EnvironmentPermissionEditor
+          permissionKind={permissionKind}
+          subjectSelection={subjectSelection}
           disabled={controlsDisabled}
-          loading={isSaving}
           environmentLabel={envName}
-          onClick={handleOpenPermissionDialog}
+          saving={isSaving}
+          onSubmit={handlePermissionSubmit}
         />
-        {dialogOpen && (
-          <DeploymentAccessControlDialog
-            subjectsLoading={subjectsLoading}
-            saving={isSaving}
-            onClose={() => setDialogOpen(false)}
-            onSubmit={handlePermissionSubmit}
-          />
-        )}
       </DetailTableCell>
       <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 align-top pc:table-cell pc:p-3 pc:pr-2">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
@@ -195,9 +168,61 @@ export function EnvironmentPermissionRow({
         <SubjectsSummary
           permissionKind={permissionKind}
           subjects={subjects}
-          loading={subjectsLoading && subjects.length === 0}
         />
       </DetailTableCell>
     </DetailTableRow>
+  )
+}
+
+function EnvironmentPermissionEditor({
+  permissionKind,
+  subjectSelection,
+  disabled,
+  environmentLabel,
+  saving,
+  onSubmit,
+}: {
+  permissionKind: AccessPermissionKind
+  subjectSelection: AccessSubjectSelectionValue
+  disabled?: boolean
+  environmentLabel: string
+  saving?: boolean
+  onSubmit: (
+    nextKind: AccessPermissionKind,
+    nextSelection: AccessSubjectSelectionValue,
+    options?: { onSuccess?: () => void },
+  ) => void
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const handleSubmit = (nextKind: AccessPermissionKind, nextSelection: AccessSubjectSelectionValue) => {
+    onSubmit(nextKind, nextSelection, {
+      onSuccess: () => setDialogOpen(false),
+    })
+  }
+
+  return (
+    <>
+      <PermissionSummaryButton
+        value={permissionKind}
+        disabled={disabled}
+        loading={saving}
+        environmentLabel={environmentLabel}
+        onClick={() => setDialogOpen(true)}
+      />
+      {dialogOpen && (
+        <DeploymentAccessControlDialog
+          initialDraft={{
+            currentMenu: permissionKeyToAppAccessMode(permissionKind),
+            specificGroups: subjectSelection.groups,
+            specificMembers: subjectSelection.members,
+            selectedGroupsForBreadcrumb: [],
+          }}
+          saving={saving}
+          onClose={() => setDialogOpen(false)}
+          onSubmit={handleSubmit}
+        />
+      )}
+    </>
   )
 }

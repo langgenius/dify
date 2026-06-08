@@ -9,7 +9,7 @@ import type {
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle } from '../skeleton'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 
 type AccessSubjectSelectionListProps = AccessSubjectSelectionProps & {
   loading?: boolean

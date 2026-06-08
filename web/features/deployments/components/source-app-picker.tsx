@@ -1,4 +1,5 @@
 'use client'
+import type { SourceAppPickerValue } from './source-app-picker-value'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -25,8 +26,6 @@ import { TitleTooltip } from './title-tooltip'
 
 const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
-
-export type SourceAppPickerValue = Pick<App, 'id' | 'name'> & Partial<Pick<App, 'icon_type' | 'icon' | 'icon_background' | 'icon_url' | 'mode'>>
 
 function sourceAppSearchText(app: App) {
   return `${app.name} ${app.id}`.toLowerCase()
@@ -220,7 +219,7 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
                     void fetchNextPage()
                   }}
                 >
-                  {isFetchingNextPage ? t('common.loading') : t('createModal.loadMoreApps')}
+                  {isFetchingNextPage ? t('createModal.loadingApps') : t('createModal.loadMoreApps')}
                 </Button>
               </div>
             )}

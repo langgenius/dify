@@ -2,11 +2,6 @@
 
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DeploymentEmptyState,
-  DeploymentNoticeState,
-  DeploymentStateMessage,
-} from '../components/empty-state'
 
 type SectionProps = {
   title: string
@@ -16,26 +11,6 @@ type SectionProps = {
   layout?: 'block' | 'row'
   tone?: 'default' | 'destructive'
   showDivider?: boolean
-}
-
-export function DetailEmptyState(props: Parameters<typeof DeploymentEmptyState>[0]) {
-  return <DeploymentEmptyState {...props} />
-}
-
-export function DetailNoticeState(props: Parameters<typeof DeploymentNoticeState>[0]) {
-  return <DeploymentNoticeState {...props} />
-}
-
-export function SectionState({ children }: {
-  children: ReactNode
-}) {
-  return <DeploymentStateMessage variant="section">{children}</DeploymentStateMessage>
-}
-
-export function DetailListState({ children }: {
-  children: ReactNode
-}) {
-  return <DeploymentStateMessage variant="list">{children}</DeploymentStateMessage>
 }
 
 export function Section({

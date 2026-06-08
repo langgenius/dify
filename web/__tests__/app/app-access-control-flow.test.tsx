@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import AppPublisher from '@/app/components/app/app-publisher'
+import { AppPublisher } from '@/app/components/app/app-publisher'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 

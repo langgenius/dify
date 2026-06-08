@@ -11,6 +11,8 @@ import type {
 import type { UnsupportedDslNode } from '../error'
 import type { BindingSelections, EnvironmentOption } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
@@ -33,31 +35,26 @@ import { StepShell } from './layout'
 const targetEnvironmentSkeletonKeys = ['first-target-environment', 'second-target-environment']
 const targetBindingSkeletonKeys = ['first-target-binding', 'second-target-binding']
 
-function EnvironmentOptionRow({ environment, selected, onSelect }: {
+function EnvironmentOptionRow({ environment, selected }: {
   environment: EnvironmentOption
   selected: boolean
-  onSelect: () => void
 }) {
   const { t } = useTranslation('deployments')
   const mode = environmentMode(environment)
   const summary = environment.description?.trim() || `${t(mode === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(environment).toUpperCase()}`
 
   return (
-    <label
+    <RadioRoot<string>
+      value={environment.id}
+      variant="unstyled"
       className={cn(
-        'flex cursor-pointer items-center gap-3 rounded-xl border p-3',
-        selected
-          ? 'border-state-accent-solid bg-state-accent-hover shadow-xs'
-          : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        'flex cursor-pointer items-center gap-3 rounded-xl border p-3 outline-hidden',
+        'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'data-checked:border-state-accent-solid data-checked:bg-state-accent-hover data-checked:shadow-xs',
       )}
     >
-      <input
-        type="radio"
-        name="target-environment"
-        checked={selected}
-        onChange={onSelect}
-        className="size-4 shrink-0 accent-primary-600"
-      />
+      <RadioControl />
       <span className="flex min-w-0 grow flex-col gap-1">
         <span className={cn('truncate system-sm-semibold', selected ? 'text-text-accent' : 'text-text-primary')}>{environmentName(environment)}</span>
         <TitleTooltip content={summary}>
@@ -66,7 +63,7 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
           </span>
         </TitleTooltip>
       </span>
-    </label>
+    </RadioRoot>
   )
 }
 
@@ -134,16 +131,19 @@ function TargetEnvironmentSection({
       <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.environment')}</div>
       {hasEnvironmentOptions
         ? (
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <RadioGroup<string>
+              value={selectedEnvironmentId}
+              onValueChange={onSelectEnvironment}
+              className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2"
+            >
               {environments.map(environment => (
                 <EnvironmentOptionRow
                   key={environment.id}
                   environment={environment}
                   selected={environmentMatchesIdentifier(environment, selectedEnvironmentId)}
-                  onSelect={() => onSelectEnvironment(environment.id)}
                 />
               ))}
-            </div>
+            </RadioGroup>
           )
         : isEnvironmentLoading
           ? <TargetEnvironmentSkeleton />

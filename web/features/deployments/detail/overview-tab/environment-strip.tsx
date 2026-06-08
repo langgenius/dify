@@ -7,10 +7,10 @@ import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
+import { DeploymentEmptyState } from '../../components/empty-state'
 import { environmentId } from '../../environment'
 import { hasRuntimeInstanceDeployment } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
-import { DetailEmptyState, SectionState } from '../common'
 import { OVERVIEW_CARD_CLASS_NAME } from './card-styles'
 import { EnvironmentTile } from './environment-tile'
 
@@ -20,11 +20,9 @@ type EnvironmentStripProps = {
   appInstanceId: string
   rows: EnvironmentDeployment[]
   releaseRows: Release[]
-  isLoading: boolean
-  isError: boolean
 }
 
-export function EnvironmentStrip({ appInstanceId, rows, releaseRows, isLoading, isError }: EnvironmentStripProps) {
+export function EnvironmentStrip({ appInstanceId, rows, releaseRows }: EnvironmentStripProps) {
   const { t } = useTranslation('deployments')
   const runtimeRows = rows.filter(hasRuntimeInstanceDeployment)
   const previewRows = runtimeRows.slice(0, OVERVIEW_RUNTIME_INSTANCE_LIMIT)
@@ -46,24 +44,20 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows, isLoading, 
         )}
       </div>
 
-      {isLoading
-        ? <CardSkeletons />
-        : isError
-          ? <SectionState>{t('common.loadFailed')}</SectionState>
-          : !hasRuntimeRows
-              ? <EnvironmentEmptyState appInstanceId={appInstanceId} canDeploy={hasRelease} />
-              : (
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
-                    {previewRows.map(row => (
-                      <EnvironmentTile
-                        key={environmentId(row.environment)}
-                        appInstanceId={appInstanceId}
-                        row={row}
-                        releaseRows={releaseRows}
-                      />
-                    ))}
-                  </div>
-                )}
+      {!hasRuntimeRows
+        ? <EnvironmentEmptyState appInstanceId={appInstanceId} canDeploy={hasRelease} />
+        : (
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
+              {previewRows.map(row => (
+                <EnvironmentTile
+                  key={environmentId(row.environment)}
+                  appInstanceId={appInstanceId}
+                  row={row}
+                  releaseRows={releaseRows}
+                />
+              ))}
+            </div>
+          )}
     </section>
   )
 }
@@ -76,7 +70,7 @@ function EnvironmentEmptyState({ appInstanceId, canDeploy }: {
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
 
   return (
-    <DetailEmptyState
+    <DeploymentEmptyState
       variant="section"
       icon="i-ri-server-line"
       title={t('overview.strip.emptyTitle')}

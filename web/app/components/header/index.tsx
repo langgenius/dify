@@ -14,13 +14,13 @@ import Link from '@/next/link'
 import { Plan } from '../billing/type'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
-import DatasetNav from './dataset-nav'
+import { DatasetNav } from './dataset-nav'
 import EnvNav from './env-nav'
-import ExploreNav from './explore-nav'
+import { ExploreNav } from './explore-nav'
 import LicenseNav from './license-env'
 import { PlanBadge } from './plan-badge'
 import PluginsNav from './plugins-nav'
-import ToolsNav from './tools-nav'
+import { ToolsNav } from './tools-nav'
 
 const navClassName = `
   flex items-center relative px-3 h-8 rounded-xl

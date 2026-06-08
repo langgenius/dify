@@ -19,9 +19,9 @@ import {
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
-import Loading from '../loading'
 import { SelectedGroupsBreadCrumb, SubjectItem } from './subject-options'
 import {
   getSubjectLabel,

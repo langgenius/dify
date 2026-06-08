@@ -8,19 +8,21 @@ type RuntimeFaviconOptions = {
   type?: string
 }
 
-const getRuntimeFaviconSelector = (kind: RuntimeFaviconKind) =>
-  `link[${runtimeFaviconAttribute}="${kind}"]`
+function getRuntimeFaviconSelector(kind: RuntimeFaviconKind) {
+  return `link[${runtimeFaviconAttribute}="${kind}"]`
+}
 
-const getRuntimeAppleTouchIconSelector = (kind: RuntimeFaviconKind) =>
-  `link[${runtimeAppleTouchIconAttribute}="${kind}"]`
+function getRuntimeAppleTouchIconSelector(kind: RuntimeFaviconKind) {
+  return `link[${runtimeAppleTouchIconAttribute}="${kind}"]`
+}
 
-const removeRuntimeLinks = (selector: string) => {
+function removeRuntimeLinks(selector: string) {
   document.head
     .querySelectorAll<HTMLLinkElement>(selector)
     .forEach(link => link.remove())
 }
 
-const upsertHeadLink = (selector: string, attribute: string, kind: RuntimeFaviconKind) => {
+function upsertHeadLink(selector: string, attribute: string, kind: RuntimeFaviconKind) {
   const existing = document.head.querySelector<HTMLLinkElement>(selector)
   if (existing)
     return existing
@@ -31,16 +33,16 @@ const upsertHeadLink = (selector: string, attribute: string, kind: RuntimeFavico
   return link
 }
 
-export const clearRuntimeFavicon = (kind: RuntimeFaviconKind) => {
+export function clearRuntimeFavicon(kind: RuntimeFaviconKind) {
   removeRuntimeLinks(getRuntimeFaviconSelector(kind))
   removeRuntimeLinks(getRuntimeAppleTouchIconSelector(kind))
 }
 
-export const setRuntimeFavicon = (
+export function setRuntimeFavicon(
   kind: RuntimeFaviconKind,
   href: string,
   options: RuntimeFaviconOptions = {},
-) => {
+) {
   if (!href) {
     clearRuntimeFavicon(kind)
     return

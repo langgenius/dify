@@ -1,40 +1,24 @@
 'use client'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccessSubjectSelectionList } from '@/app/components/base/access-subject-selector/selection-list'
 import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control'
-import useAccessControlStore from '../../../../context/access-control-store'
 import { Infotip } from '../../base/infotip'
+import { AccessSubjectSelectionList } from './access-subject-selector/selection-list'
 import { AddMemberOrGroupDialog } from './add-member-or-group-pop'
+import { useAccessControlStore } from './store'
 
 export type SpecificGroupsOrMembersProps = {
-  loadSubjects?: boolean
   loading?: boolean
 }
 
 export function SpecificGroupsOrMembers({
-  loadSubjects = true,
   loading = false,
 }: SpecificGroupsOrMembersProps) {
   const currentMenu = useAccessControlStore(s => s.currentMenu)
-  const appId = useAccessControlStore(s => s.appId)
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
   const { t } = useTranslation()
-
-  const { isPending, data } = useAppWhiteListSubjects(
-    appId,
-    loadSubjects && Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS,
-  )
-  useEffect(() => {
-    if (!loadSubjects)
-      return
-    setSpecificGroups(data?.groups ?? [])
-    setSpecificMembers(data?.members ?? [])
-  }, [data, loadSubjects, setSpecificGroups, setSpecificMembers])
 
   if (currentMenu !== AccessMode.SPECIFIC_GROUPS_MEMBERS) {
     return (
@@ -62,7 +46,7 @@ export function SpecificGroupsOrMembers({
         <AccessSubjectSelectionList
           selectedGroups={specificGroups}
           selectedMembers={specificMembers}
-          loading={loadSubjects ? isPending : loading}
+          loading={loading}
           onChange={({ groups, members }) => {
             setSpecificGroups(groups)
             setSpecificMembers(members)

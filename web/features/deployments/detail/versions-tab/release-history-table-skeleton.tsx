@@ -13,9 +13,17 @@ import {
   DetailTableRow,
 } from '../table'
 import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../table-styles'
-import { ReleaseDeploymentsSkeleton } from './release-history-deployments'
 
 const RELEASE_TABLE_ROW_SKELETON_KEYS = ['latest', 'previous', 'older', 'archived', 'initial']
+
+function ReleaseDeploymentsSkeleton() {
+  return (
+    <SkeletonRow className="gap-1">
+      <SkeletonRectangle className="my-0 h-5 w-20 animate-pulse rounded-md" />
+      <SkeletonRectangle className="my-0 h-5 w-18 animate-pulse rounded-md" />
+    </SkeletonRow>
+  )
+}
 
 export function ReleaseHistoryTableSkeleton() {
   const { t } = useTranslation('deployments')

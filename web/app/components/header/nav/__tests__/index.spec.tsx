@@ -12,14 +12,13 @@ import * as React from 'react'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import { useRouter, useSelectedLayoutSegment } from '@/next/navigation'
+import { useSelectedLayoutSegment } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../index'
 
 // Mock next/navigation
 vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: vi.fn(),
-  useRouter: vi.fn(),
 }))
 
 // Mock app store
@@ -56,7 +55,6 @@ describe('Nav Component', () => {
   const mockSetAppDetail = vi.fn()
   const mockOnCreate = vi.fn()
   const mockOnLoadMore = vi.fn()
-  const mockPush = vi.fn()
 
   const navigationItems: NavItem[] = [
     {
@@ -100,9 +98,6 @@ describe('Nav Component', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
     } as unknown as AppContextValue)
-    vi.mocked(useRouter).mockReturnValue({
-      push: mockPush,
-    } as unknown as ReturnType<typeof useRouter>)
   })
 
   describe('Rendering', () => {
@@ -213,7 +208,7 @@ describe('Nav Component', () => {
       })
     })
 
-    it('should navigate when an item is selected', async () => {
+    it('should render a link and clear app detail when an item is selected', async () => {
       vi.mocked(useSelectedLayoutSegment).mockReturnValue('snippets')
       render(<Nav {...defaultProps} activeSegment={['apps', 'app', 'snippets']} curNav={curNav} />)
       const selectorButton = screen.getByRole('button', { name: /Item 1/i })
@@ -224,11 +219,12 @@ describe('Nav Component', () => {
       mockSetAppDetail.mockClear()
 
       const item2 = await screen.findByText('Item 2')
+      expect(item2.closest('a')).toHaveAttribute('href', '/item2')
       await act(async () => {
         fireEvent.click(item2)
       })
 
-      expect(mockPush).toHaveBeenCalledWith('/item2')
+      expect(mockSetAppDetail).toHaveBeenCalled()
     })
 
     it('should not navigate if selecting current nav item', async () => {
@@ -248,7 +244,7 @@ describe('Nav Component', () => {
         })
       }
 
-      expect(mockPush).not.toHaveBeenCalled()
+      expect(mockSetAppDetail).not.toHaveBeenCalled()
     })
 
     it('should call onCreate when create button is clicked', async () => {

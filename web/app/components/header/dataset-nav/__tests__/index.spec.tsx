@@ -10,7 +10,7 @@ import {
   useDatasetDetail,
   useDatasetList,
 } from '@/service/knowledge/use-dataset'
-import DatasetNav from '../index'
+import { DatasetNav } from '../index'
 
 vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(),
@@ -174,31 +174,24 @@ describe('DatasetNav', () => {
       expect(within(menu).getByText('Null Icon Dataset')).toBeInTheDocument()
     })
 
-    it('should navigate to correct link when an item is clicked', () => {
+    it('should render correct links for navigation items', () => {
       render(<DatasetNav />)
       const selector = screen.getByRole('button', { name: /Test Dataset/i })
       fireEvent.click(selector)
 
       const menu = screen.getByRole('menu')
       const pipelineItem = within(menu).getByText('Pipeline Dataset')
-      fireEvent.click(pipelineItem)
 
       // dataset-2 is rag_pipeline and not published -> /datasets/dataset-2/pipeline
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-2/pipeline')
+      expect(pipelineItem.closest('a')).toHaveAttribute('href', '/datasets/dataset-2/pipeline')
 
-      fireEvent.click(selector)
-      const menu2 = screen.getByRole('menu')
-      const externalItem = within(menu2).getByText('External Dataset')
-      fireEvent.click(externalItem)
+      const externalItem = within(menu).getByText('External Dataset')
       // dataset-3 is provider external -> /datasets/dataset-3/hitTesting
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-3/hitTesting')
+      expect(externalItem.closest('a')).toHaveAttribute('href', '/datasets/dataset-3/hitTesting')
 
-      fireEvent.click(selector)
-      const menu3 = screen.getByRole('menu')
-      const publishedItem = within(menu3).getByText('Published Pipeline')
-      fireEvent.click(publishedItem)
+      const publishedItem = within(menu).getByText('Published Pipeline')
       // dataset-4 is rag_pipeline and published -> /datasets/dataset-4/documents
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-4/documents')
+      expect(publishedItem.closest('a')).toHaveAttribute('href', '/datasets/dataset-4/documents')
     })
   })
 

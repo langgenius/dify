@@ -41,6 +41,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
         <DialogContent className="top-[18dvh] w-140 max-w-[calc(100vw-32px)] translate-y-0 overflow-hidden p-0">
           <DialogCloseButton
             type="button"
+            disabled={control.isBusy}
             onPointerDown={control.handleClosePointerDown}
             onClick={control.handleCloseClick}
           />

@@ -1,16 +1,12 @@
 'use client'
 
-import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
 import { RELEASE_HISTORY_PAGE_SIZE } from '../../data'
-import {
-  DetailEmptyState,
-  DetailListState,
-} from '../common'
 import { ReleaseHistoryRows } from './release-history-rows'
 import { ReleaseHistoryTableSkeleton } from './release-history-table-skeleton'
 import { releaseRowFromSummary } from './release-history-types'
@@ -35,9 +31,6 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   const totalReleasePages = Math.ceil(totalReleases / RELEASE_HISTORY_PAGE_SIZE)
   const isLoading = releaseHistoryQuery.isLoading
   const hasError = releaseHistoryQuery.isError
-  const deployedToLoading = false
-  const deployedToHasError = false
-  const deploymentRows: EnvironmentDeployment[] = []
 
   function handleReleaseDeleted() {
     if (releaseRows.length === 1 && currentPage > 0)
@@ -49,15 +42,15 @@ export function ReleaseHistoryTable({ appInstanceId }: {
 
   if (hasError) {
     return (
-      <DetailListState>
+      <DeploymentStateMessage variant="list">
         {t('common.loadFailed')}
-      </DetailListState>
+      </DeploymentStateMessage>
     )
   }
 
   if (releaseRows.length === 0) {
     return (
-      <DetailEmptyState
+      <DeploymentEmptyState
         icon="i-ri-stack-line"
         title={t('versions.emptyTitle')}
         description={t('versions.emptyDescription')}
@@ -70,9 +63,6 @@ export function ReleaseHistoryTable({ appInstanceId }: {
       <ReleaseHistoryRows
         appInstanceId={appInstanceId}
         releaseRows={releaseRows}
-        deploymentRows={deploymentRows}
-        deployedToLoading={deployedToLoading}
-        deployedToHasError={deployedToHasError}
         onReleaseDeleted={handleReleaseDeleted}
       />
       {totalReleases > RELEASE_HISTORY_PAGE_SIZE && (

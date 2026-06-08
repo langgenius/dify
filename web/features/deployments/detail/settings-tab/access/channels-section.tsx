@@ -7,8 +7,9 @@ import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
+import { DeploymentEmptyState, DeploymentNoticeState, DeploymentStateMessage } from '../../../components/empty-state'
 import { environmentName } from '../../../environment'
-import { DetailEmptyState, DetailNoticeState, Section, SectionState } from '../../common'
+import { Section } from '../../common'
 import { CopyPill, EndpointRow } from './common'
 import { getUrlOrigin } from './url'
 
@@ -150,7 +151,7 @@ export function AccessChannelsSection({
       {isLoading
         ? <AccessChannelsSkeleton />
         : isError
-          ? <SectionState>{t('common.loadFailed')}</SectionState>
+          ? <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
           : runEnabled
             ? (
                 <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
@@ -182,9 +183,9 @@ export function AccessChannelsSection({
                           </div>
                         )
                       : (
-                          <DetailNoticeState>
+                          <DeploymentNoticeState>
                             {t('access.runAccess.webappEmpty')}
-                          </DetailNoticeState>
+                          </DeploymentNoticeState>
                         )}
                   </ChannelRow>
                   <ChannelRow
@@ -225,15 +226,15 @@ export function AccessChannelsSection({
                           </div>
                         )
                       : (
-                          <DetailNoticeState>
+                          <DeploymentNoticeState>
                             {t('access.cli.empty')}
-                          </DetailNoticeState>
+                          </DeploymentNoticeState>
                         )}
                   </ChannelRow>
                 </div>
               )
             : (
-                <DetailEmptyState
+                <DeploymentEmptyState
                   variant="section"
                   icon="i-ri-toggle-line"
                   title={t('access.channels.disabled')}

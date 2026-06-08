@@ -3,7 +3,7 @@ import type {
   AccessSubject,
   Subject,
 } from '@dify/contracts/enterprise/types.gen'
-import type { AccessSubjectSelectionValue } from '@/app/components/base/access-subject-selector/types'
+import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
 import type {
   AccessControlAccount,
   AccessControlGroup,

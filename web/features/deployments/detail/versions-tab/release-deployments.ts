@@ -1,6 +1,5 @@
-import type { Environment, EnvironmentDeployment, Release, ReleaseSummary } from '@dify/contracts/enterprise/types.gen'
+import type { Environment, Release, ReleaseSummary } from '@dify/contracts/enterprise/types.gen'
 import { environmentId, environmentName } from '../../environment'
-import { deploymentStatus } from '../../runtime-status'
 
 export type ReleaseDeploymentState = 'active' | 'deploying' | 'failed'
 
@@ -58,29 +57,6 @@ export function getReleaseSummaryDeployments(summary: ReleaseSummary) {
   ])
 }
 
-export function getReleaseDeployments(row: ReleaseWithSummaryDeployments, deploymentRows: EnvironmentDeployment[]) {
-  if (row.summaryDeployments)
-    return row.summaryDeployments
-
-  const releaseId = row.id
-  if (!releaseId)
-    return []
-
-  const runtimeItems = deploymentRows.flatMap((deployment) => {
-    const envId = environmentId(deployment.environment)
-    if (!envId)
-      return []
-
-    const items: ReleaseDeployment[] = []
-    if (deployment.currentRelease?.id === releaseId) {
-      items.push({
-        environmentId: envId,
-        environmentName: environmentName(deployment.environment),
-        state: releaseDeploymentState(deploymentStatus(deployment)),
-      })
-    }
-    return items
-  })
-
-  return dedupeReleaseDeployments(runtimeItems)
+export function getReleaseDeployments(row: ReleaseWithSummaryDeployments) {
+  return row.summaryDeployments ?? []
 }

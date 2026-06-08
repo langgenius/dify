@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
-import NavSelector from './nav-selector'
+import { NavSelector } from './nav-selector'
 
 type INavProps = {
   icon: React.ReactNode

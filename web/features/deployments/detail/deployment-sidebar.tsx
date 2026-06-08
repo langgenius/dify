@@ -184,6 +184,8 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
                         <DeploymentActionsMenu
                           appInstanceId={appInstanceId}
                           appName={instanceName}
+                          placement="bottom-end"
+                          sideOffset={4}
                           className="-mt-1 shrink-0"
                           triggerClassName="bg-transparent shadow-none"
                         />

@@ -9,13 +9,11 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 
-type ToolsNavProps = {
-  className?: string
-}
-
-const ToolsNav = ({
+export function ToolsNav({
   className,
-}: ToolsNavProps) => {
+}: {
+  className?: string
+}) {
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
   const activated = selectedSegment === 'tools'
@@ -36,5 +34,3 @@ const ToolsNav = ({
     </Link>
   )
 }
-
-export default ToolsNav

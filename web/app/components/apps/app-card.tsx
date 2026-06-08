@@ -1,5 +1,6 @@
 'use client'
 
+import type { FormEvent, MouseEvent } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -30,8 +31,7 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
@@ -93,7 +93,7 @@ type AppCardOperationsMenuProps = {
   onAccessControl: () => void
 }
 
-const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
+function AppCardOperationsMenu({
   app,
   shouldShowSwitchOption,
   shouldShowOpenInExploreOption,
@@ -104,17 +104,17 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   onSwitch,
   onDelete,
   onAccessControl,
-}) => {
+}: AppCardOperationsMenuProps) {
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
 
-  const handleMenuAction = useCallback((e: React.MouseEvent<HTMLElement>, action: () => void) => {
+  function handleMenuAction(e: MouseEvent<HTMLElement>, action: () => void) {
     e.stopPropagation()
     e.preventDefault()
     action()
-  }, [])
+  }
 
-  const handleOpenInstalledApp = useCallback(async (e: React.MouseEvent<HTMLElement>) => {
+  async function handleOpenInstalledApp(e: MouseEvent<HTMLElement>) {
     e.stopPropagation()
     e.preventDefault()
     try {
@@ -133,7 +133,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
       const message = e instanceof Error ? e.message : `${e}`
       toast.error(message)
     }
-  }, [app.id, openAsyncWindow])
+  }
 
   return (
     <>
@@ -187,7 +187,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
 
 type AppCardOperationsMenuContentProps = Omit<AppCardOperationsMenuProps, 'shouldShowOpenInExploreOption'>
 
-const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> = (props) => {
+function AppCardOperationsMenuContent(props: AppCardOperationsMenuContentProps) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
     appId: props.app.id,
@@ -208,7 +208,7 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
   )
 }
 
-const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) => {
+export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -226,7 +226,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
-  const onConfirmDelete = useCallback(async () => {
+  async function onConfirmDelete() {
     try {
       await mutateDeleteApp(app.id)
       toast.success(t('appDeleted', { ns: 'app' }))
@@ -238,63 +238,63 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       const message = e instanceof Error ? e.message : ''
       toast.error(`${t('appDeleteFailed', { ns: 'app' })}${message ? `: ${message}` : ''}`)
     }
-  }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
+  }
 
-  const onDeleteDialogOpenChange = useCallback((open: boolean) => {
+  function onDeleteDialogOpenChange(open: boolean) {
     if (isDeleting)
       return
 
     setShowConfirmDelete(open)
     if (!open)
       setConfirmDeleteInput('')
-  }, [isDeleting])
+  }
 
   const isDeleteConfirmDisabled = isDeleting || confirmDeleteInput !== app.name
 
-  const onDeleteDialogSubmit: React.FormEventHandler<HTMLFormElement> = useCallback((e) => {
-    e.preventDefault()
+  function onDeleteDialogSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     if (isDeleteConfirmDisabled)
       return
 
     void onConfirmDelete()
-  }, [isDeleteConfirmDisabled, onConfirmDelete])
+  }
 
-  const handleShowEditModal = useCallback(() => {
+  function handleShowEditModal() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowEditModal(true)
     })
-  }, [])
+  }
 
-  const handleShowDuplicateModal = useCallback(() => {
+  function handleShowDuplicateModal() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowDuplicateModal(true)
     })
-  }, [])
+  }
 
-  const handleShowSwitchModal = useCallback(() => {
+  function handleShowSwitchModal() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowSwitchModal(true)
     })
-  }, [])
+  }
 
-  const handleShowDeleteConfirm = useCallback(() => {
+  function handleShowDeleteConfirm() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowConfirmDelete(true)
     })
-  }, [])
+  }
 
-  const handleShowAccessControl = useCallback(() => {
+  function handleShowAccessControl() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowAccessControl(true)
     })
-  }, [])
+  }
 
-  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
+  const onEdit: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
     icon,
@@ -322,7 +322,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     catch (e) {
       toast.error(e instanceof Error ? e.message : t('editFailed', { ns: 'app' }))
     }
-  }, [app.id, onRefresh, t])
+  }
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
@@ -387,37 +387,32 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     setShowSwitchModal(false)
   }
 
-  const onUpdateAccessControl = useCallback(() => {
+  function onUpdateAccessControl() {
     if (onRefresh)
       onRefresh()
     setShowAccessControl(false)
-  }, [onRefresh, setShowAccessControl])
+  }
 
   const shouldShowSwitchOption = app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT
   const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
-  const EditTimeText = useMemo(() => {
-    const timeText = formatTime({
-      date: (app.updated_at || app.created_at) * 1000,
-      dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
+  const timeText = formatTime({
+    date: (app.updated_at || app.created_at) * 1000,
+    dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
+  })
+  const editTimeText = `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
+  const onlinePresenceUsers = onlineUsers
+    .map((user, index) => {
+      const id = user.user_id || user.sid || `${app.id}-online-${index}`
+      const name = user.username || user.user_id || user.sid || `${index + 1}`
+      return {
+        id,
+        name,
+        avatar_url: user.avatar || null,
+      }
     })
-    return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
-  }, [app.updated_at, app.created_at, t])
-
-  const onlinePresenceUsers = useMemo(() => {
-    return onlineUsers
-      .map((user, index) => {
-        const id = user.user_id || user.sid || `${app.id}-online-${index}`
-        const name = user.username || user.user_id || user.sid || `${index + 1}`
-        return {
-          id,
-          name,
-          avatar_url: user.avatar || null,
-        }
-      })
-      .filter(user => Boolean(user.id))
-  }, [app.id, onlineUsers])
+    .filter(user => Boolean(user.id))
 
   return (
     <>
@@ -446,7 +441,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             <div className="flex items-center gap-1 text-[10px] leading-[18px] font-medium text-text-tertiary">
               <div className="truncate" title={app.author_name}>{app.author_name}</div>
               <div>·</div>
-              <div className="truncate" title={EditTimeText}>{EditTimeText}</div>
+              <div className="truncate" title={editTimeText}>{editTimeText}</div>
             </div>
           </div>
           <div className="flex h-full shrink-0 flex-col items-end justify-between py-px">
@@ -682,5 +677,3 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     </>
   )
 }
-
-export default React.memo(AppCard)

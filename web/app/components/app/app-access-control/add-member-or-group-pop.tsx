@@ -2,8 +2,8 @@
 
 import {
   AccessSubjectAddButton,
-} from '@/app/components/base/access-subject-selector/add-button'
-import useAccessControlStore from '../../../../context/access-control-store'
+} from './access-subject-selector/add-button'
+import { useAccessControlStore } from './store'
 
 export function AddMemberOrGroupDialog() {
   const specificGroups = useAccessControlStore(s => s.specificGroups)

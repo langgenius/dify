@@ -4,7 +4,8 @@ import type { AccessChannels, Environment, EnvironmentAccessPolicy } from '@dify
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { DetailEmptyState, Section, SectionState } from '../../common'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
+import { Section } from '../../common'
 import {
   DetailTable,
   DetailTableBody,
@@ -81,10 +82,10 @@ export function AccessPermissionsSection({
       {isLoading
         ? <AccessPermissionsSkeleton />
         : isError
-          ? <SectionState>{t('common.loadFailed')}</SectionState>
+          ? <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
           : policyRows.length === 0
             ? (
-                <DetailEmptyState
+                <DeploymentEmptyState
                   variant="section"
                   icon="i-ri-rocket-line"
                   title={t('access.runAccess.noEnvsTitle')}

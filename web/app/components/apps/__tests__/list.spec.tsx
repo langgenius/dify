@@ -210,7 +210,7 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
-  default: ({ app }: { app: { id: string, name: string } }) => {
+  AppCard: ({ app }: { app: { id: string, name: string } }) => {
     return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
   },
 }))
