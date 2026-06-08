@@ -218,7 +218,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
     // not exist, the error message must display the path without garbling.
     const fileDir = await mkdtemp(join(tmpdir(), 'difyctl-e2e-cjk-'))
     try {
-      const cjkPath = join(fileDir, 'cjk-test-\u6587\u6863.txt') // "文档"
+      const cjkPath = join(fileDir, 'cjk-test-\u6587\u6863.txt') // "document" in Chinese — tests CJK path handling
       // Do not create the file — we want the "not found" error
       const result = await fx.r([
         'run',

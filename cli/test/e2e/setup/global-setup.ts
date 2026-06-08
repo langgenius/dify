@@ -157,12 +157,36 @@ export async function setup(project: TestProject): Promise<void> {
   }
 
   // ── Discover workspaces ──────────────────────────────────────────────────
-  const { primaryWsId, primaryWsName, secondaryWsId } = await discoverWorkspaces(
+  const workspaces = await discoverWorkspaces(
     consoleBase,
     cookieString,
     csrfToken,
     E.edition,
   )
+  if (!workspaces) {
+    project.provide('e2eCapabilities', {
+      tokenValid: true,
+      tokenId: match?.id,
+      edition: E.edition,
+      token: primaryToken,
+      logoutToken: '',
+      devicesToken: '',
+      workspaceId: '',
+      workspaceName: '',
+      ws2Id: '',
+      chatAppId: '',
+      workflowAppId: '',
+      fileAppId: '',
+      fileChatAppId: '',
+      hitlAppId: '',
+      hitlExternalAppId: '',
+      hitlSingleActionAppId: '',
+      hitlMultiNodeAppId: '',
+      ws2AppId: '',
+    } satisfies E2ECapabilities)
+    return
+  }
+  const { primaryWsId, primaryWsName, secondaryWsId } = workspaces
 
   // ── Mint per-suite dedicated tokens ──────────────────────────────────────
   let logoutToken = ''
@@ -325,7 +349,7 @@ async function discoverWorkspaces(
   cookieString: string,
   csrfToken: string,
   edition: 'ce' | 'ee',
-): Promise<{ primaryWsId: string, primaryWsName: string, secondaryWsId: string }> {
+): Promise<{ primaryWsId: string, primaryWsName: string, secondaryWsId: string } | null> {
   const wsRes = await fetch(`${consoleBase}/console/api/workspaces`, {
     headers: { 'Cookie': cookieString, 'X-CSRF-Token': csrfToken },
     signal: AbortSignal.timeout(10_000),
@@ -343,26 +367,21 @@ async function discoverWorkspaces(
     const ws0 = all.find(w => w.name === 'auto_test0')
     const ws1 = all.find(w => w.name === 'auto_test1')
 
-    if (!ws0) {
-      throw new Error(
-        '[E2E EE] Workspace "auto_test0" not found. '
-        + 'Please pre-create it for the test account before running E2E tests.',
-      )
-    }
-
-    if (!ws1) {
+    if (!ws0 || !ws1) {
+      const existing = all.map(w => w.name).join(', ') || '(none)'
       console.warn(
-        '[E2E EE] Workspace "auto_test1" not found — secondary workspace will reuse primary. '
-        + 'Cross-workspace [EE] tests may not work correctly.',
+        `[E2E EE] Required workspaces not found; expected auto_test0 and auto_test1, got: ${existing}. `
+        + 'Skip fixture app provisioning.',
       )
+      return null
     }
 
     const primaryWsId = ws0.id
     const primaryWsName = ws0.name
-    const secondaryWsId = ws1?.id ?? ws0.id
+    const secondaryWsId = ws1.id
 
     console.warn(`[E2E EE] primary   workspace: ${primaryWsName} (${primaryWsId})`)
-    console.warn(`[E2E EE] secondary workspace: ${ws1?.name ?? 'reuses primary'} (${secondaryWsId})`)
+    console.warn(`[E2E EE] secondary workspace: ${ws1.name} (${secondaryWsId})`)
 
     return { primaryWsId, primaryWsName, secondaryWsId }
   }
@@ -460,7 +479,7 @@ async function provisionApps(
     const url = `${consoleBase}/console/api/apps?name=${encodeURIComponent(name)}&limit=50&page=1`
     const r = await fetch(url, { headers: mkHeaders(), signal: AbortSignal.timeout(10_000) })
     if (!r.ok)
-      return null
+      throw new Error(`list apps by name "${name}" failed: HTTP ${r.status}`)
     const d = await r.json() as { data?: Array<{ id: string, name: string }> }
     return d.data?.find(a => a.name === name)?.id ?? null
   }
@@ -540,14 +559,14 @@ async function provisionApps(
       }
 
       const dsl = await readFile(join(fixturesDir, dslFile), 'utf8')
-      const appName = (dsl.match(/^[ \t]+name:[ \t]*(\\S[^\\n]*)$/m) ?? [])[1]
+      const appName = (dsl.match(/^[ \t]+name:[ \t]*(\S[^\n]*)$/m) ?? [])[1]
         ?.trim()
         .replace(/^['"]|['"]$/g, '') ?? dslFile
       const appMode = (dsl.match(/^\s+mode:\s*(\S+)/m) ?? [])[1] ?? ''
 
       let appId = await findAppByName(appName)
       if (appId) {
-        console.warn(`[E2E provision] ${dslFile}: exists id=${appId}`)
+        console.warn(`[E2E provision] ${dslFile}: exists in workspace id=${appId}; skip import`)
       }
       else {
         appId = await importFromDsl(dsl)
