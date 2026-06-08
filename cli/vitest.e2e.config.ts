@@ -56,9 +56,18 @@ export default defineConfig({
     // E2E tests do NOT use the unit-test setup.ts (no globalThis stubs needed —
     // the real binary sets its own globals at startup).
     setupFiles: [],
-    include: process.env.DIFY_E2E_SINGLE_FILE
-      ? [process.env.DIFY_E2E_SINGLE_FILE]
-      : process.env.DIFY_E2E_MODE === 'local'
+    // DIFY_E2E_INCLUDE: comma-separated glob patterns, e.g.
+    //   DIFY_E2E_INCLUDE="test/e2e/suites/run/run-app-basic.e2e.ts"
+    //   DIFY_E2E_INCLUDE="test/e2e/suites/run/**/*.e2e.ts"
+    //   DIFY_E2E_INCLUDE="test/e2e/suites/discovery/**/*.e2e.ts,test/e2e/suites/run/run-app-basic.e2e.ts"
+    // Deprecated alias: DIFY_E2E_SINGLE_FILE (single path only, kept for back-compat)
+    include: (() => {
+      const raw = process.env.DIFY_E2E_INCLUDE ?? process.env.DIFY_E2E_SINGLE_FILE
+      if (raw)
+        return raw.split(',').map(s => s.trim()).filter(Boolean)
+      return undefined
+    })()
+      ?? (process.env.DIFY_E2E_MODE === 'local'
         ? ['test/e2e/suites/framework/help.e2e.ts', 'test/e2e/suites/config/**/*.e2e.ts', 'test/e2e/suites/agent/**/*.e2e.ts']
         : [
           // auth tests first (most others depend on a valid session)
@@ -84,7 +93,7 @@ export default defineConfig({
             // devices + logout LAST — both can revoke tokens
             'test/e2e/suites/auth/devices.e2e.ts',
             'test/e2e/suites/auth/logout.e2e.ts',
-          ],
+          ]),
     // E2E calls a real staging server — allow plenty of time per test.
     testTimeout: 120_000,
     hookTimeout: 30_000,

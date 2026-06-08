@@ -149,11 +149,13 @@ jobs:
       - name: Run config + help (DIFY_E2E_MODE=local)
         env:
           DIFY_E2E_MODE: local
+          DIFY_E2E_INCLUDE: "test/e2e/suites/framework/help.e2e.ts,test/e2e/suites/config/**/*.e2e.ts"
         run: |
-          if [ "${{ inputs.test_scope }}" = "smoke" ]; then FILTER_ARGS=(-t "\[P0\]"); else FILTER_ARGS=(); fi
-          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
-            test/e2e/suites/framework/help.e2e.ts \
-            test/e2e/suites/config
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
 
 # ════════════════════════════════════════════════════════════════════════════
 # 1-B. framework + output + error-handling (parallel with run/discovery)
@@ -194,16 +196,14 @@ jobs:
           DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
           DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
           DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
+        env:
+          DIFY_E2E_INCLUDE: "test/e2e/suites/framework/global-flags.e2e.ts,test/e2e/suites/output/**/*.e2e.ts,test/e2e/suites/error-handling/**/*.e2e.ts"
         run: |
-          FILES=(
-            test/e2e/suites/framework/global-flags.e2e.ts
-            test/e2e/suites/output/json-yaml-output.e2e.ts
-            test/e2e/suites/output/table-output.e2e.ts
-            test/e2e/suites/error-handling/error-messages.e2e.ts
-            test/e2e/suites/error-handling/exit-codes.e2e.ts
-          )
-          if [ "${{ inputs.test_scope }}" = "smoke" ]; then FILTER_ARGS=(-t "\[P0\]"); else FILTER_ARGS=(); fi
-          pnpm test:e2e -- ${FILTER} "${FILES[@]}"
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
 
 # ════════════════════════════════════════════════════════════════════════════
 # 1-C. Discovery (parallel)
@@ -245,9 +245,14 @@ jobs:
           DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
           DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
           DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
+        env:
+          DIFY_E2E_INCLUDE: "test/e2e/suites/discovery/**/*.e2e.ts"
         run: |
-          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
-            $(find test/e2e/suites/discovery -name '*.e2e.ts' | sort)
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
 
 # ════════════════════════════════════════════════════════════════════════════
 # 1-D. Run suite — 5 files in matrix (parallel)
@@ -310,9 +315,14 @@ jobs:
           DIFY_E2E_HITL_EXTERNAL_APP_ID:      ${{ needs.provision.outputs.hitl_external_app_id }}
           DIFY_E2E_HITL_SINGLE_ACTION_APP_ID: ${{ needs.provision.outputs.hitl_single_action_app_id }}
           DIFY_E2E_HITL_MULTI_NODE_APP_ID:    ${{ needs.provision.outputs.hitl_multi_node_app_id }}
+        env:
+          DIFY_E2E_INCLUDE: "test/e2e/suites/run/${{ matrix.file }}"
         run: |
-          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
-            test/e2e/suites/run/${{ matrix.file }}
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
 
       - name: Upload results on failure
         if: failure()
@@ -360,11 +370,14 @@ jobs:
           DIFY_E2E_WORKSPACE_ID:   ${{ needs.provision.outputs.workspace_id }}
           DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
           DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
+        env:
+          DIFY_E2E_INCLUDE: "test/e2e/suites/auth/login.e2e.ts,test/e2e/suites/auth/status.e2e.ts,test/e2e/suites/auth/whoami.e2e.ts"
         run: |
-          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
-            test/e2e/suites/auth/login.e2e.ts \
-            test/e2e/suites/auth/status.e2e.ts \
-            test/e2e/suites/auth/whoami.e2e.ts
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
 
 # ════════════════════════════════════════════════════════════════════════════
 # 2. DESTRUCTIVE — auth/use + devices + logout + agent (serial, runs LAST)
@@ -438,9 +451,14 @@ jobs:
 
           [ ${#FILES[@]} -eq 0 ] && { echo "Nothing to run."; exit 0; }
 
-          # Serial: fileParallelism is already false in vitest.e2e.config.ts
-          pnpm test:e2e -- "${FILTER_ARGS[@]}" \
-            "${FILES[@]}"
+          # Pass files via DIFY_E2E_INCLUDE (comma-separated) so vitest
+          # config's include list is overridden instead of ANDed.
+          INCLUDE=$(IFS=,; echo "${FILES[*]}")
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            DIFY_E2E_INCLUDE="$INCLUDE" pnpm test:e2e -- -t "\[P0\]"
+          else
+            DIFY_E2E_INCLUDE="$INCLUDE" pnpm test:e2e
+          fi
 
       - name: Upload results on failure
         if: failure()
