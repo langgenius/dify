@@ -61,6 +61,15 @@ def create_mock_document(
     )
 
 
+def test_hybrid_recall_top_k_for_merge_contract():
+    """Hybrid sub-retrievers use a floor so final top_k does not cap recall too low (#35482)."""
+    assert RetrievalService._hybrid_recall_top_k_for_merge(0) == 0
+    assert RetrievalService._hybrid_recall_top_k_for_merge(3) == 50
+    assert RetrievalService._hybrid_recall_top_k_for_merge(8) == 50
+    assert RetrievalService._hybrid_recall_top_k_for_merge(120) == 120
+    assert RetrievalService._hybrid_recall_top_k_for_merge(250) == 200
+
+
 class _ImmediateFuture:
     def __init__(self, exception: Exception | None = None) -> None:
         self._exception = exception
