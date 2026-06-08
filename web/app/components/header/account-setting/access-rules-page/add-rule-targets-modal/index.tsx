@@ -114,6 +114,7 @@ const AddRuleTargetsModalBody = ({
           selectedRoleIds={selectedRoleIds}
           disabledRoleIds={lockedRoleIds}
           onSelectedRolesChange={handleSelectedRolesChange}
+          includeOwner
         />
       )}
       {activeTab === 'members' && (

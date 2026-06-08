@@ -19,6 +19,7 @@ type WorkspaceRoleCheckboxListProps = {
   allowMultipleRoles?: boolean
   disabledRoleIds?: string[]
   onSelectedRolesChange: (selectedRoles: Role[]) => void
+  includeOwner?: boolean
 }
 
 const PAGE_SIZE = 20
@@ -41,6 +42,7 @@ const WorkspaceRoleCheckboxList = ({
   allowMultipleRoles = true,
   disabledRoleIds = [],
   onSelectedRolesChange,
+  includeOwner = false,
 }: WorkspaceRoleCheckboxListProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -59,7 +61,7 @@ const WorkspaceRoleCheckboxList = ({
   } = useWorkspaceRoleList({
     page: 1,
     limit: PAGE_SIZE,
-    include_owner: 1,
+    include_owner: includeOwner ? 1 : 0,
     language,
   })
 

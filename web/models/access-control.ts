@@ -83,7 +83,7 @@ type PaginationParameters = {
 }
 
 export type RoleListRequest = PaginationParameters & {
-  include_owner?: number
+  include_owner?: 1 | 0
   language?: AccessControlTemplateLanguage
 }
 
