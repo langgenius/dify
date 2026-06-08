@@ -4,6 +4,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
+import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -31,7 +32,7 @@ const DatasetDetailTop = ({
           <ToggleButton
             expand={expand}
             handleToggle={onToggle}
-            iconClassName="i-custom-vender-integrations-panel-left"
+            icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
             className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
           />
         )}
@@ -101,7 +102,7 @@ const DatasetDetailTop = ({
         <ToggleButton
           expand={expand}
           handleToggle={onToggle}
-          iconClassName="i-custom-vender-integrations-panel-left"
+          icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
           className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
         />
       )}
