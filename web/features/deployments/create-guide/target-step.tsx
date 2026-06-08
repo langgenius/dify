@@ -102,22 +102,7 @@ function TargetBindingSkeleton() {
   )
 }
 
-function TargetStep({
-  environments,
-  bindingSlots,
-  envVarSlots,
-  selectedEnvironmentId,
-  bindingSelections,
-  envVarValues,
-  isEnvironmentLoading,
-  isEnvironmentError,
-  isBindingLoading,
-  isBindingError,
-  unsupportedDslNodes,
-  onSelectEnvironment,
-  onSelectBinding,
-  onSetEnvVar,
-}: {
+type TargetReviewSectionsProps = {
   environments: EnvironmentOption[]
   bindingSlots: CredentialSlot[]
   envVarSlots: DeploymentEnvVarSlot[]
@@ -132,9 +117,145 @@ function TargetStep({
   onSelectEnvironment: (environmentId: string) => void
   onSelectBinding: (slot: string, value: string) => void
   onSetEnvVar: (key: string, value: EnvVarValueSelection) => void
-}) {
+}
+
+function TargetEnvironmentSection({
+  environments,
+  isEnvironmentError,
+  isEnvironmentLoading,
+  selectedEnvironmentId,
+  onSelectEnvironment,
+}: Pick<TargetReviewSectionsProps, 'environments' | 'isEnvironmentError' | 'isEnvironmentLoading' | 'selectedEnvironmentId' | 'onSelectEnvironment'>) {
   const { t } = useTranslation('deployments')
   const hasEnvironmentOptions = environments.length > 0
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.environment')}</div>
+      {hasEnvironmentOptions
+        ? (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {environments.map(environment => (
+                <EnvironmentOptionRow
+                  key={environment.id}
+                  environment={environment}
+                  selected={environmentMatchesIdentifier(environment, selectedEnvironmentId)}
+                  onSelect={() => onSelectEnvironment(environment.id)}
+                />
+              ))}
+            </div>
+          )
+        : isEnvironmentLoading
+          ? <TargetEnvironmentSkeleton />
+          : (
+              <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-3 system-sm-regular text-text-quaternary">
+                {isEnvironmentError
+                  ? t('createGuide.target.loadEnvironmentsFailed')
+                  : t('createGuide.target.noEnvironmentOptions')}
+              </div>
+            )}
+    </div>
+  )
+}
+
+function TargetBindingSection({
+  bindingSelections,
+  bindingSlots,
+  isBindingError,
+  isBindingLoading,
+  onSelectBinding,
+}: Pick<TargetReviewSectionsProps, 'bindingSelections' | 'bindingSlots' | 'isBindingError' | 'isBindingLoading' | 'onSelectBinding'>) {
+  const { t } = useTranslation('deployments')
+
+  if (isBindingLoading || isBindingError) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
+        <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
+          <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
+          <span className="system-xs-regular text-text-tertiary">{t('createGuide.target.bindingHint')}</span>
+        </div>
+        {isBindingLoading
+          ? <TargetBindingSkeleton />
+          : (
+              <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
+                {t('createGuide.target.loadBindingsFailed')}
+              </div>
+            )}
+      </div>
+    )
+  }
+
+  return (
+    <RuntimeCredentialBindingsPanel
+      slots={bindingSlots}
+      selections={bindingSelections}
+      title={t('createGuide.target.bindings')}
+      hint={t('createGuide.target.bindingHint')}
+      noBindingRequiredLabel={t('createGuide.target.noBindingRequired')}
+      noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
+      selectCredentialLabel={t('createGuide.target.selectCredential')}
+      missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
+      bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
+      onChange={onSelectBinding}
+      listScrollable={false}
+      className="border-components-option-card-option-border bg-components-option-card-option-bg"
+    />
+  )
+}
+
+function TargetEnvVarSection({
+  envVarSlots,
+  envVarValues,
+  isBindingError,
+  isBindingLoading,
+  onSetEnvVar,
+}: Pick<TargetReviewSectionsProps, 'envVarSlots' | 'envVarValues' | 'isBindingError' | 'isBindingLoading' | 'onSetEnvVar'>) {
+  const { t } = useTranslation('deployments')
+
+  if (isBindingLoading || isBindingError)
+    return null
+
+  return (
+    <EnvVarBindingsPanel
+      slots={envVarSlots}
+      values={envVarValues}
+      title={t('createGuide.target.envVars')}
+      hint={t('createGuide.target.envVarHint')}
+      envVarPlaceholder={t('createGuide.target.envVarPlaceholder')}
+      literalSourceLabel={t('createGuide.target.envVarSource.literal')}
+      defaultSourceLabel={t('createGuide.target.envVarSource.default')}
+      lastDeploymentSourceLabel={t('createGuide.target.envVarSource.lastDeployment')}
+      valueTypeLabels={{
+        string: t('createGuide.target.envVarType.string'),
+        number: t('createGuide.target.envVarType.number'),
+        secret: t('createGuide.target.envVarType.secret'),
+      }}
+      sourceAriaLabel={key => t('createGuide.target.envVarSource.ariaLabel', { key })}
+      envVarCountLabel={t('createGuide.target.envVarCount', { count: envVarSlots.length })}
+      onChange={onSetEnvVar}
+      listScrollable={false}
+      className="border-components-option-card-option-border bg-components-option-card-option-bg"
+    />
+  )
+}
+
+export function TargetReviewSections({
+  environments,
+  bindingSlots,
+  envVarSlots,
+  selectedEnvironmentId,
+  bindingSelections,
+  envVarValues,
+  isEnvironmentLoading,
+  isEnvironmentError,
+  isBindingLoading,
+  isBindingError,
+  unsupportedDslNodes,
+  onSelectEnvironment,
+  onSelectBinding,
+  onSetEnvVar,
+}: TargetReviewSectionsProps) {
+  const { t } = useTranslation('deployments')
   const hasUnsupportedDslNodes = unsupportedDslNodes.length > 0
   const shouldRenderBindingSection = !(isBindingError && hasUnsupportedDslNodes)
 
@@ -145,140 +266,33 @@ function TargetStep({
       hideHeader
     >
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3">
-          <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.environment')}</div>
-          {hasEnvironmentOptions
-            ? (
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {environments.map(environment => (
-                    <EnvironmentOptionRow
-                      key={environment.id}
-                      environment={environment}
-                      selected={environmentMatchesIdentifier(environment, selectedEnvironmentId)}
-                      onSelect={() => onSelectEnvironment(environment.id)}
-                    />
-                  ))}
-                </div>
-              )
-            : isEnvironmentLoading
-              ? <TargetEnvironmentSkeleton />
-              : (
-                  <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                    {isEnvironmentError
-                      ? t('createGuide.target.loadEnvironmentsFailed')
-                      : t('createGuide.target.noEnvironmentOptions')}
-                  </div>
-                )}
-        </div>
+        <TargetEnvironmentSection
+          environments={environments}
+          isEnvironmentError={isEnvironmentError}
+          isEnvironmentLoading={isEnvironmentLoading}
+          selectedEnvironmentId={selectedEnvironmentId}
+          onSelectEnvironment={onSelectEnvironment}
+        />
         {hasUnsupportedDslNodes && (
           <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />
         )}
-        {shouldRenderBindingSection && (isBindingLoading || isBindingError)
-          ? (
-              <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
-                <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
-                  <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
-                  <span className="system-xs-regular text-text-tertiary">{t('createGuide.target.bindingHint')}</span>
-                </div>
-                {isBindingLoading
-                  ? <TargetBindingSkeleton />
-                  : (
-                      <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                        {t('createGuide.target.loadBindingsFailed')}
-                      </div>
-                    )}
-              </div>
-            )
-          : shouldRenderBindingSection && (
-            <RuntimeCredentialBindingsPanel
-              slots={bindingSlots}
-              selections={bindingSelections}
-              title={t('createGuide.target.bindings')}
-              hint={t('createGuide.target.bindingHint')}
-              noBindingRequiredLabel={t('createGuide.target.noBindingRequired')}
-              noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
-              selectCredentialLabel={t('createGuide.target.selectCredential')}
-              missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
-              bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
-              onChange={onSelectBinding}
-              listScrollable={false}
-              className="border-components-option-card-option-border bg-components-option-card-option-bg"
-            />
-          )}
-        {!isBindingLoading && !isBindingError && (
-          <EnvVarBindingsPanel
-            slots={envVarSlots}
-            values={envVarValues}
-            title={t('createGuide.target.envVars')}
-            hint={t('createGuide.target.envVarHint')}
-            envVarPlaceholder={t('createGuide.target.envVarPlaceholder')}
-            literalSourceLabel={t('createGuide.target.envVarSource.literal')}
-            defaultSourceLabel={t('createGuide.target.envVarSource.default')}
-            lastDeploymentSourceLabel={t('createGuide.target.envVarSource.lastDeployment')}
-            valueTypeLabels={{
-              string: t('createGuide.target.envVarType.string'),
-              number: t('createGuide.target.envVarType.number'),
-              secret: t('createGuide.target.envVarType.secret'),
-            }}
-            sourceAriaLabel={key => t('createGuide.target.envVarSource.ariaLabel', { key })}
-            envVarCountLabel={t('createGuide.target.envVarCount', { count: envVarSlots.length })}
-            onChange={onSetEnvVar}
-            listScrollable={false}
-            className="border-components-option-card-option-border bg-components-option-card-option-bg"
+        {shouldRenderBindingSection && (
+          <TargetBindingSection
+            bindingSelections={bindingSelections}
+            bindingSlots={bindingSlots}
+            isBindingError={isBindingError}
+            isBindingLoading={isBindingLoading}
+            onSelectBinding={onSelectBinding}
           />
         )}
+        <TargetEnvVarSection
+          envVarSlots={envVarSlots}
+          envVarValues={envVarValues}
+          isBindingError={isBindingError}
+          isBindingLoading={isBindingLoading}
+          onSetEnvVar={onSetEnvVar}
+        />
       </div>
     </StepShell>
-  )
-}
-
-export function TargetReviewSections({
-  bindingSelections,
-  bindingSlots,
-  envVarSlots,
-  envVarValues,
-  environments,
-  isBindingError,
-  isBindingLoading,
-  isEnvironmentError,
-  isEnvironmentLoading,
-  onSelectBinding,
-  onSelectEnvironment,
-  onSetEnvVar,
-  selectedEnvironmentId,
-  unsupportedDslNodes,
-}: {
-  bindingSelections: BindingSelections
-  bindingSlots: CredentialSlot[]
-  envVarSlots: DeploymentEnvVarSlot[]
-  envVarValues: EnvVarValues
-  environments: EnvironmentOption[]
-  isBindingError: boolean
-  isBindingLoading: boolean
-  isEnvironmentError: boolean
-  isEnvironmentLoading: boolean
-  onSelectBinding: (slot: string, value: string) => void
-  onSelectEnvironment: (environmentId: string) => void
-  onSetEnvVar: (key: string, value: EnvVarValueSelection) => void
-  selectedEnvironmentId: string
-  unsupportedDslNodes: UnsupportedDslNode[]
-}) {
-  return (
-    <TargetStep
-      environments={environments}
-      bindingSlots={bindingSlots}
-      envVarSlots={envVarSlots}
-      selectedEnvironmentId={selectedEnvironmentId}
-      bindingSelections={bindingSelections}
-      envVarValues={envVarValues}
-      isEnvironmentLoading={isEnvironmentLoading}
-      isEnvironmentError={isEnvironmentError}
-      isBindingLoading={isBindingLoading}
-      isBindingError={isBindingError}
-      unsupportedDslNodes={unsupportedDslNodes}
-      onSelectEnvironment={onSelectEnvironment}
-      onSelectBinding={onSelectBinding}
-      onSetEnvVar={onSetEnvVar}
-    />
   )
 }

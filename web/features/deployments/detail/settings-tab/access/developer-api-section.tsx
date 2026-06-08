@@ -28,24 +28,7 @@ type CreatedApiToken = {
 
 const createdApiTokenAtom = atom<CreatedApiToken | undefined>(undefined)
 
-function useDeveloperApiStatus(appInstanceId: string) {
-  const developerApiSettingsQuery = useQuery(consoleQuery.enterprise.accessService.getDeveloperApiSettings.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
-  const accessChannels = developerApiSettingsQuery.data?.accessChannels
-  const apiEnabled = accessChannels?.developerApiEnabled ?? false
-
-  return {
-    apiEnabled,
-    accessChannels,
-    isLoading: developerApiSettingsQuery.isLoading,
-    isError: developerApiSettingsQuery.isError,
-  }
-}
-
-function useDeveloperApiResources(appInstanceId: string) {
+function useDeveloperApiSettings(appInstanceId: string) {
   const developerApiSettingsQuery = useQuery(consoleQuery.enterprise.accessService.getDeveloperApiSettings.queryOptions({
     input: {
       params: { appInstanceId },
@@ -59,6 +42,7 @@ function useDeveloperApiResources(appInstanceId: string) {
 
   return {
     apiEnabled,
+    accessChannels,
     apiUrl,
     environments,
     apiKeys,
@@ -103,7 +87,7 @@ export function DeveloperApiHeaderSwitch({ appInstanceId }: {
     accessChannels,
     isLoading,
     isError,
-  } = useDeveloperApiStatus(appInstanceId)
+  } = useDeveloperApiSettings(appInstanceId)
 
   if (isLoading)
     return <SwitchSkeleton />
@@ -132,7 +116,7 @@ export function DeveloperApiHeaderActions({ appInstanceId }: {
     apiKeys,
     environments,
     isLoading,
-  } = useDeveloperApiResources(appInstanceId)
+  } = useDeveloperApiSettings(appInstanceId)
 
   if (isLoading) {
     return <SkeletonRectangle className="my-0 h-8 w-32 animate-pulse rounded-lg" />
@@ -172,6 +156,38 @@ function ApiKeyListSection({ apiKeys, environments }: {
   )
 }
 
+function DeveloperApiEndpoint({ appInstanceId, apiUrl }: {
+  appInstanceId: string
+  apiUrl: string
+}) {
+  const { t } = useTranslation('deployments')
+  const [apiDocsOpen, setApiDocsOpen] = useState(false)
+
+  return (
+    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+      <CopyPill
+        label={t('access.api.endpoint')}
+        value={apiUrl}
+        className="min-w-0 flex-1"
+      />
+      <Button
+        variant="secondary"
+        className="shrink-0 gap-1.5"
+        onClick={() => setApiDocsOpen(true)}
+      >
+        <span className="i-ri-file-list-3-line size-3.5" />
+        {t('access.api.docs')}
+      </Button>
+      <DeveloperApiDocsDrawer
+        open={apiDocsOpen}
+        appInstanceId={appInstanceId}
+        apiBaseUrl={apiUrl}
+        onOpenChange={setApiDocsOpen}
+      />
+    </div>
+  )
+}
+
 export function DeveloperApiSection({
   appInstanceId,
 }: {
@@ -179,7 +195,6 @@ export function DeveloperApiSection({
 }) {
   const { t } = useTranslation('deployments')
   const [createdApiToken, setCreatedApiToken] = useAtom(createdApiTokenAtom)
-  const [apiDocsOpen, setApiDocsOpen] = useState(false)
   const {
     apiEnabled,
     apiUrl,
@@ -187,101 +202,84 @@ export function DeveloperApiSection({
     environments,
     isLoading,
     isError,
-  } = useDeveloperApiResources(appInstanceId)
+  } = useDeveloperApiSettings(appInstanceId)
   const visibleCreatedApiToken = createdApiToken?.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined
 
+  if (isLoading)
+    return <DeveloperApiSkeleton />
+
+  if (isError)
+    return <SectionState>{t('common.loadFailed')}</SectionState>
+
+  if (!apiEnabled) {
+    return (
+      <DetailEmptyState
+        variant="section"
+        icon="i-ri-toggle-line"
+        title={t('access.api.disabled')}
+        description={t('access.api.disabledHint')}
+      />
+    )
+  }
+
   return (
-    <>
-      {isLoading
-        ? <DeveloperApiSkeleton />
-        : isError
-          ? <SectionState>{t('common.loadFailed')}</SectionState>
-          : apiEnabled
-            ? (
-                <div className="flex flex-col gap-4">
-                  {apiUrl && (
-                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                      <CopyPill
-                        label={t('access.api.endpoint')}
-                        value={apiUrl}
-                        className="min-w-0 flex-1"
-                      />
-                      <Button
-                        variant="secondary"
-                        className="shrink-0 gap-1.5"
-                        onClick={() => setApiDocsOpen(true)}
-                      >
-                        <span className="i-ri-file-list-3-line size-3.5" />
-                        {t('access.api.docs')}
-                      </Button>
-                      <DeveloperApiDocsDrawer
-                        open={apiDocsOpen}
-                        appInstanceId={appInstanceId}
-                        apiBaseUrl={apiUrl}
-                        onOpenChange={setApiDocsOpen}
-                      />
-                    </div>
-                  )}
-                  {environments.length > 0
-                    ? (
-                        <ApiKeyGenerateMenu
-                          appInstanceId={appInstanceId}
-                          environments={environments}
-                          triggerVariant="primary"
-                          onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
-                        >
-                          {({ trigger }) => apiKeys.length === 0
-                            ? (
-                                <DetailEmptyState
-                                  variant="section"
-                                  icon="i-ri-key-2-line"
-                                  title={t('access.api.noKeysTitle')}
-                                  description={t('access.api.noKeys')}
-                                  action={trigger}
-                                />
-                              )
-                            : (
-                                <ApiKeyListSection
-                                  apiKeys={apiKeys}
-                                  environments={environments}
-                                />
-                              )}
-                        </ApiKeyGenerateMenu>
-                      )
-                    : apiKeys.length === 0
-                      ? (
-                          <DetailEmptyState
-                            variant="section"
-                            icon="i-ri-rocket-line"
-                            title={t('access.api.emptyTitle')}
-                            description={t('access.api.empty')}
-                          />
-                        )
-                      : (
-                          <ApiKeyListSection
-                            apiKeys={apiKeys}
-                            environments={environments}
-                          />
-                        )}
-                  {visibleCreatedApiToken && (
-                    <CreatedApiTokenDialog
-                      token={visibleCreatedApiToken}
-                      apiUrl={apiUrl}
-                      onDismiss={() => setCreatedApiToken(undefined)}
+    <div className="flex flex-col gap-4">
+      {apiUrl && (
+        <DeveloperApiEndpoint
+          appInstanceId={appInstanceId}
+          apiUrl={apiUrl}
+        />
+      )}
+      {environments.length > 0
+        ? (
+            <ApiKeyGenerateMenu
+              appInstanceId={appInstanceId}
+              environments={environments}
+              triggerVariant="primary"
+              onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
+            >
+              {({ trigger }) => apiKeys.length === 0
+                ? (
+                    <DetailEmptyState
+                      variant="section"
+                      icon="i-ri-key-2-line"
+                      title={t('access.api.noKeysTitle')}
+                      description={t('access.api.noKeys')}
+                      action={trigger}
+                    />
+                  )
+                : (
+                    <ApiKeyListSection
+                      apiKeys={apiKeys}
+                      environments={environments}
                     />
                   )}
-                </div>
-              )
-            : (
-                <DetailEmptyState
-                  variant="section"
-                  icon="i-ri-toggle-line"
-                  title={t('access.api.disabled')}
-                  description={t('access.api.disabledHint')}
-                />
-              )}
-    </>
+            </ApiKeyGenerateMenu>
+          )
+        : apiKeys.length === 0
+          ? (
+              <DetailEmptyState
+                variant="section"
+                icon="i-ri-rocket-line"
+                title={t('access.api.emptyTitle')}
+                description={t('access.api.empty')}
+              />
+            )
+          : (
+              <ApiKeyListSection
+                apiKeys={apiKeys}
+                environments={environments}
+              />
+            )}
+      {visibleCreatedApiToken && (
+        <CreatedApiTokenDialog
+          token={visibleCreatedApiToken}
+          apiUrl={apiUrl}
+          onDismiss={() => setCreatedApiToken(undefined)}
+        />
+      )}
+    </div>
   )
 }
