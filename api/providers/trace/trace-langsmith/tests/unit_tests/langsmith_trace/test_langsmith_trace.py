@@ -227,6 +227,66 @@ def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
     assert call_args[4].run_type == LangSmithRunType.retriever
 
 
+def test_workflow_trace_formats_root_message_for_langsmith_threads(trace_instance, monkeypatch: pytest.MonkeyPatch):
+    workflow_data = MagicMock()
+    workflow_data.created_at = _dt()
+    workflow_data.finished_at = _dt() + timedelta(seconds=1)
+
+    trace_info = WorkflowTraceInfo(
+        tenant_id="tenant-1",
+        workflow_id="wf-1",
+        workflow_run_id="run-1",
+        workflow_run_inputs={
+            "query": "hello from user",
+            "topic": "billing",
+            "sys.query": "hello from system query",
+            "sys.app_id": "app-1",
+            "sys.workflow_run_id": "run-1",
+        },
+        workflow_run_outputs={"answer": "hello from assistant"},
+        workflow_run_status="succeeded",
+        workflow_run_version="1.0",
+        workflow_run_elapsed_time=1.0,
+        total_tokens=10,
+        file_list=[],
+        query="hello from user",
+        message_id="msg-1",
+        conversation_id="conv-1",
+        start_time=_dt(),
+        end_time=_dt() + timedelta(seconds=1),
+        trace_id="trace-1",
+        metadata={"app_id": "app-1"},
+        workflow_app_log_id="log-1",
+        error="",
+        workflow_data=workflow_data,
+    )
+
+    mock_session = MagicMock()
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.sessionmaker", lambda bind: lambda: mock_session)
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.db", MagicMock(engine="engine"))
+
+    repo = MagicMock()
+    repo.get_by_workflow_execution.return_value = []
+    mock_factory = MagicMock()
+    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
+
+    trace_instance.add_run = MagicMock()
+
+    trace_instance.workflow_trace(trace_info)
+
+    root_message_run = trace_instance.add_run.call_args_list[0][0][0]
+    workflow_run = trace_instance.add_run.call_args_list[1][0][0]
+
+    assert root_message_run.name == TraceTaskName.MESSAGE_TRACE
+    assert root_message_run.inputs["messages"] == [{"role": "user", "content": "hello from user"}]
+    assert root_message_run.inputs["workflow_inputs"] == {"topic": "billing"}
+    assert "sys.app_id" not in root_message_run.inputs
+    assert "query" not in root_message_run.inputs["workflow_inputs"]
+    assert workflow_run.inputs["sys.app_id"] == "app-1"
+
+
 def test_workflow_trace_no_start_time(trace_instance, monkeypatch: pytest.MonkeyPatch):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
