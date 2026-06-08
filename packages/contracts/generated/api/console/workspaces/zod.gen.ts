@@ -353,37 +353,6 @@ export const zMcpProviderDeletePayload = z.object({
 })
 
 /**
- * MCPProviderCreatePayload
- */
-export const zMcpProviderCreatePayload = z.object({
-  authentication: z.record(z.string(), z.unknown()).nullish(),
-  configuration: z.record(z.string(), z.unknown()).nullish(),
-  headers: z.record(z.string(), z.unknown()).nullish(),
-  icon: z.string(),
-  icon_background: z.string().optional().default(''),
-  icon_type: z.string(),
-  name: z.string(),
-  server_identifier: z.string(),
-  server_url: z.string(),
-})
-
-/**
- * MCPProviderUpdatePayload
- */
-export const zMcpProviderUpdatePayload = z.object({
-  authentication: z.record(z.string(), z.unknown()).nullish(),
-  configuration: z.record(z.string(), z.unknown()).nullish(),
-  headers: z.record(z.string(), z.unknown()).nullish(),
-  icon: z.string(),
-  icon_background: z.string().optional().default(''),
-  icon_type: z.string(),
-  name: z.string(),
-  provider_id: z.string(),
-  server_identifier: z.string(),
-  server_url: z.string(),
-})
-
-/**
  * MCPAuthPayload
  */
 export const zMcpAuthPayload = z.object({
@@ -840,6 +809,46 @@ export const zBuiltinToolAddPayload = z.object({
   name: z.string().max(30).nullish(),
   type: zCredentialType,
   visibility: z.string().nullish(),
+})
+
+/**
+ * IdentityMode
+ *
+ * How Dify forwards the end-user's identity to an MCP server.
+ */
+export const zIdentityMode = z.enum(['idp_token', 'off'])
+
+/**
+ * MCPProviderCreatePayload
+ */
+export const zMcpProviderCreatePayload = z.object({
+  authentication: z.record(z.string(), z.unknown()).nullish(),
+  configuration: z.record(z.string(), z.unknown()).nullish(),
+  headers: z.record(z.string(), z.unknown()).nullish(),
+  icon: z.string(),
+  icon_background: z.string().optional().default(''),
+  icon_type: z.string(),
+  identity_mode: zIdentityMode.optional(),
+  name: z.string(),
+  server_identifier: z.string(),
+  server_url: z.string(),
+})
+
+/**
+ * MCPProviderUpdatePayload
+ */
+export const zMcpProviderUpdatePayload = z.object({
+  authentication: z.record(z.string(), z.unknown()).nullish(),
+  configuration: z.record(z.string(), z.unknown()).nullish(),
+  headers: z.record(z.string(), z.unknown()).nullish(),
+  icon: z.string(),
+  icon_background: z.string().optional().default(''),
+  icon_type: z.string(),
+  identity_mode: zIdentityMode.optional(),
+  name: z.string(),
+  provider_id: z.string(),
+  server_identifier: z.string(),
+  server_url: z.string(),
 })
 
 /**

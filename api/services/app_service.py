@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast, override
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
@@ -369,6 +369,7 @@ class AppService:
                     self.__dict__.update(app.__dict__)
 
                 @property
+                @override
                 def app_model_config(self):
                     return model_config
 

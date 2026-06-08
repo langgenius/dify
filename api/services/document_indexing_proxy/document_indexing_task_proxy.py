@@ -8,5 +8,5 @@ class DocumentIndexingTaskProxy(BatchDocumentIndexingProxy):
     """Proxy for document indexing tasks."""
 
     QUEUE_NAME: ClassVar[str] = "document_indexing"
-    NORMAL_TASK_FUNC = normal_document_indexing_task
-    PRIORITY_TASK_FUNC = priority_document_indexing_task
+    NORMAL_TASK_FUNC = normal_document_indexing_task  # pyrefly: ignore[missing-override-decorator]
+    PRIORITY_TASK_FUNC = priority_document_indexing_task  # pyrefly: ignore[missing-override-decorator]
