@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from flask import Flask
 
@@ -29,8 +29,8 @@ class TestBannerApi:
         session = MagicMock()
         session.scalars.return_value.all.return_value = [banner]
 
-        with app.test_request_context("/?language=fr-FR"), patch.object(banner_module.db, "session", session):
-            result = method(api)
+        with app.test_request_context("/?language=fr-FR"):
+            result = method(api, session)
 
         assert result == [
             {
@@ -64,8 +64,8 @@ class TestBannerApi:
         session = MagicMock()
         session.scalars.return_value = scalars_result
 
-        with app.test_request_context("/?language=es-ES"), patch.object(banner_module.db, "session", session):
-            result = method(api)
+        with app.test_request_context("/?language=es-ES"):
+            result = method(api, session)
 
         assert result == [
             {
@@ -85,7 +85,7 @@ class TestBannerApi:
         session = MagicMock()
         session.scalars.return_value.all.return_value = []
 
-        with app.test_request_context("/"), patch.object(banner_module.db, "session", session):
-            result = method(api)
+        with app.test_request_context("/"):
+            result = method(api, session)
 
         assert result == []

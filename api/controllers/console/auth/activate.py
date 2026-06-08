@@ -1,12 +1,13 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 
 from constants.languages import supported_language
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
+from controllers.console.app.wraps import with_session
 from controllers.console.error import AlreadyActivateError
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from models import AccountStatus
@@ -112,7 +113,8 @@ class ActivateApi(Resource):
         console_ns.models[ActivationResponse.__name__],
     )
     @console_ns.response(400, "Already activated or invalid token")
-    def post(self):
+    @with_session(write=True)
+    def post(self, session: Session):
         args = ActivatePayload.model_validate(console_ns.payload)
 
         normalized_request_email = args.email.lower() if args.email else None
@@ -130,6 +132,6 @@ class ActivateApi(Resource):
         account.interface_theme = "light"
         account.status = AccountStatus.ACTIVE
         account.initialized_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         return {"result": "success"}

@@ -1,10 +1,11 @@
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from controllers.console import api
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.wraps import explore_banner_enabled
-from extensions.ext_database import db
 from models.enums import BannerStatus
 from models.model import ExporleBanner
 
@@ -13,7 +14,8 @@ class BannerApi(Resource):
     """Resource for banner list."""
 
     @explore_banner_enabled
-    def get(self):
+    @with_session(write=False)
+    def get(self, session: Session):
         """Get banner list."""
         language = request.args.get("language", "en-US")
 
@@ -21,13 +23,13 @@ class BannerApi(Resource):
         base_query = select(ExporleBanner).where(ExporleBanner.status == BannerStatus.ENABLED)
 
         # Try to get banners in the requested language
-        banners = db.session.scalars(
+        banners = session.scalars(
             base_query.where(ExporleBanner.language == language).order_by(ExporleBanner.sort)
         ).all()
 
         # Fallback to en-US if no banners found and language is not en-US
         if not banners and language != "en-US":
-            banners = db.session.scalars(
+            banners = session.scalars(
                 base_query.where(ExporleBanner.language == "en-US").order_by(ExporleBanner.sort)
             ).all()
         # Convert banners to serializable format
