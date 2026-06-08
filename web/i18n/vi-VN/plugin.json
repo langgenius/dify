@@ -25,7 +25,7 @@
   "auth.oauthClient": "Khách hàng OAuth",
   "auth.oauthClientSettings": "Cài đặt khách hàng OAuth",
   "auth.onlyAtCreationHint": "Không thể chọn lại sau khi chuyển đổi",
-  "auth.onlyAtCreationHintTooltip": "Được cấu trúc bởi các thứnh viên khác · Không thể chọn lại sau khi chuyển đổi.",
+  "auth.onlyAtCreationHintTooltip": "Được cấu hình bởi các thành viên khác. Không thể chọn lại sau khi chuyển đổi.",
   "auth.personal": "Riêng tư",
   "auth.saveAndAuth": "Lưu và Xác nhận",
   "auth.saveOnly": "Chỉ lưu lại",
