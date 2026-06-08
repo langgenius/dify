@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,7 +35,6 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   onDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
-  const queryClient = useQueryClient()
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const [open, setOpen] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -93,53 +92,6 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
     }
   }
 
-  function invalidateReleaseData() {
-    return Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.releaseService.listReleases.key({
-          type: 'query',
-          input: { params: { appInstanceId } },
-        }),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.releaseService.listReleaseSummaries.key({
-          type: 'query',
-          input: { params: { appInstanceId } },
-        }),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.releaseService.getReleaseDeploymentView.key({
-          type: 'query',
-          input: { params: { appInstanceId } },
-        }),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
-          type: 'query',
-          input: { params: { appInstanceId } },
-        }),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
-          type: 'query',
-          input: { params: { appInstanceId } },
-        }),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.key({
-          type: 'query',
-          input: { params: { appInstanceId } },
-        }),
-      }),
-    ])
-  }
-
   function handleDeleteRelease() {
     if (deleteActionDisabled)
       return
@@ -151,14 +103,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
         },
       },
       {
-        onSuccess: async () => {
-          await invalidateReleaseData()
-          queryClient.removeQueries({
-            queryKey: consoleQuery.enterprise.releaseService.getRelease.key({
-              type: 'query',
-              input: { params: { releaseId } },
-            }),
-          })
+        onSuccess: () => {
           setShowDeleteConfirm(false)
           toast.success(t('versions.deleteSuccess', { name: releaseLabel(targetRelease) }))
           onDeleted?.()
@@ -276,7 +221,6 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
       </DropdownMenu>
 
       <EditReleaseDialog
-        appInstanceId={appInstanceId}
         release={targetRelease}
         open={showEditDialog}
         onOpenChange={setShowEditDialog}

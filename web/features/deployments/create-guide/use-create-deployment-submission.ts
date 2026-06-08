@@ -14,7 +14,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/client'
 import { isWorkflowApp } from '../app-mode'
 import {
   hasMissingRequiredEnvVarValue,
@@ -85,6 +85,9 @@ export function useCreateDeploymentSubmission({
 }) {
   const { t } = useTranslation('deployments')
   const router = useRouter()
+  const createAppInstance = useMutation(consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions())
+  const createReleaseFromDsl = useMutation(consoleQuery.enterprise.releaseService.createReleaseFromDsl.mutationOptions())
+  const createReleaseFromSourceApp = useMutation(consoleQuery.enterprise.releaseService.createReleaseFromSourceApp.mutationOptions())
   const createInitialDeployment = useMutation(consoleQuery.enterprise.deploymentService.deploy.mutationOptions())
   const [isSkippingReleaseOnly, setIsSkippingReleaseOnly] = useState(false)
   const isDeploying = isSkippingReleaseOnly || createInitialDeployment.isPending
@@ -93,7 +96,7 @@ export function useCreateDeploymentSubmission({
     setIsSkippingReleaseOnly(true)
 
     try {
-      const createdAppInstance = await consoleClient.enterprise.appInstanceService.createAppInstance({
+      const createdAppInstance = await createAppInstance.mutateAsync({
         body: {
           name: submittedInstanceName,
           description: instanceDescription.trim() || undefined,
@@ -104,7 +107,7 @@ export function useCreateDeploymentSubmission({
         throw new Error('Create app instance did not return an app instance.')
 
       const createdRelease = method === 'importDsl'
-        ? await consoleClient.enterprise.releaseService.createReleaseFromDsl({
+        ? await createReleaseFromDsl.mutateAsync({
             body: {
               appInstanceId,
               dsl: encodedDslContent,
@@ -114,7 +117,7 @@ export function useCreateDeploymentSubmission({
             },
           })
         : effectiveSelectedApp?.id
-          ? await consoleClient.enterprise.releaseService.createReleaseFromSourceApp({
+          ? await createReleaseFromSourceApp.mutateAsync({
               body: {
                 appInstanceId,
                 sourceAppId: effectiveSelectedApp.id,

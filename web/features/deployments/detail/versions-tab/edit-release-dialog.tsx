@@ -13,10 +13,10 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/client'
 import { releaseLabel } from '../../release'
 
 type ReleaseWithId = Release & {
@@ -27,8 +27,6 @@ type EditReleaseFormValues = {
   name: string
   description: string
 }
-
-type UpdateReleaseInput = Parameters<typeof consoleClient.enterprise.releaseService.updateRelease>[0]
 
 function EditReleaseForm({
   release,
@@ -125,77 +123,16 @@ function EditReleaseForm({
 }
 
 export function EditReleaseDialog({
-  appInstanceId,
   release,
   open,
   onOpenChange,
 }: {
-  appInstanceId: string
   release: ReleaseWithId
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('deployments')
-  const queryClient = useQueryClient()
-  const updateRelease = useMutation({
-    mutationFn: (variables: UpdateReleaseInput) =>
-      consoleClient.enterprise.releaseService.updateRelease(variables),
-    onSuccess: async (data, variables) => {
-      const releaseId = variables.params.releaseId
-
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.enterprise.releaseService.listReleases.key({
-            type: 'query',
-            input: { params: { appInstanceId } },
-          }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.enterprise.releaseService.listReleaseSummaries.key({
-            type: 'query',
-            input: { params: { appInstanceId } },
-          }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.enterprise.releaseService.getReleaseDeploymentView.key({
-            type: 'query',
-            input: { params: { appInstanceId } },
-          }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.enterprise.releaseService.getRelease.key({
-            type: 'query',
-            input: { params: { releaseId } },
-          }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
-            type: 'query',
-            input: { params: { appInstanceId } },
-          }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
-            type: 'query',
-            input: { params: { appInstanceId } },
-          }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
-        }),
-      ])
-
-      const updatedName = data.release?.name || variables.body.name || releaseLabel(release)
-      toast.success(t('versions.editSuccess', { name: updatedName }))
-      onOpenChange(false)
-    },
-    onError: () => {
-      toast.error(t('versions.editFailed'))
-    },
-  })
+  const updateRelease = useMutation(consoleQuery.enterprise.releaseService.updateRelease.mutationOptions())
   const formKey = `${release.id}-${release.name ?? ''}-${release.description ?? ''}`
 
   function handleOpenChange(nextOpen: boolean) {
@@ -205,16 +142,28 @@ export function EditReleaseDialog({
   }
 
   function handleSubmit(values: EditReleaseFormValues) {
-    updateRelease.mutate({
-      params: {
-        releaseId: release.id,
+    updateRelease.mutate(
+      {
+        params: {
+          releaseId: release.id,
+        },
+        body: {
+          releaseId: release.id,
+          name: values.name,
+          description: values.description,
+        },
       },
-      body: {
-        releaseId: release.id,
-        name: values.name,
-        description: values.description,
+      {
+        onSuccess: (data) => {
+          const updatedName = data.release?.name || values.name || releaseLabel(release)
+          toast.success(t('versions.editSuccess', { name: updatedName }))
+          onOpenChange(false)
+        },
+        onError: () => {
+          toast.error(t('versions.editFailed'))
+        },
       },
-    })
+    )
   }
 
   return (

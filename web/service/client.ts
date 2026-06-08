@@ -1,4 +1,5 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { Release } from '@dify/contracts/enterprise/types.gen'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils } from '@orpc/tanstack-query'
@@ -123,6 +124,14 @@ type AppDeployInvalidationOptions = {
 
 type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>>>
 
+type ReleaseListResponse = {
+  data?: Release[]
+}
+
+type ReleaseResponse = {
+  release?: Release
+}
+
 const defaultAppDeployInvalidationOptions = {
   appInstances: true,
   appInstanceSummaries: true,
@@ -181,6 +190,37 @@ function releaseDeploymentViewQueryKey(query: ConsoleQueryUtils, appInstanceId: 
     type: 'query',
     input: { params: { appInstanceId } },
   })
+}
+
+function releaseQueryKey(query: ConsoleQueryUtils, releaseId: string) {
+  return query.enterprise.releaseService.getRelease.key({
+    type: 'query',
+    input: { params: { releaseId } },
+  })
+}
+
+function cachedReleaseAppInstanceId(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  releaseId: string,
+) {
+  const listQueries = client.getQueriesData<ReleaseListResponse>({
+    queryKey: query.enterprise.releaseService.listReleases.key({ type: 'query' }),
+  })
+  for (const [, data] of listQueries) {
+    const appInstanceId = data?.data?.find(release => release.id === releaseId)?.appInstanceId
+    if (appInstanceId)
+      return appInstanceId
+  }
+
+  const releaseQueries = client.getQueriesData<ReleaseResponse>({
+    queryKey: query.enterprise.releaseService.getRelease.key({ type: 'query' }),
+  })
+  for (const [, data] of releaseQueries) {
+    const release = data?.release
+    if (release?.id === releaseId && release.appInstanceId)
+      return release.appInstanceId
+  }
 }
 
 function releaseContentFromDslQueryKey(query: ConsoleQueryUtils, appInstanceId: string, dsl: string) {
@@ -294,6 +334,46 @@ function removeAppDeployQueries(query: ConsoleQueryUtils, client: QueryClient, a
   ]
 
   queryKeys.forEach(queryKey => client.removeQueries({ queryKey }))
+}
+
+async function invalidateReleaseMutationQueries(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  releaseId: string,
+  appInstanceId?: string,
+  options: {
+    removeRelease?: boolean
+  } = {},
+) {
+  const releaseDetailQueryKey = releaseQueryKey(query, releaseId)
+  if (options.removeRelease) {
+    client.removeQueries({
+      queryKey: releaseDetailQueryKey,
+    })
+  }
+  else {
+    await client.invalidateQueries({
+      queryKey: releaseDetailQueryKey,
+    })
+  }
+
+  if (appInstanceId) {
+    return invalidateAppDeployQueries(query, client, appInstanceId, {
+      accessChannels: false,
+      accessSettings: false,
+      developerApiSettings: false,
+    })
+  }
+
+  return invalidateQueryKeys(client, [
+    query.enterprise.appInstanceService.listAppInstances.key(),
+    query.enterprise.appInstanceService.listAppInstanceSummaries.key(),
+    query.enterprise.releaseService.listReleases.key({ type: 'query' }),
+    query.enterprise.releaseService.listReleaseSummaries.key({ type: 'query' }),
+    query.enterprise.releaseService.getReleaseDeploymentView.key({ type: 'query' }),
+    query.enterprise.appInstanceService.getAppInstance.key({ type: 'query' }),
+    query.enterprise.appInstanceService.getAppInstanceOverview.key({ type: 'query' }),
+  ])
 }
 
 const consoleLink = new OpenAPILink(consoleRouterContract, {
@@ -534,6 +614,29 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                   queryKey: releaseContentFromSourceAppQueryKey(consoleQuery, appInstanceId, sourceAppId),
                 }),
               ])
+            },
+          },
+        },
+        deleteRelease: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const releaseId = variables.params.releaseId
+              const appInstanceId = cachedReleaseAppInstanceId(consoleQuery, context.client, releaseId)
+
+              return invalidateReleaseMutationQueries(consoleQuery, context.client, releaseId, appInstanceId, {
+                removeRelease: true,
+              })
+            },
+          },
+        },
+        updateRelease: {
+          mutationOptions: {
+            onSuccess: (data, variables, _result, context) => {
+              const releaseId = variables.params.releaseId
+              const appInstanceId = data.release?.appInstanceId
+                ?? cachedReleaseAppInstanceId(consoleQuery, context.client, releaseId)
+
+              return invalidateReleaseMutationQueries(consoleQuery, context.client, releaseId, appInstanceId)
             },
           },
         },
