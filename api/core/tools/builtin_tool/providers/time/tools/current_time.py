@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, override
 
 from pytz import timezone as pytz_timezone  # type: ignore[import-untyped]
 
@@ -9,6 +9,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
 class CurrentTimeTool(BuiltinTool):
+    @override
     def _invoke(
         self,
         user_id: str,

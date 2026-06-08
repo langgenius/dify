@@ -4,7 +4,7 @@ import base64
 import json
 import logging
 from collections.abc import Generator, Mapping
-from typing import Any, cast
+from typing import Any, cast, override
 
 from configs import dify_config
 from core.entities.mcp_provider import IdentityMode
@@ -58,9 +58,11 @@ class MCPTool(Tool):
         self.identity_mode: IdentityMode = identity_mode
         self._latest_usage = LLMUsage.empty_usage()
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.MCP
 
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -232,6 +234,7 @@ class MCPTool(Tool):
                             return found
         return None
 
+    @override
     def fork_tool_runtime(self, runtime: ToolRuntime) -> MCPTool:
         return MCPTool(
             entity=self.entity,

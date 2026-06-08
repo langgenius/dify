@@ -1,4 +1,4 @@
-from typing import Any, Self
+from typing import Any, Self, override
 
 from core.entities.mcp_provider import IdentityMode, MCPProviderEntity
 from core.mcp.types import Tool as RemoteMCPTool
@@ -41,6 +41,7 @@ class MCPToolProviderController(ToolProviderController):
         self.identity_mode: IdentityMode = identity_mode
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider
@@ -116,6 +117,7 @@ class MCPToolProviderController(ToolProviderController):
         """
         pass
 
+    @override
     def get_tool(self, tool_name: str) -> MCPTool:
         """
         return tool with given name
