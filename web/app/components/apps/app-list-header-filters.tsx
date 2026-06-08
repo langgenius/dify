@@ -61,14 +61,13 @@ export function AppListHeaderFilters({
           onOpenTagManagement={onOpenTagManagement}
           showLeadingIcon={false}
         />
+        <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
         <SearchInput
           className="w-50"
           value={keywords}
           onValueChange={onKeywordsChange}
           aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
         />
-        <div className="h-4 w-px shrink-0 bg-divider-regular" />
-        <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
       </div>
       <div className="flex items-center gap-2">
         <AppSortFilter value={sortBy} onChange={onSortByChange} />

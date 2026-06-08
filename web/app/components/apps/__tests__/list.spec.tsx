@@ -12,7 +12,6 @@ vi.mock('react-i18next', async () => {
   return createReactI18nextMock({
     'app.types.all': 'All',
     'app.studio.filters.types': 'Types',
-    'app.studio.filters.allCreators': 'All creators',
     'app.studio.filters.creators': 'Creators',
     'app.studio.sort.earliestCreated': 'Earliest created',
     'app.studio.sort.lastModified': 'Last modified',
@@ -363,7 +362,7 @@ describe('List', () => {
 
     it('should render creators filter', () => {
       renderList()
-      expect(screen.getByRole('button', { name: 'All creators' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
 
     it('should render create button for editors', () => {
@@ -573,13 +572,13 @@ describe('List', () => {
   describe('Creators Filter', () => {
     it('should render creators filter with correct label', () => {
       renderList()
-      expect(screen.getByRole('button', { name: 'All creators' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
 
     it('should handle creator selection', () => {
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'All creators' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Creators' }))
       fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 
       expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
@@ -695,7 +694,7 @@ describe('List', () => {
 
       expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'All creators' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
   })
 

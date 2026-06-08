@@ -399,14 +399,14 @@ describe('App List Browsing Flow', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.getByText('app.studio.filters.allCreators')).toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     })
 
     it('should open the creators filter menu', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.allCreators' }))
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.creators' }))
 
       expect(screen.getByRole('button', { name: /Bob/ })).toBeInTheDocument()
     })

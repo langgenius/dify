@@ -109,10 +109,9 @@ const CreatorsFilter = ({
           />
         )}
       >
-        <span aria-hidden className="i-ri-user-shared-line h-4 w-4 shrink-0 text-text-tertiary" />
         {!isSelected && (
           <>
-            <span className="px-1 text-text-tertiary">{t('studio.filters.allCreators', { ns: 'app' })}</span>
+            <span className="px-1 text-text-tertiary">{t('studio.filters.creators', { ns: 'app' })}</span>
             <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
           </>
         )}
