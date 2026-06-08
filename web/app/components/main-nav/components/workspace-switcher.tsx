@@ -109,6 +109,7 @@ function WorkspaceSwitchControls({
             value={searchText}
             onValueChange={onSearchTextChange}
             placeholder={t(workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder'), { ns: 'common' })}
+            autoFocus
           />
         </div>
       )}

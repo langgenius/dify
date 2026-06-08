@@ -210,6 +210,7 @@ const WebAppsSection = () => {
             value={searchText}
             onValueChange={setSearchText}
             placeholder={t('mainNav.webApps.searchPlaceholder', { ns: 'common' })}
+            autoFocus
           />
         </div>
       )}
