@@ -15,12 +15,14 @@ const mockRefetch = vi.fn()
 const mockUseAllToolProviders = vi.fn()
 let mockProviders: MockProvider[] = []
 let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
+let mockIsLoading = false
 
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: (...args: unknown[]) => {
     mockUseAllToolProviders(...args)
     return {
       data: mockProviders,
+      isLoading: mockIsLoading,
       refetch: mockRefetch,
     }
   },
@@ -77,6 +79,7 @@ describe('MCPList', () => {
     vi.useFakeTimers()
     mockProviders = []
     mockWorkspacePermissionKeys = ['mcp.manage']
+    mockIsLoading = false
     mockRefetch.mockResolvedValue(undefined)
   })
 
@@ -106,24 +109,24 @@ describe('MCPList', () => {
       const { container } = render(<MCPList searchText="" />)
 
       expect(container.firstChild).toBeNull()
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith('mcp', false)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
     })
 
-    it('should fetch only MCP providers when user has mcp.manage', () => {
+    it('should fetch tool providers when user has mcp.manage', () => {
       render(<MCPList searchText="" />)
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith('mcp', true)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
     })
 
-    it('should render default skeleton cards when list is empty', () => {
+    it('should render default skeleton cards while loading', () => {
+      mockIsLoading = true
       render(<MCPList searchText="" />)
 
       // Should render skeleton cards when no providers
       const container = document.querySelector('.grid')
       expect(container).toBeInTheDocument()
-      // Check for skeleton cards (36 of them)
-      const skeletonCards = document.querySelectorAll('.h-\\[111px\\]')
-      expect(skeletonCards.length).toBe(36)
+      const skeletonCards = document.querySelectorAll('.animate-pulse')
+      expect(skeletonCards.length).toBeGreaterThan(0)
     })
 
     it('should not render skeleton cards when providers exist', () => {
@@ -367,8 +370,8 @@ describe('MCPList', () => {
       expect(grid).toHaveClass('xl:grid-cols-4')
     })
 
-    it('should have overflow hidden when list is empty', () => {
-      mockProviders = []
+    it('should have overflow hidden while loading', () => {
+      mockIsLoading = true
       render(<MCPList searchText="" />)
 
       const grid = document.querySelector('.grid')

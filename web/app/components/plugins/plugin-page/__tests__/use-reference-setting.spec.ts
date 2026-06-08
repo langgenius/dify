@@ -165,9 +165,9 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canSetAutoUpdate).toBe(false)
     })
 
-    it('should be true when user has plugin.install for plugin preferences', () => {
+    it('should be true when user has plugin.plugin_preferences for plugin preferences', () => {
       vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.install'],
+        workspacePermissionKeys: ['plugin.plugin_preferences'],
       }))
 
       const { result } = renderHook(() => useReferenceSetting())

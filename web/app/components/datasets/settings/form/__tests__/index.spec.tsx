@@ -22,11 +22,25 @@ const mockUserProfile = {
   avatar_url: '',
   role: 'owner',
 }
+let mockWorkspacePermissionKeys = ['dataset.create_and_management']
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({
+      data: {
+        rbac_enabled: false,
+      },
+    }),
+  }
+})
 
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: unknown) => unknown) => {
     const state = {
       userProfile: mockUserProfile,
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
     }
     return selector(state)
   },
@@ -236,6 +250,7 @@ describe('Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createMockDataset()
+    mockWorkspacePermissionKeys = ['dataset.create_and_management']
   })
 
   describe('Rendering', () => {
@@ -462,6 +477,7 @@ describe('Form', () => {
     })
 
     it('should disable save when dataset only has readonly ACL permission', () => {
+      mockWorkspacePermissionKeys = []
       mockDataset = createMockDataset({ permission_keys: [DatasetACLPermission.Readonly] })
       render(<Form />)
 

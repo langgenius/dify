@@ -55,6 +55,11 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: ['app.create_and_management'],
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['app.create_and_management'],
   }),
 }))
 

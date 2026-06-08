@@ -61,6 +61,13 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      workspacePermissionKeys: ['credential.manage', 'credential.use'],
+    }),
+}))
+
 // Mock service/use-triggers - API service
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({

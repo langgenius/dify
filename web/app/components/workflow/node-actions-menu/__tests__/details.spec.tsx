@@ -146,7 +146,10 @@ describe('node actions menu details', () => {
       handleSyncWorkflowDraft,
       syncWorkflowDraftWhenPageClose: vi.fn(),
     } as ReturnType<typeof useNodesSyncDraft>)
-    mockUseHooksStore.mockImplementation((selector: any) => selector({ configsMap: { flowType: FlowType.appFlow } }))
+    mockUseHooksStore.mockImplementation((selector: any) => selector({
+      configsMap: { flowType: FlowType.appFlow },
+      accessControl: { canRun: true },
+    }))
     mockUseNodes.mockReturnValue([{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any }] as any)
     mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
   })

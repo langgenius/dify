@@ -10,6 +10,9 @@ import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
 const mockResetModelProviderListExpanded = vi.fn()
+const mockAppContextState = vi.hoisted(() => ({
+  current: null as unknown,
+}))
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
@@ -24,6 +27,7 @@ vi.mock('@/context/app-context', async (importOriginal) => {
   return {
     ...actual,
     useAppContext: vi.fn(),
+    useSelector: vi.fn((selector: (state: unknown) => unknown) => selector(mockAppContextState.current)),
   }
 })
 
@@ -137,7 +141,13 @@ const baseAppContextValue: AppContextValue = {
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
-  workspacePermissionKeys: [],
+  workspacePermissionKeys: [
+    'workspace.member.manage',
+    'workspace.role.manage',
+    'data_source.manage',
+    'api_extension.manage',
+    'customization.manage',
+  ],
 }
 
 describe('AccountSetting', () => {
@@ -187,6 +197,7 @@ describe('AccountSetting', () => {
       enableReplaceWebAppLogo: true,
     })
     vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
+    mockAppContextState.current = baseAppContextValue
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
 
@@ -198,12 +209,12 @@ describe('AccountSetting', () => {
       // Assert
       // Assert
       expect(screen.getByText('common.userProfile.settings'))!.toBeInTheDocument()
-      expect(screen.getByText('common.settings.provider'))!.toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.provider').length).toBeGreaterThan(0)
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
-      expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
-      expect(screen.getByText('common.settings.dataSource'))!.toBeInTheDocument()
-      expect(screen.getByText('common.settings.apiBasedExtension'))!.toBeInTheDocument()
-      expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.billing').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('common.settings.dataSource').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('common.settings.apiBasedExtension').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('custom.custom').length).toBeGreaterThan(0)
       expect(screen.getAllByText('common.settings.language').length).toBeGreaterThan(0)
     })
 
@@ -294,10 +305,13 @@ describe('AccountSetting', () => {
 
     it('should filter items for dataset operator', () => {
       // Arrange
-      vi.mocked(useAppContext).mockReturnValue({
+      const datasetOperatorContext = {
         ...baseAppContextValue,
         isCurrentWorkspaceDatasetOperator: true,
-      })
+        workspacePermissionKeys: [],
+      }
+      vi.mocked(useAppContext).mockReturnValue(datasetOperatorContext)
+      mockAppContextState.current = datasetOperatorContext
 
       // Act
       renderAccountSetting()
@@ -334,8 +348,11 @@ describe('AccountSetting', () => {
       // Assert
       // Assert
       // Assert
-      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.provider').length).toBeGreaterThan(0)
       expect(screen.queryByText('common.settings.members')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.dataSource')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.apiBasedExtension')).not.toBeInTheDocument()
+      expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
       expect(screen.getByText('common.settings.language'))!.toBeInTheDocument()
     })
 

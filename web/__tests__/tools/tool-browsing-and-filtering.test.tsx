@@ -43,6 +43,13 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      workspacePermissionKeys: ['tool.manage', 'mcp.manage'],
+    }),
+}))
+
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: () => ({ data: null }),
   useInvalidateInstalledPluginList: () => vi.fn(),

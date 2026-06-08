@@ -109,10 +109,10 @@ describe('useWorkflowReadOnly', () => {
 // ---------------------------------------------------------------------------
 
 describe('useNodesReadOnly', () => {
-  it('should require HooksStoreContext when using the provider-backed hook', () => {
-    expect(() => {
-      renderWorkflowHook(() => useNodesReadOnly())
-    }).toThrow('Missing HooksStoreContext.Provider in the tree')
+  it('should use the default HooksStoreContext from the workflow test helper', () => {
+    const { result } = renderWorkflowHook(() => useNodesReadOnly())
+    expect(result.current.nodesReadOnly).toBe(false)
+    expect(result.current.getNodesReadOnly()).toBe(false)
   })
 
   it('should return true when explicit edit permission is denied before HooksStoreContext is available', () => {

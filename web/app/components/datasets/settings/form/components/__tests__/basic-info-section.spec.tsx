@@ -7,6 +7,18 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({
+      data: {
+        rbac_enabled: false,
+      },
+    }),
+  }
+})
+
 // Mock app-context
 vi.mock('@/context/app-context', () => ({
   useSelector: () => ({

@@ -47,6 +47,15 @@ vi.mock('@/app/components/workflow/store/workflow', () => ({
     selector({ workflowRunningData: mockWorkflowRunningData, isListening: mockIsListening }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canRun: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canRun: true,
+      },
+    }),
+}))
+
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
   return {

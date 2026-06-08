@@ -18,13 +18,14 @@ const mockSystemFeatures = vi.hoisted(() => ({
 vi.mock('@/service/base', () => ({
   get: vi.fn(),
   post: vi.fn(),
+  request: vi.fn(),
 }))
 
 vi.mock('@/service/share', () => ({
   getUserCanAccess: vi.fn(),
 }))
 
-vi.mock('@/service/system-features', () => ({
+vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => queryOptions({
     queryKey: ['system-features'],
     queryFn: () => Promise.resolve({

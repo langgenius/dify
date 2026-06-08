@@ -221,8 +221,8 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../new-app-card', () => ({
-  default: (_props: { ref?: React.Ref<unknown> }) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
+  default: ({ disabled }: { disabled?: boolean, ref?: React.Ref<unknown> }) => {
+    return React.createElement('button', { 'data-testid': 'new-app-card', 'type': 'button', disabled }, 'New App Card')
   },
 }))
 

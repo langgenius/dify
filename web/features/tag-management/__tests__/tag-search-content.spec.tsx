@@ -11,6 +11,12 @@ const { onValueChangeSpy } = vi.hoisted(() => ({
   onValueChangeSpy: vi.fn(),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['app.tag.manage', 'dataset.tag.manage'],
+  }),
+}))
+
 const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   operationClear: 'common.operation.clear',

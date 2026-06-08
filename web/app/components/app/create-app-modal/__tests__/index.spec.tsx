@@ -24,10 +24,13 @@ vi.mock('ahooks', () => ({
     const flush = vi.fn()
     return { run, cancel, flush }
   },
-  useKeyPress: (_keys: unknown, handler: () => void) => {
+  useHover: () => false,
+}))
+vi.mock('@tanstack/react-hotkeys', () => ({
+  formatForDisplay: (key: string) => key,
+  useHotkey: (_hotkey: string, handler: () => void) => {
     ahooksMocks.keyPressHandlers.push(handler)
   },
-  useHover: () => false,
 }))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),

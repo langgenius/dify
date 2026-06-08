@@ -20,6 +20,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockCheckUsage = vi.fn()
 const mockDeleteDataset = vi.fn()
 const mockExportPipeline = vi.fn()
+const mockPush = vi.fn()
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}))
 
 vi.mock('@/service/use-dataset-card', () => ({
   useCheckDatasetUsage: () => ({ mutateAsync: mockCheckUsage }),

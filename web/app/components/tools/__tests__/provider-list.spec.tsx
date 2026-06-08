@@ -296,7 +296,7 @@ describe('ProviderList', () => {
       expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('card-my-api')).not.toBeInTheDocument()
       expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith('builtin')
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
     })
 
     it('falls back to builtin tab when workflow category is opened without tool.manage', () => {
@@ -308,7 +308,7 @@ describe('ProviderList', () => {
       expect(screen.queryByTestId('card-wf-tool')).not.toBeInTheDocument()
       expect(screen.queryByTestId('workflow-empty')).not.toBeInTheDocument()
       expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith('builtin')
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
     })
 
     it('falls back to builtin tab when mcp category is opened without mcp.manage', async () => {
@@ -319,16 +319,18 @@ describe('ProviderList', () => {
       expect(screen.queryByText('MCP')).not.toBeInTheDocument()
       expect(screen.queryByTestId('mcp-list')).not.toBeInTheDocument()
       expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith('builtin')
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls.at(-1)![0]
       expect(update.searchParams.has('category')).toBe(false)
     })
 
-    it('fetches only the active authorized category', () => {
+    it('fetches all tool providers and filters the active authorized category locally', () => {
       renderProviderList({ category: 'workflow' })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith('workflow')
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
+      expect(screen.getByTestId('card-wf-tool')).toBeInTheDocument()
+      expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
     })
   })
 

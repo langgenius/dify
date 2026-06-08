@@ -127,6 +127,7 @@ let mockAutoUpgradeInfo: {
 vi.mock('../../plugin-page/use-reference-setting', () => ({
   default: () => ({
     referenceSetting: mockAutoUpgradeInfo ? { auto_upgrade: mockAutoUpgradeInfo } : null,
+    canUpdate: true,
   }),
 }))
 

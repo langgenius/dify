@@ -172,6 +172,26 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
       {children}
     </div>
   ),
+  PopoverTrigger: ({
+    children,
+    render,
+    onClick,
+  }: {
+    children: ReactNode
+    render?: ReactNode
+    onClick?: () => void
+  }) => (
+    <div data-testid="popover-trigger" onClick={onClick}>
+      {render
+        ? (
+            <>
+              {render}
+              {children}
+            </>
+          )
+        : children}
+    </div>
+  ),
   PortalToFollowElemTrigger: ({
     children,
     render,

@@ -61,6 +61,15 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: WorkflowStoreState) => T) => selector(workflowStoreState),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canImportExportDSL: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canImportExportDSL: true,
+      },
+    }),
+}))
+
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {

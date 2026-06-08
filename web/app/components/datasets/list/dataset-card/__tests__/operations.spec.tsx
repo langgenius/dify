@@ -84,9 +84,9 @@ describe('Operations', () => {
 
     it('should call openAccessConfig when access config is clicked', () => {
       const openAccessConfig = vi.fn()
-      renderInMenu(<Operations {...defaultProps} openAccessConfig={openAccessConfig} />)
+      renderInMenu(<Operations {...defaultProps} showAccessConfig openAccessConfig={openAccessConfig} />)
 
-      fireEvent.click(screen.getByText('Access Config'))
+      fireEvent.click(screen.getByText(/knowledgeBaseAccess/))
       expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
   })

@@ -75,6 +75,15 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
+const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: typeof mockUserProfile, workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      userProfile: mockUserProfile,
+      workspacePermissionKeys: ['credential.manage', 'credential.use'],
+    }),
+}))
+
 // Mock service/use-triggers
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({
