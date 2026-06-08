@@ -536,6 +536,7 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
             "text_to_speech": {"enabled": False},
             "file_upload": {"enabled": False},
             "sensitive_word_avoidance": {"enabled": False},
+            "retriever_resource": {"enabled": True},
         },
     )
 
@@ -581,7 +582,8 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
     assert node_ids == ["start", "llm", "end"]
 
     features = json.loads(workflow.features)
-    assert set(features.keys()) == {"text_to_speech", "file_upload", "sensitive_word_avoidance"}
+    assert features["retriever_resource"] == {"enabled": True}
+    assert set(features.keys()) == {"text_to_speech", "file_upload", "sensitive_word_avoidance", "retriever_resource"}
 
 
 def test_convert_to_app_config_should_route_to_correct_manager(
