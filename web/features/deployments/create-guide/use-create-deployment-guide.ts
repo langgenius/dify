@@ -21,6 +21,7 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { isWorkflowApp } from '../app-mode'
 import {
+  envVarSlotsWithoutLastDeploymentValues,
   envVarValuesWithDefaults,
   hasEnvVarSlotKey,
   hasMissingRequiredEnvVarValue,
@@ -221,10 +222,12 @@ export function useCreateDeploymentGuide() {
     return method === 'importDsl' && dslContent ? dslEnvVarSlots(dslContent) : []
   }, [dslContent, method])
   const envVarSlots = useMemo(() => {
-    return mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata)
+    return envVarSlotsWithoutLastDeploymentValues(
+      mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata),
+    )
   }, [deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata])
   const effectiveEnvVarValues = useMemo(() => {
-    return envVarValuesWithDefaults(envVarValues, envVarSlots)
+    return envVarValuesWithDefaults(envVarValues, envVarSlots, { preferDefaultValue: true })
   }, [envVarSlots, envVarValues])
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId)) ?? environments[0]

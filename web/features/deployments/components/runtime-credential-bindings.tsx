@@ -30,7 +30,6 @@ type RuntimeCredentialBindingsPanelProps = {
   selections: RuntimeCredentialBindingSelections
   title: string
   hint: string
-  requiredLabel: string
   noBindingRequiredLabel: string
   noCredentialCandidatesLabel: string
   selectCredentialLabel: string
@@ -96,7 +95,6 @@ export function RuntimeCredentialBindingsPanel({
   selections,
   title,
   hint,
-  requiredLabel,
   noBindingRequiredLabel,
   noCredentialCandidatesLabel,
   selectCredentialLabel,
@@ -166,9 +164,6 @@ export function RuntimeCredentialBindingsPanel({
                               {categoryLabel}
                             </span>
                           )}
-                          <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                            {requiredLabel}
-                          </span>
                         </div>
                       </div>
                       {candidates.length === 0

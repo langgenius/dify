@@ -23,6 +23,7 @@ import { releaseDeploymentAction } from '../../release-action'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
 import {
+  envVarSlotsWithoutDefaultValues,
   envVarValuesWithDefaults,
   hasEnvVarSlotKey,
   hasMissingRequiredEnvVarValue,
@@ -126,7 +127,7 @@ function DeployReadyForm({
   const bindingSlots = deploymentOptionCredentialSlots.length > 0 ? deploymentOptionCredentialSlots : credentialCandidateSlots
   const deploymentOptionEnvVarSourceSlots = deploymentOptionsQuery.data?.options?.envVarSlots
   const deploymentOptionEnvVarSlots = useMemo(() => {
-    return deploymentOptionEnvVarSourceSlots?.filter(hasEnvVarSlotKey) ?? []
+    return envVarSlotsWithoutDefaultValues(deploymentOptionEnvVarSourceSlots?.filter(hasEnvVarSlotKey) ?? [])
   }, [deploymentOptionEnvVarSourceSlots])
   const envVarSlots = deploymentOptionEnvVarSlots
   const [manualBindings, setManualBindings] = useState<BindingSelections>({})

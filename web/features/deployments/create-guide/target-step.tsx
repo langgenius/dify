@@ -195,7 +195,6 @@ function TargetStep({
               selections={bindingSelections}
               title={t('createGuide.target.bindings')}
               hint={t('createGuide.target.bindingHint')}
-              requiredLabel={t('createGuide.target.required')}
               noBindingRequiredLabel={t('createGuide.target.noBindingRequired')}
               noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
               selectCredentialLabel={t('createGuide.target.selectCredential')}
@@ -212,11 +211,15 @@ function TargetStep({
             values={envVarValues}
             title={t('createGuide.target.envVars')}
             hint={t('createGuide.target.envVarHint')}
-            requiredLabel={t('createGuide.target.required')}
             envVarPlaceholder={t('createGuide.target.envVarPlaceholder')}
             literalSourceLabel={t('createGuide.target.envVarSource.literal')}
             defaultSourceLabel={t('createGuide.target.envVarSource.default')}
             lastDeploymentSourceLabel={t('createGuide.target.envVarSource.lastDeployment')}
+            valueTypeLabels={{
+              string: t('createGuide.target.envVarType.string'),
+              number: t('createGuide.target.envVarType.number'),
+              secret: t('createGuide.target.envVarType.secret'),
+            }}
             sourceAriaLabel={key => t('createGuide.target.envVarSource.ariaLabel', { key })}
             envVarCountLabel={t('createGuide.target.envVarCount', { count: envVarSlots.length })}
             onChange={onSetEnvVar}

@@ -15,6 +15,7 @@ type DslMetadata = {
 type DslEnvVarRecord = Record<string, unknown>
 
 const ENV_VAR_DEFAULT_VALUE_FIELDS = ['value', 'default_value', 'defaultValue', 'default'] as const
+const ENV_VAR_VALUE_TYPE_FIELDS = ['value_type', 'valueType', 'type'] as const
 const MASKED_SECRET_PLACEHOLDERS = new Set(['[__HIDDEN__]'])
 
 export function encodeDslContent(value: string) {
@@ -82,6 +83,16 @@ function envVarDefaultValue(record: DslEnvVarRecord) {
   return undefined
 }
 
+function envVarValueType(record: DslEnvVarRecord) {
+  for (const field of ENV_VAR_VALUE_TYPE_FIELDS) {
+    const valueType = stringValue(record[field])
+    if (valueType)
+      return valueType
+  }
+
+  return undefined
+}
+
 export function dslAppName(content: string) {
   const name = parseDsl(content)?.app?.name
 
@@ -115,15 +126,16 @@ export function dslEnvVarSlots(content: string): DeploymentEnvVarSlot[] {
       seenKeys.add(key)
       const description = stringValue(envVar.description)
       const defaultValue = envVarDefaultValue(envVar)
+      const valueType = envVarValueType(envVar)
 
       return {
         key,
         ...(description ? { description } : {}),
+        ...(valueType ? { valueType } : {}),
         ...(defaultValue !== undefined
           ? {
               defaultValue,
               hasDefaultValue: true,
-              maskedDefaultValue: defaultValue,
             }
           : {}),
       }

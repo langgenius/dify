@@ -5,6 +5,7 @@ import type {
   EnvVarValues,
   EnvVarValueSelection,
   EnvVarValueSource,
+  EnvVarValueType,
 } from './env-var-bindings-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -16,7 +17,11 @@ import {
   ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
   ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
   ENV_VAR_VALUE_SOURCE_LITERAL,
+  ENV_VAR_VALUE_TYPE_NUMBER,
+  ENV_VAR_VALUE_TYPE_SECRET,
   envVarSlotKey,
+  envVarSlotValue,
+  envVarSlotValueType,
   envVarValueSelectionForSlot,
   hasEnvVarDefaultValue,
   hasEnvVarLastValue,
@@ -34,11 +39,11 @@ type EnvVarBindingsPanelProps = {
   values: EnvVarValues
   title: string
   hint: string
-  requiredLabel: string
   envVarPlaceholder: string
   literalSourceLabel: string
   defaultSourceLabel: string
   lastDeploymentSourceLabel: string
+  valueTypeLabels: Record<EnvVarValueType, string>
   sourceAriaLabel: (key: string) => string
   envVarCountLabel?: string
   missingRequiredLabel?: string
@@ -67,19 +72,17 @@ function envVarValueSourceOptions(slot: DeploymentEnvVarSlot, labels: {
     },
   ]
 
-  if (hasEnvVarLastValue(slot)) {
-    options.push({
-      value: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
-      label: labels.lastDeployment,
-    })
-
-    return options
-  }
-
   if (hasEnvVarDefaultValue(slot)) {
     options.push({
       value: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
       label: labels.defaultValue,
+    })
+  }
+
+  if (hasEnvVarLastValue(slot)) {
+    options.push({
+      value: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+      label: labels.lastDeployment,
     })
   }
 
@@ -88,11 +91,20 @@ function envVarValueSourceOptions(slot: DeploymentEnvVarSlot, labels: {
 
 function envVarSelectionDisplayValue(slot: DeploymentEnvVarSlot, selection: EnvVarValueSelection) {
   if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
-    return slot.maskedDefaultValue ?? slot.defaultValue ?? ''
+    return envVarSlotValue(slot.defaultValue) ?? ''
   if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
-    return slot.maskedLastValue ?? ''
+    return envVarSlotValue(slot.lastValue) ?? ''
 
   return selection.value ?? ''
+}
+
+function envVarInputType(valueType: EnvVarValueType) {
+  if (valueType === ENV_VAR_VALUE_TYPE_NUMBER)
+    return 'number'
+  if (valueType === ENV_VAR_VALUE_TYPE_SECRET)
+    return 'password'
+
+  return 'text'
 }
 
 export function EnvVarBindingsPanel({
@@ -100,11 +112,11 @@ export function EnvVarBindingsPanel({
   values,
   title,
   hint,
-  requiredLabel,
   envVarPlaceholder,
   literalSourceLabel,
   defaultSourceLabel,
   lastDeploymentSourceLabel,
+  valueTypeLabels,
   sourceAriaLabel,
   envVarCountLabel,
   missingRequiredLabel,
@@ -146,6 +158,7 @@ export function EnvVarBindingsPanel({
             defaultValue: defaultSourceLabel,
             lastDeployment: lastDeploymentSourceLabel,
           })
+          const valueType = envVarSlotValueType(slot)
           const isLiteralValue = selection.valueSource === ENV_VAR_VALUE_SOURCE_LITERAL
           const displayValue = envVarSelectionDisplayValue(slot, selection)
 
@@ -159,8 +172,8 @@ export function EnvVarBindingsPanel({
                         {key}
                       </label>
                     </TitleTooltip>
-                    <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                      {requiredLabel}
+                    <span className="shrink-0 rounded-md border border-divider-deep bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-secondary">
+                      {valueTypeLabels[valueType]}
                     </span>
                   </div>
                   {sourceOptions.length > 1 && (
@@ -193,6 +206,7 @@ export function EnvVarBindingsPanel({
                 )}
                 <Input
                   id={inputId}
+                  type={envVarInputType(valueType)}
                   value={displayValue}
                   onChange={event => onChange(key, {
                     ...selection,

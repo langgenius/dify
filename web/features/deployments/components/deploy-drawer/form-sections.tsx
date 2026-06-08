@@ -83,7 +83,6 @@ function BindingOptionsPanel({
       selections={selections}
       title={t('deployDrawer.runtimeCredentials')}
       hint={t('deployDrawer.bindingSelectionHint')}
-      requiredLabel={t('deployDrawer.requiredBinding')}
       noBindingRequiredLabel={t('deployDrawer.noBindingRequired')}
       noCredentialCandidatesLabel={t('deployDrawer.noCredentialCandidates')}
       selectCredentialLabel={t('deployDrawer.selectCredential')}
@@ -289,11 +288,15 @@ export function DeploymentBindingsSection({
           values={envVarValues}
           title={t('deployDrawer.envVars')}
           hint={t('deployDrawer.envVarHint')}
-          requiredLabel={t('deployDrawer.requiredBinding')}
           envVarPlaceholder={t('deployDrawer.envVarPlaceholder')}
           literalSourceLabel={t('deployDrawer.envVarSource.literal')}
           defaultSourceLabel={t('deployDrawer.envVarSource.default')}
           lastDeploymentSourceLabel={t('deployDrawer.envVarSource.lastDeployment')}
+          valueTypeLabels={{
+            string: t('deployDrawer.envVarType.string'),
+            number: t('deployDrawer.envVarType.number'),
+            secret: t('deployDrawer.envVarType.secret'),
+          }}
           sourceAriaLabel={key => t('deployDrawer.envVarSource.ariaLabel', { key })}
           envVarCountLabel={t('deployDrawer.envVarCount', { count: envVarSlots.length })}
           missingRequiredLabel={t('deployDrawer.missingRequiredEnvVar')}
