@@ -459,7 +459,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._process_stream_response = lambda **kwargs: iter([PingStreamResponse(task_id="task")])
 
         class _Publisher:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def check_and_get_audio(self):
@@ -613,7 +613,7 @@ class TestWorkflowGenerateTaskPipeline:
         sleep_spy = []
 
         class _Publisher:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def check_and_get_audio(self):
@@ -650,7 +650,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._process_stream_response = lambda **kwargs: iter([])
 
         class _Publisher:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.called = False
 
             def check_and_get_audio(self):
@@ -688,7 +688,7 @@ class TestWorkflowGenerateTaskPipeline:
                 return False
 
         class _Sessionmaker:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def begin(self):
