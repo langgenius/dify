@@ -5,13 +5,11 @@ import { isHttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { openAPIBase } from '@/util/host'
 import { createHttpClient } from './client.js'
-import { createOpenApiClient, unwrap } from './orpc.js'
+import { createOpenApiClient } from './orpc.js'
 
-// createOpenApiClient + unwrap is the oRPC facade every migrated wrapper uses. The facade's
-// fetch wrapper raises classifyResponse for any non-2xx, so these tests pin that a migrated
-// endpoint surfaces the SAME classified HttpClientError as the `this.http.*` transport path —
-// Dify's message/hint, the request method/url, and the raw body — which the typed-client
-// tests can't observe.
+// createOpenApiClient maps errors at the transport seams, so a migrated endpoint surfaces the
+// SAME classified HttpClientError as the `this.http.*` path — Dify's message/hint, the request
+// method/url, and the raw body — straight from a plain `orpc.x()` call, with no per-call wrapper.
 function orpcClient(host: string) {
   // retryAttempts: 0 so the 5xx case fails fast instead of burning the backoff budget.
   const http = createHttpClient({ baseURL: openAPIBase(host), bearer: 'dfoa_test', retryAttempts: 0 })
@@ -28,7 +26,7 @@ async function catchErr(run: () => Promise<unknown>): Promise<unknown> {
   }
 }
 
-describe('mapOrpcError (via unwrap)', () => {
+describe('createOpenApiClient error mapping', () => {
   let stub: StubServer
 
   afterEach(async () => {
@@ -39,7 +37,7 @@ describe('mapOrpcError (via unwrap)', () => {
     stub = await startStubServer(cap => jsonResponder(403, { message: 'no access', hint: 'ask an admin' }, cap))
     const orpc = orpcClient(stub.url)
 
-    const caught = await catchErr(() => unwrap(orpc.account.get()))
+    const caught = await catchErr(() => orpc.account.get())
 
     expect(isHttpClientError(caught)).toBe(true)
     if (isHttpClientError(caught)) {
@@ -60,7 +58,7 @@ describe('mapOrpcError (via unwrap)', () => {
     stub = await startStubServer(cap => jsonResponder(401, { error: { message: 'expired', hint: 'relogin' } }, cap))
     const orpc = orpcClient(stub.url)
 
-    const caught = await catchErr(() => unwrap(orpc.account.get()))
+    const caught = await catchErr(() => orpc.account.get())
 
     expect(isHttpClientError(caught)).toBe(true)
     if (isHttpClientError(caught)) {
@@ -75,7 +73,7 @@ describe('mapOrpcError (via unwrap)', () => {
     stub = await startStubServer(cap => jsonResponder(401, { error: 'expired' }, cap))
     const orpc = orpcClient(stub.url)
 
-    const caught = await catchErr(() => unwrap(orpc.account.get()))
+    const caught = await catchErr(() => orpc.account.get())
 
     expect(isHttpClientError(caught)).toBe(true)
     if (isHttpClientError(caught)) {
@@ -88,7 +86,7 @@ describe('mapOrpcError (via unwrap)', () => {
     stub = await startStubServer(cap => jsonResponder(503, { message: 'down for maintenance' }, cap))
     const orpc = orpcClient(stub.url)
 
-    const caught = await catchErr(() => unwrap(orpc.account.get()))
+    const caught = await catchErr(() => orpc.account.get())
 
     expect(isHttpClientError(caught)).toBe(true)
     if (isHttpClientError(caught)) {

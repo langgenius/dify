@@ -1,7 +1,7 @@
 import type { OpenApiClient } from '@/http/orpc'
 import type { SseEvent } from '@/http/sse'
 import type { HttpClient } from '@/http/types'
-import { createOpenApiClient, unwrap } from '@/http/orpc'
+import { createOpenApiClient } from '@/http/orpc'
 import { parseSSE } from '@/http/sse'
 import { normalizeDifyStream } from '@/http/sse-dify'
 
@@ -66,9 +66,9 @@ export class AppRunClient {
   }
 
   async stopTask(appId: string, taskId: string): Promise<void> {
-    await unwrap(this.orpc.apps.byAppId.tasks.byTaskId.stop.post({
+    await this.orpc.apps.byAppId.tasks.byTaskId.stop.post({
       params: { app_id: appId, task_id: taskId },
-    }))
+    })
   }
 
   async submitHumanInput(
@@ -77,10 +77,10 @@ export class AppRunClient {
     action: string,
     inputs: Record<string, unknown>,
   ): Promise<void> {
-    await unwrap(this.orpc.apps.byAppId.form.humanInput.byFormToken.post({
+    await this.orpc.apps.byAppId.form.humanInput.byFormToken.post({
       params: { app_id: appId, form_token: formToken },
       body: { action, inputs },
-    }))
+    })
   }
 
   async reconnectStream(

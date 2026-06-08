@@ -7,8 +7,8 @@ import { WorkspacesClient } from './workspaces.js'
 
 // WorkspacesClient.switch is covered in members.test.ts; this file covers list(), which now
 // routes through the generated oRPC contract (OpenAPILink over http.request). The happy path
-// asserts the on-the-wire GET /openapi/v1/workspaces is unchanged; the 401 case asserts
-// mapOrpcError() translates oRPC's ORPCError back into the CLI's classified HttpClientError.
+// asserts the on-the-wire GET /openapi/v1/workspaces is unchanged; the 401 case asserts the
+// oRPC client surfaces it as the CLI's classified HttpClientError.
 
 function makeClient(host: string): WorkspacesClient {
   return new WorkspacesClient(testHttpClient(host, 'dfoa_test'))

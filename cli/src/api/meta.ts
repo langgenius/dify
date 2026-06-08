@@ -1,7 +1,7 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
-import { createOpenApiClient, unwrap } from '@/http/orpc'
+import { createOpenApiClient } from '@/http/orpc'
 
 // Used by every /_version probe call site (the version command and the
 // per-command auto-nudge). Both must construct their HTTP client with this
@@ -17,6 +17,6 @@ export class MetaClient {
   }
 
   async serverVersion(): Promise<ServerVersionResponse> {
-    return unwrap(this.orpc.version.get())
+    return this.orpc.version.get()
   }
 }

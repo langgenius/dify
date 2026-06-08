@@ -7,23 +7,19 @@ import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { isBaseError, unknownError } from '@/errors/base'
 import { classifyResponse } from './error-mapper.js'
 
-// The contract-typed oRPC client for the public OpenAPI surface. JsonifiedClient mirrors
-// what survives JSON transport (Date -> string, etc.) so call-site types match the wire.
+// Contract-typed oRPC client for the public OpenAPI surface. `JsonifiedClient` reshapes the
+// contract types to what survives JSON transport (e.g. Date -> string), matching the wire.
 export type OpenApiClient = JsonifiedClient<ContractRouterClient<typeof contract>>
 
-// Build an oRPC client that routes through the CLI's HttpClient. OpenAPILink constructs a
-// standard, absolute-URL Request from the contract and hands it to `fetch`; we point that at
-// `http.request`, so every oRPC call reuses the one transport policy (UA+bearer, retry,
-// timeout, error-map) instead of a bare fetch. The link's `url` is the same openAPIBase(host)
-// the HttpClient was built with — OpenAPILink strips its trailing slash before appending the
-// route path, yielding e.g. `<host>/openapi/v1/workspaces`.
+// An oRPC client routed through the CLI's HttpClient, so every call reuses the one transport
+// policy (UA+bearer, retry, timeout). Errors become the CLI's model at the two transport seams,
+// so call sites stay plain `this.orpc.x.y(input)` with no per-method try/catch:
+//   - fetch wrapper: non-2xx -> classifyResponse (identical to the `this.http.*` path), leaving
+//     oRPC to decode only 2xx responses;
+//   - link wrapper: the one residual throw (a 2xx body oRPC can't decode) -> mapOrpcError.
 export function createOpenApiClient(http: HttpClient): OpenApiClient {
   const link = new OpenAPILink(contract, {
     url: http.baseURL,
-    // Map non-2xx through the SAME classifier the path-based transport uses, so a migrated
-    // endpoint raises the identical HttpClientError — method/url, raw body, and Dify's
-    // message/hint all preserved (full parity with the `this.http.*` path). oRPC therefore
-    // only ever sees a 2xx Response and decodes it into the contract-typed result.
     fetch: async (req, init) => {
       const res = await http.request(req, init)
       if (!res.ok)
@@ -31,22 +27,14 @@ export function createOpenApiClient(http: HttpClient): OpenApiClient {
       return res
     },
   })
-  return createORPCClient(link)
+  return createORPCClient<OpenApiClient>({
+    call: (path, input, options) => link.call(path, input, options).catch(mapOrpcError),
+  })
 }
 
-// Run an oRPC call and translate any thrown error into the CLI's error model, so wrapper
-// methods stay one-liners: `return unwrap(this.orpc.x.y(input))`. mapOrpcError returns `never`,
-// so the rejection handler re-throws and the resolved Promise<T> type is preserved.
-export function unwrap<T>(call: Promise<T>): Promise<T> {
-  return call.catch(mapOrpcError)
-}
-
-// Translate an error thrown by an oRPC call back into the CLI's error model. Non-2xx responses
-// already arrive as a classified BaseError (the fetch wrapper above raised classifyResponse),
-// and transport failures (timeout / network) are BaseErrors from execute() — both re-throw
-// unchanged. The only residual is a 2xx whose body oRPC could not deserialize into the contract
-// shape, which surfaces as an unknown error.
-export function mapOrpcError(err: unknown): never {
+// Non-2xx and transport failures already arrive as BaseError (from the fetch wrapper / transport)
+// and re-throw unchanged; the only residual is a 2xx body oRPC failed to decode.
+function mapOrpcError(err: unknown): never {
   if (isBaseError(err))
     throw err
   throw unknownError(err instanceof Error ? err.message : String(err), err)

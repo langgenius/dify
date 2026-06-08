@@ -1,7 +1,7 @@
 import type { WorkspaceDetailResponse, WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
-import { createOpenApiClient, unwrap } from '@/http/orpc'
+import { createOpenApiClient } from '@/http/orpc'
 
 export class WorkspacesClient {
   private readonly orpc: OpenApiClient
@@ -14,7 +14,7 @@ export class WorkspacesClient {
   }
 
   async list(): Promise<WorkspaceListResponse> {
-    return unwrap(this.orpc.workspaces.get())
+    return this.orpc.workspaces.get()
   }
 
   /**
@@ -27,6 +27,6 @@ export class WorkspacesClient {
    * server's state.
    */
   async switch(workspaceId: string): Promise<WorkspaceDetailResponse> {
-    return unwrap(this.orpc.workspaces.byWorkspaceId.switch.post({ params: { workspace_id: workspaceId } }))
+    return this.orpc.workspaces.byWorkspaceId.switch.post({ params: { workspace_id: workspaceId } })
   }
 }
