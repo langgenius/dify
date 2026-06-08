@@ -38,7 +38,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url, to_timestamp
-from libs.login import login_required
+from libs.login import current_account_with_tenant as current_account_with_tenant, login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService

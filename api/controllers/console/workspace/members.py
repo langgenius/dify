@@ -31,7 +31,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.member_fields import AccountWithRole, AccountWithRoleList
 from libs.helper import extract_remote_ip
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -154,7 +154,9 @@ class MemberListApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
     @with_current_user
-    def get(self, current_user: Account):
+    def get(self, current_user: Account | None = None):
+        if current_user is None:
+            current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_tenant_members(current_user.current_tenant)

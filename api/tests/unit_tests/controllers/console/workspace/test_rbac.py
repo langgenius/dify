@@ -56,8 +56,8 @@ class TestAccessMatrixAccountNames:
         items = [
             rbac_mod.svc.AccessMatrixItem(
                 accounts=[
-                    {"account_id": "acct-1", "account_name": "Alice"},
-                    {"account_id": "acct-2", "account_name": ""},
+                    {"account_id": "acct-1", "account_name": "Alice", "binding_id": "binding-1"},
+                    {"account_id": "acct-2", "account_name": "", "binding_id": "binding-2"},
                 ]
             )
         ]
@@ -68,10 +68,11 @@ class TestAccessMatrixAccountNames:
             rbac_mod._hydrate_access_matrix_account_names(items)
 
         mock_names.assert_called_once_with(["acct-2"])
-        assert items[0].accounts == [
-            {"account_id": "acct-1", "account_name": "Alice"},
-            {"account_id": "acct-2", "account_name": "Bob", "avatar": "ava"},
-        ]
+        assert items[0].accounts[0].account_id == "acct-1"
+        assert items[0].accounts[0].account_name == "Alice"
+        assert items[0].accounts[1].account_id == "acct-2"
+        assert items[0].accounts[1].account_name == "Bob"
+        assert items[0].accounts[1].avatar == "ava"
 
 
 class TestPydanticModels:

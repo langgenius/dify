@@ -479,6 +479,11 @@ def test_app_list_uses_injected_session_for_draft_workflows(
         "FeatureService",
         SimpleNamespace(get_system_features=lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
     )
+    monkeypatch.setattr(
+        app_module.enterprise_rbac_service.RBACService.AppPermissions,
+        "batch_get",
+        lambda tenant_id, account_id, app_ids: {"app-1": ["app.acl.edit"]},
+    )
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=scoped_session))
 
     with app.test_request_context("/console/api/apps?page=1&limit=20", method="GET"):
@@ -488,7 +493,7 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     assert response["data"][0]["has_draft_trigger"] is True
     session.execute.assert_called_once()
     scoped_session.execute.assert_not_called()
-    assert serialized["data"][0]["permission_keys"] == ["app.acl.edit"]
+    assert response["data"][0]["permission_keys"] == ["app.acl.edit"]
 
 
 def test_app_create_api_attaches_permission_keys(app, app_module):
@@ -515,11 +520,6 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
             }
             monkeypatch.setattr(
                 app_module,
-                "current_account_with_tenant",
-                lambda: (SimpleNamespace(id="acct-1"), "tenant-1"),
-            )
-            monkeypatch.setattr(
-                app_module,
                 "AppService",
                 lambda: SimpleNamespace(create_app=lambda tenant_id, params, user: app_obj),
             )
@@ -529,7 +529,7 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
                 lambda tenant_id, account_id, app_ids: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
 
-            resp, status = method(app_module.AppListApi())
+            resp, status = method(app_module.AppListApi(), "tenant-1", SimpleNamespace(id="acct-1"))
 
     assert status == 201
     assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit"]
@@ -557,11 +557,6 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
             monkeypatch.setattr(
-                app_module,
-                "current_account_with_tenant",
-                lambda: (SimpleNamespace(id="acct-1"), "tenant-1"),
-            )
-            monkeypatch.setattr(
                 app_module.AppService,
                 "get_paginate_apps",
                 lambda self, user_id, tenant_id, args_dict: pagination,
@@ -577,7 +572,9 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
                 lambda tenant_id, account_id, app_ids: {"app-1": ["app.acl.view_layout", "app.acl.edit"]},
             )
 
-            resp, status = method(app_module.AppListApi())
+            session = MagicMock()
+            session.execute.return_value.scalars.return_value.all.return_value = []
+            resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", session)
 
     assert status == 200
     assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit"]
@@ -602,11 +599,6 @@ def test_app_detail_api_attaches_permission_keys_from_batch_get(app, app_module)
     with app.test_request_context("/apps/app-1"):
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
-            monkeypatch.setattr(
-                app_module,
-                "current_account_with_tenant",
-                lambda: (SimpleNamespace(id="acct-1"), "tenant-1"),
-            )
             monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=lambda app_model: app_obj))
             monkeypatch.setattr(
                 app_module.FeatureService,
@@ -621,7 +613,7 @@ def test_app_detail_api_attaches_permission_keys_from_batch_get(app, app_module)
                 },
             )
 
-            resp = method(app_module.AppApi(), app_model=app_obj)
+            resp = method(app_module.AppApi(), "tenant-1", SimpleNamespace(id="acct-1"), app_model=app_obj)
 
     assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
@@ -653,11 +645,6 @@ def test_app_copy_api_attaches_permission_keys(app, app_module):
             monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
             monkeypatch.setattr(
                 app_module,
-                "current_account_with_tenant",
-                lambda: (SimpleNamespace(id="acct-1"), "tenant-1"),
-            )
-            monkeypatch.setattr(
-                app_module,
                 "AppDslService",
                 lambda *_args, **_kwargs: SimpleNamespace(
                     export_dsl=lambda **_kwargs: "dsl",
@@ -680,7 +667,12 @@ def test_app_copy_api_attaches_permission_keys(app, app_module):
                 lambda tenant_id, account_id, app_ids: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
 
-            resp, status = method(app_module.AppCopyApi(), app_model=SimpleNamespace(id="app-original"))
+            resp, status = method(
+                app_module.AppCopyApi(),
+                "tenant-1",
+                SimpleNamespace(id="acct-1"),
+                app_model=SimpleNamespace(id="app-original"),
+            )
 
     assert status == 201
     assert fake_session.scalar.called

@@ -2,6 +2,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -13,7 +14,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.account import Account
 from models.model import App
 from services.app_dsl_service import (
@@ -46,14 +47,22 @@ register_enum_models(console_ns, ImportStatus)
 register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
 
 
-def _current_tenant_id(current_user: Account) -> str | None:
+def _current_user_and_tenant_id(current_user: Account | None) -> tuple[Account, str | None]:
+    if current_user is None:
+        account, tenant_id = current_account_with_tenant()
+        return account, str(tenant_id) if tenant_id else None
+
     current_tenant_id = getattr(current_user, "current_tenant_id", None)
     if current_tenant_id:
-        return str(current_tenant_id)
+        return current_user, str(current_tenant_id)
 
     current_tenant = getattr(current_user, "current_tenant", None)
-    tenant_id = getattr(current_tenant, "id", None)
-    return str(tenant_id) if tenant_id else None
+    current_tenant_object_id = getattr(current_tenant, "id", None)
+    if current_tenant_object_id:
+        return current_user, str(current_tenant_object_id)
+
+    account, fallback_tenant_id = current_account_with_tenant()
+    return account, str(fallback_tenant_id) if fallback_tenant_id else None
 
 
 @console_ns.route("/apps/imports")
@@ -68,8 +77,9 @@ class AppImportApi(Resource):
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     @with_current_user
-    def post(self, current_user: Account):
+    def post(self, current_user: Account | None = None):
         args = AppImportPayload.model_validate(console_ns.payload)
+        current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
 
         # AppDslService performs internal commits for some creation paths, so use a plain
         # Session here instead of nesting it inside sessionmaker(...).begin().
@@ -98,13 +108,14 @@ class AppImportApi(Resource):
             ImportStatus.COMPLETED,
             ImportStatus.COMPLETED_WITH_WARNINGS,
         }
-        current_tenant_id = _current_tenant_id(current_user)
-        if is_created_app and result.app_id and current_tenant_id:
-            result.permission_keys = get_app_permission_keys(
-                current_tenant_id,
-                current_user.id,
-                result.app_id,
-            )
+        if dify_config.RBAC_ENABLED and is_created_app and result.app_id:
+            current_user, current_tenant_id = _current_user_and_tenant_id(current_user)
+            if current_tenant_id:
+                result.permission_keys = get_app_permission_keys(
+                    current_tenant_id,
+                    current_user.id,
+                    result.app_id,
+                )
 
         if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
@@ -129,7 +140,8 @@ class AppImportConfirmApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    def post(self, current_user: Account, import_id: str):
+    def post(self, current_user: Account | None = None, import_id: str = ""):
+        current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         pending_data_raw = redis_client.get(redis_key)
         pending_data: PendingData | None = None
@@ -154,13 +166,14 @@ class AppImportConfirmApi(Resource):
                 ImportStatus.COMPLETED_WITH_WARNINGS,
             }
         )
-        current_tenant_id = _current_tenant_id(current_user)
-        if is_created_app and result.app_id and current_tenant_id:
-            result.permission_keys = get_app_permission_keys(
-                current_tenant_id,
-                current_user.id,
-                result.app_id,
-            )
+        if dify_config.RBAC_ENABLED and is_created_app and result.app_id:
+            current_user, current_tenant_id = _current_user_and_tenant_id(current_user)
+            if current_tenant_id:
+                result.permission_keys = get_app_permission_keys(
+                    current_tenant_id,
+                    current_user.id,
+                    result.app_id,
+                )
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
