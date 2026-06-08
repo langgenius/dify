@@ -1,6 +1,8 @@
+from datetime import datetime
 from unittest.mock import create_autospec, patch
 
 import pytest
+import sqlalchemy as sa
 from faker import Faker
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -244,6 +246,83 @@ class TestAppService:
         for app in paginated_apps.items:
             assert app.tenant_id == tenant.id
             assert app.mode == "chat"
+
+    def test_get_paginate_apps_sorts_by_modified_and_created_times(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test app list sort options for modified time and creation time.
+        """
+        fake = Faker()
+
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=generate_valid_password(fake),
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
+
+        from services.app_service import AppListParams, AppService, CreateAppParams
+
+        app_service = AppService()
+        oldest_created = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Oldest Created", mode="chat", icon_type="emoji", icon="1"),
+            account,
+        )
+        newest_modified = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Newest Modified", mode="chat", icon_type="emoji", icon="2"),
+            account,
+        )
+        newest_created = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Newest Created", mode="chat", icon_type="emoji", icon="3"),
+            account,
+        )
+
+        timestamp_by_app_id = {
+            oldest_created.id: (datetime(2026, 1, 1, 10, 0, 0), datetime(2026, 1, 1, 10, 0, 0)),
+            newest_modified.id: (datetime(2026, 1, 2, 10, 0, 0), datetime(2026, 1, 4, 10, 0, 0)),
+            newest_created.id: (datetime(2026, 1, 3, 10, 0, 0), datetime(2026, 1, 3, 10, 0, 0)),
+        }
+        for app_id, (created_at, updated_at) in timestamp_by_app_id.items():
+            db_session_with_containers.execute(
+                sa.update(App).where(App.id == app_id).values(created_at=created_at, updated_at=updated_at)
+            )
+        db_session_with_containers.commit()
+
+        last_modified_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat")
+        )
+        assert last_modified_apps is not None
+        assert [app.name for app in last_modified_apps.items] == [
+            "Newest Modified",
+            "Newest Created",
+            "Oldest Created",
+        ]
+
+        recently_created_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", sort_by="recently_created")
+        )
+        assert recently_created_apps is not None
+        assert [app.name for app in recently_created_apps.items] == [
+            "Newest Created",
+            "Newest Modified",
+            "Oldest Created",
+        ]
+
+        earliest_created_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", sort_by="earliest_created")
+        )
+        assert earliest_created_apps is not None
+        assert [app.name for app in earliest_created_apps.items] == [
+            "Oldest Created",
+            "Newest Modified",
+            "Newest Created",
+        ]
 
     def test_get_paginate_apps_with_filters(
         self, db_session_with_containers: Session, mock_external_service_dependencies

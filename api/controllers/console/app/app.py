@@ -41,7 +41,7 @@ from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
-from services.app_service import AppListParams, AppService, CreateAppParams
+from services.app_service import AppListParams, AppListSortBy, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -72,6 +72,10 @@ class AppListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
     mode: AppListMode = Field(default=cast(AppListMode, "all"), description="App mode filter")
+    sort_by: AppListSortBy = Field(
+        default="last_modified",
+        description="Sort apps by last modified, recently created, or earliest created",
+    )
     name: str | None = Field(default=None, description="Filter by app name")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
@@ -511,6 +515,7 @@ class AppListApi(Resource):
             page=args.page,
             limit=args.limit,
             mode=args.mode,
+            sort_by=args.sort_by,
             name=args.name,
             tag_ids=args.tag_ids,
             creator_ids=args.creator_ids,
