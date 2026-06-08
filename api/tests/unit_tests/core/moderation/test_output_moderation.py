@@ -150,7 +150,7 @@ class TestOutputModeration:
             output_moderation.is_final_chunk = True
 
             # To avoid infinite loop, we'll set thread_running to False after one iteration
-            def side_effect(*args, **kwargs):
+            def side_effect[**P](*args: P.args, **kwargs: P.kwargs):
                 output_moderation.thread_running = False
                 return mock_moderation.return_value
 
@@ -182,7 +182,7 @@ class TestOutputModeration:
 
         with patch.object(OutputModeration, "moderation") as mock_moderation:
             # Use side_effect to change thread_running on second call
-            def side_effect(*args, **kwargs):
+            def side_effect[**P](*args: P.args, **kwargs: P.kwargs):
                 if mock_moderation.call_count > 1:
                     output_moderation.thread_running = False
                     return None
@@ -221,7 +221,7 @@ class TestOutputModeration:
             # Return None (exception or no rule)
             mock_moderation.return_value = None
 
-            def side_effect(*args, **kwargs):
+            def side_effect[**P](*args: P.args, **kwargs: P.kwargs):
                 output_moderation.thread_running = False
 
             mock_moderation.side_effect = side_effect

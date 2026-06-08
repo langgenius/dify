@@ -98,7 +98,7 @@ def test_run_completion_dispatches_to_completion_handler(
 ):
     app = app_with_mode("completion")
 
-    captured: dict = {}
+    captured = {}
 
     def _fake_generate(*, app_model, user, args, invoke_from, streaming):
         captured["mode"] = app_model.mode
