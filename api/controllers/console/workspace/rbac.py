@@ -82,10 +82,13 @@ def _account_names_by_ids(account_ids: list[str]) -> dict[str, dict[str, str]]:
     with session_factory.create_session() as session:
         rows = session.execute(select(Account.id, Account.name, Account.avatar).where(Account.id.in_(ids))).all()
 
-    return {account_id: {
-        "name": name,
-        "avatar": avatar
-   } or "" for account_id, name, avatar in rows}
+    return {
+        account_id: {
+            "name": name or "",
+            "avatar": avatar or "",
+        }
+        for account_id, name, avatar in rows
+    }
 
 
 def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> None:

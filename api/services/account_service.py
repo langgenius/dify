@@ -1748,7 +1748,7 @@ class TenantService:
             if not dify_config.RBAC_ENABLED:
                 if current_owner_join:
                     current_owner_join.role = TenantAccountRole.ADMIN
-            else:
+            elif current_owner_join:
                 admin_role_id = AccountService.resolve_workspace_rbac_role_id(
                     tenant_id=str(tenant.id),
                     account_id=operator.id,

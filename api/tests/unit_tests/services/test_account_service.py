@@ -1144,6 +1144,7 @@ class TestTenantService:
         with (
             patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+            patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=False),
         ):
             TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
 
@@ -1174,17 +1175,10 @@ class TestTenantService:
         mock_permissions = MagicMock()
         mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
 
-        mock_owner_role = MagicMock()
-        mock_owner_role.is_builtin = True
-        mock_owner_role.category = "global_system_default"
-        mock_owner_role.name = "所有者"
-        mock_member_roles = MagicMock()
-        mock_member_roles.roles = [mock_owner_role]
-
         with (
             patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
-            patch("services.account_service.RBACService.MemberRoles.get", return_value=mock_member_roles),
+            patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=True),
         ):
             with pytest.raises(NoPermissionError):
                 TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")

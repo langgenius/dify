@@ -82,7 +82,9 @@ def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
     return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
 
 
-def _serialize_member_roles(current_role: str | None, member_roles: list[enterprise_rbac_service.MemberRoleSummary]) -> list[dict[str, str]]:
+def _serialize_member_roles(
+    current_role: str | None, member_roles: list[enterprise_rbac_service.RBACRole]
+) -> list[dict[str, str]]:
     if member_roles:
         return [{"id": role.id, "name": role.name} for role in member_roles]
     if current_role:
@@ -207,7 +209,9 @@ class MemberInviteEmailApi(Resource):
         invitee_role = args.role
         interface_language = args.language
         if not dify_config.RBAC_ENABLED:
-            if not TenantAccountRole.is_valid_role(invitee_role) or not TenantAccountRole.is_non_owner_role(invitee_role):
+            if not TenantAccountRole.is_valid_role(invitee_role):
+                return {"code": "invalid-role", "message": "Invalid role"}, 400
+            if not TenantAccountRole.is_non_owner_role(TenantAccountRole(invitee_role)):
                 return {"code": "invalid-role", "message": "Invalid role"}, 400
         inviter = current_user
         if not inviter.current_tenant:

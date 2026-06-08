@@ -631,7 +631,7 @@ class AppListApi(Resource):
             current_user.id,
             [str(app.id)],
         )
-        app.permission_keys = permission_keys_map.get(str(app.id), [])
+        setattr(app, "permission_keys", permission_keys_map.get(str(app.id), []))
         app_detail = AppDetail.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
 
@@ -664,7 +664,7 @@ class AppApi(Resource):
             current_user.id,
             [str(app_model.id)],
         )
-        app_model.permission_keys = permission_keys_map.get(str(app_model.id), [])
+        setattr(app_model, "permission_keys", permission_keys_map.get(str(app_model.id), []))
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
@@ -785,7 +785,7 @@ class AppCopyApi(Resource):
                 current_user.id,
                 [str(app.id)],
             )
-            app.permission_keys = permission_keys_map.get(str(app.id), [])
+            setattr(app, "permission_keys", permission_keys_map.get(str(app.id), []))
 
         response_model = AppDetailWithSite.model_validate(app, from_attributes=True)
         return response_model.model_dump(mode="json"), 201
