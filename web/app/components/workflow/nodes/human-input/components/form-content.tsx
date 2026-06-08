@@ -193,6 +193,7 @@ const FormContent: FC<FormContentProps> = ({
             getVarType,
             workflowNodesMap,
           }}
+          isSupportFileVar
           editable={!readonly}
           shortcutPopups={shortcutPopups}
         />

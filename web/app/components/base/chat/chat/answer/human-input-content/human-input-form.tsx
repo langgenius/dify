@@ -6,6 +6,8 @@ import type { UserAction } from '@/app/components/workflow/nodes/human-input/typ
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
+import { FileList } from '@/app/components/base/file-uploader'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import ContentItem from './content-item'
 import { getButtonStyle, getProcessedHumanInputFormInputs, getRenderedFormInputs, hasInvalidSelectOrFileInput, initializeInputs, splitByOutputVar } from './utils'
 
@@ -19,6 +21,9 @@ const HumanInputForm = ({
   const defaultInputs = initializeInputs(renderedFormInputs, formData.resolved_default_values || {})
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const files = formData.files?.length
+    ? getProcessedFilesFromResponse(formData.files)
+    : []
 
   const handleInputsChange = useCallback((name: string, value: HumanInputFieldValue) => {
     setInputs(prev => ({
@@ -49,6 +54,15 @@ const HumanInputForm = ({
           onInputChange={handleInputsChange}
         />
       ))}
+      {!!files.length && (
+        <FileList
+          className="my-1"
+          files={files}
+          showDeleteAction={false}
+          showDownloadAction
+          canPreview
+        />
+      )}
       <div className="flex flex-wrap gap-1 py-1">
         {formData.actions.map((action: UserAction) => (
           <Button

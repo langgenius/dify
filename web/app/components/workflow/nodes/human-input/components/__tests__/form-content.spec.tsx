@@ -165,6 +165,7 @@ describe('FormContent', () => {
 
     expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
       editable: true,
+      isSupportFileVar: true,
       shortcutPopups: [
         expect.objectContaining({
           hotkey: ['mod', '/'],

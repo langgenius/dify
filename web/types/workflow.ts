@@ -333,6 +333,7 @@ export type HumanInputFormData = {
   actions: UserAction[]
   form_token: string
   resolved_default_values: Record<string, HumanInputResolvedValue>
+  files?: FileResponse[]
   display_in_ui: boolean
   expiration_time: number
 }

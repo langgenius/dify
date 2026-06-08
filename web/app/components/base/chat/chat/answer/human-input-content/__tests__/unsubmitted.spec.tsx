@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { useSelector } from '@/context/app-context'
+import { TransferMethod } from '@/types/app'
 import { UnsubmittedHumanInputContent } from '../unsubmitted'
 
 // Mock AppContext's useSelector to control user profile data
@@ -129,6 +130,30 @@ describe('UnsubmittedHumanInputContent Integration', () => {
       render(<UnsubmittedHumanInputContent formData={data} onSubmit={vi.fn()} />)
 
       expect(screen.getByText('share.humanInput.expiredTip')).toBeInTheDocument()
+    })
+
+    it('should render files from the human input required event at the bottom of the form content', () => {
+      const data = createMockFormData({
+        files: [
+          {
+            related_id: 'file-1',
+            extension: '.pdf',
+            filename: 'approval.pdf',
+            size: 1024,
+            mime_type: 'application/pdf',
+            transfer_method: TransferMethod.local_file,
+            type: 'document',
+            url: 'https://upload.dify.ai/files/file-1',
+            upload_file_id: 'file-1',
+            remote_url: '',
+          },
+        ],
+      })
+
+      render(<UnsubmittedHumanInputContent formData={data} onSubmit={vi.fn()} />)
+
+      expect(screen.getByTestId('file-list')).toBeInTheDocument()
+      expect(screen.getByText('approval.pdf')).toBeInTheDocument()
     })
   })
 
