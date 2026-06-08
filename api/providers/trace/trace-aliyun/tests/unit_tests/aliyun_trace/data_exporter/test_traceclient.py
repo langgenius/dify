@@ -42,7 +42,9 @@ def trace_client_factory():
 class TestTraceClient:
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
     @patch("dify_trace_aliyun.data_exporter.traceclient.socket.gethostname")
-    def test_init(self, mock_gethostname: MagicMock, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
+    def test_init(
+        self, mock_gethostname: MagicMock, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]
+    ):
         mock_gethostname.return_value = "test-host"
         client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
 
@@ -65,7 +67,9 @@ class TestTraceClient:
 
     @patch("dify_trace_aliyun.data_exporter.traceclient.httpx.head")
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_success(self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]):
+    def test_api_check_success(
+        self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]
+    ):
         mock_response = MagicMock()
         mock_response.status_code = 405
         mock_head.return_value = mock_response
@@ -75,7 +79,9 @@ class TestTraceClient:
 
     @patch("dify_trace_aliyun.data_exporter.traceclient.httpx.head")
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_failure_status(self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]):
+    def test_api_check_failure_status(
+        self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]
+    ):
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_head.return_value = mock_response
@@ -85,7 +91,9 @@ class TestTraceClient:
 
     @patch("dify_trace_aliyun.data_exporter.traceclient.httpx.head")
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_exception(self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]):
+    def test_api_check_exception(
+        self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]
+    ):
         mock_head.side_effect = httpx.RequestError("Connection error")
 
         client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
@@ -135,7 +143,9 @@ class TestTraceClient:
 
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
     @patch("dify_trace_aliyun.data_exporter.traceclient.logger")
-    def test_add_span_queue_full(self, mock_logger: MagicMock, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
+    def test_add_span_queue_full(
+        self, mock_logger: MagicMock, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]
+    ):
         client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint", max_queue_size=1)
 
         span_data = SpanData(
