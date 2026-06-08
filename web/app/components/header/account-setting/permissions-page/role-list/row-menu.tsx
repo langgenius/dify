@@ -79,7 +79,7 @@ const RowMenu = ({
 
   const hasViewAction = roleCategory === 'global_system_default'
   const hasEditAction = roleCategory === 'global_custom' && canManageRoles
-  const hasDuplicateAction = roleCategory === 'global_custom' && canManageRoles
+  const hasDuplicateAction = canManageRoles
   const hasDeleteAction = roleCategory === 'global_custom' && canManageRoles
 
   return (

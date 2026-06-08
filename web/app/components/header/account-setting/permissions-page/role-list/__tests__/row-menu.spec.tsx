@@ -78,7 +78,9 @@ describe('RowMenu', () => {
       const { menu } = await openMenu()
 
       expect(within(menu).getByRole('menuitem', { name: 'common.operation.view' })).toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toBeInTheDocument()
       expect(within(menu).queryByRole('menuitem', { name: 'common.operation.edit' })).not.toBeInTheDocument()
+      expect(within(menu).queryByRole('menuitem', { name: 'common.operation.delete' })).not.toBeInTheDocument()
     })
 
     it('should render view action for non-owner system roles', async () => {
@@ -134,6 +136,24 @@ describe('RowMenu', () => {
 
       expect(onView).toHaveBeenCalledTimes(1)
       expect(onView).toHaveBeenCalledWith(role)
+    })
+
+    it('should duplicate a system role when clicking the duplicate action', async () => {
+      const role = createRole({ id: 'role-default-editor', name: 'Editor' })
+      render(
+        <RowMenu
+          roleCategory="global_system_default"
+          role={role}
+        />,
+      )
+
+      const { user, menu } = await openMenu()
+      await user.click(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }))
+
+      expect(mockCopyRole).toHaveBeenCalledTimes(1)
+      expect(mockCopyRole).toHaveBeenCalledWith(role.id, expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }))
     })
   })
 })
