@@ -139,6 +139,30 @@ def test_overwrite_cleans_old_drive_owned_value():
     assert rows[0].file_id == tf2
 
 
+def test_validate_source_db_error_maps_to_404():
+    """A malformed id (non-UUID hitting a UUID column -> DataError) must not 500."""
+    from unittest.mock import MagicMock
+
+    from sqlalchemy.exc import DataError
+
+    from models.agent import AgentDriveFileKind
+
+    session = MagicMock()
+    session.scalar.side_effect = DataError("bad uuid", {}, Exception("invalid input syntax for uuid"))
+
+    with pytest.raises(AgentDriveError) as exc_info:
+        AgentDriveService()._validate_source(
+            session,
+            tenant_id=TENANT,
+            user_id="not-a-uuid",
+            file_kind=AgentDriveFileKind.TOOL_FILE,
+            file_id="also-bad",
+        )
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.code == "source_not_found"
+    session.rollback.assert_called_once()
+
+
 def test_recommit_same_value_is_idempotent_and_keeps_value():
     tf = _seed_tool_file()
     _commit("a.txt", tf)

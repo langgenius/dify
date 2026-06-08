@@ -23,6 +23,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.app.file_access.controller import DatabaseFileAccessController
@@ -235,23 +236,31 @@ class AgentDriveService:
         file_kind: AgentDriveFileKind,
         file_id: str,
     ) -> tuple[int | None, str | None]:
-        """Verify the source file exists for the tenant (and user, for ToolFile)."""
-        if file_kind == AgentDriveFileKind.TOOL_FILE:
-            tool_file = session.scalar(
-                select(ToolFile).where(
-                    ToolFile.id == file_id,
-                    ToolFile.tenant_id == tenant_id,
-                    ToolFile.user_id == user_id,
+        """Verify the source file exists for the tenant (and user, for ToolFile).
+
+        Malformed ids (e.g. a non-UUID hitting a UUID column) are treated as a
+        missing source rather than crashing the commit with a 500.
+        """
+        try:
+            if file_kind == AgentDriveFileKind.TOOL_FILE:
+                tool_file = session.scalar(
+                    select(ToolFile).where(
+                        ToolFile.id == file_id,
+                        ToolFile.tenant_id == tenant_id,
+                        ToolFile.user_id == user_id,
+                    )
                 )
+                if tool_file is None:
+                    raise AgentDriveError(
+                        "source_not_found", "source ToolFile not found for this tenant/user", status_code=404
+                    )
+                return tool_file.size, tool_file.mimetype
+            upload_file = session.scalar(
+                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
             )
-            if tool_file is None:
-                raise AgentDriveError(
-                    "source_not_found", "source ToolFile not found for this tenant/user", status_code=404
-                )
-            return tool_file.size, tool_file.mimetype
-        upload_file = session.scalar(
-            select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
-        )
+        except (DataError, SQLAlchemyError) as exc:
+            session.rollback()
+            raise AgentDriveError("source_not_found", "source file ref is invalid", status_code=404) from exc
         if upload_file is None:
             raise AgentDriveError("source_not_found", "source UploadFile not found for this tenant", status_code=404)
         return upload_file.size, upload_file.mime_type
