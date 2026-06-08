@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 @click.command("setup-system-tool-oauth-client", help="Setup system tool oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
-def setup_system_tool_oauth_client(provider: str, client_params: dict):
+def setup_system_tool_oauth_client(provider: str, client_params: str):
     """
     Setup system tool oauth client
     """
@@ -79,7 +79,7 @@ def setup_system_tool_oauth_client(provider: str, client_params: dict):
 @click.command("setup-system-trigger-oauth-client", help="Setup system trigger oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
-def setup_system_trigger_oauth_client(provider: str, client_params: dict):
+def setup_system_trigger_oauth_client(provider: str, client_params: str):
     """
     Setup system trigger oauth client
     """
@@ -129,7 +129,7 @@ def setup_system_trigger_oauth_client(provider: str, client_params: dict):
 @click.command("setup-datasource-oauth-client", help="Setup datasource oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
-def setup_datasource_oauth_client(provider: str, client_params: dict):
+def setup_datasource_oauth_client(provider: str, client_params: str):
     """
     Setup datasource oauth client
     """
