@@ -14,6 +14,10 @@ vi.mock('react-i18next', async () => {
     'app.studio.filters.types': 'Types',
     'app.studio.filters.allCreators': 'All creators',
     'app.studio.filters.creators': 'Creators',
+    'app.studio.sort.earliestCreated': 'Earliest created',
+    'app.studio.sort.lastModified': 'Last modified',
+    'app.studio.sort.recentlyCreated': 'Recently created',
+    'app.studio.sort.sortBy': 'Sort by',
   })
 })
 
@@ -302,6 +306,11 @@ const openAppTypeSelect = async (user = userEvent.setup()) => {
   return user
 }
 
+const openAppSortSelect = async (user = userEvent.setup()) => {
+  await user.click(screen.getByRole('button', { name: 'Sort by Last modified' }))
+  return user
+}
+
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -365,10 +374,12 @@ describe('List', () => {
     it('should render link to snippets before the create button', () => {
       renderList()
 
+      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
       const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
       expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(sortButton.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
@@ -530,6 +541,7 @@ describe('List', () => {
           page: 2,
           limit: 30,
           name: 'sales',
+          sort_by: 'last_modified',
           tag_ids: ['tag-1'],
           creator_ids: ['creator-1'],
           mode: AppModeEnum.WORKFLOW,
@@ -731,6 +743,17 @@ describe('List', () => {
         expect(mockSetCategory).toHaveBeenCalledWith(mode)
         unmount()
       }
+    })
+
+    it('should update app list query when sort option changes', async () => {
+      const user = userEvent.setup()
+      renderList()
+      await openAppSortSelect(user)
+
+      await user.click(await screen.findByRole('menuitemradio', { name: 'Recently created' }))
+
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+      expect(options.input(1).query.sort_by).toBe('recently_created')
     })
   })
 

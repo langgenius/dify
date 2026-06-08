@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppListQuery } from '@/contract/console/apps'
+import type { AppListQuery, AppListSortBy } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -45,6 +45,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
     setCreatorIDs,
   } = useAppsQueryState()
   const [tagIDs, setTagIDs] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const containerRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
@@ -79,10 +80,11 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
     page: 1,
     limit: 30,
     name: debouncedKeywords,
+    sort_by: sortBy,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
     ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
     ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, creatorIDs, debouncedKeywords, tagIDs])
+  }), [category, creatorIDs, debouncedKeywords, sortBy, tagIDs])
 
   const {
     data,
@@ -196,10 +198,12 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
             tagIDs={tagIDs}
             keywords={keywords}
             creatorIDs={creatorIDs}
+            sortBy={sortBy}
             onCategoryChange={setCategory}
             onTagIDsChange={setTagIDs}
             onKeywordsChange={setKeywords}
             onCreatorIDsChange={setCreatorIDs}
+            onSortByChange={setSortBy}
             onCreateBlank={() => setShowNewAppModal(true)}
             onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
             onImportDSL={() => setShowCreateFromDSLModal(true)}
