@@ -196,7 +196,6 @@ jobs:
           DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
           DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
           DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
-        env:
           DIFY_E2E_INCLUDE: "test/e2e/suites/framework/global-flags.e2e.ts,test/e2e/suites/output/**/*.e2e.ts,test/e2e/suites/error-handling/**/*.e2e.ts"
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
@@ -245,7 +244,6 @@ jobs:
           DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
           DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
           DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
-        env:
           DIFY_E2E_INCLUDE: "test/e2e/suites/discovery/**/*.e2e.ts"
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
@@ -315,7 +313,6 @@ jobs:
           DIFY_E2E_HITL_EXTERNAL_APP_ID:      ${{ needs.provision.outputs.hitl_external_app_id }}
           DIFY_E2E_HITL_SINGLE_ACTION_APP_ID: ${{ needs.provision.outputs.hitl_single_action_app_id }}
           DIFY_E2E_HITL_MULTI_NODE_APP_ID:    ${{ needs.provision.outputs.hitl_multi_node_app_id }}
-        env:
           DIFY_E2E_INCLUDE: "test/e2e/suites/run/${{ matrix.file }}"
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
@@ -370,7 +367,6 @@ jobs:
           DIFY_E2E_WORKSPACE_ID:   ${{ needs.provision.outputs.workspace_id }}
           DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
           DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
-        env:
           DIFY_E2E_INCLUDE: "test/e2e/suites/auth/login.e2e.ts,test/e2e/suites/auth/status.e2e.ts,test/e2e/suites/auth/whoami.e2e.ts"
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
