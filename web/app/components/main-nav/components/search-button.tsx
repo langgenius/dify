@@ -19,7 +19,7 @@ export function MainNavSearchButton() {
       onClick={() => setGotoAnythingOpen(true)}
     >
       <span aria-hidden className="i-custom-vender-main-nav-quick-search h-4 w-4" />
-      <Kbd className="h-[18px] min-w-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+      <Kbd className="h-4.5 min-w-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
         {searchShortcut.map(key => (
           <span key={key}>{formatForDisplay(key)}</span>
         ))}
