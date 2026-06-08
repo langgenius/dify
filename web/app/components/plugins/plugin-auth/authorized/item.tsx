@@ -146,7 +146,6 @@ const Item = ({
             />
             <div
               className="truncate system-md-regular text-text-secondary"
-              title={credential.name}
             >
               {credential.name}
             </div>

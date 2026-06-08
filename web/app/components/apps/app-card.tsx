@@ -118,8 +118,7 @@ function AppAccessModeIcon({ accessMode }: AppAccessModeIconProps) {
     <div className="absolute right-3 bottom-3 flex size-4 items-center justify-center">
       <Tooltip>
         <TooltipTrigger
-          aria-label={label}
-          render={<span title={label} className={cn(iconClassName, 'size-4 text-text-quaternary')} />}
+          render={<span role="img" aria-label={label} className={cn(iconClassName, 'size-4 text-text-quaternary')} />}
         />
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
@@ -497,7 +496,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           aria-describedby={app.description ? appDescriptionId : undefined}
           className="inline-flex h-full w-full cursor-pointer touch-manipulation flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs outline-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
-          <div className="flex shrink-0 items-center gap-3 pt-4 pb-2 pl-4">
+          <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
             <div className="relative shrink-0">
               <AppIcon
                 size="large"
@@ -510,9 +509,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             </div>
             <div className="flex w-0 grow flex-col gap-1 py-px">
               <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-                <div id={appNameId} className="truncate" title={app.name}>{app.name}</div>
+                <div id={appNameId} className="truncate">{app.name}</div>
               </div>
-              <div className="truncate system-2xs-medium-uppercase text-text-tertiary" title={appModeLabel}>{appModeLabel}</div>
+              <div className="truncate system-2xs-medium-uppercase text-text-tertiary">{appModeLabel}</div>
             </div>
             {onlinePresenceUsers.length > 0 && (
               <div className="ml-3 flex shrink-0 items-start">
@@ -524,7 +523,6 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             <div
               id={appDescriptionId}
               className="line-clamp-2 min-h-8"
-              title={app.description}
             >
               {app.description}
             </div>
@@ -532,9 +530,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           <div className="flex h-[26px] shrink-0 items-start px-3" />
           <div className="flex min-w-0 shrink-0 items-center pt-2 pr-12 pb-3 pl-4 system-xs-regular text-text-tertiary">
             <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
-              <div className="truncate" title={app.author_name}>{app.author_name}</div>
+              <div className="truncate">{app.author_name}</div>
               <div className="shrink-0">·</div>
-              <div className="truncate" title={editTimeText}>{editTimeText}</div>
+              <div className="truncate">{editTimeText}</div>
             </div>
           </div>
         </Link>

@@ -279,7 +279,7 @@ export function WorkflowToolDrawer({
                       <tr key={index} className="border-b border-divider-regular last:border-0">
                         <td className="max-w-[156px] p-2 pl-3">
                           <div className="text-[13px] leading-[18px]">
-                            <div title={item.name} className="flex">
+                            <div className="flex">
                               <span className="truncate font-medium text-text-primary">{item.name}</span>
                               <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
                             </div>
@@ -332,7 +332,7 @@ export function WorkflowToolDrawer({
                       <tr key={index} className="border-b border-divider-regular last:border-0">
                         <td className="max-w-[156px] p-2 pl-3">
                           <div className="text-[13px] leading-[18px]">
-                            <div title={item.name} className="flex items-center">
+                            <div className="flex items-center">
                               <span className="truncate font-medium text-text-primary">{item.name}</span>
                               <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t('createTool.toolOutput.reserved', { ns: 'tools' }) : ''}</span>
                               {

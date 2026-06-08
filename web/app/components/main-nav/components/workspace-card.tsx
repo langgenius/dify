@@ -102,7 +102,7 @@ function WorkspaceCardTrigger({
         <WorkspaceIcon name={name} className="h-6 w-6 rounded-lg" />
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
-            <span className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary" title={name}>{name}</span>
+            <span className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary">{name}</span>
             {status && <span className="flex shrink-0 items-center">{status}</span>}
           </div>
         </div>
@@ -116,14 +116,13 @@ function WorkspaceCardTrigger({
             aria-label={t('mainNav.workspace.credits', { ns: 'common', count: credits })}
           >
             <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate system-xs-medium" title={credits}>{credits}</span>
+            <span className="truncate system-xs-medium">{credits}</span>
             <span className="shrink-0 system-xs-regular">{t('mainNav.workspace.creditsUnit', { ns: 'common' })}</span>
           </Link>
           {showPlanAction && (
             <button
               type="button"
               className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
-              title={planActionLabel}
               onClick={onPlanClick}
             >
               {planActionLabel}
@@ -159,7 +158,7 @@ function WorkspaceMenuHeader({
       <div className="rounded-xl border-[0.5px] border-components-panel-border bg-linear-to-b from-background-section-burn to-background-section pb-2">
         <div className="flex h-16 items-center gap-2 px-3">
           <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-1">
-            <PopoverTitle className="w-full min-w-0 truncate text-base/5 font-medium text-text-primary" title={name}>{name}</PopoverTitle>
+            <PopoverTitle className="w-full min-w-0 truncate text-base/5 font-medium text-text-primary">{name}</PopoverTitle>
             {status}
           </div>
           <WorkspaceIcon name={name} className="h-9 w-9 shrink-0" />

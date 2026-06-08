@@ -97,8 +97,8 @@ const MCPCard = ({
           <Icon src={data.icon} />
         </div>
         <div className="min-w-0 grow">
-          <div className="mb-1 truncate system-md-semibold text-text-secondary" title={data.name}>{data.name}</div>
-          <div className="truncate system-xs-regular text-text-tertiary" title={data.server_identifier}>{data.server_identifier}</div>
+          <div className="mb-1 truncate system-md-semibold text-text-secondary">{data.name}</div>
+          <div className="truncate system-xs-regular text-text-tertiary">{data.server_identifier}</div>
         </div>
       </div>
       <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
@@ -112,7 +112,7 @@ const MCPCard = ({
           {updatedAtText && (
             <>
               <div className="system-xs-regular text-divider-deep">·</div>
-              <div className="truncate system-xs-regular text-text-tertiary" title={updatedAtText}>{updatedAtText}</div>
+              <div className="truncate system-xs-regular text-text-tertiary">{updatedAtText}</div>
             </>
           )}
         </div>

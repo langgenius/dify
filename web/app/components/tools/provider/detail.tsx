@@ -260,7 +260,7 @@ const ProviderDetail = ({
                       <div className="mt-0.5 mb-1 flex h-4 items-center justify-between">
                         {collection.type === CollectionType.workflow || collection.type === CollectionType.custom
                           ? (
-                              <div className="truncate system-xs-regular text-text-tertiary" title={collection.author}>
+                              <div className="truncate system-xs-regular text-text-tertiary">
                                 {collection.author && `${t('author', { ns: 'tools' })} ${collection.author}`}
                               </div>
                             )

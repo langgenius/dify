@@ -103,7 +103,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
                   className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-[6px] pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
-                  <div title={label.label} className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
+                  <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
                   {value.includes(label.name) && <Check className="size-4 shrink-0 text-text-accent" aria-hidden="true" />}
                 </button>
               ))}

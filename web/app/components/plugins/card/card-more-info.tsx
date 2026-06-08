@@ -25,7 +25,6 @@ const CardMoreInfoComponent = ({
                 'border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]',
                 'system-2xs-medium-uppercase text-text-tertiary',
               )}
-              title={tag}
             >
               <span className="i-ri-price-tag-3-line h-3 w-3 shrink-0 text-text-quaternary" />
               <span className="truncate">{tag}</span>
@@ -47,7 +46,6 @@ const CardMoreInfoComponent = ({
               <div
                 key={tag}
                 className="flex max-w-[120px] space-x-1 overflow-hidden system-xs-regular"
-                title={`# ${tag}`}
               >
                 <span className="text-text-quaternary">#</span>
                 <span className="truncate text-text-tertiary">{tag}</span>

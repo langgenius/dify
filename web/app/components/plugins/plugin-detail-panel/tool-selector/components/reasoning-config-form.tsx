@@ -164,7 +164,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       <div key={variable} className="space-y-0.5">
         <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')} title={fieldTitle}>{fieldTitle}</span>
+            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')}>{fieldTitle}</span>
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}

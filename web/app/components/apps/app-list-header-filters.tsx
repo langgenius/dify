@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppListCategory } from './app-type-filter-shared'
+import type { AppListSortBy } from '@/contract/console/apps'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
@@ -8,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
+import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
 
@@ -16,10 +18,12 @@ type AppListHeaderFiltersProps = {
   tagIDs: string[]
   keywords: string
   creatorIDs: string[]
+  sortBy: AppListSortBy
   onCategoryChange: (category: AppListCategory) => void
   onTagIDsChange: (tagIDs: string[]) => void
   onKeywordsChange: (keywords: string) => void
   onCreatorIDsChange: (creatorIDs: string[]) => void
+  onSortByChange: (sortBy: AppListSortBy) => void
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
@@ -32,10 +36,12 @@ export function AppListHeaderFilters({
   tagIDs,
   keywords,
   creatorIDs,
+  sortBy,
   onCategoryChange,
   onTagIDsChange,
   onKeywordsChange,
   onCreatorIDsChange,
+  onSortByChange,
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
@@ -48,8 +54,14 @@ export function AppListHeaderFilters({
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2">
         <AppTypeFilter value={category} onChange={onCategoryChange} />
+        <TagFilter
+          type="app"
+          value={tagIDs}
+          onChange={onTagIDsChange}
+          onOpenTagManagement={onOpenTagManagement}
+          showLeadingIcon={false}
+        />
         <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
-        <TagFilter type="app" value={tagIDs} onChange={onTagIDsChange} onOpenTagManagement={onOpenTagManagement} />
         <SearchInput
           className="w-50"
           value={keywords}
@@ -58,6 +70,7 @@ export function AppListHeaderFilters({
         />
       </div>
       <div className="flex items-center gap-2">
+        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <Link
           href="/snippets"
           className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"

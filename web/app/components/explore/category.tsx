@@ -1,7 +1,8 @@
 'use client'
 import type { AppCategory } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
-import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
 import exploreI18n from '@/i18n/en-US/explore.json'
 
@@ -32,18 +33,16 @@ function Category({
     return categoryKey in exploreI18n ? t(categoryKey, { ns: 'explore' }) : name
   }
 
-  const handleValueChange = (nextCategories: string[]) => {
-    const nextCategory = nextCategories[0]
-
+  const handleValueChange = (nextCategory: string) => {
     if (nextCategory)
       onChange(nextCategory)
   }
 
   return (
-    <SegmentedControl
+    <RadioGroup
       aria-label={t('tryApp.category', { ns: 'explore' })}
       className={cn(className, 'flex max-w-full flex-wrap items-start gap-1 overflow-visible rounded-none bg-transparent p-0 text-[13px]')}
-      value={[selectedCategory]}
+      value={selectedCategory}
       onValueChange={handleValueChange}
     >
       {[
@@ -54,15 +53,18 @@ function Category({
           isAll: false,
         })),
       ].map(item => (
-        <SegmentedControlItem
+        <RadioRoot
           key={item.isAll ? 'all' : item.name}
           value={item.name}
-          className="h-8 min-w-12 shrink-0 cursor-pointer rounded-lg border-0 px-2.5 py-2 text-center system-sm-medium text-text-tertiary shadow-none hover:bg-state-base-hover focus-visible:ring-1 data-pressed:border-0 data-pressed:bg-state-base-active data-pressed:system-sm-semibold data-pressed:text-text-secondary data-pressed:shadow-none"
+          variant="unstyled"
+          nativeButton
+          render={<button type="button" />}
+          className="h-8 min-w-12 shrink-0 cursor-pointer touch-manipulation rounded-lg border-0 px-2.5 py-2 text-center system-sm-medium text-text-tertiary shadow-none transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-0 data-checked:bg-state-base-active data-checked:system-sm-semibold data-checked:text-text-secondary data-checked:shadow-none motion-reduce:transition-none"
         >
           {item.label}
-        </SegmentedControlItem>
+        </RadioRoot>
       ))}
-    </SegmentedControl>
+    </RadioGroup>
   )
 }
 

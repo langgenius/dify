@@ -33,6 +33,7 @@ type ToggleButtonProps = {
   expand: boolean
   handleToggle: () => void
   className?: string
+  icon?: React.ReactNode
   iconClassName?: string
 }
 
@@ -40,6 +41,7 @@ const ToggleButton = ({
   expand,
   handleToggle,
   className,
+  icon,
   iconClassName,
 }: ToggleButtonProps) => {
   return (
@@ -53,11 +55,12 @@ const ToggleButton = ({
           />
         )}
       >
-        {iconClassName
-          ? <span aria-hidden className={cn('size-4', iconClassName)} />
-          : expand
-            ? <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-            : <span aria-hidden className="i-ri-arrow-right-s-line size-4" />}
+        {icon
+          || (iconClassName
+            ? <span aria-hidden className={cn('size-4', iconClassName)} />
+            : expand
+              ? <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+              : <span aria-hidden className="i-ri-arrow-right-s-line size-4" />)}
       </TooltipTrigger>
       <TooltipContent placement="right" className="rounded-lg p-1.5">
         <ToggleTooltipContent expand={expand} />

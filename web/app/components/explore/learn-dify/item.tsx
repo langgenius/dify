@@ -74,7 +74,7 @@ const LearnDifyItem = ({
           background={appBasicInfo.icon_background}
           imageUrl={appBasicInfo.icon_url}
         />
-        <h3 className="w-full truncate system-md-semibold text-text-secondary" title={appBasicInfo.name}>
+        <h3 className="w-full truncate system-md-semibold text-text-secondary">
           {appBasicInfo.name}
         </h3>
       </div>

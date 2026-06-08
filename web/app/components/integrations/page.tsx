@@ -222,7 +222,6 @@ export default function IntegrationsPage({
             <div>
               <button
                 type="button"
-                title={t('menus.tools', { ns: 'common' })}
                 aria-label={t('menus.tools', { ns: 'common' })}
                 aria-expanded={isToolsExpanded}
                 className={cn(toolsNavItemClassName, 'border-none bg-transparent')}

@@ -45,7 +45,6 @@ export default function AppNavItem({
   return (
     <div
       key={id}
-      title={isMainNav ? name : undefined}
       className={cn(
         isMainNav
           ? 'group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors has-[>a:focus-visible]:ring-2 has-[>a:focus-visible]:ring-state-accent-solid has-[>a:focus-visible]:ring-inset'
@@ -71,7 +70,7 @@ export default function AppNavItem({
             className={cn(isMainNav ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden' : 'flex w-0 grow items-center space-x-2 outline-hidden')}
           >
             <AppIcon size="tiny" className={cn(isMainNav && 'size-5 rounded-md text-sm')} iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
-            <div className={cn(isMainNav ? 'min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular' : 'truncate system-sm-regular text-components-menu-item-text')} title={isMainNav ? undefined : name}>{name}</div>
+            <div className={cn(isMainNav ? 'min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular' : 'truncate system-sm-regular text-components-menu-item-text')}>{name}</div>
           </Link>
           <div className="h-6 shrink-0" onClick={e => e.stopPropagation()}>
             <ItemOperation

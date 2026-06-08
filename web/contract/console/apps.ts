@@ -3,6 +3,8 @@ import type { AppModeEnum } from '@/types/app'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
+export type AppListSortBy = 'last_modified' | 'recently_created' | 'earliest_created'
+
 export type AppListQuery = {
   page?: number
   limit?: number
@@ -10,6 +12,7 @@ export type AppListQuery = {
   mode?: AppModeEnum
   tag_ids?: string[]
   creator_ids?: string[]
+  sort_by?: AppListSortBy
 }
 
 export const appListContract = base

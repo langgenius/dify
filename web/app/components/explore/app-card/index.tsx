@@ -1,8 +1,8 @@
 'use client'
-import type { KeyboardEvent } from 'react'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
@@ -26,6 +26,8 @@ const AppCard = ({
   isExplore = true,
 }: AppCardProps) => {
   const { t } = useTranslation()
+  const nameId = useId()
+  const descriptionId = useId()
   const { app: appBasicInfo } = app
   const canViewApp = IS_CLOUD_EDITION
   const isClickable = isExplore && (canViewApp || canCreate)
@@ -48,13 +50,6 @@ const AppCard = ({
     if (canCreate)
       onCreate()
   }
-  const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Enter' && event.key !== ' ')
-      return
-
-    event.preventDefault()
-    handleCardClick()
-  }
 
   return (
     <div
@@ -62,12 +57,16 @@ const AppCard = ({
         'group relative col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-left shadow-xs shadow-shadow-shadow-3',
         isClickable && 'cursor-pointer',
       )}
-      role={isClickable ? 'button' : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      aria-label={isClickable ? appBasicInfo.name : undefined}
-      onClick={isClickable ? handleCardClick : undefined}
-      onKeyDown={isClickable ? handleCardKeyDown : undefined}
     >
+      {isClickable && (
+        <button
+          type="button"
+          className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          aria-labelledby={nameId}
+          aria-describedby={app.description ? descriptionId : undefined}
+          onClick={handleCardClick}
+        />
+      )}
       <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
         <div className="relative shrink-0">
           <AppIcon
@@ -85,7 +84,7 @@ const AppCard = ({
         </div>
         <div className="flex w-0 grow flex-col gap-1 py-px">
           <div className="flex items-center system-md-semibold text-text-secondary">
-            <div className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
+            <div id={nameId} className="truncate">{appBasicInfo.name}</div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
@@ -97,7 +96,7 @@ const AppCard = ({
         </div>
       </div>
       <div className="flex shrink-0 items-start px-4 py-1">
-        <div className="line-clamp-2 min-h-8 flex-1 system-xs-regular text-text-tertiary">
+        <div id={descriptionId} className="line-clamp-2 min-h-8 flex-1 system-xs-regular text-text-tertiary">
           {app.description}
         </div>
       </div>
@@ -110,7 +109,7 @@ const AppCard = ({
             </div>
           ))}
         </div>
-        <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-linear-to-r from-components-card-bg-alt-transparent to-components-card-bg-alt group-focus-visible:hidden" />
+        <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-linear-to-r from-components-card-bg-alt-transparent to-components-card-bg-alt group-focus-within:hidden" />
       </div>
     </div>
   )
