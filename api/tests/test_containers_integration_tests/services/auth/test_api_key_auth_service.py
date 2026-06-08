@@ -1,8 +1,7 @@
-from unittest.mock import MagicMock
 from __future__ import annotations
 
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -108,7 +107,12 @@ class TestApiKeyAuthService:
 
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     def test_create_provider_auth_validation_failed(
-        self, mock_factory: MagicMock, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id, mock_args
+        self,
+        mock_factory: MagicMock,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id,
+        mock_args,
     ):
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = False
