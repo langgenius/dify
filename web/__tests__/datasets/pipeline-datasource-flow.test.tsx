@@ -113,8 +113,8 @@ describe('Pipeline Data Source Store Composition - Cross-Slice Integration', () 
       store.getState().setLocalFileList(files)
 
       expect(store.getState().localFileList).toHaveLength(3)
-      expect(store.getState().localFileList[0].fileID).toBe('f1')
-      expect(store.getState().localFileList[2].fileID).toBe('f3')
+      expect(store.getState().localFileList[0]!.fileID).toBe('f1')
+      expect(store.getState().localFileList[2]!.fileID).toBe('f3')
     })
 
     it('should update preview ref when setting file list', () => {
@@ -157,7 +157,7 @@ describe('Pipeline Data Source Store Composition - Cross-Slice Integration', () 
       store.getState().setOnlineDocuments(pages)
 
       expect(store.getState().onlineDocuments).toHaveLength(2)
-      expect(store.getState().onlineDocuments[0].page_id).toBe('page-1')
+      expect(store.getState().onlineDocuments[0]!.page_id).toBe('page-1')
     })
 
     it('should update preview ref when setting online documents', () => {
@@ -391,7 +391,7 @@ describe('Pipeline Data Source Store Composition - Cross-Slice Integration', () 
       store.getState().setLocalFileList(files)
 
       // Step 3: Select current file for preview
-      store.getState().setCurrentLocalFile(files[0].file)
+      store.getState().setCurrentLocalFile(files[0]!.file)
 
       // Verify all state is consistent
       expect(store.getState().currentCredentialId).toBe('upload-cred-1')

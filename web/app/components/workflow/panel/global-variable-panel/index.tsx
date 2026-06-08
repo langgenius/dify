@@ -1,13 +1,13 @@
 import type { GlobalVariable } from '../../types'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
 
-import { cn } from '@/utils/classnames'
+import { useStore } from '@/app/components/workflow/store'
 import { isInWorkflowPage } from '../../constants'
 import { useIsChatMode } from '../../hooks'
 import Item from './item'
@@ -66,18 +66,18 @@ const Panel = () => {
         'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
       )}
     >
-      <div className="system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
+      <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
         {t('globalVar.title', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowPanel(false)}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
-      <div className="system-sm-regular shrink-0 px-4 py-1 text-text-tertiary">{t('globalVar.description', { ns: 'workflow' })}</div>
+      <div className="shrink-0 px-4 py-1 system-sm-regular text-text-tertiary">{t('globalVar.description', { ns: 'workflow' })}</div>
 
       <div className="mt-4 grow overflow-y-auto rounded-b-2xl px-4">
         {globalVariableList.map(item => (

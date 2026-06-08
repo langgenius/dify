@@ -229,6 +229,23 @@ describe('output-schema-utils', () => {
       })
     })
 
+    describe('Dify compact types (workflow-as-tool output_schema)', () => {
+      it('should resolve array[string] to arrayString (issue #34428)', () => {
+        const result = resolveVarType({ type: 'array[string]' })
+        expect(result.type).toBe(VarType.arrayString)
+      })
+
+      it('should resolve Array[string] case-insensitively', () => {
+        const result = resolveVarType({ type: 'Array[string]' })
+        expect(result.type).toBe(VarType.arrayString)
+      })
+
+      it('should resolve array[object] to arrayObject', () => {
+        const result = resolveVarType({ type: 'array[object]' })
+        expect(result.type).toBe(VarType.arrayObject)
+      })
+    })
+
     describe('unknown types', () => {
       it('should resolve unknown type to any', () => {
         const result = resolveVarType({ type: 'unknown_type' })

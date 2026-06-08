@@ -3,7 +3,7 @@ import type { CrawlResultItem, CustomFile, DocumentItem, FullDocumentDetail } fr
 import { useCallback, useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
-export type UsePreviewStateOptions = {
+type UsePreviewStateOptions = {
   dataSourceType: DataSourceType
   files: CustomFile[]
   notionPages: NotionPage[]
@@ -123,5 +123,3 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
     handlePreviewChange,
   }
 }
-
-export type PreviewState = ReturnType<typeof usePreviewState>

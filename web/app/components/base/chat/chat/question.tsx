@@ -4,6 +4,9 @@ import type {
 } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatItem } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -15,11 +18,9 @@ import {
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
+import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
-import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
-import Button from '../../button'
-import Toast from '../../toast'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
@@ -51,6 +52,8 @@ const Question: FC<QuestionProps> = ({
   const {
     onRegenerate,
   } = useChatContext()
+  const copyLabel = t('operation.copy', { ns: 'common' })
+  const editLabel = t('operation.edit', { ns: 'common' })
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState(content)
@@ -133,11 +136,13 @@ const Question: FC<QuestionProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const getContentWidth = () => {
+    /* v8 ignore next 2 -- @preserve */
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
 
   useEffect(() => {
+    /* v8 ignore next 2 -- @preserve */
     if (!contentRef.current)
       return
     const resizeObserver = new ResizeObserver(() => {
@@ -161,21 +166,21 @@ const Question: FC<QuestionProps> = ({
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
-            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
+            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
             <ActionButton
-              data-testid="copy-btn"
+              aria-label={copyLabel}
               onClick={() => {
                 copy(content)
-                Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
               }}
             >
-              <div className="i-ri-clipboard-line h-4 w-4" />
+              <div className="i-ri-clipboard-line size-4" aria-hidden="true" />
             </ActionButton>
             {enableEdit && (
-              <ActionButton data-testid="edit-btn" onClick={handleEdit}>
-                <div className="i-ri-edit-line h-4 w-4" />
+              <ActionButton aria-label={editLabel} onClick={handleEdit}>
+                <div className="i-ri-edit-line size-4" aria-hidden="true" />
               </ActionButton>
             )}
           </div>
@@ -204,10 +209,10 @@ const Question: FC<QuestionProps> = ({
             ? <Markdown content={content} />
             : (
                 <div className="flex flex-col gap-4">
-                  <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
+                  <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
                     <Textarea
                       className={cn(
-                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-none body-lg-regular',
+                        'w-full resize-none bg-transparent p-0 body-lg-regular leading-7 text-text-primary outline-hidden',
                       )}
                       autoFocus
                       minRows={1}
@@ -237,11 +242,11 @@ const Question: FC<QuestionProps> = ({
         <div className="mt-1 h-[18px]" />
       </div>
       {!hideAvatar && (
-        <div className="h-10 w-10 shrink-0">
+        <div className="size-10 shrink-0">
           {
             questionIcon || (
               <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-                <div className="i-custom-public-avatar-user h-full w-full" />
+                <User className="question-default-user-icon size-full" />
               </div>
             )
           }

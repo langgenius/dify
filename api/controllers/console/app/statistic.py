@@ -5,17 +5,18 @@ from flask import abort, jsonify, request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from libs.datetime_utils import parse_time_range
 from libs.helper import convert_datetime_to_date
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models import AppMode
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+from models.account import Account
+from models.model import App
 
 
 class StatisticTimeRangeQuery(BaseModel):
@@ -30,10 +31,7 @@ class StatisticTimeRangeQuery(BaseModel):
         return value
 
 
-console_ns.schema_model(
-    StatisticTimeRangeQuery.__name__,
-    StatisticTimeRangeQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_schema_models(console_ns, StatisticTimeRangeQuery)
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-messages")
@@ -51,10 +49,9 @@ class DailyMessageStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    def get(self, account: Account, app_model: App):
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -65,8 +62,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -108,10 +109,9 @@ class DailyConversationStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    def get(self, account: Account, app_model: App):
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -122,8 +122,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -164,10 +168,9 @@ class DailyTerminalsStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    def get(self, account: Account, app_model: App):
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -178,8 +181,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -221,10 +228,9 @@ class DailyTokenCostStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    def get(self, account: Account, app_model: App):
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -236,8 +242,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -280,11 +290,10 @@ class AverageSessionInteractionStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    @with_current_user
+    def get(self, account: Account, app_model: App):
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("c.created_at")
         sql_query = f"""SELECT
@@ -303,8 +312,12 @@ FROM
         WHERE
             c.app_id = :app_id
             AND m.invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -357,10 +370,9 @@ class UserSatisfactionRateStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    def get(self, account: Account, app_model: App):
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("m.created_at")
         sql_query = f"""SELECT
@@ -375,8 +387,12 @@ LEFT JOIN
 WHERE
     m.app_id = :app_id
     AND m.invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -423,10 +439,9 @@ class AverageResponseTimeStatistic(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    def get(self, account: Account, app_model: App):
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -437,8 +452,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -480,9 +499,9 @@ class TokensPerSecondStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    def get(self, account: Account, app_model: App):
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -496,8 +515,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)

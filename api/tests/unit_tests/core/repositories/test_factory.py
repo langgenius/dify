@@ -11,9 +11,12 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import DifyCoreRepositoryFactory, RepositoryImportError
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    RepositoryImportError,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
@@ -48,7 +51,7 @@ class TestRepositoryFactory:
             import_string("invalidpath")
         assert "doesn't look like a module path" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
+    @patch("core.repositories.factory.dify_config")
     def test_create_workflow_execution_repository_success(self, mock_config):
         """Test successful WorkflowExecutionRepository creation."""
         # Setup mock configuration
@@ -83,7 +86,7 @@ class TestRepositoryFactory:
             )
             assert result is mock_repository_instance
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
+    @patch("core.repositories.factory.dify_config")
     def test_create_workflow_execution_repository_import_error(self, mock_config):
         """Test WorkflowExecutionRepository creation with import error."""
         # Setup mock configuration with invalid class path
@@ -101,7 +104,7 @@ class TestRepositoryFactory:
             )
         assert "Failed to create WorkflowExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
+    @patch("core.repositories.factory.dify_config")
     def test_create_workflow_execution_repository_instantiation_error(self, mock_config):
         """Test WorkflowExecutionRepository creation with instantiation error."""
         # Setup mock configuration
@@ -125,7 +128,7 @@ class TestRepositoryFactory:
                 )
             assert "Failed to create WorkflowExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
+    @patch("core.repositories.factory.dify_config")
     def test_create_workflow_node_execution_repository_success(self, mock_config):
         """Test successful WorkflowNodeExecutionRepository creation."""
         # Setup mock configuration
@@ -160,7 +163,7 @@ class TestRepositoryFactory:
             )
             assert result is mock_repository_instance
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
+    @patch("core.repositories.factory.dify_config")
     def test_create_workflow_node_execution_repository_import_error(self, mock_config):
         """Test WorkflowNodeExecutionRepository creation with import error."""
         # Setup mock configuration with invalid class path
@@ -178,7 +181,7 @@ class TestRepositoryFactory:
             )
         assert "Failed to create WorkflowNodeExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
+    @patch("core.repositories.factory.dify_config")
     def test_create_workflow_node_execution_repository_instantiation_error(self, mock_config):
         """Test WorkflowNodeExecutionRepository creation with instantiation error."""
         # Setup mock configuration
@@ -208,7 +211,7 @@ class TestRepositoryFactory:
         error = RepositoryImportError(error_message)
         assert str(error) == error_message
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
+    @patch("core.repositories.factory.dify_config")
     def test_create_with_engine_instead_of_sessionmaker(self, mock_config):
         """Test repository creation with Engine instead of sessionmaker."""
         # Setup mock configuration

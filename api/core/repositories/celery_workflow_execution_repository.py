@@ -6,13 +6,13 @@ providing improved performance by offloading database operations to background w
 """
 
 import logging
-from typing import Union
+from typing import override
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from dify_graph.entities.workflow_execution import WorkflowExecution
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.repositories.factory import WorkflowExecutionRepository
+from graphon.entities import WorkflowExecution
 from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.enums import WorkflowRunTriggeredFrom
@@ -47,7 +47,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowRunTriggeredFrom | None,
     ):
@@ -93,6 +93,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             self._triggered_from,
         )
 
+    @override
     def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution instance asynchronously using Celery.

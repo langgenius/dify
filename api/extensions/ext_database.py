@@ -33,7 +33,7 @@ def _setup_gevent_compatibility():
         return
 
     @event.listens_for(Pool, "reset")
-    def _safe_reset(dbapi_connection, connection_record, reset_state):  # pyright: ignore[reportUnusedFunction]
+    def _safe_reset(dbapi_connection, connection_record, reset_state):
         if reset_state.terminate_only:
             return
 

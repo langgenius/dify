@@ -145,15 +145,15 @@ describe('Plugin Data Utilities Integration', () => {
         validCategory: getValidCategoryKeys(p.category),
       }))
 
-      expect(results[0].validTags.length).toBeGreaterThan(0)
-      expect(results[0].validCategory).toBe('tool')
+      expect(results[0]!.validTags.length).toBeGreaterThan(0)
+      expect(results[0]!.validCategory).toBe('tool')
 
-      expect(results[1].validTags).toContain('image')
-      expect(results[1].validTags).toContain('design')
-      expect(results[1].validCategory).toBe('model')
+      expect(results[1]!.validTags).toContain('image')
+      expect(results[1]!.validTags).toContain('design')
+      expect(results[1]!.validCategory).toBe('model')
 
-      expect(results[2].validTags).toHaveLength(0)
-      expect(results[2].validCategory).toBe('extension')
+      expect(results[2]!.validTags).toHaveLength(0)
+      expect(results[2]!.validCategory).toBe('extension')
     })
   })
 })

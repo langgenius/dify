@@ -7,7 +7,8 @@
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import AppList from '@/app/components/explore/app-list'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail } from '@/service/explore'
@@ -126,7 +127,7 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   copyright: overrides.copyright ?? '',
   privacy_policy: overrides.privacy_policy ?? null,
   custom_disclaimer: overrides.custom_disclaimer ?? null,
-  category: overrides.category ?? 'Writing',
+  categories: overrides.categories ?? ['Writing'],
   position: overrides.position ?? 1,
   is_listed: overrides.is_listed ?? true,
   install_count: overrides.install_count ?? 0,
@@ -164,9 +165,9 @@ describe('Explore App List Flow', () => {
     mockExploreData = {
       categories: ['Writing', 'Translate', 'Programming'],
       allList: [
-        createApp({ app_id: 'app-1', app: { ...createApp().app, name: 'Writer Bot' }, category: 'Writing' }),
-        createApp({ app_id: 'app-2', app: { ...createApp().app, id: 'app-id-2', name: 'Translator' }, category: 'Translate' }),
-        createApp({ app_id: 'app-3', app: { ...createApp().app, id: 'app-id-3', name: 'Code Helper' }, category: 'Programming' }),
+        createApp({ app_id: 'app-1', app: { ...createApp().app, name: 'Writer Bot' }, categories: ['Writing'] }),
+        createApp({ app_id: 'app-2', app: { ...createApp().app, id: 'app-id-2', name: 'Translator' }, categories: ['Translate'] }),
+        createApp({ app_id: 'app-3', app: { ...createApp().app, id: 'app-id-3', name: 'Code Helper' }, categories: ['Programming'] }),
       ],
     }
   })
@@ -175,18 +176,42 @@ describe('Explore App List Flow', () => {
     it('should display all apps when no category filter is applied', () => {
       renderAppList()
 
-      expect(screen.getByText('Writer Bot')).toBeInTheDocument()
-      expect(screen.getByText('Translator')).toBeInTheDocument()
-      expect(screen.getByText('Code Helper')).toBeInTheDocument()
+      expect(screen.getByText('Writer Bot'))!.toBeInTheDocument()
+      expect(screen.getByText('Translator'))!.toBeInTheDocument()
+      expect(screen.getByText('Code Helper'))!.toBeInTheDocument()
     })
 
     it('should filter apps by selected category', () => {
       mockTabValue = 'Writing'
       renderAppList()
 
-      expect(screen.getByText('Writer Bot')).toBeInTheDocument()
+      expect(screen.getByText('Writer Bot'))!.toBeInTheDocument()
       expect(screen.queryByText('Translator')).not.toBeInTheDocument()
       expect(screen.queryByText('Code Helper')).not.toBeInTheDocument()
+    })
+
+    it('should only use categories when filtering by selected category', () => {
+      mockTabValue = 'Writing'
+      mockExploreData = {
+        categories: ['Writing', 'Translate'],
+        allList: [
+          createApp({
+            app_id: 'app-1',
+            app: { ...createApp().app, name: 'Active Writer' },
+            categories: ['Writing'],
+          }),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, id: 'app-id-2', name: 'Legacy Writer' },
+            categories: [],
+          }),
+        ],
+      }
+
+      renderAppList()
+
+      expect(screen.getByText('Active Writer')).toBeInTheDocument()
+      expect(screen.queryByText('Legacy Writer')).not.toBeInTheDocument()
     })
 
     it('should filter apps by search keyword', async () => {
@@ -196,7 +221,7 @@ describe('Explore App List Flow', () => {
       fireEvent.change(input, { target: { value: 'trans' } })
 
       await waitFor(() => {
-        expect(screen.getByText('Translator')).toBeInTheDocument()
+        expect(screen.getByText('Translator'))!.toBeInTheDocument()
         expect(screen.queryByText('Writer Bot')).not.toBeInTheDocument()
         expect(screen.queryByText('Code Helper')).not.toBeInTheDocument()
       })
@@ -211,14 +236,14 @@ describe('Explore App List Flow', () => {
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
         options.onPending?.()
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderAppList(true, onSuccess)
 
       // Step 2: Click add to workspace button - opens create modal
-      fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0])
+      fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0]!)
 
       // Step 3: Confirm creation in modal
       fireEvent.click(await screen.findByTestId('confirm-create'))
@@ -232,7 +257,8 @@ describe('Explore App List Flow', () => {
       expect(mockHandleImportDSL).toHaveBeenCalledTimes(1)
 
       // Step 6: DSL confirm modal appears and user confirms
-      expect(await screen.findByTestId('dsl-confirm-modal')).toBeInTheDocument()
+      // Step 6: DSL confirm modal appears and user confirms
+      expect(await screen.findByTestId('dsl-confirm-modal'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('dsl-confirm'))
 
       // Step 7: Flow completes successfully
@@ -250,7 +276,7 @@ describe('Explore App List Flow', () => {
       mockExploreData = undefined
       const { unmount } = render(appListElement())
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
 
       // Step 2: Data loads
       mockIsLoading = false
@@ -262,7 +288,7 @@ describe('Explore App List Flow', () => {
       renderAppList()
 
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
-      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.getByText('Alpha'))!.toBeInTheDocument()
     })
   })
 

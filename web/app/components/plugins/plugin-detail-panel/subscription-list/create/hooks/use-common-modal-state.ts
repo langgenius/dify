@@ -3,11 +3,10 @@ import type { SimpleDetail } from '../../../store'
 import type { SchemaItem } from '../components/modal-steps'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerLogEntity, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
-import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
+import { toast } from '@langgenius/dify-ui/toast'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import {
@@ -18,9 +17,17 @@ import {
   useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
-import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import { usePluginStore } from '../../../store'
 import { useSubscriptionList } from '../../use-subscription-list'
+import {
+  buildSubscriptionPayload,
+  getConfirmButtonText,
+  getFirstFieldName,
+  getFormValues,
+  toSchemaWithTooltip,
+  useInitializeSubscriptionBuilder,
+  useSyncSubscriptionEndpoint,
+} from './use-common-modal-state.helpers'
 
 // ============================================================================
 // Types
@@ -31,7 +38,7 @@ export enum ApiKeyStep {
   Configuration = 'configuration',
 }
 
-export const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTypeEnum> = {
+const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTypeEnum> = {
   [SupportedCreationMethods.APIKEY]: TriggerCredentialTypeEnum.ApiKey,
   [SupportedCreationMethods.OAUTH]: TriggerCredentialTypeEnum.Oauth2,
   [SupportedCreationMethods.MANUAL]: TriggerCredentialTypeEnum.Unauthorized,
@@ -85,8 +92,6 @@ type UseCommonModalStateReturn = {
   handleApiKeyCredentialsChange: () => void
 }
 
-const DEFAULT_FORM_VALUES = { values: {}, isCheckValidated: false }
-
 // ============================================================================
 // Hook Implementation
 // ============================================================================
@@ -105,7 +110,6 @@ export const useCommonModalState = ({
     createType === SupportedCreationMethods.APIKEY ? ApiKeyStep.Verify : ApiKeyStep.Configuration,
   )
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>(builder)
-  const isInitializedRef = useRef(false)
 
   // Form refs
   const manualPropertiesFormRef = useRef<FormRefObject>(null)
@@ -123,12 +127,9 @@ export const useCommonModalState = ({
   const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || []
   const autoCommonParametersSchema = detail?.declaration.trigger?.subscription_constructor?.parameters || []
 
-  const apiKeyCredentialsSchema = useMemo(() => {
+  const apiKeyCredentialsSchema = useMemo<SchemaItem[]>(() => {
     const rawSchema = detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
-    return rawSchema.map(schema => ({
-      ...schema,
-      tooltip: schema.help,
-    }))
+    return toSchemaWithTooltip(rawSchema) as SchemaItem[]
   }, [detail?.declaration?.trigger?.subscription_constructor?.credentials_schema])
 
   // Log data for manual mode
@@ -154,10 +155,7 @@ export const useCommonModalState = ({
           onError: async (error: unknown) => {
             const errorMessage = await parsePluginErrorMessage(error) || t('modal.errors.updateFailed', { ns: 'pluginTrigger' })
             console.error('Failed to update subscription builder:', error)
-            Toast.notify({
-              type: 'error',
-              message: errorMessage,
-            })
+            toast.error(errorMessage)
           },
         },
       )
@@ -165,28 +163,14 @@ export const useCommonModalState = ({
     [updateBuilder, t],
   )
 
-  // Initialize builder
-  useEffect(() => {
-    const initializeBuilder = async () => {
-      isInitializedRef.current = true
-      try {
-        const response = await createBuilder({
-          provider: detail?.provider || '',
-          credential_type: CREDENTIAL_TYPE_MAP[createType],
-        })
-        setSubscriptionBuilder(response.subscription_builder)
-      }
-      catch (error) {
-        console.error('createBuilder error:', error)
-        Toast.notify({
-          type: 'error',
-          message: t('modal.errors.createFailed', { ns: 'pluginTrigger' }),
-        })
-      }
-    }
-    if (!isInitializedRef.current && !subscriptionBuilder && detail?.provider)
-      initializeBuilder()
-  }, [subscriptionBuilder, detail?.provider, createType, createBuilder, t])
+  useInitializeSubscriptionBuilder({
+    createBuilder,
+    credentialType: CREDENTIAL_TYPE_MAP[createType],
+    provider: detail?.provider,
+    subscriptionBuilder,
+    setSubscriptionBuilder,
+    t,
+  })
 
   // Cleanup debounced function
   useEffect(() => {
@@ -195,24 +179,12 @@ export const useCommonModalState = ({
     }
   }, [debouncedUpdate])
 
-  // Update endpoint in form when endpoint changes
-  useEffect(() => {
-    if (!subscriptionBuilder?.endpoint || !subscriptionFormRef.current || currentStep !== ApiKeyStep.Configuration)
-      return
-
-    const form = subscriptionFormRef.current.getForm()
-    if (form)
-      form.setFieldValue('callback_url', subscriptionBuilder.endpoint)
-
-    const warnings = isPrivateOrLocalAddress(subscriptionBuilder.endpoint)
-      ? [t('modal.form.callbackUrl.privateAddressWarning', { ns: 'pluginTrigger' })]
-      : []
-
-    subscriptionFormRef.current?.setFields([{
-      name: 'callback_url',
-      warnings,
-    }])
-  }, [subscriptionBuilder?.endpoint, currentStep, t])
+  useSyncSubscriptionEndpoint({
+    endpoint: subscriptionBuilder?.endpoint,
+    isConfigurationStep: currentStep === ApiKeyStep.Configuration,
+    subscriptionFormRef,
+    t,
+  })
 
   // Handle manual properties change
   const handleManualPropertiesChange = useCallback(() => {
@@ -230,7 +202,7 @@ export const useCommonModalState = ({
     if (!apiKeyCredentialsSchema.length)
       return
     apiKeyCredentialsFormRef.current?.setFields([{
-      name: apiKeyCredentialsSchema[0].name,
+      name: apiKeyCredentialsSchema[0]!.name,
       errors: [],
     }])
   }, [apiKeyCredentialsSchema])
@@ -239,26 +211,22 @@ export const useCommonModalState = ({
   const handleVerify = useCallback(() => {
     // Guard against uninitialized state
     if (!detail?.provider || !subscriptionBuilder?.id) {
-      Toast.notify({
-        type: 'error',
-        message: 'Subscription builder not initialized',
-      })
+      toast.error('Subscription builder not initialized')
       return
     }
 
-    const apiKeyCredentialsFormValues = apiKeyCredentialsFormRef.current?.getFormValues({}) || DEFAULT_FORM_VALUES
+    const apiKeyCredentialsFormValues = getFormValues(apiKeyCredentialsFormRef)
     const credentials = apiKeyCredentialsFormValues.values
 
     if (!Object.keys(credentials).length) {
-      Toast.notify({
-        type: 'error',
-        message: 'Please fill in all required credentials',
-      })
+      toast.error('Please fill in all required credentials')
       return
     }
 
+    const credentialFieldName = getFirstFieldName(credentials, apiKeyCredentialsSchema)
+
     apiKeyCredentialsFormRef.current?.setFields([{
-      name: Object.keys(credentials)[0],
+      name: credentialFieldName,
       errors: [],
     }])
 
@@ -270,76 +238,52 @@ export const useCommonModalState = ({
       },
       {
         onSuccess: () => {
-          Toast.notify({
-            type: 'success',
-            message: t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }),
-          })
+          toast.success(t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }))
           setCurrentStep(ApiKeyStep.Configuration)
         },
         onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('modal.apiKey.verify.error', { ns: 'pluginTrigger' })
           apiKeyCredentialsFormRef.current?.setFields([{
-            name: Object.keys(credentials)[0],
+            name: credentialFieldName,
             errors: [errorMessage],
           }])
         },
       },
     )
-  }, [detail?.provider, subscriptionBuilder?.id, verifyCredentials, t])
+  }, [apiKeyCredentialsSchema, detail?.provider, subscriptionBuilder?.id, verifyCredentials, t])
 
   // Handle create
   const handleCreate = useCallback(() => {
     if (!subscriptionBuilder) {
-      Toast.notify({
-        type: 'error',
-        message: 'Subscription builder not found',
-      })
+      toast.error('Subscription builder not found')
       return
     }
 
-    const subscriptionFormValues = subscriptionFormRef.current?.getFormValues({})
-    if (!subscriptionFormValues?.isCheckValidated)
-      return
-
-    const subscriptionNameValue = subscriptionFormValues?.values?.subscription_name as string
-
-    const params: BuildTriggerSubscriptionPayload = {
+    const params = buildSubscriptionPayload({
       provider: detail?.provider || '',
       subscriptionBuilderId: subscriptionBuilder.id,
-      name: subscriptionNameValue,
-    }
+      createType,
+      subscriptionFormValues: getFormValues(subscriptionFormRef),
+      autoCommonParametersSchemaLength: autoCommonParametersSchema.length,
+      autoCommonParametersFormValues: getFormValues(autoCommonParametersFormRef),
+      manualPropertiesSchemaLength: manualPropertiesSchema.length,
+      manualPropertiesFormValues: getFormValues(manualPropertiesFormRef),
+    })
 
-    if (createType !== SupportedCreationMethods.MANUAL) {
-      if (autoCommonParametersSchema.length > 0) {
-        const autoCommonParametersFormValues = autoCommonParametersFormRef.current?.getFormValues({}) || DEFAULT_FORM_VALUES
-        if (!autoCommonParametersFormValues?.isCheckValidated)
-          return
-        params.parameters = autoCommonParametersFormValues.values
-      }
-    }
-    else if (manualPropertiesSchema.length > 0) {
-      const manualFormValues = manualPropertiesFormRef.current?.getFormValues({}) || DEFAULT_FORM_VALUES
-      if (!manualFormValues?.isCheckValidated)
-        return
-    }
+    if (!params)
+      return
 
     buildSubscription(
       params,
       {
         onSuccess: () => {
-          Toast.notify({
-            type: 'success',
-            message: t('subscription.createSuccess', { ns: 'pluginTrigger' }),
-          })
+          toast.success(t('subscription.createSuccess', { ns: 'pluginTrigger' }))
           onClose()
           refetch?.()
         },
         onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('subscription.createFailed', { ns: 'pluginTrigger' })
-          Toast.notify({
-            type: 'error',
-            message: errorMessage,
-          })
+          toast.error(errorMessage)
         },
       },
     )
@@ -365,14 +309,12 @@ export const useCommonModalState = ({
 
   // Confirm button text
   const confirmButtonText = useMemo(() => {
-    if (currentStep === ApiKeyStep.Verify) {
-      return isVerifyingCredentials
-        ? t('modal.common.verifying', { ns: 'pluginTrigger' })
-        : t('modal.common.verify', { ns: 'pluginTrigger' })
-    }
-    return isBuilding
-      ? t('modal.common.creating', { ns: 'pluginTrigger' })
-      : t('modal.common.create', { ns: 'pluginTrigger' })
+    return getConfirmButtonText({
+      isVerifyStep: currentStep === ApiKeyStep.Verify,
+      isVerifyingCredentials,
+      isBuilding,
+      t,
+    })
   }, [currentStep, isVerifyingCredentials, isBuilding, t])
 
   return {

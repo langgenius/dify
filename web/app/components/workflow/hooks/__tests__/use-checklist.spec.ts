@@ -1,8 +1,13 @@
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
+import { screen, waitFor } from '@testing-library/react'
+import { createElement, Fragment } from 'react'
+import { CollectionType } from '@/app/components/tools/types'
+import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { useStore } from '../../store'
 import { BlockEnum } from '../../types'
 import { useChecklist, useWorkflowRunValidation } from '../use-checklist'
 
@@ -39,6 +44,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 type CheckValidFn = (data: CommonNodeType, t: unknown, extra?: unknown) => { errorMessage: string }
 const mockNodesMap: Record<string, { checkValid: CheckValidFn, metaData: { isStart: boolean, isRequired: boolean } }> = {}
+let mockModelProviders: Array<{ provider: string }> = []
+let mockUsedVars: string[][] = []
+const mockAvailableVarMap: Record<string, { availableVars: Array<{ nodeId: string, vars: Array<{ variable: string }> }> }> = {}
 
 vi.mock('../use-nodes-meta-data', () => ({
   useNodesMetaData: () => ({
@@ -49,10 +57,10 @@ vi.mock('../use-nodes-meta-data', () => ({
 
 vi.mock('../use-nodes-available-var-list', () => ({
   default: (nodes: Node[]) => {
-    const map: Record<string, { availableVars: never[] }> = {}
+    const map: Record<string, { availableVars: Array<{ nodeId: string, vars: Array<{ variable: string }> }> }> = {}
     if (nodes) {
       for (const n of nodes)
-        map[n.id] = { availableVars: [] }
+        map[n.id] = mockAvailableVarMap[n.id] ?? { availableVars: [] }
     }
     return map
   },
@@ -60,7 +68,7 @@ vi.mock('../use-nodes-available-var-list', () => ({
 }))
 
 vi.mock('../../nodes/_base/components/variable/utils', () => ({
-  getNodeUsedVars: () => [],
+  getNodeUsedVars: () => mockUsedVars,
   isSpecialVar: () => false,
 }))
 
@@ -82,12 +90,22 @@ vi.mock('../index', () => ({
   useNodesMetaData: () => ({ nodes: [], nodesMap: mockNodesMap }),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: vi.fn() }),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
 }))
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en',
+}))
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContextSelector: (selector: (state: { modelProviders: Array<{ provider: string }> }) => unknown) =>
+    selector({ modelProviders: mockModelProviders }),
 }))
 
 // useWorkflowNodes reads from WorkflowContext (real store via renderWorkflowHook)
@@ -124,6 +142,9 @@ beforeEach(() => {
   resetReactFlowMockState()
   resetFixtureCounters()
   Object.keys(mockNodesMap).forEach(k => delete mockNodesMap[k])
+  Object.keys(mockAvailableVarMap).forEach(k => delete mockAvailableVarMap[k])
+  mockModelProviders = []
+  mockUsedVars = []
   setupNodesMap()
 })
 
@@ -195,7 +216,32 @@ describe('useChecklist', () => {
 
     const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
     expect(warning).toBeDefined()
-    expect(warning!.errorMessage).toBe('Model not configured')
+    expect(warning!.errorMessages).toContain('Model not configured')
+  })
+
+  it('should pass flow type to node validators', () => {
+    const checkValid = vi.fn(() => ({ errorMessage: '' }))
+    mockNodesMap[BlockEnum.LLM] = {
+      checkValid,
+      metaData: { isStart: false, isRequired: false },
+    }
+
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const llmNode = createNode({ id: 'llm', data: { type: BlockEnum.LLM, title: 'LLM' } })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'llm' }),
+    ]
+
+    renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
+    )
+
+    expect(checkValid).toHaveBeenCalledWith(
+      expect.objectContaining({ type: BlockEnum.LLM }),
+      expect.any(Function),
+      expect.objectContaining({ flowType: FlowType.snippet }),
+    )
   })
 
   it('should report missing start node in workflow mode', () => {
@@ -217,7 +263,9 @@ describe('useChecklist', () => {
       data: {
         type: BlockEnum.Tool,
         title: 'My Tool',
-        _pluginInstallLocked: true,
+        provider_type: CollectionType.builtIn,
+        provider_id: 'missing-provider',
+        plugin_unique_identifier: 'plugin/tool@0.0.1',
       },
     })
 
@@ -233,6 +281,9 @@ describe('useChecklist', () => {
     expect(warning).toBeDefined()
     expect(warning!.canNavigate).toBe(false)
     expect(warning!.disableGoTo).toBe(true)
+    expect(warning!.isPluginMissing).toBe(true)
+    expect(warning!.pluginUniqueIdentifier).toBe('plugin/tool@0.0.1')
+    expect(warning!.errorMessages).toContain('workflow.nodes.common.pluginNotInstalled')
   })
 
   it('should report required node types that are missing', () => {
@@ -279,6 +330,147 @@ describe('useChecklist', () => {
     const alienWarning = result.current.find((item: ChecklistItem) => item.id === 'alien')
     expect(alienWarning).toBeUndefined()
   })
+
+  it('should report configure model errors when an llm model provider plugin is missing', () => {
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const llmNode = createNode({
+      id: 'llm',
+      data: {
+        type: BlockEnum.LLM,
+        title: 'LLM',
+        model: {
+          provider: 'langgenius/openai/openai',
+        },
+      },
+    })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'llm' }),
+    ]
+
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges),
+    )
+
+    const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
+    expect(warning).toBeDefined()
+    expect(warning!.errorMessages).toContain('workflow.errorMsg.configureModel')
+    expect(warning!.canNavigate).toBe(true)
+  })
+
+  it('should accumulate validation and invalid variable errors for the same node', () => {
+    mockNodesMap[BlockEnum.LLM] = {
+      checkValid: () => ({ errorMessage: 'Model not configured' }),
+      metaData: { isStart: false, isRequired: false },
+    }
+    mockUsedVars = [['start', 'missingVar']]
+    mockAvailableVarMap.llm = {
+      availableVars: [
+        {
+          nodeId: 'start',
+          vars: [{ variable: 'existingVar' }],
+        },
+      ],
+    }
+
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const llmNode = createNode({
+      id: 'llm',
+      data: {
+        type: BlockEnum.LLM,
+        title: 'LLM',
+      },
+    })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'llm' }),
+    ]
+
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges),
+    )
+
+    const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
+    expect(warning).toBeDefined()
+    expect(warning!.errorMessages).toEqual([
+      'Model not configured',
+      'workflow.errorMsg.invalidVariable',
+    ])
+  })
+
+  it('should detect duplicate output variables across end nodes', () => {
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const firstEndNode = createNode({
+      id: 'end-1',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 1',
+        outputs: [{ variable: 'workflow_id', value_selector: ['sys', 'workflow_id'] }],
+      },
+    })
+    const secondEndNode = createNode({
+      id: 'end-2',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 2',
+        outputs: [{ variable: 'workflow_id', value_selector: ['sys', 'workflow_id'] }],
+      },
+    })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'end-1' }),
+      createEdge({ source: 'start', target: 'end-2' }),
+    ]
+
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, firstEndNode, secondEndNode], edges),
+    )
+
+    const firstWarning = result.current.find((item: ChecklistItem) => item.id === 'end-1')
+    const secondWarning = result.current.find((item: ChecklistItem) => item.id === 'end-2')
+
+    expect(firstWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(true)
+    expect(secondWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(true)
+  })
+
+  it('should sync checklist items to the workflow store without render phase update warnings', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+      const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
+
+      function Operator() {
+        const checklistItems = useStore(state => state.checklistItems)
+        return createElement('div', { 'data-testid': 'checklist-count' }, checklistItems.length)
+      }
+
+      function WorkflowChecklist() {
+        useChecklist([startNode, codeNode], [])
+        return null
+      }
+
+      const { store } = renderWorkflowComponent(
+        createElement(
+          Fragment,
+          null,
+          createElement(Operator),
+          createElement(WorkflowChecklist),
+        ),
+      )
+
+      await waitFor(() => {
+        expect(store.getState().checklistItems).toHaveLength(1)
+      })
+
+      expect(screen.getByTestId('checklist-count')).toHaveTextContent('1')
+      expect(errorSpy.mock.calls.some(call =>
+        call.some(arg => typeof arg === 'string' && arg.includes('Cannot update a component')),
+      )).toBe(false)
+    }
+    finally {
+      errorSpy.mockRestore()
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -292,6 +484,7 @@ describe('useWorkflowRunValidation', () => {
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
       initialStoreState: { nodes: nodes as Node[] },
+      hooksStoreProps: {},
     })
 
     expect(result.current.hasValidationErrors).toBe(false)
@@ -304,6 +497,7 @@ describe('useWorkflowRunValidation', () => {
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
       initialStoreState: { nodes: nodes as Node[] },
+      hooksStoreProps: {},
     })
 
     expect(typeof result.current.validateBeforeRun).toBe('function')

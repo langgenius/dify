@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 
 export type LogoStyle = 'default' | 'monochromeWhite'
@@ -23,12 +23,14 @@ type DifyLogoProps = {
   style?: LogoStyle
   size?: LogoSize
   className?: string
+  alt?: string
 }
 
 const DifyLogo: FC<DifyLogoProps> = ({
   style = 'default',
   size = 'medium',
   className,
+  alt = 'Dify logo',
 }) => {
   const { theme } = useTheme()
   const themedStyle = (theme === 'dark' && style === 'default') ? 'monochromeWhite' : style
@@ -37,7 +39,7 @@ const DifyLogo: FC<DifyLogoProps> = ({
     <img
       src={`${basePath}${logoPathMap[themedStyle]}`}
       className={cn('block object-contain', logoSizeMap[size], className)}
-      alt="Dify logo"
+      alt={alt}
     />
   )
 }

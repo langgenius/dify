@@ -2,7 +2,7 @@ import type { Features } from './types'
 import { createStore } from 'zustand'
 import { Resolution, TransferMethod } from '@/types/app'
 
-export type FeaturesModal = {
+type FeaturesModal = {
   showFeaturesModal: boolean
   setShowFeaturesModal: (showFeaturesModal: boolean) => void
 }
@@ -11,7 +11,7 @@ export type FeaturesState = {
   features: Features
 }
 
-export type FeaturesAction = {
+type FeaturesAction = {
   setFeatures: (features: Features) => void
 }
 

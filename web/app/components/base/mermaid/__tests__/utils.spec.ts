@@ -1,5 +1,7 @@
 import { cleanUpSvgCode, isMermaidCodeComplete, prepareMermaidCode, processSvgForTheme, sanitizeMermaidCode, svgToBase64, waitForDOMElement } from '../utils'
 
+const FILL_HEX_RE = /fill="#[a-fA-F0-9]{6}"/g
+
 describe('cleanUpSvgCode', () => {
   it('should replace old-style <br> tags with self-closing <br/>', () => {
     const result = cleanUpSvgCode('<br>test<br>')
@@ -179,7 +181,7 @@ describe('processSvgForTheme', () => {
     it('should handle multiple node colors in cyclic manner', () => {
       const svg = '<rect fill="#ffffff" class="node-1"/><rect fill="#ffffff" class="node-2"/><rect fill="#ffffff" class="node-3"/>'
       const result = processSvgForTheme(svg, true, false, themes)
-      const fillMatches = result.match(/fill="#[a-fA-F0-9]{6}"/g)
+      const fillMatches = result.match(FILL_HEX_RE)
       expect(fillMatches).toContain('fill="#121212"')
       expect(fillMatches).toContain('fill="#222222"')
       expect(fillMatches?.filter(f => f === 'fill="#121212"').length).toBe(2)

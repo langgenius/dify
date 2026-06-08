@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import builtins
 import importlib
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -18,12 +18,11 @@ if not hasattr(builtins, "MethodView"):
 
 _CONTROLLER_MODULE: ModuleType | None = None
 _WRAPS_MODULE: ModuleType | None = None
-_CONTROLLER_PATCHERS: list[patch] = []
 
 
 @contextmanager
 def _mock_db():
-    mock_session = SimpleNamespace(query=lambda *args, **kwargs: SimpleNamespace(first=lambda: True))
+    mock_session = SimpleNamespace(scalar=lambda *args, **kwargs: True)
     with patch("extensions.ext_database.db.session", mock_session):
         yield
 
@@ -37,6 +36,14 @@ def app() -> Flask:
 
 @pytest.fixture
 def controller_module(monkeypatch: pytest.MonkeyPatch):
+    """
+    Import the controller with auth decorators neutralized only during import.
+
+    The imported view classes retain those no-op decorators after import, so we
+    can restore the original globals immediately and avoid leaking auth patches
+    into unrelated tests such as libs.login unit coverage.
+    """
+
     module_name = "controllers.console.workspace.tool_providers"
     global _CONTROLLER_MODULE
     if _CONTROLLER_MODULE is None:
@@ -51,13 +58,12 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
             ("controllers.console.wraps.is_admin_or_owner_required", _noop),
             ("controllers.console.wraps.enterprise_license_required", _noop),
         ]
-        for target, value in patch_targets:
-            patcher = patch(target, value)
-            patcher.start()
-            _CONTROLLER_PATCHERS.append(patcher)
         monkeypatch.setenv("DIFY_SETUP_READY", "true")
-        with _mock_db():
-            _CONTROLLER_MODULE = importlib.import_module(module_name)
+        with ExitStack() as stack:
+            for target, value in patch_targets:
+                stack.enter_context(patch(target, value))
+            with _mock_db():
+                _CONTROLLER_MODULE = importlib.import_module(module_name)
 
     module = _CONTROLLER_MODULE
     monkeypatch.setattr(module, "jsonable_encoder", lambda payload: payload)
@@ -75,7 +81,13 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
 
 
 def _mock_account(user_id: str = "user-123") -> SimpleNamespace:
-    return SimpleNamespace(id=user_id, status="active", is_authenticated=True, current_tenant_id=None)
+    return SimpleNamespace(
+        id=user_id,
+        status="active",
+        is_authenticated=True,
+        current_tenant_id=None,
+        is_admin_or_owner=False,
+    )
 
 
 def _set_current_account(
@@ -143,6 +155,7 @@ def test_builtin_provider_add_passes_payload(
         credentials={"api_key": "sk-test"},
         name="MyTool",
         api_type=controller_module.CredentialType.API_KEY,
+        visibility=None,
     )
 
 
@@ -191,7 +204,12 @@ def test_builtin_provider_credentials_get(app: Flask, controller_module, monkeyp
         resp = controller_module.ToolBuiltinProviderGetCredentialsApi().get(provider="demo")
 
     assert resp == [{"cred": 1}]
-    service_mock.assert_called_once_with(tenant_id="tenant-cred", provider_name="demo")
+    service_mock.assert_called_once_with(
+        tenant_id="tenant-cred",
+        provider_name="demo",
+        user=user,
+        include_credential_ids=None,
+    )
 
 
 def test_api_provider_remote_schema_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
@@ -362,3 +380,53 @@ def test_tool_labels_list(app: Flask, controller_module, monkeypatch: pytest.Mon
         resp = controller_module.ToolLabelsApi().get()
 
     assert resp == ["a", "b"]
+
+
+# --- _resolve_identity_mode: gating + None-resolution (PR #36839 review) ---
+
+
+def test_resolve_identity_mode_none_keeps_current_when_enterprise(controller_module, monkeypatch: pytest.MonkeyPatch):
+    """None means 'leave unchanged' — fall back to the stored mode (update path)."""
+    identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
+    monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", True)
+
+    resolved = controller_module._resolve_identity_mode(None, current=identity_mode.IDP_TOKEN)
+
+    assert resolved == identity_mode.IDP_TOKEN
+
+
+def test_resolve_identity_mode_explicit_value_overrides_current(controller_module, monkeypatch: pytest.MonkeyPatch):
+    """An explicit value wins over the stored mode."""
+    identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
+    monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", True)
+
+    resolved = controller_module._resolve_identity_mode(identity_mode.OFF, current=identity_mode.IDP_TOKEN)
+
+    assert resolved == identity_mode.OFF
+
+
+def test_resolve_identity_mode_coerces_non_off_to_off_when_not_enterprise(
+    controller_module, monkeypatch: pytest.MonkeyPatch
+):
+    """Gate: a non-EE deployment must never persist a non-OFF mode — the
+    runtime won't forward, so the stored row must not imply it does."""
+    identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
+    monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", False)
+
+    # Both an explicit idp_token request AND an inherited non-OFF current
+    # must collapse to OFF.
+    assert (
+        controller_module._resolve_identity_mode(identity_mode.IDP_TOKEN, current=identity_mode.OFF)
+        == identity_mode.OFF
+    )
+    assert controller_module._resolve_identity_mode(None, current=identity_mode.IDP_TOKEN) == identity_mode.OFF
+
+
+def test_resolve_identity_mode_off_is_passthrough_when_not_enterprise(
+    controller_module, monkeypatch: pytest.MonkeyPatch
+):
+    """OFF is always fine — the gate only neutralizes non-OFF values."""
+    identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
+    monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", False)
+
+    assert controller_module._resolve_identity_mode(None, current=identity_mode.OFF) == identity_mode.OFF

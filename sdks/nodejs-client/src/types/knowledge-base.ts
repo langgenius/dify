@@ -14,7 +14,7 @@ export type DatasetCreateRequest = {
   external_knowledge_api_id?: string | null;
   provider?: string;
   external_knowledge_id?: string | null;
-  retrieval_model?: Record<string, unknown> | null;
+  retrieval_model?: JsonObject | null;
   embedding_model?: string | null;
   embedding_model_provider?: string | null;
 };
@@ -26,9 +26,9 @@ export type DatasetUpdateRequest = {
   permission?: string | null;
   embedding_model?: string | null;
   embedding_model_provider?: string | null;
-  retrieval_model?: Record<string, unknown> | null;
+  retrieval_model?: JsonObject | null;
   partial_member_list?: Array<Record<string, string>> | null;
-  external_retrieval_model?: Record<string, unknown> | null;
+  external_retrieval_model?: JsonObject | null;
   external_knowledge_id?: string | null;
   external_knowledge_api_id?: string | null;
 };
@@ -61,12 +61,12 @@ export type DatasetTagUnbindingRequest = {
 export type DocumentTextCreateRequest = {
   name: string;
   text: string;
-  process_rule?: Record<string, unknown> | null;
+  process_rule?: JsonObject | null;
   original_document_id?: string | null;
   doc_form?: string;
   doc_language?: string;
   indexing_technique?: string | null;
-  retrieval_model?: Record<string, unknown> | null;
+  retrieval_model?: JsonObject | null;
   embedding_model?: string | null;
   embedding_model_provider?: string | null;
 };
@@ -74,10 +74,10 @@ export type DocumentTextCreateRequest = {
 export type DocumentTextUpdateRequest = {
   name?: string | null;
   text?: string | null;
-  process_rule?: Record<string, unknown> | null;
+  process_rule?: JsonObject | null;
   doc_form?: string;
   doc_language?: string;
-  retrieval_model?: Record<string, unknown> | null;
+  retrieval_model?: JsonObject | null;
 };
 
 export type DocumentListOptions = {
@@ -92,7 +92,7 @@ export type DocumentGetOptions = {
 };
 
 export type SegmentCreateRequest = {
-  segments: Array<Record<string, unknown>>;
+  segments: JsonObject[];
 };
 
 export type SegmentUpdateRequest = {
@@ -155,8 +155,8 @@ export type MetadataOperationRequest = {
 
 export type HitTestingRequest = {
   query?: string | null;
-  retrieval_model?: Record<string, unknown> | null;
-  external_retrieval_model?: Record<string, unknown> | null;
+  retrieval_model?: JsonObject | null;
+  external_retrieval_model?: JsonObject | null;
   attachment_ids?: string[] | null;
 };
 
@@ -165,20 +165,21 @@ export type DatasourcePluginListOptions = {
 };
 
 export type DatasourceNodeRunRequest = {
-  inputs: Record<string, unknown>;
+  inputs: JsonObject;
   datasource_type: string;
   credential_id?: string | null;
   is_published: boolean;
 };
 
 export type PipelineRunRequest = {
-  inputs: Record<string, unknown>;
+  inputs: JsonObject;
   datasource_type: string;
-  datasource_info_list: Array<Record<string, unknown>>;
+  datasource_info_list: JsonObject[];
   start_node_id: string;
   is_published: boolean;
-  response_mode: "streaming" | "blocking";
+  response_mode: ResponseMode;
 };
 
-export type KnowledgeBaseResponse = Record<string, unknown>;
-export type PipelineStreamEvent = Record<string, unknown>;
+export type KnowledgeBaseResponse = JsonObject;
+export type PipelineStreamEvent = JsonObject;
+import type { JsonObject, ResponseMode } from "./common";

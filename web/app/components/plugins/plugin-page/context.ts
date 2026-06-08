@@ -13,7 +13,7 @@ import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 export type PluginPageTab = typeof PLUGIN_PAGE_TABS_MAP[keyof typeof PLUGIN_PAGE_TABS_MAP]
   | (typeof PLUGIN_TYPE_SEARCH_MAP)[keyof typeof PLUGIN_TYPE_SEARCH_MAP]
 
-export type PluginPageContextValue = {
+type PluginPageContextValue = {
   containerRef: RefObject<HTMLDivElement | null>
   currentPluginID: string | undefined
   setCurrentPluginID: (pluginID?: string) => void

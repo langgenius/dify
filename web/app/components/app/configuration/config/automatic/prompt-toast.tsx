@@ -1,9 +1,9 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
-import { cn } from '@/utils/classnames'
 import s from './style.module.css'
 
 type Props = {
@@ -40,11 +40,11 @@ const PromptToast = ({
           <RiSparklingFill className="size-3.5 text-components-input-border-active-prompt-1" />
           <span className={cn(s.optimizationNoteText, 'system-xs-semibold-uppercase')}>{t('generate.optimizationNote', { ns: 'appDebug' })}</span>
         </div>
-        <RiArrowDownSLine className={cn('size-4 cursor-pointer text-text-tertiary', isFold && 'rotate-[-90deg]')} onClick={toggleFold} />
+        <RiArrowDownSLine className={cn('size-4 cursor-pointer text-text-tertiary', isFold && '-rotate-90')} onClick={toggleFold} />
       </div>
       {!isFold && (
-        <div className="pb-4 pr-4">
-          <Markdown className="!text-sm" content={message} />
+        <div className="pr-4 pb-4">
+          <Markdown className="text-sm!" content={message} />
         </div>
       )}
     </div>

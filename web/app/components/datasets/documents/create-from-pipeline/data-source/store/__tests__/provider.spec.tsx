@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { useContext } from 'react'
+import { use } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DataSourceProvider, { DataSourceContext } from '../provider'
 
@@ -11,7 +11,7 @@ vi.mock('../', () => ({
 
 // Test consumer component that reads from context
 function ContextConsumer() {
-  const store = useContext(DataSourceContext)
+  const store = use(DataSourceContext)
   return (
     <div data-testid="context-value" data-has-store={store !== null}>
       {store ? 'has-store' : 'no-store'}
@@ -65,7 +65,7 @@ describe('DataSourceProvider', () => {
       const storeValues: Array<typeof mockStore | null> = []
 
       function StoreCapture() {
-        const store = useContext(DataSourceContext)
+        const store = use(DataSourceContext)
         storeValues.push(store as typeof mockStore | null)
         return null
       }

@@ -188,7 +188,7 @@ describe('Tab', () => {
         />,
       )
 
-      expect(screen.getByRole('button')).toHaveTextContent('Test Tab')
+      expect(screen.getByRole('button'))!.toHaveTextContent('Test Tab')
     })
 
     it('should apply active styles when isActive is true', () => {
@@ -205,8 +205,8 @@ describe('Tab', () => {
       )
 
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('border-util-colors-blue-brand-blue-brand-600')
-      expect(button).toHaveClass('text-text-primary')
+      expect(button)!.toHaveClass('border-util-colors-blue-brand-blue-brand-600')
+      expect(button)!.toHaveClass('text-text-primary')
     })
 
     it('should apply inactive styles when isActive is false', () => {
@@ -223,8 +223,8 @@ describe('Tab', () => {
       )
 
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('border-transparent')
-      expect(button).toHaveClass('text-text-tertiary')
+      expect(button)!.toHaveClass('border-transparent')
+      expect(button)!.toHaveClass('text-text-tertiary')
     })
 
     it('should apply disabled styles when workflowRunningData is undefined', () => {
@@ -241,8 +241,8 @@ describe('Tab', () => {
       )
 
       const button = screen.getByRole('button')
-      expect(button).toBeDisabled()
-      expect(button).toHaveClass('opacity-30')
+      expect(button)!.toBeDisabled()
+      expect(button)!.toHaveClass('opacity-30')
     })
   })
 
@@ -328,12 +328,12 @@ describe('Tab', () => {
       rerender(
         <Tab isActive={true} label="Tab" value="tab" workflowRunningData={undefined} onClick={mockOnClick} />,
       )
-      expect(screen.getByRole('button')).toBeDisabled()
+      expect(screen.getByRole('button'))!.toBeDisabled()
 
       rerender(
         <Tab isActive={false} label="Tab" value="tab" workflowRunningData={undefined} onClick={mockOnClick} />,
       )
-      expect(screen.getByRole('button')).toBeDisabled()
+      expect(screen.getByRole('button'))!.toBeDisabled()
     })
   })
 })
@@ -353,9 +353,9 @@ describe('Tabs', () => {
         />,
       )
 
-      expect(screen.getByText('runLog.result')).toBeInTheDocument()
-      expect(screen.getByText('runLog.detail')).toBeInTheDocument()
-      expect(screen.getByText('runLog.tracing')).toBeInTheDocument()
+      expect(screen.getByText('runLog.result'))!.toBeInTheDocument()
+      expect(screen.getByText('runLog.detail'))!.toBeInTheDocument()
+      expect(screen.getByText('runLog.tracing'))!.toBeInTheDocument()
     })
 
     it('should render tabs container with correct styling', () => {
@@ -368,9 +368,9 @@ describe('Tabs', () => {
       )
 
       const tabsContainer = container.firstChild as HTMLElement
-      expect(tabsContainer).toHaveClass('flex')
-      expect(tabsContainer).toHaveClass('shrink-0')
-      expect(tabsContainer).toHaveClass('border-b-[0.5px]')
+      expect(tabsContainer)!.toHaveClass('flex')
+      expect(tabsContainer)!.toHaveClass('shrink-0')
+      expect(tabsContainer)!.toHaveClass('border-b-[0.5px]')
     })
 
     it('should highlight the current tab', () => {
@@ -383,9 +383,9 @@ describe('Tabs', () => {
       )
 
       const buttons = screen.getAllByRole('button')
-      expect(buttons[0]).toHaveClass('border-transparent')
-      expect(buttons[1]).toHaveClass('border-util-colors-blue-brand-blue-brand-600')
-      expect(buttons[2]).toHaveClass('border-transparent')
+      expect(buttons[0])!.toHaveClass('border-transparent')
+      expect(buttons[1])!.toHaveClass('border-util-colors-blue-brand-blue-brand-600')
+      expect(buttons[2])!.toHaveClass('border-transparent')
     })
   })
 
@@ -451,10 +451,10 @@ describe('Tabs', () => {
 
       const buttons = screen.getAllByRole('button')
       buttons.forEach((button) => {
-        expect(button).toBeDisabled()
+        expect(button)!.toBeDisabled()
       })
 
-      fireEvent.click(buttons[0])
+      fireEvent.click(buttons[0]!)
       expect(mockSwitchTab).not.toHaveBeenCalled()
     })
   })
@@ -469,21 +469,21 @@ describe('Tabs', () => {
       )
 
       let buttons = screen.getAllByRole('button')
-      expect(buttons[0]).toHaveClass('border-util-colors-blue-brand-blue-brand-600')
+      expect(buttons[0])!.toHaveClass('border-util-colors-blue-brand-blue-brand-600')
 
       rerender(
         <Tabs currentTab="DETAIL" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       buttons = screen.getAllByRole('button')
-      expect(buttons[1]).toHaveClass('border-util-colors-blue-brand-blue-brand-600')
+      expect(buttons[1])!.toHaveClass('border-util-colors-blue-brand-blue-brand-600')
 
       rerender(
         <Tabs currentTab="TRACING" workflowRunningData={workflowData} switchTab={mockSwitchTab} />,
       )
 
       buttons = screen.getAllByRole('button')
-      expect(buttons[2]).toHaveClass('border-util-colors-blue-brand-blue-brand-600')
+      expect(buttons[2])!.toHaveClass('border-util-colors-blue-brand-blue-brand-600')
     })
   })
 })
@@ -514,9 +514,9 @@ describe('formatPreviewChunks', () => {
       const result = formatPreviewChunks(outputs) as GeneralChunks
 
       expect(result).toHaveLength(3)
-      expect((result as GeneralChunks)[0].content).toBe('General chunk content 1')
-      expect((result as GeneralChunks)[1].content).toBe('General chunk content 2')
-      expect((result as GeneralChunks)[2].content).toBe('General chunk content 3')
+      expect((result as GeneralChunks)[0]!.content).toBe('General chunk content 1')
+      expect((result as GeneralChunks)[1]!.content).toBe('General chunk content 2')
+      expect((result as GeneralChunks)[2]!.content).toBe('General chunk content 3')
     })
 
     it('should limit chunks to RAG_PIPELINE_PREVIEW_CHUNK_NUM', () => {
@@ -544,8 +544,8 @@ describe('formatPreviewChunks', () => {
 
       expect(result.parent_mode).toBe('paragraph')
       expect(result.parent_child_chunks).toHaveLength(3)
-      expect(result.parent_child_chunks[0].parent_content).toBe('Parent content 1')
-      expect(result.parent_child_chunks[0].child_contents).toEqual([
+      expect(result.parent_child_chunks[0]!.parent_content).toBe('Parent content 1')
+      expect(result.parent_child_chunks[0]!.child_contents).toEqual([
         'Child 1 of parent 1',
         'Child 2 of parent 1',
       ])
@@ -582,7 +582,7 @@ describe('formatPreviewChunks', () => {
       }
       const result = formatPreviewChunks(outputs) as ParentChildChunks
 
-      expect(result.parent_child_chunks[0].child_contents).toHaveLength(
+      expect(result.parent_child_chunks[0]!.child_contents).toHaveLength(
         RAG_PIPELINE_PREVIEW_CHUNK_NUM,
       )
     })
@@ -605,8 +605,8 @@ describe('formatPreviewChunks', () => {
       const result = formatPreviewChunks(outputs) as QAChunks
 
       expect(result.qa_chunks).toHaveLength(3)
-      expect(result.qa_chunks[0].question).toBe('Question 1')
-      expect(result.qa_chunks[0].answer).toBe('Answer 1')
+      expect(result.qa_chunks[0]!.question).toBe('Question 1')
+      expect(result.qa_chunks[0]!.answer).toBe('Answer 1')
     })
 
     it('should limit QA chunks to RAG_PIPELINE_PREVIEW_CHUNK_NUM', () => {
@@ -644,7 +644,7 @@ describe('ResultPreview', () => {
         />,
       )
 
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
     })
 
     it('should render error state when not running and has error', () => {
@@ -657,8 +657,8 @@ describe('ResultPreview', () => {
         />,
       )
 
-      expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
-      expect(screen.getByText('pipeline.result.resultPreview.viewDetails')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.viewDetails'))!.toBeInTheDocument()
     })
 
     it('should render ChunkCardList when outputs are available', () => {
@@ -673,7 +673,7 @@ describe('ResultPreview', () => {
         />,
       )
 
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
 
     it('should render footer tip with correct count', () => {
@@ -688,9 +688,7 @@ describe('ResultPreview', () => {
         />,
       )
 
-      expect(
-        screen.getByText(`pipeline.result.resultPreview.footerTip:{"count":${RAG_PIPELINE_PREVIEW_CHUNK_NUM}}`),
-      ).toBeInTheDocument()
+      expect(screen.getByText(`pipeline.result.resultPreview.footerTip:{"count":${RAG_PIPELINE_PREVIEW_CHUNK_NUM}}`))!.toBeInTheDocument()
     })
 
     it('should not show loading when isRunning but outputs exist', () => {
@@ -706,7 +704,7 @@ describe('ResultPreview', () => {
       )
 
       expect(screen.queryByText('pipeline.result.resultPreview.loading')).not.toBeInTheDocument()
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
   })
 
@@ -743,7 +741,7 @@ describe('ResultPreview', () => {
       )
 
       const chunkCardList = screen.getByTestId('chunk-card-list')
-      expect(chunkCardList).toHaveAttribute('data-chunk-type', ChunkingMode.text)
+      expect(chunkCardList)!.toHaveAttribute('data-chunk-type', ChunkingMode.text)
     })
 
     it('should render with parent-child chunks output', () => {
@@ -759,7 +757,7 @@ describe('ResultPreview', () => {
       )
 
       const chunkCardList = screen.getByTestId('chunk-card-list')
-      expect(chunkCardList).toHaveAttribute('data-chunk-type', ChunkingMode.parentChild)
+      expect(chunkCardList)!.toHaveAttribute('data-chunk-type', ChunkingMode.parentChild)
     })
 
     it('should render with QA chunks output', () => {
@@ -775,7 +773,7 @@ describe('ResultPreview', () => {
       )
 
       const chunkCardList = screen.getByTestId('chunk-card-list')
-      expect(chunkCardList).toHaveAttribute('data-chunk-type', ChunkingMode.qa)
+      expect(chunkCardList)!.toHaveAttribute('data-chunk-type', ChunkingMode.qa)
     })
   })
 
@@ -833,7 +831,7 @@ describe('ResultPreview', () => {
         />,
       )
 
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
   })
 })
@@ -856,9 +854,9 @@ describe('Result', () => {
 
       render(<Result />)
 
-      expect(screen.getByText('runLog.result')).toBeInTheDocument()
-      expect(screen.getByText('runLog.detail')).toBeInTheDocument()
-      expect(screen.getByText('runLog.tracing')).toBeInTheDocument()
+      expect(screen.getByText('runLog.result'))!.toBeInTheDocument()
+      expect(screen.getByText('runLog.detail'))!.toBeInTheDocument()
+      expect(screen.getByText('runLog.tracing'))!.toBeInTheDocument()
     })
 
     it('should render loading state for RESULT tab when running without outputs', () => {
@@ -872,7 +870,7 @@ describe('Result', () => {
 
       render(<Result />)
 
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
     })
 
     it('should render result preview when result has outputs', () => {
@@ -887,7 +885,7 @@ describe('Result', () => {
 
       render(<Result />)
 
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
   })
 
@@ -900,7 +898,7 @@ describe('Result', () => {
       fireEvent.click(screen.getByText('runLog.detail'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('result-panel')).toBeInTheDocument()
+        expect(screen.getByTestId('result-panel'))!.toBeInTheDocument()
       })
     })
 
@@ -912,7 +910,7 @@ describe('Result', () => {
       fireEvent.click(screen.getByText('runLog.tracing'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('tracing-panel')).toBeInTheDocument()
+        expect(screen.getByTestId('tracing-panel'))!.toBeInTheDocument()
       })
     })
 
@@ -929,12 +927,12 @@ describe('Result', () => {
 
       fireEvent.click(screen.getByText('runLog.detail'))
       await waitFor(() => {
-        expect(screen.getByTestId('result-panel')).toBeInTheDocument()
+        expect(screen.getByTestId('result-panel'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByText('runLog.result'))
       await waitFor(() => {
-        expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+        expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
       })
     })
   })
@@ -963,13 +961,13 @@ describe('Result', () => {
 
       await waitFor(() => {
         const resultPanel = screen.getByTestId('result-panel')
-        expect(resultPanel).toHaveAttribute('data-inputs', '{"key": "value"}')
-        expect(resultPanel).toHaveAttribute('data-outputs', '{"result": "success"}')
-        expect(resultPanel).toHaveAttribute('data-status', WorkflowRunningStatus.Succeeded)
-        expect(resultPanel).toHaveAttribute('data-elapsed-time', '1500')
-        expect(resultPanel).toHaveAttribute('data-total-tokens', '200')
-        expect(resultPanel).toHaveAttribute('data-steps', '10')
-        expect(resultPanel).toHaveAttribute('data-exception-counts', '2')
+        expect(resultPanel)!.toHaveAttribute('data-inputs', '{"key": "value"}')
+        expect(resultPanel)!.toHaveAttribute('data-outputs', '{"result": "success"}')
+        expect(resultPanel)!.toHaveAttribute('data-status', WorkflowRunningStatus.Succeeded)
+        expect(resultPanel)!.toHaveAttribute('data-elapsed-time', '1500')
+        expect(resultPanel)!.toHaveAttribute('data-total-tokens', '200')
+        expect(resultPanel)!.toHaveAttribute('data-steps', '10')
+        expect(resultPanel)!.toHaveAttribute('data-exception-counts', '2')
       })
     })
 
@@ -984,7 +982,7 @@ describe('Result', () => {
       fireEvent.click(screen.getByText('runLog.detail'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('result-panel')).toBeInTheDocument()
+        expect(screen.getByTestId('result-panel'))!.toBeInTheDocument()
       })
     })
   })
@@ -999,8 +997,8 @@ describe('Result', () => {
 
       await waitFor(() => {
         const tracingPanel = screen.getByTestId('tracing-panel')
-        expect(tracingPanel).toHaveAttribute('data-list-length', '1')
-        expect(tracingPanel).toHaveAttribute('data-classname', 'bg-background-section-burn')
+        expect(tracingPanel)!.toHaveAttribute('data-list-length', '1')
+        expect(tracingPanel)!.toHaveAttribute('data-classname', 'bg-background-section-burn')
       })
     })
 
@@ -1014,7 +1012,7 @@ describe('Result', () => {
       fireEvent.click(screen.getByText('runLog.tracing'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('tracing-panel')).toBeInTheDocument()
+        expect(screen.getByTestId('tracing-panel'))!.toBeInTheDocument()
       })
     })
   })
@@ -1035,7 +1033,7 @@ describe('Result', () => {
       fireEvent.click(screen.getByText('pipeline.result.resultPreview.viewDetails'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('result-panel')).toBeInTheDocument()
+        expect(screen.getByTestId('result-panel'))!.toBeInTheDocument()
       })
     })
   })
@@ -1048,7 +1046,7 @@ describe('Result', () => {
 
       const buttons = screen.getAllByRole('button')
       buttons.forEach((button) => {
-        expect(button).toBeDisabled()
+        expect(button)!.toBeDisabled()
       })
     })
 
@@ -1061,7 +1059,7 @@ describe('Result', () => {
 
       render(<Result />)
 
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
     })
 
     it('should handle result with Running status', () => {
@@ -1075,7 +1073,7 @@ describe('Result', () => {
 
       render(<Result />)
 
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
     })
 
     it('should handle result with Stopped status', () => {
@@ -1090,7 +1088,7 @@ describe('Result', () => {
 
       render(<Result />)
 
-      expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
     })
   })
 
@@ -1103,12 +1101,12 @@ describe('Result', () => {
       fireEvent.click(screen.getByText('runLog.detail'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('result-panel')).toBeInTheDocument()
+        expect(screen.getByTestId('result-panel'))!.toBeInTheDocument()
       })
 
       rerender(<Result />)
 
-      expect(screen.getByTestId('result-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('result-panel'))!.toBeInTheDocument()
     })
 
     it('should render different states based on workflowRunningData', () => {
@@ -1121,7 +1119,7 @@ describe('Result', () => {
       })
 
       const { unmount } = render(<Result />)
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
       unmount()
 
       const outputs = createGeneralChunkOutputs(3)
@@ -1134,7 +1132,7 @@ describe('Result', () => {
       })
 
       render(<Result />)
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
   })
 
@@ -1146,7 +1144,7 @@ describe('Result', () => {
 
       rerender(<Result />)
 
-      expect(screen.getByText('runLog.result')).toBeInTheDocument()
+      expect(screen.getByText('runLog.result'))!.toBeInTheDocument()
     })
   })
 })
