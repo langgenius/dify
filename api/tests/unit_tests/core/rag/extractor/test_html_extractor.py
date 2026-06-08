@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from core.rag.extractor.html_extractor import HtmlExtractor
 
 

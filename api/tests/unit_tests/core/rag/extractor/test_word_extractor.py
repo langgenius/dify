@@ -1,12 +1,12 @@
 """Primarily used for testing merged cell scenarios"""
 
-from typing import override
 import io
 import os
 import tempfile
 from collections import UserDict
 from pathlib import Path
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest

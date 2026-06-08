@@ -1,8 +1,8 @@
-from pathlib import Path
-from typing import override
 import csv
 import io
+from pathlib import Path
 from types import SimpleNamespace
+from typing import override
 
 import pandas as pd
 import pytest
@@ -15,10 +15,10 @@ class _ManagedStringIO(io.StringIO):
     @override
     def __enter__(self):
         return self
+
     @override
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-        return
 
 
 class TestCSVExtractor:

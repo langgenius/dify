@@ -1,9 +1,8 @@
 """Unit tests for embedding_base.py - the abstract Embeddings base class."""
 
-from typing import override
 import asyncio
 import inspect
-from typing import Any
+from typing import Any, override
 
 import pytest
 

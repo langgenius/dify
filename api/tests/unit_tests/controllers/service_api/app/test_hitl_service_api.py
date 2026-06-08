@@ -1,7 +1,6 @@
 """Dedicated tests for HITL behavior exposed through the Service API."""
 
 from __future__ import annotations
-from typing import override
 
 import json
 import sys
@@ -9,6 +8,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import ANY, MagicMock, Mock
 
 import pytest

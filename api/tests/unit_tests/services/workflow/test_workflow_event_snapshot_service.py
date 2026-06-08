@@ -1,4 +1,3 @@
-from typing import override
 import json
 import queue
 from collections.abc import Mapping, Sequence
@@ -7,7 +6,7 @@ from datetime import UTC, datetime
 from itertools import cycle
 from threading import Event
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, cast, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -54,6 +53,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
     @override
     def workflow_execution_id(self) -> str:
         return self.workflow_run_id
+
     @override
     def get_state(self) -> bytes:
         raise AssertionError("state is not required for snapshot tests")
@@ -67,6 +67,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
     @override
     def paused_at(self) -> datetime:
         return self.paused_at_value
+
     @override
     def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
         return self.pause_reasons

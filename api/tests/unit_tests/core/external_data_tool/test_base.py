@@ -1,4 +1,4 @@
-from typing import Mapping
+from collections.abc import Mapping
 from typing import Any, override
 
 import pytest
@@ -20,7 +20,7 @@ class TestExternalDataTool:
                 return super().validate_config(tenant_id, config)
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) :
+            def query(self, inputs: Mapping[str, Any], query: str | None = None):
                 return super().query(inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1", config={"key": "value"})
