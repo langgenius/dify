@@ -22,7 +22,7 @@ export type DeploymentEnvVarSlot = EnvVarSlot & {
 export const ENV_VAR_VALUE_SOURCE_LITERAL = 'ENV_VAR_VALUE_SOURCE_LITERAL' satisfies EnvVarValueSource
 export const ENV_VAR_VALUE_SOURCE_DSL_DEFAULT = 'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT' satisfies EnvVarValueSource
 export const ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT = 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT' satisfies EnvVarValueSource
-export const ENV_VAR_VALUE_TYPE_STRING = 'string' satisfies EnvVarValueType
+const ENV_VAR_VALUE_TYPE_STRING = 'string' satisfies EnvVarValueType
 export const ENV_VAR_VALUE_TYPE_NUMBER = 'number' satisfies EnvVarValueType
 export const ENV_VAR_VALUE_TYPE_SECRET = 'secret' satisfies EnvVarValueType
 

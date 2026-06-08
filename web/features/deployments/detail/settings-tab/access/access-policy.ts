@@ -124,7 +124,7 @@ export function normalizeResolvedSubject(subject: Subject): SelectableAccessSubj
   return undefined
 }
 
-export function getSubjectLabel(subject: SelectableAccessSubject) {
+function getSubjectLabel(subject: SelectableAccessSubject) {
   return subject.name || subject.id
 }
 

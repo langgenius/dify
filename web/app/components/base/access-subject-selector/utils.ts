@@ -8,7 +8,7 @@ import type {
 } from '@/models/access-control'
 import { SubjectType } from '@/models/access-control'
 
-export function groupToSubject(group: AccessControlGroup): SubjectGroup {
+function groupToSubject(group: AccessControlGroup): SubjectGroup {
   return {
     subjectId: group.id,
     subjectType: SubjectType.GROUP,
@@ -16,7 +16,7 @@ export function groupToSubject(group: AccessControlGroup): SubjectGroup {
   }
 }
 
-export function memberToSubject(member: AccessControlAccount): SubjectAccount {
+function memberToSubject(member: AccessControlAccount): SubjectAccount {
   return {
     subjectId: member.id,
     subjectType: SubjectType.ACCOUNT,
