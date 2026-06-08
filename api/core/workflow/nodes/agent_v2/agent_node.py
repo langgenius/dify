@@ -309,6 +309,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
+                        tenant_id=dify_ctx.tenant_id,
                     )
                 )
                 return
@@ -339,6 +340,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
+                        tenant_id=dify_ctx.tenant_id,
                     )
                 )
                 return
