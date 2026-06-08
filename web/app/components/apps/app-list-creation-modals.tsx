@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppListCategory } from './hooks/use-apps-query-state'
+import type { AppListCategory } from './app-type-filter-shared'
 import dynamic from '@/next/dynamic'
 
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {

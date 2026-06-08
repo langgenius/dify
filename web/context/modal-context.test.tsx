@@ -30,7 +30,7 @@ vi.mock('@/app/components/billing/pricing', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting', () => ({
-  default: ({ activeTab, onCancelAction }: { activeTab: string; onCancelAction: () => void }) => (
+  default: ({ activeTab, onCancelAction }: { activeTab: string, onCancelAction: () => void }) => (
     <>
       <div data-testid="account-setting-active-tab">{activeTab}</div>
       <button type="button" onClick={onCancelAction}>cancel account setting</button>
