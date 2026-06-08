@@ -8,8 +8,8 @@ with configured retention only; it is not used as a job queue. Agenton layers an
 providers stay state-only: they borrow the lifespan-owned plugin daemon client
 through the runner and receive shell-layer server settings through provider
 construction rather than reading environment variables themselves. The standard
-server hosts the stub router by mounting the embeddable router exported from
-``dify_agent.agent_stub.server.router``.
+server always mounts the HTTP Agent Stub router and additionally starts the
+optional grpclib Agent Stub server when ``DIFY_AGENT_STUB_URL`` uses ``grpc://``.
 """
 
 from collections.abc import AsyncGenerator
@@ -19,6 +19,8 @@ import httpx
 from fastapi import FastAPI
 from redis.asyncio import Redis
 
+from dify_agent.agent_stub.protocol.agent_stub import parse_agent_stub_endpoint
+from dify_agent.agent_stub.server.grpc_runtime import start_agent_stub_grpc_server
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
@@ -32,15 +34,15 @@ from dify_agent.storage.redis_run_store import RedisRunStore
 def create_app(settings: ServerSettings | None = None) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
-    back_proxy_token_codec = resolved_settings.create_back_proxy_token_codec()
-    back_proxy_file_request_handler = resolved_settings.create_back_proxy_file_request_handler()
+    agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
+    agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
         shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
         shellctl_auth_token=resolved_settings.shellctl_auth_token,
-        shell_back_proxy_public_url=resolved_settings.shell_back_proxy_public_url,
-        shell_back_proxy_token_codec=back_proxy_token_codec,
+        agent_stub_url=resolved_settings.agent_stub_url,
+        agent_stub_token_codec=agent_stub_token_codec,
     )
     workspace_file_service = (
         WorkspaceFileService(
@@ -67,11 +69,21 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             layer_providers=layer_providers,
         )
+        grpc_server = None
+        if resolved_settings.agent_stub_url is not None and parse_agent_stub_endpoint(resolved_settings.agent_stub_url).is_grpc:
+            grpc_server = await start_agent_stub_grpc_server(
+                public_url=resolved_settings.agent_stub_url,
+                bind_address=resolved_settings.agent_stub_grpc_bind_address,
+                token_codec=agent_stub_token_codec,
+                file_request_handler=agent_stub_file_request_handler,
+            )
         state["store"] = store
         state["scheduler"] = scheduler
         try:
             yield
         finally:
+            if grpc_server is not None:
+                await grpc_server.aclose()
             await scheduler.shutdown()
             await plugin_daemon_http_client.aclose()
             await redis.aclose()
@@ -89,8 +101,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     app.include_router(create_workspace_files_router(lambda: workspace_file_service))
     app.include_router(
         create_agent_stub_router(
-            token_codec=back_proxy_token_codec,
-            file_request_handler=back_proxy_file_request_handler,
+            token_codec=agent_stub_token_codec,
+            file_request_handler=agent_stub_file_request_handler,
         )
     )
     return app

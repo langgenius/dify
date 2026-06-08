@@ -1,7 +1,7 @@
-"""Standalone FastAPI application factory for the Dify Agent stub server.
+"""Standalone FastAPI application factory for the Dify Agent Stub server.
 
 The standalone stub server is only a convenience wrapper around the shared
-router. It reuses the main ``ServerSettings`` model and derives the back proxy
+router. It reuses the main ``ServerSettings`` model and derives the Agent Stub
 token codec and optional file-request bridge from the same helper methods that
 the standard run server uses before mounting ``create_agent_stub_router(...)``.
 """
@@ -20,8 +20,8 @@ def create_agent_stub_app(settings: ServerSettings | None = None) -> FastAPI:
     app = FastAPI(title="Dify Agent Stub Server", version="0.1.0")
     app.include_router(
         create_agent_stub_router(
-            token_codec=resolved_settings.create_back_proxy_token_codec(),
-            file_request_handler=resolved_settings.create_back_proxy_file_request_handler(),
+            token_codec=resolved_settings.create_agent_stub_token_codec(),
+            file_request_handler=resolved_settings.create_agent_stub_file_request_handler(),
         )
     )
     return app

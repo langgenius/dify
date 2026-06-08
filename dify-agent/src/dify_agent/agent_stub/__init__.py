@@ -1,4 +1,4 @@
-"""Client-safe import root for Dify Agent stub and back proxy code.
+"""Client-safe import root for Dify Agent Stub code.
 
 The package intentionally avoids eager imports so sandbox CLI users can import
 ``dify_agent.agent_stub`` without pulling in FastAPI, Redis, JWE, or other

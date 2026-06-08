@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from dify_agent.agent_stub.server.router import create_agent_stub_router
-from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyTokenCodec
+from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
@@ -25,19 +25,19 @@ def _execution_context() -> DifyExecutionContextLayerConfig:
     )
 
 
-def _token_codec() -> BackProxyTokenCodec:
-    return BackProxyTokenCodec.from_server_secret(_base64url_secret(b"1" * 32))
+def _token_codec() -> AgentStubTokenCodec:
+    return AgentStubTokenCodec.from_server_secret(_base64url_secret(b"1" * 32))
 
 
-def test_create_agent_stub_router_mounts_all_back_proxy_routes() -> None:
+def test_create_agent_stub_router_mounts_all_agent_stub_routes() -> None:
     app = FastAPI()
     app.include_router(create_agent_stub_router(token_codec=None))
 
     paths = {getattr(route, "path", None) for route in app.routes}
 
-    assert "/back-proxy/connections" in paths
-    assert "/back-proxy/files/upload-request" in paths
-    assert "/back-proxy/files/download-request" in paths
+    assert "/agent-stub/connections" in paths
+    assert "/agent-stub/files/upload-request" in paths
+    assert "/agent-stub/files/download-request" in paths
 
 
 def test_create_agent_stub_router_returns_503_for_unconfigured_services() -> None:
@@ -46,13 +46,13 @@ def test_create_agent_stub_router_returns_503_for_unconfigured_services() -> Non
     client = TestClient(app)
 
     response = client.post(
-        "/back-proxy/connections",
+        "/agent-stub/connections",
         headers={"Authorization": "Bearer token"},
         json={"protocol_version": 1, "argv": []},
     )
 
     assert response.status_code == 503
-    assert response.json()["detail"] == "shell back proxy is not configured"
+    assert response.json()["detail"] == "Agent Stub is not configured"
 
 
 def test_create_agent_stub_router_wires_configured_token_codec_for_connections() -> None:
@@ -64,7 +64,7 @@ def test_create_agent_stub_router_wires_configured_token_codec_for_connections()
     client = TestClient(app)
 
     response = client.post(
-        "/back-proxy/connections",
+        "/agent-stub/connections",
         headers={"Authorization": f"Bearer {token}"},
         json={"protocol_version": 1, "argv": ["connect"]},
     )

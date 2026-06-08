@@ -1,7 +1,7 @@
 """Typer entry point for the client-safe ``dify-agent`` console script.
 
 The CLI supports an explicit ``connect`` command and treats unknown bare
-commands as shell back proxy forwards. When the injected back proxy environment
+commands as Agent Stub forwards. When the injected Agent Stub environment
 variables are missing, that path intentionally surfaces a clear missing-env
 error instead of Typer's generic unknown-command message. The module depends
 only on client-safe code so importing the console entry point does not pull in
@@ -15,18 +15,18 @@ import sys
 import typer
 from typer.main import get_command
 
-from dify_agent.agent_stub.cli._back_proxy import connect_from_environment
-from dify_agent.agent_stub.cli._env import MissingBackProxyEnvironmentError, has_back_proxy_environment
+from dify_agent.agent_stub.cli._agent_stub import connect_from_environment
+from dify_agent.agent_stub.cli._env import MissingAgentStubEnvironmentError, has_agent_stub_environment
 from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
-from dify_agent.agent_stub.client._back_proxy import BackProxyClientError
+from dify_agent.agent_stub.client._errors import AgentStubClientError
 
 
 app = typer.Typer(
     add_completion=False,
-    help="Forward shell-visible dify-agent commands back to the Dify Agent server.",
+    help="Forward shell-visible dify-agent commands to the Dify Agent Stub server.",
     no_args_is_help=True,
 )
-file_app = typer.Typer(help="Upload or download workflow files through the back proxy.")
+file_app = typer.Typer(help="Upload or download workflow files through the Agent Stub.")
 app.add_typer(file_app, name="file")
 _KNOWN_ROOT_COMMANDS = frozenset({"connect", "file"})
 
@@ -36,7 +36,7 @@ def connect(
     json_output: bool = typer.Option(False, "--json", help="Emit the connection response as JSON."),
     argv: list[str] = typer.Argument(default_factory=list, metavar="ARGV"),
 ) -> None:
-    """Establish one shell back proxy connection using the current environment."""
+    """Establish one Agent Stub connection using the current environment."""
     _run_connect(argv=list(argv), json_output=json_output)
 
 
@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> None:
         return
     json_output, forwarded_args = _extract_root_json_flag(args)
     if _is_unknown_bare_command(forwarded_args):
-        if not has_back_proxy_environment():
+        if not has_agent_stub_environment():
             _show_root_help()
         _run_connect(argv=forwarded_args, json_output=json_output)
         return
@@ -114,10 +114,10 @@ def _show_root_help() -> None:
 def _run_connect(*, argv: list[str], json_output: bool) -> None:
     try:
         response = connect_from_environment(argv=argv)
-    except MissingBackProxyEnvironmentError as exc:
+    except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except BackProxyClientError as exc:
+    except AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
 
@@ -130,10 +130,10 @@ def _run_connect(*, argv: list[str], json_output: bool) -> None:
 def _run_file_upload(*, path: str) -> None:
     try:
         response = upload_file_from_environment(path=path)
-    except MissingBackProxyEnvironmentError as exc:
+    except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except BackProxyClientError as exc:
+    except AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
@@ -146,10 +146,10 @@ def _run_file_download(*, transfer_method: str, reference_or_url: str, directory
             reference_or_url=reference_or_url,
             directory=directory,
         )
-    except MissingBackProxyEnvironmentError as exc:
+    except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except BackProxyClientError as exc:
+    except AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(str(response.path))

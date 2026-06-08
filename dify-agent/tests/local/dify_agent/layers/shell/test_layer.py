@@ -8,7 +8,7 @@ import pytest
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from agenton.layers import LifecycleState
-from dify_agent.agent_stub.server.shell_back_proxy_env import BACK_PROXY_AUTH_JWE_ENV_VAR, BACK_PROXY_URL_ENV_VAR
+from dify_agent.agent_stub.server.shell_agent_stub_env import AGENT_STUB_AUTH_JWE_ENV_VAR, AGENT_STUB_URL_ENV_VAR
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import (
@@ -581,7 +581,7 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
     assert client.closed is True
 
 
-def test_shell_layer_injects_back_proxy_env_only_for_user_visible_shell_run() -> None:
+def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() -> None:
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
         del cwd, timeout
         if script.endswith("\npwd"):
@@ -596,8 +596,8 @@ def test_shell_layer_injects_back_proxy_env_only_for_user_visible_shell_run() ->
         DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        shell_back_proxy_public_url="https://agent.example.com/back-proxy",
-        shell_back_proxy_token_factory=lambda execution_context, *, session_id: f"token-for:{execution_context.tenant_id}:{session_id}",
+        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_token_factory=lambda execution_context, *, session_id: f"token-for:{execution_context.tenant_id}:{session_id}",
     )
     layer.deps = layer.deps_type(execution_context=_execution_context_layer())
     tools = {tool.name: tool for tool in layer.tools}
@@ -617,14 +617,14 @@ def test_shell_layer_injects_back_proxy_env_only_for_user_visible_shell_run() ->
     internal_run_calls = [call for call in client.run_calls if not call.script.endswith("\npwd")]
 
     assert user_run_call.env == {
-        BACK_PROXY_URL_ENV_VAR: "https://agent.example.com/back-proxy",
-        BACK_PROXY_AUTH_JWE_ENV_VAR: f"token-for:tenant-1:{layer.runtime_state.session_id}",
+        AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+        AGENT_STUB_AUTH_JWE_ENV_VAR: f"token-for:tenant-1:{layer.runtime_state.session_id}",
     }
     assert internal_run_calls
     assert all(call.env is None for call in internal_run_calls)
 
 
-def test_shell_layer_skips_back_proxy_env_without_execution_context_dependency() -> None:
+def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency() -> None:
     client = FakeShellctlClient(
         run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
             "user-job",
@@ -637,8 +637,8 @@ def test_shell_layer_skips_back_proxy_env_without_execution_context_dependency()
         DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        shell_back_proxy_public_url="https://agent.example.com/back-proxy",
-        shell_back_proxy_token_factory=lambda execution_context, *, session_id: f"token-for:{execution_context.tenant_id}:{session_id}",
+        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_token_factory=lambda execution_context, *, session_id: f"token-for:{execution_context.tenant_id}:{session_id}",
     )
     tools = {tool.name: tool for tool in layer.tools}
 

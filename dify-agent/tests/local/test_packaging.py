@@ -26,6 +26,21 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "uvicorn[standard]==0.46.0",
 }
 
+GRPC_RUNTIME_DEPENDENCIES = {
+    "grpclib[protobuf]>=0.4.9,<0.5.0",
+    "protobuf>=6.33.5,<7.0.0",
+}
+
+DEV_DEPENDENCIES = {
+    "basedpyright>=1.39.3",
+    "coverage[toml]>=7.10.7",
+    "grpcio-tools>=1.81.0,<2.0.0",
+    "pytest>=9.0.3",
+    "pytest-examples>=0.0.18",
+    "pytest-mock>=3.14.0",
+    "ruff>=0.15.11",
+}
+
 
 def _read_pyproject():
     return tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
@@ -36,7 +51,9 @@ def test_project_dependencies_split_client_and_server_requirements() -> None:
     project = pyproject["project"]
 
     assert set(project["dependencies"]) == CLIENT_SHARED_DTO_DEPENDENCIES
+    assert set(project["optional-dependencies"]["grpc"]) == GRPC_RUNTIME_DEPENDENCIES
     assert set(project["optional-dependencies"]["server"]) == SERVER_RUNTIME_DEPENDENCIES
+    assert set(pyproject["dependency-groups"]["dev"]) == DEV_DEPENDENCIES
 
 
 def test_default_package_discovery_excludes_example_packages() -> None:

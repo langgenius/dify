@@ -110,6 +110,16 @@ class FakePluginDaemonHttpClient:
         self.is_closed = True
 
 
+class FakeAgentStubGRPCServer:
+    closed: bool
+
+    def __init__(self) -> None:
+        self.closed = False
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
 class FakeTimeout:
     connect: float
     read: float
@@ -161,7 +171,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         plugin_daemon_api_key="daemon-secret",
         shellctl_entrypoint="http://shellctl",
         shellctl_auth_token="shell-secret",
-        shell_back_proxy_public_url="https://agent.example.com/back-proxy",
+        agent_stub_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
@@ -198,7 +208,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert execution_context_layer.daemon_url == "http://plugin-daemon"
         assert execution_context_layer.daemon_api_key == "daemon-secret"
         assert shell_layer.shellctl_entrypoint == "http://shellctl"
-        assert shell_layer.shell_back_proxy_public_url == "https://agent.example.com/back-proxy"
+        assert shell_layer.agent_stub_url == "https://agent.example.com/agent-stub"
         shellctl_client = shell_layer.shellctl_client_factory("http://shellctl")
         assert isinstance(shellctl_client, ShellctlClient)
         assert shellctl_client.token == "shell-secret"
@@ -209,13 +219,13 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         store = scheduler.store
         assert isinstance(store, RedisRunStore)
         assert store.run_retention_seconds == 7
-        assert any(getattr(route, "path", None) == "/back-proxy/connections" for route in create_app(settings).routes)
+        assert any(getattr(route, "path", None) == "/agent-stub/connections" for route in create_app(settings).routes)
         assert any(
-            getattr(route, "path", None) == "/back-proxy/files/upload-request"
+            getattr(route, "path", None) == "/agent-stub/files/upload-request"
             for route in create_app(settings).routes
         )
         assert any(
-            getattr(route, "path", None) == "/back-proxy/files/download-request"
+            getattr(route, "path", None) == "/agent-stub/files/download-request"
             for route in create_app(settings).routes
         )
 
@@ -224,20 +234,20 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
     assert fake_redis.closed is True
 
 
-def test_create_app_wires_authenticated_back_proxy_connection_route(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_app_wires_authenticated_agent_stub_connection_route(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
-        shell_back_proxy_public_url="https://agent.example.com/back-proxy",
+        agent_stub_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
     )
-    token_codec = settings.create_back_proxy_token_codec()
+    token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
     token = token_codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
 
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/back-proxy/connections",
+            "/agent-stub/connections",
             headers={"Authorization": f"Bearer {token}"},
             json={"protocol_version": 1, "argv": ["connect"]},
         )
@@ -250,16 +260,16 @@ def test_create_app_wires_authenticated_back_proxy_connection_route(monkeypatch:
     assert fake_redis.closed is True
 
 
-def test_create_app_wires_authenticated_back_proxy_file_upload_route(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
-        shell_back_proxy_public_url="https://agent.example.com/back-proxy",
+        agent_stub_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
     )
-    token_codec = settings.create_back_proxy_token_codec()
+    token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
     token = token_codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
 
@@ -271,19 +281,47 @@ def test_create_app_wires_authenticated_back_proxy_file_upload_route(monkeypatch
         return httpx.Response(200, json={"data": {"url": "https://files.example.com/upload"}})
 
     monkeypatch.setattr(
-        "dify_agent.agent_stub.server.back_proxy_files.httpx.AsyncClient",
+        "dify_agent.agent_stub.server.agent_stub_files.httpx.AsyncClient",
         lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
     )
 
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/back-proxy/files/upload-request",
+            "/agent-stub/files/upload-request",
             headers={"Authorization": f"Bearer {token}"},
             json={"filename": "report.pdf", "mimetype": "application/pdf"},
         )
 
     assert response.status_code == 200
     assert response.json() == {"upload_url": "https://files.example.com/upload"}
+    assert FakeRunScheduler.created[0].shutdown_called is True
+    assert fake_http_client.is_closed is True
+    assert fake_redis.closed is True
+
+
+def test_create_app_starts_and_stops_agent_stub_grpc_server_for_grpc_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
+    started: dict[str, object] = {}
+    fake_grpc_server = FakeAgentStubGRPCServer()
+
+    async def fake_start_agent_stub_grpc_server(**kwargs):
+        started.update(kwargs)
+        return fake_grpc_server
+
+    monkeypatch.setattr(app_module, "start_agent_stub_grpc_server", fake_start_agent_stub_grpc_server)
+
+    settings = ServerSettings(
+        redis_url="redis://example.invalid/0",
+        agent_stub_url="grpc://agent.example.com:9091",
+        agent_stub_grpc_bind_address="0.0.0.0:9191",
+        server_secret_key=_base64url_secret(b"1" * 32),
+    )
+
+    with TestClient(create_app(settings)):
+        assert started["public_url"] == "grpc://agent.example.com:9091"
+        assert started["bind_address"] == "0.0.0.0:9191"
+
+    assert fake_grpc_server.closed is True
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert fake_http_client.is_closed is True
     assert fake_redis.closed is True

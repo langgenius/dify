@@ -2,7 +2,7 @@
 
 This layer carries both Dify product execution context (tenant, user, workflow,
 invoke source) and Agent backend runtime mode. The product-facing fields are
-used by trusted server-side boundaries such as the shell back proxy when they
+used by trusted server-side boundaries such as the Agent Stub when they
 need to reconstruct Dify API file-access scope without granting the sandbox any
 direct inner-API credentials. Server-only plugin-daemon settings are injected
 by the runtime provider factory and therefore do not appear in this public

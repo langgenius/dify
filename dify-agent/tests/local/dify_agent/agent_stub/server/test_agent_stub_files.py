@@ -6,14 +6,18 @@ import json
 
 import httpx
 
-from dify_agent.agent_stub.protocol.back_proxy import BackProxyFileDownloadRequest, BackProxyFileMapping, BackProxyFileUploadRequest
-from dify_agent.agent_stub.server.back_proxy_files import BackProxyFileRequestError, DifyApiBackProxyFileRequestHandler
-from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyPrincipal
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubFileDownloadRequest,
+    AgentStubFileMapping,
+    AgentStubFileUploadRequest,
+)
+from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, DifyApiAgentStubFileRequestHandler
+from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
-def _principal() -> BackProxyPrincipal:
-    return BackProxyPrincipal(
+def _principal() -> AgentStubPrincipal:
+    return AgentStubPrincipal(
         execution_context=DifyExecutionContextLayerConfig(
             tenant_id="tenant-1",
             user_id="user-1",
@@ -23,7 +27,7 @@ def _principal() -> BackProxyPrincipal:
             invoke_from="service-api",
         ),
         session_id="session-1",
-        scope=["shell_back_proxy:connect"],
+        scope=["agent_stub:connect"],
         token_id="token-1",
     )
 
@@ -31,7 +35,7 @@ def _principal() -> BackProxyPrincipal:
 def _patch_async_client(monkeypatch, handler) -> None:
     original_async_client = httpx.AsyncClient
     monkeypatch.setattr(
-        "dify_agent.agent_stub.server.back_proxy_files.httpx.AsyncClient",
+        "dify_agent.agent_stub.server.agent_stub_files.httpx.AsyncClient",
         lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
     )
 
@@ -41,9 +45,7 @@ def _reference(record_id: str) -> str:
     return f"dify-file-ref:{payload}"
 
 
-def test_dify_api_back_proxy_file_handler_injects_execution_context_for_upload(
-    monkeypatch,
-) -> None:
+def test_dify_api_agent_stub_file_handler_injects_execution_context_for_upload(monkeypatch) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == "https://api.example.com/inner/api/upload/file/request"
         assert request.headers["X-Inner-Api-Key"] == "inner-secret"
@@ -56,7 +58,7 @@ def test_dify_api_back_proxy_file_handler_injects_execution_context_for_upload(
         return httpx.Response(200, json={"data": {"url": "https://files.example.com/upload"}})
 
     _patch_async_client(monkeypatch, handler)
-    file_handler = DifyApiBackProxyFileRequestHandler(
+    file_handler = DifyApiAgentStubFileRequestHandler(
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
     )
@@ -64,17 +66,14 @@ def test_dify_api_back_proxy_file_handler_injects_execution_context_for_upload(
     async def scenario() -> None:
         response = await file_handler.create_upload_request(
             principal=_principal(),
-            request=BackProxyFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
+            request=AgentStubFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
         )
-
         assert response.upload_url == "https://files.example.com/upload"
 
     asyncio.run(scenario())
 
 
-def test_dify_api_back_proxy_file_handler_injects_execution_context_for_download(
-    monkeypatch,
-) -> None:
+def test_dify_api_agent_stub_file_handler_injects_execution_context_for_download(monkeypatch) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == "https://api.example.com/inner/api/download/file/request"
         assert json.loads(request.content) == {
@@ -97,7 +96,7 @@ def test_dify_api_back_proxy_file_handler_injects_execution_context_for_download
         )
 
     _patch_async_client(monkeypatch, handler)
-    file_handler = DifyApiBackProxyFileRequestHandler(
+    file_handler = DifyApiAgentStubFileRequestHandler(
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
     )
@@ -105,18 +104,17 @@ def test_dify_api_back_proxy_file_handler_injects_execution_context_for_download
     async def scenario() -> None:
         response = await file_handler.create_download_request(
             principal=_principal(),
-            request=BackProxyFileDownloadRequest(
-                file=BackProxyFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1"))
+            request=AgentStubFileDownloadRequest(
+                file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1"))
             ),
         )
-
         assert response.download_url == "https://files.example.com/download"
 
     asyncio.run(scenario())
 
 
-def test_dify_api_back_proxy_file_handler_rejects_missing_user_id() -> None:
-    file_handler = DifyApiBackProxyFileRequestHandler(
+def test_dify_api_agent_stub_file_handler_rejects_missing_user_id() -> None:
+    file_handler = DifyApiAgentStubFileRequestHandler(
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
     )
@@ -127,22 +125,22 @@ def test_dify_api_back_proxy_file_handler_rejects_missing_user_id() -> None:
         try:
             await file_handler.create_upload_request(
                 principal=principal,
-                request=BackProxyFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
+                request=AgentStubFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
             )
-        except BackProxyFileRequestError as exc:
+        except AgentStubFileRequestError as exc:
             assert "user_id" in str(exc)
         else:
-            raise AssertionError("expected BackProxyFileRequestError")
+            raise AssertionError("expected AgentStubFileRequestError")
 
     asyncio.run(scenario())
 
 
-def test_dify_api_back_proxy_file_handler_maps_non_2xx_response(monkeypatch) -> None:
+def test_dify_api_agent_stub_file_handler_maps_non_2xx_response(monkeypatch) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(403, json={"detail": "forbidden"})
 
     _patch_async_client(monkeypatch, handler)
-    file_handler = DifyApiBackProxyFileRequestHandler(
+    file_handler = DifyApiAgentStubFileRequestHandler(
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
     )
@@ -151,23 +149,23 @@ def test_dify_api_back_proxy_file_handler_maps_non_2xx_response(monkeypatch) -> 
         try:
             await file_handler.create_upload_request(
                 principal=_principal(),
-                request=BackProxyFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
+                request=AgentStubFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
             )
-        except BackProxyFileRequestError as exc:
+        except AgentStubFileRequestError as exc:
             assert exc.status_code == 403
             assert exc.detail == "forbidden"
         else:
-            raise AssertionError("expected BackProxyFileRequestError")
+            raise AssertionError("expected AgentStubFileRequestError")
 
     asyncio.run(scenario())
 
 
-def test_dify_api_back_proxy_file_handler_maps_error_envelope(monkeypatch) -> None:
+def test_dify_api_agent_stub_file_handler_maps_error_envelope(monkeypatch) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"error": "bad request"})
 
     _patch_async_client(monkeypatch, handler)
-    file_handler = DifyApiBackProxyFileRequestHandler(
+    file_handler = DifyApiAgentStubFileRequestHandler(
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
     )
@@ -176,25 +174,25 @@ def test_dify_api_back_proxy_file_handler_maps_error_envelope(monkeypatch) -> No
         try:
             await file_handler.create_download_request(
                 principal=_principal(),
-                request=BackProxyFileDownloadRequest(
-                    file=BackProxyFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1"))
+                request=AgentStubFileDownloadRequest(
+                    file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1"))
                 ),
             )
-        except BackProxyFileRequestError as exc:
+        except AgentStubFileRequestError as exc:
             assert exc.status_code == 400
             assert exc.detail == "bad request"
         else:
-            raise AssertionError("expected BackProxyFileRequestError")
+            raise AssertionError("expected AgentStubFileRequestError")
 
     asyncio.run(scenario())
 
 
-def test_dify_api_back_proxy_file_handler_rejects_upload_response_missing_url(monkeypatch) -> None:
+def test_dify_api_agent_stub_file_handler_rejects_upload_response_missing_url(monkeypatch) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"data": {}})
 
     _patch_async_client(monkeypatch, handler)
-    file_handler = DifyApiBackProxyFileRequestHandler(
+    file_handler = DifyApiAgentStubFileRequestHandler(
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
     )
@@ -203,23 +201,23 @@ def test_dify_api_back_proxy_file_handler_rejects_upload_response_missing_url(mo
         try:
             await file_handler.create_upload_request(
                 principal=_principal(),
-                request=BackProxyFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
+                request=AgentStubFileUploadRequest(filename="report.pdf", mimetype="application/pdf"),
             )
-        except BackProxyFileRequestError as exc:
+        except AgentStubFileRequestError as exc:
             assert exc.status_code == 502
             assert exc.detail == "Dify API upload request response is missing url"
         else:
-            raise AssertionError("expected BackProxyFileRequestError")
+            raise AssertionError("expected AgentStubFileRequestError")
 
     asyncio.run(scenario())
 
 
-def test_dify_api_back_proxy_file_handler_rejects_invalid_download_response_schema(monkeypatch) -> None:
+def test_dify_api_agent_stub_file_handler_rejects_invalid_download_response_schema(monkeypatch) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"data": {"filename": "report.pdf"}})
 
     _patch_async_client(monkeypatch, handler)
-    file_handler = DifyApiBackProxyFileRequestHandler(
+    file_handler = DifyApiAgentStubFileRequestHandler(
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
     )
@@ -228,14 +226,14 @@ def test_dify_api_back_proxy_file_handler_rejects_invalid_download_response_sche
         try:
             await file_handler.create_download_request(
                 principal=_principal(),
-                request=BackProxyFileDownloadRequest(
-                    file=BackProxyFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1"))
+                request=AgentStubFileDownloadRequest(
+                    file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1"))
                 ),
             )
-        except BackProxyFileRequestError as exc:
+        except AgentStubFileRequestError as exc:
             assert exc.status_code == 502
             assert exc.detail == "Dify API download request response is invalid"
         else:
-            raise AssertionError("expected BackProxyFileRequestError")
+            raise AssertionError("expected AgentStubFileRequestError")
 
     asyncio.run(scenario())

@@ -118,6 +118,8 @@ def test_agent_stub_cli_main_import_is_client_safe() -> None:
             "dify_agent.server",
             "dify_agent.agent_stub.server",
             "fastapi",
+            "google.protobuf",
+            "grpclib",
             "jwcrypto",
             "pydantic_settings",
             "redis",
@@ -141,8 +143,8 @@ def test_agent_stub_client_and_protocol_imports_are_client_safe() -> None:
         ],
         imports=["dify_agent.agent_stub.client", "dify_agent.agent_stub.protocol"],
         assertions=[
-            "assert hasattr(dify_agent_agent_stub_client, 'connect_back_proxy_sync')",
-            "assert hasattr(dify_agent_agent_stub_protocol, 'BackProxyConnectRequest')",
+            "assert hasattr(dify_agent_agent_stub_client, 'connect_agent_stub_sync')",
+            "assert hasattr(dify_agent_agent_stub_protocol, 'AgentStubConnectRequest')",
         ],
     )
 

@@ -18,7 +18,7 @@ side-effecting ``on_context_resume`` attempt fails after issuing shellctl jobs,
 Agenton still exits ``resource_context()`` but never transitions the layer to
 ``ACTIVE``. In that failed-enter path, normal suspend/delete hooks do not run,
 so the enter hook itself must perform best-effort business compensation before
-re-raising the failure. Back proxy env injection uses shellctl's native per-run
+re-raising the failure. Agent Stub env injection uses shellctl's native per-run
 ``env`` argument only for user-visible ``shell.run``.
 """
 
@@ -47,7 +47,7 @@ from shell_session_manager.shellctl.shared import (
 from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
-from dify_agent.agent_stub.server.shell_back_proxy_env import ShellBackProxyTokenFactory, build_shell_back_proxy_env
+from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 
@@ -291,8 +291,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     config: DifyShellLayerConfig
     shellctl_entrypoint: str
     shellctl_client_factory: ShellctlClientFactory
-    shell_back_proxy_public_url: str | None = None
-    shell_back_proxy_token_factory: ShellBackProxyTokenFactory | None = None
+    agent_stub_url: str | None = None
+    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     _shellctl_client: ShellctlClientProtocol | None = None
 
     @classmethod
@@ -309,8 +309,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         *,
         shellctl_entrypoint: str | None,
         shellctl_client_factory: ShellctlClientFactory,
-        shell_back_proxy_public_url: str | None = None,
-        shell_back_proxy_token_factory: ShellBackProxyTokenFactory | None = None,
+        agent_stub_url: str | None = None,
+        agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
         """Create the layer from public config plus server-only shell settings."""
         normalized_entrypoint = (shellctl_entrypoint or "").strip()
@@ -322,8 +322,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             config=config,
             shellctl_entrypoint=normalized_entrypoint,
             shellctl_client_factory=shellctl_client_factory,
-            shell_back_proxy_public_url=shell_back_proxy_public_url,
-            shell_back_proxy_token_factory=shell_back_proxy_token_factory,
+            agent_stub_url=agent_stub_url,
+            agent_stub_token_factory=agent_stub_token_factory,
         )
         layer.bind_deps({})
         return layer
@@ -661,13 +661,13 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         self.runtime_state.job_ids = []
 
     def _build_user_shell_run_env(self) -> dict[str, str] | None:
-        """Build per-command back proxy env only for user-visible ``shell.run``."""
+        """Build per-command Agent Stub env only for user-visible ``shell.run``."""
         execution_context_layer = self.deps.execution_context
         execution_context = execution_context_layer.config if execution_context_layer is not None else None
-        return build_shell_back_proxy_env(
-            public_url=self.shell_back_proxy_public_url,
+        return build_shell_agent_stub_env(
+            agent_stub_url=self.agent_stub_url,
             execution_context=execution_context,
-            token_factory=self.shell_back_proxy_token_factory,
+            token_factory=self.agent_stub_token_factory,
             session_id=self.runtime_state.session_id,
         )
 

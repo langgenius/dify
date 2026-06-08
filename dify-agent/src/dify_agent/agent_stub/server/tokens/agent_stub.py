@@ -1,9 +1,9 @@
-"""Server-only compact-JWE codec for shell back proxy bearer tokens.
+"""Server-only compact-JWE codec for Agent Stub bearer tokens.
 
-The shell back proxy route accepts only encrypted bearer tokens issued by this
+The Agent Stub accepts only encrypted bearer tokens issued by this
 server process. The root secret comes from ``DIFY_AGENT_SERVER_SECRET_KEY``
 and is never used directly as a content-encryption key; a purpose-specific HKDF
-derivation isolates shell back proxy tokens from any future server-side token
+derivation isolates Agent Stub tokens from any future server-side token
 families that may reuse the same root secret.
 """
 
@@ -27,29 +27,29 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
-BACK_PROXY_TOKEN_ISSUER = "dify-agent-server"
-BACK_PROXY_TOKEN_AUDIENCE = "dify-agent-shell-back-proxy"
-BACK_PROXY_TOKEN_SCOPE_CONNECT = "shell_back_proxy:connect"
-BACK_PROXY_TOKEN_TTL_SECONDS = 24 * 60 * 60
-_BACK_PROXY_JWE_PURPOSE = b"dify-agent:shell-back-proxy:jwe:v1"
+AGENT_STUB_TOKEN_ISSUER = "dify-agent-server"
+AGENT_STUB_TOKEN_AUDIENCE = "dify-agent-agent-stub"
+AGENT_STUB_TOKEN_SCOPE_CONNECT = "agent_stub:connect"
+AGENT_STUB_TOKEN_TTL_SECONDS = 24 * 60 * 60
+_AGENT_STUB_JWE_PURPOSE = b"dify-agent:agent-stub:jwe:v1"
 _REQUIRED_SERVER_SECRET_BYTES = 32
 _BASE64URL_TEXT_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 _DEFAULT_SERVER_SECRET_ENV_VAR = "DIFY_AGENT_SERVER_SECRET_KEY"
 
 
-class BackProxyTokenError(RuntimeError):
-    """Raised when a shell back proxy bearer token is missing or invalid."""
+class AgentStubTokenError(RuntimeError):
+    """Raised when an Agent Stub bearer token is missing or invalid."""
 
 
-class BackProxyShellClaims(BaseModel):
-    """Optional shell-session claims embedded in back proxy tokens."""
+class AgentStubShellClaims(BaseModel):
+    """Optional shell-session claims embedded in Agent Stub tokens."""
 
     session_id: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class BackProxyTokenClaims(BaseModel):
+class AgentStubTokenClaims(BaseModel):
     """Authenticated claim set carried by one compact JWE bearer token."""
 
     iss: str
@@ -60,14 +60,14 @@ class BackProxyTokenClaims(BaseModel):
     jti: str
     scope: list[str]
     execution_context: DifyExecutionContextLayerConfig
-    shell: BackProxyShellClaims | None = None
+    shell: AgentStubShellClaims | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 @dataclass(slots=True)
-class BackProxyPrincipal:
-    """Decoded request principal for one authenticated back proxy call."""
+class AgentStubPrincipal:
+    """Decoded request principal for one authenticated Agent Stub call."""
 
     execution_context: DifyExecutionContextLayerConfig
     session_id: str | None
@@ -75,8 +75,8 @@ class BackProxyPrincipal:
     token_id: str
 
 
-class BackProxyTokenCodec:
-    """Encode and decode compact JWE shell back proxy bearer tokens."""
+class AgentStubTokenCodec:
+    """Encode and decode compact JWE Agent Stub bearer tokens."""
 
     _content_encryption_key: bytes
     _jwe_key: jwk.JWK
@@ -89,9 +89,9 @@ class BackProxyTokenCodec:
         )
 
     @classmethod
-    def from_server_secret(cls, server_secret_key: str) -> BackProxyTokenCodec:
+    def from_server_secret(cls, server_secret_key: str) -> AgentStubTokenCodec:
         """Construct a codec from the configured base64url-encoded server secret."""
-        return cls(derive_back_proxy_jwe_key(server_secret_key))
+        return cls(derive_agent_stub_jwe_key(server_secret_key))
 
     def build_connection_claims(
         self,
@@ -99,18 +99,18 @@ class BackProxyTokenCodec:
         *,
         session_id: str | None = None,
         now: int | None = None,
-    ) -> BackProxyTokenClaims:
-        """Build the fixed-24h claim set for one shell back proxy connection token."""
+    ) -> AgentStubTokenClaims:
+        """Build the fixed-24h claim set for one Agent Stub connection token."""
         issued_at = _timestamp(now)
-        shell_claims = BackProxyShellClaims(session_id=session_id) if session_id is not None else None
-        return BackProxyTokenClaims(
-            iss=BACK_PROXY_TOKEN_ISSUER,
-            aud=BACK_PROXY_TOKEN_AUDIENCE,
+        shell_claims = AgentStubShellClaims(session_id=session_id) if session_id is not None else None
+        return AgentStubTokenClaims(
+            iss=AGENT_STUB_TOKEN_ISSUER,
+            aud=AGENT_STUB_TOKEN_AUDIENCE,
             iat=issued_at,
             nbf=issued_at,
-            exp=issued_at + BACK_PROXY_TOKEN_TTL_SECONDS,
+            exp=issued_at + AGENT_STUB_TOKEN_TTL_SECONDS,
             jti=str(uuid4()),
-            scope=[BACK_PROXY_TOKEN_SCOPE_CONNECT],
+            scope=[AGENT_STUB_TOKEN_SCOPE_CONNECT],
             execution_context=execution_context,
             shell=shell_claims,
         )
@@ -122,11 +122,11 @@ class BackProxyTokenCodec:
         session_id: str | None = None,
         now: int | None = None,
     ) -> str:
-        """Encode one fixed-24h shell back proxy compact JWE bearer token."""
+        """Encode one fixed-24h Agent Stub compact JWE bearer token."""
         return self.encode_claims(self.build_connection_claims(execution_context, session_id=session_id, now=now))
 
-    def encode_claims(self, claims: BackProxyTokenClaims) -> str:
-        """Encrypt one validated back proxy claim set as compact JWE."""
+    def encode_claims(self, claims: AgentStubTokenClaims) -> str:
+        """Encrypt one validated Agent Stub claim set as compact JWE."""
         token = jwe.JWE(
             plaintext=json.dumps(claims.model_dump(mode="json", exclude_none=True), separators=(",", ":")).encode(
                 "utf-8"
@@ -136,31 +136,31 @@ class BackProxyTokenCodec:
         token.add_recipient(self._jwe_key)
         return token.serialize(compact=True)
 
-    def decode_authorization_header(self, authorization: str | None, *, now: int | None = None) -> BackProxyPrincipal:
+    def decode_authorization_header(self, authorization: str | None, *, now: int | None = None) -> AgentStubPrincipal:
         """Decode a ``Bearer <compact-jwe>`` header into a request principal."""
         if authorization is None or not authorization.startswith("Bearer "):
-            raise BackProxyTokenError("Authorization must be a Bearer compact JWE token")
+            raise AgentStubTokenError("Authorization must be a Bearer compact JWE token")
         token = authorization.removeprefix("Bearer ").strip()
         if not token:
-            raise BackProxyTokenError("Authorization bearer token must not be empty")
+            raise AgentStubTokenError("Authorization bearer token must not be empty")
         return self.decode_token(token, now=now)
 
-    def decode_token(self, token: str, *, now: int | None = None) -> BackProxyPrincipal:
+    def decode_token(self, token: str, *, now: int | None = None) -> AgentStubPrincipal:
         """Decrypt and validate one compact JWE token string."""
         decrypted = jwe.JWE()
         try:
             decrypted.deserialize(token, key=self._jwe_key)
         except JWException as exc:
-            raise BackProxyTokenError("failed to decrypt back proxy bearer token") from exc
+            raise AgentStubTokenError("failed to decrypt Agent Stub bearer token") from exc
 
         try:
-            claims = BackProxyTokenClaims.model_validate_json(decrypted.payload)
+            claims = AgentStubTokenClaims.model_validate_json(decrypted.payload)
         except ValidationError as exc:
-            raise BackProxyTokenError("back proxy bearer token payload is invalid") from exc
+            raise AgentStubTokenError("Agent Stub bearer token payload is invalid") from exc
 
         current_time = _timestamp(now)
         _validate_claims(claims, now=current_time)
-        return BackProxyPrincipal(
+        return AgentStubPrincipal(
             execution_context=claims.execution_context,
             session_id=claims.shell.session_id if claims.shell is not None else None,
             scope=list(claims.scope),
@@ -174,7 +174,7 @@ def decode_server_secret_key(server_secret_key: str, *, env_var_name: str = _DEF
     The secret must be strict unpadded base64url text and must decode to
     exactly 32 bytes. Settings validation uses this helper so operator
     misconfiguration fails fast before the server starts issuing or accepting
-    back proxy tokens.
+    Agent Stub tokens.
     """
     normalized = server_secret_key.strip()
     if not normalized or not _BASE64URL_TEXT_PATTERN.fullmatch(normalized):
@@ -188,22 +188,22 @@ def decode_server_secret_key(server_secret_key: str, *, env_var_name: str = _DEF
     return decoded
 
 
-def derive_back_proxy_jwe_key(server_secret_key: str) -> bytes:
+def derive_agent_stub_jwe_key(server_secret_key: str) -> bytes:
     """Derive the purpose-scoped 32-byte JWE content-encryption key."""
-    return _hkdf_sha256(decode_server_secret_key(server_secret_key), info=_BACK_PROXY_JWE_PURPOSE, length=32)
+    return _hkdf_sha256(decode_server_secret_key(server_secret_key), info=_AGENT_STUB_JWE_PURPOSE, length=32)
 
 
-def _validate_claims(claims: BackProxyTokenClaims, *, now: int) -> None:
-    if claims.iss != BACK_PROXY_TOKEN_ISSUER:
-        raise BackProxyTokenError(f"back proxy bearer token issuer must be {BACK_PROXY_TOKEN_ISSUER!r}")
-    if claims.aud != BACK_PROXY_TOKEN_AUDIENCE:
-        raise BackProxyTokenError(f"back proxy bearer token audience must be {BACK_PROXY_TOKEN_AUDIENCE!r}")
+def _validate_claims(claims: AgentStubTokenClaims, *, now: int) -> None:
+    if claims.iss != AGENT_STUB_TOKEN_ISSUER:
+        raise AgentStubTokenError(f"Agent Stub bearer token issuer must be {AGENT_STUB_TOKEN_ISSUER!r}")
+    if claims.aud != AGENT_STUB_TOKEN_AUDIENCE:
+        raise AgentStubTokenError(f"Agent Stub bearer token audience must be {AGENT_STUB_TOKEN_AUDIENCE!r}")
     if now < claims.nbf:
-        raise BackProxyTokenError("back proxy bearer token is not valid yet")
+        raise AgentStubTokenError("Agent Stub bearer token is not valid yet")
     if now >= claims.exp:
-        raise BackProxyTokenError("back proxy bearer token is expired")
-    if BACK_PROXY_TOKEN_SCOPE_CONNECT not in claims.scope:
-        raise BackProxyTokenError(f"back proxy bearer token scope must include {BACK_PROXY_TOKEN_SCOPE_CONNECT!r}")
+        raise AgentStubTokenError("Agent Stub bearer token is expired")
+    if AGENT_STUB_TOKEN_SCOPE_CONNECT not in claims.scope:
+        raise AgentStubTokenError(f"Agent Stub bearer token scope must include {AGENT_STUB_TOKEN_SCOPE_CONNECT!r}")
 
 
 def _hkdf_sha256(input_key_material: bytes, *, info: bytes, length: int) -> bytes:
@@ -241,14 +241,14 @@ def _base64url_encode(value: bytes) -> str:
 
 
 __all__ = [
-    "BACK_PROXY_TOKEN_AUDIENCE",
-    "BACK_PROXY_TOKEN_ISSUER",
-    "BACK_PROXY_TOKEN_SCOPE_CONNECT",
-    "BACK_PROXY_TOKEN_TTL_SECONDS",
-    "BackProxyPrincipal",
-    "BackProxyTokenClaims",
-    "BackProxyTokenCodec",
-    "BackProxyTokenError",
+    "AGENT_STUB_TOKEN_AUDIENCE",
+    "AGENT_STUB_TOKEN_ISSUER",
+    "AGENT_STUB_TOKEN_SCOPE_CONNECT",
+    "AGENT_STUB_TOKEN_TTL_SECONDS",
+    "AgentStubPrincipal",
+    "AgentStubTokenClaims",
+    "AgentStubTokenCodec",
+    "AgentStubTokenError",
     "decode_server_secret_key",
-    "derive_back_proxy_jwe_key",
+    "derive_agent_stub_jwe_key",
 ]

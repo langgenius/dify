@@ -13,7 +13,7 @@ stateful Dify shell layer, and the Dify plugin business-layer family:
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings are injected through the provider factory for
 ``DifyExecutionContextLayer`` and the optional shellctl entrypoint/auth token plus
-client factory plus optional shell back proxy URL/token issuer are injected for
+client factory plus optional Agent Stub URL/token issuer are injected for
 ``DifyShellLayer``. The resulting ``Compositor``
 remains Agenton state-only at the snapshot boundary: live resources such as
 HTTP clients are injected by runtime-owned providers, may be held on active
@@ -31,8 +31,8 @@ from agenton.layers.types import AllPromptTypes, AllToolTypes, AllUserPromptType
 from agenton_collections.layers.pydantic_ai import PydanticAIHistoryLayer
 from agenton_collections.layers.plain.basic import PromptLayer
 from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
-from dify_agent.agent_stub.server.shell_back_proxy_env import ShellBackProxyTokenFactory
-from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyTokenCodec
+from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory
+from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
@@ -49,8 +49,8 @@ def create_default_layer_providers(
     plugin_daemon_api_key: str = "",
     shellctl_entrypoint: str | None = None,
     shellctl_auth_token: str | None = None,
-    shell_back_proxy_public_url: str | None = None,
-    shell_back_proxy_token_codec: BackProxyTokenCodec | None = None,
+    agent_stub_url: str | None = None,
+    agent_stub_token_codec: AgentStubTokenCodec | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers.
 
@@ -61,19 +61,19 @@ def create_default_layer_providers(
     setting explicitly.
     """
     shellctl_token = shellctl_auth_token or ""
-    shell_back_proxy_token_factory: ShellBackProxyTokenFactory | None = None
-    if shell_back_proxy_token_codec is not None:
-        def build_shell_back_proxy_token(
+    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
+    if agent_stub_token_codec is not None:
+        def build_agent_stub_token(
             execution_context: DifyExecutionContextLayerConfig,
             *,
             session_id: str | None,
         ) -> str:
-            return shell_back_proxy_token_codec.encode_connection_token(
+            return agent_stub_token_codec.encode_connection_token(
                 execution_context,
                 session_id=session_id,
             )
 
-        shell_back_proxy_token_factory = build_shell_back_proxy_token
+        agent_stub_token_factory = build_agent_stub_token
     return (
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
@@ -92,8 +92,8 @@ def create_default_layer_providers(
                 DifyShellLayerConfig.model_validate(config),
                 shellctl_entrypoint=shellctl_entrypoint,
                 shellctl_client_factory=create_shellctl_client_factory(token=shellctl_token),
-                shell_back_proxy_public_url=shell_back_proxy_public_url,
-                shell_back_proxy_token_factory=shell_back_proxy_token_factory,
+                agent_stub_url=agent_stub_url,
+                agent_stub_token_factory=agent_stub_token_factory,
             ),
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),

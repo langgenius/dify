@@ -1,12 +1,12 @@
-"""Server-side Dify API client for shell back proxy file endpoints.
+"""Server-side Dify API client for Agent Stub file endpoints.
 
-The shell back proxy serves only control-plane file endpoints. This module is
+The Agent Stub serves only control-plane file endpoints. This module is
 the trusted bridge from authenticated stub requests into Dify's inner file
-request APIs. Callers pass a decoded ``BackProxyPrincipal`` and a validated
-public back-proxy request DTO; this module injects the execution-context tenant
+request APIs. Callers pass a decoded ``AgentStubPrincipal`` and a validated
+public Agent Stub request DTO; this module injects the execution-context tenant
 and user fields that sandbox code is not allowed to forge, calls the matching
 Dify inner API endpoint, and normalizes all expected failures into
-``BackProxyFileRequestError`` with HTTP-oriented ``status_code`` and ``detail``
+``AgentStubFileRequestError`` with HTTP-oriented ``status_code`` and ``detail``
 values that route handlers can map directly into responses.
 """
 
@@ -19,42 +19,42 @@ from typing import Any, Protocol
 import httpx
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from dify_agent.agent_stub.protocol.back_proxy import (
-    BackProxyFileDownloadRequest,
-    BackProxyFileDownloadResponse,
-    BackProxyFileUploadRequest,
-    BackProxyFileUploadResponse,
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubFileDownloadRequest,
+    AgentStubFileDownloadResponse,
+    AgentStubFileUploadRequest,
+    AgentStubFileUploadResponse,
 )
-from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyPrincipal
+from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
-class BackProxyFileRequestHandler(Protocol):
+class AgentStubFileRequestHandler(Protocol):
     """Trusted control-plane bridge from sandbox calls to Dify API inner APIs.
 
     Implementations are expected to accept authenticated execution context from
     the stub token principal, inject the required tenant/user metadata into the
-    Dify inner API request, and raise ``BackProxyFileRequestError`` when the
+    Dify inner API request, and raise ``AgentStubFileRequestError`` when the
     downstream call cannot produce a valid control-plane response.
     """
 
     async def create_upload_request(
         self,
         *,
-        principal: BackProxyPrincipal,
-        request: BackProxyFileUploadRequest,
-    ) -> BackProxyFileUploadResponse: ...
+        principal: AgentStubPrincipal,
+        request: AgentStubFileUploadRequest,
+    ) -> AgentStubFileUploadResponse: ...
 
     async def create_download_request(
         self,
         *,
-        principal: BackProxyPrincipal,
-        request: BackProxyFileDownloadRequest,
-    ) -> BackProxyFileDownloadResponse: ...
+        principal: AgentStubPrincipal,
+        request: AgentStubFileDownloadRequest,
+    ) -> AgentStubFileDownloadResponse: ...
 
 
-class BackProxyFileRequestError(RuntimeError):
-    """Raised when the back proxy cannot complete a file control-plane call.
+class AgentStubFileRequestError(RuntimeError):
+    """Raised when the Agent Stub cannot complete a file control-plane call.
 
     ``status_code`` and ``detail`` are shaped for direct translation into HTTP
     responses by FastAPI route handlers, so downstream callers should not need a
@@ -80,7 +80,7 @@ class _BackwardsInvocationEnvelope(BaseModel):
 
 
 @dataclass(slots=True)
-class DifyApiBackProxyFileRequestHandler:
+class DifyApiAgentStubFileRequestHandler:
     """Call Dify API inner file request endpoints on behalf of the sandbox.
 
     The upload path calls ``/inner/api/upload/file/request`` and injects the
@@ -91,10 +91,10 @@ class DifyApiBackProxyFileRequestHandler:
     file mapping.
 
     ``user_id`` is mandatory for both operations. Missing user context is
-    rejected before any network call with ``BackProxyFileRequestError(400, ...)``.
+    rejected before any network call with ``AgentStubFileRequestError(400, ...)``.
     Timeouts, transport failures, non-2xx responses, invalid JSON, invalid
     plugin-style envelopes, and invalid success schemas are all normalized into
-    ``BackProxyFileRequestError`` so the stub routes can preserve a stable HTTP
+    ``AgentStubFileRequestError`` so the stub routes can preserve a stable HTTP
     contract without exposing raw ``httpx`` or Pydantic exceptions.
     """
 
@@ -105,18 +105,18 @@ class DifyApiBackProxyFileRequestHandler:
     async def create_upload_request(
         self,
         *,
-        principal: BackProxyPrincipal,
-        request: BackProxyFileUploadRequest,
-    ) -> BackProxyFileUploadResponse:
+        principal: AgentStubPrincipal,
+        request: AgentStubFileUploadRequest,
+    ) -> AgentStubFileUploadResponse:
         """Request one signed upload URL from Dify's inner upload endpoint.
 
         The request payload is derived from authenticated execution context and
         the public upload DTO. ``principal.execution_context.user_id`` must be
-        present; otherwise the method raises ``BackProxyFileRequestError`` with
+        present; otherwise the method raises ``AgentStubFileRequestError`` with
         status ``400`` before contacting Dify.
 
         Raises:
-            BackProxyFileRequestError: when user context is incomplete, the
+            AgentStubFileRequestError: when user context is incomplete, the
                 inner API times out or fails, the response is non-2xx, or the
                 success payload does not contain a non-empty ``url`` string.
         """
@@ -130,27 +130,27 @@ class DifyApiBackProxyFileRequestHandler:
         data = await self._post_inner_api("/inner/api/upload/file/request", payload)
         upload_url = data.get("url")
         if not isinstance(upload_url, str) or not upload_url:
-            raise BackProxyFileRequestError(502, "Dify API upload request response is missing url")
-        return BackProxyFileUploadResponse(upload_url=upload_url)
+            raise AgentStubFileRequestError(502, "Dify API upload request response is missing url")
+        return AgentStubFileUploadResponse(upload_url=upload_url)
 
     async def create_download_request(
         self,
         *,
-        principal: BackProxyPrincipal,
-        request: BackProxyFileDownloadRequest,
-    ) -> BackProxyFileDownloadResponse:
+        principal: AgentStubPrincipal,
+        request: AgentStubFileDownloadRequest,
+    ) -> AgentStubFileDownloadResponse:
         """Request one signed download URL from Dify's inner download endpoint.
 
         The request payload combines authenticated execution-context identity
         fields with the validated public file mapping. ``user_id`` is required
         and missing user context is rejected locally with
-        ``BackProxyFileRequestError(400, ...)``.
+        ``AgentStubFileRequestError(400, ...)``.
 
         Raises:
-            BackProxyFileRequestError: when user context is incomplete, the
+            AgentStubFileRequestError: when user context is incomplete, the
                 inner API times out or fails, the response is non-2xx, the
                 plugin-style envelope is malformed, or the success payload does
-                not match ``BackProxyFileDownloadResponse``.
+                not match ``AgentStubFileDownloadResponse``.
         """
         execution_context = self._require_user_context(principal.execution_context)
         payload = {
@@ -162,13 +162,13 @@ class DifyApiBackProxyFileRequestHandler:
         }
         data = await self._post_inner_api("/inner/api/download/file/request", payload)
         try:
-            return BackProxyFileDownloadResponse.model_validate(data)
+            return AgentStubFileDownloadResponse.model_validate(data)
         except ValidationError as exc:
-            raise BackProxyFileRequestError(502, "Dify API download request response is invalid") from exc
+            raise AgentStubFileRequestError(502, "Dify API download request response is invalid") from exc
 
     def _require_user_context(self, execution_context: DifyExecutionContextLayerConfig) -> DifyExecutionContextLayerConfig:
         if execution_context.user_id is None:
-            raise BackProxyFileRequestError(400, "execution context user_id is required for file operations")
+            raise AgentStubFileRequestError(400, "execution context user_id is required for file operations")
         return execution_context
 
     async def _post_inner_api(self, path: str, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -181,22 +181,22 @@ class DifyApiBackProxyFileRequestHandler:
                     headers={"X-Inner-Api-Key": self.dify_api_inner_api_key},
                 )
             except httpx.TimeoutException as exc:
-                raise BackProxyFileRequestError(504, "Dify API file request timed out") from exc
+                raise AgentStubFileRequestError(504, "Dify API file request timed out") from exc
             except httpx.RequestError as exc:
-                raise BackProxyFileRequestError(502, f"Dify API file request failed: {exc}") from exc
+                raise AgentStubFileRequestError(502, f"Dify API file request failed: {exc}") from exc
 
         raw_payload = self._parse_json(response)
         if response.is_error:
             detail = raw_payload.get("detail", raw_payload) if isinstance(raw_payload, dict) else raw_payload
-            raise BackProxyFileRequestError(response.status_code, detail)
+            raise AgentStubFileRequestError(response.status_code, detail)
         try:
             envelope = _BackwardsInvocationEnvelope.model_validate(raw_payload)
         except ValidationError as exc:
-            raise BackProxyFileRequestError(502, "Dify API file request response is invalid") from exc
+            raise AgentStubFileRequestError(502, "Dify API file request response is invalid") from exc
         if envelope.error:
-            raise BackProxyFileRequestError(400, envelope.error)
+            raise AgentStubFileRequestError(400, envelope.error)
         if not isinstance(envelope.data, dict):
-            raise BackProxyFileRequestError(502, "Dify API file request response is missing data")
+            raise AgentStubFileRequestError(502, "Dify API file request response is missing data")
         return dict(envelope.data)
 
     @staticmethod
@@ -204,11 +204,11 @@ class DifyApiBackProxyFileRequestHandler:
         try:
             return response.json()
         except ValueError as exc:
-            raise BackProxyFileRequestError(502, "Dify API file request returned invalid JSON") from exc
+            raise AgentStubFileRequestError(502, "Dify API file request returned invalid JSON") from exc
 
 
 __all__ = [
-    "BackProxyFileRequestError",
-    "BackProxyFileRequestHandler",
-    "DifyApiBackProxyFileRequestHandler",
+    "AgentStubFileRequestError",
+    "AgentStubFileRequestHandler",
+    "DifyApiAgentStubFileRequestHandler",
 ]

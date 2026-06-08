@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
-from dify_agent.agent_stub.client._back_proxy import BackProxyTransferError
+from dify_agent.agent_stub.client._errors import AgentStubTransferError
 
 
 def _reference(record_id: str) -> str:
@@ -21,11 +21,11 @@ def test_upload_file_from_environment_requests_signed_url_and_normalizes_output(
 ) -> None:
     source = tmp_path / "report.pdf"
     source.write_bytes(b"report-bytes")
-    monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_URL", "https://agent.example.com/back-proxy")
-    monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_AUTH_JWE", "test-jwe")
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
-        "dify_agent.agent_stub.cli._files.request_back_proxy_file_upload_sync",
+        "dify_agent.agent_stub.cli._files.request_agent_stub_file_upload_sync",
         lambda **_kwargs: type("Response", (), {"upload_url": "https://files.example.com/upload"})(),
     )
     captured = {}
@@ -64,11 +64,11 @@ def test_download_file_from_environment_saves_bytes_and_renames_on_collision(
     target_dir = tmp_path / "downloads"
     target_dir.mkdir()
     (target_dir / "report.pdf").write_bytes(b"existing")
-    monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_URL", "https://agent.example.com/back-proxy")
-    monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_AUTH_JWE", "test-jwe")
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
-        "dify_agent.agent_stub.cli._files.request_back_proxy_file_download_sync",
+        "dify_agent.agent_stub.cli._files.request_agent_stub_file_download_sync",
         lambda **_kwargs: type(
             "Response",
             (),
@@ -101,11 +101,11 @@ def test_download_file_from_environment_sanitizes_server_filename(
 ) -> None:
     target_dir = tmp_path / "downloads"
     target_dir.mkdir()
-    monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_URL", "https://agent.example.com/back-proxy")
-    monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_AUTH_JWE", "test-jwe")
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
-        "dify_agent.agent_stub.cli._files.request_back_proxy_file_download_sync",
+        "dify_agent.agent_stub.cli._files.request_agent_stub_file_download_sync",
         lambda **_kwargs: type(
             "Response",
             (),
@@ -139,11 +139,11 @@ def test_upload_file_from_environment_rejects_non_canonical_reference(
 ) -> None:
     source = tmp_path / "report.pdf"
     source.write_bytes(b"report-bytes")
-    monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_URL", "https://agent.example.com/back-proxy")
-    monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_AUTH_JWE", "test-jwe")
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
-        "dify_agent.agent_stub.cli._files.request_back_proxy_file_upload_sync",
+        "dify_agent.agent_stub.cli._files.request_agent_stub_file_upload_sync",
         lambda **_kwargs: type("Response", (), {"upload_url": "https://files.example.com/upload"})(),
     )
     monkeypatch.setattr(
@@ -151,5 +151,5 @@ def test_upload_file_from_environment_rejects_non_canonical_reference(
         lambda **_kwargs: {"reference": "raw-tool-file-uuid"},
     )
 
-    with pytest.raises(BackProxyTransferError, match="invalid canonical reference"):
+    with pytest.raises(AgentStubTransferError, match="invalid canonical reference"):
         _ = upload_file_from_environment(path=str(source))

@@ -52,10 +52,10 @@ client on the no-token path. Set it only when the shellctl server is started wit
 bearer authentication.
 
 To let commands inside user-visible shell jobs call back to the Dify Agent server
-with `dify-agent ...`, also enable the shell back proxy:
+with `dify-agent ...`, also enable the Agent Stub:
 
 ```env
-DIFY_AGENT_SHELL_BACK_PROXY_PUBLIC_URL=https://agent.example.com/back-proxy
+DIFY_AGENT_STUB_URL=https://agent.example.com/agent-stub
 DIFY_AGENT_SERVER_SECRET_KEY=replace-with-base64url-32-byte-secret
 ```
 
@@ -69,8 +69,8 @@ python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_
 ## Client request shape
 
 A client adds the shell layer as an ordinary composition layer. Basic shell jobs
-do not need dependencies. To inject `DIFY_AGENT_BACK_PROXY_URL` and
-`DIFY_AGENT_BACK_PROXY_AUTH_JWE` into user-visible `shell.run` jobs, declare the
+do not need dependencies. To inject `DIFY_AGENT_STUB_URL` and
+`DIFY_AGENT_STUB_AUTH_JWE` into user-visible `shell.run` jobs, declare the
 execution-context layer as the shell layer's `execution_context` dependency. A
 typical run still also includes:
 
