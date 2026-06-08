@@ -1,0 +1,496 @@
+# =====================================================================
+# Dify - Dokploy-optimized Docker Compose
+# =====================================================================
+#
+# This compose file is purpose-built for deploying Dify on Dokploy. Key
+# adaptations vs. the standard docker-compose.yaml:
+#
+#   * No `container_name` on any service (would break Dokploy logs/metrics).
+#   * All persistent data lives in named volumes (bind mounts under
+#     ./volumes/ would be wiped on every AutoDeploy because Dokploy runs
+#     `git clone` fresh).
+#   * Nginx does NOT publish ports — Dokploy's Traefik fronts the stack
+#     using the labels on the `nginx` service and the external
+#     `dokploy-network`.
+#   * SSL is handled by Dokploy/Traefik (Let's Encrypt). Internal nginx
+#     stays HTTP-only.
+#   * Profiles removed: this file ships a single working topology
+#     (PostgreSQL + Redis + Weaviate). Swap stores by editing this file.
+#
+# Setup steps in Dokploy:
+#   1. Create a Compose service pointing to docker/docker-compose.dokploy.yaml
+#   2. Paste the variables from .env.dokploy.example into the env editor and
+#      change the values marked with `CHANGE_ME`.
+#   3. Open the Domains tab and add your domain mapped to service `nginx`
+#      on container port 80. Enable HTTPS + Let's Encrypt.
+#   4. Deploy.
+# =====================================================================
+
+x-shared-api-worker-env: &shared-api-worker-env
+  # Runtime
+  LANG: C.UTF-8
+  LC_ALL: C.UTF-8
+  PYTHONIOENCODING: utf-8
+  UV_CACHE_DIR: /tmp/.uv-cache
+  TZ: ${TZ:-UTC}
+  DEPLOY_ENV: ${DEPLOY_ENV:-PRODUCTION}
+  DEBUG: ${DEBUG:-false}
+  FLASK_DEBUG: ${FLASK_DEBUG:-false}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOG_OUTPUT_FORMAT: ${LOG_OUTPUT_FORMAT:-text}
+  LOG_TZ: ${LOG_TZ:-UTC}
+  CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-https://updates.dify.ai}
+  OPENAI_API_BASE: ${OPENAI_API_BASE:-https://api.openai.com/v1}
+  MIGRATION_ENABLED: ${MIGRATION_ENABLED:-true}
+  FILES_ACCESS_TIMEOUT: ${FILES_ACCESS_TIMEOUT:-300}
+  ENABLE_COLLABORATION_MODE: ${ENABLE_COLLABORATION_MODE:-true}
+
+  # Public URLs (leave empty to use same-origin via Traefik)
+  CONSOLE_API_URL: ${CONSOLE_API_URL:-}
+  CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
+  SERVICE_API_URL: ${SERVICE_API_URL:-}
+  APP_API_URL: ${APP_API_URL:-}
+  APP_WEB_URL: ${APP_WEB_URL:-}
+  FILES_URL: ${FILES_URL:-}
+  INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-http://api:5001}
+  ENDPOINT_URL_TEMPLATE: ${ENDPOINT_URL_TEMPLATE:-}
+  TRIGGER_URL: ${TRIGGER_URL:-}
+
+  # Server / workers
+  DIFY_BIND_ADDRESS: ${DIFY_BIND_ADDRESS:-0.0.0.0}
+  DIFY_PORT: ${DIFY_PORT:-5001}
+  SERVER_WORKER_AMOUNT: ${SERVER_WORKER_AMOUNT:-1}
+  SERVER_WORKER_CLASS: ${SERVER_WORKER_CLASS:-gevent}
+  SERVER_WORKER_CONNECTIONS: ${SERVER_WORKER_CONNECTIONS:-10}
+  GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-360}
+  CELERY_WORKER_AMOUNT: ${CELERY_WORKER_AMOUNT:-1}
+  CELERY_AUTO_SCALE: ${CELERY_AUTO_SCALE:-false}
+
+  # Security
+  SECRET_KEY: ${SECRET_KEY:-}
+  INIT_PASSWORD: ${INIT_PASSWORD:-}
+
+  # Database (PostgreSQL)
+  DB_TYPE: ${DB_TYPE:-postgresql}
+  DB_USERNAME: ${DB_USERNAME:-postgres}
+  DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
+  DB_HOST: ${DB_HOST:-db_postgres}
+  DB_PORT: ${DB_PORT:-5432}
+  DB_DATABASE: ${DB_DATABASE:-dify}
+  SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-30}
+  SQLALCHEMY_MAX_OVERFLOW: ${SQLALCHEMY_MAX_OVERFLOW:-10}
+  SQLALCHEMY_POOL_RECYCLE: ${SQLALCHEMY_POOL_RECYCLE:-3600}
+
+  # Redis
+  REDIS_HOST: ${REDIS_HOST:-redis}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  REDIS_USERNAME: ${REDIS_USERNAME:-}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
+  REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
+  REDIS_DB: ${REDIS_DB:-0}
+  CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
+  CELERY_BACKEND: ${CELERY_BACKEND:-redis}
+  BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
+
+  # Vector store (Weaviate by default)
+  VECTOR_STORE: ${VECTOR_STORE:-weaviate}
+  VECTOR_INDEX_NAME_PREFIX: ${VECTOR_INDEX_NAME_PREFIX:-Vector_index}
+  WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
+  WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+  WEAVIATE_GRPC_ENDPOINT: ${WEAVIATE_GRPC_ENDPOINT:-grpc://weaviate:50051}
+
+  # CORS
+  WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-*}
+  CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-*}
+
+  # Storage
+  STORAGE_TYPE: ${STORAGE_TYPE:-opendal}
+  OPENDAL_SCHEME: ${OPENDAL_SCHEME:-fs}
+  OPENDAL_FS_ROOT: ${OPENDAL_FS_ROOT:-storage}
+
+  # Sandbox / SSRF
+  CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://sandbox:8194}
+  CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
+  CODE_EXECUTION_SSL_VERIFY: ${CODE_EXECUTION_SSL_VERIFY:-True}
+  SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
+  SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
+
+  # Plugin daemon
+  PLUGIN_DAEMON_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
+  PLUGIN_DAEMON_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
+  PLUGIN_DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+  PLUGIN_DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+  PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+  PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+  PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+  PLUGIN_DAEMON_TIMEOUT: ${PLUGIN_DAEMON_TIMEOUT:-600.0}
+  INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+
+  # Marketplace
+  MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
+  MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+  MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
+
+  # Mail (optional, fill in via env if needed)
+  MAIL_TYPE: ${MAIL_TYPE:-}
+  MAIL_DEFAULT_SEND_FROM: ${MAIL_DEFAULT_SEND_FROM:-}
+  SMTP_SERVER: ${SMTP_SERVER:-}
+  SMTP_PORT: ${SMTP_PORT:-}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+  SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
+
+  # Misc tuning
+  UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
+  UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
+  ETL_TYPE: ${ETL_TYPE:-dify}
+  MULTIMODAL_SEND_FORMAT: ${MULTIMODAL_SEND_FORMAT:-base64}
+  NOTION_INTEGRATION_TYPE: ${NOTION_INTEGRATION_TYPE:-public}
+
+services:
+  # Init container: fixes ownership on the storage volume so the API (uid 1001) can write.
+  init_permissions:
+    image: busybox:latest
+    command:
+      - sh
+      - -c
+      - |
+        FLAG_FILE="/app/api/storage/.init_permissions"
+        if [ -f "$${FLAG_FILE}" ]; then
+          echo "Permissions already initialized. Exiting."
+          exit 0
+        fi
+        echo "Initializing permissions for /app/api/storage"
+        chown -R 1001:1001 /app/api/storage && touch "$${FLAG_FILE}"
+        echo "Permissions initialized. Exiting."
+    volumes:
+      - app_storage:/app/api/storage
+    restart: "no"
+
+  api:
+    image: langgenius/dify-api:1.14.2
+    restart: always
+    environment:
+      <<: *shared-api-worker-env
+      MODE: api
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - app_storage:/app/api/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  api_websocket:
+    image: langgenius/dify-api:1.14.2
+    restart: always
+    environment:
+      <<: *shared-api-worker-env
+      MODE: api
+      SERVER_WORKER_AMOUNT: 1
+      SERVER_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      SERVER_WORKER_CONNECTIONS: ${API_WEBSOCKET_WORKER_CONNECTIONS:-1000}
+      GUNICORN_TIMEOUT: ${API_WEBSOCKET_GUNICORN_TIMEOUT:-360}
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  worker:
+    image: langgenius/dify-api:1.14.2
+    restart: always
+    environment:
+      <<: *shared-api-worker-env
+      MODE: worker
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - app_storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  worker_beat:
+    image: langgenius/dify-api:1.14.2
+    restart: always
+    environment:
+      <<: *shared-api-worker-env
+      MODE: beat
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  web:
+    image: langgenius/dify-web:1.14.2
+    restart: always
+    environment:
+      CONSOLE_API_URL: ${CONSOLE_API_URL:-}
+      SERVER_CONSOLE_API_URL: ${SERVER_CONSOLE_API_URL:-http://api:5001}
+      APP_API_URL: ${APP_API_URL:-}
+      NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
+      NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-}
+      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
+      TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
+      CSP_WHITELIST: ${CSP_WHITELIST:-}
+      ALLOW_EMBED: ${ALLOW_EMBED:-false}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
+      TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-10}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
+      LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
+      MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
+      MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
+      MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
+    networks:
+      - default
+
+  db_postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${DB_DATABASE:-dify}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # Picked up by docker/postgres-init/01-create-plugin-db.sh on first boot.
+      DB_PLUGIN_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
+    command: >
+      postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-200}'
+               -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
+               -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
+               -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
+               -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-1024MB}'
+    volumes:
+      - db_postgres_data:/var/lib/postgresql/data
+      # First-boot init: creates the `dify_plugin` database used by
+      # plugin_daemon. The postgres image only runs scripts in this folder
+      # when the data directory is empty, so subsequent deploys are no-ops.
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USERNAME:-postgres}", "-d", "${DB_DATABASE:-dify}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    networks:
+      - default
+
+  redis:
+    image: redis:6-alpine
+    restart: always
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
+    command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-difyai123456} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      - default
+
+  sandbox:
+    image: langgenius/dify-sandbox:0.2.15
+    restart: always
+    environment:
+      API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
+      GIN_MODE: ${SANDBOX_GIN_MODE:-release}
+      WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
+      ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
+      HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
+      HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
+      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+    volumes:
+      - sandbox_dependencies:/dependencies
+      # Repo-tracked config.yaml ships with the image; bind-mount keeps it
+      # in sync across redeploys instead of letting a named volume cache an
+      # outdated copy.
+      - ./volumes/sandbox/conf:/conf:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
+    networks:
+      - ssrf_proxy_network
+
+  ssrf_proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    volumes:
+      - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+    entrypoint:
+      - sh
+      - -c
+      - "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"
+    environment:
+      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
+      COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
+      SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
+      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  plugin_daemon:
+    image: langgenius/dify-plugin-daemon:0.6.1-local
+    restart: always
+    environment:
+      DB_HOST: ${DB_HOST:-db_postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
+      DB_SSL_MODE: ${DB_SSL_MODE:-disable}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
+      SERVER_PORT: ${PLUGIN_DAEMON_PORT:-5002}
+      SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
+      MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+      DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
+      PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
+      PLUGIN_WORKING_PATH: ${PLUGIN_WORKING_PATH:-/app/storage/cwd}
+      FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
+      PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
+      PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+      PLUGIN_STORAGE_TYPE: ${PLUGIN_STORAGE_TYPE:-local}
+      PLUGIN_STORAGE_LOCAL_ROOT: ${PLUGIN_STORAGE_LOCAL_ROOT:-/app/storage}
+      PLUGIN_INSTALLED_PATH: ${PLUGIN_INSTALLED_PATH:-plugin}
+      PLUGIN_PACKAGE_CACHE_PATH: ${PLUGIN_PACKAGE_CACHE_PATH:-plugin_packages}
+      PLUGIN_MEDIA_CACHE_PATH: ${PLUGIN_MEDIA_CACHE_PATH:-assets}
+    volumes:
+      - plugin_daemon_storage:/app/storage
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  weaviate:
+    image: semitechnologies/weaviate:1.27.0
+    restart: always
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    environment:
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      QUERY_DEFAULTS_LIMIT: ${WEAVIATE_QUERY_DEFAULTS_LIMIT:-25}
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-false}
+      DEFAULT_VECTORIZER_MODULE: ${WEAVIATE_DEFAULT_VECTORIZER_MODULE:-none}
+      CLUSTER_HOSTNAME: ${WEAVIATE_CLUSTER_HOSTNAME:-node1}
+      AUTHENTICATION_APIKEY_ENABLED: "true"
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+      AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
+      AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+      DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-true}
+    networks:
+      - default
+
+  # nginx is the single entrypoint for Traefik. It performs Dify's internal
+  # path-based routing (/console -> api, / -> web, /socket.io -> api_websocket,
+  # /e/ -> plugin_daemon). Traefik in Dokploy terminates TLS and forwards
+  # plain HTTP on port 80 to this service via dokploy-network.
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
+      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+    entrypoint:
+      - sh
+      - -c
+      - "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_PORT: "80"
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
+      NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-100M}
+      NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
+      NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
+      NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_SOCKET_IO_UPSTREAM: ${NGINX_SOCKET_IO_UPSTREAM:-api_websocket:5001}
+      CERTBOT_DOMAIN: ""
+    depends_on:
+      - api
+      - web
+    # Note: no `ports:` exposure — Dokploy/Traefik handles ingress.
+    # Only the two labels Traefik strictly needs to discover this container
+    # are set here. The actual Host(...) router + TLS resolver are written
+    # automatically when you add the domain through Dokploy → Domains.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+    networks:
+      - default
+      - dokploy-network
+
+networks:
+  default:
+    driver: bridge
+  ssrf_proxy_network:
+    driver: bridge
+    internal: true
+  dokploy-network:
+    external: true
+
+volumes:
+  app_storage:
+  db_postgres_data:
+  redis_data:
+  weaviate_data:
+  sandbox_dependencies:
+  plugin_daemon_storage:
