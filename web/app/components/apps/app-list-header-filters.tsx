@@ -48,14 +48,21 @@ export function AppListHeaderFilters({
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2">
         <AppTypeFilter value={category} onChange={onCategoryChange} />
-        <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
-        <TagFilter type="app" value={tagIDs} onChange={onTagIDsChange} onOpenTagManagement={onOpenTagManagement} />
+        <TagFilter
+          type="app"
+          value={tagIDs}
+          onChange={onTagIDsChange}
+          onOpenTagManagement={onOpenTagManagement}
+          showLeadingIcon={false}
+        />
         <SearchInput
           className="w-50"
           value={keywords}
           onValueChange={onKeywordsChange}
           aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
         />
+        <div className="h-4 w-px shrink-0 bg-divider-regular" />
+        <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
       </div>
       <div className="flex items-center gap-2">
         <Link

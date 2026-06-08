@@ -497,7 +497,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           aria-describedby={app.description ? appDescriptionId : undefined}
           className="inline-flex h-full w-full cursor-pointer touch-manipulation flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs outline-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
-          <div className="flex shrink-0 items-center gap-3 pt-4 pb-2 pl-4">
+          <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
             <div className="relative shrink-0">
               <AppIcon
                 size="large"
