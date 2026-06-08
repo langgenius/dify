@@ -117,7 +117,9 @@ def create_side_effect_for_search(documents: list[Document]):
         modify a shared all_documents list. This pattern simulates that behavior.
     """
 
-    def side_effect(flask_app: Flask, dataset_id, query, top_k: int, *args, all_documents: list[Document], exceptions, **kwargs):
+    def side_effect(
+        flask_app: Flask, dataset_id, query, top_k: int, *args, all_documents: list[Document], exceptions, **kwargs
+    ):
         """
         Side effect function that mimics search method behavior.
 
@@ -151,7 +153,9 @@ def create_side_effect_with_exception(error_message: str):
         >>> mock_search.side_effect = create_side_effect_with_exception("Search failed")
     """
 
-    def side_effect(flask_app: Flask, dataset_id, query, top_k: int, *args, all_documents: list[Document], exceptions, **kwargs):
+    def side_effect(
+        flask_app: Flask, dataset_id, query, top_k: int, *args, all_documents: list[Document], exceptions, **kwargs
+    ):
         """Add error message to exceptions list."""
         exceptions.append(error_message)
 
@@ -665,7 +669,13 @@ class TestRetrievalService:
         filtered_docs = [sample_documents[1]]
 
         def side_effect_keyword_search(
-            flask_app: Flask, dataset_id, query, top_k: int, all_documents: list[Document], exceptions, document_ids_filter=None
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            exceptions,
+            document_ids_filter=None,
         ):
             all_documents.extend(filtered_docs)
 
@@ -1682,7 +1692,14 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app: Flask, dataset_id, query, top_k: int, all_documents: list[Document], document_ids_filter, metadata_condition, attachment_ids
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1757,7 +1774,14 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app: Flask, dataset_id, query, top_k: int, all_documents: list[Document], document_ids_filter, metadata_condition, attachment_ids
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1867,7 +1891,14 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app: Flask, dataset_id, query, top_k: int, all_documents: list[Document], document_ids_filter, metadata_condition, attachment_ids
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -3720,7 +3751,14 @@ class TestKnowledgeRetrievalRegression:
         )
 
         def fake_retriever(
-            flask_app: Flask, dataset_id, query, top_k: int, all_documents: list[Document], document_ids_filter, metadata_condition, attachment_ids
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.append(document)
 

@@ -133,7 +133,9 @@ class TestClearFreePlanTenantExpiredLogs:
             # Should still delete records even if backup fails
             assert mock_session.execute.called
 
-    def test_clear_message_related_tables_serialization_error_continues(self, mock_session, sample_message_ids: list[str]):
+    def test_clear_message_related_tables_serialization_error_continues(
+        self, mock_session, sample_message_ids: list[str]
+    ):
         """Test that method continues even when record serialization fails."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
             record = Mock()
