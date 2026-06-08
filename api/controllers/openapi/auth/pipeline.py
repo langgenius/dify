@@ -162,10 +162,10 @@ class PipelineRouter:
         edition: frozenset[Edition] | None,
         workspace_membership: bool,
         allowed_roles: frozenset[TenantAccountRole] | None,
-    ) :
-        def decorator(view: Callable[P, R])  :
+    ):
+        def decorator(view: Callable[P, R]):
             @wraps(view)
-            def decorated(*args: P.args, **kwargs: P.kwargs) ->R :
+            def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
                 return self._execute(
                     args,
                     kwargs,
