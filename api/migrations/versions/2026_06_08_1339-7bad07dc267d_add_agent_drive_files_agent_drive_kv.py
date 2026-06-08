@@ -1,7 +1,7 @@
 """add agent_drive_files (agent drive KV)
 
 Revision ID: 7bad07dc267d
-Revises: 2b3c4d5e6f70
+Revises: 3df4dbcc1e21
 Create Date: 2026-06-08 13:39:15.150738
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '7bad07dc267d'
-down_revision = '2b3c4d5e6f70'
+down_revision = '3df4dbcc1e21'
 branch_labels = None
 depends_on = None
 
