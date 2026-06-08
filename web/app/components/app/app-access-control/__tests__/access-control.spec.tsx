@@ -6,11 +6,11 @@ import userEvent from '@testing-library/user-event'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import AccessControlDialog from '../access-control-dialog'
-import AccessControlItem from '../access-control-item'
-import AddMemberOrGroupDialog from '../add-member-or-group-pop'
-import AccessControl from '../index'
-import SpecificGroupsOrMembers from '../specific-groups-or-members'
+import { AccessControlDialog } from '../access-control-dialog'
+import { AccessControlItem } from '../access-control-item'
+import { AddMemberOrGroupDialog } from '../add-member-or-group-pop'
+import { AccessControl } from '../index'
+import { SpecificGroupsOrMembers } from '../specific-groups-or-members'
 
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()

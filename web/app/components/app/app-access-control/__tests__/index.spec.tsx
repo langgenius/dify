@@ -5,7 +5,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
-import AccessControl from '../index'
+import { AccessControl } from '../index'
 
 let mockWebappAuth = {
   enabled: true,

@@ -8,7 +8,7 @@ type AccessControlItemProps = PropsWithChildren<{
   type: AccessMode
 }>
 
-function AccessControlItem({ type, children }: AccessControlItemProps) {
+export function AccessControlItem({ type, children }: AccessControlItemProps) {
   const currentMenu = useAccessControlStore(s => s.currentMenu)
   const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
   const selected = currentMenu === type
@@ -22,7 +22,3 @@ function AccessControlItem({ type, children }: AccessControlItemProps) {
     </AccessControlOptionCard>
   )
 }
-
-AccessControlItem.displayName = 'AccessControlItem'
-
-export default AccessControlItem

@@ -1,12 +1,9 @@
 'use client'
 
-import type { UnsupportedDslNode } from '../error'
 import type {
   GuideMethod,
-  GuideStep,
 } from './types'
 import type { App } from '@/types/app'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isWorkflowApp } from '../app-mode'
 import {
@@ -19,14 +16,25 @@ import {
 import {
   dslAppName,
   encodeDslContent,
-  isWorkflowDsl,
 } from '../dsl'
 import { useDslFileReader } from '../use-dsl-file-reader'
+import {
+  createGuideSourceName,
+  createGuideUnsupportedDslNodes,
+  isCreateGuideDslUnsupportedMode,
+  isCreateGuideInitialReleaseReady,
+  isCreateGuideSourceReady,
+} from './guide-derived-state'
 import {
   canContinueGuideStep,
   canSkipDeploymentGuideStep,
 } from './guide-readiness'
+import {
+  createCreationSectionsProps,
+  createTargetReviewSectionsProps,
+} from './guide-section-props'
 import { useCreateDeploymentSubmission } from './use-create-deployment-submission'
+import { useDeploymentGuideProgress } from './use-deployment-guide-progress'
 import { useDeploymentGuideReleaseFields } from './use-deployment-guide-release-fields'
 import { useDeploymentGuideSource } from './use-deployment-guide-source'
 import { useDeploymentTargetOptions } from './use-deployment-target-options'
@@ -34,121 +42,102 @@ import { useDeploymentTargetOptions } from './use-deployment-target-options'
 export function useCreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
 
-  const [step, setStep] = useState<GuideStep>('source')
-  const [method, setMethod] = useState<GuideMethod>('bindApp')
-  const [submissionUnsupportedDslNodes, setSubmissionUnsupportedDslNodes] = useState<UnsupportedDslNode[]>([])
   const {
-    effectiveSelectedApp,
-    existingInstanceNames,
-    setSelectedApp,
-    setSourceSearchText,
-    sourceApps,
-    sourceAppsLoading,
-    sourceSearchText,
-  } = useDeploymentGuideSource()
-  const {
-    dslContent,
-    dslFile,
-    dslReadError,
-    isReadingDsl,
-    selectDslFile,
-  } = useDslFileReader()
+    clearSubmissionUnsupportedDslNodes,
+    method,
+    setMethod,
+    setStep,
+    setSubmissionUnsupportedDslNodes,
+    step,
+    submissionUnsupportedDslNodes,
+  } = useDeploymentGuideProgress()
+  const source = useDeploymentGuideSource()
+  const dslFileReader = useDslFileReader()
 
-  const hasDslContent = Boolean(dslContent.trim())
-  const dslUnsupportedMode = method === 'importDsl'
-    && hasDslContent
-    && !isReadingDsl
-    && !dslReadError
-    && !isWorkflowDsl(dslContent)
-  const encodedDslContent = hasDslContent ? encodeDslContent(dslContent) : ''
+  const hasDslContent = Boolean(dslFileReader.dslContent.trim())
+  const dslUnsupportedMode = isCreateGuideDslUnsupportedMode({
+    dslContent: dslFileReader.dslContent,
+    dslReadError: dslFileReader.dslReadError,
+    hasDslContent,
+    isReadingDsl: dslFileReader.isReadingDsl,
+    method,
+  })
+  const encodedDslContent = hasDslContent ? encodeDslContent(dslFileReader.dslContent) : ''
   const shouldResolveDeploymentTarget = step === 'target'
-  const {
-    bindingSelections,
-    bindingSlots,
-    clearUnsupportedDslNodes: clearDeploymentOptionsUnsupportedDslNodes,
-    deployableEnvironmentsQuery,
-    deploymentOptions,
-    deploymentOptionsQuery,
-    effectiveEnvVarValues,
-    effectiveSelectedEnvironmentId,
-    environments,
-    envVarSlots,
-    envVarValues: targetEnvVarValues,
-    isBindingLoading,
-    isEnvironmentLoading,
-    onSelectBinding,
-    onSelectEnvironment,
-    onSetEnvVar,
-    resetTargetOptions,
-    selectedEnvironment,
-    selectedEnvironmentId,
-    shouldLoadDeploymentTarget,
-    unsupportedDslNodes: deploymentOptionsUnsupportedDslNodes,
-  } = useDeploymentTargetOptions({
-    dslContent,
-    dslReadError,
+  const targetOptions = useDeploymentTargetOptions({
+    dslContent: dslFileReader.dslContent,
+    dslReadError: dslFileReader.dslReadError,
     dslUnsupportedMode,
-    effectiveSelectedApp,
+    effectiveSelectedApp: source.effectiveSelectedApp,
     encodedDslContent,
     hasDslContent,
-    isReadingDsl,
+    isReadingDsl: dslFileReader.isReadingDsl,
     method,
     shouldResolveDeploymentTarget,
   })
-  const unsupportedDslNodes = submissionUnsupportedDslNodes.length > 0
-    ? submissionUnsupportedDslNodes
-    : deploymentOptionsQuery.isError ? deploymentOptionsUnsupportedDslNodes : []
-  const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
-  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, effectiveEnvVarValues))
-  const dslDefaultAppName = dslContent ? dslAppName(dslContent) : ''
-  const sourceName = method === 'importDsl'
-    ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
-    : method === 'bindApp'
-      ? effectiveSelectedApp?.name ?? ''
-      : ''
+  const unsupportedDslNodes = createGuideUnsupportedDslNodes({
+    deploymentOptionsError: targetOptions.deploymentOptionsQuery.isError,
+    deploymentOptionsUnsupportedDslNodes: targetOptions.unsupportedDslNodes,
+    submissionUnsupportedDslNodes,
+  })
+  const requiredBindingsReady = targetOptions.bindingSlots.every(slot =>
+    !hasMissingRequiredRuntimeCredentialBinding(slot, targetOptions.bindingSelections[runtimeCredentialSlotKey(slot)]),
+  )
+  const requiredEnvVarsReady = targetOptions.envVarSlots.every(slot =>
+    !hasMissingRequiredEnvVarValue(slot, targetOptions.effectiveEnvVarValues),
+  )
+  const dslDefaultAppName = dslFileReader.dslContent ? dslAppName(dslFileReader.dslContent) : ''
+  const sourceName = createGuideSourceName({
+    dslDefaultAppName,
+    dslFallbackAppName: t('createGuide.dsl.defaultAppName'),
+    method,
+    selectedApp: source.effectiveSelectedApp,
+  })
   const defaultedReleaseName = t('createGuide.release.defaultName')
-  const {
-    applyReleaseDefaults,
-    handleInstanceDescriptionChange,
-    handleInstanceNameChange,
-    handleReleaseDescriptionChange,
-    handleReleaseNameChange,
-    instanceDescription,
-    instanceName,
-    releaseDescription,
-    releaseName,
-    submittedInstanceName,
-    submittedReleaseDescription,
-    submittedReleaseName,
-  } = useDeploymentGuideReleaseFields({
+  const releaseFields = useDeploymentGuideReleaseFields({
     defaultedReleaseName,
-    existingInstanceNames,
+    existingInstanceNames: source.existingInstanceNames,
     onFieldChange: () => setStep('release'),
     sourceName,
   })
-  const hasInstanceNameConflict = Boolean(submittedInstanceName && existingInstanceNames.includes(submittedInstanceName))
+  const hasInstanceNameConflict = Boolean(
+    releaseFields.submittedInstanceName
+    && source.existingInstanceNames.includes(releaseFields.submittedInstanceName),
+  )
   const instanceNameError = hasInstanceNameConflict ? t('createGuide.release.instanceNameConflict') : undefined
-  const isSourceReady = Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError && !dslUnsupportedMode : effectiveSelectedApp?.id))
-  const isInitialReleaseReady = Boolean(isSourceReady && submittedInstanceName && submittedReleaseName && !hasInstanceNameConflict)
-  const showTargetConfiguration = Boolean(method && step === 'target')
+  const isSourceReady = isCreateGuideSourceReady({
+    dslReadError: dslFileReader.dslReadError,
+    dslUnsupportedMode,
+    hasDslContent,
+    isReadingDsl: dslFileReader.isReadingDsl,
+    method,
+    selectedApp: source.effectiveSelectedApp,
+  })
+  const isInitialReleaseReady = isCreateGuideInitialReleaseReady({
+    hasInstanceNameConflict,
+    isSourceReady,
+    submittedInstanceName: releaseFields.submittedInstanceName,
+    submittedReleaseName: releaseFields.submittedReleaseName,
+  })
+  const showTargetConfiguration = step === 'target'
   const hasUnsupportedDslNodes = unsupportedDslNodes.length > 0
   const canContinue = canContinueGuideStep({
     hasUnsupportedDslNodes,
-    isBindingError: deploymentOptionsQuery.isError,
-    isBindingLoading,
-    isEnvironmentError: deployableEnvironmentsQuery.isError,
-    isEnvironmentLoading,
+    isBindingError: targetOptions.deploymentOptionsQuery.isError,
+    isBindingLoading: targetOptions.isBindingLoading,
+    isEnvironmentError: targetOptions.deployableEnvironmentsQuery.isError,
+    isEnvironmentLoading: targetOptions.isEnvironmentLoading,
     isInitialReleaseReady,
     isSourceReady,
     requiredBindingsReady,
     requiredEnvVarsReady,
-    selectedEnvironmentId: selectedEnvironment?.id,
-    shouldLoadDeploymentTarget,
+    selectedEnvironmentId: targetOptions.selectedEnvironment?.id,
+    shouldLoadDeploymentTarget: targetOptions.shouldLoadDeploymentTarget,
     step,
   })
   const canSkipDeployment = canSkipDeploymentGuideStep({
     hasUnsupportedDslNodes,
-    isBindingError: deploymentOptionsQuery.isError,
+    isBindingError: targetOptions.deploymentOptionsQuery.isError,
     isInitialReleaseReady,
     step,
   })
@@ -157,48 +146,55 @@ export function useCreateDeploymentGuide() {
     isDeploying,
     isSkippingReleaseOnly,
   } = useCreateDeploymentSubmission({
-    bindingSelections,
-    bindingSlots,
-    deploymentOptionsDslDigest: deploymentOptions?.dslDigest,
-    dslContent,
-    effectiveEnvVarValues,
-    effectiveSelectedApp,
+    bindingSelections: targetOptions.bindingSelections,
+    bindingSlots: targetOptions.bindingSlots,
+    deploymentOptionsDslDigest: targetOptions.deploymentOptions?.dslDigest,
+    dslContent: dslFileReader.dslContent,
+    effectiveEnvVarValues: targetOptions.effectiveEnvVarValues,
+    effectiveSelectedApp: source.effectiveSelectedApp,
     encodedDslContent,
-    envVarSlots,
+    envVarSlots: targetOptions.envVarSlots,
     hasDslContent,
     hasInstanceNameConflict,
-    instanceDescription,
+    instanceDescription: releaseFields.instanceDescription,
     isInitialReleaseReady,
     method,
-    refetchDeployableEnvironments: deployableEnvironmentsQuery.refetch,
-    selectedEnvironment,
-    selectedEnvironmentId,
+    refetchDeployableEnvironments: targetOptions.deployableEnvironmentsQuery.refetch,
+    selectedEnvironment: targetOptions.selectedEnvironment,
+    selectedEnvironmentId: targetOptions.selectedEnvironmentId,
     setSubmissionUnsupportedDslNodes,
-    submittedInstanceName,
-    submittedReleaseDescription,
-    submittedReleaseName,
+    submittedInstanceName: releaseFields.submittedInstanceName,
+    submittedReleaseDescription: releaseFields.submittedReleaseDescription,
+    submittedReleaseName: releaseFields.submittedReleaseName,
   })
 
   function clearUnsupportedDslNodes() {
-    setSubmissionUnsupportedDslNodes([])
-    clearDeploymentOptionsUnsupportedDslNodes()
+    clearSubmissionUnsupportedDslNodes()
+    targetOptions.clearUnsupportedDslNodes()
   }
 
   function selectMethod(nextMethod: GuideMethod) {
     clearUnsupportedDslNodes()
     setMethod(nextMethod)
-    resetTargetOptions()
+    targetOptions.resetTargetOptions()
   }
 
   function handleDslFileChange(file?: File) {
     clearUnsupportedDslNodes()
-    selectDslFile(file)
-    resetTargetOptions()
+    dslFileReader.selectDslFile(file)
+    targetOptions.resetTargetOptions()
   }
 
   function handleSelectMethod(nextMethod: GuideMethod) {
     selectMethod(nextMethod)
     setStep('source')
+  }
+
+  function handleSelectSourceApp(app: App) {
+    if (!isWorkflowApp(app))
+      return
+    clearUnsupportedDslNodes()
+    source.setSelectedApp(app)
   }
 
   function handleBack() {
@@ -211,12 +207,12 @@ export function useCreateDeploymentGuide() {
   }
 
   async function createReleaseArtifactsAndContinue() {
-    if (method === 'bindApp' && (!effectiveSelectedApp?.id || !isWorkflowApp(effectiveSelectedApp) || isDeploying))
+    if (method === 'bindApp' && (!source.effectiveSelectedApp?.id || !isWorkflowApp(source.effectiveSelectedApp) || isDeploying))
       return
-    if (method === 'importDsl' && (!hasDslContent || isReadingDsl || dslReadError || dslUnsupportedMode || isDeploying))
+    if (method === 'importDsl' && (!hasDslContent || dslFileReader.isReadingDsl || dslFileReader.dslReadError || dslUnsupportedMode || isDeploying))
       return
 
-    resetTargetOptions()
+    targetOptions.resetTargetOptions()
     setStep('target')
   }
 
@@ -236,15 +232,15 @@ export function useCreateDeploymentGuide() {
       return
 
     if (step === 'source') {
-      if (method === 'bindApp' && effectiveSelectedApp)
-        setSelectedApp(effectiveSelectedApp)
-      applyReleaseDefaults()
+      if (method === 'bindApp' && source.effectiveSelectedApp)
+        source.setSelectedApp(source.effectiveSelectedApp)
+      releaseFields.applyReleaseDefaults()
       setStep('release')
       return
     }
     if (step === 'release') {
-      if (method === 'bindApp' && effectiveSelectedApp)
-        setSelectedApp(effectiveSelectedApp)
+      if (method === 'bindApp' && source.effectiveSelectedApp)
+        source.setSelectedApp(source.effectiveSelectedApp)
       void createReleaseArtifactsAndContinue()
       return
     }
@@ -256,39 +252,21 @@ export function useCreateDeploymentGuide() {
   return {
     canContinue,
     canSkipDeployment,
-    creationSectionsProps: {
+    creationSectionsProps: createCreationSectionsProps({
       defaultedReleaseName,
-      dslFile,
-      dslReadError,
+      dslFileReader,
       dslUnsupportedMode,
-      instanceDescription,
-      instanceName,
       instanceNameError,
-      isReadingDsl,
       method,
       onDslFileChange: handleDslFileChange,
-      onInstanceDescriptionChange: handleInstanceDescriptionChange,
-      onInstanceNameChange: handleInstanceNameChange,
-      onReleaseDescriptionChange: handleReleaseDescriptionChange,
-      onReleaseNameChange: handleReleaseNameChange,
-      onSearchTextChange: setSourceSearchText,
       onSelectMethod: handleSelectMethod,
-      onSelectSourceApp: (app: App) => {
-        if (!isWorkflowApp(app))
-          return
-        clearUnsupportedDslNodes()
-        setSelectedApp(app)
-      },
-      releaseDescription,
-      releaseName,
-      selectedApp: effectiveSelectedApp,
-      sourceApps,
-      sourceAppsLoading,
+      onSelectSourceApp: handleSelectSourceApp,
+      releaseFields,
+      source,
       sourceName,
-      sourceSearchText,
-      stage: step === 'release' ? 'release' as const : 'source' as const,
+      step,
       unsupportedDslNodes,
-    },
+    }),
     handleBack,
     handlePrimaryAction,
     handleSkipDeployment,
@@ -296,21 +274,9 @@ export function useCreateDeploymentGuide() {
     isSkippingDeployment: isSkippingReleaseOnly,
     showTargetConfiguration,
     step,
-    targetReviewSectionsProps: {
-      bindingSelections,
-      bindingSlots,
-      environments,
-      envVarSlots,
-      envVarValues: targetEnvVarValues,
-      isBindingError: deploymentOptionsQuery.isError,
-      isBindingLoading,
-      isEnvironmentError: deployableEnvironmentsQuery.isError,
-      isEnvironmentLoading,
-      onSelectBinding,
-      onSelectEnvironment,
-      onSetEnvVar,
-      selectedEnvironmentId: effectiveSelectedEnvironmentId,
+    targetReviewSectionsProps: createTargetReviewSectionsProps({
+      targetOptions,
       unsupportedDslNodes,
-    },
+    }),
   }
 }

@@ -115,7 +115,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  default: () => <div data-testid="app-access-control" />,
+  AccessControl: () => <div data-testid="app-access-control" />,
 }))
 
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))

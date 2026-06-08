@@ -6,8 +6,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
-import AccessControlItem from './access-control-item'
-import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
+import { AccessControlItem } from './access-control-item'
+import { SpecificGroupsOrMembers, WebAppSSONotEnabledTip } from './specific-groups-or-members'
 
 type AccessControlDialogContentProps = {
   title?: ReactNode

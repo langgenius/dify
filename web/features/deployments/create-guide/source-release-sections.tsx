@@ -10,6 +10,36 @@ import { MethodStep } from './method-step'
 import { ReleaseStep } from './release-step'
 import { SourceStep } from './source-step'
 
+export type CreationSectionsProps = {
+  children?: ReactNode
+  defaultedReleaseName: string
+  instanceDescription: string
+  instanceName: string
+  instanceNameError?: string
+  method?: GuideMethod
+  onInstanceDescriptionChange: (value: string) => void
+  onInstanceNameChange: (value: string) => void
+  onReleaseDescriptionChange: (value: string) => void
+  onReleaseNameChange: (value: string) => void
+  onSearchTextChange: (value: string) => void
+  onSelectMethod: (method: GuideMethod) => void
+  onSelectSourceApp: (app: App) => void
+  onDslFileChange: (file?: File) => void
+  releaseDescription: string
+  releaseName: string
+  selectedApp?: App
+  sourceApps: App[]
+  sourceAppsLoading: boolean
+  sourceName: string
+  sourceSearchText: string
+  stage: 'source' | 'release'
+  unsupportedDslNodes: UnsupportedDslNode[]
+  dslFile?: File
+  isReadingDsl: boolean
+  dslReadError: boolean
+  dslUnsupportedMode: boolean
+}
+
 export function CreationSections({
   children,
   defaultedReleaseName,
@@ -38,35 +68,7 @@ export function CreationSections({
   isReadingDsl,
   dslReadError,
   dslUnsupportedMode,
-}: {
-  children?: ReactNode
-  defaultedReleaseName: string
-  instanceDescription: string
-  instanceName: string
-  instanceNameError?: string
-  method?: GuideMethod
-  onInstanceDescriptionChange: (value: string) => void
-  onInstanceNameChange: (value: string) => void
-  onReleaseDescriptionChange: (value: string) => void
-  onReleaseNameChange: (value: string) => void
-  onSearchTextChange: (value: string) => void
-  onSelectMethod: (method: GuideMethod) => void
-  onSelectSourceApp: (app: App) => void
-  onDslFileChange: (file?: File) => void
-  releaseDescription: string
-  releaseName: string
-  selectedApp?: App
-  sourceApps: App[]
-  sourceAppsLoading: boolean
-  sourceName: string
-  sourceSearchText: string
-  stage: 'source' | 'release'
-  unsupportedDslNodes: UnsupportedDslNode[]
-  dslFile?: File
-  isReadingDsl: boolean
-  dslReadError: boolean
-  dslUnsupportedMode: boolean
-}) {
+}: CreationSectionsProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-7 pb-4">
       {stage === 'source' && (

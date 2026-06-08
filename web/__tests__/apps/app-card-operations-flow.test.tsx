@@ -64,10 +64,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/next/dynamic', () => ({
-  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
+  default: (loader: () => Promise<React.ComponentType | { default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((mod) => {
-      Component = mod.default as React.ComponentType<Record<string, unknown>>
+      Component = (typeof mod === 'function' ? mod : mod.default) as React.ComponentType<Record<string, unknown>>
     }).catch(() => {})
     const Wrapper = (props: Record<string, unknown>) => {
       if (Component)
@@ -197,7 +197,7 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  default: ({ onConfirm, onClose }: Record<string, unknown>) => (
+  AccessControl: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="access-control-modal">
       <button data-testid="confirm-access" onClick={onConfirm as () => void}>Confirm</button>
       <button data-testid="cancel-access" onClick={onClose as () => void}>Cancel</button>

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useAccessControlStore from '@/context/access-control-store'
 import { SubjectType } from '@/models/access-control'
-import AddMemberOrGroupDialog from '../add-member-or-group-pop'
+import { AddMemberOrGroupDialog } from '../add-member-or-group-pop'
 
 const mockUseSearchForWhiteListCandidates = vi.fn()
 const intersectionObserverMocks = vi.hoisted(() => ({

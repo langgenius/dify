@@ -7,7 +7,7 @@ import type {
 import type { AccessSubjectSelectionValue } from '@/app/components/base/access-subject-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import AccessControlDialog from '@/app/components/app/app-access-control/access-control-dialog'
+import { AccessControlDialog } from '@/app/components/app/app-access-control/access-control-dialog'
 import { AccessControlDialogContent } from '@/app/components/app/app-access-control/access-control-dialog-content'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useAccessControlStore from '@/context/access-control-store'

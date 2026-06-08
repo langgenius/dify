@@ -2,7 +2,7 @@ import type { AccessControlAccount, AccessControlGroup } from '@/models/access-c
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
-import SpecificGroupsOrMembers from '../specific-groups-or-members'
+import { SpecificGroupsOrMembers } from '../specific-groups-or-members'
 
 const mockUseAppWhiteListSubjects = vi.fn()
 
@@ -11,7 +11,7 @@ vi.mock('@/service/access-control', () => ({
 }))
 
 vi.mock('../add-member-or-group-pop', () => ({
-  default: () => <div data-testid="add-member-or-group-dialog" />,
+  AddMemberOrGroupDialog: () => <div data-testid="add-member-or-group-dialog" />,
 }))
 
 const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup => ({
@@ -69,10 +69,10 @@ describe('SpecificGroupsOrMembers', () => {
       data: undefined,
     })
 
-    const { container } = render(<SpecificGroupsOrMembers />)
+    render(<SpecificGroupsOrMembers />)
 
     await waitFor(() => {
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     })
   })
 

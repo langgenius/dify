@@ -9,7 +9,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
-import AccessControlDialog from './access-control-dialog'
+import { AccessControlDialog } from './access-control-dialog'
 import { AccessControlDialogContent } from './access-control-dialog-content'
 
 type AccessControlProps = {
@@ -18,7 +18,7 @@ type AccessControlProps = {
   onConfirm?: () => void
 }
 
-export default function AccessControl(props: AccessControlProps) {
+export function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

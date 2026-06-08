@@ -6,14 +6,14 @@ import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
 import { Infotip } from '../../base/infotip'
-import AddMemberOrGroupDialog from './add-member-or-group-pop'
+import { AddMemberOrGroupDialog } from './add-member-or-group-pop'
 
 export type SpecificGroupsOrMembersProps = {
   loadSubjects?: boolean
   loading?: boolean
 }
 
-export default function SpecificGroupsOrMembers({
+export function SpecificGroupsOrMembers({
   loadSubjects = true,
   loading = false,
 }: SpecificGroupsOrMembersProps) {

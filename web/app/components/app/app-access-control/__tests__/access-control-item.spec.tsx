@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
-import AccessControlItem from '../access-control-item'
+import { AccessControlItem } from '../access-control-item'
 
 describe('AccessControlItem', () => {
   beforeEach(() => {

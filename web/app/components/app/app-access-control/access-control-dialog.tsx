@@ -13,7 +13,7 @@ type DialogProps = {
   onClose?: () => void
 }
 
-function AccessControlDialog({
+export function AccessControlDialog({
   className,
   children,
   show,
@@ -33,5 +33,3 @@ function AccessControlDialog({
     </Dialog>
   )
 }
-
-export default AccessControlDialog

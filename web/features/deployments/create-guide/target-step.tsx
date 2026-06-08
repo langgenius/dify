@@ -102,7 +102,7 @@ function TargetBindingSkeleton() {
   )
 }
 
-type TargetReviewSectionsProps = {
+export type TargetReviewSectionsProps = {
   environments: EnvironmentOption[]
   bindingSlots: CredentialSlot[]
   envVarSlots: DeploymentEnvVarSlot[]
