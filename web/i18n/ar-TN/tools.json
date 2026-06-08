@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "إضافة وتفويض",
   "mcp.modal.editTitle": "تعديل خادم MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "إعادة توجيه هوية المستخدم",
-  "mcp.modal.forwardUserIdentityTip": "أرسل هوية المستخدم المُتحقَّق منها عبر SSO إلى خادم MCP هذا في ترويسة X-Dify-SSO-Access-Token. يتطلب Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "أرسل هوية المستخدم المُتحقَّق منها عبر SSO إلى خادم MCP هذا في ترويسة X-Dify-SSO-Token. يتطلب Dify Enterprise SSO.",
   "mcp.modal.headerKey": "اسم الرأس",
   "mcp.modal.headerKeyPlaceholder": "على سبيل المثال، Authorization",
   "mcp.modal.headerValue": "قيمة الرأس",

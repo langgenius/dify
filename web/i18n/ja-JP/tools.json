@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "追加して承認",
   "mcp.modal.editTitle": "MCP サーバー（HTTP）を編集",
   "mcp.modal.forwardUserIdentity": "ユーザー ID を転送",
-  "mcp.modal.forwardUserIdentityTip": "呼び出し元ユーザーの検証済み SSO ID を X-Dify-SSO-Access-Token ヘッダーでこの MCP サーバーに送信します。Dify Enterprise SSO が必要です。",
+  "mcp.modal.forwardUserIdentityTip": "呼び出し元ユーザーの検証済み SSO ID を X-Dify-SSO-Token ヘッダーでこの MCP サーバーに送信します。Dify Enterprise SSO が必要です。",
   "mcp.modal.headerKey": "ヘッダー名",
   "mcp.modal.headerKeyPlaceholder": "例えば、承認",
   "mcp.modal.headerValue": "ヘッダーの値",

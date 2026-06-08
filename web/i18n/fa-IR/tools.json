@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "افزودن و مجوزدهی",
   "mcp.modal.editTitle": "ویرایش سرور MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "ارسال هویت کاربر",
-  "mcp.modal.forwardUserIdentityTip": "هویت SSO تأییدشدهٔ کاربر فراخواننده را در هدر X-Dify-SSO-Access-Token به این سرور MCP ارسال می‌کند. به Dify Enterprise SSO نیاز دارد.",
+  "mcp.modal.forwardUserIdentityTip": "هویت SSO تأییدشدهٔ کاربر فراخواننده را در هدر X-Dify-SSO-Token به این سرور MCP ارسال می‌کند. به Dify Enterprise SSO نیاز دارد.",
   "mcp.modal.headerKey": "نام هدر",
   "mcp.modal.headerKeyPlaceholder": "Authorization",
   "mcp.modal.headerValue": "مقدار هدر",

@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "Adăugare și Autorizare",
   "mcp.modal.editTitle": "Editare Server MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "Redirecționează identitatea utilizatorului",
-  "mcp.modal.forwardUserIdentityTip": "Trimite identitatea SSO verificată a utilizatorului apelant către acest server MCP în antetul X-Dify-SSO-Access-Token. Necesită Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "Trimite identitatea SSO verificată a utilizatorului apelant către acest server MCP în antetul X-Dify-SSO-Token. Necesită Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Numele antetului",
   "mcp.modal.headerKeyPlaceholder": "de exemplu, Autorizație",
   "mcp.modal.headerValue": "Valoare Antet",

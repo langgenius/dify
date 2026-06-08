@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "Tambahkan & Otorisasi",
   "mcp.modal.editTitle": "Edit Server MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "Teruskan identitas pengguna",
-  "mcp.modal.forwardUserIdentityTip": "Mengirim identitas SSO terverifikasi pengguna pemanggil ke server MCP ini di header X-Dify-SSO-Access-Token. Membutuhkan Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "Mengirim identitas SSO terverifikasi pengguna pemanggil ke server MCP ini di header X-Dify-SSO-Token. Membutuhkan Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Nama Header",
   "mcp.modal.headerKeyPlaceholder": "Authorization",
   "mcp.modal.headerValue": "Nilai Header",

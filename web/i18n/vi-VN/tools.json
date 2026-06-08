@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "Thêm & Ủy quyền",
   "mcp.modal.editTitle": "Sửa Máy chủ MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "Chuyển tiếp danh tính người dùng",
-  "mcp.modal.forwardUserIdentityTip": "Gửi danh tính SSO đã xác minh của người dùng gọi đến máy chủ MCP này trong header X-Dify-SSO-Access-Token. Yêu cầu Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "Gửi danh tính SSO đã xác minh của người dùng gọi đến máy chủ MCP này trong header X-Dify-SSO-Token. Yêu cầu Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Tên tiêu đề",
   "mcp.modal.headerKeyPlaceholder": "ví dụ, Ủy quyền",
   "mcp.modal.headerValue": "Giá trị tiêu đề",

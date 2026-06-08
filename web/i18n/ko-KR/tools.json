@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "추가 및 승인",
   "mcp.modal.editTitle": "MCP 서버 수정 (HTTP)",
   "mcp.modal.forwardUserIdentity": "사용자 ID 전달",
-  "mcp.modal.forwardUserIdentityTip": "호출한 사용자의 검증된 SSO ID를 X-Dify-SSO-Access-Token 헤더로 이 MCP 서버에 전송합니다. Dify Enterprise SSO가 필요합니다.",
+  "mcp.modal.forwardUserIdentityTip": "호출한 사용자의 검증된 SSO ID를 X-Dify-SSO-Token 헤더로 이 MCP 서버에 전송합니다. Dify Enterprise SSO가 필요합니다.",
   "mcp.modal.headerKey": "헤더 이름",
   "mcp.modal.headerKeyPlaceholder": "예: 승인",
   "mcp.modal.headerValue": "헤더 값",

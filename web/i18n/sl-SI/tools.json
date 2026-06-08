@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "Dodaj in avtoriziraj",
   "mcp.modal.editTitle": "Uredi strežnik MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "Posreduj identiteto uporabnika",
-  "mcp.modal.forwardUserIdentityTip": "Pošlje preverjeno SSO identiteto klicajočega uporabnika temu strežniku MCP v glavi X-Dify-SSO-Access-Token. Zahteva Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "Pošlje preverjeno SSO identiteto klicajočega uporabnika temu strežniku MCP v glavi X-Dify-SSO-Token. Zahteva Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Ime glave",
   "mcp.modal.headerKeyPlaceholder": "npr., Authorization",
   "mcp.modal.headerValue": "Vrednost glave",

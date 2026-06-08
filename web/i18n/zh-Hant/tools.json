@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "新增並授權",
   "mcp.modal.editTitle": "編輯 MCP 伺服器 (HTTP)",
   "mcp.modal.forwardUserIdentity": "轉發使用者身份",
-  "mcp.modal.forwardUserIdentityTip": "將呼叫使用者已驗證的 SSO 身份透過 X-Dify-SSO-Access-Token 請求標頭轉發至此 MCP 伺服器。需要 Dify Enterprise SSO。",
+  "mcp.modal.forwardUserIdentityTip": "將呼叫使用者已驗證的 SSO 身份透過 X-Dify-SSO-Token 請求標頭轉發至此 MCP 伺服器。需要 Dify Enterprise SSO。",
   "mcp.modal.headerKey": "標題名稱",
   "mcp.modal.headerKeyPlaceholder": "例如，授權",
   "mcp.modal.headerValue": "標題值",

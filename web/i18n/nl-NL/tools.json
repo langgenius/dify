@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "Add & Authorize",
   "mcp.modal.editTitle": "Edit MCP Server (HTTP)",
   "mcp.modal.forwardUserIdentity": "Gebruikersidentiteit doorsturen",
-  "mcp.modal.forwardUserIdentityTip": "Stuur de geverifieerde SSO-identiteit van de aanroepende gebruiker in de X-Dify-SSO-Access-Token-header naar deze MCP-server. Vereist Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "Stuur de geverifieerde SSO-identiteit van de aanroepende gebruiker in de X-Dify-SSO-Token-header naar deze MCP-server. Vereist Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Header Name",
   "mcp.modal.headerKeyPlaceholder": "e.g., Authorization",
   "mcp.modal.headerValue": "Header Value",

@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "เพิ่มและอนุญาต",
   "mcp.modal.editTitle": "แก้ไขเซิร์ฟเวอร์ MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "ส่งต่อข้อมูลตัวตนของผู้ใช้",
-  "mcp.modal.forwardUserIdentityTip": "ส่งข้อมูลตัวตน SSO ที่ผ่านการตรวจสอบของผู้ใช้ที่เรียกใช้ไปยังเซิร์ฟเวอร์ MCP นี้ในส่วนหัว X-Dify-SSO-Access-Token ต้องใช้ Dify Enterprise SSO",
+  "mcp.modal.forwardUserIdentityTip": "ส่งข้อมูลตัวตน SSO ที่ผ่านการตรวจสอบของผู้ใช้ที่เรียกใช้ไปยังเซิร์ฟเวอร์ MCP นี้ในส่วนหัว X-Dify-SSO-Token ต้องใช้ Dify Enterprise SSO",
   "mcp.modal.headerKey": "ชื่อหัวเรื่อง",
   "mcp.modal.headerKeyPlaceholder": "เช่น การอนุญาต",
   "mcp.modal.headerValue": "ค่าหัวข้อ",

@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "Aggiungi & Autorizza",
   "mcp.modal.editTitle": "Modifica Server MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "Inoltra identità utente",
-  "mcp.modal.forwardUserIdentityTip": "Invia l'identità SSO verificata dell'utente chiamante a questo server MCP nell'intestazione X-Dify-SSO-Access-Token. Richiede Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "Invia l'identità SSO verificata dell'utente chiamante a questo server MCP nell'intestazione X-Dify-SSO-Token. Richiede Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Nome intestazione",
   "mcp.modal.headerKeyPlaceholder": "ad es., Autorizzazione",
   "mcp.modal.headerValue": "Valore dell'intestazione",

@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "जोड़ें और अधिकृत करें",
   "mcp.modal.editTitle": "MCP सर्वर संपादित करें (HTTP)",
   "mcp.modal.forwardUserIdentity": "उपयोगकर्ता पहचान अग्रेषित करें",
-  "mcp.modal.forwardUserIdentityTip": "कॉल करने वाले उपयोगकर्ता की सत्यापित SSO पहचान को इस MCP सर्वर पर X-Dify-SSO-Access-Token हेडर में भेजें। Dify Enterprise SSO आवश्यक है।",
+  "mcp.modal.forwardUserIdentityTip": "कॉल करने वाले उपयोगकर्ता की सत्यापित SSO पहचान को इस MCP सर्वर पर X-Dify-SSO-Token हेडर में भेजें। Dify Enterprise SSO आवश्यक है।",
   "mcp.modal.headerKey": "हेडर नाम",
   "mcp.modal.headerKeyPlaceholder": "उदाहरण के लिए, प्राधिकरण",
   "mcp.modal.headerValue": "हेडर मान",

@@ -121,7 +121,7 @@
   "mcp.modal.confirm": "Додати та Авторизувати",
   "mcp.modal.editTitle": "Редагувати сервер MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "Передавати ідентичність користувача",
-  "mcp.modal.forwardUserIdentityTip": "Надсилає підтверджену SSO ідентичність користувача, що викликає, на цей сервер MCP у заголовку X-Dify-SSO-Access-Token. Потребує Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "Надсилає підтверджену SSO ідентичність користувача, що викликає, на цей сервер MCP у заголовку X-Dify-SSO-Token. Потребує Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Назва заголовка",
   "mcp.modal.headerKeyPlaceholder": "наприклад, Авторизація",
   "mcp.modal.headerValue": "Значення заголовка",
