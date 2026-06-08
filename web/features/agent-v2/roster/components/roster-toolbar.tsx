@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { CreateAgentDialog } from './create-agent-dialog'
 
 type RosterToolbarProps = {
@@ -22,10 +22,9 @@ export function RosterToolbar({
       <SearchInput
         aria-label={t('roster.searchLabel')}
         className="w-82 max-w-full"
-        name="agent-search"
         placeholder={t('roster.searchPlaceholder')}
         value={keyword}
-        onChange={onKeywordChange}
+        onValueChange={onKeywordChange}
       />
       <div className="system-sm-regular text-text-tertiary">
         {t('roster.agentCount', { count: totalAgents })}
