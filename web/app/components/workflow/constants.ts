@@ -4,7 +4,7 @@ import { BlockEnum, VarType } from './types'
 export const MIN_ITERATION_PARALLEL_NUM = 1
 export const DEFAULT_ITER_TIMES = 1
 export const DEFAULT_LOOP_TIMES = 1
-const NODE_WIDTH = 240
+export const NODE_WIDTH = 240
 export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
