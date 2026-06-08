@@ -7,8 +7,6 @@ import {
   RiDashboard2Line,
   RiFileList3Fill,
   RiFileList3Line,
-  RiStickyNoteFill,
-  RiStickyNoteLine,
   RiTerminalBoxFill,
   RiTerminalBoxLine,
   RiTerminalWindowFill,
@@ -18,6 +16,7 @@ import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
+import Annotations from '@/app/components/base/icons/src/vender/Annotations'
 import { useAppContext } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
@@ -99,8 +98,8 @@ const AppDetailSection = ({
             ? [{
                 name: t('appMenus.annotations', { ns: 'common' }),
                 href: `/app/${appId}/annotations`,
-                icon: RiStickyNoteLine,
-                selectedIcon: RiStickyNoteFill,
+                icon: Annotations,
+                selectedIcon: Annotations,
               }]
             : [])]
         : []

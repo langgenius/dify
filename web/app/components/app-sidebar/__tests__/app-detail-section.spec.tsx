@@ -40,8 +40,8 @@ vi.mock('../../base/divider', () => ({
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href, mode }: { name: string, href: string, mode: string }) => (
-    <a href={href} data-mode={mode}>{name}</a>
+  default: ({ name, href, mode, iconMap }: { name: string, href: string, mode: string, iconMap: { normal: { displayName?: string } } }) => (
+    <a href={href} data-mode={mode} data-icon={iconMap.normal.displayName}>{name}</a>
   ),
 }))
 
@@ -64,6 +64,7 @@ describe('AppDetailSection', () => {
       // Assert
       expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('href', '/app/app-1/logs')
       expect(screen.getByRole('link', { name: 'common.appMenus.annotations' })).toHaveAttribute('href', '/app/app-1/annotations')
+      expect(screen.getByRole('link', { name: 'common.appMenus.annotations' })).toHaveAttribute('data-icon', 'Annotations')
     })
 
     it('should render dividers before logs and after annotations for chat apps', () => {
