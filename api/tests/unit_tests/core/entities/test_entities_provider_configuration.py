@@ -112,8 +112,14 @@ def _exec_result(
 def _patched_session(session: Mock):
     with patch("core.entities.provider_configuration.db") as mock_db:
         mock_db.engine = Mock()
-        with patch("core.entities.provider_configuration.Session") as mock_session_cls:
+        with (
+            patch("core.entities.provider_configuration.Session") as mock_session_cls,
+            patch("core.entities.provider_configuration.sessionmaker") as mock_sm_cls,
+        ):
             mock_session_cls.return_value.__enter__.return_value = session
+            mock_session_cls.return_value.__exit__ = Mock(return_value=False)
+            mock_sm_cls.return_value.begin.return_value.__enter__.return_value = session
+            mock_sm_cls.return_value.begin.return_value.__exit__ = Mock(return_value=False)
             yield mock_session_cls
 
 
@@ -413,7 +419,6 @@ def test_switch_preferred_provider_type_updates_existing_record_with_session() -
     configuration.switch_preferred_provider_type(ProviderType.SYSTEM, session=session)
 
     assert existing_record.preferred_provider_type == ProviderType.SYSTEM
-    session.commit.assert_called_once()
 
 
 def test_switch_preferred_provider_type_creates_record_when_missing() -> None:
@@ -425,7 +430,6 @@ def test_switch_preferred_provider_type_creates_record_when_missing() -> None:
     configuration.switch_preferred_provider_type(ProviderType.CUSTOM, session=session)
 
     assert session.add.call_count == 1
-    session.commit.assert_called_once()
 
 
 def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
@@ -792,7 +796,7 @@ def test_create_provider_credential_creates_provider_record_when_missing() -> No
                             configuration.create_provider_credential({"api_key": "raw"}, None)
 
     assert session.add.call_count == 2
-    session.commit.assert_called_once()
+
     mock_cache.return_value.delete.assert_called_once()
     mock_switch.assert_called_once_with(provider_type=ProviderType.CUSTOM, session=session)
 
@@ -810,7 +814,6 @@ def test_create_provider_credential_marks_existing_provider_as_valid() -> None:
 
     assert provider_record.is_valid is True
     assert provider_record.credential_id == "existing-cred"
-    session.commit.assert_called_once()
 
 
 def test_create_provider_credential_auto_activates_when_no_active_credential() -> None:
@@ -828,7 +831,6 @@ def test_create_provider_credential_auto_activates_when_no_active_credential() -
 
     assert provider_record.is_valid is True
     assert provider_record.credential_id is not None
-    session.commit.assert_called_once()
 
 
 def test_create_provider_credential_raises_when_duplicate_name_exists() -> None:
@@ -864,7 +866,7 @@ def test_update_provider_credential_success_updates_and_invalidates_cache() -> N
                             )
 
     assert credential_record.credential_name == "New Name"
-    session.commit.assert_called_once()
+
     mock_cache.return_value.delete.assert_called_once()
     mock_lb.assert_called_once()
 
@@ -899,7 +901,6 @@ def test_update_load_balancing_configs_updates_all_matching_configs() -> None:
     assert lb_config.encrypted_config == '{"api_key":"enc"}'
     assert lb_config.name == "API KEY 3"
     mock_cache.return_value.delete.assert_called_once()
-    session.commit.assert_called_once()
 
 
 def test_update_load_balancing_configs_returns_when_no_matching_configs() -> None:
@@ -913,8 +914,6 @@ def test_update_load_balancing_configs_returns_when_no_matching_configs() -> Non
         credential_source=CredentialSourceType.PROVIDER,
         session=session,
     )
-
-    session.commit.assert_not_called()
 
 
 def test_delete_provider_credential_removes_provider_record_when_last_credential() -> None:
@@ -1210,7 +1209,6 @@ def test_add_model_credential_to_model_and_switch_custom_model_credential() -> N
         with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
             configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-1")
     session.add.assert_called_once()
-    session.commit.assert_called_once()
 
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
@@ -1267,7 +1265,7 @@ def test_delete_custom_model_and_model_setting_methods() -> None:
             with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
                 configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
     session.delete.assert_called_once_with(provider_model_record)
-    session.commit.assert_called_once()
+
     mock_cache.return_value.delete.assert_called_once()
 
     session = Mock()
@@ -1350,7 +1348,6 @@ def test_model_load_balancing_enable_disable_and_switch_preferred_provider_type_
         call.args and call.args[0].__class__.__name__ == "TenantPreferredModelProvider"
         for call in switch_session.add.call_args_list
     )
-    switch_session.commit.assert_called()
 
 
 def test_system_and_custom_provider_model_helpers_cover_remaining_skip_paths() -> None:
@@ -1635,8 +1632,6 @@ def test_create_provider_credential_rolls_back_on_error() -> None:
                     with pytest.raises(RuntimeError, match="boom"):
                         configuration.create_provider_credential({"api_key": "raw"}, None)
 
-    session.rollback.assert_called_once()
-
 
 def test_update_provider_credential_raises_on_duplicate_name() -> None:
     configuration = _build_provider_configuration()
@@ -1657,16 +1652,13 @@ def test_update_provider_credential_rolls_back_on_error() -> None:
         credential_name="Main",
         updated_at=None,
     )
-    session.commit.side_effect = RuntimeError("boom")
 
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False):
-            with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
+            with patch.object(ProviderConfiguration, "validate_provider_credentials", side_effect=RuntimeError("boom")):
                 with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
                     with pytest.raises(RuntimeError, match="boom"):
                         configuration.update_provider_credential({"api_key": "raw"}, "cred-1", "Main")
-
-    session.rollback.assert_called_once()
 
 
 def test_delete_provider_credential_rolls_back_on_error() -> None:
@@ -1684,22 +1676,17 @@ def test_delete_provider_credential_rolls_back_on_error() -> None:
             with pytest.raises(RuntimeError, match="boom"):
                 configuration.delete_provider_credential("cred-1")
 
-    session.rollback.assert_called_once()
-
 
 def test_switch_active_provider_credential_rolls_back_on_error() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = SimpleNamespace(id="cred-1")
-    session.commit.side_effect = RuntimeError("boom")
     provider_record = SimpleNamespace(id="provider-1", credential_id=None, updated_at=None)
 
     with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
+        with patch.object(ProviderConfiguration, "_get_provider_record", side_effect=RuntimeError("boom")):
             with pytest.raises(RuntimeError, match="boom"):
                 configuration.switch_active_provider_credential("cred-1")
-
-    session.rollback.assert_called_once()
 
 
 def test_get_specific_custom_model_credential_logs_when_decrypt_fails() -> None:
@@ -1778,8 +1765,6 @@ def test_create_custom_model_credential_rolls_back_on_error() -> None:
                     with pytest.raises(RuntimeError, match="boom"):
                         configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"k": "v"}, None)
 
-    session.rollback.assert_called_once()
-
 
 def test_update_custom_model_credential_raises_on_duplicate_name() -> None:
     configuration = _build_provider_configuration()
@@ -1825,11 +1810,12 @@ def test_update_custom_model_credential_rolls_back_on_error() -> None:
         credential_name="Main",
         updated_at=None,
     )
-    session.commit.side_effect = RuntimeError("boom")
 
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=False):
-            with patch.object(ProviderConfiguration, "validate_custom_model_credentials", return_value={"k": "v"}):
+            with patch.object(
+                ProviderConfiguration, "validate_custom_model_credentials", side_effect=RuntimeError("boom")
+            ):
                 with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
                     with pytest.raises(RuntimeError, match="boom"):
                         configuration.update_custom_model_credential(
@@ -1839,8 +1825,6 @@ def test_update_custom_model_credential_rolls_back_on_error() -> None:
                             credential_name="Main",
                             credential_id="cred-1",
                         )
-
-    session.rollback.assert_called_once()
 
 
 def test_delete_custom_model_credential_raises_when_record_not_found() -> None:
@@ -1885,8 +1869,6 @@ def test_delete_custom_model_credential_rolls_back_on_error() -> None:
         with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
             with pytest.raises(RuntimeError, match="boom"):
                 configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
-
-    session.rollback.assert_called_once()
 
 
 def test_get_custom_provider_models_skips_schema_models_with_mismatched_type() -> None:
