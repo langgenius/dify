@@ -168,7 +168,6 @@ export function IntegrationSidebarUtilityActions({
                 variant="ghost"
                 className={sidebarUtilityActionClassName}
                 aria-label={permissionsLabel}
-                title={permissionsLabel}
               >
                 <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
                   <span className="i-ri-equalizer-2-line size-4" />

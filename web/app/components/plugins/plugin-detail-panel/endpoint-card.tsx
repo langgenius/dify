@@ -173,7 +173,7 @@ const EndpointCard = ({
           <div key={index} className="flex h-6 items-center">
             <div className="w-12 shrink-0 system-xs-regular text-text-tertiary">{endpoint.method}</div>
             <div className="group/item flex grow items-center truncate system-xs-regular text-text-secondary">
-              <div title={`${data.url}${endpoint.path}`} className="truncate">{`${data.url}${endpoint.path}`}</div>
+              <div className="truncate">{`${data.url}${endpoint.path}`}</div>
               <Tooltip>
                 <TooltipTrigger
                   render={(

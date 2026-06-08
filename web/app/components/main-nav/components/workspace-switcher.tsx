@@ -156,7 +156,6 @@ export function WorkspaceSwitcher({
           <button
             type="button"
             key={workspace.id}
-            title={workspace.name}
             aria-current={workspace.current ? 'true' : undefined}
             className={cn(
               'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',

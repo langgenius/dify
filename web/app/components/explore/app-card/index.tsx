@@ -84,7 +84,7 @@ const AppCard = ({
         </div>
         <div className="flex w-0 grow flex-col gap-1 py-px">
           <div className="flex items-center system-md-semibold text-text-secondary">
-            <div id={nameId} className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
+            <div id={nameId} className="truncate">{appBasicInfo.name}</div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}

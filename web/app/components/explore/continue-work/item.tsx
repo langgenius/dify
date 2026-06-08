@@ -40,7 +40,7 @@ const ContinueWorkItem = ({
         />
       </div>
       <div className="min-w-0 py-px">
-        <h3 className="truncate system-md-semibold text-text-secondary" title={app.name}>
+        <h3 className="truncate system-md-semibold text-text-secondary">
           {app.name}
         </h3>
         <div className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary">
