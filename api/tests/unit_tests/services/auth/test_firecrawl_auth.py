@@ -97,7 +97,9 @@ class TestFirecrawlAuth:
         ],
     )
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
-    def test_should_handle_http_errors(self, mock_post: MagicMock, status_code, error_message, auth_instance: FirecrawlAuth):
+    def test_should_handle_http_errors(
+        self, mock_post: MagicMock, status_code, error_message, auth_instance: FirecrawlAuth
+    ):
         """Test handling of various HTTP error codes"""
         mock_response = MagicMock()
         mock_response.status_code = status_code
@@ -120,7 +122,13 @@ class TestFirecrawlAuth:
     )
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
     def test_should_handle_unexpected_errors(
-        self, mock_post: MagicMock, status_code, response_text, has_json_error, expected_error_contains, auth_instance: FirecrawlAuth
+        self,
+        mock_post: MagicMock,
+        status_code,
+        response_text,
+        has_json_error,
+        expected_error_contains,
+        auth_instance: FirecrawlAuth,
     ):
         """Test handling of unexpected errors with various response formats"""
         mock_response = MagicMock()
@@ -146,7 +154,9 @@ class TestFirecrawlAuth:
         ],
     )
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
-    def test_should_handle_network_errors(self, mock_post: MagicMock, exception_type, exception_message, auth_instance: FirecrawlAuth):
+    def test_should_handle_network_errors(
+        self, mock_post: MagicMock, exception_type, exception_message, auth_instance: FirecrawlAuth
+    ):
         """Test handling of various network-related errors including timeouts"""
         mock_post.side_effect = exception_type(exception_message)
 
