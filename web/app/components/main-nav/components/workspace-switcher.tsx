@@ -78,10 +78,12 @@ function WorkspaceSwitchControls({
             >
               {sortOptions.map(option => (
                 <DropdownMenuRadioItem key={option.value} value={option.value} className="mx-0 h-8 gap-1 px-2 py-1">
-                  <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
+                  <span className="flex size-4 shrink-0 items-center justify-center">
+                    <DropdownMenuRadioItemIndicator className="ml-0" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate px-1 system-md-regular text-text-secondary">
                     {option.label}
                   </span>
-                  <DropdownMenuRadioItemIndicator />
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
