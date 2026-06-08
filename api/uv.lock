@@ -1885,7 +1885,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "opik", specifier = "~=2.0.57" }]
+requires-dist = [{ name = "opik", specifier = "~=1.11.2" }]
 
 [[package]]
 name = "dify-trace-tencent"
@@ -4575,7 +4575,7 @@ wheels = [
 
 [[package]]
 name = "opik"
-version = "2.0.57"
+version = "1.11.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3-stubs", extra = ["bedrock-runtime"] },
@@ -4598,9 +4598,9 @@ dependencies = [
     { name = "uuid6" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/70/cc5cc89019e4116d9640248bb0d7f44d7bda7ed40e48b4bec78594235205/opik-2.0.57.tar.gz", hash = "sha256:313f603032e38e13e1f3ba7b2f593ecfa95db52434a5e3cdb837b004d926f135", size = 1076131, upload-time = "2026-06-04T17:09:07.571Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/65/00eb1eb10e301e4cc7498193e0d0a34fb1204f300f0a62e2a9d1a8635aa2/opik-1.11.14.tar.gz", hash = "sha256:9e1e0580e84caea5b0ef987160911f4d2f3dd62285a58ac6ad595565efdb9ab8", size = 890564, upload-time = "2026-04-17T08:14:19.095Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/87/eefd59036a0e9f0b4d6fe849de2c31be012278b887e01d3f1bbba410303d/opik-2.0.57-py3-none-any.whl", hash = "sha256:8cd5acd1a8ece3321480d983ae4a855367097e9c91dd7ad7d9b8de84de2d390a", size = 1712634, upload-time = "2026-06-04T17:09:05.343Z" },
+    { url = "https://files.pythonhosted.org/packages/40/27/7baba6a280574a5cfe840600b1db1835bc583288d511a81ef1498cbc36c6/opik-1.11.14-py3-none-any.whl", hash = "sha256:72fe9491f67ad032ebae37cb77f43d7559d272aba3b140a73a29bd709d3047a5", size = 1475478, upload-time = "2026-04-17T08:14:17.601Z" },
 ]
 
 [[package]]
