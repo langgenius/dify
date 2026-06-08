@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import base64
 import json
+from typing import Literal
 
 import pytest
 
-from dify_agent.protocol.back_proxy import (
+from dify_agent.agent_stub.protocol.back_proxy import (
     BackProxyFileMapping,
     back_proxy_connections_url,
     back_proxy_file_download_request_url,
@@ -82,7 +83,9 @@ def test_back_proxy_file_mapping_rejects_remote_url_with_reference() -> None:
 
 
 @pytest.mark.parametrize("transfer_method", ["tool_file", "local_file", "datasource_file"])
-def test_back_proxy_file_mapping_rejects_non_remote_with_url(transfer_method: str) -> None:
+def test_back_proxy_file_mapping_rejects_non_remote_with_url(
+    transfer_method: Literal["tool_file", "local_file", "datasource_file"],
+) -> None:
     reference = _reference("tool-file-1")
     with pytest.raises(ValueError, match="url is not allowed"):
         _ = BackProxyFileMapping(

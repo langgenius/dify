@@ -64,6 +64,9 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         dify_agent = importlib.import_module("dify_agent")
         client_module = importlib.import_module("dify_agent.client")
         protocol_module = importlib.import_module("dify_agent.protocol")
+        agent_stub_client_module = importlib.import_module("dify_agent.agent_stub.client")
+        agent_stub_protocol_module = importlib.import_module("dify_agent.agent_stub.protocol")
+        agent_stub_cli_main_module = importlib.import_module("dify_agent.agent_stub.cli.main")
         shell_module = importlib.import_module("dify_agent.layers.shell")
         execution_context_module = importlib.import_module("dify_agent.layers.execution_context")
         plugin_module = importlib.import_module("dify_agent.layers.dify_plugin")
@@ -79,6 +82,9 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert protocol_module.CreateRunRequest is not None
         assert protocol_module.RunComposition is not None
         assert protocol_module.RunLayerSpec is not None
+        assert agent_stub_client_module.connect_back_proxy_sync is not None
+        assert agent_stub_protocol_module.BackProxyConnectRequest is not None
+        assert agent_stub_cli_main_module.main is not None
         assert shell_module.DifyShellLayerConfig is not None
         assert execution_context_module.DifyExecutionContextLayerConfig is not None
         assert plugin_module.DifyPluginLLMLayerConfig is not None

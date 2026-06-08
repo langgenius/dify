@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import time
 from typing import ClassVar
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from shell_session_manager.shellctl.client import ShellctlClient
@@ -21,6 +23,31 @@ from dify_agent.storage.redis_run_store import RedisRunStore
 
 def _base64url_secret(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
+def _execution_context() -> DifyExecutionContextLayerConfig:
+    return DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        user_from="account",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
+    )
+
+
+def _patch_app_lifecycle(monkeypatch: pytest.MonkeyPatch) -> tuple[FakeRedis, FakePluginDaemonHttpClient]:
+    fake_redis = FakeRedis()
+    fake_http_client = FakePluginDaemonHttpClient()
+    FakeRunScheduler.created.clear()
+    FakeRedisModule.fake_redis = fake_redis
+    monkeypatch.setattr(app_module, "Redis", FakeRedisModule)
+    monkeypatch.setattr(app_module, "RunScheduler", FakeRunScheduler)
+
+    def fake_create_plugin_daemon_http_client(_settings: ServerSettings) -> FakePluginDaemonHttpClient:
+        return fake_http_client
+
+    monkeypatch.setattr(app_module, "create_plugin_daemon_http_client", fake_create_plugin_daemon_http_client)
+    return fake_redis, fake_http_client
 
 
 class FakeRedis:
@@ -123,17 +150,7 @@ class FakeHttpxModule:
 
 
 def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake_redis = FakeRedis()
-    fake_http_client = FakePluginDaemonHttpClient()
-    FakeRunScheduler.created.clear()
-    FakeRedisModule.fake_redis = fake_redis
-    monkeypatch.setattr(app_module, "Redis", FakeRedisModule)
-    monkeypatch.setattr(app_module, "RunScheduler", FakeRunScheduler)
-
-    def fake_create_plugin_daemon_http_client(_settings: ServerSettings) -> FakePluginDaemonHttpClient:
-        return fake_http_client
-
-    monkeypatch.setattr(app_module, "create_plugin_daemon_http_client", fake_create_plugin_daemon_http_client)
+    fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
 
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
@@ -204,6 +221,71 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
 
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert FakeRunScheduler.created[0].plugin_daemon_http_client.is_closed is True
+    assert fake_redis.closed is True
+
+
+def test_create_app_wires_authenticated_back_proxy_connection_route(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(
+        redis_url="redis://example.invalid/0",
+        shell_back_proxy_public_url="https://agent.example.com/back-proxy",
+        server_secret_key=_base64url_secret(b"1" * 32),
+    )
+    token_codec = settings.create_back_proxy_token_codec()
+    assert token_codec is not None
+    token = token_codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
+
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/back-proxy/connections",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"protocol_version": 1, "argv": ["connect"]},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "connected"
+    assert isinstance(response.json()["connection_id"], str)
+    assert FakeRunScheduler.created[0].shutdown_called is True
+    assert fake_http_client.is_closed is True
+    assert fake_redis.closed is True
+
+
+def test_create_app_wires_authenticated_back_proxy_file_upload_route(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(
+        redis_url="redis://example.invalid/0",
+        shell_back_proxy_public_url="https://agent.example.com/back-proxy",
+        server_secret_key=_base64url_secret(b"1" * 32),
+        dify_api_base_url="https://api.example.com",
+        dify_api_inner_api_key="inner-secret",
+    )
+    token_codec = settings.create_back_proxy_token_codec()
+    assert token_codec is not None
+    token = token_codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
+
+    original_async_client = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://api.example.com/inner/api/upload/file/request"
+        assert request.headers["X-Inner-Api-Key"] == "inner-secret"
+        return httpx.Response(200, json={"data": {"url": "https://files.example.com/upload"}})
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.server.back_proxy_files.httpx.AsyncClient",
+        lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/back-proxy/files/upload-request",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"filename": "report.pdf", "mimetype": "application/pdf"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"upload_url": "https://files.example.com/upload"}
+    assert FakeRunScheduler.created[0].shutdown_called is True
+    assert fake_http_client.is_closed is True
     assert fake_redis.closed is True
 
 

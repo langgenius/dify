@@ -8,11 +8,11 @@ from typing import cast
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from dify_agent.agent_stub.protocol.back_proxy import BackProxyFileDownloadResponse, BackProxyFileUploadResponse
+from dify_agent.agent_stub.server.back_proxy_files import BackProxyFileRequestError, BackProxyFileRequestHandler
+from dify_agent.agent_stub.server.routes.back_proxy import create_back_proxy_router
+from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyTokenCodec
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.protocol.back_proxy import BackProxyFileDownloadResponse, BackProxyFileUploadResponse
-from dify_agent.server.back_proxy_files import BackProxyFileRequestError, BackProxyFileRequestHandler
-from dify_agent.server.routes.back_proxy import create_back_proxy_router
-from dify_agent.server.tokens.back_proxy import BackProxyTokenCodec
 
 
 def _base64url_secret(value: bytes) -> str:

@@ -1,9 +1,9 @@
 """Client-safe HTTP helpers for shell back proxy control-plane endpoints.
 
-The main ``Client`` class currently focuses on run APIs. Sandbox-visible CLI
-commands only need a narrow synchronous subset of the server contract and must
-stay safe to import in default installations, so these helpers live in this
-standalone module rather than importing FastAPI- or JWE-specific code.
+The main ``Client`` class stays focused on run APIs. Sandbox-visible CLI
+commands only need a narrow synchronous subset of the stub server contract and
+ must stay safe to import in default installations, so these helpers live under
+``dify_agent.agent_stub.client`` rather than the standard run client package.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import cast
 import httpx
 from pydantic import BaseModel, JsonValue, ValidationError
 
-from dify_agent.protocol.back_proxy import (
+from dify_agent.agent_stub.protocol.back_proxy import (
     BackProxyConnectRequest,
     BackProxyConnectResponse,
     BackProxyFileDownloadRequest,

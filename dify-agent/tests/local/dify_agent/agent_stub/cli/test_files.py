@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from dify_agent.cli._files import download_file_from_environment, upload_file_from_environment
-from dify_agent.client._back_proxy import BackProxyTransferError
+from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
+from dify_agent.agent_stub.client._back_proxy import BackProxyTransferError
 
 
 def _reference(record_id: str) -> str:
@@ -25,7 +25,7 @@ def test_upload_file_from_environment_requests_signed_url_and_normalizes_output(
     monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
-        "dify_agent.cli._files.request_back_proxy_file_upload_sync",
+        "dify_agent.agent_stub.cli._files.request_back_proxy_file_upload_sync",
         lambda **_kwargs: type("Response", (), {"upload_url": "https://files.example.com/upload"})(),
     )
     captured = {}
@@ -40,7 +40,7 @@ def test_upload_file_from_environment_requests_signed_url_and_normalizes_output(
         }
 
     monkeypatch.setattr(
-        "dify_agent.cli._files.upload_file_to_signed_url_sync",
+        "dify_agent.agent_stub.cli._files.upload_file_to_signed_url_sync",
         fake_upload_file_to_signed_url_sync,
     )
 
@@ -68,7 +68,7 @@ def test_download_file_from_environment_saves_bytes_and_renames_on_collision(
     monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
-        "dify_agent.cli._files.request_back_proxy_file_download_sync",
+        "dify_agent.agent_stub.cli._files.request_back_proxy_file_download_sync",
         lambda **_kwargs: type(
             "Response",
             (),
@@ -81,7 +81,7 @@ def test_download_file_from_environment_saves_bytes_and_renames_on_collision(
         )(),
     )
     monkeypatch.setattr(
-        "dify_agent.cli._files.download_file_bytes_from_signed_url_sync",
+        "dify_agent.agent_stub.cli._files.download_file_bytes_from_signed_url_sync",
         lambda **_kwargs: b"downloaded",
     )
 
@@ -105,7 +105,7 @@ def test_download_file_from_environment_sanitizes_server_filename(
     monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
-        "dify_agent.cli._files.request_back_proxy_file_download_sync",
+        "dify_agent.agent_stub.cli._files.request_back_proxy_file_download_sync",
         lambda **_kwargs: type(
             "Response",
             (),
@@ -118,7 +118,7 @@ def test_download_file_from_environment_sanitizes_server_filename(
         )(),
     )
     monkeypatch.setattr(
-        "dify_agent.cli._files.download_file_bytes_from_signed_url_sync",
+        "dify_agent.agent_stub.cli._files.download_file_bytes_from_signed_url_sync",
         lambda **_kwargs: b"downloaded",
     )
 
@@ -143,11 +143,11 @@ def test_upload_file_from_environment_rejects_non_canonical_reference(
     monkeypatch.setenv("DIFY_AGENT_BACK_PROXY_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
-        "dify_agent.cli._files.request_back_proxy_file_upload_sync",
+        "dify_agent.agent_stub.cli._files.request_back_proxy_file_upload_sync",
         lambda **_kwargs: type("Response", (), {"upload_url": "https://files.example.com/upload"})(),
     )
     monkeypatch.setattr(
-        "dify_agent.cli._files.upload_file_to_signed_url_sync",
+        "dify_agent.agent_stub.cli._files.upload_file_to_signed_url_sync",
         lambda **_kwargs: {"reference": "raw-tool-file-uuid"},
     )
 

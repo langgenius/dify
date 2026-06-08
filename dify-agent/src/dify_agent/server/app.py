@@ -7,7 +7,9 @@ cancel the agent runtime. Redis persists run records and per-run event streams
 with configured retention only; it is not used as a job queue. Agenton layers and
 providers stay state-only: they borrow the lifespan-owned plugin daemon client
 through the runner and receive shell-layer server settings through provider
-construction rather than reading environment variables themselves.
+construction rather than reading environment variables themselves. The standard
+server hosts the stub router by mounting the embeddable router exported from
+``dify_agent.agent_stub.server.router``.
 """
 
 from collections.abc import AsyncGenerator
@@ -17,10 +19,9 @@ import httpx
 from fastapi import FastAPI
 from redis.asyncio import Redis
 
+from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
-from dify_agent.server.back_proxy_files import DifyApiBackProxyFileRequestHandler
 from dify_agent.runtime.run_scheduler import RunScheduler
-from dify_agent.server.routes.back_proxy import create_back_proxy_router
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.workspace_files import create_workspace_files_router
 from dify_agent.server.settings import ServerSettings
@@ -32,12 +33,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
     back_proxy_token_codec = resolved_settings.create_back_proxy_token_codec()
-    back_proxy_file_request_handler = None
-    if resolved_settings.dify_api_base_url and resolved_settings.dify_api_inner_api_key:
-        back_proxy_file_request_handler = DifyApiBackProxyFileRequestHandler(
-            dify_api_base_url=resolved_settings.dify_api_base_url,
-            dify_api_inner_api_key=resolved_settings.dify_api_inner_api_key,
-        )
+    back_proxy_file_request_handler = resolved_settings.create_back_proxy_file_request_handler()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
@@ -92,9 +88,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     # TODO: refactor
     app.include_router(create_workspace_files_router(lambda: workspace_file_service))
     app.include_router(
-        create_back_proxy_router(
-            lambda: back_proxy_token_codec,
-            lambda: back_proxy_file_request_handler,
+        create_agent_stub_router(
+            token_codec=back_proxy_token_codec,
+            file_request_handler=back_proxy_file_request_handler,
         )
     )
     return app

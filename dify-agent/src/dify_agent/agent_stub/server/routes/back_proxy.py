@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Header, HTTPException
 
-from dify_agent.protocol.back_proxy import (
+from dify_agent.agent_stub.protocol.back_proxy import (
     BackProxyConnectRequest,
     BackProxyConnectResponse,
     BackProxyFileDownloadRequest,
@@ -22,8 +22,8 @@ from dify_agent.protocol.back_proxy import (
     BackProxyFileUploadRequest,
     BackProxyFileUploadResponse,
 )
-from dify_agent.server.back_proxy_files import BackProxyFileRequestError, BackProxyFileRequestHandler
-from dify_agent.server.tokens.back_proxy import BackProxyTokenCodec, BackProxyTokenError
+from dify_agent.agent_stub.server.back_proxy_files import BackProxyFileRequestError, BackProxyFileRequestHandler
+from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyTokenCodec, BackProxyTokenError
 
 
 def create_back_proxy_router(

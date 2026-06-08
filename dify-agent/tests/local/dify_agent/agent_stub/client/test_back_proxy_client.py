@@ -6,7 +6,7 @@ import json
 import httpx
 import pytest
 
-from dify_agent.client._back_proxy import (
+from dify_agent.agent_stub.client._back_proxy import (
     BackProxyClientError,
     BackProxyHTTPError,
     BackProxyTransferError,
@@ -17,7 +17,7 @@ from dify_agent.client._back_proxy import (
     request_back_proxy_file_upload_sync,
     upload_file_to_signed_url_sync,
 )
-from dify_agent.protocol.back_proxy import BackProxyFileMapping
+from dify_agent.agent_stub.protocol.back_proxy import BackProxyFileMapping
 
 
 def _reference(record_id: str) -> str:

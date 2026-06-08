@@ -47,9 +47,9 @@ from shell_session_manager.shellctl.shared import (
 from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
+from dify_agent.agent_stub.server.shell_back_proxy_env import ShellBackProxyTokenFactory, build_shell_back_proxy_env
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
-from dify_agent.runtime.shell_back_proxy_env import ShellBackProxyTokenFactory, build_shell_back_proxy_env
 
 
 logger = logging.getLogger(__name__)

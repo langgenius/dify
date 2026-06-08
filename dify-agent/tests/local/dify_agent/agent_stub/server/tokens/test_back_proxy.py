@@ -5,8 +5,7 @@ import secrets
 
 import pytest
 
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.server.tokens.back_proxy import (
+from dify_agent.agent_stub.server.tokens.back_proxy import (
     BACK_PROXY_TOKEN_AUDIENCE,
     BACK_PROXY_TOKEN_ISSUER,
     BACK_PROXY_TOKEN_SCOPE_CONNECT,
@@ -15,6 +14,7 @@ from dify_agent.server.tokens.back_proxy import (
     BackProxyTokenError,
     decode_server_secret_key,
 )
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
 def _base64url_secret(value: bytes) -> str:

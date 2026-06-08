@@ -15,10 +15,10 @@ import sys
 import typer
 from typer.main import get_command
 
-from dify_agent.cli._back_proxy import connect_from_environment
-from dify_agent.cli._files import download_file_from_environment, upload_file_from_environment
-from dify_agent.cli._env import MissingBackProxyEnvironmentError, has_back_proxy_environment
-from dify_agent.client._back_proxy import BackProxyClientError
+from dify_agent.agent_stub.cli._back_proxy import connect_from_environment
+from dify_agent.agent_stub.cli._env import MissingBackProxyEnvironmentError, has_back_proxy_environment
+from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
+from dify_agent.agent_stub.client._back_proxy import BackProxyClientError
 
 
 app = typer.Typer(

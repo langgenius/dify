@@ -1,6 +1,6 @@
 """Server-only token helpers for authenticated shell back proxy routes."""
 
-from dify_agent.server.tokens.back_proxy import (
+from dify_agent.agent_stub.server.tokens.back_proxy import (
     BACK_PROXY_TOKEN_AUDIENCE,
     BACK_PROXY_TOKEN_ISSUER,
     BACK_PROXY_TOKEN_SCOPE_CONNECT,

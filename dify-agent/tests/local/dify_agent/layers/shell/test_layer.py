@@ -8,6 +8,7 @@ import pytest
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from agenton.layers import LifecycleState
+from dify_agent.agent_stub.server.shell_back_proxy_env import BACK_PROXY_AUTH_JWE_ENV_VAR, BACK_PROXY_URL_ENV_VAR
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import (
@@ -19,7 +20,6 @@ from dify_agent.layers.shell import (
     DifyShellSecretRefConfig,
 )
 from dify_agent.layers.shell.layer import DifyShellLayer, DifyShellRuntimeState, ShellctlClientFactory
-from dify_agent.runtime.shell_back_proxy_env import BACK_PROXY_AUTH_JWE_ENV_VAR, BACK_PROXY_URL_ENV_VAR
 from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 

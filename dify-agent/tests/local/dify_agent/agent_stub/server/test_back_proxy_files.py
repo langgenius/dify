@@ -6,10 +6,10 @@ import json
 
 import httpx
 
+from dify_agent.agent_stub.protocol.back_proxy import BackProxyFileDownloadRequest, BackProxyFileMapping, BackProxyFileUploadRequest
+from dify_agent.agent_stub.server.back_proxy_files import BackProxyFileRequestError, DifyApiBackProxyFileRequestHandler
+from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyPrincipal
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.protocol.back_proxy import BackProxyFileDownloadRequest, BackProxyFileMapping, BackProxyFileUploadRequest
-from dify_agent.server.back_proxy_files import BackProxyFileRequestError, DifyApiBackProxyFileRequestHandler
-from dify_agent.server.tokens.back_proxy import BackProxyPrincipal
 
 
 def _principal() -> BackProxyPrincipal:
@@ -31,7 +31,7 @@ def _principal() -> BackProxyPrincipal:
 def _patch_async_client(monkeypatch, handler) -> None:
     original_async_client = httpx.AsyncClient
     monkeypatch.setattr(
-        "dify_agent.server.back_proxy_files.httpx.AsyncClient",
+        "dify_agent.agent_stub.server.back_proxy_files.httpx.AsyncClient",
         lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
     )
 

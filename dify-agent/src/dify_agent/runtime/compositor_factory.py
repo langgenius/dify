@@ -31,6 +31,8 @@ from agenton.layers.types import AllPromptTypes, AllToolTypes, AllUserPromptType
 from agenton_collections.layers.pydantic_ai import PydanticAIHistoryLayer
 from agenton_collections.layers.plain.basic import PromptLayer
 from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
+from dify_agent.agent_stub.server.shell_back_proxy_env import ShellBackProxyTokenFactory
+from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyTokenCodec
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
@@ -38,9 +40,6 @@ from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer, create_shellctl_client_factory
-from dify_agent.server.tokens.back_proxy import BackProxyTokenCodec
-
-
 type DifyAgentLayerProvider = LayerProvider[Any]
 
 
@@ -62,13 +61,19 @@ def create_default_layer_providers(
     setting explicitly.
     """
     shellctl_token = shellctl_auth_token or ""
-    shell_back_proxy_token_factory = None
+    shell_back_proxy_token_factory: ShellBackProxyTokenFactory | None = None
     if shell_back_proxy_token_codec is not None:
-        def shell_back_proxy_token_factory(execution_context: DifyExecutionContextLayerConfig, *, session_id: str | None) -> str:
+        def build_shell_back_proxy_token(
+            execution_context: DifyExecutionContextLayerConfig,
+            *,
+            session_id: str | None,
+        ) -> str:
             return shell_back_proxy_token_codec.encode_connection_token(
                 execution_context,
                 session_id=session_id,
             )
+
+        shell_back_proxy_token_factory = build_shell_back_proxy_token
     return (
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),

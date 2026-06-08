@@ -53,5 +53,6 @@ def test_project_declares_console_script_and_shellctl_docker_version() -> None:
     scripts = pyproject["project"]["scripts"]
     dockerfile = (PROJECT_ROOT / "docker" / "shellctl" / "Dockerfile").read_text(encoding="utf-8")
 
-    assert scripts["dify-agent"] == "dify_agent.cli.main:main"
+    assert scripts["dify-agent"] == "dify_agent.agent_stub.cli.main:main"
+    assert scripts["dify-agent-stub-server"] == "dify_agent.agent_stub.server.cli:main"
     assert "shell-session-manager==2.2.0" in dockerfile

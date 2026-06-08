@@ -9,8 +9,8 @@ from typing import Literal, cast
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from dify_agent.cli._env import read_back_proxy_environment
-from dify_agent.client._back_proxy import (
+from dify_agent.agent_stub.cli._env import read_back_proxy_environment
+from dify_agent.agent_stub.client._back_proxy import (
     BackProxyTransferError,
     BackProxyValidationError,
     download_file_bytes_from_signed_url_sync,
@@ -18,7 +18,7 @@ from dify_agent.client._back_proxy import (
     request_back_proxy_file_upload_sync,
     upload_file_to_signed_url_sync,
 )
-from dify_agent.protocol.back_proxy import BackProxyFileMapping, is_canonical_dify_file_reference
+from dify_agent.agent_stub.protocol.back_proxy import BackProxyFileMapping, is_canonical_dify_file_reference
 
 
 class UploadedToolFileMapping(BaseModel):

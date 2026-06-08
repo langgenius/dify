@@ -13,7 +13,8 @@ dependencies = [
 ]
 
 [project.scripts]
-dify-agent = "dify_agent.cli.main:main"
+dify-agent = "dify_agent.agent_stub.cli.main:main"
+dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 [project.optional-dependencies]
 server = [

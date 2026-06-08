@@ -1,8 +1,8 @@
 """Server-only compact-JWE codec for shell back proxy bearer tokens.
 
 The shell back proxy route accepts only encrypted bearer tokens issued by this
-server process. The root secret comes from ``DIFY_AGENT_SERVER_SECRET_KEY`` and
-is never used directly as a content-encryption key; a purpose-specific HKDF
+server process. The root secret comes from ``DIFY_AGENT_SERVER_SECRET_KEY``
+and is never used directly as a content-encryption key; a purpose-specific HKDF
 derivation isolates shell back proxy tokens from any future server-side token
 families that may reuse the same root secret.
 """
@@ -34,6 +34,7 @@ BACK_PROXY_TOKEN_TTL_SECONDS = 24 * 60 * 60
 _BACK_PROXY_JWE_PURPOSE = b"dify-agent:shell-back-proxy:jwe:v1"
 _REQUIRED_SERVER_SECRET_BYTES = 32
 _BASE64URL_TEXT_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+_DEFAULT_SERVER_SECRET_ENV_VAR = "DIFY_AGENT_SERVER_SECRET_KEY"
 
 
 class BackProxyTokenError(RuntimeError):
@@ -167,7 +168,7 @@ class BackProxyTokenCodec:
         )
 
 
-def decode_server_secret_key(server_secret_key: str) -> bytes:
+def decode_server_secret_key(server_secret_key: str, *, env_var_name: str = _DEFAULT_SERVER_SECRET_ENV_VAR) -> bytes:
     """Decode and validate the configured server root secret.
 
     The secret must be strict unpadded base64url text and must decode to
@@ -177,15 +178,13 @@ def decode_server_secret_key(server_secret_key: str) -> bytes:
     """
     normalized = server_secret_key.strip()
     if not normalized or not _BASE64URL_TEXT_PATTERN.fullmatch(normalized):
-        raise ValueError("DIFY_AGENT_SERVER_SECRET_KEY must be valid unpadded base64url text")
+        raise ValueError(f"{env_var_name} must be valid unpadded base64url text")
     try:
         decoded = _base64url_decode(normalized)
     except ValueError as exc:
-        raise ValueError("DIFY_AGENT_SERVER_SECRET_KEY must be valid unpadded base64url text") from exc
+        raise ValueError(f"{env_var_name} must be valid unpadded base64url text") from exc
     if len(decoded) != _REQUIRED_SERVER_SECRET_BYTES:
-        raise ValueError(
-            f"DIFY_AGENT_SERVER_SECRET_KEY must decode to exactly {_REQUIRED_SERVER_SECRET_BYTES} decoded bytes"
-        )
+        raise ValueError(f"{env_var_name} must decode to exactly {_REQUIRED_SERVER_SECRET_BYTES} decoded bytes")
     return decoded
 
 

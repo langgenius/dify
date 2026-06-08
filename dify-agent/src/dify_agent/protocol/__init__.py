@@ -1,14 +1,9 @@
-"""Public protocol exports shared by the Dify Agent server and clients."""
+"""Public run-protocol exports shared by the Dify Agent server and clients.
 
-from .back_proxy import (
-    BACK_PROXY_AUTH_JWE_ENV_VAR,
-    BACK_PROXY_PROTOCOL_VERSION,
-    BACK_PROXY_URL_ENV_VAR,
-    BackProxyConnectRequest,
-    BackProxyConnectResponse,
-    back_proxy_connections_url,
-    normalize_back_proxy_base_url,
-)
+Stub-specific protocol DTOs live under ``dify_agent.agent_stub.protocol`` so the
+run API package boundary stays explicit.
+"""
+
 from .schemas import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -44,12 +39,7 @@ from .schemas import (
 )
 
 __all__ = [
-    "BACK_PROXY_AUTH_JWE_ENV_VAR",
-    "BACK_PROXY_PROTOCOL_VERSION",
-    "BACK_PROXY_URL_ENV_VAR",
     "BaseRunEvent",
-    "BackProxyConnectRequest",
-    "BackProxyConnectResponse",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",
@@ -78,8 +68,6 @@ __all__ = [
     "RunStatusResponse",
     "RunSucceededEvent",
     "RunSucceededEventData",
-    "back_proxy_connections_url",
-    "normalize_back_proxy_base_url",
     "normalize_composition",
     "utc_now",
 ]

@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from dify_agent.cli.main import main
-from dify_agent.protocol.back_proxy import BackProxyConnectResponse
+from dify_agent.agent_stub.cli.main import main
+from dify_agent.agent_stub.protocol.back_proxy import BackProxyConnectResponse
 
 
 def _reference(record_id: str) -> str:
@@ -36,7 +36,7 @@ def test_cli_connect_supports_json_output(
         assert argv == ["echo", "hello"]
         return BackProxyConnectResponse(connection_id="conn-1", status="connected")
 
-    monkeypatch.setattr("dify_agent.cli.main.connect_from_environment", fake_connect_from_environment)
+    monkeypatch.setattr("dify_agent.agent_stub.cli.main.connect_from_environment", fake_connect_from_environment)
 
     main(["connect", "--json", "--", "echo", "hello"])
 
@@ -55,7 +55,7 @@ def test_cli_unknown_command_auto_forwards_when_back_proxy_env_is_present(
         assert argv == ["run", "--target", "prod"]
         return BackProxyConnectResponse(connection_id="conn-1", status="connected")
 
-    monkeypatch.setattr("dify_agent.cli.main.connect_from_environment", fake_connect_from_environment)
+    monkeypatch.setattr("dify_agent.agent_stub.cli.main.connect_from_environment", fake_connect_from_environment)
 
     main(["run", "--target", "prod"])
 
@@ -134,7 +134,7 @@ def test_cli_file_upload_prints_uploaded_tool_file_json(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(
-        "dify_agent.cli.main.upload_file_from_environment",
+        "dify_agent.agent_stub.cli.main.upload_file_from_environment",
         lambda *, path: type(
             "Response",
             (),
@@ -165,7 +165,7 @@ def test_cli_file_download_prints_saved_path(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(
-        "dify_agent.cli.main.download_file_from_environment",
+        "dify_agent.agent_stub.cli.main.download_file_from_environment",
         lambda **_kwargs: type("Response", (), {"path": Path("/tmp/report.pdf")})(),
     )
 

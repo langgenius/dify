@@ -1,11 +1,11 @@
 """Client-safe DTOs and constants for the shell back proxy protocol.
 
-The back proxy contract is shared by the FastAPI server, the client-safe CLI,
-and tests. It covers both the original shell connection setup endpoint and the
-file upload/download control-plane endpoints used by sandbox-visible
+The back proxy contract is shared by the FastAPI stub server, the client-safe
+CLI, and tests. It covers both the original shell connection setup endpoint and
+the file upload/download control-plane endpoints used by sandbox-visible
 ``dify-agent file ...`` commands. Token issuance, key derivation, and JWE
-validation stay under ``dify_agent.server.tokens.back_proxy`` so default package
-imports remain free of server-only crypto dependencies.
+validation stay under ``dify_agent.agent_stub.server.tokens.back_proxy`` so
+default package imports remain free of server-only crypto dependencies.
 """
 
 from __future__ import annotations

@@ -9,12 +9,12 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.protocol.back_proxy import (
+from dify_agent.agent_stub.protocol.back_proxy import (
     BACK_PROXY_AUTH_JWE_ENV_VAR,
     BACK_PROXY_URL_ENV_VAR,
     normalize_back_proxy_base_url,
 )
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
 class ShellBackProxyTokenFactory(Protocol):

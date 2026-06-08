@@ -3,9 +3,10 @@
 Plugin daemon HTTP client settings describe the single FastAPI lifespan-owned
 ``httpx.AsyncClient`` shared by local run tasks. Layers and Agenton providers do
 not own that client, so these settings are process resource limits rather than
-per-run lifecycle knobs. Shell back proxy file endpoints additionally need the
-Dify API base URL plus the trusted inner API key used for control-plane file
-request calls.
+per-run lifecycle knobs. The shell back proxy now also uses this main server
+settings model directly: the public back proxy URL, server secret, and optional
+Dify inner API file-request settings all live here under the longstanding
+``DIFY_AGENT_...`` environment-variable namespace.
 """
 
 from typing import ClassVar
@@ -13,8 +14,9 @@ from typing import ClassVar
 from pydantic import AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from dify_agent.protocol.back_proxy import normalize_back_proxy_base_url
-from dify_agent.server.tokens.back_proxy import BackProxyTokenCodec, decode_server_secret_key
+from dify_agent.agent_stub.protocol.back_proxy import normalize_back_proxy_base_url
+from dify_agent.agent_stub.server.back_proxy_files import DifyApiBackProxyFileRequestHandler
+from dify_agent.agent_stub.server.tokens.back_proxy import BackProxyTokenCodec, decode_server_secret_key
 
 DEFAULT_RUN_RETENTION_SECONDS = 3 * 24 * 60 * 60
 
@@ -51,7 +53,7 @@ class ServerSettings(BaseSettings):
     @field_validator("shell_back_proxy_public_url")
     @classmethod
     def normalize_shell_back_proxy_public_url(cls, value: str | None) -> str | None:
-        """Normalize the shell back proxy URL while still validating it as HTTP(S)."""
+        """Normalize the public shell back proxy URL while still validating HTTP(S)."""
         if value is None:
             return None
         stripped = value.strip()
@@ -75,6 +77,7 @@ class ServerSettings(BaseSettings):
     @field_validator("dify_api_base_url")
     @classmethod
     def normalize_dify_api_base_url(cls, value: str | None) -> str | None:
+        """Normalize the trusted Dify API base URL used for file request calls."""
         if value is None:
             return None
         stripped = value.strip()
@@ -89,6 +92,7 @@ class ServerSettings(BaseSettings):
     @field_validator("dify_api_inner_api_key")
     @classmethod
     def normalize_dify_api_inner_api_key(cls, value: str | None) -> str | None:
+        """Normalize the optional trusted Dify inner API key."""
         if value is None:
             return None
         stripped = value.strip()
@@ -96,7 +100,7 @@ class ServerSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_shell_back_proxy_requirements(self) -> "ServerSettings":
-        """Require the server secret whenever the shell back proxy URL is enabled."""
+        """Require the server secret and Dify API file settings in valid pairs."""
         if self.shell_back_proxy_public_url is not None and self.server_secret_key is None:
             raise ValueError(
                 "DIFY_AGENT_SERVER_SECRET_KEY is required when DIFY_AGENT_SHELL_BACK_PROXY_PUBLIC_URL is set."
@@ -112,6 +116,15 @@ class ServerSettings(BaseSettings):
         if self.server_secret_key is None:
             return None
         return BackProxyTokenCodec.from_server_secret(self.server_secret_key)
+
+    def create_back_proxy_file_request_handler(self) -> DifyApiBackProxyFileRequestHandler | None:
+        """Return the Dify API file bridge when both Dify API settings are configured."""
+        if self.dify_api_base_url is None or self.dify_api_inner_api_key is None:
+            return None
+        return DifyApiBackProxyFileRequestHandler(
+            dify_api_base_url=self.dify_api_base_url,
+            dify_api_inner_api_key=self.dify_api_inner_api_key,
+        )
 
 
 __all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "ServerSettings"]
