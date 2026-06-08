@@ -1,6 +1,7 @@
 """Dedicated tests for HITL behavior exposed through the Service API."""
 
 from __future__ import annotations
+from typing import override
 
 import json
 import sys
@@ -156,24 +157,30 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_reasons: Sequence[HumanInputRequired]
 
     @property
+    @override
     def id(self) -> str:
         return self.pause_id
 
     @property
+    @override
     def workflow_execution_id(self) -> str:
         return self.workflow_run_id
 
+    @override
     def get_state(self) -> bytes:
         raise AssertionError("state is not required for snapshot tests")
 
     @property
+    @override
     def resumed_at(self) -> datetime | None:
         return None
 
     @property
+    @override
     def paused_at(self) -> datetime:
         return self.paused_at_value
 
+    @override
     def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
         return self.pause_reasons
 
