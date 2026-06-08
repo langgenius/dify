@@ -13,7 +13,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.login import login_required, current_account_with_tenant
+from libs.login import login_required
 from models.account import Account
 from models.model import App
 from services.app_dsl_service import (
@@ -46,6 +46,16 @@ register_enum_models(console_ns, ImportStatus)
 register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
 
 
+def _current_tenant_id(current_user: Account) -> str | None:
+    current_tenant_id = getattr(current_user, "current_tenant_id", None)
+    if current_tenant_id:
+        return str(current_tenant_id)
+
+    current_tenant = getattr(current_user, "current_tenant", None)
+    tenant_id = getattr(current_tenant, "id", None)
+    return str(tenant_id) if tenant_id else None
+
+
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
     @console_ns.expect(console_ns.models[AppImportPayload.__name__])
@@ -59,8 +69,6 @@ class AppImportApi(Resource):
     @edit_permission_required
     @with_current_user
     def post(self, current_user: Account):
-        # Check user role first
-        current_user, current_tenant_id = current_account_with_tenant()
         args = AppImportPayload.model_validate(console_ns.payload)
 
         # AppDslService performs internal commits for some creation paths, so use a plain
@@ -90,9 +98,10 @@ class AppImportApi(Resource):
             ImportStatus.COMPLETED,
             ImportStatus.COMPLETED_WITH_WARNINGS,
         }
-        if is_created_app and result.app_id:
+        current_tenant_id = _current_tenant_id(current_user)
+        if is_created_app and result.app_id and current_tenant_id:
             result.permission_keys = get_app_permission_keys(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user.id,
                 result.app_id,
             )
@@ -121,8 +130,6 @@ class AppImportConfirmApi(Resource):
     @edit_permission_required
     @with_current_user
     def post(self, current_user: Account, import_id: str):
-        # Check user role first
-        current_user, current_tenant_id = current_account_with_tenant()
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         pending_data_raw = redis_client.get(redis_key)
         pending_data: PendingData | None = None
@@ -147,9 +154,10 @@ class AppImportConfirmApi(Resource):
                 ImportStatus.COMPLETED_WITH_WARNINGS,
             }
         )
-        if is_created_app and result.app_id:
+        current_tenant_id = _current_tenant_id(current_user)
+        if is_created_app and result.app_id and current_tenant_id:
             result.permission_keys = get_app_permission_keys(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user.id,
                 result.app_id,
             )

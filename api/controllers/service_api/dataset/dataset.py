@@ -46,6 +46,32 @@ from services.tag_service import (
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
 
+_SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
+_SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
+
+
+def _dump_service_dataset_detail(dataset: Any) -> dict[str, Any]:
+    return DatasetDetailResponse.model_validate(dataset, from_attributes=True).model_dump(
+        mode="json",
+        exclude=_SERVICE_DATASET_DETAIL_EXCLUDE,
+    )
+
+
+def _dump_service_dataset_list(response: dict[str, Any]) -> dict[str, Any]:
+    return DatasetListResponse.model_validate(response).model_dump(
+        mode="json",
+        exclude=_SERVICE_DATASET_LIST_EXCLUDE,
+    )
+
+
+def _dump_service_dataset_with_partial_members(data: dict[str, Any]) -> dict[str, Any]:
+    exclude: set[str] = set(_SERVICE_DATASET_DETAIL_EXCLUDE)
+    if "partial_member_list" not in data:
+        exclude.add("partial_member_list")
+
+    return DatasetDetailWithPartialMembersResponse.model_validate(data).model_dump(mode="json", exclude=exclude)
+
+
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
     description: str = Field(default="", description="Dataset description (max 400 chars)", max_length=400)
@@ -236,7 +262,7 @@ class DatasetListApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = [dump_response(DatasetDetailResponse, dataset) for dataset in datasets]
+        data = [_dump_service_dataset_detail(dataset) for dataset in datasets]
         for item in data:
             if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
@@ -254,7 +280,7 @@ class DatasetListApi(DatasetApiResource):
             "total": total,
             "page": query.page,
         }
-        return dump_response(DatasetListResponse, response), 200
+        return _dump_service_dataset_list(response), 200
 
     @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
     @service_api_ns.doc("create_dataset")
@@ -314,7 +340,7 @@ class DatasetListApi(DatasetApiResource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return dump_response(DatasetDetailResponse, dataset), 200
+        return _dump_service_dataset_detail(dataset), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>")
@@ -346,7 +372,7 @@ class DatasetApi(DatasetApiResource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        data = dump_response(DatasetDetailResponse, dataset)
+        data = _dump_service_dataset_detail(dataset)
         # check embedding setting
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
@@ -378,13 +404,7 @@ class DatasetApi(DatasetApiResource):
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
 
-        return (
-            DatasetDetailWithPartialMembersResponse.model_validate(data).model_dump(
-                mode="json",
-                exclude={"partial_member_list"} if "partial_member_list" not in data else set(),
-            ),
-            200,
-        )
+        return _dump_service_dataset_with_partial_members(data), 200
 
     @service_api_ns.expect(service_api_ns.models[DatasetUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset")
@@ -453,7 +473,7 @@ class DatasetApi(DatasetApiResource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        result_data = dump_response(DatasetDetailResponse, dataset)
+        result_data = _dump_service_dataset_detail(dataset)
         assert isinstance(current_user, Account)
         tenant_id = current_user.current_tenant_id
 
@@ -466,7 +486,7 @@ class DatasetApi(DatasetApiResource):
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
         result_data.update({"partial_member_list": partial_member_list})
 
-        return DatasetDetailWithPartialMembersResponse.model_validate(result_data).model_dump(mode="json"), 200
+        return _dump_service_dataset_with_partial_members(result_data), 200
 
     @service_api_ns.doc("delete_dataset")
     @service_api_ns.doc(description="Delete a dataset")
