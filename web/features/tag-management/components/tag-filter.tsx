@@ -87,7 +87,7 @@ export const TagFilter = ({
                 <Tag01Icon className="size-3.5 text-text-tertiary" aria-hidden="true" />
               </span>
             )}
-            <span className="min-w-0 truncate px-1 text-[13px] leading-4.5 text-text-secondary">
+            <span className="min-w-0 truncate px-1 text-[13px] leading-4.5 text-text-tertiary">
               {!value.length && placeholderLabel}
               {!!value.length && currentTagName}
             </span>
