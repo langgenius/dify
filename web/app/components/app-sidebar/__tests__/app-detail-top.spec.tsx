@@ -5,8 +5,8 @@ import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import AppDetailTop from '../app-detail-top'
 
 vi.mock('../toggle-button', () => ({
-  default: ({ expand, handleToggle }: { expand: boolean, handleToggle: () => void }) => (
-    <button type="button" data-testid="toggle-button" data-expand={expand} onClick={handleToggle}>
+  default: ({ expand, handleToggle, icon }: { expand: boolean, handleToggle: () => void, icon?: ReactNode }) => (
+    <button type="button" data-testid="toggle-button" data-expand={expand} data-has-icon={Boolean(icon)} onClick={handleToggle}>
       Toggle
     </button>
   ),
@@ -63,10 +63,11 @@ describe('AppDetailTop', () => {
   it('renders the sidebar toggle action in the top right', () => {
     const onToggle = vi.fn()
 
-    renderWithGotoAnythingStore(<AppDetailTop expand={false} onToggle={onToggle} />)
+    renderWithGotoAnythingStore(<AppDetailTop onToggle={onToggle} />)
     fireEvent.click(screen.getByTestId('toggle-button'))
 
-    expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-has-icon', 'true')
     expect(onToggle).toHaveBeenCalledTimes(1)
   })
 })
