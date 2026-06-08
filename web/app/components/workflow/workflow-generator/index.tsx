@@ -1,7 +1,7 @@
 'use client'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { CompletionParams, Model } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -30,6 +30,7 @@ import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { ModelModeType } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from './apply'
 import ExamplePrompts from './example-prompts'
@@ -47,7 +48,7 @@ const FE_TIMEOUT_MS = 60_000
 const EMPTY_MODEL: Model = {
   name: '',
   provider: '',
-  mode: 'chat' as unknown as ModelModeType.chat,
+  mode: ModelModeType.chat,
   completion_params: {} as CompletionParams,
 }
 

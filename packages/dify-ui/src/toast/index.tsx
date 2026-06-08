@@ -153,16 +153,16 @@ function ToastCard({
     <BaseToast.Root
       toast={toastItem}
       className={cn(
-        'pointer-events-auto absolute top-0 right-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+        'pointer-events-auto absolute top-0 right-0 w-90 max-w-[calc(100vw-2rem)] origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
-        '[transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height))))_scale(var(--toast-scale))]',
-        'data-expanded:h-(--toast-height) data-expanded:[transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px)))_scale(1)]',
-        'data-ending-style:[transform:translateY(-150%)] data-ending-style:opacity-0',
-        'data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))]',
-        'data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))]',
-        'data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:[transform:translateY(-150%)] data-starting-style:opacity-0',
+        'transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height))))_scale(var(--toast-scale))]',
+        'data-expanded:h-(--toast-height) data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px)))_scale(1)]',
+        'data-ending-style:transform-[translateY(-150%)] data-ending-style:opacity-0',
+        'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+150%))]',
+        'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))]',
+        'data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
         'after:pointer-events-auto after:absolute after:top-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-[\'\']',
       )}
     >
@@ -193,7 +193,7 @@ function ToastCard({
                 <BaseToast.Action
                   className={cn(
                     'inline-flex items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
-                    'hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+                    'hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   )}
                 />
               </div>
@@ -203,7 +203,7 @@ function ToastCard({
             <BaseToast.Close
               aria-label={toastCloseLabel}
               className={cn(
-                'flex h-5 w-5 items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+                'flex h-5 w-5 items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
               <span aria-hidden="true" className="i-ri-close-line h-4 w-4 text-text-tertiary" />
@@ -227,7 +227,7 @@ function ToastViewport() {
     >
       <div
         className={cn(
-          'pointer-events-none absolute top-4 right-4 w-[360px] max-w-[calc(100vw-2rem)] sm:right-8',
+          'pointer-events-none absolute top-4 right-4 w-90 max-w-[calc(100vw-2rem)] sm:right-8',
         )}
       >
         {toasts.map(toastItem => (

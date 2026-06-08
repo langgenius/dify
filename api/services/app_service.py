@@ -42,6 +42,7 @@ class AppListParams(BaseModel):
     mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
     name: str | None = None
     tag_ids: list[str] | None = None
+    creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     status: str | None = None
     openapi_visible: bool = False
@@ -138,6 +139,8 @@ class AppService:
             filters.append(App.enable_api.is_(True))
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
+        if params.creator_ids:
+            filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
             from libs.helper import escape_like_pattern
 
@@ -548,9 +551,9 @@ class AppService:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 # current tool standard
-                provider_type = tool.get("provider_type", "")
-                provider_id = tool.get("provider_id", "")
-                tool_name = tool.get("tool_name", "")
+                provider_type = str(tool.get("provider_type", ""))
+                provider_id = str(tool.get("provider_id", ""))
+                tool_name = str(tool.get("tool_name", ""))
                 if provider_type == "builtin":
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
