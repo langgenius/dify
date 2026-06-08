@@ -17,7 +17,7 @@ import {
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type RoleTagProps = {
+type RoleTagProps = {
   id: string
   bindingId: string
   label: string

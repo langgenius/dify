@@ -152,13 +152,3 @@ export const getDatasetACLCapabilities = (
     canAccessConfig: hasResourcePermission(permissionKeys, DatasetACLPermission.AccessConfig, hasCreatorPermissions),
   }
 }
-
-export const hasAppACLPermission = (
-  permissionKeys: readonly PermissionKey[] | null | undefined,
-  permissionKeySet: AppACLPermissionKey | AppACLPermissionKey[],
-) => hasPermission(permissionKeys, permissionKeySet)
-
-export const hasDatasetACLPermission = (
-  permissionKeys: readonly PermissionKey[] | null | undefined,
-  permissionKeySet: DatasetACLPermissionKey | DatasetACLPermissionKey[],
-) => hasPermission(permissionKeys, permissionKeySet)

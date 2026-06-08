@@ -10,9 +10,9 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import PermissionField from './permission-field'
 
 export type RoleModalMode = 'create' | 'view' | 'edit'
@@ -23,7 +23,7 @@ export type submitRoleData = {
   permissionKeys?: string[]
 }
 
-export type RoleModalProps = {
+type RoleModalProps = {
   mode: RoleModalMode
   open: boolean
   role?: Role

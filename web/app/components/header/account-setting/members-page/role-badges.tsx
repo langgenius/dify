@@ -21,7 +21,7 @@ const RoleBadge = memo(({ label, className }: RoleBadgeProps) => {
   )
 })
 
-export type RoleBadgesProps = {
+type RoleBadgesProps = {
   roleNames: string[]
   max?: number
   className?: string

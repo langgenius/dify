@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useCopyAccessRule, useDeleteAccessRule } from '@/service/access-control/use-workspace-access-rules'
 
-export type AccessRuleRowMenuProps = {
+type AccessRuleRowMenuProps = {
   rule: AccessPolicy
   onView?: () => void
   onEdit?: () => void

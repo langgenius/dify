@@ -1,6 +1,5 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import type { Dispatch, SetStateAction } from 'react'
-import type { IndicatorProps } from '../../../indicator'
 import type {
   Credential,
   CustomModel,

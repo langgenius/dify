@@ -13,7 +13,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
 
-export type AssignRolesModalProps = {
+type AssignRolesModalProps = {
   selectedRoles: Role[]
   allowMultipleRoles?: boolean
   onClose: () => void

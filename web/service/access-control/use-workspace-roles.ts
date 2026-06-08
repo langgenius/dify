@@ -3,6 +3,7 @@ import type {
   Role,
   RoleListRequest,
   RoleListResponse,
+  UpdateRolesRequest,
 } from '@/models/access-control'
 import type { CommonResponse } from '@/models/common'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -54,7 +55,7 @@ export const useUpdateWorkspaceRole = () => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-workspace-role'],
-    mutationFn: (data: CreateRoleRequest & { id: string }) =>
+    mutationFn: (data: UpdateRolesRequest) =>
       put<Role>(`/workspaces/current/rbac/roles/${data.id}`, {
         body: { ...data },
       }),

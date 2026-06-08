@@ -13,7 +13,7 @@ export type RoleListGroup = {
   items: Role[]
 }
 
-export type RoleListProps = {
+type RoleListProps = {
   groups: RoleListGroup[]
   className?: string
   isLoading?: boolean

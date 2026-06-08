@@ -15,7 +15,7 @@ import {
 import { memo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
-export type PermissionRoleChipProps = {
+type PermissionRoleChipProps = {
   roleId: string
   label: string
   isOwner: boolean

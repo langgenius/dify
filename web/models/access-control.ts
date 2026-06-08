@@ -35,7 +35,7 @@ export type SubjectAccount = { subjectId: string, subjectType: SubjectType, acco
 
 export type Subject = SubjectGroup | SubjectAccount
 
-export type Permission = {
+type Permission = {
   key: string
   name: string
   description: string
@@ -53,7 +53,7 @@ export type PermissionGroups = {
 
 export type PermissionKey = string
 
-export type RoleType = 'workspace' | 'app' | 'dataset'
+type RoleType = 'workspace' | 'app' | 'dataset'
 
 export type RoleCategory = 'global_system_default' | 'global_custom'
 
@@ -69,14 +69,14 @@ export type Role = {
   role_tag: 'owner' | '' // Used for identifying the unique owner role, which has some special handlings
 }
 
-export type Pagination = {
+type Pagination = {
   total_count: number
   per_page: number
   current_page: number
   total_pages: number
 }
 
-export type PaginationParameters = {
+type PaginationParameters = {
   page?: number
   limit?: number
   reverse?: boolean
@@ -111,7 +111,7 @@ export type WorkspaceAccessRulesRequest = {
 
 export type AccessPolicyResourceType = 'app' | 'dataset'
 
-export type AccessPolicyCategory = 'global_system_default' | 'global_custom'
+type AccessPolicyCategory = 'global_system_default' | 'global_custom'
 
 export type AccessPolicy = {
   id: string
@@ -142,7 +142,7 @@ export type UpdateAccessPolicyRequest = {
 
 export type BindingType = 'role' | 'account'
 
-export type Bindings = {
+type Bindings = {
   roles: Array<{
     role_id: string
     role_name: string
@@ -193,8 +193,8 @@ export type RolesOfMemberResponse = {
 }
 
 export type UpdateRolesOfMemberRequest = {
-  member_id: string
-  role_ids: string[]
+  memberId: string
+  roleIds: string[]
 }
 
 export type RemoveBindingPayload = {

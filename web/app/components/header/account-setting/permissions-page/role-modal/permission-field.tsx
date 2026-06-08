@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next'
 import PermissionPicker from './permission-picker'
 
-export type PermissionFieldProps = {
+type PermissionFieldProps = {
   value: string[]
   onChange: (next: string[]) => void
   readonly?: boolean

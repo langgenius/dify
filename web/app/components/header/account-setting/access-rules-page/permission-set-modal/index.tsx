@@ -10,9 +10,9 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import PermissionPicker from './permission-picker'
 
 export type PermissionSetModalMode = 'create' | 'edit' | 'view'
@@ -23,7 +23,7 @@ export type PermissionSetFormValues = {
   permissionKeys: string[]
 }
 
-export type PermissionSetModalProps = {
+type PermissionSetModalProps = {
   open: boolean
   mode: PermissionSetModalMode
   resourceType: AccessPolicyResourceType

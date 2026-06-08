@@ -18,7 +18,7 @@ import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import AssignRolesModal from '../assign-roles-modal'
 import PermissionRoleChip from './permission-role-chip'
 
-export type MemberDetailsModalProps = {
+type MemberDetailsModalProps = {
   member: Member
   canAssignRoles?: boolean
   allowMultipleRoles?: boolean
