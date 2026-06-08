@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import override
 
 from pydantic import Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -22,8 +24,8 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 from extensions.ext_database import db
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -37,6 +39,7 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
     VariableEntityType.CHECKBOX: ToolParameter.ToolParameterType.BOOLEAN,
     VariableEntityType.FILE: ToolParameter.ToolParameterType.FILE,
     VariableEntityType.FILE_LIST: ToolParameter.ToolParameterType.FILES,
+    VariableEntityType.JSON_OBJECT: ToolParameter.ToolParameterType.OBJECT,
 }
 
 
@@ -78,6 +81,7 @@ class WorkflowToolProviderController(ToolProviderController):
         return controller
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
 
@@ -95,10 +99,10 @@ class WorkflowToolProviderController(ToolProviderController):
         :param app: the app
         :return: the tool
         """
-        workflow: Workflow | None = (
-            session.query(Workflow)
+        workflow: Workflow | None = session.scalar(
+            select(Workflow)
             .where(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
-            .first()
+            .limit(1)
         )
 
         if not workflow:
@@ -216,13 +220,13 @@ class WorkflowToolProviderController(ToolProviderController):
             return self.tools
 
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            db_provider: WorkflowToolProvider | None = (
-                session.query(WorkflowToolProvider)
+            db_provider: WorkflowToolProvider | None = session.scalar(
+                select(WorkflowToolProvider)
                 .where(
                     WorkflowToolProvider.tenant_id == tenant_id,
                     WorkflowToolProvider.id == self.provider_id,
                 )
-                .first()
+                .limit(1)
             )
 
             if not db_provider:

@@ -17,15 +17,19 @@ const DefaultCards = React.memo(() => {
   )
 })
 
-const Empty = () => {
+type EmptyProps = {
+  message?: string
+}
+
+const Empty = ({ message }: EmptyProps) => {
   const { t } = useTranslation()
 
   return (
     <>
       <DefaultCards />
-      <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-t from-background-body to-transparent">
+      <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-linear-to-t from-background-body to-transparent">
         <span className="system-md-medium text-text-tertiary">
-          {t('newApp.noAppsFound', { ns: 'app' })}
+          {message ?? t('newApp.noAppsFound', { ns: 'app' })}
         </span>
       </div>
     </>

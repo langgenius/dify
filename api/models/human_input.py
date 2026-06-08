@@ -6,11 +6,8 @@ import sqlalchemy as sa
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dify_graph.nodes.human_input.enums import (
-    DeliveryMethodType,
-    HumanInputFormKind,
-    HumanInputFormStatus,
-)
+from core.workflow.human_input_adapter import DeliveryMethodType
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.helper import generate_string
 
 from .base import Base, DefaultFieldsMixin
@@ -30,6 +27,15 @@ def _generate_token() -> str:
 
 class HumanInputForm(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_forms"
+    __table_args__ = (
+        sa.Index(
+            "human_input_forms_workflow_run_id_node_id_idx",
+            "workflow_run_id",
+            "node_id",
+        ),
+        sa.Index("human_input_forms_status_expiration_time_idx", "status", "expiration_time"),
+        sa.Index("human_input_forms_status_created_at_idx", "status", "created_at"),
+    )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -84,6 +90,12 @@ class HumanInputForm(DefaultFieldsMixin, Base):
 
 class HumanInputDelivery(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_form_deliveries"
+    __table_args__ = (
+        sa.Index(
+            None,
+            "form_id",
+        ),
+    )
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -181,6 +193,10 @@ RecipientPayload = Annotated[
 
 class HumanInputFormRecipient(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_form_recipients"
+    __table_args__ = (
+        sa.Index(None, "form_id"),
+        sa.Index(None, "delivery_id"),
+    )
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -235,3 +251,55 @@ class HumanInputFormRecipient(DefaultFieldsMixin, Base):
             access_token=_generate_token(),
         )
         return recipient_model
+
+
+class HumanInputFormUploadToken(DefaultFieldsMixin, Base):
+    """Upload authorization token bound to one human input form recipient.
+
+    HITL upload tokens are intentionally separate from app/service bearer tokens.
+    The token is stored as an opaque random value so upload endpoints can perform
+    a direct lookup without entering the normal Web App authentication chain.
+    Upload ownership is resolved from the form's workflow run initiator instead
+    of being persisted on the token row itself.
+    """
+
+    __tablename__ = "human_input_form_upload_tokens"
+    __table_args__ = (
+        sa.UniqueConstraint("token", name="human_input_form_upload_tokens_token_key"),
+        sa.Index("human_input_form_upload_tokens_form_id_idx", "form_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    recipient_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    token: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+
+    form: Mapped[HumanInputForm] = relationship(
+        "HumanInputForm",
+        uselist=False,
+        foreign_keys=[form_id],
+        primaryjoin="foreign(HumanInputFormUploadToken.form_id) == HumanInputForm.id",
+        lazy="raise",
+    )
+
+
+class HumanInputFormUploadFile(DefaultFieldsMixin, Base):
+    """Association between a human input form and a file uploaded through its token.
+
+    Ownership remains on ``UploadFile`` itself; this table only records the
+    durable form/token/file linkage needed by Human Input flows.
+    """
+
+    __tablename__ = "human_input_form_upload_files"
+    __table_args__ = (
+        sa.UniqueConstraint("upload_file_id", name="human_input_form_upload_files_upload_file_id_key"),
+        sa.Index("human_input_form_upload_files_form_id_idx", "form_id"),
+        sa.Index("human_input_form_upload_files_upload_token_id_idx", "upload_token_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_token_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

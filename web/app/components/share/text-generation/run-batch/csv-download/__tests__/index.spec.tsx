@@ -29,10 +29,10 @@ describe('CSVDownload', () => {
   it('should render table headers and sample row for each variable', () => {
     render(<CSVDownload vars={vars} />)
 
-    expect(screen.getByText('share.generation.csvStructureTitle')).toBeInTheDocument()
-    expect(screen.getAllByRole('row')[0].children).toHaveLength(2)
-    expect(screen.getByText('prompt share.generation.field')).toBeInTheDocument()
-    expect(screen.getByText('context share.generation.field')).toBeInTheDocument()
+    expect(screen.getByText('share.generation.csvStructureTitle'))!.toBeInTheDocument()
+    expect(screen.getAllByRole('row')[0]!.children).toHaveLength(2)
+    expect(screen.getByText('prompt share.generation.field'))!.toBeInTheDocument()
+    expect(screen.getByText('context share.generation.field'))!.toBeInTheDocument()
   })
 
   it('should configure CSV downloader with template data', () => {
@@ -44,6 +44,6 @@ describe('CSVDownload', () => {
     expect(capturedProps?.data).toEqual([
       { prompt: '', context: '' },
     ])
-    expect(screen.getByText('share.generation.downloadTemplate')).toBeInTheDocument()
+    expect(screen.getByText('share.generation.downloadTemplate'))!.toBeInTheDocument()
   })
 })

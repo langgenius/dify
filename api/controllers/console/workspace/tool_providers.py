@@ -6,11 +6,12 @@ from urllib.parse import urlparse
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -19,15 +20,15 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.db.session_factory import session_factory
-from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
+from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
@@ -68,6 +69,7 @@ class BuiltinToolAddPayload(BaseModel):
     credentials: dict[str, Any]
     name: str | None = Field(default=None, max_length=30)
     type: CredentialType
+    visibility: str | None = None
 
 
 class BuiltinToolUpdatePayload(BaseModel):
@@ -208,6 +210,30 @@ class MCPProviderBasePayload(BaseModel):
     configuration: dict[str, Any] | None = Field(default_factory=dict)
     headers: dict[str, Any] | None = Field(default_factory=dict)
     authentication: dict[str, Any] | None = Field(default_factory=dict)
+    # None means "leave unchanged" on update; the controller resolves it to a
+    # concrete IdentityMode before calling the service (see _resolve_identity_mode).
+    identity_mode: IdentityMode | None = None
+
+
+def _resolve_identity_mode(requested: IdentityMode | None, *, current: IdentityMode) -> IdentityMode:
+    """Resolve the effective MCP identity_mode for a create/update request.
+
+    Keeps two API-layer concerns out of the service so the service always
+    receives a concrete value:
+
+    * ``None`` means "leave unchanged" (update semantics) — fall back to
+      ``current`` (``IdentityMode.OFF`` for a brand-new provider).
+    * Identity forwarding is an enterprise-only capability. On non-enterprise
+      deployments any non-OFF value is coerced back to OFF so a persisted row
+      can never imply forwarding that the runtime won't perform. This gates the
+      API surface to match the backend gate in
+      ``MCPTool._forwarding_requested`` — both the API and the backend
+      invocation must be gated on ``dify_config.ENTERPRISE_ENABLED``.
+    """
+    mode = current if requested is None else requested
+    if mode != IdentityMode.OFF and not dify_config.ENTERPRISE_ENABLED:
+        return IdentityMode.OFF
+    return mode
 
 
 class MCPProviderCreatePayload(MCPProviderBasePayload):
@@ -252,6 +278,7 @@ register_schema_models(
     MCPProviderDeletePayload,
     MCPAuthPayload,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/workspaces/current/tool-providers")
@@ -275,7 +302,7 @@ class ToolBuiltinProviderListToolsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
         return jsonable_encoder(
@@ -291,7 +318,7 @@ class ToolBuiltinProviderInfoApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))
@@ -304,7 +331,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
         payload = BuiltinToolCredentialDeletePayload.model_validate(console_ns.payload or {})
@@ -322,7 +349,7 @@ class ToolBuiltinProviderAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
@@ -336,6 +363,7 @@ class ToolBuiltinProviderAddApi(Resource):
             credentials=payload.credentials,
             name=payload.name,
             api_type=CredentialType.of(payload.type),
+            visibility=payload.visibility,
         )
 
 
@@ -346,7 +374,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         user, tenant_id = current_account_with_tenant()
         user_id = user.id
 
@@ -368,13 +396,20 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
-        _, tenant_id = current_account_with_tenant()
+    def get(self, provider: str):
+        user, tenant_id = current_account_with_tenant()
+        # Optional list of credential IDs to include even if visibility would hide them
+        # (used when a workflow/agent node still references another member's only_me credential).
+        include_credential_ids = request.args.getlist("include_credential_ids") or [
+            s for s in (request.args.get("include_credential_ids") or "").split(",") if s
+        ]
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
+                user=user,
+                include_credential_ids=include_credential_ids or None,
             )
         )
 
@@ -382,7 +417,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/icon")
 class ToolBuiltinProviderIconApi(Resource):
     @setup_required
-    def get(self, provider):
+    def get(self, provider: str):
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
@@ -782,7 +817,7 @@ class ToolPluginOAuthApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
@@ -820,7 +855,7 @@ class ToolPluginOAuthApi(Resource):
 @console_ns.route("/oauth/plugin/<path:provider>/tool/callback")
 class ToolOAuthCallback(Resource):
     @setup_required
-    def get(self, provider):
+    def get(self, provider: str):
         context_id = request.cookies.get("context_id")
         if not context_id:
             raise Forbidden("context_id not found")
@@ -832,7 +867,8 @@ class ToolOAuthCallback(Resource):
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
-        user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
 
         oauth_handler = OAuthHandler()
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id, provider)
@@ -856,7 +892,7 @@ class ToolOAuthCallback(Resource):
         if not credentials:
             raise Exception("the plugin credentials failed")
 
-        # add credentials to database
+        # add credentials to database — OAuth tokens default to only_me since they're personal
         BuiltinToolManageService.add_builtin_tool_provider(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -864,6 +900,7 @@ class ToolOAuthCallback(Resource):
             credentials=dict(credentials),
             expires_at=expires_at,
             api_type=CredentialType.OAUTH2,
+            visibility="only_me",
         )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
@@ -873,12 +910,13 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @console_ns.expect(console_ns.models[BuiltinProviderDefaultCredentialPayload.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
-        current_user, current_tenant_id = current_account_with_tenant()
+    def post(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
         payload = BuiltinProviderDefaultCredentialPayload.model_validate(console_ns.payload or {})
         return BuiltinToolManageService.set_default_provider(
-            tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=payload.id
+            tenant_id=current_tenant_id, provider=provider, id=payload.id
         )
 
 
@@ -906,7 +944,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
         return jsonable_encoder(
             BuiltinToolManageService.get_custom_oauth_client_params(tenant_id=current_tenant_id, provider=provider)
@@ -915,7 +953,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, provider):
+    def delete(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
         return jsonable_encoder(
             BuiltinToolManageService.delete_custom_oauth_client_params(tenant_id=current_tenant_id, provider=provider)
@@ -927,7 +965,7 @@ class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_oauth_client_schema(
@@ -941,13 +979,18 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
-        _, tenant_id = current_account_with_tenant()
+    def get(self, provider: str):
+        user, tenant_id = current_account_with_tenant()
+        include_credential_ids = request.args.getlist("include_credential_ids") or [
+            s for s in (request.args.get("include_credential_ids") or "").split(",") if s
+        ]
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
+                user=user,
+                include_credential_ids=include_credential_ids or None,
             )
         )
 
@@ -981,6 +1024,7 @@ class ToolProviderMCPApi(Resource):
                 headers=payload.headers or {},
                 configuration=configuration,
                 authentication=authentication,
+                identity_mode=_resolve_identity_mode(payload.identity_mode, current=IdentityMode.OFF),
             )
 
         # 2) Try to fetch tools immediately after creation so they appear without a second save.
@@ -1018,7 +1062,7 @@ class ToolProviderMCPApi(Resource):
 
         # Step 1: Get provider data for URL validation (short-lived session, no network I/O)
         validation_data = None
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             validation_data = service.get_provider_for_url_validation(
                 tenant_id=current_tenant_id, provider_id=payload.provider_id
@@ -1033,8 +1077,13 @@ class ToolProviderMCPApi(Resource):
         )
 
         # Step 3: Perform database update in a transaction
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
+            # Resolve "leave unchanged" (None) against the stored value, and gate
+            # the result on ENTERPRISE_ENABLED — both are API-layer concerns, so
+            # the service receives a concrete IdentityMode.
+            existing = service.get_provider(provider_id=payload.provider_id, tenant_id=current_tenant_id)
+            identity_mode = _resolve_identity_mode(payload.identity_mode, current=IdentityMode(existing.identity_mode))
             service.update_provider(
                 tenant_id=current_tenant_id,
                 provider_id=payload.provider_id,
@@ -1048,11 +1097,13 @@ class ToolProviderMCPApi(Resource):
                 configuration=configuration,
                 authentication=authentication,
                 validation_result=validation_result,
+                identity_mode=identity_mode,
             )
 
         return {"result": "success"}
 
     @console_ns.expect(console_ns.models[MCPProviderDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1060,7 +1111,7 @@ class ToolProviderMCPApi(Resource):
         payload = MCPProviderDeletePayload.model_validate(console_ns.payload or {})
         _, current_tenant_id = current_account_with_tenant()
 
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             service.delete_provider(tenant_id=current_tenant_id, provider_id=payload.provider_id)
 
@@ -1078,7 +1129,7 @@ class ToolMCPAuthApi(Resource):
         provider_id = payload.provider_id
         _, tenant_id = current_account_with_tenant()
 
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             db_provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
             if not db_provider:
@@ -1099,7 +1150,7 @@ class ToolMCPAuthApi(Resource):
                 sse_read_timeout=provider_entity.sse_read_timeout,
             ):
                 # Update credentials in new transaction
-                with Session(db.engine) as session, session.begin():
+                with sessionmaker(db.engine).begin() as session:
                     service = MCPToolManageService(session=session)
                     service.update_provider_credentials(
                         provider_id=provider_id,
@@ -1117,19 +1168,27 @@ class ToolMCPAuthApi(Resource):
                     resource_metadata_url=e.resource_metadata_url,
                     scope_hint=e.scope_hint,
                 )
-                with Session(db.engine) as session, session.begin():
+                with sessionmaker(db.engine).begin() as session:
                     service = MCPToolManageService(session=session)
                     response = service.execute_auth_actions(auth_result)
                     return response
             except MCPRefreshTokenError as e:
-                with Session(db.engine) as session, session.begin():
+                with sessionmaker(db.engine).begin() as session:
                     service = MCPToolManageService(session=session)
                     service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
                 raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
         except (MCPError, ValueError) as e:
-            with Session(db.engine) as session, session.begin():
+            with sessionmaker(db.engine).begin() as session:
                 service = MCPToolManageService(session=session)
                 service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
+            parsed = urlparse(server_url)
+            sanitized_url = f"{parsed.scheme}://{parsed.hostname}{parsed.path}"
+            logger.warning(
+                "MCP authorization failed for provider %s (url=%s)",
+                provider_id,
+                sanitized_url,
+                exc_info=True,
+            )
             raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 
@@ -1138,9 +1197,9 @@ class ToolMCPDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider_id):
+    def get(self, provider_id: str):
         _, tenant_id = current_account_with_tenant()
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
             return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True))
@@ -1154,7 +1213,7 @@ class ToolMCPListAllApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             # Skip sensitive data decryption for list view to improve performance
             tools = service.list_providers(tenant_id=tenant_id, include_sensitive=False)
@@ -1167,9 +1226,9 @@ class ToolMCPUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider_id):
+    def get(self, provider_id: str):
         _, tenant_id = current_account_with_tenant()
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             tools = service.list_provider_tools(
                 tenant_id=tenant_id,
@@ -1187,7 +1246,7 @@ class ToolMCPCallbackApi(Resource):
         authorization_code = query.code
 
         # Create service instance for handle_callback
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             mcp_service = MCPToolManageService(session=session)
             # handle_callback now returns state data and tokens
             state_data, tokens = handle_callback(state_key, authorization_code)

@@ -1,10 +1,11 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { debounce } from 'es-toolkit/compat'
 import {
   useCallback,
   useMemo,
 } from 'react'
-import { cn } from '@/utils/classnames'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
 import { useStore } from '../store'
 import Panel from './panel'
@@ -21,10 +22,12 @@ const VariableInspectPanel: FC = () => {
     return workflowCanvasHeight - 60
   }, [workflowCanvasHeight])
 
+  const setPanelHeightStorage = useSetLocalStorage<string>('workflow-variable-inpsect-panel-height', { raw: true })
+
   const handleResize = useCallback((width: number, height: number) => {
-    localStorage.setItem('workflow-variable-inpsect-panel-height', `${height}`)
+    setPanelHeightStorage(`${height}`)
     setVariableInspectPanelHeight(height)
-  }, [setVariableInspectPanelHeight])
+  }, [setVariableInspectPanelHeight, setPanelHeightStorage])
 
   const {
     triggerRef,
@@ -46,7 +49,7 @@ const VariableInspectPanel: FC = () => {
         ref={triggerRef}
         className="absolute -top-1 left-0 flex h-1 w-full cursor-row-resize resize-y items-center justify-center"
       >
-        <div className="h-0.5 w-10 rounded-sm bg-state-base-handle hover:w-full hover:bg-state-accent-solid active:w-full active:bg-state-accent-solid"></div>
+        <div className="h-0.5 w-10 rounded-xs bg-state-base-handle hover:w-full hover:bg-state-accent-solid active:w-full active:bg-state-accent-solid"></div>
       </div>
       <div
         ref={containerRef}

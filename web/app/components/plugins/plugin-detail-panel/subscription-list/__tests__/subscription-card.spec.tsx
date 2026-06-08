@@ -1,7 +1,6 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import SubscriptionCard from '../subscription-card'
 
@@ -30,6 +29,18 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
+}))
+
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({
   id: 'sub-1',
   name: 'Subscription One',
@@ -45,21 +56,20 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
 })
 
 describe('SubscriptionCard', () => {
   it('should render subscription name and endpoint', () => {
     render(<SubscriptionCard data={createSubscription()} />)
 
-    expect(screen.getByText('Subscription One')).toBeInTheDocument()
-    expect(screen.getByText('https://example.com')).toBeInTheDocument()
+    expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
+    expect(screen.getByText('https://example.com'))!.toBeInTheDocument()
   })
 
   it('should render used-by text when workflows are present', () => {
     render(<SubscriptionCard data={createSubscription({ workflows_in_use: 2 })} />)
 
-    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.usedByNum/)).toBeInTheDocument()
+    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.usedByNum/))!.toBeInTheDocument()
   })
 
   it('should open delete confirmation when delete action is clicked', () => {
@@ -69,15 +79,15 @@ describe('SubscriptionCard', () => {
     expect(deleteButton).toBeTruthy()
     fireEvent.click(deleteButton)
 
-    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/))!.toBeInTheDocument()
   })
 
   it('should open edit modal when edit action is clicked', () => {
     const { container } = render(<SubscriptionCard data={createSubscription()} />)
 
     const editButton = container.querySelectorAll('button')[0]
-    fireEvent.click(editButton)
+    fireEvent.click(editButton!)
 
-    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.edit\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.edit\.title/))!.toBeInTheDocument()
   })
 })

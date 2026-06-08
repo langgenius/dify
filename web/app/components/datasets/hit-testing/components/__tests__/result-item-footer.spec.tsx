@@ -61,8 +61,7 @@ describe('ResultItemFooter', () => {
         />,
       )
 
-      const openButton = screen.getByText(/open/i)
-      fireEvent.click(openButton)
+      fireEvent.click(screen.getByRole('button', { name: /open/i }))
 
       expect(mockShowDetailModal).toHaveBeenCalledTimes(1)
     })

@@ -61,7 +61,7 @@ vi.mock('@/app/components/datasets/common/image-list', () => ({
   ),
 }))
 
-// Markdown uses next/dynamic and react-syntax-highlighter (ESM)
+// Markdown uses next/dynamic and shiki (ESM)
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content, className }: { content: string, className?: string }) => (
     <div data-testid="markdown" className={`markdown-body ${className || ''}`}>{content}</div>
@@ -206,7 +206,7 @@ describe('SegmentCard', () => {
       )
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('!cursor-not-allowed')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should show action buttons when embeddingAvailable is true', () => {
@@ -221,8 +221,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      expect(screen.getByTestId('segment-edit-button')).toBeInTheDocument()
-      expect(screen.getByTestId('segment-delete-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeInTheDocument()
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
@@ -270,7 +270,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const deleteButton = screen.getByTestId('segment-delete-button')
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
@@ -290,7 +290,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const deleteButton = screen.getByTestId('segment-delete-button')
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
@@ -365,7 +365,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const editButton = screen.getByTestId('segment-edit-button')
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
       fireEvent.click(editButton)
 
       expect(onClickEdit).toHaveBeenCalledTimes(1)
@@ -385,7 +385,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const deleteButton = screen.getByTestId('segment-delete-button')
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
@@ -437,7 +437,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const editButton = screen.getByTestId('segment-edit-button')
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
       fireEvent.click(editButton)
 
       expect(onClickEdit).toHaveBeenCalledTimes(1)
@@ -792,9 +792,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      // The Switch component uses CSS classes for disabled state, not the native disabled attribute
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('!cursor-not-allowed', '!opacity-50')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should handle zero word count', () => {
@@ -877,7 +876,7 @@ describe('SegmentCard', () => {
       )
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('bg-components-toggle-bg')
+      expect(switchElement).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should render real Switch component with unchecked state', () => {
@@ -893,7 +892,7 @@ describe('SegmentCard', () => {
       )
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked')
+      expect(switchElement).toHaveAttribute('aria-checked', 'false')
     })
 
     it('should render real SegmentIndexTag with position formatting', () => {

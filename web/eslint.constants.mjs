@@ -1,29 +1,152 @@
-export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
-  'app/components/base/chat/chat-with-history/header/mobile-operation-dropdown.tsx',
-  'app/components/base/chat/chat-with-history/header/operation.tsx',
-  'app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown.tsx',
-  'app/components/base/chat/chat-with-history/sidebar/operation.tsx',
-  'app/components/base/chat/chat/citation/popup.tsx',
-  'app/components/base/chat/chat/citation/progress-tooltip.tsx',
-  'app/components/base/chat/chat/citation/tooltip.tsx',
-  'app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown.tsx',
-  'app/components/base/chip/index.tsx',
-  'app/components/base/date-and-time-picker/date-picker/index.tsx',
-  'app/components/base/date-and-time-picker/time-picker/index.tsx',
-  'app/components/base/dropdown/index.tsx',
-  'app/components/base/features/new-feature-panel/file-upload/setting-modal.tsx',
-  'app/components/base/features/new-feature-panel/text-to-speech/voice-settings.tsx',
-  'app/components/base/file-uploader/file-from-link-or-local/index.tsx',
-  'app/components/base/image-uploader/chat-image-uploader.tsx',
-  'app/components/base/image-uploader/text-generation-image-uploader.tsx',
-  'app/components/base/modal/modal.tsx',
-  'app/components/base/prompt-editor/plugins/context-block/component.tsx',
-  'app/components/base/prompt-editor/plugins/history-block/component.tsx',
-  'app/components/base/select/custom.tsx',
-  'app/components/base/select/index.tsx',
-  'app/components/base/select/pure.tsx',
-  'app/components/base/sort/index.tsx',
-  'app/components/base/tag-management/filter.tsx',
-  'app/components/base/theme-selector.tsx',
-  'app/components/base/tooltip/index.tsx',
+export const GENERATED_IGNORES = [
+  'storybook-static/',
+  '.next/',
+  'next/',
+  'next-env.d.ts',
+  'dist/',
+  'coverage/',
 ]
+
+export const NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS = [
+  {
+    name: 'next',
+    message: 'Import Next APIs from the corresponding @/next module instead of next.',
+  },
+]
+
+const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: ['next/image'],
+    message: 'Do not import next/image. Use native img tags instead.',
+  },
+  {
+    group: ['next/font', 'next/font/*'],
+    message: 'Do not import next/font. Use the project font styles instead.',
+  },
+  {
+    group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+    message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
+  },
+]
+
+const BASE_UI_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@base-ui/react',
+      '@base-ui/react/*',
+    ],
+    message: 'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+  },
+]
+
+const FLOATING_UI_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@floating-ui/*',
+    ],
+    message: 'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+  },
+]
+
+const LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '**/base/input',
+      '**/base/input/*',
+    ],
+    message: 'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
+  },
+]
+
+const LEGACY_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@/service/base',
+      '@/service/base/*',
+      '**/service/base',
+      '**/service/base/*',
+    ],
+    message: 'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+  },
+]
+
+const LEGACY_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@/service/fetch',
+      '@/service/fetch/*',
+      '**/service/fetch',
+      '**/service/fetch/*',
+    ],
+    message: 'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+  },
+]
+
+export const WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      './base',
+      './base/*',
+      '../base',
+      '../base/*',
+      '../../base',
+      '../../base/*',
+    ],
+    message: 'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+  },
+]
+
+export const WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      './fetch',
+      './fetch/*',
+      '../fetch',
+      '../fetch/*',
+      '../../fetch',
+      '../../fetch/*',
+    ],
+    message: 'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+  },
+]
+
+export const WEB_RESTRICTED_IMPORT_PATTERNS = [
+  ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+  ...BASE_UI_RESTRICTED_IMPORT_PATTERNS,
+  ...FLOATING_UI_RESTRICTED_IMPORT_PATTERNS,
+  ...LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS,
+  ...LEGACY_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+  ...LEGACY_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
+]
+
+export const HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS = {
+  prefix: 'i-',
+  propMappings: {
+    size: 'size',
+    width: 'w',
+    height: 'h',
+  },
+  libraries: [
+    {
+      prefix: 'i-custom-',
+      source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
+      name: '^(?<name>.*)$',
+    },
+    {
+      source: '^@remixicon/react$',
+      name: '^(?<set>Ri)(?<name>.+)$',
+    },
+    {
+      source: '^@(?<set>heroicons)/react/24/outline$',
+      name: '^(?<name>.*)Icon$',
+    },
+    {
+      source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
+      name: '^(?<name>.*)Icon$',
+    },
+    {
+      source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
+      name: '^(?<name>.*)Icon$',
+    },
+  ],
+}

@@ -17,12 +17,12 @@ export default class ErrorBoundary extends Component {
     this.state = { hasError: false }
   }
 
-  componentDidCatch(error: any, errorInfo: any) {
+  override componentDidCatch(error: any, errorInfo: any) {
     this.setState({ hasError: true })
     console.error(error, errorInfo)
   }
 
-  render() {
+  override render() {
     // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError) {

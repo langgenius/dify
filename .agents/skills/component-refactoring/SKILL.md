@@ -63,7 +63,7 @@ pnpm analyze-component <path> --json
 
 ```typescript
 // ❌ Before: Complex state logic in component
-const Configuration: FC = () => {
+function Configuration() {
   const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>(...)
   const [completionParams, setCompletionParams] = useState<FormValue>({})
@@ -85,7 +85,7 @@ export const useModelConfig = (appId: string) => {
 }
 
 // Component becomes cleaner
-const Configuration: FC = () => {
+function Configuration() {
   const { modelConfig, setModelConfig } = useModelConfig(appId)
   return <div>...</div>
 }
@@ -187,53 +187,10 @@ const Template = useMemo(() => {
 
 **When**: Component directly handles API calls, data transformation, or complex async operations.
 
-**Dify Convention**: Use `@tanstack/react-query` hooks from `web/service/use-*.ts` or create custom data hooks.
-
-```typescript
-// ❌ Before: API logic in component
-const MCPServiceCard = () => {
-  const [basicAppConfig, setBasicAppConfig] = useState({})
-  
-  useEffect(() => {
-    if (isBasicApp && appId) {
-      (async () => {
-        const res = await fetchAppDetail({ url: '/apps', id: appId })
-        setBasicAppConfig(res?.model_config || {})
-      })()
-    }
-  }, [appId, isBasicApp])
-  
-  // More API-related logic...
-}
-
-// ✅ After: Extract to data hook using React Query
-// use-app-config.ts
-import { useQuery } from '@tanstack/react-query'
-import { get } from '@/service/base'
-
-const NAME_SPACE = 'appConfig'
-
-export const useAppConfig = (appId: string, isBasicApp: boolean) => {
-  return useQuery({
-    enabled: isBasicApp && !!appId,
-    queryKey: [NAME_SPACE, 'detail', appId],
-    queryFn: () => get<AppDetailResponse>(`/apps/${appId}`),
-    select: data => data?.model_config || {},
-  })
-}
-
-// Component becomes cleaner
-const MCPServiceCard = () => {
-  const { data: config, isLoading } = useAppConfig(appId, isBasicApp)
-  // UI only
-}
-```
-
-**React Query Best Practices in Dify**:
-- Define `NAME_SPACE` for query key organization
-- Use `enabled` option for conditional fetching
-- Use `select` for data transformation
-- Export invalidation hooks: `useInvalidXxx`
+**Dify Convention**:
+- This skill is for component decomposition, not query/mutation design.
+- Do not introduce deprecated `useInvalid` / `useReset`.
+- Do not add thin passthrough `useQuery` wrappers during refactoring; only extract a custom hook when it truly orchestrates multiple queries/mutations or shared derived state.
 
 **Dify Examples**:
 - `web/service/use-workflow.ts`
@@ -408,7 +365,7 @@ For each extraction:
   ┌────────────────────────────────────────┐
   │ 1. Extract code                        │
   │ 2. Run: pnpm lint:fix                  │
-  │ 3. Run: pnpm type-check:tsgo           │
+  │ 3. Run: pnpm type-check                │
   │ 4. Run: pnpm test                      │
   │ 5. Test functionality manually         │
   │ 6. PASS? → Next extraction             │

@@ -3,6 +3,7 @@ import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
+from typing import override
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
@@ -50,6 +51,7 @@ class BillingDisabledPolicy(MessagesCleanPolicy):
     No special filter logic, just return all message ids.
     """
 
+    @override
     def filter_message_ids(
         self,
         messages: Sequence[SimpleMessage],
@@ -81,6 +83,7 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
         self._plan_provider = plan_provider
         self._current_timestamp = current_timestamp
 
+    @override
     def filter_message_ids(
         self,
         messages: Sequence[SimpleMessage],

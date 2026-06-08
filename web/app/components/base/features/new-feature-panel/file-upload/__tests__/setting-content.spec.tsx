@@ -120,7 +120,7 @@ describe('SettingContent', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
 
-    const closeIconButton = screen.getByTestId('close-setting-modal')
+    const closeIconButton = screen.getByRole('button', { name: 'common.operation.close' })
     expect(closeIconButton).toBeInTheDocument()
     if (!closeIconButton)
       throw new Error('Close icon button should exist')
@@ -134,7 +134,7 @@ describe('SettingContent', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
 
-    const closeIconButton = screen.getByTestId('close-setting-modal')
+    const closeIconButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeIconButton.focus()
     await userEvent.keyboard('{Enter}')
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -144,10 +144,21 @@ describe('SettingContent', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
 
-    const closeIconButton = screen.getByTestId('close-setting-modal')
+    const closeIconButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeIconButton.focus()
-    fireEvent.keyDown(closeIconButton, { key: ' ' })
+    await userEvent.keyboard(' ')
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not call onClose when close icon receives non-action key', () => {
+    const onClose = vi.fn()
+    renderWithProvider({ onClose })
+
+    const closeIconButton = screen.getByRole('button', { name: 'common.operation.close' })
+    closeIconButton.focus()
+    fireEvent.keyDown(closeIconButton, { key: 'Escape' })
+
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('should call onClose when cancel button is clicked to close', () => {

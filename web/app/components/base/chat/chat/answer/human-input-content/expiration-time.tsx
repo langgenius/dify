@@ -1,7 +1,7 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 import { getRelativeTime, isRelativeTimeSameOrAfter } from './utils'
 
 type ExpirationTimeProps = {
@@ -20,7 +20,7 @@ const ExpirationTime = ({
     <div
       data-testid="expiration-time"
       className={cn(
-        'mt-1 flex items-center gap-x-1 text-text-tertiary system-xs-regular',
+        'mt-1 flex items-center gap-x-1 system-xs-regular text-text-tertiary',
         !isSameOrAfter && 'text-text-warning',
       )}
     >

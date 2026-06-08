@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from datetime import datetime
 
-from dify_graph.entities.pause_reason import PauseReason
+from graphon.entities.pause_reason import PauseReason
 
 
 class WorkflowPauseEntity(ABC):

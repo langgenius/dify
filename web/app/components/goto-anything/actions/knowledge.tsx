@@ -1,7 +1,7 @@
 import type { ActionItem, KnowledgeSearchResult } from './types'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { fetchDatasets } from '@/service/datasets'
-import { cn } from '@/utils/classnames'
 import { Folder } from '../../base/icons/src/vender/solid/files'
 
 const EXTERNAL_PROVIDER = 'external' as const

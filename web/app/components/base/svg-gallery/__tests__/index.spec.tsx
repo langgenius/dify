@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import SVGRenderer from '..'
 
 const mockClick = vi.fn()
@@ -63,7 +64,7 @@ describe('SVGRenderer', () => {
       render(<SVGRenderer content="invalid" />)
 
       await waitFor(() => {
-        expect(screen.getByText(/Error rendering SVG/)).toBeInTheDocument()
+        expect(screen.getByText(/Error rendering SVG/))!.toBeInTheDocument()
       })
     })
 
@@ -103,35 +104,38 @@ describe('SVGRenderer', () => {
       await waitFor(() => {
         expect(mockClick).toHaveBeenCalled()
       })
-      const clickHandler = mockClick.mock.calls[0][0]
+      const clickHandler = mockClick.mock.calls[0]![0]
 
       await act(async () => {
         clickHandler()
       })
       const img = screen.getByAltText('Preview')
-      expect(img).toBeInTheDocument()
-      expect(img).toHaveAttribute(
+      expect(img)!.toBeInTheDocument()
+      expect(img)!.toHaveAttribute(
         'src',
         expect.stringContaining('data:image/svg+xml;base64'),
       )
     })
 
     it('closes image preview on cancel', async () => {
+      const user = userEvent.setup()
       render(<SVGRenderer content={validSvg} />)
 
       await waitFor(() => {
         expect(mockClick).toHaveBeenCalled()
       })
-      const clickHandler = mockClick.mock.calls[0][0]
+      const clickHandler = mockClick.mock.calls[0]![0]
       await act(async () => {
         clickHandler()
       })
 
-      expect(screen.getByAltText('Preview')).toBeInTheDocument()
+      expect(screen.getByAltText('Preview'))!.toBeInTheDocument()
 
-      fireEvent.keyDown(document, { key: 'Escape' })
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(screen.queryByAltText('Preview')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByAltText('Preview')).not.toBeInTheDocument()
+      })
     })
   })
 })

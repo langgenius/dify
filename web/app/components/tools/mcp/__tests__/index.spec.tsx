@@ -13,12 +13,24 @@ type MockDetail = MockProvider | undefined
 // Mock dependencies
 const mockRefetch = vi.fn()
 let mockProviders: MockProvider[] = []
+let mockIsLoadingToolProviders = false
 
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: () => ({
     data: mockProviders,
+    isLoading: mockIsLoadingToolProviders,
     refetch: mockRefetch,
   }),
+}))
+
+vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
+  default: () => (
+    <>
+      {Array.from({ length: 6 }, (_, index) => (
+        <div key={index} data-testid="mcp-card-skeleton">Loading MCP</div>
+      ))}
+    </>
+  ),
 }))
 
 // Mock child components
@@ -65,6 +77,7 @@ describe('MCPList', () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     mockProviders = []
+    mockIsLoadingToolProviders = false
     mockRefetch.mockResolvedValue(undefined)
   })
 
@@ -85,15 +98,18 @@ describe('MCPList', () => {
       expect(screen.getByTestId('create-card')).toBeInTheDocument()
     })
 
-    it('should render default skeleton cards when list is empty', () => {
+    it('should render card skeletons while tool providers are loading', () => {
+      mockIsLoadingToolProviders = true
       render(<MCPList searchText="" />)
 
-      // Should render skeleton cards when no providers
-      const container = document.querySelector('.grid')
-      expect(container).toBeInTheDocument()
-      // Check for skeleton cards (36 of them)
-      const skeletonCards = document.querySelectorAll('.h-\\[111px\\]')
-      expect(skeletonCards.length).toBe(36)
+      expect(screen.getAllByTestId('mcp-card-skeleton')).toHaveLength(6)
+      expect(screen.queryByTestId('provider-card-1')).not.toBeInTheDocument()
+    })
+
+    it('should not render card skeletons when the loaded list is empty', () => {
+      render(<MCPList searchText="" />)
+
+      expect(screen.queryByTestId('mcp-card-skeleton')).not.toBeInTheDocument()
     })
 
     it('should not render skeleton cards when providers exist', () => {
@@ -102,8 +118,7 @@ describe('MCPList', () => {
       ]
       render(<MCPList searchText="" />)
 
-      const skeletonCards = document.querySelectorAll('.h-\\[111px\\]')
-      expect(skeletonCards.length).toBe(0)
+      expect(screen.queryByTestId('mcp-card-skeleton')).not.toBeInTheDocument()
     })
   })
 
@@ -325,15 +340,16 @@ describe('MCPList', () => {
       expect(grid).toHaveClass('xl:grid-cols-4')
     })
 
-    it('should have overflow hidden when list is empty', () => {
+    it('should have overflow hidden while loading', () => {
       mockProviders = []
+      mockIsLoadingToolProviders = true
       render(<MCPList searchText="" />)
 
       const grid = document.querySelector('.grid')
       expect(grid).toHaveClass('overflow-hidden')
     })
 
-    it('should not have overflow hidden when list has providers', () => {
+    it('should not have overflow hidden when loading is complete', () => {
       mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
       render(<MCPList searchText="" />)
 

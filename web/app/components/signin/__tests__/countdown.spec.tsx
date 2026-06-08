@@ -31,7 +31,7 @@ describe('Countdown', () => {
       localStorage.setItem(COUNT_DOWN_KEY, '0')
       render(<Countdown />)
 
-      expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'login.checkCode.resend' })).toBeInTheDocument()
       expect(screen.queryByText('s')).not.toBeInTheDocument()
     })
 
@@ -39,7 +39,7 @@ describe('Countdown', () => {
       localStorage.setItem(COUNT_DOWN_KEY, '1000')
       render(<Countdown />)
 
-      expect(screen.queryByText('login.checkCode.resend')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'login.checkCode.resend' })).not.toBeInTheDocument()
     })
   })
 
@@ -79,7 +79,7 @@ describe('Countdown', () => {
 
       render(<Countdown onResend={onResend} />)
 
-      const resendLink = screen.getByText('login.checkCode.resend')
+      const resendLink = screen.getByRole('button', { name: 'login.checkCode.resend' })
       fireEvent.click(resendLink)
 
       expect(onResend).toHaveBeenCalledTimes(1)
@@ -90,7 +90,7 @@ describe('Countdown', () => {
 
       render(<Countdown />)
 
-      const resendLink = screen.getByText('login.checkCode.resend')
+      const resendLink = screen.getByRole('button', { name: 'login.checkCode.resend' })
       fireEvent.click(resendLink)
 
       expect(localStorage.setItem).toHaveBeenCalledWith(COUNT_DOWN_KEY, String(COUNT_DOWN_TIME_MS))
@@ -101,7 +101,7 @@ describe('Countdown', () => {
 
       render(<Countdown />)
 
-      const resendLink = screen.getByText('login.checkCode.resend')
+      const resendLink = screen.getByRole('button', { name: 'login.checkCode.resend' })
       expect(() => fireEvent.click(resendLink)).not.toThrow()
     })
   })
@@ -127,14 +127,14 @@ describe('Countdown', () => {
       localStorage.setItem(COUNT_DOWN_KEY, '0')
       render(<Countdown />)
 
-      expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'login.checkCode.resend' })).toBeInTheDocument()
     })
 
     it('should handle negative time values', () => {
       localStorage.setItem(COUNT_DOWN_KEY, '-1000')
       render(<Countdown />)
 
-      expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'login.checkCode.resend' })).toBeInTheDocument()
     })
 
     it('should round time display correctly', () => {
@@ -160,7 +160,7 @@ describe('Countdown', () => {
 
       render(<Countdown onResend={onResend} />)
 
-      expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'login.checkCode.resend' })).toBeInTheDocument()
     })
 
     it('should render correctly without any props', () => {

@@ -24,7 +24,7 @@ describe('Option', () => {
     it('should render the icon', () => {
       render(<Option {...defaultProps} />)
       // Icon should be rendered with correct size class
-      const icon = document.querySelector('.h-4.w-4')
+      const icon = document.querySelector('.size-4')
       expect(icon).toBeInTheDocument()
     })
   })

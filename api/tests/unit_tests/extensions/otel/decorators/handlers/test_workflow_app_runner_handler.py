@@ -63,7 +63,7 @@ class TestWorkflowAppRunnerHandler:
         def runner_run(self):
             return "result"
 
-        handler.wrapper(tracer, runner_run, (mock_workflow_runner,), {})
+        handler.wrapper(tracer, runner_run, mock_workflow_runner)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1

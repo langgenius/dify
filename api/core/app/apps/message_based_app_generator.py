@@ -28,12 +28,13 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.file_reference import resolve_file_record_id
 from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import Topic
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
@@ -130,10 +131,10 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         end_user_id = None
         account_id = None
         if application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
-            from_source = "api"
+            from_source = ConversationFromSource.API
             end_user_id = application_generate_entity.user_id
         else:
-            from_source = "console"
+            from_source = ConversationFromSource.CONSOLE
             account_id = application_generate_entity.user_id
 
         if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity):
@@ -225,9 +226,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     message_id=message.id,
                     type=file.type,
                     transfer_method=file.transfer_method,
-                    belongs_to="user",
+                    belongs_to=MessageFileBelongsTo.USER,
                     url=file.remote_url,
-                    upload_file_id=file.related_id,
+                    upload_file_id=resolve_file_record_id(file.reference),
                     created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
                     created_by=account_id or end_user_id or "",
                 )

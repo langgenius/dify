@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -5,7 +6,7 @@ import pytest
 from libs.smtp import SMTPClient
 
 
-def _mail() -> dict:
+def _mail() -> dict[str, Any]:
     return {"to": "user@example.com", "subject": "Hi", "html": "<b>Hi</b>"}
 
 

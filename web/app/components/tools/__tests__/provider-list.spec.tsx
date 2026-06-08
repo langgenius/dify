@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ToolTypeEnum } from '../../workflow/block-selector/types'
 import ProviderList from '../provider-list'
@@ -14,10 +16,6 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 let mockEnableMarketplace = false
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace } }),
-}))
 
 const createDefaultCollections = () => [
   {
@@ -89,10 +87,12 @@ const createDefaultCollections = () => [
 ]
 
 let mockCollectionData: ReturnType<typeof createDefaultCollections> = []
+let mockIsLoadingToolProviders = false
 const mockRefetch = vi.fn()
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: () => ({
     data: mockCollectionData,
+    isLoading: mockIsLoadingToolProviders,
     refetch: mockRefetch,
   }),
 }))
@@ -108,7 +108,19 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('@/app/components/plugins/card', () => ({
   default: ({ payload, className }: { payload: { name: string }, className?: string }) => (
-    <div data-testid={`card-${payload.name}`} className={className}>{payload.name}</div>
+    <div data-testid={`card-${payload.name}`} className={className}>
+      {payload.name}
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
+  default: () => (
+    <>
+      {Array.from({ length: 6 }, (_, index) => (
+        <div key={index} data-testid="tool-card-skeleton">Loading tool</div>
+      ))}
+    </>
   ),
 }))
 
@@ -206,8 +218,14 @@ describe('getToolType', () => {
 })
 
 const renderProviderList = (searchParams?: Record<string, string>) => {
+  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { enable_marketplace: mockEnableMarketplace },
+  })
+  const Wrapped = ({ children }: { children: ReactNode }) => (
+    <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
+  )
   return renderWithNuqs(
-    <ProviderList />,
+    <Wrapped><ProviderList /></Wrapped>,
     { searchParams },
   )
 }
@@ -217,6 +235,7 @@ describe('ProviderList', () => {
     vi.clearAllMocks()
     mockEnableMarketplace = false
     mockCollectionData = createDefaultCollections()
+    mockIsLoadingToolProviders = false
     mockCheckedInstalledData = null
     Element.prototype.scrollTo = vi.fn()
   })
@@ -302,7 +321,7 @@ describe('ProviderList', () => {
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'Google' } })
       expect(screen.queryByTestId('card-weather-tool')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('input-clear'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
       expect(screen.getByTestId('card-weather-tool')).toBeInTheDocument()
     })
 
@@ -327,6 +346,13 @@ describe('ProviderList', () => {
       renderProviderList({ category: 'api' })
       expect(screen.getByTestId('custom-create-card')).toBeInTheDocument()
     })
+
+    it('shows card skeletons instead of custom create card while tool providers are loading', () => {
+      mockIsLoadingToolProviders = true
+      renderProviderList({ category: 'api' })
+      expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
+      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
+    })
   })
 
   describe('Workflow Tab', () => {
@@ -340,6 +366,14 @@ describe('ProviderList', () => {
       renderProviderList({ category: 'workflow' })
       expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
     })
+
+    it('shows card skeletons instead of empty state while tool providers are loading', () => {
+      mockIsLoadingToolProviders = true
+      mockCollectionData = []
+      renderProviderList({ category: 'workflow' })
+      expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
+      expect(screen.queryByTestId('workflow-empty')).not.toBeInTheDocument()
+    })
   })
 
   describe('Builtin Tab Empty State', () => {
@@ -347,6 +381,14 @@ describe('ProviderList', () => {
       mockCollectionData = createDefaultCollections().filter(c => c.type !== 'builtin')
       renderProviderList()
       expect(screen.getByTestId('empty')).toBeInTheDocument()
+    })
+
+    it('shows card skeletons instead of empty component while tool providers are loading', () => {
+      mockIsLoadingToolProviders = true
+      mockCollectionData = []
+      renderProviderList()
+      expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
+      expect(screen.queryByTestId('empty')).not.toBeInTheDocument()
     })
 
     it('renders collection that has no labels property', () => {

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { YearAndMonthPickerOptionsProps } from '../types'
 import * as React from 'react'
+import OptionList from '../common/option-list'
 import OptionListItem from '../common/option-list-item'
 import { useMonths, useYearOptions } from '../hooks'
 
@@ -16,7 +17,7 @@ const Options: FC<YearAndMonthPickerOptionsProps> = ({
   return (
     <div className="grid grid-cols-2 gap-x-1 p-2">
       {/* Month Picker */}
-      <ul className="no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]">
+      <OptionList>
         {
           months.map((month, index) => {
             const isSelected = selectedMonth === index
@@ -31,9 +32,9 @@ const Options: FC<YearAndMonthPickerOptionsProps> = ({
             )
           })
         }
-      </ul>
+      </OptionList>
       {/* Year Picker */}
-      <ul className="no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]">
+      <OptionList>
         {
           yearOptions.map((year) => {
             const isSelected = selectedYear === year
@@ -48,7 +49,7 @@ const Options: FC<YearAndMonthPickerOptionsProps> = ({
             )
           })
         }
-      </ul>
+      </OptionList>
     </div>
   )
 }

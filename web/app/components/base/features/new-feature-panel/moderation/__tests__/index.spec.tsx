@@ -4,6 +4,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import Moderation from '../index'
 
+const { mockCodeBasedExtensionData } = vi.hoisted(() => ({
+  mockCodeBasedExtensionData: [] as Array<{ name: string, label: Record<string, string> }>,
+}))
+
 const mockSetShowModerationSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -16,7 +20,7 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: { data: [] } }),
+  useCodeBasedExtensions: () => ({ data: { data: mockCodeBasedExtensionData } }),
 }))
 
 const defaultFeatures: Features = {
@@ -46,24 +50,25 @@ const renderWithProvider = (
 describe('Moderation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCodeBasedExtensionData.length = 0
   })
 
   it('should render the moderation title', () => {
     renderWithProvider()
 
-    expect(screen.getByText(/feature\.moderation\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.title/))!.toBeInTheDocument()
   })
 
   it('should render description when not enabled', () => {
     renderWithProvider()
 
-    expect(screen.getByText(/feature\.moderation\.description/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.description/))!.toBeInTheDocument()
   })
 
   it('should render a switch toggle', () => {
     renderWithProvider()
 
-    expect(screen.getByRole('switch')).toBeInTheDocument()
+    expect(screen.getByRole('switch'))!.toBeInTheDocument()
   })
 
   it('should open moderation setting modal when enabled without type', () => {
@@ -86,7 +91,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.openai/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.openai/))!.toBeInTheDocument()
   })
 
   it('should show provider info when enabled with keywords type', () => {
@@ -101,7 +106,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
   })
 
   it('should show allEnabled when both inputs and outputs are enabled', () => {
@@ -116,7 +121,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.allEnabled/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.allEnabled/))!.toBeInTheDocument()
   })
 
   it('should show inputEnabled when only inputs are enabled', () => {
@@ -131,7 +136,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.inputEnabled/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.inputEnabled/))!.toBeInTheDocument()
   })
 
   it('should show outputEnabled when only outputs are enabled', () => {
@@ -146,7 +151,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.outputEnabled/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.outputEnabled/))!.toBeInTheDocument()
   })
 
   it('should show settings button when hovering over enabled feature', () => {
@@ -163,7 +168,7 @@ describe('Moderation', () => {
     const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
 
-    expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
+    expect(screen.getByText(/operation\.settings/))!.toBeInTheDocument()
   })
 
   it('should open moderation modal when settings button is clicked', () => {
@@ -213,7 +218,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/apiBasedExtension\.selector\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/apiBasedExtension\.selector\.title/))!.toBeInTheDocument()
   })
 
   it('should disable moderation and call onChange when switch is toggled off', () => {
@@ -255,7 +260,7 @@ describe('Moderation', () => {
     fireEvent.click(screen.getByRole('switch'))
 
     // Extract the onSaveCallback from the modal call
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     expect(modalCall.onSaveCallback).toBeDefined()
     expect(modalCall.onCancelCallback).toBeDefined()
   })
@@ -276,10 +281,29 @@ describe('Moderation', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     modalCall.onCancelCallback()
 
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('should invoke onCancelCallback from settings modal without onChange', () => {
+    renderWithProvider({}, {
+      moderation: {
+        enabled: true,
+        type: 'keywords',
+        config: {
+          inputs_config: { enabled: true, preset_response: '' },
+        },
+      },
+    })
+
+    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/operation\.settings/))
+
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
+    expect(() => modalCall.onCancelCallback()).not.toThrow()
   })
 
   it('should invoke onSaveCallback from settings modal', () => {
@@ -298,10 +322,29 @@ describe('Moderation', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     modalCall.onSaveCallback({ enabled: true, type: 'keywords', config: {} })
 
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('should invoke onSaveCallback from settings modal without onChange', () => {
+    renderWithProvider({}, {
+      moderation: {
+        enabled: true,
+        type: 'keywords',
+        config: {
+          inputs_config: { enabled: true, preset_response: '' },
+        },
+      },
+    })
+
+    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/operation\.settings/))
+
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
+    expect(() => modalCall.onSaveCallback({ enabled: true, type: 'keywords', config: {} })).not.toThrow()
   })
 
   it('should show code-based extension label for custom type', () => {
@@ -316,7 +359,43 @@ describe('Moderation', () => {
     })
 
     // For unknown types, falls back to codeBasedExtensionList label or '-'
-    expect(screen.getByText('-')).toBeInTheDocument()
+    // For unknown types, falls back to codeBasedExtensionList label or '-'
+    expect(screen.getByText('-'))!.toBeInTheDocument()
+  })
+
+  it('should show code-based extension label when custom type is configured', () => {
+    mockCodeBasedExtensionData.push({
+      name: 'custom-ext',
+      label: { 'en-US': 'Custom Moderation', 'zh-Hans': '自定义审核' },
+    })
+
+    renderWithProvider({}, {
+      moderation: {
+        enabled: true,
+        type: 'custom-ext',
+        config: {
+          inputs_config: { enabled: true, preset_response: '' },
+          outputs_config: { enabled: false, preset_response: '' },
+        },
+      },
+    })
+
+    expect(screen.getByText('Custom Moderation'))!.toBeInTheDocument()
+  })
+
+  it('should not show enable content text when both input and output moderation are disabled', () => {
+    renderWithProvider({}, {
+      moderation: {
+        enabled: true,
+        type: 'keywords',
+        config: {
+          inputs_config: { enabled: false, preset_response: '' },
+          outputs_config: { enabled: false, preset_response: '' },
+        },
+      },
+    })
+
+    expect(screen.queryByText(/feature\.moderation\.(allEnabled|inputEnabled|outputEnabled)/)).not.toBeInTheDocument()
   })
 
   it('should not open setting modal when clicking settings button while disabled', () => {
@@ -344,11 +423,20 @@ describe('Moderation', () => {
 
     fireEvent.click(screen.getByRole('switch'))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     // Execute the onSaveCallback
     modalCall.onSaveCallback({ enabled: true, type: 'keywords', config: {} })
 
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('should invoke onSaveCallback from enable modal without onChange', () => {
+    renderWithProvider()
+
+    fireEvent.click(screen.getByRole('switch'))
+
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
+    expect(() => modalCall.onSaveCallback({ enabled: true, type: 'keywords', config: {} })).not.toThrow()
   })
 
   it('should invoke onCancelCallback from enable modal and set enabled false', () => {
@@ -357,11 +445,36 @@ describe('Moderation', () => {
 
     fireEvent.click(screen.getByRole('switch'))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     // Execute the onCancelCallback
     modalCall.onCancelCallback()
 
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('should invoke onCancelCallback from enable modal without onChange', () => {
+    renderWithProvider()
+
+    fireEvent.click(screen.getByRole('switch'))
+
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
+    expect(() => modalCall.onCancelCallback()).not.toThrow()
+  })
+
+  it('should disable moderation when toggled off without onChange', () => {
+    renderWithProvider({}, {
+      moderation: {
+        enabled: true,
+        type: 'keywords',
+        config: {
+          inputs_config: { enabled: true, preset_response: '' },
+        },
+      },
+    })
+
+    expect(() => {
+      fireEvent.click(screen.getByRole('switch'))
+    }).not.toThrow()
   })
 
   it('should not show modal when enabling with existing type', () => {
@@ -398,12 +511,14 @@ describe('Moderation', () => {
     const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
 
     // Info is visible before hover
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/)).toBeInTheDocument()
+    // Info is visible before hover
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
 
     fireEvent.mouseEnter(card)
 
     // Info hidden, settings button shown
-    expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
+    // Info hidden, settings button shown
+    expect(screen.getByText(/operation\.settings/))!.toBeInTheDocument()
   })
 
   it('should show info display again when mouse leaves', () => {
@@ -422,6 +537,6 @@ describe('Moderation', () => {
     fireEvent.mouseEnter(card)
     fireEvent.mouseLeave(card)
 
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
   })
 })

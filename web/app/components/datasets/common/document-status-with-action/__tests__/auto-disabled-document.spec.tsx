@@ -1,9 +1,13 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
 
 import { useAutoDisabledDocuments } from '@/service/knowledge/use-document'
 import AutoDisabledDocument from '../auto-disabled-document'
+
+const { mockToastSuccess } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+}))
 
 type AutoDisabledDocumentsResponse = { document_ids: string[] }
 
@@ -26,9 +30,9 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useInvalidDisabledDocument: vi.fn(() => mockInvalidDisabledDocument),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
   },
 }))
 
@@ -134,10 +138,7 @@ describe('AutoDisabledDocument', () => {
       fireEvent.click(actionButton)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'success',
-          message: expect.any(String),
-        })
+        expect(toast.success).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })

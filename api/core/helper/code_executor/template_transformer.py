@@ -5,7 +5,7 @@ from base64 import b64encode
 from collections.abc import Mapping
 from typing import Any
 
-from dify_graph.variables.utils import dumps_with_segments
+from graphon.variables.utils import dumps_with_segments
 
 
 class TemplateTransformer(ABC):
@@ -77,17 +77,16 @@ class TemplateTransformer(ABC):
         """
 
         def convert_scientific_notation(value: Any) -> Any:
-            if isinstance(value, str):
-                # Check if the string looks like scientific notation
-                if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
+            match value:
+                case str() if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
                     try:
                         return float(value)
                     except ValueError:
                         pass
-            elif isinstance(value, dict):
-                return {k: convert_scientific_notation(v) for k, v in value.items()}
-            elif isinstance(value, list):
-                return [convert_scientific_notation(v) for v in value]
+                case dict():
+                    return {k: convert_scientific_notation(v) for k, v in value.items()}
+                case list():
+                    return [convert_scientific_notation(v) for v in value]
             return value
 
         return convert_scientific_notation(result)
@@ -102,7 +101,7 @@ class TemplateTransformer(ABC):
 
     @classmethod
     def serialize_inputs(cls, inputs: Mapping[str, Any]) -> str:
-        inputs_json_str = dumps_with_segments(inputs, ensure_ascii=False).encode()
+        inputs_json_str = dumps_with_segments(inputs).encode()
         input_base64_encoded = b64encode(inputs_json_str).decode("utf-8")
         return input_base64_encoded
 

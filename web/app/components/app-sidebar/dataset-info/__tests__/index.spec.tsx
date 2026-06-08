@@ -1,6 +1,5 @@
 import type { DataSet } from '@/models/datasets'
-import { RiEditLine } from '@remixicon/react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import {
@@ -22,6 +21,7 @@ const mockInvalidDatasetDetail = vi.fn()
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
+const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -90,7 +90,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
@@ -210,13 +210,38 @@ describe('MenuItem', () => {
       const user = userEvent.setup()
       const handleClick = vi.fn()
       // Arrange
-      render(<MenuItem name="Edit" Icon={RiEditLine} handleClick={handleClick} />)
+      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
 
       // Act
       await user.click(screen.getByText('Edit'))
 
       // Assert
       expect(handleClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should stop propagation before invoking the handler', () => {
+      const parentClick = vi.fn()
+      const handleClick = vi.fn()
+
+      render(
+        <div onClick={parentClick}>
+          <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
+        </div>,
+      )
+
+      fireEvent.click(screen.getByText('Edit'))
+
+      expect(handleClick).toHaveBeenCalledTimes(1)
+      expect(parentClick).not.toHaveBeenCalled()
+    })
+
+    it('should not crash when no click handler is provided', () => {
+      render(<MenuItem name="Edit" Icon={TestEditIcon} />)
+
+      const event = createEvent.click(screen.getByText('Edit'))
+      fireEvent(screen.getByText('Edit'), event)
+
+      expect(event.defaultPrevented).toBe(true)
     })
   })
 })
@@ -263,6 +288,47 @@ describe('Menu', () => {
       expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
       expect(screen.queryByText('datasetPipeline.operations.exportPipeline')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Interactions', () => {
+    it('should invoke the rename callback when edit is clicked', async () => {
+      const user = userEvent.setup()
+      const openRenameModal = vi.fn()
+
+      render(
+        <Menu
+          showDelete
+          openRenameModal={openRenameModal}
+          handleExportPipeline={vi.fn()}
+          detectIsUsedByApp={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByText('common.operation.edit'))
+
+      expect(openRenameModal).toHaveBeenCalledTimes(1)
+    })
+
+    it('should invoke export and delete callbacks from their menu items', async () => {
+      const user = userEvent.setup()
+      const handleExportPipeline = vi.fn()
+      const detectIsUsedByApp = vi.fn()
+
+      render(
+        <Menu
+          showDelete
+          openRenameModal={vi.fn()}
+          handleExportPipeline={handleExportPipeline}
+          detectIsUsedByApp={detectIsUsedByApp}
+        />,
+      )
+
+      await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
+      await user.click(screen.getByText('common.operation.delete'))
+
+      expect(handleExportPipeline).toHaveBeenCalledTimes(1)
+      expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
     })
   })
 })

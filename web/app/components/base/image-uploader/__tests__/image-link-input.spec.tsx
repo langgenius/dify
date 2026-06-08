@@ -140,9 +140,11 @@ describe('ImageLinkInput', () => {
 
       const input = screen.getByRole('textbox')
       await user.type(input, 'https://example.com/image.png')
-      await user.click(screen.getByRole('button'))
+      const button = screen.getByRole('button')
+      expect(button).toBeDisabled()
 
-      // Button is disabled, so click won't fire handleClick
+      await user.click(button)
+
       expect(onUpload).not.toHaveBeenCalled()
     })
 

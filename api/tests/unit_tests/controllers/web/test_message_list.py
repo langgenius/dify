@@ -137,7 +137,7 @@ def test_message_list_mapping(app: Flask) -> None:
             {"id": "file-dict", "filename": "a.txt", "type": "file", "transfer_method": "local"},
             message_file_obj,
         ],
-        status="success",
+        status="normal",
         error=None,
         message_metadata_dict={"meta": "value"},
         extra_contents=[

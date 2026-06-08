@@ -1,14 +1,16 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.account import TenantPluginPermission
 
 
 class PluginPermissionService:
     @staticmethod
     def get_permission(tenant_id: str) -> TenantPluginPermission | None:
-        with Session(db.engine) as session:
-            return session.query(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).first()
+        with session_factory.create_session() as session:
+            return session.scalar(
+                select(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).limit(1)
+            )
 
     @staticmethod
     def change_permission(
@@ -16,9 +18,9 @@ class PluginPermissionService:
         install_permission: TenantPluginPermission.InstallPermission,
         debug_permission: TenantPluginPermission.DebugPermission,
     ):
-        with Session(db.engine) as session:
-            permission = (
-                session.query(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).first()
+        with session_factory.create_session() as session, session.begin():
+            permission = session.scalar(
+                select(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).limit(1)
             )
             if not permission:
                 permission = TenantPluginPermission(
@@ -30,5 +32,4 @@ class PluginPermissionService:
                 permission.install_permission = install_permission
                 permission.debug_permission = debug_permission
 
-            session.commit()
             return True
