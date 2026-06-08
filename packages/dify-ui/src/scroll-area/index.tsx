@@ -42,7 +42,7 @@ const scrollAreaThumbClassName = cn(
 
 const scrollAreaViewportClassName = cn(
   'size-full min-h-0 min-w-0 outline-hidden',
-  'focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset',
+  'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
 )
 
 const scrollAreaCornerClassName = 'bg-transparent'

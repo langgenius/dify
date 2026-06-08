@@ -363,10 +363,23 @@ class WorkflowTool(Tool):
                             files.append(file_dict)
                     except Exception:
                         logger.exception("Failed to transform file %s", file)
+            elif parameter.type == ToolParameter.ToolParameterType.FILES:
+                value = tool_parameters.get(parameter.name)
+                if not parameter.required and self._is_empty_files_parameter_value(value):
+                    value = []
+                parameters_result[parameter.name] = value
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 
         return parameters_result, files
+
+    @staticmethod
+    def _is_empty_files_parameter_value(value: Any) -> bool:
+        """Identify empty optional file-list placeholders before workflow input validation."""
+
+        if value is None or value == "":
+            return True
+        return isinstance(value, list) and all(item is None or item == "" for item in value)
 
     def _extract_files(self, outputs: dict[str, Any]) -> tuple[dict[str, Any], list[File]]:
         """

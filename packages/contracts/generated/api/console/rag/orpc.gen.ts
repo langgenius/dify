@@ -67,6 +67,7 @@ import {
   zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse,
+  zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
   zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
   zPostRagPipelineCustomizedTemplatesByTemplateIdPath,
@@ -677,6 +678,8 @@ export const datasource = {
 }
 
 /**
+ * Get draft workflow
+ *
  * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
  * @deprecated
@@ -690,6 +693,7 @@ export const get12 = oc
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariables',
     path: '/rag/pipelines/{pipeline_id}/workflows/draft/environment-variables',
+    summary: 'Get draft workflow',
     tags: ['console'],
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath }))
@@ -1084,7 +1088,10 @@ export const patch2 = oc
     tags: ['console'],
   })
   .input(
-    z.object({ params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
+    z.object({
+      body: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
+      params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
+    }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
@@ -1115,6 +1122,8 @@ export const delete4 = oc
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
 
 /**
+ * Get draft workflow
+ *
  * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
  * @deprecated
@@ -1128,6 +1137,7 @@ export const get19 = oc
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftVariables',
     path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables',
+    summary: 'Get draft workflow',
     tags: ['console'],
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath }))
