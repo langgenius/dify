@@ -49,6 +49,7 @@ describe('MemberDetailsModal', () => {
           createRole({ id: 'role-1', name: 'Custom role' }),
         ],
       },
+      isLoading: false,
     } as unknown as ReturnType<typeof useRolesOfMember>)
     vi.mocked(useWorkspaceRoleList).mockReturnValue({
       data: {
@@ -72,6 +73,29 @@ describe('MemberDetailsModal', () => {
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
     } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+  })
+
+  describe('Rendering', () => {
+    it('should render role loading state without assigned role chips or count', () => {
+      vi.mocked(useRolesOfMember).mockReturnValue({
+        data: undefined,
+        isLoading: true,
+      } as unknown as ReturnType<typeof useRolesOfMember>)
+
+      render(
+        <MemberDetailsModal
+          member={member}
+          canAssignRoles
+          onClose={vi.fn()}
+          onAssignSubmit={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /members\.memberDetails\.assign/i })).toBeInTheDocument()
+      expect(screen.queryByText('Custom role')).not.toBeInTheDocument()
+      expect(screen.queryByText('1')).not.toBeInTheDocument()
+    })
   })
 
   describe('Role actions', () => {

@@ -12,6 +12,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -38,7 +39,7 @@ const MemberDetailsModal = ({
   const [assignOpen, setAssignOpen] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
-  const { data: rolesOfMember } = useRolesOfMember(member.id, language)
+  const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useRolesOfMember(member.id, language)
   const [pendingRoles, setPendingRoles] = useState<Role[]>()
 
   const roles = useMemo(() => rolesOfMember?.roles ?? [], [rolesOfMember?.roles])
@@ -114,9 +115,11 @@ const MemberDetailsModal = ({
                     defaultValue: 'Assigned Roles',
                   })}
                 </span>
-                <span className="system-xs-medium text-text-tertiary">
-                  {selectedRoleIds.length}
-                </span>
+                {!isLoadingRolesOfMember && (
+                  <span className="system-xs-medium text-text-tertiary">
+                    {selectedRoleIds.length}
+                  </span>
+                )}
               </div>
               {canAssignRoles && (
                 <Button
@@ -136,48 +139,58 @@ const MemberDetailsModal = ({
               )}
             </div>
 
-            {builtinRoles.length > 0 && (
-              <div className="mt-4">
-                <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
-                  {t('members.memberDetails.generalGroup', {
-                    ns: 'common',
-                  })}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {builtinRoles.map(role => (
-                    <PermissionRoleChip
-                      key={role.id}
-                      roleId={role.id}
-                      label={role.name}
-                      isOwner={role.role_tag === 'owner'}
-                      permissionKeys={role.permission_keys}
-                      onRemove={canAssignRoles ? () => handleRemove(role) : undefined}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            {customRoles.length > 0 && (
-              <div className="mt-4">
-                <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
-                  {t('members.memberDetails.customGroup', {
-                    ns: 'common',
-                  })}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {customRoles.map(role => (
-                    <PermissionRoleChip
-                      key={role.id}
-                      roleId={role.id}
-                      label={role.name}
-                      isOwner={role.role_tag === 'owner'}
-                      permissionKeys={role.permission_keys}
-                      onRemove={canAssignRoles ? () => handleRemove(role) : undefined}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+            {isLoadingRolesOfMember
+              ? (
+                  <div className="mt-4">
+                    <Loading />
+                  </div>
+                )
+              : (
+                  <>
+                    {builtinRoles.length > 0 && (
+                      <div className="mt-4">
+                        <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
+                          {t('members.memberDetails.generalGroup', {
+                            ns: 'common',
+                          })}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {builtinRoles.map(role => (
+                            <PermissionRoleChip
+                              key={role.id}
+                              roleId={role.id}
+                              label={role.name}
+                              isOwner={role.role_tag === 'owner'}
+                              permissionKeys={role.permission_keys}
+                              onRemove={canAssignRoles ? () => handleRemove(role) : undefined}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {customRoles.length > 0 && (
+                      <div className="mt-4">
+                        <div className="mb-2 system-2xs-medium-uppercase text-text-tertiary">
+                          {t('members.memberDetails.customGroup', {
+                            ns: 'common',
+                          })}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {customRoles.map(role => (
+                            <PermissionRoleChip
+                              key={role.id}
+                              roleId={role.id}
+                              label={role.name}
+                              isOwner={role.role_tag === 'owner'}
+                              permissionKeys={role.permission_keys}
+                              onRemove={canAssignRoles ? () => handleRemove(role) : undefined}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
           </div>
 
           {canAssignRoles && (
