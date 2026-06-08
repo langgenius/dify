@@ -24,8 +24,6 @@ class DatadogConfig(BaseTracingConfig):
     @classmethod
     def site_validator(cls, v, info: ValidationInfo):
         v = v.strip() if v else DEFAULT_DD_SITE
-        if not v:
-            return DEFAULT_DD_SITE
         if "/" in v or ":" in v:
             raise ValueError("site must be a hostname (e.g. datadoghq.com), not a URL")
         if v.lower() in UNSUPPORTED_DD_SITES:
