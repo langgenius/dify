@@ -5,7 +5,11 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import (
+    DifyExecutionContextInvokeFrom,
+    DifyExecutionContextLayerConfig,
+    DifyExecutionContextUserFrom,
+)
 from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
@@ -178,7 +182,12 @@ class WorkflowAgentRuntimeRequestBuilder:
                     conversation_id=get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID),
                     agent_id=context.agent.id,
                     agent_config_version_id=context.snapshot.id,
-                    invoke_from=self._agent_backend_invoke_from(context.dify_context.invoke_from),
+                    # Agent Files §1.3: forward the real Dify access context
+                    # (user_from + invoke_from) so downstream file/drive inner APIs
+                    # can rebuild it; the agent run mode moves to agent_mode.
+                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
+                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    agent_mode=self._agent_mode(context.dify_context.invoke_from),
                 ),
                 agent_soul_prompt=agent_soul.prompt.system_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
@@ -202,7 +211,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         )
 
     @staticmethod
-    def _agent_backend_invoke_from(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
+    def _agent_mode(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.VALIDATION}:
             return "single_step"
         return "workflow_run"
