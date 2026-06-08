@@ -6,7 +6,6 @@ import type {
 } from './access-policy'
 import type { AccessSubjectSelectionValue } from '@/app/components/base/access-subject-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControlDialog from '@/app/components/app/app-access-control/access-control-dialog'
 import { AccessControlDialogContent } from '@/app/components/app/app-access-control/access-control-dialog-content'
@@ -16,7 +15,6 @@ import { AccessMode as AppAccessMode } from '@/models/access-control'
 import {
   appAccessModeToPermissionKey,
   permissionIcon,
-  permissionKeyToAppAccessMode,
   SUBJECT_TYPE_GROUP,
 } from './access-policy'
 
@@ -106,17 +104,11 @@ export function SubjectsSummary({
 }
 
 export function DeploymentAccessControlDialog({
-  open,
-  value,
-  subjects,
   subjectsLoading,
   saving,
   onClose,
   onSubmit,
 }: {
-  open: boolean
-  value: AccessPermissionKind
-  subjects: AccessSubjectSelectionValue
   subjectsLoading?: boolean
   saving?: boolean
   onClose: () => void
@@ -124,41 +116,12 @@ export function DeploymentAccessControlDialog({
 }) {
   const { t } = useTranslation('deployments')
   const currentMenu = useAccessControlStore(s => s.currentMenu)
-  const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
   const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
-  const setSelectedGroupsForBreadcrumb = useAccessControlStore(s => s.setSelectedGroupsForBreadcrumb)
   const specificSelected = currentMenu === AppAccessMode.SPECIFIC_GROUPS_MEMBERS
   const selectedSubjectCount = specificGroups.length + specificMembers.length
   const specificEmpty = specificSelected && selectedSubjectCount === 0
   const confirmDisabled = saving || (specificSelected && (subjectsLoading || specificEmpty))
-  const initializedOpenDialogRef = useRef(false)
-
-  useEffect(() => {
-    if (!open) {
-      initializedOpenDialogRef.current = false
-      return
-    }
-    if (initializedOpenDialogRef.current)
-      return
-
-    initializedOpenDialogRef.current = true
-    setCurrentMenu(permissionKeyToAppAccessMode(value))
-    setSpecificGroups(subjects.groups)
-    setSpecificMembers(subjects.members)
-    setSelectedGroupsForBreadcrumb([])
-  }, [
-    open,
-    setCurrentMenu,
-    setSelectedGroupsForBreadcrumb,
-    setSpecificGroups,
-    setSpecificMembers,
-    subjects.groups,
-    subjects.members,
-    value,
-  ])
 
   const handleConfirm = () => {
     if (confirmDisabled)
@@ -173,7 +136,7 @@ export function DeploymentAccessControlDialog({
   }
 
   return (
-    <AccessControlDialog show={open} onClose={onClose}>
+    <AccessControlDialog show onClose={onClose}>
       <AccessControlDialogContent
         title={t('access.permissions.editTitle')}
         description={t('access.permissions.editDescription')}

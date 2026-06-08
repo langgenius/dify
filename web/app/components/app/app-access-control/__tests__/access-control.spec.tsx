@@ -14,10 +14,10 @@ import SpecificGroupsOrMembers from '../specific-groups-or-members'
 
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
-const mockMutateAsync = vi.fn()
+const mockMutate = vi.fn()
 const mockUseUpdateAccessMode = vi.fn(() => ({
   isPending: false,
-  mutateAsync: mockMutateAsync,
+  mutate: mockMutate,
 }))
 const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
@@ -94,10 +94,12 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  mockMutateAsync.mockResolvedValue(undefined)
+  mockMutate.mockImplementation((_: unknown, options?: { onSuccess?: () => void }) => {
+    options?.onSuccess?.()
+  })
   mockUseUpdateAccessMode.mockReturnValue({
     isPending: false,
-    mutateAsync: mockMutateAsync,
+    mutate: mockMutate,
   })
   mockUseAppWhiteListSubjects.mockReturnValue({
     isPending: false,
@@ -195,11 +197,9 @@ describe('SpecificGroupsOrMembers', () => {
       data: undefined,
     })
 
-    const { container } = render(<SpecificGroupsOrMembers />)
+    render(<SpecificGroupsOrMembers />)
 
-    await waitFor(() => {
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
-    })
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
   })
 
   it('should render fetched groups and members and support removal', async () => {
@@ -339,14 +339,17 @@ describe('AccessControl', () => {
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        appId: app.id,
-        accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-        subjects: [
-          { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
-          { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
-        ],
-      })
+      expect(mockMutate).toHaveBeenCalledWith(
+        {
+          appId: app.id,
+          accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+          subjects: [
+            { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
+            { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
+          ],
+        },
+        expect.objectContaining({ onSuccess: expect.any(Function) }),
+      )
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalled()
     })

@@ -14,6 +14,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import useAccessControlStore from '@/context/access-control-store'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
@@ -27,6 +28,7 @@ import {
   normalizeResolvedSubject,
   normalizeSubject,
   permissionKeyToAccessMode,
+  permissionKeyToAppAccessMode,
   policySubjects,
   selectedSubjectsFromPolicy,
   subjectsFromAccessControlSelection,
@@ -56,6 +58,7 @@ export function EnvironmentPermissionRow({
 }: EnvironmentPermissionRowProps) {
   const { t } = useTranslation('deployments')
   const environmentId = environment.id
+  const initializeAccessControlDraft = useAccessControlStore(s => s.initializeAccessControlDraft)
   const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
   const policy = summaryPolicy
   const policyKind = accessModeToPermissionKey(policy?.mode)
@@ -143,6 +146,16 @@ export function EnvironmentPermissionRow({
     })
   }
 
+  const handleOpenPermissionDialog = () => {
+    initializeAccessControlDraft({
+      currentMenu: permissionKeyToAppAccessMode(permissionKind),
+      specificGroups: subjectSelection.groups,
+      specificMembers: subjectSelection.members,
+      selectedGroupsForBreadcrumb: [],
+    })
+    setDialogOpen(true)
+  }
+
   return (
     <DetailTableRow className="block h-auto pc:table-row">
       <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 align-top pc:table-cell pc:p-3 pc:pr-2">
@@ -164,13 +177,10 @@ export function EnvironmentPermissionRow({
           disabled={controlsDisabled}
           loading={isSaving}
           environmentLabel={envName}
-          onClick={() => setDialogOpen(true)}
+          onClick={handleOpenPermissionDialog}
         />
         {dialogOpen && (
           <DeploymentAccessControlDialog
-            open={dialogOpen}
-            value={permissionKind}
-            subjects={subjectSelection}
             subjectsLoading={subjectsLoading}
             saving={isSaving}
             onClose={() => setDialogOpen(false)}

@@ -18,10 +18,10 @@ const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: { webapp_auth: mockWebappAuth },
 })
 
-const mockMutateAsync = vi.fn()
+const mockMutate = vi.fn()
 const mockUseUpdateAccessMode = vi.fn(() => ({
   isPending: false,
-  mutateAsync: mockMutateAsync,
+  mutate: mockMutate,
 }))
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
@@ -48,7 +48,9 @@ describe('AccessControl', () => {
       currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
       selectedGroupsForBreadcrumb: [],
     })
-    mockMutateAsync.mockResolvedValue(undefined)
+    mockMutate.mockImplementation((_: unknown, options?: { onSuccess?: () => void }) => {
+      options?.onSuccess?.()
+    })
     mockUseAppWhiteListSubjects.mockReturnValue({
       isPending: false,
       data: {
@@ -89,10 +91,13 @@ describe('AccessControl', () => {
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        appId: app.id,
-        accessMode: AccessMode.PUBLIC,
-      })
+      expect(mockMutate).toHaveBeenCalledWith(
+        {
+          appId: app.id,
+          accessMode: AccessMode.PUBLIC,
+        },
+        expect.objectContaining({ onSuccess: expect.any(Function) }),
+      )
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalledTimes(1)
     })

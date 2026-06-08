@@ -14,6 +14,13 @@ type AccessControlStore = {
   setCurrentMenu: (currentMenu: AccessMode) => void
   selectedGroupsForBreadcrumb: AccessControlGroup[]
   setSelectedGroupsForBreadcrumb: (selectedGroupsForBreadcrumb: AccessControlGroup[]) => void
+  initializeAccessControlDraft: (draft: {
+    appId?: App['id']
+    currentMenu: AccessMode
+    specificGroups?: AccessControlGroup[]
+    specificMembers?: AccessControlAccount[]
+    selectedGroupsForBreadcrumb?: AccessControlGroup[]
+  }) => void
 }
 
 const useAccessControlStore = create<AccessControlStore>((set) => {
@@ -28,6 +35,13 @@ const useAccessControlStore = create<AccessControlStore>((set) => {
     setCurrentMenu: currentMenu => set({ currentMenu }),
     selectedGroupsForBreadcrumb: [],
     setSelectedGroupsForBreadcrumb: selectedGroupsForBreadcrumb => set({ selectedGroupsForBreadcrumb }),
+    initializeAccessControlDraft: draft => set(state => ({
+      appId: draft.appId ?? state.appId,
+      currentMenu: draft.currentMenu,
+      specificGroups: draft.specificGroups ?? state.specificGroups,
+      specificMembers: draft.specificMembers ?? state.specificMembers,
+      selectedGroupsForBreadcrumb: draft.selectedGroupsForBreadcrumb ?? state.selectedGroupsForBreadcrumb,
+    })),
   }
 })
 
