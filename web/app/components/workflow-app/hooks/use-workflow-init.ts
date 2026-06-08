@@ -32,6 +32,20 @@ const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean 
 
   return edges.some(edge => startNodeIds.includes(edge.source))
 }
+
+const hasWorkflowEntryNode = (nodes: Node[] = []): boolean => {
+  return nodes.some(node => (
+    node?.data?.type === BlockEnum.Start
+    || node?.data?.type === BlockEnum.TriggerSchedule
+    || node?.data?.type === BlockEnum.TriggerWebhook
+    || node?.data?.type === BlockEnum.TriggerPlugin
+  ))
+}
+
+const hasStartPlaceholderNode = (nodes: Node[] = []): boolean => {
+  return nodes.some(node => node?.data?.type === BlockEnum.StartPlaceholder)
+}
+
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {
@@ -58,17 +72,30 @@ export const useWorkflowInit = () => {
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
-      setData(res)
+      const shouldRestoreStartPlaceholder = appDetail.mode === AppModeEnum.WORKFLOW && !hasWorkflowEntryNode(res.graph.nodes)
+      const initialData = shouldRestoreStartPlaceholder
+        ? {
+            ...res,
+            graph: {
+              ...res.graph,
+              nodes: hasStartPlaceholderNode(res.graph.nodes)
+                ? res.graph.nodes
+                : [...nodesTemplate, ...res.graph.nodes],
+            },
+          }
+        : res
+
+      setData(initialData)
       workflowStore.setState({
-        envSecrets: (res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
+        envSecrets: (initialData.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
           acc[env.id] = env.value
           return acc
         }, {} as Record<string, string>),
-        environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
-        conversationVariables: res.conversation_variables || [],
+        environmentVariables: initialData.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
+        conversationVariables: initialData.conversation_variables || [],
         isWorkflowDataLoaded: true,
       })
-      setSyncWorkflowDraftHash(res.hash)
+      setSyncWorkflowDraftHash(initialData.hash)
       setIsLoading(false)
     }
     catch (error: any) {
@@ -76,33 +103,70 @@ export const useWorkflowInit = () => {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
             const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
+            if (isAdvancedChat) {
+              workflowStore.setState({
+                notInitialWorkflow: true,
+                showOnboarding: false,
+                shouldAutoOpenStartNodeSelector: false,
+                hasShownOnboarding: false,
+              })
+
+              syncWorkflowDraft({
+                url: `/apps/${appDetail.id}/workflows/draft`,
+                params: {
+                  graph: {
+                    nodes: nodesTemplate,
+                    edges: edgesTemplate,
+                  },
+                  features: {
+                    retriever_resource: { enabled: true },
+                  },
+                  environment_variables: [],
+                  conversation_variables: [],
+                },
+              }).then((res) => {
+                workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+                setSyncWorkflowDraftHash(res.hash)
+                handleGetInitialWorkflowData()
+              })
+
+              return
+            }
+
+            const initialData = {
+              id: '',
+              graph: {
+                nodes: nodesTemplate,
+                edges: edgesTemplate,
+              },
+              hash: '',
+              created_at: 0,
+              created_by: { id: '', name: '', email: '' },
+              updated_at: 0,
+              updated_by: { id: '', name: '', email: '' },
+              tool_published: false,
+              features: {
+                retriever_resource: { enabled: true },
+              },
+              environment_variables: [],
+              conversation_variables: [],
+              version: '',
+              marked_name: '',
+              marked_comment: '',
+            } as FetchWorkflowDraftResponse
+
             workflowStore.setState({
               notInitialWorkflow: true,
-              showOnboarding: !isAdvancedChat,
-              shouldAutoOpenStartNodeSelector: !isAdvancedChat,
-              hasShownOnboarding: false,
+              showOnboarding: false,
+              shouldAutoOpenStartNodeSelector: false,
+              hasSelectedStartNode: false,
+              hasShownOnboarding: true,
+              isWorkflowDataLoaded: true,
             })
-            const nodesData = isAdvancedChat ? nodesTemplate : []
-            const edgesData = isAdvancedChat ? edgesTemplate : []
 
-            syncWorkflowDraft({
-              url: `/apps/${appDetail.id}/workflows/draft`,
-              params: {
-                graph: {
-                  nodes: nodesData,
-                  edges: edgesData,
-                },
-                features: {
-                  retriever_resource: { enabled: true },
-                },
-                environment_variables: [],
-                conversation_variables: [],
-              },
-            }).then((res) => {
-              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              setSyncWorkflowDraftHash(res.hash)
-              handleGetInitialWorkflowData()
-            })
+            setData(initialData)
+            setSyncWorkflowDraftHash('')
+            setIsLoading(false)
           }
         })
       }

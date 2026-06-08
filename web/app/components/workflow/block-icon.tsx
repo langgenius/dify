@@ -45,6 +45,7 @@ const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
 
 const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: string }>> = {
   [BlockEnum.Start]: Home,
+  [BlockEnum.StartPlaceholder]: Home,
   [BlockEnum.LLM]: Llm,
   [BlockEnum.Code]: Code,
   [BlockEnum.End]: End,
@@ -96,6 +97,7 @@ const normalizeToolIconUrl = (toolIcon: string) => {
 
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Start]: 'bg-util-colors-blue-brand-blue-brand-500',
+  [BlockEnum.StartPlaceholder]: 'bg-util-colors-blue-brand-blue-brand-500',
   [BlockEnum.LLM]: 'bg-util-colors-indigo-indigo-500',
   [BlockEnum.Code]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.End]: 'bg-util-colors-warning-warning-500',

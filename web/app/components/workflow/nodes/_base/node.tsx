@@ -229,7 +229,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          !data._isCandidate && (
+          data.type !== BlockEnum.StartPlaceholder && !data._isCandidate && (
             <NodeTargetHandle
               id={id}
               data={data}
@@ -239,7 +239,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
+          data.type !== BlockEnum.StartPlaceholder && data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
             <NodeSourceHandle
               id={id}
               data={data}
