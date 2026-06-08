@@ -1,3 +1,4 @@
+from typing import override
 from collections.abc import Iterator
 
 import pytest
@@ -81,6 +82,7 @@ def test_dify_agent_backend_run_client_delegates_sync_methods():
 
 def test_dify_agent_backend_run_client_maps_validation_error():
     class InvalidClient(_SuccessfulClient):
+        @override
         def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
             raise DifyAgentValidationError(detail={"field": "bad"})
 
@@ -92,6 +94,7 @@ def test_dify_agent_backend_run_client_maps_validation_error():
 
 def test_dify_agent_backend_run_client_maps_http_error():
     class HTTPErrorClient(_SuccessfulClient):
+        @override
         def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
             raise DifyAgentHTTPError(status_code=503, detail="unavailable")
 
@@ -104,6 +107,7 @@ def test_dify_agent_backend_run_client_maps_http_error():
 
 def test_dify_agent_backend_run_client_maps_timeout_error():
     class TimeoutClient(_SuccessfulClient):
+        @override
         def wait_run_sync(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
             raise DifyAgentTimeoutError("timeout")
 
@@ -115,6 +119,7 @@ def test_dify_agent_backend_run_client_maps_timeout_error():
 
 def test_dify_agent_backend_run_client_maps_stream_error():
     class StreamClient(_SuccessfulClient):
+        @override
         def stream_events_sync(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
             raise DifyAgentStreamError("bad stream")
             yield

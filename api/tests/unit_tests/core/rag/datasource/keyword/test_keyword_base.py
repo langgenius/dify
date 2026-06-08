@@ -1,3 +1,4 @@
+from typing import override
 from types import SimpleNamespace
 
 import pytest
@@ -6,22 +7,23 @@ from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 
 
-class _KeywordThatRaises(BaseKeyword):
+class    _KeywordThatRaises(BaseKeyword):
+    @override
     def create(self, texts: list[Document], **kwargs):
         return super().create(texts, **kwargs)
-
+    @override
     def add_texts(self, texts: list[Document], **kwargs):
         return super().add_texts(texts, **kwargs)
-
+    @override
     def text_exists(self, id: str) -> bool:
         return super().text_exists(id)
-
+    @override
     def delete_by_ids(self, ids: list[str]):
         return super().delete_by_ids(ids)
-
+    @override
     def delete(self):
         return super().delete()
-
+    @override
     def search(self, query: str, **kwargs):
         return super().search(query, **kwargs)
 
@@ -30,22 +32,22 @@ class _KeywordForHelpers(BaseKeyword):
     def __init__(self, dataset, existing_ids: set[str] | None = None):
         super().__init__(dataset)
         self._existing_ids = existing_ids or set()
-
+    @override
     def create(self, texts: list[Document], **kwargs):
         return self
-
+    @override
     def add_texts(self, texts: list[Document], **kwargs):
         return None
-
+    @override
     def text_exists(self, id: str) -> bool:
         return id in self._existing_ids
-
+    @override
     def delete_by_ids(self, ids: list[str]):
         return None
-
+    @override
     def delete(self):
         return None
-
+    @override
     def search(self, query: str, **kwargs):
         return []
 

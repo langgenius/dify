@@ -1,3 +1,5 @@
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from typing import override
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -11,12 +13,13 @@ from core.rag.models.document import AttachmentDocument, Document
 
 
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
+    @override
     def extract(self, extract_setting, **kwargs):
         return super().extract(extract_setting, **kwargs)
-
+    @override
     def transform(self, documents, current_user=None, **kwargs):
         return super().transform(documents, current_user=current_user, **kwargs)
-
+    @override
     def generate_summary_preview(self, tenant_id, preview_texts, summary_index_setting, doc_language=None):
         return super().generate_summary_preview(
             tenant_id=tenant_id,
@@ -24,7 +27,7 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
             summary_index_setting=summary_index_setting,
             doc_language=doc_language,
         )
-
+    @override
     def load(self, dataset, documents, multimodal_documents=None, with_keywords=True, **kwargs):
         return super().load(
             dataset=dataset,
@@ -33,16 +36,16 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
             with_keywords=with_keywords,
             **kwargs,
         )
-
+    @override
     def clean(self, dataset, node_ids, with_keywords=True, **kwargs):
         return super().clean(dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, **kwargs)
-
+    @override
     def index(self, dataset, document, chunks):
         return super().index(dataset=dataset, document=document, chunks=chunks)
-
+    @override
     def format_preview(self, chunks):
         return super().format_preview(chunks)
-
+    @override
     def retrieve(self, retrieval_method, query, dataset, top_k, score_threshold, reranking_model):
         return super().retrieve(
             retrieval_method=retrieval_method,
@@ -75,7 +78,7 @@ class TestBaseIndexProcessor:
         with pytest.raises(NotImplementedError):
             processor.format_preview([])
         with pytest.raises(NotImplementedError):
-            processor.retrieve("semantic_search", "q", Mock(), 3, 0.5, {})
+            processor.retrieve(RetrievalMethod.SEMANTIC_SEARCH, "q", Mock(), 3, 0.5, {})
 
     def test_get_splitter_validates_custom_length(self, processor: _ForwardingBaseIndexProcessor) -> None:
         with patch(
