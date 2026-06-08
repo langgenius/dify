@@ -177,6 +177,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                     else UUID_NIL
                 ),
                 user_id=user.id,
+                user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
                 extras=extras,
