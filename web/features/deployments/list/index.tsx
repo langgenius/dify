@@ -19,9 +19,7 @@ import { CreateDeploymentButton } from './create-deployment-button'
 import { EnvironmentFilter } from './environment-filter'
 import { InstanceCard } from './instance-card'
 import {
-  ALL_ENVIRONMENTS_FILTER_VALUE,
   envFilterQueryState,
-  environmentIdFromFilterValue,
   keywordsQueryState,
 } from './query-state'
 
@@ -51,11 +49,11 @@ function DeploymentsListEmpty() {
   const { t } = useTranslation('deployments')
   const [keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
   const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const hasFilter = Boolean(keywords.trim()) || envFilter !== ALL_ENVIRONMENTS_FILTER_VALUE
+  const hasFilter = Boolean(keywords.trim()) || Boolean(envFilter)
 
   function clearFilters() {
     void setKeywords(null)
-    void setEnvFilter(ALL_ENVIRONMENTS_FILTER_VALUE)
+    void setEnvFilter(null)
   }
 
   return (
@@ -166,7 +164,7 @@ export function DeploymentsList() {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const queryKeywords = keywords.trim()
-  const queryEnvironmentId = environmentIdFromFilterValue(envFilter)
+  const queryEnvironmentId = envFilter ?? undefined
 
   const {
     data,

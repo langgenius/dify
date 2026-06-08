@@ -15,14 +15,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { environmentId, environmentName } from '../environment'
-import {
-  ALL_ENVIRONMENTS_FILTER_VALUE,
-  envFilterQueryState,
-  environmentIdFromFilterValue,
-} from './query-state'
+import { envFilterQueryState } from './query-state'
 
 type EnvironmentFilterOption = {
-  value: string
+  value: string | null
   text: string
   icon: ReactNode
 }
@@ -55,22 +51,21 @@ export function EnvironmentFilter({ className }: {
     })) ?? []
   const filterOptions: EnvironmentFilterOption[] = [
     {
-      value: ALL_ENVIRONMENTS_FILTER_VALUE,
+      value: null,
       text: t('filter.allEnvs'),
       icon: <span className="i-ri-apps-2-line size-[14px]" />,
     },
     ...environmentOptions,
   ]
-  const selectedEnvironmentId = environmentIdFromFilterValue(envFilter)
   const selectedOption = filterOptions.find(option => option.value === envFilter)
-    ?? (selectedEnvironmentId
+    ?? (envFilter
       ? {
-          value: selectedEnvironmentId,
-          text: selectedEnvironmentId,
+          value: envFilter,
+          text: envFilter,
           icon: <EnvironmentOptionIcon />,
         }
       : filterOptions[0])
-  const activeFilter = selectedOption?.value ?? ALL_ENVIRONMENTS_FILTER_VALUE
+  const activeFilter = selectedOption?.value ?? null
 
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
@@ -100,7 +95,7 @@ export function EnvironmentFilter({ className }: {
           <div className="max-h-72 overflow-auto p-1">
             {filterOptions.map(option => (
               <DropdownMenuItem
-                key={option.value}
+                key={option.value ?? 'all'}
                 onClick={() => {
                   void setEnvFilter(option.value)
                   setOpen(false)
