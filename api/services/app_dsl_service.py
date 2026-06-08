@@ -80,6 +80,25 @@ class CheckDependenciesPendingData(BaseModel):
     app_id: str | None = None
 
 
+def _normalize_variable_id_mappings(mappings: list[Any]) -> list[Any]:
+    """Return ``mappings`` with every variable ``id`` coerced to a valid UUID.
+
+    Conversation and environment variable ids are persisted to UUID columns, so a
+    hand-authored DSL carrying a non-UUID id imports fine but makes every run fail
+    when the variables are persisted (issue #34358). Variables are referenced by name,
+    not id, so regenerating an invalid id is safe.
+    """
+    normalized: list[Any] = []
+    for mapping in mappings:
+        if isinstance(mapping, Mapping):
+            try:
+                uuid.UUID(str(mapping.get("id")))
+            except (ValueError, TypeError):
+                mapping = {**mapping, "id": str(uuid4())}
+        normalized.append(mapping)
+    return normalized
+
+
 class AppDslService:
     def __init__(self, session: Session):
         self._session = session
@@ -461,11 +480,15 @@ class AppDslService:
                 if not workflow_data or not isinstance(workflow_data, dict):
                     raise ValueError("Missing workflow data for workflow/advanced chat app")
 
-                environment_variables_list = workflow_data.get("environment_variables", [])
+                environment_variables_list = _normalize_variable_id_mappings(
+                    workflow_data.get("environment_variables", [])
+                )
                 environment_variables = [
                     variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
                 ]
-                conversation_variables_list = workflow_data.get("conversation_variables", [])
+                conversation_variables_list = _normalize_variable_id_mappings(
+                    workflow_data.get("conversation_variables", [])
+                )
                 conversation_variables = [
                     variable_factory.build_conversation_variable_from_mapping(obj)
                     for obj in conversation_variables_list
