@@ -24,7 +24,7 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
 from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from models.model import App, AppMode
@@ -141,6 +141,7 @@ class AgentAppWorkspaceListResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.AGENT])
     def get(self, app_model: App):
         _, tenant_id = current_account_with_tenant()
@@ -166,6 +167,7 @@ class AgentAppWorkspacePreviewResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.AGENT])
     def get(self, app_model: App):
         _, tenant_id = current_account_with_tenant()
@@ -193,6 +195,7 @@ class AgentAppWorkspaceDownloadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.AGENT])
     def get(self, app_model: App):
         _, tenant_id = current_account_with_tenant()
@@ -227,6 +230,7 @@ class WorkflowAgentWorkspaceListResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
         _, tenant_id = current_account_with_tenant()
@@ -263,6 +267,7 @@ class WorkflowAgentWorkspacePreviewResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
         _, tenant_id = current_account_with_tenant()
@@ -301,6 +306,7 @@ class WorkflowAgentWorkspaceDownloadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
         _, tenant_id = current_account_with_tenant()

@@ -21,6 +21,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -395,6 +396,7 @@ class DatasetListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @rbac_permission_required("dataset", "dataset_create_and_management", resource_required=False)
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
         # Convert query parameters to dict, handling list parameters correctly
@@ -489,6 +491,7 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management", resource_required=False)
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
         payload = DatasetCreatePayload.model_validate(console_ns.payload or {})
@@ -538,6 +541,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management")
     def get(self, dataset_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -599,6 +603,7 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @rbac_permission_required("dataset", "dataset_edit")
     def patch(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -654,6 +659,7 @@ class DatasetApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
+    @rbac_permission_required("dataset", "dataset_edit")
     def delete(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         current_user, _ = current_account_with_tenant()
@@ -684,6 +690,7 @@ class DatasetUseCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management")
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
 
@@ -704,6 +711,7 @@ class DatasetQueryApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management")
     def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -844,6 +852,7 @@ class DatasetRelatedAppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management")
     def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -880,6 +889,7 @@ class DatasetIndexingStatusApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management")
     def get(self, dataset_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -1025,6 +1035,7 @@ class DatasetEnableApiApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @rbac_permission_required("dataset", "dataset_edit")
     def post(self, dataset_id: UUID, status: str):
         dataset_id_str = str(dataset_id)
 
@@ -1094,6 +1105,7 @@ class DatasetErrorDocs(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management")
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -1119,6 +1131,7 @@ class DatasetPermissionUserListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management")
     def get(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -1149,6 +1162,7 @@ class DatasetAutoDisableLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_create_and_management")
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

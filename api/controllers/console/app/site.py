@@ -86,8 +86,8 @@ class AppSite(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    @get_app_model
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
         site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
@@ -135,8 +135,8 @@ class AppSiteAccessTokenReset(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @get_app_model
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
 

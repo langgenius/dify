@@ -20,9 +20,14 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.wraps import get_app_model
 from controllers.console.app.permission_keys import get_app_permission_keys
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.app.wraps import get_app_model
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    rbac_permission_required,
+    setup_required,
+)
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -365,8 +370,9 @@ class DraftWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get draft workflow
@@ -468,8 +474,9 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def post(self, app_model: App):
         """
         Run draft workflow
@@ -514,8 +521,9 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
@@ -552,8 +560,9 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
@@ -590,8 +599,9 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow loop node
@@ -628,8 +638,9 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow loop node
@@ -695,8 +706,8 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def post(self, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
@@ -724,8 +735,9 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def post(self, app_model: App, node_id: str):
         """
         Submit human input form preview
@@ -753,8 +765,8 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
@@ -782,8 +794,9 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App, node_id: str):
         """
         Submit human input form preview
@@ -811,8 +824,8 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @edit_permission_required
+    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     def post(self, app_model: App, node_id: str):
         """
         Test human input delivery
@@ -841,8 +854,9 @@ class DraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App):
         """
         Run draft workflow
@@ -879,8 +893,9 @@ class WorkflowTaskStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, app_model: App, task_id: str):
         """
         Stop workflow task
@@ -911,8 +926,9 @@ class DraftWorkflowNodeRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow node
@@ -961,8 +977,9 @@ class PublishedWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get published workflow
@@ -981,8 +998,9 @@ class PublishedWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_release_and_version")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, app_model: App):
         """
         Publish workflow
@@ -1025,8 +1043,9 @@ class DefaultBlockConfigsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get default block config
@@ -1047,8 +1066,9 @@ class DefaultBlockConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, block_type: str):
         """
         Get default block config
@@ -1083,8 +1103,8 @@ class ConvertToWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
     @edit_permission_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model: App):
         """
         Convert basic mode of chatbot app to workflow mode
@@ -1151,8 +1171,9 @@ class PublishedAllWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get published workflows
@@ -1200,8 +1221,8 @@ class DraftWorkflowRestoreApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, app_model: App, workflow_id: str):
         current_user, _ = current_account_with_tenant()
         workflow_service = WorkflowService()
@@ -1238,8 +1259,8 @@ class WorkflowByIdApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def patch(self, app_model: App, workflow_id: str):
         """
         Update workflow attributes
@@ -1316,6 +1337,7 @@ class DraftWorkflowNodeLastRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, node_id: str):
         srv = WorkflowService()
@@ -1356,8 +1378,9 @@ class DraftWorkflowTriggerRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
@@ -1420,8 +1443,9 @@ class DraftWorkflowTriggerNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App, node_id: str):
         """
         Poll for trigger events and execute single node when event arrives
@@ -1500,8 +1524,8 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, app_model: App):
         """
         Full workflow debug when the start node is a trigger

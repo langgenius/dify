@@ -1299,6 +1299,41 @@ class RBACService:
             )
             return MemberRolesResponse.model_validate(data or {})
 
+    class CheckAccess:
+        """Call the ``/inner/api/rbac/check-access`` endpoint."""
+
+        @staticmethod
+        def check(
+            tenant_id: str,
+            account_id: str | None,
+            *,
+            scene: str,
+            resource_type: str | None = None,
+            resource_id: str | None = None,
+        ) -> bool:
+            """Return ``True`` if the account is allowed, ``False`` otherwise."""
+            if not dify_config.RBAC_ENABLED:
+                return True
+
+            payload: dict[str, Any] = {
+                "account_id": account_id or "",
+                "tenant_id": tenant_id,
+                "scene": scene,
+            }
+            if resource_type:
+                payload["resource_type"] = resource_type
+            if resource_id:
+                payload["resource_id"] = resource_id
+
+            data = _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/check-access",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json=payload,
+            )
+            return bool(data.get("allowed", False))
+
     class AppPermissions:
         @staticmethod
         def batch_get(

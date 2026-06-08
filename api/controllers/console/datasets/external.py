@@ -13,6 +13,7 @@ from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -303,6 +304,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("dataset", "dataset_pipeline_test")
     def post(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

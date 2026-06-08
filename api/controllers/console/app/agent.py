@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
 from libs.helper import uuid_value
 from libs.login import login_required
 from models.model import App, AppMode
@@ -38,6 +38,7 @@ class AgentLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.AGENT_CHAT])
     def get(self, app_model: App):
         """Get agent logs"""

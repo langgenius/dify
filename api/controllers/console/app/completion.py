@@ -22,6 +22,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
     with_current_user_id,
@@ -104,8 +105,9 @@ class CompletionMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_current_user
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
@@ -150,8 +152,8 @@ class CompletionMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_current_user_id
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user_id: str, app_model: App, task_id: str):
 
         AppTaskService.stop_task(
@@ -176,9 +178,10 @@ class ChatMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required("app", "app_test_and_run")
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     def post(self, current_user: Account, app_model: App):
         raw_payload = console_ns.payload or {}
         args_model = ChatMessagePayload.model_validate(raw_payload)
@@ -236,8 +239,8 @@ class ChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user_id
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def post(self, current_user_id: str, app_model: App, task_id: str):
 
         AppTaskService.stop_task(

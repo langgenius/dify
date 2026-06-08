@@ -5,6 +5,7 @@ from uuid import UUID
 from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.wraps import rbac_permission_required
 from fields.hit_testing_fields import HitTestingResponse
 from libs.helper import dump_response
 from libs.login import login_required
@@ -38,6 +39,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @rbac_permission_required("dataset", "dataset_pipeline_test")
     def post(self, dataset_id: UUID) -> dict[str, object]:
         dataset_id_str = str(dataset_id)
 
