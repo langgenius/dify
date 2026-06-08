@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, override
 
 import httpx
 
@@ -16,6 +16,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval recommended app from dify official
     """
 
+    @override
     def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
         try:
             return self.fetch_pipeline_template_detail_from_dify_official(template_id)
@@ -23,6 +24,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             logger.warning("fetch recommended app detail from dify official failed: %r, switch to database.", e)
             return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
 
+    @override
     def get_pipeline_templates(self, language: str) -> dict[str, Any]:
         try:
             return self.fetch_pipeline_templates_from_dify_official(language)
@@ -30,6 +32,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             logger.warning("fetch pipeline templates from dify official failed: %r, switch to database.", e)
             return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language)
 
+    @override
     def get_type(self) -> str:
         return PipelineTemplateType.REMOTE
 

@@ -7,7 +7,7 @@ import threading
 import time
 from collections.abc import Mapping
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, override
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -40,6 +40,7 @@ from core.ops.entities.trace_entity import (
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Tenant
 from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
@@ -221,6 +222,7 @@ class TracingProviderConfigEntry(TypedDict):
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
+    @override
     def __getitem__(self, key: str) -> TracingProviderConfigEntry:
         try:
             match key:

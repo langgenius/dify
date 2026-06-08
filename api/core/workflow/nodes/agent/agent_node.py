@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.system_variables import SystemVariableKey, get_system_text
@@ -56,9 +56,11 @@ class AgentNode(Node[AgentNodeData]):
         self._message_transformer = message_transformer
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 
+    @override
     def populate_start_event(self, event) -> None:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         event.extras["agent_strategy"] = {
@@ -69,6 +71,7 @@ class AgentNode(Node[AgentNodeData]):
             ),
         }
 
+    @override
     def _run(self) -> Generator[NodeEventBase, None, None]:
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
@@ -167,6 +170,7 @@ class AgentNode(Node[AgentNodeData]):
             )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,

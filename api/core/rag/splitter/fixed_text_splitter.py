@@ -5,7 +5,7 @@ from __future__ import annotations
 import codecs
 import re
 from collections.abc import Set as AbstractSet
-from typing import Any, Literal
+from typing import Any, Literal, override
 
 from core.model_manager import ModelInstance
 from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter
@@ -51,6 +51,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         self._fixed_separator = codecs.decode(fixed_separator, "unicode_escape")
         self._separators = separators or ["\n\n", "\n", "。", ". ", " ", ""]
 
+    @override
     def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
         if self._fixed_separator:

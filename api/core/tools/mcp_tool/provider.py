@@ -1,4 +1,4 @@
-from typing import Any, Self
+from typing import Any, Self, override
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.types import Tool as RemoteMCPTool
@@ -39,6 +39,7 @@ class MCPToolProviderController(ToolProviderController):
         self.sse_read_timeout = sse_read_timeout
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider
@@ -113,6 +114,7 @@ class MCPToolProviderController(ToolProviderController):
         """
         pass
 
+    @override
     def get_tool(self, tool_name: str) -> MCPTool:
         """
         return tool with given name

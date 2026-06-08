@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Any, cast, override
 
 import mlflow
 from mlflow.entities import Document, Span, SpanEvent, SpanStatusCode, SpanType
@@ -86,6 +86,7 @@ class MLflowDataTrace(BaseTraceInstance):
 
         self._project_url = f"{config.tracking_uri}/#/experiments/{config.experiment_id}/traces"
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
         """Simple dispatch to trace methods"""
         try:
