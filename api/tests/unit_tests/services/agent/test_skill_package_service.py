@@ -89,6 +89,40 @@ def test_zip_slip_member_rejected():
     assert exc_info.value.code == "unsafe_path"
 
 
+def test_empty_archive_rejected():
+    with pytest.raises(SkillPackageError) as exc_info:
+        SkillPackageService().validate_and_extract(content=b"", filename="skill.zip")
+    assert exc_info.value.code == "empty_archive"
+
+
+def test_bad_frontmatter_yaml_rejected():
+    bad = b"---\n: : : not yaml\n---\n# x\n"
+    with pytest.raises(SkillPackageError) as exc_info:
+        _extract({"SKILL.md": bad})
+    assert exc_info.value.code == "invalid_frontmatter"
+
+
+def test_unterminated_frontmatter_falls_back_to_heading():
+    # leading '---' with no closing fence -> no frontmatter, use the heading
+    manifest = _extract({"SKILL.md": b"---\n# Heading Wins\nbody"})
+    assert manifest.name == "Heading Wins"
+
+
+def test_read_member_bytes_roundtrip_and_errors():
+    service = SkillPackageService()
+    payload = _zip({"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('x')\n"})
+
+    assert service.read_member_bytes(content=payload, member_path="scripts/run.py") == b"print('x')\n"
+
+    with pytest.raises(SkillPackageError) as missing:
+        service.read_member_bytes(content=payload, member_path="nope.txt")
+    assert missing.value.code == "member_not_found"
+
+    with pytest.raises(SkillPackageError) as bad_zip:
+        service.read_member_bytes(content=b"not a zip", member_path="SKILL.md")
+    assert bad_zip.value.code == "invalid_archive"
+
+
 def test_to_skill_ref_carries_metadata():
     manifest = _extract({"SKILL.md": _SKILL_MD.encode()})
     ref = manifest.to_skill_ref(file_id="upload-1", path="pdf-toolkit/.DIFY-SKILL-FULL.zip")

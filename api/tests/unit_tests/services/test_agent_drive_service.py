@@ -6,6 +6,7 @@ exercised against the project's in-memory SQLite engine with seeded ToolFiles.
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Generator
 from unittest.mock import patch
 
@@ -13,7 +14,9 @@ import pytest
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
+from extensions.storage.storage_type import StorageType
 from models.agent import AgentDriveFile
+from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent_drive_service import (
@@ -172,3 +175,97 @@ def test_recommit_same_value_is_idempotent_and_keeps_value():
         assert session.scalar(select(ToolFile).where(ToolFile.id == tf)) is not None
         rows = list(session.scalars(select(AgentDriveFile).where(AgentDriveFile.key == "a.txt")))
     assert len(rows) == 1
+
+
+def _seed_upload_file(*, name: str = "u.txt") -> str:
+    upload = UploadFile(
+        tenant_id=TENANT,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{TENANT}/{name}",
+        name=name,
+        size=7,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=USER,
+        created_at=datetime.datetime.now(tz=datetime.UTC),
+        used=False,
+    )
+    with session_factory.create_session() as session:
+        session.add(upload)
+        session.commit()
+        return upload.id
+
+
+def _commit_upload(key: str, upload_file_id: str, *, owned: bool = True):
+    return AgentDriveService().commit(
+        tenant_id=TENANT,
+        user_id=USER,
+        agent_id=AGENT,
+        items=[
+            DriveCommitItem(
+                key=key,
+                file_ref={"kind": "upload_file", "id": upload_file_id},
+                value_owned_by_drive=owned,
+            )
+        ],
+    )
+
+
+def test_commit_upload_file_source_and_manifest():
+    uf = _seed_upload_file()
+    _commit_upload("docs/u.txt", uf)
+
+    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT)
+    assert items[0]["file_kind"] == "upload_file"
+    assert items[0]["file_id"] == uf
+    assert items[0]["mime_type"] == "text/plain"
+
+
+def test_commit_rejects_missing_upload_file():
+    with pytest.raises(AgentDriveError) as exc_info:
+        _commit_upload("x.txt", "44444444-4444-4444-4444-444444444444")
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.code == "source_not_found"
+
+
+def test_overwrite_cleans_old_upload_file_value():
+    u1 = _seed_upload_file(name="v1.txt")
+    u2 = _seed_upload_file(name="v2.txt")
+    _commit_upload("doc.txt", u1, owned=True)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        _commit_upload("doc.txt", u2, owned=True)
+        storage_mock.delete.assert_called_once()
+
+    with session_factory.create_session() as session:
+        assert session.scalar(select(UploadFile).where(UploadFile.id == u1)) is None
+        assert session.scalar(select(UploadFile).where(UploadFile.id == u2)) is not None
+
+
+def test_manifest_includes_internal_download_url():
+    tf = _seed_tool_file()
+    _commit("data/r.txt", tf)
+
+    with (
+        patch("services.agent_drive_service.file_factory.build_from_mapping", return_value=object()),
+        patch("services.agent_drive_service.DifyWorkflowFileRuntime") as runtime_cls,
+    ):
+        runtime_cls.return_value.resolve_file_url.return_value = "http://internal/files/x?sign=1"
+        items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, include_download_url=True)
+
+    assert items[0]["download_url"] == "http://internal/files/x?sign=1"
+    # drive-owned resolution: internal URL (for_external=False)
+    assert runtime_cls.return_value.resolve_file_url.call_args.kwargs["for_external"] is False
+
+
+def test_manifest_download_url_none_when_unresolvable():
+    tf = _seed_tool_file()
+    _commit("data/r.txt", tf)
+
+    with patch(
+        "services.agent_drive_service.file_factory.build_from_mapping",
+        side_effect=ValueError("not found"),
+    ):
+        items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, include_download_url=True)
+    assert items[0]["download_url"] is None
