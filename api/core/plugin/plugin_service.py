@@ -312,7 +312,7 @@ class PluginService:
         return plugins
 
     @staticmethod
-    def _normalize_endpoint_count(value: object) -> int:
+    def _normalize_endpoint_count(value: int | str | None) -> int:
         """Convert daemon endpoint counters to safe non-negative integers.
 
         Some daemon builds use ``-1`` as an "unknown / not synced yet" sentinel
@@ -320,9 +320,12 @@ class PluginService:
         transport detail, but it must never leak through the console API because
         the UI displays these counters directly.
         """
+        if value is None:
+            return 0
+
         try:
             return max(0, int(value))
-        except (TypeError, ValueError):
+        except ValueError:
             return 0
 
     @classmethod
