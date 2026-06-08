@@ -1,3 +1,4 @@
+from typing import override
 from typing import Any
 
 import pytest
@@ -14,6 +15,7 @@ class TestExternalDataTool:
         # Create a concrete subclass to test init
         class ConcreteTool(ExternalDataTool):
             @classmethod
+            @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]):
                 return super().validate_config(tenant_id, config)
 
@@ -45,6 +47,7 @@ class TestExternalDataTool:
     def test_validate_config_raises_not_implemented(self):
         class ConcreteTool(ExternalDataTool):
             @classmethod
+            @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]):
                 return super().validate_config(tenant_id, config)
 
@@ -57,6 +60,7 @@ class TestExternalDataTool:
     def test_query_raises_not_implemented(self):
         class ConcreteTool(ExternalDataTool):
             @classmethod
+            @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]):
                 pass
 
