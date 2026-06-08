@@ -170,6 +170,8 @@ class AppDslService:
                     error="Invalid YAML format: content must be a mapping",
                 )
 
+            original_top_level_keys = [k for k in data if isinstance(k, str)]
+
             # Validate and fix DSL version
             if not data.get("version"):
                 data["version"] = "0.1.0"
@@ -185,10 +187,16 @@ class AppDslService:
             # Extract app data
             app_data = data.get("app")
             if not app_data:
+                found = ", ".join(k for k in original_top_level_keys if k != "app")
+                if len(found) > 80:
+                    found = found[:80].rstrip(", ") + "…"
                 return Import(
                     id=import_id,
                     status=ImportStatus.FAILED,
-                    error="Missing app data in YAML content",
+                    error=(
+                        f"Not a valid Dify app DSL: missing the top-level 'app' section (found: {found or 'none'}). "
+                        "An app export must contain 'app' plus 'workflow' or 'model_config'."
+                    ),
                 )
 
             # If app_id is provided, check if it exists

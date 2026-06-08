@@ -21,6 +21,7 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
+import { getDSLImportErrorMessage } from '@/utils/dsl-import-error'
 
 type DSLPayload = {
   mode: DSLImportMode
@@ -60,7 +61,7 @@ export const useImportDSL = () => {
     setIsFetching(true)
 
     try {
-      const response = await importDSL(payload)
+      const response = await importDSL(payload, { silent: true })
 
       if (!response)
         return
@@ -101,12 +102,12 @@ export const useImportDSL = () => {
         onPending?.(response)
       }
       else {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
         onFailed?.()
       }
     }
-    catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+    catch (error) {
+      toast.error(await getDSLImportErrorMessage(error, t('newApp.appCreateFailed', { ns: 'app' })))
       onFailed?.()
     }
     finally {
@@ -129,7 +130,7 @@ export const useImportDSL = () => {
     try {
       const response = await importDSLConfirm({
         import_id: importIdRef.current,
-      })
+      }, { silent: true })
 
       const { status, app_id, app_mode } = response
       if (!app_id)
@@ -143,12 +144,12 @@ export const useImportDSL = () => {
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
         onFailed?.()
       }
     }
-    catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+    catch (error) {
+      toast.error(await getDSLImportErrorMessage(error, t('newApp.appCreateFailed', { ns: 'app' })))
       onFailed?.()
     }
     finally {
