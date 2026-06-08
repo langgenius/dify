@@ -1,10 +1,11 @@
-import type { AppInfoActions } from './app-info/use-app-info-actions'
+﻿import type { AppInfoActions } from './app-info/use-app-info-actions'
 import type { NavIcon } from './nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
+import { useLocalStorage, useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -60,7 +61,7 @@ const AppDetailNav = ({
   const pathname = usePathname()
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
+  const [workflowCanvasMaximize] = useLocalStorage<boolean>('workflow-canvas-maximize', false)
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -69,12 +70,14 @@ const AppDetailNav = ({
       setHideHeader(v.payload)
   })
 
+  const setCollapseOrExpand = useSetLocalStorage<string>('app-detail-collapse-or-expand', { raw: true })
+
   useEffect(() => {
     if (appSidebarExpand) {
-      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
+      setCollapseOrExpand(appSidebarExpand)
       setAppSidebarExpand(appSidebarExpand)
     }
-  }, [appSidebarExpand, setAppSidebarExpand])
+  }, [appSidebarExpand, setAppSidebarExpand, setCollapseOrExpand])
 
   useHotkey('Mod+B', (e) => {
     e.preventDefault()
@@ -179,3 +182,4 @@ const AppDetailNav = ({
 }
 
 export default React.memo(AppDetailNav)
+
