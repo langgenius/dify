@@ -42,7 +42,7 @@
   "menu.deleteSnippet": "Verwijderen",
   "menu.editInfo": "Bewerk informatie",
   "menu.exportSnippet": "Fragment exporteren",
-  "notFoundDescription": "Het gevraagde fragmentmocket is niet gevonden.",
+  "notFoundDescription": "Het gevraagde fragment is niet gevonden.",
   "notFoundTitle": "Fragment niet gevonden",
   "panelDescription": "Definieert de invoervelden waarmee het fragment gegevens van andere knooppunten kan ontvangen.",
   "panelPrimaryGroup": "Kerningangen",
