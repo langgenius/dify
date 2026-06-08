@@ -42,7 +42,7 @@ on:
       suite_agent:
         description: "agent suite"
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
