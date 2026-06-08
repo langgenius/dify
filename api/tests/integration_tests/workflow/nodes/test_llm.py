@@ -1,9 +1,10 @@
-import pytest
 import json
 import time
 import uuid
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output

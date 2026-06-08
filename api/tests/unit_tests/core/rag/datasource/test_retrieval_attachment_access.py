@@ -1,9 +1,9 @@
-import pytest
 from __future__ import annotations
 
 from types import SimpleNamespace
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom

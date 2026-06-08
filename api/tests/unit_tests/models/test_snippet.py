@@ -1,7 +1,8 @@
-import pytest
 import json
 from types import SimpleNamespace
 from unittest.mock import Mock
+
+import pytest
 
 from models.snippet import CustomizedSnippet
 
