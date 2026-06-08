@@ -17,6 +17,7 @@ show_help() {
   echo "Examples:"
   echo "  $0 --queues dataset,workflow"
   echo "  $0 --queues workflow_professional,workflow_team --concurrency 4"
+  echo "  $0 --queues workflow_storage --concurrency 2"
   echo "  $0 --queues dataset --concurrency 2 --pool prefork"
   echo ""
   echo "Available queues:"
