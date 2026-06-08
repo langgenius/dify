@@ -1,0 +1,260 @@
+'use client'
+
+import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
+import type { ReleaseRowWithId } from './release-history-types'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { skipToken, useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
+import { TitleTooltip } from '../../components/title-tooltip'
+import {
+  formatDate,
+  releaseCommit,
+  releaseLabel,
+} from '../../release'
+import {
+  DetailTable,
+  DetailTableBody,
+  DetailTableCard,
+  DetailTableCardList,
+  DetailTableCell,
+  DetailTableHead,
+  DetailTableHeader,
+  DetailTableRow,
+} from '../table'
+import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../table-styles'
+import { DeployReleaseMenu } from './deploy-release-menu'
+import { getReleaseDeployments } from './release-deployments'
+import {
+  ReleaseDeploymentsContent,
+} from './release-history-deployments'
+
+function ReleaseTitleTooltip({ release }: {
+  release: Release
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <span className="inline-flex max-w-full cursor-default truncate text-text-primary">
+            {releaseLabel(release)}
+          </span>
+        )}
+      />
+      <TooltipContent>
+        {t('versions.commitTooltip', { commit: releaseCommit(release) })}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function CreatedAtCell({ createdAt }: {
+  createdAt?: string
+}) {
+  const { formatTimeFromNow } = useFormatTimeFromNow()
+  if (!createdAt)
+    return <>—</>
+  const ms = Date.parse(createdAt)
+  if (Number.isNaN(ms))
+    return <>{formatDate(createdAt)}</>
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <span className="cursor-default">
+            {formatTimeFromNow(ms)}
+          </span>
+        )}
+      />
+      <TooltipContent>{formatDate(createdAt)}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+function ReleaseSourceCell({ release }: {
+  release: Release
+}) {
+  const { t } = useTranslation('deployments')
+  const sourceAppId = release.sourceAppId
+  const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
+    input: sourceAppId
+      ? { params: { app_id: sourceAppId } }
+      : skipToken,
+  }))
+
+  if (!sourceAppId) {
+    return (
+      <span className="text-text-tertiary">
+        {release.source === 'RELEASE_SOURCE_UPLOAD' ? t('versions.manualDslOption') : '—'}
+      </span>
+    )
+  }
+
+  const sourceAppName = sourceAppQuery.data?.name
+  const label = sourceAppName || sourceAppId
+  const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId
+
+  return (
+    <TitleTooltip content={title}>
+      <Link
+        href={`/app/${encodeURIComponent(sourceAppId)}/workflow`}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-secondary transition-colors hover:text-text-accent"
+      >
+        <span className="min-w-0 truncate">{label}</span>
+        <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" aria-hidden="true" />
+      </Link>
+    </TitleTooltip>
+  )
+}
+
+function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError, onReleaseDeleted }: {
+  appInstanceId: string
+  releaseRows: ReleaseRowWithId[]
+  deploymentRows: EnvironmentDeployment[]
+  deployedToLoading?: boolean
+  deployedToHasError?: boolean
+  onReleaseDeleted?: () => void
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <DetailTableCardList className="pc:hidden">
+      {releaseRows.map((row) => {
+        const release = row
+        const releaseDeployments = getReleaseDeployments(row, deploymentRows)
+        const hasDeployments = releaseDeployments.length > 0 || deployedToLoading || deployedToHasError
+
+        return (
+          <DetailTableCard key={release.id}>
+            <div className="flex flex-col gap-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <ReleaseTitleTooltip release={release} />
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 system-xs-regular text-text-secondary">
+                    <CreatedAtCell createdAt={release.createdAt} />
+                    <span aria-hidden>·</span>
+                    <span>{row.createdBy?.name ?? '—'}</span>
+                    {(release.sourceAppId || release.source === 'RELEASE_SOURCE_UPLOAD') && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="inline-flex max-w-full min-w-0 items-baseline gap-1">
+                          <span className="shrink-0">{t('versions.col.sourceApp')}</span>
+                          <ReleaseSourceCell release={release} />
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 justify-end gap-1">
+                  <DeployReleaseMenu
+                    releaseId={release.id}
+                    appInstanceId={appInstanceId}
+                    releaseRows={releaseRows}
+                    onDeleted={onReleaseDeleted}
+                  />
+                </div>
+              </div>
+              {hasDeployments && (
+                <div className="flex min-w-0 flex-wrap items-center gap-1">
+                  <ReleaseDeploymentsContent
+                    items={releaseDeployments}
+                    isLoading={deployedToLoading}
+                    hasError={deployedToHasError}
+                    loadFailedLabel={t('common.loadFailed')}
+                  />
+                </div>
+              )}
+            </div>
+          </DetailTableCard>
+        )
+      })}
+    </DetailTableCardList>
+  )
+}
+
+export function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError, onReleaseDeleted }: {
+  appInstanceId: string
+  releaseRows: ReleaseRowWithId[]
+  deploymentRows: EnvironmentDeployment[]
+  deployedToLoading?: boolean
+  deployedToHasError?: boolean
+  onReleaseDeleted?: () => void
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <>
+      <ReleaseHistoryMobileRows
+        appInstanceId={appInstanceId}
+        releaseRows={releaseRows}
+        deploymentRows={deploymentRows}
+        deployedToLoading={deployedToLoading}
+        deployedToHasError={deployedToHasError}
+        onReleaseDeleted={onReleaseDeleted}
+      />
+      <div className="hidden pc:block">
+        <DetailTable className="min-w-[840px]">
+          <DetailTableHeader>
+            <DetailTableRow>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t('versions.col.release')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>{t('versions.col.sourceApp')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t('versions.col.createdAt')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t('versions.col.author')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t('versions.col.deployedTo')}</DetailTableHead>
+              <DetailTableHead className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t('versions.col.action')}</DetailTableHead>
+            </DetailTableRow>
+          </DetailTableHeader>
+          <DetailTableBody>
+            {releaseRows.map((row) => {
+              const release = row
+              const releaseDeployments = getReleaseDeployments(row, deploymentRows)
+
+              return (
+                <DetailTableRow key={release.id}>
+                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>
+                    <ReleaseTitleTooltip release={release} />
+                  </DetailTableCell>
+                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>
+                    <ReleaseSourceCell release={release} />
+                  </DetailTableCell>
+                  <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt} text-text-secondary`}>
+                    <CreatedAtCell createdAt={release.createdAt} />
+                  </DetailTableCell>
+                  <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author} truncate text-text-secondary`}>
+                    {row.createdBy?.name ?? '—'}
+                  </DetailTableCell>
+                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>
+                    <div className="flex flex-wrap gap-1">
+                      <ReleaseDeploymentsContent
+                        items={releaseDeployments}
+                        isLoading={deployedToLoading}
+                        hasError={deployedToHasError}
+                        loadFailedLabel={t('common.loadFailed')}
+                      />
+                    </div>
+                  </DetailTableCell>
+                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action}>
+                    <div className="flex justify-end">
+                      <DeployReleaseMenu
+                        releaseId={release.id}
+                        appInstanceId={appInstanceId}
+                        releaseRows={releaseRows}
+                        onDeleted={onReleaseDeleted}
+                      />
+                    </div>
+                  </DetailTableCell>
+                </DetailTableRow>
+              )
+            })}
+          </DetailTableBody>
+        </DetailTable>
+      </div>
+    </>
+  )
+}

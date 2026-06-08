@@ -1,19 +1,7 @@
 'use client'
 
-import type {
-  Environment,
-  EnvironmentDeployment,
-  Release,
-} from '@dify/contracts/enterprise/types.gen'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
+import type { Release } from '@dify/contracts/enterprise/types.gen'
+import type { EnvironmentOption } from './deploy-release-menu-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -28,53 +16,17 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { TitleTooltip } from '../../components/title-tooltip'
-import { environmentId, environmentName } from '../../environment'
 import { releaseLabel } from '../../release'
-import { releaseDeploymentAction } from '../../release-action'
-import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
+import { isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
+import { DeleteReleaseDialog } from './delete-release-dialog'
+import {
+  buildDeployMenuSections,
+  releaseUsageCount,
+} from './deploy-release-menu-utils'
 import { EditReleaseDialog } from './edit-release-dialog'
 import { exportReleaseDsl } from './release-dsl-export'
-
-type EnvironmentOption = Environment & {
-  id: string
-}
-
-type DeployMenuRowState = 'deploy' | 'rollback' | 'current' | 'deploying'
-
-type DeployMenuRow = {
-  env: EnvironmentOption
-  state: DeployMenuRowState
-  label: string
-  disabledReason?: string
-}
-
-type DeployMenuGroup = 'deploy' | 'rollback' | 'unavailable'
-
-const GROUP_ORDER: DeployMenuGroup[] = ['deploy', 'rollback', 'unavailable']
-
-function stateToGroup(state: DeployMenuRowState): DeployMenuGroup {
-  if (state === 'rollback')
-    return 'rollback'
-  if (state === 'deploy')
-    return 'deploy'
-  return 'unavailable'
-}
-
-function releaseUsageCount(releaseId: string, deploymentRows: EnvironmentDeployment[]) {
-  const environmentIds = new Set<string>()
-
-  deploymentRows.forEach((row) => {
-    const usesRelease = row.currentRelease?.id === releaseId || row.desiredRelease?.id === releaseId
-    const envId = environmentId(row.environment)
-
-    if (usesRelease && envId)
-      environmentIds.add(envId)
-  })
-
-  return environmentIds.size
-}
 
 export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDeleted }: {
   appInstanceId: string
@@ -218,63 +170,14 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
     )
   }
 
-  const menuRows: DeployMenuRow[] = environments.map((env) => {
-    const envId = env.id
-    const envName = environmentName(env)
-    const row: EnvironmentDeployment | undefined = deploymentRows.find(item => environmentId(item.environment) === envId)
-    const currentRelease = row?.currentRelease
-    const isCurrent = currentRelease?.id === releaseId
-    const isEnvironmentDeploying = row ? deploymentStatus(row) === 'deploying' : false
-
-    if (isEnvironmentDeploying) {
-      return {
-        env,
-        state: 'deploying',
-        label: t('versions.deployingTo', { name: envName }),
-        disabledReason: t('versions.disabledReason.deploying'),
-      }
-    }
-    if (isCurrent) {
-      return {
-        env,
-        state: 'current',
-        label: t('versions.currentOn', { name: envName }),
-        disabledReason: t('versions.disabledReason.current', { name: envName }),
-      }
-    }
-
-    const action = releaseDeploymentAction({
-      targetRelease,
-      currentRelease,
-      releaseRows,
-      isExistingRelease: true,
-    })
-
-    if (!row) {
-      return {
-        env,
-        state: 'deploy',
-        label: t('versions.deployTo', { name: envName }),
-      }
-    }
-    if (action === 'rollback') {
-      return {
-        env,
-        state: 'rollback',
-        label: t('versions.rollbackTo', { name: envName }),
-      }
-    }
-    return {
-      env,
-      state: 'deploy',
-      label: t('versions.deployTo', { name: envName }),
-    }
+  const groupedRows = buildDeployMenuSections({
+    environments,
+    environmentDeployments: environmentDeploymentsQuery.data?.data ?? [],
+    releaseRows,
+    releaseId,
+    targetRelease,
+    t,
   })
-
-  const groupedRows = GROUP_ORDER.map(group => ({
-    group,
-    rows: menuRows.filter(row => stateToGroup(row.state) === group),
-  })).filter(section => section.rows.length > 0)
 
   return (
     <>
@@ -379,37 +282,13 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
         onOpenChange={setShowEditDialog}
       />
 
-      <AlertDialog
+      <DeleteReleaseDialog
         open={showDeleteConfirm}
-        onOpenChange={(nextOpen) => {
-          if (isDeletingRelease)
-            return
-          setShowDeleteConfirm(nextOpen)
-        }}
-      >
-        <AlertDialogContent className="w-120">
-          <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('versions.deleteConfirmTitle')}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t('versions.deleteConfirmDesc', { name: releaseLabel(targetRelease) })}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions className="pt-3">
-            <AlertDialogCancelButton variant="secondary" disabled={isDeletingRelease}>
-              {t('versions.cancelDelete')}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={isDeletingRelease}
-              disabled={isDeletingRelease}
-              onClick={handleDeleteRelease}
-            >
-              {t('versions.deleteRelease')}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+        release={targetRelease}
+        isDeleting={isDeletingRelease}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={handleDeleteRelease}
+      />
     </>
   )
 }
