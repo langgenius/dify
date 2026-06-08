@@ -97,7 +97,9 @@ class TestRerankModelRunner:
             ),
         ]
 
-    def test_basic_reranking(self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]):
+    def test_basic_reranking(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
+    ):
         """Test basic reranking with cross-encoder model.
 
         Verifies:
@@ -135,7 +137,9 @@ class TestRerankModelRunner:
         assert result[3].metadata["score"] == 0.65
         assert result[0].page_content == sample_documents[2].page_content
 
-    def test_score_threshold_filtering(self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]):
+    def test_score_threshold_filtering(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
+    ):
         """Test score threshold filtering.
 
         Verifies:
@@ -163,7 +167,9 @@ class TestRerankModelRunner:
         assert result[0].metadata["score"] == 0.90
         assert result[1].metadata["score"] == 0.70
 
-    def test_top_k_selection(self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]):
+    def test_top_k_selection(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
+    ):
         """Test top-k selection functionality.
 
         Verifies:
@@ -273,7 +279,9 @@ class TestRerankModelRunner:
         assert len(call_kwargs["docs"]) == 2
         assert len(result) == 2
 
-    def test_combined_threshold_and_top_k(self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]):
+    def test_combined_threshold_and_top_k(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
+    ):
         """Test combined score threshold and top-k selection.
 
         Verifies:
@@ -307,7 +315,9 @@ class TestRerankModelRunner:
         assert result[0].metadata["score"] == 0.95
         assert result[1].metadata["score"] == 0.85
 
-    def test_metadata_preservation(self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]):
+    def test_metadata_preservation(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
+    ):
         """Test that original metadata is preserved after reranking.
 
         Verifies:
@@ -523,7 +533,9 @@ class TestRerankModelRunnerMultimodal:
         docs_arg = mock_text_rerank.call_args.args[1]
         assert len(docs_arg) == 1
 
-    def test_fetch_multimodal_rerank_image_query_invokes_multimodal_model(self, rerank_runner: RerankModelRunner, mock_model_instance):
+    def test_fetch_multimodal_rerank_image_query_invokes_multimodal_model(
+        self, rerank_runner: RerankModelRunner, mock_model_instance
+    ):
         text_doc = Document(
             page_content="text-content",
             metadata={"doc_id": "txt-1", "doc_type": DocType.TEXT},

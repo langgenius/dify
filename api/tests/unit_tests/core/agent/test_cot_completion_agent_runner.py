@@ -40,7 +40,11 @@ def runner(mocker, dummy_tool_factory):
 
 class TestOrganizeInstructionPrompt:
     def test_success_all_placeholders(
-        self, runner: CotCompletionAgentRunner, dummy_app_config_factory, dummy_agent_config_factory, dummy_prompt_entity_factory
+        self,
+        runner: CotCompletionAgentRunner,
+        dummy_app_config_factory,
+        dummy_agent_config_factory,
+        dummy_prompt_entity_factory,
     ):
         template = (
             "{{instruction}} | {{tools}} | {{tool_names}} | {{historic_messages}} | {{agent_scratchpad}} | {{query}}"
@@ -63,7 +67,9 @@ class TestOrganizeInstructionPrompt:
         with pytest.raises(ValueError, match="Agent configuration is not set"):
             runner._organize_instruction_prompt()
 
-    def test_prompt_entity_none_raises(self, runner: CotCompletionAgentRunner, dummy_app_config_factory, dummy_agent_config_factory):
+    def test_prompt_entity_none_raises(
+        self, runner: CotCompletionAgentRunner, dummy_app_config_factory, dummy_agent_config_factory
+    ):
         runner.app_config = dummy_app_config_factory(agent=dummy_agent_config_factory(prompt_entity=None))
         with pytest.raises(ValueError, match="prompt entity is not set"):
             runner._organize_instruction_prompt()
@@ -104,7 +110,9 @@ class TestOrganizeHistoricPrompt:
 
         assert "Partial answer" in result
 
-    def test_assistant_list_with_non_text_content_ignored(self, runner: CotCompletionAgentRunner, mocker: MockerFixture):
+    def test_assistant_list_with_non_text_content_ignored(
+        self, runner: CotCompletionAgentRunner, mocker: MockerFixture
+    ):
         non_text_content = ImagePromptMessageContent(format="url", mime_type="image/png")
         assistant_msg = AssistantPromptMessage(content=[non_text_content])
 
