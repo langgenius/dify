@@ -1401,6 +1401,7 @@ export const zAppPartial = z.object({
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
   id: z.string(),
+  is_starred: z.boolean().optional().default(false),
   max_active_requests: z.int().nullish(),
   mode_compatible_with_agent: z.string(),
   name: z.string(),
@@ -2711,8 +2712,8 @@ export const zWorkflowCommentDetailWritable = z.object({
 })
 
 export const zGetAppsQuery = z.object({
-  creator_ids: z.array(z.string()).nullish(),
-  is_created_by_me: z.boolean().nullish(),
+  creator_ids: z.array(z.string()).optional(),
+  is_created_by_me: z.boolean().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z
     .enum([
@@ -2727,9 +2728,13 @@ export const zGetAppsQuery = z.object({
     ])
     .optional()
     .default('all'),
-  name: z.string().nullish(),
+  name: z.string().optional(),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  tag_ids: z.array(z.string()).nullish(),
+  sort_by: z
+    .enum(['earliest_created', 'last_modified', 'recently_created'])
+    .optional()
+    .default('last_modified'),
+  tag_ids: z.array(z.string()).optional(),
 })
 
 /**
@@ -2768,6 +2773,37 @@ export const zPostAppsImportsByImportIdConfirmPath = z.object({
  * Import confirmed
  */
 export const zPostAppsImportsByImportIdConfirmResponse = zImport
+
+export const zGetAppsStarredQuery = z.object({
+  creator_ids: z.array(z.string()).optional(),
+  is_created_by_me: z.boolean().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  mode: z
+    .enum([
+      'advanced-chat',
+      'agent',
+      'agent-chat',
+      'all',
+      'channel',
+      'chat',
+      'completion',
+      'workflow',
+    ])
+    .optional()
+    .default('all'),
+  name: z.string().optional(),
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  sort_by: z
+    .enum(['earliest_created', 'last_modified', 'recently_created'])
+    .optional()
+    .default('last_modified'),
+  tag_ids: z.array(z.string()).optional(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsStarredResponse = zAppPagination
 
 export const zPostAppsWorkflowsOnlineUsersBody = zWorkflowOnlineUsersPayload
 
@@ -3548,6 +3584,24 @@ export const zPostAppsByAppIdSiteAccessTokenResetPath = z.object({
  * Access token reset successfully
  */
 export const zPostAppsByAppIdSiteAccessTokenResetResponse = zAppSiteResponse
+
+export const zDeleteAppsByAppIdStarPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zDeleteAppsByAppIdStarResponse = zSimpleResultResponse
+
+export const zPostAppsByAppIdStarPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostAppsByAppIdStarResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdStatisticsAverageResponseTimePath = z.object({
   app_id: z.string(),

@@ -14,6 +14,8 @@ import {
   zDeleteAppsByAppIdCompletionConversationsByConversationIdResponse,
   zDeleteAppsByAppIdPath,
   zDeleteAppsByAppIdResponse,
+  zDeleteAppsByAppIdStarPath,
+  zDeleteAppsByAppIdStarResponse,
   zDeleteAppsByAppIdTraceConfigBody,
   zDeleteAppsByAppIdTraceConfigPath,
   zDeleteAppsByAppIdTraceConfigResponse,
@@ -238,6 +240,8 @@ import {
   zGetAppsImportsByAppIdCheckDependenciesResponse,
   zGetAppsQuery,
   zGetAppsResponse,
+  zGetAppsStarredQuery,
+  zGetAppsStarredResponse,
   zPatchAppsByAppIdTraceConfigBody,
   zPatchAppsByAppIdTraceConfigPath,
   zPatchAppsByAppIdTraceConfigResponse,
@@ -326,6 +330,8 @@ import {
   zPostAppsByAppIdSiteEnableResponse,
   zPostAppsByAppIdSitePath,
   zPostAppsByAppIdSiteResponse,
+  zPostAppsByAppIdStarPath,
+  zPostAppsByAppIdStarResponse,
   zPostAppsByAppIdTextToAudioBody,
   zPostAppsByAppIdTextToAudioPath,
   zPostAppsByAppIdTextToAudioResponse,
@@ -490,6 +496,25 @@ export const imports = {
 }
 
 /**
+ * Get applications starred by the current account
+ */
+export const get2 = oc
+  .route({
+    description: 'Get applications starred by the current account',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsStarred',
+    path: '/apps/starred',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAppsStarredQuery.optional() }))
+  .output(zGetAppsStarredResponse)
+
+export const starred = {
+  get: get2,
+}
+
+/**
  * Get workflow online users
  */
 export const post3 = oc
@@ -517,7 +542,7 @@ export const workflows = {
  *
  * Get advanced chat workflow runs count statistics
  */
-export const get2 = oc
+export const get3 = oc
   .route({
     description: 'Get advanced chat workflow runs count statistics',
     inputStructure: 'detailed',
@@ -536,7 +561,7 @@ export const get2 = oc
   .output(zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse)
 
 export const count = {
-  get: get2,
+  get: get3,
 }
 
 /**
@@ -544,7 +569,7 @@ export const count = {
  *
  * Get advanced chat workflow run list
  */
-export const get3 = oc
+export const get4 = oc
   .route({
     description: 'Get advanced chat workflow run list',
     inputStructure: 'detailed',
@@ -563,7 +588,7 @@ export const get3 = oc
   .output(zGetAppsByAppIdAdvancedChatWorkflowRunsResponse)
 
 export const workflowRuns = {
-  get: get3,
+  get: get4,
   count,
 }
 
@@ -794,7 +819,7 @@ export const advancedChat = {
  *
  * @deprecated
  */
-export const get4 = oc
+export const get5 = oc
   .route({
     deprecated: true,
     description:
@@ -809,7 +834,7 @@ export const get4 = oc
   .output(zGetAppsByAppIdAgentComposerCandidatesResponse)
 
 export const candidates = {
-  get: get4,
+  get: get5,
 }
 
 /**
@@ -845,7 +870,7 @@ export const validate = {
  *
  * @deprecated
  */
-export const get5 = oc
+export const get6 = oc
   .route({
     deprecated: true,
     description:
@@ -881,7 +906,7 @@ export const put = oc
   .output(zPutAppsByAppIdAgentComposerResponse)
 
 export const agentComposer = {
-  get: get5,
+  get: get6,
   put,
   candidates,
   validate,
@@ -914,7 +939,7 @@ export const agentFeatures = {
 /**
  * List workflow apps that reference this Agent App's bound Agent (read-only)
  */
-export const get6 = oc
+export const get7 = oc
   .route({
     description: 'List workflow apps that reference this Agent App\'s bound Agent (read-only)',
     inputStructure: 'detailed',
@@ -927,13 +952,13 @@ export const get6 = oc
   .output(zGetAppsByAppIdAgentReferencingWorkflowsResponse)
 
 export const agentReferencingWorkflows = {
-  get: get6,
+  get: get7,
 }
 
 /**
  * Download a file from an Agent App conversation's sandbox workspace (read-only)
  */
-export const get7 = oc
+export const get8 = oc
   .route({
     description: 'Download a file from an Agent App conversation\'s sandbox workspace (read-only)',
     inputStructure: 'detailed',
@@ -951,13 +976,13 @@ export const get7 = oc
   .output(zGetAppsByAppIdAgentWorkspaceFilesDownloadResponse)
 
 export const download = {
-  get: get7,
+  get: get8,
 }
 
 /**
  * Preview a text/binary file in an Agent App conversation's sandbox workspace
  */
-export const get8 = oc
+export const get9 = oc
   .route({
     description: 'Preview a text/binary file in an Agent App conversation\'s sandbox workspace',
     inputStructure: 'detailed',
@@ -975,13 +1000,13 @@ export const get8 = oc
   .output(zGetAppsByAppIdAgentWorkspaceFilesPreviewResponse)
 
 export const preview2 = {
-  get: get8,
+  get: get9,
 }
 
 /**
  * List a directory in an Agent App conversation's sandbox workspace (read-only)
  */
-export const get9 = oc
+export const get10 = oc
   .route({
     description: 'List a directory in an Agent App conversation\'s sandbox workspace (read-only)',
     inputStructure: 'detailed',
@@ -999,7 +1024,7 @@ export const get9 = oc
   .output(zGetAppsByAppIdAgentWorkspaceFilesResponse)
 
 export const files = {
-  get: get9,
+  get: get10,
   download,
   preview: preview2,
 }
@@ -1017,7 +1042,7 @@ export const agentWorkspace = {
  *
  * @deprecated
  */
-export const get10 = oc
+export const get11 = oc
   .route({
     deprecated: true,
     description:
@@ -1033,7 +1058,7 @@ export const get10 = oc
   .output(zGetAppsByAppIdAgentLogsResponse)
 
 export const logs = {
-  get: get10,
+  get: get11,
 }
 
 export const agent = {
@@ -1047,7 +1072,7 @@ export const agent = {
  *
  * @deprecated
  */
-export const get11 = oc
+export const get12 = oc
   .route({
     deprecated: true,
     description:
@@ -1062,7 +1087,7 @@ export const get11 = oc
   .output(zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse)
 
 export const byJobId = {
-  get: get11,
+  get: get12,
 }
 
 export const status = {
@@ -1111,7 +1136,7 @@ export const annotationReply = {
  *
  * @deprecated
  */
-export const get12 = oc
+export const get13 = oc
   .route({
     deprecated: true,
     description:
@@ -1126,7 +1151,7 @@ export const get12 = oc
   .output(zGetAppsByAppIdAnnotationSettingResponse)
 
 export const annotationSetting = {
-  get: get12,
+  get: get13,
 }
 
 /**
@@ -1195,7 +1220,7 @@ export const batchImport = {
  *
  * @deprecated
  */
-export const get13 = oc
+export const get14 = oc
   .route({
     deprecated: true,
     description:
@@ -1210,7 +1235,7 @@ export const get13 = oc
   .output(zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse)
 
 export const byJobId2 = {
-  get: get13,
+  get: get14,
 }
 
 export const batchImportStatus = {
@@ -1220,7 +1245,7 @@ export const batchImportStatus = {
 /**
  * Get count of message annotations for the app
  */
-export const get14 = oc
+export const get15 = oc
   .route({
     description: 'Get count of message annotations for the app',
     inputStructure: 'detailed',
@@ -1233,13 +1258,13 @@ export const get14 = oc
   .output(zGetAppsByAppIdAnnotationsCountResponse)
 
 export const count2 = {
-  get: get14,
+  get: get15,
 }
 
 /**
  * Export all annotations for an app with CSV injection protection
  */
-export const get15 = oc
+export const get16 = oc
   .route({
     description: 'Export all annotations for an app with CSV injection protection',
     inputStructure: 'detailed',
@@ -1252,13 +1277,13 @@ export const get15 = oc
   .output(zGetAppsByAppIdAnnotationsExportResponse)
 
 export const export_ = {
-  get: get15,
+  get: get16,
 }
 
 /**
  * Get hit histories for an annotation
  */
-export const get16 = oc
+export const get17 = oc
   .route({
     description: 'Get hit histories for an annotation',
     inputStructure: 'detailed',
@@ -1276,7 +1301,7 @@ export const get16 = oc
   .output(zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponse)
 
 export const hitHistories = {
-  get: get16,
+  get: get17,
 }
 
 /**
@@ -1356,7 +1381,7 @@ export const delete2 = oc
  *
  * @deprecated
  */
-export const get17 = oc
+export const get18 = oc
   .route({
     deprecated: true,
     description:
@@ -1401,7 +1426,7 @@ export const post15 = oc
 
 export const annotations = {
   delete: delete2,
-  get: get17,
+  get: get18,
   post: post15,
   batchImport,
   batchImportStatus,
@@ -1477,7 +1502,7 @@ export const delete3 = oc
  *
  * @deprecated
  */
-export const get18 = oc
+export const get19 = oc
   .route({
     deprecated: true,
     description:
@@ -1493,13 +1518,13 @@ export const get18 = oc
 
 export const byConversationId = {
   delete: delete3,
-  get: get18,
+  get: get19,
 }
 
 /**
  * Get chat conversations with pagination, filtering and summary
  */
-export const get19 = oc
+export const get20 = oc
   .route({
     description: 'Get chat conversations with pagination, filtering and summary',
     inputStructure: 'detailed',
@@ -1517,14 +1542,14 @@ export const get19 = oc
   .output(zGetAppsByAppIdChatConversationsResponse)
 
 export const chatConversations = {
-  get: get19,
+  get: get20,
   byConversationId,
 }
 
 /**
  * Get suggested questions for a message
  */
-export const get20 = oc
+export const get21 = oc
   .route({
     description: 'Get suggested questions for a message',
     inputStructure: 'detailed',
@@ -1537,7 +1562,7 @@ export const get20 = oc
   .output(zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponse)
 
 export const suggestedQuestions = {
-  get: get20,
+  get: get21,
 }
 
 export const byMessageId = {
@@ -1574,7 +1599,7 @@ export const byTaskId = {
  *
  * @deprecated
  */
-export const get21 = oc
+export const get22 = oc
   .route({
     deprecated: true,
     description:
@@ -1591,7 +1616,7 @@ export const get21 = oc
   .output(zGetAppsByAppIdChatMessagesResponse)
 
 export const chatMessages = {
-  get: get21,
+  get: get22,
   byMessageId,
   byTaskId,
 }
@@ -1619,7 +1644,7 @@ export const delete4 = oc
  *
  * @deprecated
  */
-export const get22 = oc
+export const get23 = oc
   .route({
     deprecated: true,
     description:
@@ -1635,13 +1660,13 @@ export const get22 = oc
 
 export const byConversationId2 = {
   delete: delete4,
-  get: get22,
+  get: get23,
 }
 
 /**
  * Get completion conversations with pagination and filtering
  */
-export const get23 = oc
+export const get24 = oc
   .route({
     description: 'Get completion conversations with pagination and filtering',
     inputStructure: 'detailed',
@@ -1659,7 +1684,7 @@ export const get23 = oc
   .output(zGetAppsByAppIdCompletionConversationsResponse)
 
 export const completionConversations = {
-  get: get23,
+  get: get24,
   byConversationId: byConversationId2,
 }
 
@@ -1720,7 +1745,7 @@ export const completionMessages = {
 /**
  * Get conversation variables for an application
  */
-export const get24 = oc
+export const get25 = oc
   .route({
     description: 'Get conversation variables for an application',
     inputStructure: 'detailed',
@@ -1738,7 +1763,7 @@ export const get24 = oc
   .output(zGetAppsByAppIdConversationVariablesResponse)
 
 export const conversationVariables = {
-  get: get24,
+  get: get25,
 }
 
 /**
@@ -1805,7 +1830,7 @@ export const copy = {
  *
  * Export application configuration as DSL
  */
-export const get25 = oc
+export const get26 = oc
   .route({
     description: 'Export application configuration as DSL',
     inputStructure: 'detailed',
@@ -1821,7 +1846,7 @@ export const get25 = oc
   .output(zGetAppsByAppIdExportResponse)
 
 export const export2 = {
-  get: get25,
+  get: get26,
 }
 
 /**
@@ -1831,7 +1856,7 @@ export const export2 = {
  *
  * @deprecated
  */
-export const get26 = oc
+export const get27 = oc
   .route({
     deprecated: true,
     description:
@@ -1851,7 +1876,7 @@ export const get26 = oc
   .output(zGetAppsByAppIdFeedbacksExportResponse)
 
 export const export3 = {
-  get: get26,
+  get: get27,
 }
 
 /**
@@ -1906,7 +1931,7 @@ export const icon = {
  *
  * @deprecated
  */
-export const get27 = oc
+export const get28 = oc
   .route({
     deprecated: true,
     description:
@@ -1921,7 +1946,7 @@ export const get27 = oc
   .output(zGetAppsByAppIdMessagesByMessageIdResponse)
 
 export const byMessageId2 = {
-  get: get27,
+  get: get28,
 }
 
 export const messages = {
@@ -2009,7 +2034,7 @@ export const publishToCreatorsPlatform = {
  *
  * @deprecated
  */
-export const get28 = oc
+export const get29 = oc
   .route({
     deprecated: true,
     description:
@@ -2067,7 +2092,7 @@ export const put2 = oc
   .output(zPutAppsByAppIdServerResponse)
 
 export const server = {
-  get: get28,
+  get: get29,
   post: post28,
   put: put2,
 }
@@ -2137,13 +2162,48 @@ export const siteEnable = {
 }
 
 /**
+ * Remove the current account's star from an application
+ */
+export const delete5 = oc
+  .route({
+    description: 'Remove the current account\'s star from an application',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAppsByAppIdStar',
+    path: '/apps/{app_id}/star',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteAppsByAppIdStarPath }))
+  .output(zDeleteAppsByAppIdStarResponse)
+
+/**
+ * Star an application for the current account
+ */
+export const post32 = oc
+  .route({
+    description: 'Star an application for the current account',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdStar',
+    path: '/apps/{app_id}/star',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdStarPath }))
+  .output(zPostAppsByAppIdStarResponse)
+
+export const star = {
+  delete: delete5,
+  post: post32,
+}
+
+/**
  * Get average response time statistics for an application
  *
  * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
  * @deprecated
  */
-export const get29 = oc
+export const get30 = oc
   .route({
     deprecated: true,
     description:
@@ -2163,7 +2223,7 @@ export const get29 = oc
   .output(zGetAppsByAppIdStatisticsAverageResponseTimeResponse)
 
 export const averageResponseTime = {
-  get: get29,
+  get: get30,
 }
 
 /**
@@ -2173,7 +2233,7 @@ export const averageResponseTime = {
  *
  * @deprecated
  */
-export const get30 = oc
+export const get31 = oc
   .route({
     deprecated: true,
     description:
@@ -2193,7 +2253,7 @@ export const get30 = oc
   .output(zGetAppsByAppIdStatisticsAverageSessionInteractionsResponse)
 
 export const averageSessionInteractions = {
-  get: get30,
+  get: get31,
 }
 
 /**
@@ -2203,7 +2263,7 @@ export const averageSessionInteractions = {
  *
  * @deprecated
  */
-export const get31 = oc
+export const get32 = oc
   .route({
     deprecated: true,
     description:
@@ -2223,7 +2283,7 @@ export const get31 = oc
   .output(zGetAppsByAppIdStatisticsDailyConversationsResponse)
 
 export const dailyConversations = {
-  get: get31,
+  get: get32,
 }
 
 /**
@@ -2233,7 +2293,7 @@ export const dailyConversations = {
  *
  * @deprecated
  */
-export const get32 = oc
+export const get33 = oc
   .route({
     deprecated: true,
     description:
@@ -2253,7 +2313,7 @@ export const get32 = oc
   .output(zGetAppsByAppIdStatisticsDailyEndUsersResponse)
 
 export const dailyEndUsers = {
-  get: get32,
+  get: get33,
 }
 
 /**
@@ -2263,7 +2323,7 @@ export const dailyEndUsers = {
  *
  * @deprecated
  */
-export const get33 = oc
+export const get34 = oc
   .route({
     deprecated: true,
     description:
@@ -2283,7 +2343,7 @@ export const get33 = oc
   .output(zGetAppsByAppIdStatisticsDailyMessagesResponse)
 
 export const dailyMessages = {
-  get: get33,
+  get: get34,
 }
 
 /**
@@ -2293,7 +2353,7 @@ export const dailyMessages = {
  *
  * @deprecated
  */
-export const get34 = oc
+export const get35 = oc
   .route({
     deprecated: true,
     description:
@@ -2313,7 +2373,7 @@ export const get34 = oc
   .output(zGetAppsByAppIdStatisticsTokenCostsResponse)
 
 export const tokenCosts = {
-  get: get34,
+  get: get35,
 }
 
 /**
@@ -2323,7 +2383,7 @@ export const tokenCosts = {
  *
  * @deprecated
  */
-export const get35 = oc
+export const get36 = oc
   .route({
     deprecated: true,
     description:
@@ -2343,7 +2403,7 @@ export const get35 = oc
   .output(zGetAppsByAppIdStatisticsTokensPerSecondResponse)
 
 export const tokensPerSecond = {
-  get: get35,
+  get: get36,
 }
 
 /**
@@ -2353,7 +2413,7 @@ export const tokensPerSecond = {
  *
  * @deprecated
  */
-export const get36 = oc
+export const get37 = oc
   .route({
     deprecated: true,
     description:
@@ -2373,7 +2433,7 @@ export const get36 = oc
   .output(zGetAppsByAppIdStatisticsUserSatisfactionRateResponse)
 
 export const userSatisfactionRate = {
-  get: get36,
+  get: get37,
 }
 
 export const statistics = {
@@ -2394,7 +2454,7 @@ export const statistics = {
  *
  * @deprecated
  */
-export const get37 = oc
+export const get38 = oc
   .route({
     deprecated: true,
     description:
@@ -2414,7 +2474,7 @@ export const get37 = oc
   .output(zGetAppsByAppIdTextToAudioVoicesResponse)
 
 export const voices = {
-  get: get37,
+  get: get38,
 }
 
 /**
@@ -2424,7 +2484,7 @@ export const voices = {
  *
  * @deprecated
  */
-export const post32 = oc
+export const post33 = oc
   .route({
     deprecated: true,
     description:
@@ -2441,7 +2501,7 @@ export const post32 = oc
   .output(zPostAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post32,
+  post: post33,
   voices,
 }
 
@@ -2454,7 +2514,7 @@ export const textToAudio = {
  *
  * @deprecated
  */
-export const get38 = oc
+export const get39 = oc
   .route({
     deprecated: true,
     description:
@@ -2472,7 +2532,7 @@ export const get38 = oc
 /**
  * Update app tracing configuration
  */
-export const post33 = oc
+export const post34 = oc
   .route({
     description: 'Update app tracing configuration',
     inputStructure: 'detailed',
@@ -2485,8 +2545,8 @@ export const post33 = oc
   .output(zPostAppsByAppIdTraceResponse)
 
 export const trace = {
-  get: get38,
-  post: post33,
+  get: get39,
+  post: post34,
 }
 
 /**
@@ -2494,7 +2554,7 @@ export const trace = {
  *
  * Delete an existing tracing configuration for an application
  */
-export const delete5 = oc
+export const delete6 = oc
   .route({
     description: 'Delete an existing tracing configuration for an application',
     inputStructure: 'detailed',
@@ -2520,7 +2580,7 @@ export const delete5 = oc
  *
  * @deprecated
  */
-export const get39 = oc
+export const get40 = oc
   .route({
     deprecated: true,
     description:
@@ -2571,7 +2631,7 @@ export const patch = oc
  *
  * @deprecated
  */
-export const post34 = oc
+export const post35 = oc
   .route({
     deprecated: true,
     description:
@@ -2590,16 +2650,16 @@ export const post34 = oc
   .output(zPostAppsByAppIdTraceConfigResponse)
 
 export const traceConfig = {
-  delete: delete5,
-  get: get39,
+  delete: delete6,
+  get: get40,
   patch,
-  post: post34,
+  post: post35,
 }
 
 /**
  * Update app trigger (enable/disable)
  */
-export const post35 = oc
+export const post36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2617,13 +2677,13 @@ export const post35 = oc
   .output(zPostAppsByAppIdTriggerEnableResponse)
 
 export const triggerEnable = {
-  post: post35,
+  post: post36,
 }
 
 /**
  * Get app triggers list
  */
-export const get40 = oc
+export const get41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2636,7 +2696,7 @@ export const get40 = oc
   .output(zGetAppsByAppIdTriggersResponse)
 
 export const triggers = {
-  get: get40,
+  get: get41,
 }
 
 /**
@@ -2644,7 +2704,7 @@ export const triggers = {
  *
  * Get workflow application execution logs
  */
-export const get41 = oc
+export const get42 = oc
   .route({
     description: 'Get workflow application execution logs',
     inputStructure: 'detailed',
@@ -2663,7 +2723,7 @@ export const get41 = oc
   .output(zGetAppsByAppIdWorkflowAppLogsResponse)
 
 export const workflowAppLogs = {
-  get: get41,
+  get: get42,
 }
 
 /**
@@ -2671,7 +2731,7 @@ export const workflowAppLogs = {
  *
  * Get workflow archived execution logs
  */
-export const get42 = oc
+export const get43 = oc
   .route({
     description: 'Get workflow archived execution logs',
     inputStructure: 'detailed',
@@ -2690,7 +2750,7 @@ export const get42 = oc
   .output(zGetAppsByAppIdWorkflowArchivedLogsResponse)
 
 export const workflowArchivedLogs = {
-  get: get42,
+  get: get43,
 }
 
 /**
@@ -2698,7 +2758,7 @@ export const workflowArchivedLogs = {
  *
  * Get workflow runs count statistics
  */
-export const get43 = oc
+export const get44 = oc
   .route({
     description: 'Get workflow runs count statistics',
     inputStructure: 'detailed',
@@ -2717,7 +2777,7 @@ export const get43 = oc
   .output(zGetAppsByAppIdWorkflowRunsCountResponse)
 
 export const count3 = {
-  get: get43,
+  get: get44,
 }
 
 /**
@@ -2725,7 +2785,7 @@ export const count3 = {
  *
  * Stop running workflow task
  */
-export const post36 = oc
+export const post37 = oc
   .route({
     description: 'Stop running workflow task',
     inputStructure: 'detailed',
@@ -2739,7 +2799,7 @@ export const post36 = oc
   .output(zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post36,
+  post: post37,
 }
 
 export const byTaskId3 = {
@@ -2753,7 +2813,7 @@ export const tasks = {
 /**
  * Generate a download URL for an archived workflow run.
  */
-export const get44 = oc
+export const get45 = oc
   .route({
     description: 'Generate a download URL for an archived workflow run.',
     inputStructure: 'detailed',
@@ -2766,7 +2826,7 @@ export const get44 = oc
   .output(zGetAppsByAppIdWorkflowRunsByRunIdExportResponse)
 
 export const export4 = {
-  get: get44,
+  get: get45,
 }
 
 /**
@@ -2774,7 +2834,7 @@ export const export4 = {
  *
  * Get workflow run node execution list
  */
-export const get45 = oc
+export const get46 = oc
   .route({
     description: 'Get workflow run node execution list',
     inputStructure: 'detailed',
@@ -2788,7 +2848,7 @@ export const get45 = oc
   .output(zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse)
 
 export const nodeExecutions = {
-  get: get45,
+  get: get46,
 }
 
 /**
@@ -2796,7 +2856,7 @@ export const nodeExecutions = {
  *
  * Get workflow run detail
  */
-export const get46 = oc
+export const get47 = oc
   .route({
     description: 'Get workflow run detail',
     inputStructure: 'detailed',
@@ -2810,7 +2870,7 @@ export const get46 = oc
   .output(zGetAppsByAppIdWorkflowRunsByRunIdResponse)
 
 export const byRunId = {
-  get: get46,
+  get: get47,
   export: export4,
   nodeExecutions,
 }
@@ -2818,7 +2878,7 @@ export const byRunId = {
 /**
  * Download a file from a Workflow Agent node's sandbox workspace (read-only)
  */
-export const get47 = oc
+export const get48 = oc
   .route({
     description: 'Download a file from a Workflow Agent node\'s sandbox workspace (read-only)',
     inputStructure: 'detailed',
@@ -2841,13 +2901,13 @@ export const get47 = oc
   )
 
 export const download2 = {
-  get: get47,
+  get: get48,
 }
 
 /**
  * Preview a text/binary file in a Workflow Agent node's sandbox workspace
  */
-export const get48 = oc
+export const get49 = oc
   .route({
     description: 'Preview a text/binary file in a Workflow Agent node\'s sandbox workspace',
     inputStructure: 'detailed',
@@ -2865,13 +2925,13 @@ export const get48 = oc
   .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse)
 
 export const preview3 = {
-  get: get48,
+  get: get49,
 }
 
 /**
  * List a directory in a Workflow Agent node's sandbox workspace (read-only)
  */
-export const get49 = oc
+export const get50 = oc
   .route({
     description: 'List a directory in a Workflow Agent node\'s sandbox workspace (read-only)',
     inputStructure: 'detailed',
@@ -2890,7 +2950,7 @@ export const get49 = oc
   .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse)
 
 export const files2 = {
-  get: get49,
+  get: get50,
   download: download2,
   preview: preview3,
 }
@@ -2916,7 +2976,7 @@ export const byWorkflowRunId = {
  *
  * Get workflow run list
  */
-export const get50 = oc
+export const get51 = oc
   .route({
     description: 'Get workflow run list',
     inputStructure: 'detailed',
@@ -2935,7 +2995,7 @@ export const get50 = oc
   .output(zGetAppsByAppIdWorkflowRunsResponse)
 
 export const workflowRuns2 = {
-  get: get50,
+  get: get51,
   count: count3,
   tasks,
   byRunId,
@@ -2947,7 +3007,7 @@ export const workflowRuns2 = {
  *
  * Get all users in current tenant for mentions
  */
-export const get51 = oc
+export const get52 = oc
   .route({
     description: 'Get all users in current tenant for mentions',
     inputStructure: 'detailed',
@@ -2961,7 +3021,7 @@ export const get51 = oc
   .output(zGetAppsByAppIdWorkflowCommentsMentionUsersResponse)
 
 export const mentionUsers = {
-  get: get51,
+  get: get52,
 }
 
 /**
@@ -2969,7 +3029,7 @@ export const mentionUsers = {
  *
  * Delete a comment reply
  */
-export const delete6 = oc
+export const delete7 = oc
   .route({
     description: 'Delete a comment reply',
     inputStructure: 'detailed',
@@ -3007,7 +3067,7 @@ export const put3 = oc
   .output(zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse)
 
 export const byReplyId = {
-  delete: delete6,
+  delete: delete7,
   put: put3,
 }
 
@@ -3016,7 +3076,7 @@ export const byReplyId = {
  *
  * Add a reply to a workflow comment
  */
-export const post37 = oc
+export const post38 = oc
   .route({
     description: 'Add a reply to a workflow comment',
     inputStructure: 'detailed',
@@ -3036,7 +3096,7 @@ export const post37 = oc
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponse)
 
 export const replies = {
-  post: post37,
+  post: post38,
   byReplyId,
 }
 
@@ -3045,7 +3105,7 @@ export const replies = {
  *
  * Resolve a workflow comment
  */
-export const post38 = oc
+export const post39 = oc
   .route({
     description: 'Resolve a workflow comment',
     inputStructure: 'detailed',
@@ -3059,7 +3119,7 @@ export const post38 = oc
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse)
 
 export const resolve = {
-  post: post38,
+  post: post39,
 }
 
 /**
@@ -3067,7 +3127,7 @@ export const resolve = {
  *
  * Delete a workflow comment
  */
-export const delete7 = oc
+export const delete8 = oc
   .route({
     description: 'Delete a workflow comment',
     inputStructure: 'detailed',
@@ -3086,7 +3146,7 @@ export const delete7 = oc
  *
  * Get a specific workflow comment
  */
-export const get52 = oc
+export const get53 = oc
   .route({
     description: 'Get a specific workflow comment',
     inputStructure: 'detailed',
@@ -3123,8 +3183,8 @@ export const put4 = oc
   .output(zPutAppsByAppIdWorkflowCommentsByCommentIdResponse)
 
 export const byCommentId = {
-  delete: delete7,
-  get: get52,
+  delete: delete8,
+  get: get53,
   put: put4,
   replies,
   resolve,
@@ -3135,7 +3195,7 @@ export const byCommentId = {
  *
  * Get all comments for a workflow
  */
-export const get53 = oc
+export const get54 = oc
   .route({
     description: 'Get all comments for a workflow',
     inputStructure: 'detailed',
@@ -3153,7 +3213,7 @@ export const get53 = oc
  *
  * Create a new workflow comment
  */
-export const post39 = oc
+export const post40 = oc
   .route({
     description: 'Create a new workflow comment',
     inputStructure: 'detailed',
@@ -3173,8 +3233,8 @@ export const post39 = oc
   .output(zPostAppsByAppIdWorkflowCommentsResponse)
 
 export const comments = {
-  get: get53,
-  post: post39,
+  get: get54,
+  post: post40,
   mentionUsers,
   byCommentId,
 }
@@ -3186,7 +3246,7 @@ export const comments = {
  *
  * @deprecated
  */
-export const get54 = oc
+export const get55 = oc
   .route({
     deprecated: true,
     description:
@@ -3206,7 +3266,7 @@ export const get54 = oc
   .output(zGetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponse)
 
 export const averageAppInteractions = {
-  get: get54,
+  get: get55,
 }
 
 /**
@@ -3216,7 +3276,7 @@ export const averageAppInteractions = {
  *
  * @deprecated
  */
-export const get55 = oc
+export const get56 = oc
   .route({
     deprecated: true,
     description:
@@ -3236,7 +3296,7 @@ export const get55 = oc
   .output(zGetAppsByAppIdWorkflowStatisticsDailyConversationsResponse)
 
 export const dailyConversations2 = {
-  get: get55,
+  get: get56,
 }
 
 /**
@@ -3246,7 +3306,7 @@ export const dailyConversations2 = {
  *
  * @deprecated
  */
-export const get56 = oc
+export const get57 = oc
   .route({
     deprecated: true,
     description:
@@ -3266,7 +3326,7 @@ export const get56 = oc
   .output(zGetAppsByAppIdWorkflowStatisticsDailyTerminalsResponse)
 
 export const dailyTerminals = {
-  get: get56,
+  get: get57,
 }
 
 /**
@@ -3276,7 +3336,7 @@ export const dailyTerminals = {
  *
  * @deprecated
  */
-export const get57 = oc
+export const get58 = oc
   .route({
     deprecated: true,
     description:
@@ -3296,7 +3356,7 @@ export const get57 = oc
   .output(zGetAppsByAppIdWorkflowStatisticsTokenCostsResponse)
 
 export const tokenCosts2 = {
-  get: get57,
+  get: get58,
 }
 
 export const statistics2 = {
@@ -3320,7 +3380,7 @@ export const workflow = {
  *
  * @deprecated
  */
-export const get58 = oc
+export const get59 = oc
   .route({
     deprecated: true,
     description:
@@ -3341,7 +3401,7 @@ export const get58 = oc
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
 
 export const byBlockType = {
-  get: get58,
+  get: get59,
 }
 
 /**
@@ -3353,7 +3413,7 @@ export const byBlockType = {
  *
  * @deprecated
  */
-export const get59 = oc
+export const get60 = oc
   .route({
     deprecated: true,
     description:
@@ -3369,7 +3429,7 @@ export const get59 = oc
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse)
 
 export const defaultWorkflowBlockConfigs = {
-  get: get59,
+  get: get60,
   byBlockType,
 }
 
@@ -3380,7 +3440,7 @@ export const defaultWorkflowBlockConfigs = {
  *
  * @deprecated
  */
-export const get60 = oc
+export const get61 = oc
   .route({
     deprecated: true,
     description:
@@ -3401,7 +3461,7 @@ export const get60 = oc
  *
  * @deprecated
  */
-export const post40 = oc
+export const post41 = oc
   .route({
     deprecated: true,
     description:
@@ -3421,8 +3481,8 @@ export const post40 = oc
   .output(zPostAppsByAppIdWorkflowsDraftConversationVariablesResponse)
 
 export const conversationVariables2 = {
-  get: get60,
-  post: post40,
+  get: get61,
+  post: post41,
 }
 
 /**
@@ -3434,7 +3494,7 @@ export const conversationVariables2 = {
  *
  * @deprecated
  */
-export const get61 = oc
+export const get62 = oc
   .route({
     deprecated: true,
     description:
@@ -3456,7 +3516,7 @@ export const get61 = oc
  *
  * @deprecated
  */
-export const post41 = oc
+export const post42 = oc
   .route({
     deprecated: true,
     description:
@@ -3476,8 +3536,8 @@ export const post41 = oc
   .output(zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
 
 export const environmentVariables = {
-  get: get61,
-  post: post41,
+  get: get62,
+  post: post42,
 }
 
 /**
@@ -3487,7 +3547,7 @@ export const environmentVariables = {
  *
  * @deprecated
  */
-export const post42 = oc
+export const post43 = oc
   .route({
     deprecated: true,
     description:
@@ -3507,7 +3567,7 @@ export const post42 = oc
   .output(zPostAppsByAppIdWorkflowsDraftFeaturesResponse)
 
 export const features = {
-  post: post42,
+  post: post43,
 }
 
 /**
@@ -3519,7 +3579,7 @@ export const features = {
  *
  * @deprecated
  */
-export const post43 = oc
+export const post44 = oc
   .route({
     deprecated: true,
     description:
@@ -3540,7 +3600,7 @@ export const post43 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse)
 
 export const deliveryTest = {
-  post: post43,
+  post: post44,
 }
 
 /**
@@ -3552,7 +3612,7 @@ export const deliveryTest = {
  *
  * @deprecated
  */
-export const post44 = oc
+export const post45 = oc
   .route({
     deprecated: true,
     description:
@@ -3573,7 +3633,7 @@ export const post44 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
 
 export const preview4 = {
-  post: post44,
+  post: post45,
 }
 
 /**
@@ -3585,7 +3645,7 @@ export const preview4 = {
  *
  * @deprecated
  */
-export const post45 = oc
+export const post46 = oc
   .route({
     deprecated: true,
     description:
@@ -3606,7 +3666,7 @@ export const post45 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
 
 export const run5 = {
-  post: post45,
+  post: post46,
 }
 
 export const form2 = {
@@ -3636,7 +3696,7 @@ export const humanInput2 = {
  *
  * @deprecated
  */
-export const post46 = oc
+export const post47 = oc
   .route({
     deprecated: true,
     description:
@@ -3657,7 +3717,7 @@ export const post46 = oc
   .output(zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
 
 export const run6 = {
-  post: post46,
+  post: post47,
 }
 
 export const byNodeId6 = {
@@ -3681,7 +3741,7 @@ export const iteration2 = {
  *
  * @deprecated
  */
-export const post47 = oc
+export const post48 = oc
   .route({
     deprecated: true,
     description:
@@ -3702,7 +3762,7 @@ export const post47 = oc
   .output(zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
 
 export const run7 = {
-  post: post47,
+  post: post48,
 }
 
 export const byNodeId7 = {
@@ -3722,7 +3782,7 @@ export const loop2 = {
  *
  * @deprecated
  */
-export const get62 = oc
+export const get63 = oc
   .route({
     deprecated: true,
     description:
@@ -3739,7 +3799,7 @@ export const get62 = oc
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse)
 
 export const candidates2 = {
-  get: get62,
+  get: get63,
 }
 
 /**
@@ -3747,7 +3807,7 @@ export const candidates2 = {
  *
  * @deprecated
  */
-export const post48 = oc
+export const post49 = oc
   .route({
     deprecated: true,
     description:
@@ -3767,7 +3827,7 @@ export const post48 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
 
 export const impact = {
-  post: post48,
+  post: post49,
 }
 
 /**
@@ -3775,7 +3835,7 @@ export const impact = {
  *
  * @deprecated
  */
-export const post49 = oc
+export const post50 = oc
   .route({
     deprecated: true,
     description:
@@ -3795,7 +3855,7 @@ export const post49 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
 
 export const saveToRoster = {
-  post: post49,
+  post: post50,
 }
 
 /**
@@ -3803,7 +3863,7 @@ export const saveToRoster = {
  *
  * @deprecated
  */
-export const post50 = oc
+export const post51 = oc
   .route({
     deprecated: true,
     description:
@@ -3823,7 +3883,7 @@ export const post50 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
 
 export const validate2 = {
-  post: post50,
+  post: post51,
 }
 
 /**
@@ -3831,7 +3891,7 @@ export const validate2 = {
  *
  * @deprecated
  */
-export const get63 = oc
+export const get64 = oc
   .route({
     deprecated: true,
     description:
@@ -3870,7 +3930,7 @@ export const put5 = oc
   .output(zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
 
 export const agentComposer2 = {
-  get: get63,
+  get: get64,
   put: put5,
   candidates: candidates2,
   impact,
@@ -3881,7 +3941,7 @@ export const agentComposer2 = {
 /**
  * Get last run result for draft workflow node
  */
-export const get64 = oc
+export const get65 = oc
   .route({
     description: 'Get last run result for draft workflow node',
     inputStructure: 'detailed',
@@ -3894,7 +3954,7 @@ export const get64 = oc
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse)
 
 export const lastRun = {
-  get: get64,
+  get: get65,
 }
 
 /**
@@ -3906,7 +3966,7 @@ export const lastRun = {
  *
  * @deprecated
  */
-export const post51 = oc
+export const post52 = oc
   .route({
     deprecated: true,
     description:
@@ -3927,7 +3987,7 @@ export const post51 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
 
 export const run8 = {
-  post: post51,
+  post: post52,
 }
 
 /**
@@ -3939,7 +3999,7 @@ export const run8 = {
  *
  * @deprecated
  */
-export const post52 = oc
+export const post53 = oc
   .route({
     deprecated: true,
     description:
@@ -3955,7 +4015,7 @@ export const post52 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse)
 
 export const run9 = {
-  post: post52,
+  post: post53,
 }
 
 export const trigger = {
@@ -3965,7 +4025,7 @@ export const trigger = {
 /**
  * Delete all variables for a specific node
  */
-export const delete8 = oc
+export const delete9 = oc
   .route({
     description: 'Delete all variables for a specific node',
     inputStructure: 'detailed',
@@ -3985,7 +4045,7 @@ export const delete8 = oc
  *
  * @deprecated
  */
-export const get65 = oc
+export const get66 = oc
   .route({
     deprecated: true,
     description:
@@ -4000,8 +4060,8 @@ export const get65 = oc
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
 
 export const variables = {
-  delete: delete8,
-  get: get65,
+  delete: delete9,
+  get: get66,
 }
 
 export const byNodeId8 = {
@@ -4025,7 +4085,7 @@ export const nodes7 = {
  *
  * @deprecated
  */
-export const post53 = oc
+export const post54 = oc
   .route({
     deprecated: true,
     description:
@@ -4046,7 +4106,7 @@ export const post53 = oc
   .output(zPostAppsByAppIdWorkflowsDraftRunResponse)
 
 export const run10 = {
-  post: post53,
+  post: post54,
 }
 
 /**
@@ -4056,7 +4116,7 @@ export const run10 = {
  *
  * @deprecated
  */
-export const get66 = oc
+export const get67 = oc
   .route({
     deprecated: true,
     description:
@@ -4071,7 +4131,7 @@ export const get66 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse)
 
 export const events = {
-  get: get66,
+  get: get67,
 }
 
 /**
@@ -4081,7 +4141,7 @@ export const events = {
  *
  * @deprecated
  */
-export const get67 = oc
+export const get68 = oc
   .route({
     deprecated: true,
     description:
@@ -4100,7 +4160,7 @@ export const get67 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse)
 
 export const preview5 = {
-  get: get67,
+  get: get68,
 }
 
 export const byOutputName = {
@@ -4114,7 +4174,7 @@ export const byOutputName = {
  *
  * @deprecated
  */
-export const get68 = oc
+export const get69 = oc
   .route({
     deprecated: true,
     description:
@@ -4129,7 +4189,7 @@ export const get68 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse)
 
 export const byNodeId9 = {
-  get: get68,
+  get: get69,
   byOutputName,
 }
 
@@ -4140,7 +4200,7 @@ export const byNodeId9 = {
  *
  * @deprecated
  */
-export const get69 = oc
+export const get70 = oc
   .route({
     deprecated: true,
     description:
@@ -4155,7 +4215,7 @@ export const get69 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse)
 
 export const nodeOutputs = {
-  get: get69,
+  get: get70,
   events,
   byNodeId: byNodeId9,
 }
@@ -4175,7 +4235,7 @@ export const runs = {
  *
  * @deprecated
  */
-export const get70 = oc
+export const get71 = oc
   .route({
     deprecated: true,
     description:
@@ -4190,7 +4250,7 @@ export const get70 = oc
   .output(zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse)
 
 export const systemVariables = {
-  get: get70,
+  get: get71,
 }
 
 /**
@@ -4202,7 +4262,7 @@ export const systemVariables = {
  *
  * @deprecated
  */
-export const post54 = oc
+export const post55 = oc
   .route({
     deprecated: true,
     description:
@@ -4223,7 +4283,7 @@ export const post54 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunResponse)
 
 export const run11 = {
-  post: post54,
+  post: post55,
 }
 
 /**
@@ -4235,7 +4295,7 @@ export const run11 = {
  *
  * @deprecated
  */
-export const post55 = oc
+export const post56 = oc
   .route({
     deprecated: true,
     description:
@@ -4256,7 +4316,7 @@ export const post55 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse)
 
 export const runAll = {
-  post: post55,
+  post: post56,
 }
 
 export const trigger2 = {
@@ -4292,7 +4352,7 @@ export const reset = {
 /**
  * Delete a workflow variable
  */
-export const delete9 = oc
+export const delete10 = oc
   .route({
     description: 'Delete a workflow variable',
     inputStructure: 'detailed',
@@ -4312,7 +4372,7 @@ export const delete9 = oc
  *
  * @deprecated
  */
-export const get71 = oc
+export const get72 = oc
   .route({
     deprecated: true,
     description:
@@ -4353,8 +4413,8 @@ export const patch2 = oc
   .output(zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
 
 export const byVariableId = {
-  delete: delete9,
-  get: get71,
+  delete: delete10,
+  get: get72,
   patch: patch2,
   reset,
 }
@@ -4362,7 +4422,7 @@ export const byVariableId = {
 /**
  * Delete all draft workflow variables
  */
-export const delete10 = oc
+export const delete11 = oc
   .route({
     description: 'Delete all draft workflow variables',
     inputStructure: 'detailed',
@@ -4384,7 +4444,7 @@ export const delete10 = oc
  *
  * @deprecated
  */
-export const get72 = oc
+export const get73 = oc
   .route({
     deprecated: true,
     description:
@@ -4405,8 +4465,8 @@ export const get72 = oc
   .output(zGetAppsByAppIdWorkflowsDraftVariablesResponse)
 
 export const variables2 = {
-  delete: delete10,
-  get: get72,
+  delete: delete11,
+  get: get73,
   byVariableId,
 }
 
@@ -4419,7 +4479,7 @@ export const variables2 = {
  *
  * @deprecated
  */
-export const get73 = oc
+export const get74 = oc
   .route({
     deprecated: true,
     description:
@@ -4443,7 +4503,7 @@ export const get73 = oc
  *
  * @deprecated
  */
-export const post56 = oc
+export const post57 = oc
   .route({
     deprecated: true,
     description:
@@ -4464,8 +4524,8 @@ export const post56 = oc
   .output(zPostAppsByAppIdWorkflowsDraftResponse)
 
 export const draft2 = {
-  get: get73,
-  post: post56,
+  get: get74,
+  post: post57,
   conversationVariables: conversationVariables2,
   environmentVariables,
   features,
@@ -4489,7 +4549,7 @@ export const draft2 = {
  *
  * @deprecated
  */
-export const get74 = oc
+export const get75 = oc
   .route({
     deprecated: true,
     description:
@@ -4511,7 +4571,7 @@ export const get74 = oc
  *
  * @deprecated
  */
-export const post57 = oc
+export const post58 = oc
   .route({
     deprecated: true,
     description:
@@ -4532,8 +4592,8 @@ export const post57 = oc
   .output(zPostAppsByAppIdWorkflowsPublishResponse)
 
 export const publish = {
-  get: get74,
-  post: post57,
+  get: get75,
+  post: post58,
 }
 
 /**
@@ -4543,7 +4603,7 @@ export const publish = {
  *
  * @deprecated
  */
-export const get75 = oc
+export const get76 = oc
   .route({
     deprecated: true,
     description:
@@ -4558,7 +4618,7 @@ export const get75 = oc
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse)
 
 export const events2 = {
-  get: get75,
+  get: get76,
 }
 
 /**
@@ -4568,7 +4628,7 @@ export const events2 = {
  *
  * @deprecated
  */
-export const get76 = oc
+export const get77 = oc
   .route({
     deprecated: true,
     description:
@@ -4591,7 +4651,7 @@ export const get76 = oc
   )
 
 export const preview6 = {
-  get: get76,
+  get: get77,
 }
 
 export const byOutputName2 = {
@@ -4605,7 +4665,7 @@ export const byOutputName2 = {
  *
  * @deprecated
  */
-export const get77 = oc
+export const get78 = oc
   .route({
     deprecated: true,
     description:
@@ -4620,7 +4680,7 @@ export const get77 = oc
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse)
 
 export const byNodeId10 = {
-  get: get77,
+  get: get78,
   byOutputName: byOutputName2,
 }
 
@@ -4631,7 +4691,7 @@ export const byNodeId10 = {
  *
  * @deprecated
  */
-export const get78 = oc
+export const get79 = oc
   .route({
     deprecated: true,
     description:
@@ -4646,7 +4706,7 @@ export const get78 = oc
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse)
 
 export const nodeOutputs2 = {
-  get: get78,
+  get: get79,
   events: events2,
   byNodeId: byNodeId10,
 }
@@ -4670,7 +4730,7 @@ export const published = {
  *
  * @deprecated
  */
-export const get79 = oc
+export const get80 = oc
   .route({
     deprecated: true,
     description:
@@ -4691,7 +4751,7 @@ export const get79 = oc
   .output(zGetAppsByAppIdWorkflowsTriggersWebhookResponse)
 
 export const webhook = {
-  get: get79,
+  get: get80,
 }
 
 export const triggers2 = {
@@ -4705,7 +4765,7 @@ export const triggers2 = {
  *
  * @deprecated
  */
-export const post58 = oc
+export const post59 = oc
   .route({
     deprecated: true,
     description:
@@ -4720,7 +4780,7 @@ export const post58 = oc
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
-  post: post58,
+  post: post59,
 }
 
 /**
@@ -4730,7 +4790,7 @@ export const restore = {
  *
  * @deprecated
  */
-export const delete11 = oc
+export const delete12 = oc
   .route({
     deprecated: true,
     description:
@@ -4775,7 +4835,7 @@ export const patch3 = oc
   .output(zPatchAppsByAppIdWorkflowsByWorkflowIdResponse)
 
 export const byWorkflowId = {
-  delete: delete11,
+  delete: delete12,
   patch: patch3,
   restore,
 }
@@ -4789,7 +4849,7 @@ export const byWorkflowId = {
  *
  * @deprecated
  */
-export const get80 = oc
+export const get81 = oc
   .route({
     deprecated: true,
     description:
@@ -4810,7 +4870,7 @@ export const get80 = oc
   .output(zGetAppsByAppIdWorkflowsResponse)
 
 export const workflows3 = {
-  get: get80,
+  get: get81,
   defaultWorkflowBlockConfigs,
   draft: draft2,
   publish,
@@ -4824,7 +4884,7 @@ export const workflows3 = {
  *
  * Delete application
  */
-export const delete12 = oc
+export const delete13 = oc
   .route({
     description: 'Delete application',
     inputStructure: 'detailed',
@@ -4847,7 +4907,7 @@ export const delete12 = oc
  *
  * @deprecated
  */
-export const get81 = oc
+export const get82 = oc
   .route({
     deprecated: true,
     description:
@@ -4887,8 +4947,8 @@ export const put7 = oc
   .output(zPutAppsByAppIdResponse)
 
 export const byAppId2 = {
-  delete: delete12,
-  get: get81,
+  delete: delete13,
+  get: get82,
   put: put7,
   advancedChat,
   agentComposer,
@@ -4919,6 +4979,7 @@ export const byAppId2 = {
   server,
   site,
   siteEnable,
+  star,
   statistics,
   textToAudio,
   trace,
@@ -4937,7 +4998,7 @@ export const byAppId2 = {
  *
  * Delete an API key for an app
  */
-export const delete13 = oc
+export const delete14 = oc
   .route({
     description: 'Delete an API key for an app',
     inputStructure: 'detailed',
@@ -4952,7 +5013,7 @@ export const delete13 = oc
   .output(zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse)
 
 export const byApiKeyId = {
-  delete: delete13,
+  delete: delete14,
 }
 
 /**
@@ -4960,7 +5021,7 @@ export const byApiKeyId = {
  *
  * Get all API keys for an app
  */
-export const get82 = oc
+export const get83 = oc
   .route({
     description: 'Get all API keys for an app',
     inputStructure: 'detailed',
@@ -4978,7 +5039,7 @@ export const get82 = oc
  *
  * Create a new API key for an app
  */
-export const post59 = oc
+export const post60 = oc
   .route({
     description: 'Create a new API key for an app',
     inputStructure: 'detailed',
@@ -4993,8 +5054,8 @@ export const post59 = oc
   .output(zPostAppsByResourceIdApiKeysResponse)
 
 export const apiKeys = {
-  get: get82,
-  post: post59,
+  get: get83,
+  post: post60,
   byApiKeyId,
 }
 
@@ -5009,7 +5070,7 @@ export const byResourceId = {
  *
  * @deprecated
  */
-export const get83 = oc
+export const get84 = oc
   .route({
     deprecated: true,
     description:
@@ -5024,7 +5085,7 @@ export const get83 = oc
   .output(zGetAppsByServerIdServerRefreshResponse)
 
 export const refresh = {
-  get: get83,
+  get: get84,
 }
 
 export const server2 = {
@@ -5040,7 +5101,7 @@ export const byServerId = {
  *
  * Get list of applications with pagination and filtering
  */
-export const get84 = oc
+export const get85 = oc
   .route({
     description: 'Get list of applications with pagination and filtering',
     inputStructure: 'detailed',
@@ -5062,7 +5123,7 @@ export const get84 = oc
  *
  * @deprecated
  */
-export const post60 = oc
+export const post61 = oc
   .route({
     deprecated: true,
     description:
@@ -5079,9 +5140,10 @@ export const post60 = oc
   .output(zPostAppsResponse)
 
 export const apps = {
-  get: get84,
-  post: post60,
+  get: get85,
+  post: post61,
   imports,
+  starred,
   workflows,
   byAppId: byAppId2,
   byResourceId,
