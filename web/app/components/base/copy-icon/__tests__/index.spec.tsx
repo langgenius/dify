@@ -1,11 +1,11 @@
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import CopyIcon from '..'
 
 const copy = vi.fn()
 const reset = vi.fn()
 let copied = false
 
-vi.mock('foxact/use-clipboard', () => ({
+vi.mock('@/hooks/use-clipboard', () => ({
   useClipboard: () => ({
     copy,
     reset,
@@ -20,35 +20,25 @@ describe('copy icon component', () => {
   })
 
   it('renders normally', () => {
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    expect(container.querySelector('svg')).not.toBeNull()
-  })
-
-  it('shows copy icon initially', () => {
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = container.querySelector('[data-icon="Copy"]')
-    expect(icon).toBeInTheDocument()
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    expect(screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' })).toBeInTheDocument()
   })
 
   it('shows copy check icon when copied', () => {
     copied = true
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = container.querySelector('[data-icon="CopyCheck"]')
-    expect(icon).toBeInTheDocument()
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    expect(screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copied' })).toBeInTheDocument()
   })
 
   it('handles copy when clicked', () => {
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = container.querySelector('[data-icon="Copy"]')
-    fireEvent.click(icon as Element)
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    fireEvent.click(screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }))
     expect(copy).toBeCalledTimes(1)
   })
 
   it('resets on mouse leave', () => {
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = container.querySelector('[data-icon="Copy"]')
-    const div = icon?.parentElement as HTMLElement
-    fireEvent.mouseLeave(div)
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    fireEvent.mouseLeave(screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }))
     expect(reset).toBeCalledTimes(1)
   })
 })

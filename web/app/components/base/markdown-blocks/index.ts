@@ -6,7 +6,7 @@
 export { default as AudioBlock } from './audio-block'
 // Assuming these are also standalone components in this directory intended for Markdown rendering
 export { default as MarkdownButton } from './button'
-export { default as CodeBlock } from './code-block'
+
 export { default as MarkdownForm } from './form'
 export { default as Img } from './img'
 export { default as Link } from './link'

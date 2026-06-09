@@ -24,17 +24,19 @@ import { usePipelineTemplate } from '../use-pipeline-template'
 const _mockGetState = vi.fn()
 const mockUseStore = vi.fn()
 const mockUseWorkflowStore = vi.fn()
+const toastMocks = vi.hoisted(() => ({
+  error: vi.fn(),
+}))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => mockUseStore(selector),
   useWorkflowStore: () => mockUseWorkflowStore(),
 }))
 
-const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: toastMocks.error,
+  },
 }))
 
 const mockEventEmit = vi.fn()
@@ -386,12 +388,12 @@ describe('useConfigurations', () => {
     const { result } = renderHook(() => useConfigurations(variables))
 
     expect(result.current.length).toBe(1)
-    expect(result.current[0].variable).toBe('textVar')
-    expect(result.current[0].label).toBe('Text Label')
-    expect(result.current[0].required).toBe(true)
-    expect(result.current[0].maxLength).toBe(100)
-    expect(result.current[0].placeholder).toBe('Enter text')
-    expect(result.current[0].tooltip).toBe('Help text')
+    expect(result.current[0]!.variable).toBe('textVar')
+    expect(result.current[0]!.label).toBe('Text Label')
+    expect(result.current[0]!.required).toBe(true)
+    expect(result.current[0]!.maxLength).toBe(100)
+    expect(result.current[0]!.placeholder).toBe('Enter text')
+    expect(result.current[0]!.tooltip).toBe('Help text')
   })
 
   it('should transform options correctly', () => {
@@ -408,7 +410,7 @@ describe('useConfigurations', () => {
 
     const { result } = renderHook(() => useConfigurations(variables))
 
-    expect(result.current[0].options).toEqual([
+    expect(result.current[0]!.options).toEqual([
       { label: 'option1', value: 'option1' },
       { label: 'option2', value: 'option2' },
       { label: 'option3', value: 'option3' },

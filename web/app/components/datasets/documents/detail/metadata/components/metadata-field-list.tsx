@@ -7,7 +7,7 @@ import { useBookCategories, useBusinessDocCategories, useLanguages, useMetadataM
 import FieldInfo from './field-info'
 
 const map2Options = (map: Record<string, string>) => {
-  return Object.keys(map).map(key => ({ value: key, name: map[key] }))
+  return Object.keys(map).map(key => ({ value: key, name: map[key]! }))
 }
 
 function useCategoryMapResolver(mainField: metadataType | '') {
@@ -72,7 +72,7 @@ const MetadataFieldList: FC<MetadataFieldListProps> = ({
       {Object.keys(fieldMap).map(field => (
         <FieldInfo
           key={fieldMap[field]?.label}
-          label={fieldMap[field]?.label}
+          label={fieldMap[field]?.label!}
           displayedValue={getDisplayValue(field)}
           value={get(sourceData, field, '')}
           inputType={fieldMap[field]?.inputType || 'input'}

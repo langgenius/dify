@@ -66,8 +66,8 @@ class HumanInputContent(ExecutionExtraContent):
     form_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
 
     @classmethod
-    def new(cls, form_id: str, message_id: str | None) -> "HumanInputContent":
-        return cls(form_id=form_id, message_id=message_id)
+    def new(cls, *, workflow_run_id: str, form_id: str, message_id: str | None) -> "HumanInputContent":
+        return cls(workflow_run_id=workflow_run_id, form_id=form_id, message_id=message_id)
 
     form: Mapped["HumanInputForm"] = relationship(
         "HumanInputForm",

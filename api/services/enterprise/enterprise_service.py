@@ -1,21 +1,46 @@
+from __future__ import annotations
+
+import enum
 import logging
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
+from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
+from extensions.ext_redis import redis_client
 from services.enterprise.base import EnterpriseRequest
+
+if TYPE_CHECKING:
+    from services.feature_service import LicenseStatus
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS = 1.0
+# License status cache configuration
+LICENSE_STATUS_CACHE_KEY = "enterprise:license:status"
+VALID_LICENSE_CACHE_TTL = 600  # 10 minutes — valid licenses are stable
+INVALID_LICENSE_CACHE_TTL = 30  # 30 seconds — short so admin fixes are picked up quickly
+
+
+class WebAppAccessMode(enum.StrEnum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    PRIVATE_ALL = "private_all"
+    SSO_VERIFIED = "sso_verified"
+
+
+PERMISSION_CHECK_MODES: frozenset[WebAppAccessMode] = frozenset(
+    {WebAppAccessMode.PRIVATE, WebAppAccessMode.PRIVATE_ALL}
+)
 
 
 class WebAppSettings(BaseModel):
     access_mode: str = Field(
-        description="Access mode for the web app. Can be 'public', 'private', 'private_all', 'sso_verified'",
-        default="private",
+        description=f"Access mode for the web app. One of: {', '.join(m.value for m in WebAppAccessMode)}",
+        default=WebAppAccessMode.PRIVATE.value,
         alias="accessMode",
     )
 
@@ -52,7 +77,7 @@ class DefaultWorkspaceJoinResult(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     @model_validator(mode="after")
-    def _check_workspace_id_when_joined(self) -> "DefaultWorkspaceJoinResult":
+    def _check_workspace_id_when_joined(self) -> DefaultWorkspaceJoinResult:
         if self.joined and not self.workspace_id:
             raise ValueError("workspace_id must be non-empty when joined is True")
         return self
@@ -88,12 +113,22 @@ def try_join_default_workspace(account_id: str) -> None:
 
 class EnterpriseService:
     @classmethod
+    @ttl_cache(ttl=5)
     def get_info(cls):
         return EnterpriseRequest.send_request("GET", "/info")
 
     @classmethod
     def get_workspace_info(cls, tenant_id: str):
         return EnterpriseRequest.send_request("GET", f"/workspace/{tenant_id}/info")
+
+    @classmethod
+    def initiate_device_flow_sso(cls, signed_state: str) -> dict:
+        return EnterpriseRequest.send_request(
+            "POST",
+            "/device-flow/sso-initiate",
+            json={"signed_state": signed_state},
+            raise_for_status=True,
+        )
 
     @classmethod
     def join_default_workspace(cls, *, account_id: str) -> DefaultWorkspaceJoinResult:
@@ -115,7 +150,6 @@ class EnterpriseService:
             "/default-workspace/members",
             json={"account_id": account_id},
             timeout=DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS,
-            raise_for_status=True,
         )
         if not isinstance(data, dict):
             raise ValueError("Invalid response format from enterprise default workspace API")
@@ -207,8 +241,9 @@ class EnterpriseService:
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
-            if access_mode not in ["public", "private", "private_all"]:
-                raise ValueError("access_mode must be either 'public', 'private', or 'private_all'")
+            allowed = {WebAppAccessMode.PUBLIC, WebAppAccessMode.PRIVATE, WebAppAccessMode.PRIVATE_ALL}
+            if access_mode not in allowed:
+                raise ValueError(f"access_mode must be one of: {', '.join(m.value for m in allowed)}")
 
             data = {"appId": app_id, "accessMode": access_mode}
 
@@ -223,3 +258,90 @@ class EnterpriseService:
 
             params = {"appId": app_id}
             EnterpriseRequest.send_request("DELETE", "/webapp/clean", params=params)
+
+        @classmethod
+        def list_externally_accessible_apps(
+            cls,
+            *,
+            page: int,
+            limit: int,
+            mode: str | None = None,
+            name: str | None = None,
+        ) -> dict:
+            """Call EE InnerListExternallyAccessibleApps; returns raw camelCase response.
+
+            Response shape: ``{"data": [{"appId", "tenantId", "mode", "name", "updatedAt"}],
+            "total": int, "hasMore": bool}``.
+            """
+            body: dict[str, str | int] = {"page": page, "limit": limit}
+            if mode is not None:
+                body["mode"] = mode
+            if name is not None:
+                body["name"] = name
+            return EnterpriseRequest.send_request(
+                "POST",
+                "/webapp/externally-accessible-apps",
+                json=body,
+                timeout=5.0,
+            )
+
+    @classmethod
+    def get_cached_license_status(cls) -> LicenseStatus | None:
+        """Get enterprise license status with Redis caching to reduce HTTP calls.
+
+        Caches valid statuses (active/expiring) for 10 minutes and invalid statuses
+        (inactive/expired/lost) for 30 seconds.  The shorter TTL for invalid statuses
+        balances prompt license-fix detection against DoS mitigation — without
+        caching, every request on an expired license would hit the enterprise API.
+
+        Returns:
+            LicenseStatus enum value, or None if enterprise is disabled / unreachable.
+        """
+        if not dify_config.ENTERPRISE_ENABLED:
+            return None
+
+        cached = cls._read_cached_license_status()
+        if cached is not None:
+            return cached
+
+        return cls._fetch_and_cache_license_status()
+
+    @classmethod
+    def _read_cached_license_status(cls) -> LicenseStatus | None:
+        """Read license status from Redis cache, returning None on miss or failure."""
+        from services.feature_service import LicenseStatus
+
+        try:
+            raw = redis_client.get(LICENSE_STATUS_CACHE_KEY)
+            if raw:
+                value = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+                return LicenseStatus(value)
+        except Exception:
+            logger.debug("Failed to read license status from cache", exc_info=True)
+        return None
+
+    @classmethod
+    def _fetch_and_cache_license_status(cls) -> LicenseStatus | None:
+        """Fetch license status from enterprise API and cache the result."""
+        from services.feature_service import LicenseStatus
+
+        try:
+            info = cls.get_info()
+            license_info = info.get("License")
+            if not license_info:
+                return None
+
+            status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+            ttl = (
+                VALID_LICENSE_CACHE_TTL
+                if status in (LicenseStatus.ACTIVE, LicenseStatus.EXPIRING)
+                else INVALID_LICENSE_CACHE_TTL
+            )
+            try:
+                redis_client.setex(LICENSE_STATUS_CACHE_KEY, ttl, status)
+            except Exception:
+                logger.debug("Failed to cache license status", exc_info=True)
+            return status
+        except Exception:
+            logger.debug("Failed to fetch enterprise license status", exc_info=True)
+        return None

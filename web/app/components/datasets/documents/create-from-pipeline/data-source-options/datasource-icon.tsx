@@ -1,6 +1,6 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { cn } from '@/utils/classnames'
 
 type DatasourceIconProps = {
   size?: string
@@ -29,7 +29,7 @@ const DatasourceIcon: FC<DatasourceIconProps> = ({
     }
     >
       <div
-        className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
+        className="size-full shrink-0 rounded-md bg-cover bg-center"
         style={{
           backgroundImage: `url(${iconUrl})`,
         }}

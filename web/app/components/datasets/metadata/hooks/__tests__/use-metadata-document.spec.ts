@@ -81,9 +81,15 @@ vi.mock('@/hooks/use-metadata', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: vi.fn(),
+  },
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
   },
 }))
 
@@ -256,7 +262,7 @@ describe('useMetadataDocument', () => {
       // Try to add existing item
       if (result.current.tempList.length > 0) {
         act(() => {
-          result.current.handleSelectMetaData(result.current.tempList[0])
+          result.current.handleSelectMetaData(result.current.tempList[0]!)
         })
 
         expect(result.current.tempList.length).toBe(initialLength)

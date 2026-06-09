@@ -35,6 +35,7 @@
   "details.structureTooltip": "チャンク構造は、ドキュメントがどのように分割され、インデックスされるかを決定します。一般、親子、Q&Aモードを提供し、各ナレッジベースにユニークです。",
   "documentSettings.title": "ドキュメント設定",
   "editPipelineInfo": "パイプライン情報を編集する",
+  "editPipelineInfoNameRequired": "ナレッジベースの名前を入力してください。",
   "exportDSL.errorTip": "パイプラインDSLのエクスポートに失敗しました",
   "exportDSL.successTip": "エクスポートパイプラインDSLが成功しました",
   "inputField": "入力フィールド",

@@ -90,7 +90,7 @@ describe('use-credential hooks', () => {
 
       result.current()
 
-      const invalidFn = mockUseInvalidPluginCredentialInfo.mock.results[0].value
+      const invalidFn = mockUseInvalidPluginCredentialInfo.mock.results[0]!.value
       expect(invalidFn).toHaveBeenCalled()
       expect(mockInvalidToolsByType).toHaveBeenCalled()
     })

@@ -11,3 +11,9 @@ app_published_workflow_was_updated = signal("app-published-workflow-was-updated"
 
 # sender: app, kwargs: synced_draft_workflow
 app_draft_workflow_was_synced = signal("app-draft-workflow-was-synced")
+
+# sender: app
+app_was_updated = signal("app-was-updated")
+
+# sender: app
+app_was_deleted = signal("app-was-deleted")

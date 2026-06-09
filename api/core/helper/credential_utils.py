@@ -2,7 +2,8 @@
 Credential utility functions for checking credential existence and policy compliance.
 """
 
-from services.enterprise.plugin_manager_service import PluginCredentialType
+from configs import dify_config
+from core.entities import PluginCredentialType
 
 
 def is_credential_exists(credential_id: str, credential_type: "PluginCredentialType") -> bool:
@@ -37,6 +38,16 @@ def is_credential_exists(credential_id: str, credential_type: "PluginCredentialT
             )
 
         return False
+
+
+def runtime_check_credential_policy_compliance(
+    credential_id: str, provider: str, credential_type: "PluginCredentialType", check_existence: bool = True
+):
+    if dify_config.ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK:
+        return
+    check_credential_policy_compliance(
+        credential_id=credential_id, provider=provider, credential_type=credential_type, check_existence=check_existence
+    )
 
 
 def check_credential_policy_compliance(

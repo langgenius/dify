@@ -17,11 +17,11 @@ export function getWebAppPassport(shareCode: string) {
   return localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME(shareCode)) || ''
 }
 
-export function clearWebAppAccessToken() {
+function clearWebAppAccessToken() {
   localStorage.removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
 }
 
-export function clearWebAppPassport(shareCode: string) {
+function clearWebAppPassport(shareCode: string) {
   localStorage.removeItem(PASSPORT_LOCAL_STORAGE_NAME(shareCode))
 }
 

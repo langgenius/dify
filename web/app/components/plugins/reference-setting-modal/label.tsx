@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   label: string
@@ -18,7 +18,7 @@ const Label: FC<Props> = ({
         <span className="system-sm-semibold text-text-secondary">{label}</span>
       </div>
       {description && (
-        <div className="body-xs-regular mt-1 text-text-tertiary">
+        <div className="mt-1 body-xs-regular text-text-tertiary">
           {description}
         </div>
       )}

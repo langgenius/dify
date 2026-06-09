@@ -10,10 +10,21 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.exc import PluginDaemonInternalServerError
+
+
+@pytest.fixture(autouse=True)
+def _patch_shared_httpx_client():
+    """Patch module-level client methods to delegate to module httpx.request/stream."""
+    with (
+        patch("core.plugin.impl.base._httpx_client.request", side_effect=lambda **kw: httpx.request(**kw)),
+        patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
+    ):
+        yield
 
 
 class TestPluginEndpointClientDelete:

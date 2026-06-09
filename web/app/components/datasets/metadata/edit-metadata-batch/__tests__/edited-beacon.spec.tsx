@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import EditedBeacon from '../edited-beacon'
 
@@ -97,16 +97,8 @@ describe('EditedBeacon', () => {
       // Hover to show reset button
       fireEvent.mouseEnter(wrapper)
 
-      await waitFor(() => {
-        const resetButton = container.querySelector('.bg-text-accent-secondary')
-        expect(resetButton).toBeInTheDocument()
-      })
-
-      // Find and click the reset button (the clickable element with onClick)
-      const clickableElement = container.querySelector('.flex.size-4.items-center.justify-center.rounded-full.bg-text-accent-secondary')
-      if (clickableElement) {
-        fireEvent.click(clickableElement)
-      }
+      const resetButton = await screen.findByRole('button', { name: 'common.operation.reset' })
+      fireEvent.click(resetButton)
 
       expect(handleReset).toHaveBeenCalledTimes(1)
     })

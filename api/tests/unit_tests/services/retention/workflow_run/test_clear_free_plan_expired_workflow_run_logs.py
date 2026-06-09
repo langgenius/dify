@@ -80,7 +80,13 @@ class TestWorkflowRunCleanupInit:
             cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
             cfg.BILLING_ENABLED = False
             with pytest.raises(ValueError):
-                WorkflowRunCleanup(days=30, batch_size=10, start_from=dt, end_before=dt, workflow_run_repo=mock_repo)
+                WorkflowRunCleanup(
+                    days=30,
+                    batch_size=10,
+                    start_from=dt,
+                    end_before=dt,
+                    workflow_run_repo=mock_repo,
+                )
 
     def test_zero_batch_size_raises(self, mock_repo):
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
@@ -102,9 +108,23 @@ class TestWorkflowRunCleanupInit:
             cfg.BILLING_ENABLED = False
             start = datetime.datetime(2024, 1, 1)
             end = datetime.datetime(2024, 6, 1)
-            c = WorkflowRunCleanup(days=30, batch_size=5, start_from=start, end_before=end, workflow_run_repo=mock_repo)
+            c = WorkflowRunCleanup(
+                days=30,
+                batch_size=5,
+                start_from=start,
+                end_before=end,
+                workflow_run_repo=mock_repo,
+            )
             assert c.window_start == start
             assert c.window_end == end
+
+    def test_default_task_label_is_custom(self, mock_repo):
+        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
+            cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
+            cfg.BILLING_ENABLED = False
+            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+
+        assert c._metrics._base_attributes["task_label"] == "custom"
 
 
 # ---------------------------------------------------------------------------
@@ -393,7 +413,12 @@ class TestRunDryRunMode:
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
             cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
             cfg.BILLING_ENABLED = False
-            return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo, dry_run=True)
+            return WorkflowRunCleanup(
+                days=30,
+                batch_size=10,
+                workflow_run_repo=mock_repo,
+                dry_run=True,
+            )
 
     def test_dry_run_no_delete_called(self, mock_repo):
         run = make_run("t1")

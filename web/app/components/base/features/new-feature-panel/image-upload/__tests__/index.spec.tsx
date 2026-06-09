@@ -70,6 +70,14 @@ describe('ImageUpload', () => {
     expect(onChange).toHaveBeenCalled()
   })
 
+  it('should toggle without onChange callback', () => {
+    renderWithProvider()
+
+    expect(() => {
+      fireEvent.click(screen.getByRole('switch'))
+    }).not.toThrow()
+  })
+
   it('should show supported types when enabled', () => {
     renderWithProvider({}, {
       file: {

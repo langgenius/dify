@@ -41,7 +41,7 @@ describe('NodeStatus', () => {
 
   it('applies styleCss correctly', () => {
     const { container } = render(<NodeStatus styleCss={{ color: 'red' }} />)
-    expect(container.firstChild).toHaveStyle({ color: 'rgb(255, 0, 0)' })
+    expect(container.firstChild).toHaveStyle({ color: 'red' })
   })
 
   it('applies iconClassName to the icon', () => {
@@ -49,8 +49,8 @@ describe('NodeStatus', () => {
     // The icon is the first child of the div
     const icon = container.querySelector('.custom-icon-class')
     expect(icon).toBeInTheDocument()
-    expect(icon).toHaveClass('h-3.5')
-    expect(icon).toHaveClass('w-3.5')
+    expect(icon).toHaveClass('size-3.5')
+    expect(icon).toHaveClass('size-3.5')
   })
 
   it('passes additional HTML attributes to the container', () => {

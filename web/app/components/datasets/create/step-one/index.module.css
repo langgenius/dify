@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .stepHeader {
   padding: 42px 64px 12px 0;
 }

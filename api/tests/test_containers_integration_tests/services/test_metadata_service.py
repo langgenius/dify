@@ -5,8 +5,10 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
+from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
 
@@ -101,7 +103,7 @@ class TestMetadataService:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
             built_in_field_enabled=False,
         )
@@ -132,13 +134,13 @@ class TestMetadataService:
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info="{}",
             batch="test-batch",
             name=fake.file_name(),
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             doc_language="en",
         )
 
@@ -163,7 +165,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].current_tenant_id = tenant.id
         mock_external_service_dependencies["current_user"].id = account.id
 
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
 
         # Act: Execute the method under test
         result = MetadataService.create_metadata(dataset.id, metadata_args)
@@ -201,7 +203,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         long_name = "a" * 256  # 256 characters, exceeding 255 limit
-        metadata_args = MetadataArgs(type="string", name=long_name)
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name=long_name)
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name cannot exceed 255 characters."):
@@ -226,11 +228,11 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create first metadata
-        first_metadata_args = MetadataArgs(type="string", name="duplicate_name")
+        first_metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="duplicate_name")
         MetadataService.create_metadata(dataset.id, first_metadata_args)
 
         # Try to create second metadata with same name
-        second_metadata_args = MetadataArgs(type="number", name="duplicate_name")
+        second_metadata_args = MetadataArgs(type=DatasetMetadataType.NUMBER, name="duplicate_name")
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name already exists."):
@@ -256,7 +258,7 @@ class TestMetadataService:
 
         # Try to create metadata with built-in field name
         built_in_field_name = BuiltInField.document_name
-        metadata_args = MetadataArgs(type="string", name=built_in_field_name)
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name=built_in_field_name)
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name already exists in Built-in fields."):
@@ -281,7 +283,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="old_name")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Act: Execute the method under test
@@ -318,7 +320,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="old_name")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Try to update with too long name
@@ -347,10 +349,10 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create two metadata entries
-        first_metadata_args = MetadataArgs(type="string", name="first_metadata")
+        first_metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="first_metadata")
         first_metadata = MetadataService.create_metadata(dataset.id, first_metadata_args)
 
-        second_metadata_args = MetadataArgs(type="number", name="second_metadata")
+        second_metadata_args = MetadataArgs(type=DatasetMetadataType.NUMBER, name="second_metadata")
         second_metadata = MetadataService.create_metadata(dataset.id, second_metadata_args)
 
         # Try to update first metadata with second metadata's name
@@ -376,7 +378,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="old_name")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Try to update with built-in field name
@@ -432,7 +434,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="to_be_deleted")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="to_be_deleted")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Act: Execute the method under test
@@ -496,7 +498,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Create metadata binding
@@ -798,7 +800,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Mock DocumentService.get_document
@@ -866,7 +868,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Mock DocumentService.get_document
@@ -917,7 +919,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Create metadata operation data
@@ -1038,7 +1040,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Create document and metadata binding
@@ -1101,7 +1103,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Act: Execute the method under test

@@ -84,7 +84,7 @@ export const Default: Story = {
     value: '',
     minHeight: 36,
     maxHeight: 96,
-    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500',
   },
 }
 
@@ -96,7 +96,7 @@ export const WithInitialValue: Story = {
     value: 'This is a pre-filled textarea with some initial content.',
     minHeight: 36,
     maxHeight: 96,
-    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500',
   },
 }
 
@@ -108,7 +108,7 @@ export const MultilineContent: Story = {
     value: 'Line 1\nLine 2\nLine 3\nLine 4\nThis textarea automatically expands to fit the content.',
     minHeight: 36,
     maxHeight: 96,
-    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500',
   },
 }
 
@@ -120,7 +120,7 @@ export const CustomMinHeight: Story = {
     value: '',
     minHeight: 100,
     maxHeight: 200,
-    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500',
   },
 }
 
@@ -132,7 +132,7 @@ export const SmallMaxHeight: Story = {
     value: 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nThis will become scrollable when it exceeds max height.',
     minHeight: 36,
     maxHeight: 80,
-    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500',
   },
 }
 
@@ -145,7 +145,7 @@ export const AutoFocus: Story = {
     minHeight: 36,
     maxHeight: 96,
     autoFocus: true,
-    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500',
   },
 }
 
@@ -157,7 +157,7 @@ export const CustomStyling: Story = {
     value: '',
     minHeight: 50,
     maxHeight: 150,
-    className: 'w-full p-3 bg-gray-50 border-2 border-blue-400 rounded-xl text-lg focus:outline-none focus:bg-white focus:border-blue-600',
+    className: 'w-full p-3 bg-gray-50 border-2 border-blue-400 rounded-xl text-lg focus:outline-hidden focus:bg-white focus:border-blue-600',
     wrapperClassName: 'shadow-lg',
   },
 }
@@ -170,7 +170,7 @@ export const LongContent: Story = {
     value: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n\nExcepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
     minHeight: 36,
     maxHeight: 200,
-    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500',
   },
 }
 
@@ -182,7 +182,7 @@ export const ChatInput: Story = {
     value: '',
     minHeight: 40,
     maxHeight: 120,
-    className: 'w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-2xl text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500',
+    className: 'w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-2xl text-sm focus:outline-hidden focus:bg-white focus:ring-2 focus:ring-blue-500',
   },
 }
 
@@ -194,7 +194,7 @@ export const CommentBox: Story = {
     value: '',
     minHeight: 60,
     maxHeight: 200,
-    className: 'w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500',
+    className: 'w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500',
   },
 }
 
@@ -207,7 +207,7 @@ export const Playground: Story = {
     minHeight: 36,
     maxHeight: 96,
     autoFocus: false,
-    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+    className: 'w-full p-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500',
     wrapperClassName: '',
   },
 }

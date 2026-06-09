@@ -133,10 +133,10 @@ class TestBaseIndexProcessor:
         upload_b = SimpleNamespace(id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", name="b.png")
         upload_tool = SimpleNamespace(id="tool-upload-id", name="tool.png")
         upload_remote = SimpleNamespace(id="remote-upload-id", name="remote.png")
-        db_query = Mock()
-        db_query.where.return_value.all.return_value = [upload_a, upload_b, upload_tool, upload_remote]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [upload_a, upload_b, upload_tool, upload_remote]
         db_session = Mock()
-        db_session.query.return_value = db_query
+        db_session.scalars.return_value = scalars_result
 
         with (
             patch.object(processor, "_extract_markdown_images", return_value=images),
@@ -170,10 +170,10 @@ class TestBaseIndexProcessor:
     def test_get_content_files_ignores_missing_upload_records(self, processor: _ForwardingBaseIndexProcessor) -> None:
         document = Document(page_content="ignored", metadata={"document_id": "doc-1", "dataset_id": "ds-1"})
         images = ["/files/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/image-preview"]
-        db_query = Mock()
-        db_query.where.return_value.all.return_value = []
+        scalars_result = Mock()
+        scalars_result.all.return_value = []
         db_session = Mock()
-        db_session.query.return_value = db_query
+        db_session.scalars.return_value = scalars_result
 
         with (
             patch.object(processor, "_extract_markdown_images", return_value=images),
@@ -200,7 +200,7 @@ class TestBaseIndexProcessor:
         mock_db.engine = Mock()
 
         with (
-            patch("core.rag.index_processor.index_processor_base.ssrf_proxy.get", return_value=response),
+            patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response),
             patch("core.rag.index_processor.index_processor_base.db", mock_db),
             patch("services.file_service.FileService") as mock_file_service,
         ):
@@ -215,7 +215,7 @@ class TestBaseIndexProcessor:
         too_large.headers = {"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"}
         too_large.raise_for_status.return_value = None
 
-        with patch("core.rag.index_processor.index_processor_base.ssrf_proxy.get", return_value=too_large):
+        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=too_large):
             assert processor._download_image("https://example.com/too-large.png", current_user=Mock()) is None
 
         empty = Mock()
@@ -223,7 +223,7 @@ class TestBaseIndexProcessor:
         empty.raise_for_status.return_value = None
         empty.iter_bytes.return_value = []
 
-        with patch("core.rag.index_processor.index_processor_base.ssrf_proxy.get", return_value=empty):
+        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=empty):
             assert processor._download_image("https://example.com/empty.png", current_user=Mock()) is None
 
     def test_download_image_limits_stream_size(self, processor: _ForwardingBaseIndexProcessor) -> None:
@@ -232,7 +232,7 @@ class TestBaseIndexProcessor:
         response.raise_for_status.return_value = None
         response.iter_bytes.return_value = [b"a" * (3 * 1024 * 1024)]
 
-        with patch("core.rag.index_processor.index_processor_base.ssrf_proxy.get", return_value=response):
+        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response):
             assert processor._download_image("https://example.com/big-stream.png", current_user=Mock()) is None
 
     def test_download_image_handles_timeout_request_and_unexpected_errors(
@@ -241,38 +241,34 @@ class TestBaseIndexProcessor:
         request = httpx.Request("GET", "https://example.com/image.png")
 
         with patch(
-            "core.rag.index_processor.index_processor_base.ssrf_proxy.get",
+            "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=httpx.TimeoutException("timeout"),
         ):
             assert processor._download_image("https://example.com/image.png", current_user=Mock()) is None
 
         with patch(
-            "core.rag.index_processor.index_processor_base.ssrf_proxy.get",
+            "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=httpx.RequestError("bad request", request=request),
         ):
             assert processor._download_image("https://example.com/image.png", current_user=Mock()) is None
 
         with patch(
-            "core.rag.index_processor.index_processor_base.ssrf_proxy.get",
+            "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=RuntimeError("unexpected"),
         ):
             assert processor._download_image("https://example.com/image.png", current_user=Mock()) is None
 
     def test_download_tool_file_returns_none_when_not_found(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        db_query = Mock()
-        db_query.where.return_value.first.return_value = None
         db_session = Mock()
-        db_session.query.return_value = db_query
+        db_session.get.return_value = None
 
         with patch("core.rag.index_processor.index_processor_base.db.session", db_session):
             assert processor._download_tool_file("tool-id", current_user=Mock()) is None
 
     def test_download_tool_file_uploads_file_when_found(self, processor: _ForwardingBaseIndexProcessor) -> None:
         tool_file = SimpleNamespace(file_key="k1", name="tool.png", mimetype="image/png")
-        db_query = Mock()
-        db_query.where.return_value.first.return_value = tool_file
         db_session = Mock()
-        db_session.query.return_value = db_query
+        db_session.get.return_value = tool_file
         mock_db = Mock()
         mock_db.session = db_session
         mock_db.engine = Mock()

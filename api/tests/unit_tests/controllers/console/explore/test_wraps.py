@@ -34,9 +34,9 @@ def test_installed_app_required_not_found():
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(MagicMock(), "tenant-1"),
         ),
-        patch("controllers.console.explore.wraps.db.session.query") as q,
+        patch("controllers.console.explore.wraps.db.session.scalar") as scalar_mock,
     ):
-        q.return_value.where.return_value.first.return_value = None
+        scalar_mock.return_value = None
 
         with pytest.raises(NotFound):
             view("app-id")
@@ -54,11 +54,11 @@ def test_installed_app_required_app_deleted():
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(MagicMock(), "tenant-1"),
         ),
-        patch("controllers.console.explore.wraps.db.session.query") as q,
+        patch("controllers.console.explore.wraps.db.session.scalar") as scalar_mock,
         patch("controllers.console.explore.wraps.db.session.delete"),
         patch("controllers.console.explore.wraps.db.session.commit"),
     ):
-        q.return_value.where.return_value.first.return_value = installed_app
+        scalar_mock.return_value = installed_app
 
         with pytest.raises(NotFound):
             view("app-id")
@@ -76,9 +76,9 @@ def test_installed_app_required_success():
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(MagicMock(), "tenant-1"),
         ),
-        patch("controllers.console.explore.wraps.db.session.query") as q,
+        patch("controllers.console.explore.wraps.db.session.scalar") as scalar_mock,
     ):
-        q.return_value.where.return_value.first.return_value = installed_app
+        scalar_mock.return_value = installed_app
 
         result = view("app-id")
         assert result == installed_app
@@ -149,9 +149,9 @@ def test_trial_app_required_not_allowed():
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(MagicMock(id="user-1"), None),
         ),
-        patch("controllers.console.explore.wraps.db.session.query") as q,
+        patch("controllers.console.explore.wraps.db.session.scalar") as scalar_mock,
     ):
-        q.return_value.where.return_value.first.return_value = None
+        scalar_mock.return_value = None
 
         with pytest.raises(TrialAppNotAllowed):
             view("app-id")
@@ -170,9 +170,9 @@ def test_trial_app_required_limit_exceeded():
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(MagicMock(id="user-1"), None),
         ),
-        patch("controllers.console.explore.wraps.db.session.query") as q,
+        patch("controllers.console.explore.wraps.db.session.scalar") as scalar_mock,
     ):
-        q.return_value.where.return_value.first.side_effect = [
+        scalar_mock.side_effect = [
             trial_app,
             record,
         ]
@@ -194,9 +194,9 @@ def test_trial_app_required_success():
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(MagicMock(id="user-1"), None),
         ),
-        patch("controllers.console.explore.wraps.db.session.query") as q,
+        patch("controllers.console.explore.wraps.db.session.scalar") as scalar_mock,
     ):
-        q.return_value.where.return_value.first.side_effect = [
+        scalar_mock.side_effect = [
             trial_app,
             record,
         ]

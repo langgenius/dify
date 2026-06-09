@@ -211,3 +211,16 @@ class TestCleanProcessor:
         text = "[Text with (parens) and symbols](https://example.com)"
         expected = "[Text with (parens) and symbols](https://example.com)"
         assert CleanProcessor.clean(text, process_rule) == expected
+
+    def test_clean_remove_urls_emails_preserves_markdown_image_links(self):
+        """Remove plain URLs and emails while preserving markdown image links."""
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
+        text = "Email test@example.com and remove https://remove.com but keep ![diagram](https://example.com/image.png)"
+        result = CleanProcessor.clean(text, process_rule)
+
+        assert result == "Email  and remove  but keep ![diagram](https://example.com/image.png)"
+
+    def test_filter_string_returns_input_text(self):
+        """Test filter_string passthrough behavior."""
+        processor = CleanProcessor()
+        assert processor.filter_string("raw text") == "raw text"

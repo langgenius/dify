@@ -31,7 +31,7 @@ import Options from './base/options'
 
 const I18N_PREFIX = 'stepOne.website'
 
-export type WebsiteCrawlProps = {
+type WebsiteCrawlProps = {
   nodeId: string
   nodeData: DataSourceNodeType
   onCredentialChange: (credentialId: string) => void

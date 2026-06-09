@@ -18,32 +18,11 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-// Mock useDebounceFn to store the function and allow manual triggering
-let debouncedFn: (() => void) | null = null
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: () => void) => {
-    debouncedFn = fn
-    return {
-      run: () => {
-        // Schedule to run after React state updates
-        setTimeout(() => debouncedFn?.(), 0)
-      },
-      cancel: vi.fn(),
-    }
-  },
-}))
-
 describe('LabelFilter', () => {
   const mockOnChange = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
-    debouncedFn = null
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
   })
 
   // Rendering Tests
@@ -81,36 +60,23 @@ describe('LabelFilter', () => {
 
       const trigger = screen.getByText('common.tag.placeholder')
 
-      await act(async () => {
-        fireEvent.click(trigger)
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(trigger))
 
       mockTags.forEach((tag) => {
         expect(screen.getByText(tag.label)).toBeInTheDocument()
       })
     })
 
-    it('should close dropdown when trigger is clicked again', async () => {
+    it('should render search input when dropdown is open', async () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      const trigger = screen.getByText('common.tag.placeholder')
+      const trigger = screen.getByText('common.tag.placeholder').closest('button')
+      expect(trigger).toBeInTheDocument()
 
-      // Open
-      await act(async () => {
-        fireEvent.click(trigger)
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(trigger!))
 
       expect(screen.getByText('Agent')).toBeInTheDocument()
-
-      // Close
-      await act(async () => {
-        fireEvent.click(trigger)
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 
@@ -119,17 +85,11 @@ describe('LabelFilter', () => {
     it('should call onChange with selected label when clicking a label', async () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      await act(async () => {
-        fireEvent.click(screen.getByText('common.tag.placeholder'))
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(screen.getByText('common.tag.placeholder')))
 
       expect(screen.getByText('Agent')).toBeInTheDocument()
 
-      await act(async () => {
-        fireEvent.click(screen.getByText('Agent'))
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(screen.getByText('Agent')))
 
       expect(mockOnChange).toHaveBeenCalledWith(['agent'])
     })
@@ -137,10 +97,7 @@ describe('LabelFilter', () => {
     it('should remove label from selection when clicking already selected label', async () => {
       render(<LabelFilter value={['agent']} onChange={mockOnChange} />)
 
-      await act(async () => {
-        fireEvent.click(screen.getByText('Agent'))
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(screen.getByText('Agent')))
 
       // Find the label item in the dropdown list
       const labelItems = screen.getAllByText('Agent')
@@ -149,7 +106,6 @@ describe('LabelFilter', () => {
       await act(async () => {
         if (dropdownItem)
           fireEvent.click(dropdownItem)
-        vi.advanceTimersByTime(10)
       })
 
       expect(mockOnChange).toHaveBeenCalledWith([])
@@ -158,17 +114,11 @@ describe('LabelFilter', () => {
     it('should add label to existing selection', async () => {
       render(<LabelFilter value={['agent']} onChange={mockOnChange} />)
 
-      await act(async () => {
-        fireEvent.click(screen.getByText('Agent'))
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(screen.getByText('Agent')))
 
       expect(screen.getByText('RAG')).toBeInTheDocument()
 
-      await act(async () => {
-        fireEvent.click(screen.getByText('RAG'))
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(screen.getByText('RAG')))
 
       expect(mockOnChange).toHaveBeenCalledWith(['agent', 'rag'])
     })
@@ -179,8 +129,7 @@ describe('LabelFilter', () => {
     it('should clear all selections when clear button is clicked', async () => {
       render(<LabelFilter value={['agent', 'rag']} onChange={mockOnChange} />)
 
-      // Find and click the clear button (XCircle icon's parent)
-      const clearButton = document.querySelector('.group\\/clear')
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
       expect(clearButton).toBeInTheDocument()
 
       fireEvent.click(clearButton!)
@@ -203,21 +152,16 @@ describe('LabelFilter', () => {
 
       await act(async () => {
         fireEvent.click(screen.getByText('common.tag.placeholder'))
-        vi.advanceTimersByTime(10)
       })
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
 
       await act(async () => {
         const searchInput = screen.getByRole('textbox')
-        // Filter by 'rag' which only matches 'rag' name
         fireEvent.change(searchInput, { target: { value: 'rag' } })
-        vi.advanceTimersByTime(10)
       })
 
-      // Only RAG should be visible (rag contains 'rag')
       expect(screen.getByTitle('RAG')).toBeInTheDocument()
-      // Agent should not be in the dropdown list (agent doesn't contain 'rag')
       expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
     })
 
@@ -226,7 +170,6 @@ describe('LabelFilter', () => {
 
       await act(async () => {
         fireEvent.click(screen.getByText('common.tag.placeholder'))
-        vi.advanceTimersByTime(10)
       })
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
@@ -234,7 +177,6 @@ describe('LabelFilter', () => {
       await act(async () => {
         const searchInput = screen.getByRole('textbox')
         fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
-        vi.advanceTimersByTime(10)
       })
 
       expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
@@ -245,26 +187,21 @@ describe('LabelFilter', () => {
 
       await act(async () => {
         fireEvent.click(screen.getByText('common.tag.placeholder'))
-        vi.advanceTimersByTime(10)
       })
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
 
       await act(async () => {
         const searchInput = screen.getByRole('textbox')
-        // First filter to show only RAG
         fireEvent.change(searchInput, { target: { value: 'rag' } })
-        vi.advanceTimersByTime(10)
       })
 
       expect(screen.getByTitle('RAG')).toBeInTheDocument()
       expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
 
       await act(async () => {
-        // Clear the input
         const searchInput = screen.getByRole('textbox')
         fireEvent.change(searchInput, { target: { value: '' } })
-        vi.advanceTimersByTime(10)
       })
 
       // All labels should be visible again
@@ -310,17 +247,11 @@ describe('LabelFilter', () => {
     it('should call onChange with updated array', async () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
-      await act(async () => {
-        fireEvent.click(screen.getByText('common.tag.placeholder'))
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(screen.getByText('common.tag.placeholder')))
 
       expect(screen.getByText('Agent')).toBeInTheDocument()
 
-      await act(async () => {
-        fireEvent.click(screen.getByText('Agent'))
-        vi.advanceTimersByTime(10)
-      })
+      await act(async () => fireEvent.click(screen.getByText('Agent')))
 
       expect(mockOnChange).toHaveBeenCalledTimes(1)
       expect(mockOnChange).toHaveBeenCalledWith(['agent'])

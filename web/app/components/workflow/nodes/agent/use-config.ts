@@ -17,7 +17,7 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../tool/types'
 
-export type StrategyStatus = {
+type StrategyStatus = {
   plugin: {
     source: 'external' | 'marketplace'
     installed: boolean
@@ -137,9 +137,9 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       Object.keys(draft.agent_parameters || {}).forEach((key) => {
         const targetSchema = schemas.find(schema => schema.name === key)
         if (targetSchema?.type === FormTypeEnum.toolSelector)
-          draft.agent_parameters![key].value = formattingToolData(draft.agent_parameters![key].value)
+          draft.agent_parameters![key]!.value = formattingToolData(draft.agent_parameters![key]!.value)
         if (targetSchema?.type === FormTypeEnum.multiToolSelector)
-          draft.agent_parameters![key].value = draft.agent_parameters![key].value.map((tool: any) => formattingToolData(tool))
+          draft.agent_parameters![key]!.value = draft.agent_parameters![key]!.value.map((tool: any) => formattingToolData(tool))
       })
       draft.tool_node_version = '2'
     })

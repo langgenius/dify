@@ -16,16 +16,8 @@ import {
 
 const mockPush = vi.fn()
 const mockRouter = { push: mockPush }
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => mockRouter,
-}))
-
-// Override global next/image auto-mock: test asserts on data-testid="next-image"
-vi.mock('next/image', () => ({
-  default: ({ src, alt, className }: { src: string, alt: string, className?: string }) => (
-    // eslint-disable-next-line next/no-img-element
-    <img src={src} alt={alt} className={className} data-testid="next-image" />
-  ),
 }))
 
 // Mock API service
@@ -979,9 +971,9 @@ describe('RuleDetail', () => {
     })
 
     it('should render correct icon for indexing type', () => {
-      render(<RuleDetail indexingType="high_quality" />)
+      const { container } = render(<RuleDetail indexingType="high_quality" />)
 
-      const images = screen.getAllByTestId('next-image')
+      const images = container.querySelectorAll('img')
       expect(images.length).toBeGreaterThan(0)
     })
   })

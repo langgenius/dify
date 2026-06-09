@@ -93,7 +93,7 @@ const InstalledApp = ({
   if (userCanAccessApp && !userCanAccessApp.result) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-2">
-        <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
+        <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
       </div>
     )
   }
@@ -116,7 +116,7 @@ const InstalledApp = ({
     )
   }
   return (
-    <div className="h-full bg-background-default py-2 pl-0 pr-2 sm:p-2">
+    <div className="h-full bg-background-default py-2 pr-2 pl-0 sm:p-2">
       {installedApp?.app.mode !== AppModeEnum.COMPLETION && installedApp?.app.mode !== AppModeEnum.WORKFLOW && (
         <ChatWithHistory installedAppInfo={installedApp} className="overflow-hidden rounded-2xl shadow-md" />
       )}
