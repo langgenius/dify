@@ -65,7 +65,7 @@
   "permissionSet.nameLabel": "权限集名称",
   "permissionSet.namePlaceholder": "例如：可导出 DSL",
   "permissionSet.permissions": "权限",
-  "role.addRole": "+ 添加角色",
+  "role.addRole": "创建角色",
   "role.created": "角色已创建",
   "role.deleteDescription": "此角色将被永久删除，并从使用它的成员或访问规则中移除。",
   "role.deleteTitle": "删除“{{name}}”？",

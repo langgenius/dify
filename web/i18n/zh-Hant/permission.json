@@ -15,5 +15,6 @@
   "permissionList.collapseGroup": "折疊分組",
   "permissionList.expandGroup": "展開分組",
   "permissionList.noPermissionsFound": "未找到權限",
-  "permissionList.selectAll": "全選"
+  "permissionList.selectAll": "全選",
+  "role.addRole": "建立角色"
 }

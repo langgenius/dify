@@ -65,7 +65,7 @@
   "permissionSet.nameLabel": "権限セット名",
   "permissionSet.namePlaceholder": "例: DSL をエクスポート可能",
   "permissionSet.permissions": "権限",
-  "role.addRole": "+ ロールを追加",
+  "role.addRole": "ロールを作成",
   "role.created": "ロールを作成しました",
   "role.deleteDescription": "このロールは完全に削除され、それを使用するメンバーまたはアクセスルールから削除されます。",
   "role.deleteTitle": "「{{name}}」を削除しますか？",

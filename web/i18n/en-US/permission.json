@@ -65,7 +65,7 @@
   "permissionSet.nameLabel": "Permission set name",
   "permissionSet.namePlaceholder": "e.g. Can export DSL",
   "permissionSet.permissions": "Permissions",
-  "role.addRole": "+ Add Role",
+  "role.addRole": "Create roles",
   "role.created": "Role created successfully",
   "role.deleteDescription": "This role will be permanently deleted and removed from any members or access rules that use it.",
   "role.deleteTitle": "Delete \"{{name}}\"?",
