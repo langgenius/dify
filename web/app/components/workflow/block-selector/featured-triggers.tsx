@@ -114,10 +114,10 @@ const FeaturedTriggers = ({
   const showEmptyState = !isLoading && totalVisible === 0
 
   return (
-    <div className="px-3 pt-2 pb-3">
+    <div className="pt-2 pb-3">
       <button
         type="button"
-        className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
+        className="flex w-full items-center rounded-md px-4 py-1 text-left text-text-primary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
         <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
@@ -133,7 +133,7 @@ const FeaturedTriggers = ({
           )}
 
           {showEmptyState && (
-            <p className="py-2 system-xs-regular text-text-tertiary">
+            <p className="px-4 py-2 system-xs-regular text-text-tertiary">
               <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'trigger' })} target="_blank" rel="noopener noreferrer">
                 {t('tabs.noFeaturedTriggers', { ns: 'workflow' })}
               </Link>
@@ -143,7 +143,7 @@ const FeaturedTriggers = ({
           {!showEmptyState && !isLoading && (
             <>
               {visibleInstalledProviders.length > 0 && (
-                <div className="mt-1">
+                <div className="mt-1 p-1">
                   {visibleInstalledProviders.map(provider => (
                     <TriggerPluginItem
                       key={provider.id}
@@ -157,7 +157,7 @@ const FeaturedTriggers = ({
               )}
 
               {visibleUninstalledPlugins.length > 0 && (
-                <div className="mt-1 flex flex-col gap-1">
+                <div className="mt-1 flex flex-col gap-1 p-1">
                   {visibleUninstalledPlugins.map(plugin => (
                     <FeaturedTriggerUninstalledItem
                       key={plugin.plugin_id}
@@ -256,15 +256,15 @@ function FeaturedTriggerUninstalledItem({
 
   const row = (
     <div
-      className="group flex h-8 w-full items-center rounded-lg pr-1 pl-3 hover:bg-state-base-hover"
+      className="group flex w-full items-center rounded-lg py-1 pr-2 pl-3 hover:bg-state-base-hover"
     >
-      <div className="flex h-full min-w-0 items-center">
+      <div className="flex h-6 min-w-0 items-center">
         <BlockIcon type={BlockEnum.TriggerPlugin} toolIcon={plugin.icon} />
         <div className="ml-2 min-w-0">
           <div className="truncate system-sm-medium text-text-secondary">{label}</div>
         </div>
       </div>
-      <div className="ml-auto flex h-full items-center gap-1 pl-1">
+      <div className="ml-auto flex h-6 items-center gap-1 pl-1">
         <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
         <div
           className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}

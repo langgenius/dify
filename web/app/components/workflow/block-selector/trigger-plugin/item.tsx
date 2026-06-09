@@ -30,6 +30,7 @@ type Props = {
   hasSearchText: boolean
   previewCardHandle: TriggerPluginActionPreviewCardHandle
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
+  disabled?: boolean
 }
 
 const TriggerPluginItem: FC<Props> = ({
@@ -38,6 +39,7 @@ const TriggerPluginItem: FC<Props> = ({
   hasSearchText,
   previewCardHandle,
   onSelect,
+  disabled = false,
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -94,8 +96,13 @@ const TriggerPluginItem: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className="group/item flex w-full cursor-pointer items-center justify-between rounded-lg pr-1 pl-3 select-none hover:bg-state-base-hover"
+          className={cn(
+            'group/item flex w-full items-center justify-between rounded-lg py-1 pr-2 pl-3 select-none',
+            disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
+          )}
           onClick={() => {
+            if (disabled)
+              return
             if (hasAction) {
               setIsFold(!isFold)
               return
@@ -125,7 +132,7 @@ const TriggerPluginItem: FC<Props> = ({
             })
           }}
         >
-          <div className="flex h-8 grow items-center">
+          <div className="flex h-6 grow items-center">
             <BlockIcon
               className="shrink-0"
               type={BlockEnum.TriggerPlugin}
@@ -145,17 +152,22 @@ const TriggerPluginItem: FC<Props> = ({
         </div>
 
         {!notShowProvider && hasAction && !isFold && (
-          actions.map(action => (
-            <TriggerPluginActionItem
-              key={action.name}
-              provider={providerWithResolvedIcon}
-              payload={action}
-              previewCardHandle={previewCardHandle}
-              onSelect={onSelect}
-              disabled={false}
-              isAdded={false}
-            />
-          ))
+          <div
+            className="max-h-[240px] overflow-y-auto overscroll-contain"
+            aria-label={t('tabs.allTriggers', { ns: 'workflow' })}
+          >
+            {actions.map(action => (
+              <TriggerPluginActionItem
+                key={action.name}
+                provider={providerWithResolvedIcon}
+                payload={action}
+                previewCardHandle={previewCardHandle}
+                onSelect={onSelect}
+                disabled={disabled}
+                isAdded={false}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
