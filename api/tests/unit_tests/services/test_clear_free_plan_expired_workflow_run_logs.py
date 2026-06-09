@@ -3,10 +3,10 @@ from typing import Any
 
 import pytest
 
+from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.billing_service import SubscriptionPlan
 from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
-from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 
 
 def make_ref(run_id: str, tenant_id: str, created_at: datetime.datetime) -> WorkflowRunCleanupRef:
