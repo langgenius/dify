@@ -2,15 +2,16 @@
 
 import type {
   CredentialSlot,
-  EnvVarSlot,
+  EnvVarInput,
   ListDeployableEnvironmentsReply,
 } from '@dify/contracts/enterprise/types.gen'
 import type { QueryObserverResult } from '@tanstack/react-query'
-import type { EnvVarValues } from '../components/env-var-bindings-utils'
+import type { EnvVarBindingSlot, EnvVarValues } from '../components/env-var-bindings'
 import type { RuntimeCredentialBindingSelections } from '../components/runtime-credential-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
 import type { EnvironmentOption, GuideMethod } from './types'
 import type { App } from '@/types/app'
+import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -18,10 +19,6 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { isWorkflowApp } from '../app-mode'
-import {
-  hasMissingRequiredEnvVarValue,
-  selectedDeploymentEnvVars,
-} from '../components/env-var-bindings-utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
@@ -37,6 +34,60 @@ import { createDeploymentIdempotencyKey } from '../idempotency'
 import { deploymentEnvironmentOptions } from './use-deployment-target-options'
 
 type RefetchDeployableEnvironments = () => Promise<QueryObserverResult<ListDeployableEnvironmentsReply>>
+
+function hasMissingRequiredEnvVarValue(slot: EnvVarBindingSlot, values: EnvVarValues) {
+  const selection = values[slot.key]
+  if (!selection)
+    throw new Error(`Missing env var selection for ${slot.key}.`)
+
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
+    return !slot.hasLastValue
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
+    return !slot.hasDefaultValue
+
+  const value = selection.value
+  if (!value)
+    return true
+
+  return slot.valueType === 'number' && Number.isNaN(Number(value))
+}
+
+function selectedDeploymentEnvVars(slots: EnvVarBindingSlot[], values: EnvVarValues): EnvVarInput[] {
+  return slots.flatMap((slot): EnvVarInput[] => {
+    const selection = values[slot.key]
+    if (!selection)
+      throw new Error(`Missing env var selection for ${slot.key}.`)
+
+    if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
+      return slot.hasLastValue
+        ? [{
+            key: slot.key,
+            valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+          }]
+        : []
+    }
+
+    if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
+      return slot.hasDefaultValue
+        ? [{
+            key: slot.key,
+            valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+          }]
+        : []
+    }
+
+    if (!selection.value)
+      return []
+    if (slot.valueType === 'number' && Number.isNaN(Number(selection.value)))
+      return []
+
+    return [{
+      key: slot.key,
+      value: selection.value,
+      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
+    }]
+  })
+}
 
 export function useCreateDeploymentSubmission({
   bindingSelections,
@@ -67,7 +118,7 @@ export function useCreateDeploymentSubmission({
   effectiveEnvVarValues: EnvVarValues
   effectiveSelectedApp?: App
   encodedDslContent: string
-  envVarSlots: EnvVarSlot[]
+  envVarSlots: EnvVarBindingSlot[]
   hasDslContent: boolean
   hasInstanceNameConflict: boolean
   instanceDescription: string

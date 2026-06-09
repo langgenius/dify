@@ -1,4 +1,5 @@
-import type { Environment, Release, ReleaseSummary } from '@dify/contracts/enterprise/types.gen'
+import type { Environment, Release, ReleaseSummary, RuntimeInstanceStatus as RuntimeInstanceStatusValue } from '@dify/contracts/enterprise/types.gen'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { environmentId, environmentName } from '../../environment'
 
 export type ReleaseDeploymentState = 'active' | 'deploying' | 'failed'
@@ -13,13 +14,22 @@ export type ReleaseWithSummaryDeployments = Release & {
   summaryDeployments?: ReleaseDeployment[]
 }
 
-function releaseDeploymentState(status?: string): ReleaseDeploymentState {
-  const normalized = status?.toLowerCase() ?? ''
-  if (normalized.includes('deploying') || normalized.includes('pending'))
-    return 'deploying'
-  if (normalized.includes('fail') || normalized.includes('error') || normalized.includes('invalid'))
-    return 'failed'
-  return 'active'
+const releaseDeploymentStateByStatus = {
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNSPECIFIED]: 'active',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED]: 'active',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING]: 'deploying',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY]: 'active',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED]: 'failed',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DRIFTED]: 'active',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_INVALID]: 'failed',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING]: 'deploying',
+} satisfies Record<RuntimeInstanceStatusValue, ReleaseDeploymentState>
+
+function releaseDeploymentState(status?: RuntimeInstanceStatusValue): ReleaseDeploymentState {
+  if (!status)
+    return 'active'
+
+  return releaseDeploymentStateByStatus[status]
 }
 
 function dedupeReleaseDeployments(items: ReleaseDeployment[]) {

@@ -2,6 +2,10 @@ import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
 import { load as yamlLoad } from 'js-yaml'
 import { AppModeEnum } from '@/types/app'
 
+type DslEnvVarSlot = EnvVarSlot & {
+  key: string
+}
+
 type DslMetadata = {
   app?: {
     mode?: unknown
@@ -107,7 +111,7 @@ export function isWorkflowDsl(content: string) {
   return dslAppMode(content) === AppModeEnum.WORKFLOW
 }
 
-export function dslEnvVarSlots(content: string): EnvVarSlot[] {
+export function dslEnvVarSlots(content: string): DslEnvVarSlot[] {
   const environmentVariables = parseDsl(content)?.workflow?.environment_variables
   if (!Array.isArray(environmentVariables))
     return []
@@ -115,7 +119,7 @@ export function dslEnvVarSlots(content: string): EnvVarSlot[] {
   const seenKeys = new Set<string>()
 
   return environmentVariables
-    .flatMap((envVar): EnvVarSlot[] => {
+    .flatMap((envVar): DslEnvVarSlot[] => {
       if (!isRecord(envVar))
         return []
 

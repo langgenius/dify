@@ -1,12 +1,9 @@
 'use client'
 
-import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
+import type { EnvVarInput, EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
 import type {
-  EnvVarValues,
-  EnvVarValueSelection,
-  EnvVarValueSource,
-  EnvVarValueType,
-} from './env-var-bindings-utils'
+  InputHTMLAttributes,
+} from 'react'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -14,16 +11,19 @@ import {
   SegmentedControl,
   SegmentedControlItem,
 } from '@langgenius/dify-ui/segmented-control'
-import {
-  envVarSlotKey,
-  envVarSlotValue,
-  envVarSlotValueType,
-  envVarValueSelectionForSlot,
-  hasEnvVarDefaultValue,
-  hasEnvVarLastValue,
-  hasMissingRequiredEnvVarValue,
-} from './env-var-bindings-utils'
 import { TitleTooltip } from './title-tooltip'
+
+export type EnvVarValueSource = NonNullable<EnvVarInput['valueSource']>
+export type EnvVarValueType = 'string' | 'number' | 'secret'
+export type EnvVarBindingSlot = EnvVarSlot & {
+  key: string
+  valueType: EnvVarValueType
+}
+export type EnvVarValueSelection = {
+  valueSource: EnvVarValueSource
+  value?: string
+}
+export type EnvVarValues = Record<string, EnvVarValueSelection>
 
 type EnvVarValueSourceOption = {
   value: EnvVarValueSource
@@ -31,7 +31,7 @@ type EnvVarValueSourceOption = {
 }
 
 type EnvVarBindingsPanelProps = {
-  slots: EnvVarSlot[]
+  slots: EnvVarBindingSlot[]
   values: EnvVarValues
   title: string
   hint: string
@@ -50,13 +50,19 @@ type EnvVarBindingsPanelProps = {
   listClassName?: string
 }
 
+const ENV_VAR_INPUT_TYPES = {
+  string: 'text',
+  number: 'number',
+  secret: 'password',
+} satisfies Record<EnvVarValueType, InputHTMLAttributes<HTMLInputElement>['type']>
+
 function envVarInputId(index: number, key: string) {
   const safeKey = key.replace(/[^\w-]/g, '-')
 
   return `env-var-binding-${index}-${safeKey}`
 }
 
-function envVarValueSourceOptions(slot: EnvVarSlot, labels: {
+function envVarValueSourceOptions(slot: EnvVarBindingSlot, labels: {
   literal: string
   defaultValue: string
   lastDeployment: string
@@ -68,14 +74,14 @@ function envVarValueSourceOptions(slot: EnvVarSlot, labels: {
     },
   ]
 
-  if (hasEnvVarDefaultValue(slot)) {
+  if (slot.hasDefaultValue) {
     options.push({
       value: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
       label: labels.defaultValue,
     })
   }
 
-  if (hasEnvVarLastValue(slot)) {
+  if (slot.hasLastValue) {
     options.push({
       value: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
       label: labels.lastDeployment,
@@ -85,22 +91,13 @@ function envVarValueSourceOptions(slot: EnvVarSlot, labels: {
   return options
 }
 
-function envVarSelectionDisplayValue(slot: EnvVarSlot, selection: EnvVarValueSelection) {
+function envVarSelectionDisplayValue(slot: EnvVarBindingSlot, selection: EnvVarValueSelection) {
   if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
-    return envVarSlotValue(slot.defaultValue) ?? ''
+    return slot.defaultValue ?? ''
   if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
-    return envVarSlotValue(slot.lastValue) ?? ''
+    return slot.lastValue ?? ''
 
   return selection.value ?? ''
-}
-
-function envVarInputType(valueType: EnvVarValueType) {
-  if (valueType === 'number')
-    return 'number'
-  if (valueType === 'secret')
-    return 'password'
-
-  return 'text'
 }
 
 export function EnvVarBindingsPanel({
@@ -144,43 +141,47 @@ export function EnvVarBindingsPanel({
         )}
       >
         {slots.map((slot, index) => {
-          const key = envVarSlotKey(slot)
-          const description = slot.description?.trim()
-          const inputId = envVarInputId(index, key)
-          const missing = showMissingRequired && hasMissingRequiredEnvVarValue(slot, values)
-          const selection = envVarValueSelectionForSlot(slot, values[key])
+          const description = slot.description
+          const inputId = envVarInputId(index, slot.key)
+          const selection = values[slot.key]
+          if (!selection)
+            throw new Error(`Missing env var selection for ${slot.key}.`)
+
+          const invalidLiteralNumber = slot.valueType === 'number' && Number.isNaN(Number(selection.value))
+          const missing = showMissingRequired
+            && selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
+            && (!selection.value || invalidLiteralNumber)
           const sourceOptions = envVarValueSourceOptions(slot, {
             literal: literalSourceLabel,
             defaultValue: defaultSourceLabel,
             lastDeployment: lastDeploymentSourceLabel,
           })
-          const valueType = envVarSlotValueType(slot)
           const isLiteralValue = selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
           const displayValue = envVarSelectionDisplayValue(slot, selection)
 
           return (
-            <div key={key} className="flex min-w-0 flex-col gap-2 border-b border-divider-subtle px-3 py-3 last:border-b-0">
+            <div key={slot.key} className="flex min-w-0 flex-col gap-2 border-b border-divider-subtle px-3 py-3 last:border-b-0">
               <div className="flex min-w-0 flex-col gap-2.5">
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <TitleTooltip content={key}>
+                    <TitleTooltip content={slot.key}>
                       <label className="truncate font-mono system-sm-semibold text-text-primary" htmlFor={inputId}>
-                        {key}
+                        {slot.key}
                       </label>
                     </TitleTooltip>
                     <span className="shrink-0 rounded-md border border-divider-deep bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-secondary">
-                      {valueTypeLabels[valueType]}
+                      {valueTypeLabels[slot.valueType]}
                     </span>
                   </div>
                   {sourceOptions.length > 1 && (
                     <SegmentedControl<EnvVarValueSource>
-                      aria-label={sourceAriaLabel(key)}
+                      aria-label={sourceAriaLabel(slot.key)}
                       value={[selection.valueSource]}
                       onValueChange={(value) => {
                         const nextSource = value[0]
                         if (!nextSource)
                           return
-                        onChange(key, {
+                        onChange(slot.key, {
                           ...selection,
                           valueSource: nextSource,
                         })
@@ -204,9 +205,9 @@ export function EnvVarBindingsPanel({
                 )}
                 <Input
                   id={inputId}
-                  type={envVarInputType(valueType)}
+                  type={ENV_VAR_INPUT_TYPES[slot.valueType]}
                   value={displayValue}
-                  onChange={event => onChange(key, {
+                  onChange={event => onChange(slot.key, {
                     ...selection,
                     value: event.target.value,
                     valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,

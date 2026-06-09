@@ -12,7 +12,7 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Search before adding UI, hooks, helpers, or styling patterns. Reuse existing base components, feature components, hooks, utilities, and design styles when they fit.
 - Group code by feature workflow, route, or ownership area: components, hooks, local types, query helpers, atoms, constants, and small utilities should live near the code that changes with them.
 - Promote code to shared only when multiple verticals need the same stable primitive. Otherwise keep it local and compose shared primitives inside the owning feature.
-- Prefer local code and purpose-named helpers over catch-all utility modules; inline cheap derived values when that is clearer.
+- Prefer local code and purpose-named helpers over catch-all utility modules; do not group workflow-specific defaults, validation, payload shaping, or metadata merging in a generic utils file just because they share a DTO.
 - Follow Dify's CSS-first Tailwind v4 contract from `packages/dify-ui/README.md` and `packages/dify-ui/AGENTS.md`. Prefer design-system tokens, utilities, and radius mappings over generic Tailwind guidance.
 
 ## Ownership
@@ -41,8 +41,11 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Treat generated contracts as authoritative at API, query, mutation, cache, and service boundaries. For enterprise APIs, use `packages/contracts/generated/enterprise/*`.
 - Do not hand-write local request/response/reply/page/cache-data types that mirror generated DTOs, such as `{ data?: Release[] }`, `{ release?: Release }`, or copied infinite-query page shapes. Import or infer the generated type.
 - Do not widen generated fields or enums for compatibility, such as `EnvironmentDeployment['status']` to `number | string`. Normalize legacy input at the boundary, then return the generated field type.
+- Do not repair generated or API-returned contract fields in components unless the API contract or product requirement says they need normalization. Treat enums, statuses, and presence flags as exact contract values.
+- Normalize or coerce only at a real boundary, such as user-entered forms, search, URL/query params, file names, DOM IDs, or legacy adapters. Preserve user-entered values when whitespace or formatting can be meaningful.
 - Local UI models are fine for presentation, form state, select options, or guarded required-field refinements. Name them as UI concepts; avoid `Response`, `Reply`, `Data`, and generated DTO names.
 - Required-value refinements like `Release & { id: string }` are allowed only after same-branch filtering or early return. Prefer nullable-tolerant props for render-only data.
+- When a component needs a stricter shape than a generated DTO, refine once at the API/query-to-UI boundary into a purpose-named UI type instead of hiding missing fields with generic fallback or coercion helpers.
 
 ## Nullable API Data
 

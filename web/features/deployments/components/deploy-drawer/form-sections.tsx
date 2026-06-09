@@ -3,13 +3,13 @@
 import type {
   CredentialSlot,
   Environment,
-  EnvVarSlot,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type {
+  EnvVarBindingSlot,
   EnvVarValues,
   EnvVarValueSelection,
-} from '../env-var-bindings-utils'
+} from '../env-var-bindings'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
 import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { useTranslation } from 'react-i18next'
@@ -230,7 +230,7 @@ export function DeploymentBindingsSection({
   bindingSelections: RuntimeCredentialBindingSelections
   bindingOptionsLoading: boolean
   bindingOptionsError: boolean
-  envVarSlots: EnvVarSlot[]
+  envVarSlots: EnvVarBindingSlot[]
   envVarValues: EnvVarValues
   showMissingRequiredBindings: boolean
   showMissingRequiredEnvVars: boolean

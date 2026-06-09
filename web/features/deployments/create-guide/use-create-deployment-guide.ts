@@ -11,9 +11,6 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { isWorkflowApp } from '../app-mode'
 import {
-  hasMissingRequiredEnvVarValue,
-} from '../components/env-var-bindings-utils'
-import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
 } from '../components/runtime-credential-bindings-utils'
@@ -83,9 +80,7 @@ export function useCreateDeploymentGuide() {
   const requiredBindingsReady = targetOptions.bindingSlots.every(slot =>
     !hasMissingRequiredRuntimeCredentialBinding(slot, targetOptions.bindingSelections[runtimeCredentialSlotKey(slot)]),
   )
-  const requiredEnvVarsReady = targetOptions.envVarSlots.every(slot =>
-    !hasMissingRequiredEnvVarValue(slot, targetOptions.effectiveEnvVarValues),
-  )
+  const requiredEnvVarsReady = targetOptions.requiredEnvVarsReady
   const dslDefaultAppName = dslFileReader.dslContent ? dslAppName(dslFileReader.dslContent) : ''
   const sourceName = createGuideSourceName({
     dslDefaultAppName,
