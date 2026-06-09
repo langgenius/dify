@@ -108,7 +108,7 @@ class TestCreditPoolService:
         assert result is False
 
     @pytest.mark.usefixtures("flask_app_with_containers")
-    def test_check_and_deduct_credits_raises_when_pool_is_missing(self) -> None:
+    def test_check_and_deduct_credits_raises_when_no_pool(self) -> None:
         with pytest.raises(QuotaExceededError, match="Credit pool not found"):
             CreditPoolService.check_and_deduct_credits(tenant_id=self._create_tenant_id(), credits_required=1)
 
@@ -125,7 +125,7 @@ class TestCreditPoolService:
         assert updated_pool is not None
         assert updated_pool.quota_used == 2
 
-    def test_check_and_deduct_credits_raises_when_pool_is_empty(self, db_session_with_containers: Session) -> None:
+    def test_check_and_deduct_credits_raises_when_no_remaining(self, db_session_with_containers: Session) -> None:
         tenant_id = self._create_tenant_id()
         self._create_pool(db_session_with_containers, tenant_id=tenant_id, quota_limit=10, quota_used=10)
 
@@ -136,9 +136,7 @@ class TestCreditPoolService:
         assert updated_pool is not None
         assert updated_pool.quota_used == 10
 
-    def test_check_and_deduct_credits_deducts_exact_amount_when_sufficient(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_check_and_deduct_credits_deducts_required_amount(self, db_session_with_containers: Session) -> None:
         tenant_id = self._create_tenant_id()
         self._create_pool(db_session_with_containers, tenant_id=tenant_id, quota_limit=10, quota_used=2)
         credits_required = 3
@@ -150,7 +148,7 @@ class TestCreditPoolService:
         assert pool is not None
         assert pool.quota_used == 5
 
-    def test_check_and_deduct_credits_raises_without_partial_deduction_when_insufficient(
+    def test_check_and_deduct_credits_raises_without_deducting_when_insufficient(
         self, db_session_with_containers: Session
     ) -> None:
         tenant_id = self._create_tenant_id()
@@ -179,9 +177,7 @@ class TestCreditPoolService:
         assert updated_pool is not None
         assert updated_pool.quota_used == 2
 
-    def test_deduct_credits_capped_deducts_only_remaining_balance_when_insufficient(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_deduct_credits_capped_depletes_available_balance(self, db_session_with_containers: Session) -> None:
         tenant_id = self._create_tenant_id()
         self._create_pool(db_session_with_containers, tenant_id=tenant_id, quota_limit=10, quota_used=9)
 
@@ -206,7 +202,7 @@ class TestCreditPoolService:
         assert updated_pool.quota_used == 2
 
     @pytest.mark.usefixtures("flask_app_with_containers")
-    def test_deduct_credits_capped_returns_zero_when_pool_is_missing(self) -> None:
+    def test_deduct_credits_capped_returns_zero_when_no_pool(self) -> None:
         result = CreditPoolService.deduct_credits_capped(tenant_id=self._create_tenant_id(), credits_required=1)
 
         assert result == 0
