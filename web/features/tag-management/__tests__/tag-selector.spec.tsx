@@ -30,7 +30,7 @@ const { mockUseQueryData, createTag, bindTag, unBindTag } = vi.hoisted(() => {
 })
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
-  value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
+  value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.management'] as string[],
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -110,7 +110,7 @@ const defaultProps = {
 describe('TagSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage']
+    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.management']
     mockUseQueryData.current = appTags
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
     vi.mocked(bindTag).mockResolvedValue(undefined)
@@ -270,6 +270,24 @@ describe('TagSelector', () => {
     render(<TagSelector {...defaultProps} canBindOrUnbindTags />)
 
     await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
+
+    expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
+  })
+
+  it('opens snippet tag selector with snippets management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = ['snippets.management']
+    mockUseQueryData.current = [{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]
+
+    render(
+      <TagSelector
+        targetId="snippet-1"
+        type="snippet"
+        value={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: /Reusable/i }))
 
     expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
   })

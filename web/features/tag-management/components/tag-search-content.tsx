@@ -5,6 +5,7 @@ import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { hasPermission } from '@/utils/permission'
+import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'
 
 type TagSearchContentProps = {
@@ -28,10 +29,7 @@ export const TagSearchContent = ({
   const placeholder = t('tag.selectorPlaceholder', { ns: 'common' }) || ''
 
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageTags
-    = type === 'app'
-      ? hasPermission(workspacePermissionKeys, 'app.tag.manage')
-      : hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
+  const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
 
   return (
     <div className="relative w-full">

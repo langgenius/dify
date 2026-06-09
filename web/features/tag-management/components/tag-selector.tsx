@@ -12,6 +12,7 @@ import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
+import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'
 import { TagSearchContent } from './tag-search-content'
 import { TagTrigger } from './tag-trigger'
@@ -71,7 +72,7 @@ export const TagSelector = ({
   const [draftTags, setDraftTags] = useState<Tag[]>(value)
   const [inputValue, setInputValue] = useState('')
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageTags = type === 'app' ? hasPermission(workspacePermissionKeys, 'app.tag.manage') : hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
+  const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const {

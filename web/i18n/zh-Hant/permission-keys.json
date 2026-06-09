@@ -37,6 +37,8 @@
   "plugin.install": "安裝與更新插件",
   "plugin.manage": "管理插件",
   "plugin.plugin_preferences": "管理插件偏好設定",
+  "snippets.create_and_modify": "建立和修改 Snippets",
+  "snippets.management": "管理 Snippets",
   "tool.manage": "管理工具",
   "workspace.member.manage": "管理成員",
   "workspace.role.manage": "管理角色權限與資源訪問規則"
