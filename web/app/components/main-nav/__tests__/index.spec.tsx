@@ -490,6 +490,7 @@ describe('MainNav', () => {
     fireEvent.click(screen.getByTestId('app-detail-toggle'))
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).not.toHaveClass('transition-none')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'false')
@@ -508,6 +509,21 @@ describe('MainNav', () => {
     expect(screen.getAllByTestId('app-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
+  })
+
+  it('persists expanded app detail navigation without width animation when clicking the hovered toggle', () => {
+    mockPathname = '/app/app-1/overview'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+    fireEvent.mouseEnter(screen.getByTestId('app-detail-top').parentElement!)
+    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]', 'transition-none')
+    expect(screen.getByRole('complementary')).not.toHaveClass('overflow-visible')
+    expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('expand')
   })
 
   it('replaces global navigation with dataset detail navigation on dataset routes', () => {

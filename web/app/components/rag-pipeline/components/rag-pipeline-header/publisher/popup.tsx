@@ -12,7 +12,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
+import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useBoolean } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
@@ -212,7 +212,7 @@ const Popup = ({
         <Divider className="my-2" />
         <Button className="w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={handleClickPublishAsKnowledgePipeline} disabled={!publishedAt || isPublishingAsCustomizedPipeline}>
           <div className="flex grow items-center gap-x-2 overflow-hidden">
-            <RiHammerLine className="size-4 shrink-0" />
+            <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0" />
             <span className="grow truncate text-left" title={t('common.publishAs', { ns: 'pipeline' })}>
               {t('common.publishAs', { ns: 'pipeline' })}
             </span>

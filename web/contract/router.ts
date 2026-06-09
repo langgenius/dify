@@ -1,7 +1,14 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
-import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
+import {
+  appDeleteContract,
+  appListContract,
+  appStarContract,
+  appStarredListContract,
+  appUnstarContract,
+  workflowOnlineUsersContract,
+} from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -103,6 +110,9 @@ export const consoleRouterContract = {
     ...communityContract.apps,
     list: appListContract,
     deleteApp: appDeleteContract,
+    starredList: appStarredListContract,
+    star: appStarContract,
+    unstar: appUnstarContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
   },
   explore: {

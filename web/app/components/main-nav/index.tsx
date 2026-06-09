@@ -88,14 +88,29 @@ const MainNav = ({
   const detailNavigationExpanded = detailNavigationMode === 'expand'
   const isCollapsedDetailNavigation = showDetailNavigation && !detailNavigationExpanded
   const [detailNavigationHoverPreviewOpen, setDetailNavigationHoverPreviewOpen] = useState(false)
+  const [detailNavigationTransitionDisabled, setDetailNavigationTransitionDisabled] = useState(false)
   const closeDetailNavigationHoverPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const detailNavigationTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDetailNavigationHoverPreviewOpen = isCollapsedDetailNavigation && detailNavigationHoverPreviewOpen
   const detailNavigationVisibleExpanded = detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
   const bottomNavigationExpanded = !showDetailNavigation || detailNavigationVisibleExpanded
   const handleToggleDetailNavigation = useCallback(() => {
+    if (isDetailNavigationHoverPreviewOpen) {
+      if (detailNavigationTransitionTimerRef.current)
+        clearTimeout(detailNavigationTransitionTimerRef.current)
+
+      setDetailNavigationTransitionDisabled(true)
+      setDetailNavigationHoverPreviewOpen(false)
+      setAppSidebarExpand('expand')
+      detailNavigationTransitionTimerRef.current = setTimeout(() => {
+        setDetailNavigationTransitionDisabled(false)
+      }, 200)
+      return
+    }
+
     setDetailNavigationHoverPreviewOpen(false)
     setAppSidebarExpand(detailNavigationExpanded ? 'collapse' : 'expand')
-  }, [detailNavigationExpanded, setAppSidebarExpand])
+  }, [detailNavigationExpanded, isDetailNavigationHoverPreviewOpen, setAppSidebarExpand])
   const openDetailNavigationHoverPreview = useCallback(() => {
     if (!isCollapsedDetailNavigation)
       return
@@ -118,6 +133,8 @@ const MainNav = ({
     return () => {
       if (closeDetailNavigationHoverPreviewTimerRef.current)
         clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
+      if (detailNavigationTransitionTimerRef.current)
+        clearTimeout(detailNavigationTransitionTimerRef.current)
     }
   }, [])
 
@@ -220,7 +237,8 @@ const MainNav = ({
   return (
     <aside
       className={cn(
-        'relative flex h-full shrink-0 transition-all',
+        'relative flex h-full shrink-0',
+        detailNavigationTransitionDisabled ? 'transition-none' : 'transition-all',
         isDetailNavigationHoverPreviewOpen ? 'overflow-visible' : 'overflow-hidden',
         showDetailNavigation
           ? detailNavigationExpanded

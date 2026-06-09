@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "移至新增文件",
   "common.preparingDataSource": "準備資料來源",
   "common.processing": "處理",
-  "common.publishAs": "發佈為知識管道",
+  "common.publishAs": "發佈為知識管線",
   "common.publishAsPipeline.description": "知識說明",
   "common.publishAsPipeline.descriptionPlaceholder": "請輸入此知識管道的描述。（選用）",
   "common.publishAsPipeline.name": "管線名稱 & 圖示",

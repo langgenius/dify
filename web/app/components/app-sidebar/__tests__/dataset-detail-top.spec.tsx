@@ -13,8 +13,8 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('../toggle-button', () => ({
-  default: ({ expand, handleToggle }: { expand: boolean, handleToggle: () => void }) => (
-    <button type="button" data-testid="toggle-button" data-expand={expand} onClick={handleToggle}>
+  default: ({ expand, handleToggle, icon }: { expand: boolean, handleToggle: () => void, icon?: ReactNode }) => (
+    <button type="button" data-testid="toggle-button" data-expand={expand} data-has-icon={Boolean(icon)} onClick={handleToggle}>
       Toggle
     </button>
   ),
@@ -71,6 +71,7 @@ describe('DatasetDetailTop', () => {
     fireEvent.click(screen.getByTestId('toggle-button'))
 
     expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-has-icon', 'true')
     expect(onToggle).toHaveBeenCalledTimes(1)
   })
 })

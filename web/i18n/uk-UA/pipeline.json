@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Перейти до додавання документів",
   "common.preparingDataSource": "Підготовка джерела даних",
   "common.processing": "Обробки",
-  "common.publishAs": "Публікація у вигляді конвеєра знань",
+  "common.publishAs": "Опублікувати як конвеєр знань",
   "common.publishAsPipeline.description": "Опис знань",
   "common.publishAsPipeline.descriptionPlaceholder": "Будь ласка, введіть опис цього конвеєра знань. (Необов'язково)",
   "common.publishAsPipeline.name": "Назва та піктограма воронки продажів",

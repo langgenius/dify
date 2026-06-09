@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Перейти к добавлению документов",
   "common.preparingDataSource": "Подготовка источника данных",
   "common.processing": "Обработка",
-  "common.publishAs": "Публикация в качестве конвейера знаний",
+  "common.publishAs": "Опубликовать как конвейер знаний",
   "common.publishAsPipeline.description": "Описание знаний",
   "common.publishAsPipeline.descriptionPlaceholder": "Пожалуйста, введите описание этого конвейера знаний. (Дополнительный)",
   "common.publishAsPipeline.name": "Имя и иконка конвейера",

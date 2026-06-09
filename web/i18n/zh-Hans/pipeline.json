@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "去添加文档",
   "common.preparingDataSource": "准备数据源",
   "common.processing": "处理中",
-  "common.publishAs": "发布为自定义流水线模板",
+  "common.publishAs": "发布为知识流水线",
   "common.publishAsPipeline.description": "知识流水线描述",
   "common.publishAsPipeline.descriptionPlaceholder": "请输入此知识流水线的描述。 (可选)",
   "common.publishAsPipeline.name": "知识流水线名称和图标",

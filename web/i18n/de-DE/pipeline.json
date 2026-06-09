@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Gehen Sie zu Dokumente hinzufügen",
   "common.preparingDataSource": "Vorbereiten der Datenquelle",
   "common.processing": "Verarbeitung",
-  "common.publishAs": "Veröffentlichen als Wissenspipeline",
+  "common.publishAs": "Als Wissenspipeline veröffentlichen",
   "common.publishAsPipeline.description": "Beschreibung des Wissens",
   "common.publishAsPipeline.descriptionPlaceholder": "Bitte geben Sie die Beschreibung dieser Knowledge Pipeline ein. (Fakultativ)",
   "common.publishAsPipeline.name": "Name und Symbol der Pipeline",
