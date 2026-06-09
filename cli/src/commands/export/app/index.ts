@@ -1,5 +1,4 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
-import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { runExportApp } from './run'
 
@@ -20,12 +19,11 @@ export default class ExportApp extends DifyCommand {
     'workspace': Flags.string({ description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
     'output': Flags.string({ description: 'write DSL YAML to this file path (prints to stdout if omitted)', char: 'o' }),
     'include-secret': Flags.boolean({ description: 'include encrypted secret values in the exported DSL', default: false }),
-    'http-retry': httpRetryFlag,
   }
 
   async run(argv: string[]) {
     const { args, flags } = this.parse(ExportApp, argv)
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
+    const ctx = await this.authedCtx({})
     const result = await runExportApp({
       appId: args.id,
       workspace: flags.workspace,

@@ -1,6 +1,5 @@
 import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
-import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { formatted, OutputFormat } from '@/framework/output'
 import { runDeleteMember } from './run'
@@ -21,19 +20,18 @@ export default class DeleteMember extends DifyCommand {
   }
 
   static override flags = {
-    'workspace': Flags.string({
+    workspace: Flags.string({
       char: 'w',
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
-    'http-retry': httpRetryFlag,
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT], default: '' }),
-    'yes': Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
+    output: Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT], default: '' }),
+    yes: Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
   }
 
   async run(argv: string[]) {
     const { args, flags } = this.parse(DeleteMember, argv)
     const format = flags.output
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
+    const ctx = await this.authedCtx({ format })
     const result = await runDeleteMember(
       { memberId: args.memberId, workspace: flags.workspace, format, yes: flags.yes },
       { active: ctx.active, http: ctx.http, io: ctx.io },

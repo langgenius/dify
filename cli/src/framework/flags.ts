@@ -3,6 +3,7 @@ import { UnsupportedArgValueError } from './errors'
 
 export const VERBOSE_FLAG = 'verbose'
 export const VERBOSE_CHAR = 'v'
+export const HTTP_RETRY_FLAG = 'http-retry'
 
 export const Flags = {
   string: stringFlag,
@@ -16,6 +17,10 @@ const GLOBAL_FLAGS: Record<string, FlagDefinition> = {
   [VERBOSE_FLAG]: Flags.boolean({
     char: VERBOSE_CHAR,
     description: 'enable verbose output',
+    helpGroup: 'GLOBAL',
+  }),
+  [HTTP_RETRY_FLAG]: integerFlag({
+    description: 'Retry idempotent GET/PUT/DELETE on transient errors (0 disables). Overrides DIFYCTL_HTTP_RETRY.',
     helpGroup: 'GLOBAL',
   }),
 }
@@ -151,6 +156,21 @@ function resolveToken(token: string, flags: Record<string, FlagDefinition>): Res
 
 // Scans argv for a boolean flag without throwing on unknown tokens, so it is safe
 // to call before the command-specific flag set is known (e.g. global flags).
+export function scanFlagValue(argv: readonly string[], name: string): string | undefined {
+  for (let i = 0; i < argv.length; i++) {
+    const token = argv[i]
+    if (token === undefined || token === '--')
+      break
+    if (token === `--${name}`) {
+      const next = argv[i + 1]
+      return next !== undefined && !next.startsWith('-') ? next : undefined
+    }
+    if (token.startsWith(`--${name}=`))
+      return token.slice(name.length + 3)
+  }
+  return undefined
+}
+
 export function hasBooleanFlag(argv: readonly string[], name: string, char?: string): boolean {
   for (const token of argv) {
     if (token === '--')

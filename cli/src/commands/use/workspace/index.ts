@@ -1,6 +1,5 @@
 import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
-import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args } from '@/framework/flags'
 import { runUseWorkspace } from './use'
 
@@ -17,13 +16,9 @@ export default class UseWorkspace extends DifyCommand {
     workspaceId: Args.string({ description: 'workspace id to switch to', required: true }),
   }
 
-  static override flags = {
-    'http-retry': httpRetryFlag,
-  }
-
   async run(argv: string[]): Promise<void> {
-    const { args, flags } = this.parse(UseWorkspace, argv)
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
+    const { args } = this.parse(UseWorkspace, argv)
+    const ctx = await this.authedCtx({})
     await runUseWorkspace({ workspaceId: args.workspaceId }, {
       reg: ctx.reg,
       active: ctx.active,

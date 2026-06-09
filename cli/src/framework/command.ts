@@ -1,7 +1,7 @@
 import type { CommandOutput } from './output'
 import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags, OptionalArgValueType } from './types'
-import { setVerbose } from './context'
-import { hasBooleanFlag, parseArgv, VERBOSE_CHAR, VERBOSE_FLAG } from './flags'
+import { setHttpRetry, setVerbose } from './context'
+import { hasBooleanFlag, HTTP_RETRY_FLAG, parseArgv, scanFlagValue, VERBOSE_CHAR, VERBOSE_FLAG } from './flags'
 
 // What invoking a command does to remote/persistent state. Drives the skill's
 // safety section and the `effect` bit in machine-readable help. Defaults to
@@ -44,6 +44,8 @@ export abstract class Command implements ICommand {
 
   processGlobalFlags(argv: readonly string[]): void {
     setVerbose(hasBooleanFlag(argv, VERBOSE_FLAG, VERBOSE_CHAR))
+    const rawRetry = scanFlagValue(argv, HTTP_RETRY_FLAG)
+    setHttpRetry(rawRetry !== undefined ? Number(rawRetry) : undefined)
   }
 
   protected parse<C extends CommandConstructor>(ctor: C, argv: string[]): ParseResult<C> {

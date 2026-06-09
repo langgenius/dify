@@ -1,6 +1,5 @@
 import type { AppMode } from '@dify/contracts/api/openapi/types.gen'
 import { DifyCommand } from '@/commands/_shared/dify-command'
-import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { OutputFormat, table } from '@/framework/output'
 import { agentGuide } from './guide'
@@ -42,14 +41,13 @@ export default class GetApp extends DifyCommand {
     'mode': Flags.string({ description: 'filter by app mode', options: APP_MODE_VALUES }),
     'name': Flags.string({ description: 'filter by app name (server-side substring)' }),
     'tag': Flags.string({ description: 'filter by tag name (server-side exact match)' }),
-    'http-retry': httpRetryFlag,
     'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE], default: '' }),
   }
 
   async run(argv: string[]) {
     const { args, flags } = this.parse(GetApp, argv)
     const format = flags.output
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
+    const ctx = await this.authedCtx({ format })
     const result = await runGetApp({
       appId: args.id,
       workspace: flags.workspace,
