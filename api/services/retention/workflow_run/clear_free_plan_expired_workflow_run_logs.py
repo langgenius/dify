@@ -199,8 +199,8 @@ class WorkflowRunCleanup:
     """
     Coordinates free-plan workflow run retention cleanup.
 
-    The cleanup cursor advances by candidate refs, not target refs. This keeps pagination stable when billing filters out
-    paid or unknown tenants before the repository performs the second eligible-tenant target lookup.
+    The cleanup cursor advances by candidate refs, not target refs. This keeps pagination stable
+    when billing filters out paid or unknown tenants before the repository performs the target lookup.
     """
 
     def __init__(
