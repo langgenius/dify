@@ -164,6 +164,8 @@ export async function setup(project: TestProject): Promise<void> {
     E.edition,
   )
   if (!workspaces) {
+    // @ts-expect-error — ProvidedContext augmentation cannot be expressed without
+    // triggering TS2300 or TS2664 under tsgo; safe at runtime.
     project.provide('e2eCapabilities', {
       tokenValid: true,
       tokenId: match?.id,
