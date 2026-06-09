@@ -136,7 +136,7 @@ describe('trigger plugin selector components', () => {
 
     await user.click(screen.getByText('Trigger Provider'))
 
-    expect(screen.getByLabelText('workflow.tabs.allTriggers')).toHaveClass('max-h-[240px]', 'overflow-y-auto')
+    expect(screen.getByLabelText('workflow.tabs.allTriggers')).toHaveClass('max-h-[240px]', 'overscroll-contain')
 
     await user.click(screen.getByText('Second Event'))
 

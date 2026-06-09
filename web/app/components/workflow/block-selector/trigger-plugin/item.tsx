@@ -3,6 +3,13 @@ import type { FC } from 'react'
 import type { TriggerPluginActionPreviewCardHandle } from './action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useRef } from 'react'
@@ -152,22 +159,30 @@ const TriggerPluginItem: FC<Props> = ({
         </div>
 
         {!notShowProvider && hasAction && !isFold && (
-          <div
-            className="max-h-[240px] overflow-y-auto overscroll-contain"
-            aria-label={t('tabs.allTriggers', { ns: 'workflow' })}
-          >
-            {actions.map(action => (
-              <TriggerPluginActionItem
-                key={action.name}
-                provider={providerWithResolvedIcon}
-                payload={action}
-                previewCardHandle={previewCardHandle}
-                onSelect={onSelect}
-                disabled={disabled}
-                isAdded={false}
-              />
-            ))}
-          </div>
+          <ScrollAreaRoot className="relative max-h-[240px] overflow-hidden overscroll-contain">
+            <ScrollAreaViewport
+              aria-label={t('tabs.allTriggers', { ns: 'workflow' })}
+              className="max-h-[240px] overscroll-contain"
+              role="region"
+            >
+              <ScrollAreaContent>
+                {actions.map(action => (
+                  <TriggerPluginActionItem
+                    key={action.name}
+                    provider={providerWithResolvedIcon}
+                    payload={action}
+                    previewCardHandle={previewCardHandle}
+                    onSelect={onSelect}
+                    disabled={disabled}
+                    isAdded={false}
+                  />
+                ))}
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollAreaRoot>
         )}
       </div>
     </div>
