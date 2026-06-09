@@ -135,6 +135,9 @@ describe('trigger plugin selector components', () => {
     )
 
     await user.click(screen.getByText('Trigger Provider'))
+
+    expect(screen.getByLabelText('workflow.tabs.allTriggers')).toHaveClass('max-h-[240px]', 'overflow-y-auto')
+
     await user.click(screen.getByText('Second Event'))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({

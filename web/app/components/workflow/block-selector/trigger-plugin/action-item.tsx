@@ -42,7 +42,10 @@ const TriggerPluginActionItem: FC<Props> = ({
   const row = (
     <div
       key={payload.name}
-      className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
+      className={cn(
+        'flex items-center justify-between rounded-lg pr-1 pl-[21px]',
+        disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
+      )}
       onClick={() => {
         if (disabled)
           return

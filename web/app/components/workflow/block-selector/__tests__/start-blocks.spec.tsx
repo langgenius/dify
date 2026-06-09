@@ -76,5 +76,45 @@ describe('StartBlocks', () => {
       expect(screen.queryByText('workflow.blocks.start')).not.toBeInTheDocument()
       expect(onContentStateChange).toHaveBeenCalledWith(false)
     })
+
+    it('should show most common badge for user input in the start selector content', () => {
+      render(
+        <StartBlocks
+          searchText=""
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.Start]}
+          showMostCommonBadge
+        />,
+      )
+
+      expect(screen.getByText('workflow.blocks.mostCommon')).toBeInTheDocument()
+      expect(screen.queryByText('workflow.blocks.originalStartNode')).not.toBeInTheDocument()
+    })
+
+    it('should keep disabled user input reachable from the keyboard with the conflict reason', async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+
+      render(
+        <StartBlocks
+          searchText=""
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.Start]}
+          showMostCommonBadge
+          showUserInputDisabled
+        />,
+      )
+
+      const userInputButton = screen.getByRole('button', {
+        name: /workflow\.blocks\.start.*workflow\.nodes\.startPlaceholder\.userInputConflictTip/,
+      })
+      expect(userInputButton).toHaveAttribute('aria-disabled', 'true')
+
+      await user.tab()
+      expect(userInputButton).toHaveFocus()
+      await user.keyboard('{Enter}')
+
+      expect(onSelect).not.toHaveBeenCalled()
+    })
   })
 })
