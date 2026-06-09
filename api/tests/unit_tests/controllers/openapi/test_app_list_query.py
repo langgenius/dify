@@ -58,7 +58,9 @@ def test_limit_caps_at_max_page_limit():
 
     # Just over rejects.
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "limit": MAX_PAGE_LIMIT + 1})
+        AppListQuery.model_validate(
+            {"workspace_id": "00000000-0000-0000-0000-000000000001", "limit": MAX_PAGE_LIMIT + 1}
+        )
 
 
 def test_mode_whitelisted_against_app_mode():
