@@ -16,7 +16,7 @@ export function AgentDetailPage({
   section,
 }: AgentDetailPageProps) {
   if (section === 'monitoring')
-    return <AgentMonitoringPage />
+    return <AgentMonitoringPage agentId={agentId} />
 
   if (section === 'logs')
     return <AgentLogsPage />

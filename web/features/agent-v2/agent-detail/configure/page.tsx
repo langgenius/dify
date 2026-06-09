@@ -3,6 +3,7 @@
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { AgentMetadata } from './components/agent-metadata'
 import { MemorySettings } from './components/memory-settings'
 
 type AgentConfigurePageProps = {
@@ -37,7 +38,11 @@ export function AgentConfigurePage({
       aria-label={t('agentDetail.sections.configure')}
       className="h-full min-w-0 flex-1 overflow-auto bg-components-panel-bg-blur px-4 py-6 sm:px-12"
     >
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-3xl space-y-4">
+        <AgentMetadata
+          agent={agentQuery.data}
+          isPending={agentQuery.isPending}
+        />
         <MemorySettings
           isPending={agentQuery.isPending || (!!activeVersionId && versionDetailQuery.isPending)}
           memory={versionDetailQuery.data?.config_snapshot.memory}

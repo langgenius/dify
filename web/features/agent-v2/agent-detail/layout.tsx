@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useDocumentTitle from '@/hooks/use-document-title'
+import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 
 type AgentDetailLayoutProps = {
@@ -141,6 +142,7 @@ function AgentVersionHistoryPanel({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
+  const { formatTime } = useTimestamp()
 
   return (
     <aside className="absolute top-20 right-0 bottom-0 flex w-67 flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
@@ -208,9 +210,15 @@ function AgentVersionHistoryPanel({
                   {version.summary}
                 </div>
               )}
-              {version.created_at && (
+              {version.created_at != null && (
                 <div className="mt-2 truncate system-xs-regular text-text-tertiary">
-                  {version.created_at}
+                  {formatTime(version.created_at, t('roster.dateTimeFormat'))}
+                  {version.created_by && (
+                    <>
+                      {' · '}
+                      {version.created_by}
+                    </>
+                  )}
                 </div>
               )}
             </div>

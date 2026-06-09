@@ -9,10 +9,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { useClipboard } from '@/hooks/use-clipboard'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { getAgentDetailPath } from '../routes'
-import { agentAccessSources } from './access-sources'
+import { getAgentAccessSources } from './access-sources'
 
 type AgentAccessPageProps = {
   agentId: string
@@ -23,6 +28,14 @@ export function AgentAccessPage({
 }: AgentAccessPageProps) {
   const { t } = useTranslation('agentV2')
   const router = useRouter()
+  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  }))
+  const accessSources = getAgentAccessSources(agentQuery.data)
 
   const navigateToSection = (section: 'logs' | 'monitoring') => {
     router.push(getAgentDetailPath(agentId, section))
@@ -50,22 +63,38 @@ export function AgentAccessPage({
 
         <section aria-labelledby="agent-access-webapp">
           <h3 id="agent-access-webapp" className="mb-2 system-sm-semibold-uppercase text-text-secondary">
-            {t('agentDetail.access.groups.webapp.heading')}
+            {t('agentDetail.access.groups.references.heading')}
           </h3>
 
           <div className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs">
             <div className="flex h-9 items-center border-b border-divider-subtle px-4">
               <span className="system-xs-semibold-uppercase text-text-secondary">
-                {t('agentDetail.access.groups.webapp.label')}
+                {t('agentDetail.access.groups.references.label')}
               </span>
               <span className="ml-2 system-xs-regular text-text-tertiary">
-                {t('agentDetail.access.entryCount', { count: agentAccessSources.length })}
+                {t('agentDetail.access.entryCount', { count: accessSources.length })}
               </span>
             </div>
             <div className="divide-y divide-divider-subtle">
-              {agentAccessSources.map(source => (
+              {agentQuery.isPending && (
+                <>
+                  <AccessSourceSkeleton />
+                  <AccessSourceSkeleton />
+                </>
+              )}
+              {!agentQuery.isPending && accessSources.length === 0 && (
+                <div className="px-4 py-8 text-center">
+                  <p className="system-sm-medium text-text-secondary">
+                    {t('agentDetail.access.empty')}
+                  </p>
+                  <p className="mt-1 system-xs-regular text-text-tertiary">
+                    {t('agentDetail.access.emptyDescription')}
+                  </p>
+                </div>
+              )}
+              {!agentQuery.isPending && accessSources.map(source => (
                 <AccessSourceRow
-                  key={source.nameKey}
+                  key={source.id}
                   source={source}
                   onNavigateToLogs={() => navigateToSection('logs')}
                   onNavigateToMonitoring={() => navigateToSection('monitoring')}
@@ -79,6 +108,23 @@ export function AgentAccessPage({
   )
 }
 
+function AccessSourceSkeleton() {
+  return (
+    <div className="grid min-h-14 grid-cols-[minmax(0,1.1fr)_minmax(10rem,0.9fr)_auto_auto] items-center gap-3 px-4 py-3 max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:gap-y-2">
+      <div className="flex min-w-0 items-center gap-3">
+        <SkeletonRectangle className="my-0 size-8 shrink-0 animate-pulse rounded-lg" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <SkeletonRectangle className="my-0 h-4 w-32 max-w-full animate-pulse rounded-md" />
+          <SkeletonRectangle className="my-0 h-3 w-52 max-w-full animate-pulse rounded-md" />
+        </div>
+      </div>
+      <SkeletonRectangle className="my-0 h-4 w-56 max-w-full animate-pulse rounded-md max-lg:col-start-1 max-lg:ml-11" />
+      <SkeletonRectangle className="my-0 h-5 w-16 animate-pulse rounded-full" />
+      <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-lg" />
+    </div>
+  )
+}
+
 function AccessSourceRow({
   source,
   onNavigateToLogs,
@@ -89,7 +135,15 @@ function AccessSourceRow({
   onNavigateToMonitoring: () => void
 }) {
   const { t } = useTranslation('agentV2')
+  const { copied, copy, reset } = useClipboard({
+    onCopyError: () => {
+      toast.error(t('agentDetail.access.copyFailed'))
+    },
+  })
   const name = t(source.nameKey)
+  const handleCopyReference = () => {
+    void copy(source.reference)
+  }
 
   return (
     <article className="grid min-h-14 grid-cols-[minmax(0,1.1fr)_minmax(10rem,0.9fr)_auto_auto] items-center gap-3 px-4 py-3 max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:gap-y-2">
@@ -116,12 +170,14 @@ function AccessSourceRow({
             type="button"
             aria-label={t('agentDetail.access.copyReference', { name })}
             className="flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-subtle bg-components-button-secondary-bg text-text-tertiary hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            onClick={handleCopyReference}
+            onMouseLeave={reset}
           >
-            <span aria-hidden className={source.external ? 'i-ri-external-link-line size-3.5' : 'i-ri-file-copy-line size-3.5'} />
+            <span aria-hidden className={copied ? 'i-ri-check-line size-3.5' : 'i-ri-file-copy-line size-3.5'} />
           </button>
         </div>
         <p className="mt-0.5 truncate system-xs-regular text-text-tertiary">
-          {t(source.lastUsedKey)}
+          {t(source.descriptionKey)}
         </p>
       </div>
 

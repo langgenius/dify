@@ -3,15 +3,20 @@
 import type { AgentAccessSource } from '../access/access-sources'
 import { Button } from '@langgenius/dify-ui/button'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { agentAccessSources } from '../access/access-sources'
+import { consoleQuery } from '@/service/client'
+import { getAgentAccessSources } from '../access/access-sources'
 import { AgentMonitoringChart } from './chart'
 import { getAgentMonitoringMetrics } from './mock-data'
 
 type TimeRangeKey = 'today' | 'last7days' | 'last30days'
-type SourceFilterValue = 'all' | AgentAccessSource['nameKey']
+type SourceFilterValue = 'all' | AgentAccessSource['id']
+type AgentMonitoringPageProps = {
+  agentId: string
+}
 
 const queryDateFormat = 'YYYY-MM-DD HH:mm'
 const displayDateFormat = 'MMM D'
@@ -38,14 +43,24 @@ const getPeriod = (timeRange: TimeRangeKey) => {
   }
 }
 
-const getSourceValue = (source: AgentAccessSource): SourceFilterValue => source.nameKey
+const getSourceValue = (source: AgentAccessSource): SourceFilterValue => source.id
 
-export function AgentMonitoringPage() {
+export function AgentMonitoringPage({
+  agentId,
+}: AgentMonitoringPageProps) {
   const { t } = useTranslation('agentV2')
   const [timeRange, setTimeRange] = useState<TimeRangeKey>('today')
-  const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>(agentAccessSources[0] ? getSourceValue(agentAccessSources[0]) : 'all')
+  const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>('all')
+  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  }))
+  const accessSources = getAgentAccessSources(agentQuery.data)
   const selectedTimeRange = timeRangeOptions.find(option => option.value === timeRange) ?? timeRangeOptions[0]!
-  const selectedSource = agentAccessSources.find(source => getSourceValue(source) === sourceFilter)
+  const selectedSource = accessSources.find(source => getSourceValue(source) === sourceFilter)
   const period = getPeriod(timeRange)
   const metrics = getAgentMonitoringMetrics(period.query)
 
@@ -124,8 +139,8 @@ export function AgentMonitoringPage() {
                 </SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
-              {agentAccessSources.map(source => (
-                <SelectItem key={source.nameKey} value={getSourceValue(source)}>
+              {accessSources.map(source => (
+                <SelectItem key={source.id} value={getSourceValue(source)}>
                   <SelectItemText>
                     <span className="flex items-center gap-2">
                       <span aria-hidden className={`${source.icon} size-4 text-text-accent-light-mode-only`} />
