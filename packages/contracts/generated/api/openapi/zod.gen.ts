@@ -20,7 +20,6 @@ export const zAccountPayload = z.object({
  */
 export const zAppDescribeQuery = z.object({
   fields: z.string().optional(),
-  workspace_id: z.string().nullish(),
 })
 
 /**
@@ -634,7 +633,6 @@ export const zGetAppsByAppIdDescribePath = z.object({
 
 export const zGetAppsByAppIdDescribeQuery = z.object({
   fields: z.string().optional(),
-  workspace_id: z.string().optional(),
 })
 
 /**

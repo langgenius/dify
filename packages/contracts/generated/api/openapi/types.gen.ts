@@ -33,7 +33,6 @@ export type AppDescribeInfo = {
 
 export type AppDescribeQuery = {
   fields?: string
-  workspace_id?: string | null
 }
 
 export type AppDescribeResponse = {
@@ -519,7 +518,6 @@ export type GetAppsByAppIdDescribeData = {
   }
   query?: {
     fields?: string
-    workspace_id?: string
   }
   url: '/apps/{app_id}/describe'
 }
