@@ -42,7 +42,7 @@ jobs:
         run: scripts/release-validate-manifest.sh
 
       - name: CI pipeline (typecheck, lint, coverage, build)
-        run: pnpm ci
+        run: pnpm run ci
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' && matrix.os == 'depot-ubuntu-24.04' }}
