@@ -1,6 +1,7 @@
 'use client'
 
-import type { AppInstanceSummary } from '@dify/contracts/enterprise/types.gen'
+import type { ListAppInstanceSummariesReply } from '@dify/contracts/enterprise/types.gen'
+import type { InfiniteData } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -25,18 +26,12 @@ import {
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
 
-type ListAppInstanceSummariesInfiniteData = {
-  pages?: Array<{
-    data?: AppInstanceSummary[]
-  }>
-}
-
-function listDeploymentStatusPollingInterval(data?: ListAppInstanceSummariesInfiniteData) {
+function listDeploymentStatusPollingInterval(data?: InfiniteData<ListAppInstanceSummariesReply>) {
   const rows = data?.pages?.flatMap(page =>
     page.data?.flatMap(summary => summary.environmentDeployments ?? []) ?? [],
   ) ?? []
 
-  return deploymentStatusPollingInterval({ data: rows })
+  return deploymentStatusPollingInterval(rows)
 }
 
 function DeploymentsListState({ children }: {

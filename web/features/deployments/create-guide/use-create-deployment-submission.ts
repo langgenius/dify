@@ -2,9 +2,10 @@
 
 import type {
   CredentialSlot,
-  Environment,
   EnvVarSlot,
+  ListDeployableEnvironmentsReply,
 } from '@dify/contracts/enterprise/types.gen'
+import type { QueryObserverResult } from '@tanstack/react-query'
 import type { EnvVarValues } from '../components/env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../components/runtime-credential-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
@@ -35,11 +36,7 @@ import { deploymentErrorMessage, unsupportedDslNodeError } from '../error'
 import { createDeploymentIdempotencyKey } from '../idempotency'
 import { deploymentEnvironmentOptions } from './use-deployment-target-options'
 
-type RefetchDeployableEnvironments = () => Promise<{
-  data?: {
-    data?: Environment[]
-  }
-}>
+type RefetchDeployableEnvironments = () => Promise<QueryObserverResult<ListDeployableEnvironmentsReply>>
 
 export function useCreateDeploymentSubmission({
   bindingSelections,

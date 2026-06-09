@@ -36,6 +36,14 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Name values by their domain role and backend API contract, and keep that name stable across the call chain, especially persistent IDs and route params. Normalize framework or route params at the boundary.
 - Keep fallback and invariant checks at the lowest component that already handles that state; avoid defensive fallbacks that mask impossible states.
 
+## Generated API Contracts
+
+- Treat generated contracts as authoritative at API, query, mutation, cache, and service boundaries. For enterprise APIs, use `packages/contracts/generated/enterprise/*`.
+- Do not hand-write local request/response/reply/page/cache-data types that mirror generated DTOs, such as `{ data?: Release[] }`, `{ release?: Release }`, or copied infinite-query page shapes. Import or infer the generated type.
+- Do not widen generated fields or enums for compatibility, such as `EnvironmentDeployment['status']` to `number | string`. Normalize legacy input at the boundary, then return the generated field type.
+- Local UI models are fine for presentation, form state, select options, or guarded required-field refinements. Name them as UI concepts; avoid `Response`, `Reply`, `Data`, and generated DTO names.
+- Required-value refinements like `Release & { id: string }` are allowed only after same-branch filtering or early return. Prefer nullable-tolerant props for render-only data.
+
 ## Nullable API Data
 
 - Prefer nullable-tolerant call boundaries. Pass API-returned types through for render-only rows, and let the component render fallback, disabled state, or nothing.
@@ -51,6 +59,7 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Consume queries directly with `useQuery(consoleQuery.xxx.queryOptions(...))` or `useQuery(marketplaceQuery.xxx.queryOptions(...))`.
 - Avoid pass-through hooks and thin `web/service/use-*` wrappers that only rename `queryOptions()` or `mutationOptions()`. Extract a small `queryOptions` helper only when repeated call-site options justify it.
 - Keep feature hooks for real orchestration, workflow state, or shared domain behavior.
+- For TanStack cache data, use generated or query-derived types; do not create local wrappers for `getQueryData` or `getQueriesData`.
 - For missing required query input, use `input: skipToken`; use `enabled` only for extra business gating after the input is valid.
 - Consume mutations directly with `useMutation(consoleQuery.xxx.mutationOptions(...))` or `useMutation(marketplaceQuery.xxx.mutationOptions(...))`; use oRPC clients as `mutationFn` only for custom flows.
 - Put shared cache behavior in `createTanstackQueryUtils(...experimental_defaults...)`; components may add UI feedback callbacks, but should not own shared invalidation rules.

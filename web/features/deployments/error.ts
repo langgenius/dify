@@ -1,4 +1,4 @@
-type DeploymentErrorResponse = {
+type DeploymentErrorPayload = {
   message?: unknown
   error?: unknown
   reason?: unknown
@@ -31,7 +31,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function formatDeploymentError(data: DeploymentErrorResponse) {
+function formatDeploymentError(data: DeploymentErrorPayload) {
   const message = nonEmptyString(data.message) ?? nonEmptyString(data.error)
   const reason = nonEmptyString(data.reason) ?? nonEmptyString(data.code)
 
@@ -44,7 +44,7 @@ function formatDeploymentError(data: DeploymentErrorResponse) {
 async function deploymentErrorData(error: unknown) {
   if (error instanceof Response && !error.bodyUsed) {
     try {
-      return await error.clone().json() as DeploymentErrorResponse
+      return await error.clone().json() as DeploymentErrorPayload
     }
     catch {}
   }
@@ -52,11 +52,11 @@ async function deploymentErrorData(error: unknown) {
   return undefined
 }
 
-function deploymentErrorReason(data: DeploymentErrorResponse) {
+function deploymentErrorReason(data: DeploymentErrorPayload) {
   return nonEmptyString(data.reason) ?? nonEmptyString(data.code)
 }
 
-function unsupportedNodesPayload(data: DeploymentErrorResponse) {
+function unsupportedNodesPayload(data: DeploymentErrorPayload) {
   if (isRecord(data.metadata))
     return data.metadata.unsupported_nodes
 

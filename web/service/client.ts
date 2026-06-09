@@ -1,5 +1,8 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { Release } from '@dify/contracts/enterprise/types.gen'
+import type {
+  GetReleaseReply,
+  ListReleasesReply,
+} from '@dify/contracts/enterprise/types.gen'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils } from '@orpc/tanstack-query'
@@ -124,14 +127,6 @@ type AppDeployInvalidationOptions = {
 
 type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>>>
 
-type ReleaseListResponse = {
-  data?: Release[]
-}
-
-type ReleaseResponse = {
-  release?: Release
-}
-
 const defaultAppDeployInvalidationOptions = {
   appInstances: true,
   appInstanceSummaries: true,
@@ -204,7 +199,7 @@ function cachedReleaseAppInstanceId(
   client: QueryClient,
   releaseId: string,
 ) {
-  const listQueries = client.getQueriesData<ReleaseListResponse>({
+  const listQueries = client.getQueriesData<ListReleasesReply>({
     queryKey: query.enterprise.releaseService.listReleases.key({ type: 'query' }),
   })
   for (const [, data] of listQueries) {
@@ -213,7 +208,7 @@ function cachedReleaseAppInstanceId(
       return appInstanceId
   }
 
-  const releaseQueries = client.getQueriesData<ReleaseResponse>({
+  const releaseQueries = client.getQueriesData<GetReleaseReply>({
     queryKey: query.enterprise.releaseService.getRelease.key({ type: 'query' }),
   })
   for (const [, data] of releaseQueries) {
