@@ -78,6 +78,8 @@ class TestHitTestingServiceDumpRecords:
             "doc_metadata": None,
         }
 
+        assert result[0]["segment"]["created_at"] == datetime(2024, 1, 1, 0, 0, 0)
+
     def test_dump_retrieval_records_skips_records_with_missing_documents(self, caplog):
         record = _retrieval_record(
             {
