@@ -248,6 +248,28 @@ class TestDatasetServiceRetrievalPermissions:
         assert "created_by" in where_clause
         assert "IN" in where_clause
 
+    def test_get_datasets_rbac_keeps_all_team_visible(self):
+        mock_db = MagicMock()
+        mock_db.session.scalars.return_value.all.return_value = []
+        mock_db.paginate.return_value.items = []
+        mock_db.paginate.return_value.total = 0
+
+        user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
+
+        with (
+            patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
+            ),
+        ):
+            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user)
+
+        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        where_clause = str(select_stmt._where_criteria[-1])
+        assert "all_team" in where_clause
+
     def test_get_datasets_rbac_without_user_returns_empty_result(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []

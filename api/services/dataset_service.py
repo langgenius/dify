@@ -273,8 +273,9 @@ class DatasetService:
 
                 if not should_show_all_datasets:
                     if dify_config.RBAC_ENABLED:
-                        # RBAC visibility comes from resource grants, not Dataset.permission.
-                        visibility_conditions = [Dataset.created_by == user.id]
+                        # RBAC mode still honors public datasets and creator-owned datasets.
+                        visibility_conditions = [Dataset.permission == DatasetPermissionEnum.ALL_TEAM]
+                        visibility_conditions.append(Dataset.created_by == user.id)
                         if permitted_dataset_ids:
                             visibility_conditions.append(Dataset.id.in_(permitted_dataset_ids))
                         query = query.where(sa.or_(*visibility_conditions))
