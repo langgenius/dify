@@ -169,7 +169,10 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_id"] == "agent-1"
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_config_version_id"] == "snapshot-1"
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "single_step"
+    # Real Dify access context is forwarded; the agent run mode moves to agent_mode.
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["user_from"] == "account"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "debugger"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_mode"] == "single_step"
     assert dumped["idempotency_key"] == "run-1:node-exec-1"
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are careful."
     assert dumped["composition"]["layers"][1]["config"]["prefix"] == "Use the previous output."
@@ -244,7 +247,8 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "workflow_run"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "service-api"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_mode"] == "workflow_run"
     assert dumped["idempotency_key"] == "node-exec-1"
     output_schema = dumped["composition"]["layers"][-1]["config"]["json_schema"]
     assert output_schema["properties"]["report"]["properties"]["file_id"]["type"] == "string"

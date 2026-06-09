@@ -3161,6 +3161,24 @@ export const zGetAppsByAppIdAgentLogsQuery = z.object({
  */
 export const zGetAppsByAppIdAgentLogsResponse = z.array(z.record(z.string(), z.unknown()))
 
+export const zPostAppsByAppIdAgentSkillsStandardizePath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Skill standardized into drive
+ */
+export const zPostAppsByAppIdAgentSkillsStandardizeResponse = z.record(z.string(), z.unknown())
+
+export const zPostAppsByAppIdAgentSkillsUploadPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Skill validated
+ */
+export const zPostAppsByAppIdAgentSkillsUploadResponse = z.record(z.string(), z.unknown())
+
 export const zPostAppsByAppIdAnnotationReplyByActionBody = zAnnotationReplyPayload
 
 export const zPostAppsByAppIdAnnotationReplyByActionPath = z.object({

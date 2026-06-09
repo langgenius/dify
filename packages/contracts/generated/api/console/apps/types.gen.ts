@@ -2694,6 +2694,60 @@ export type GetAppsByAppIdAgentLogsResponses = {
 export type GetAppsByAppIdAgentLogsResponse
   = GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
 
+export type PostAppsByAppIdAgentSkillsStandardizeData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent/skills/standardize'
+}
+
+export type PostAppsByAppIdAgentSkillsStandardizeErrors = {
+  400: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentSkillsStandardizeError
+  = PostAppsByAppIdAgentSkillsStandardizeErrors[keyof PostAppsByAppIdAgentSkillsStandardizeErrors]
+
+export type PostAppsByAppIdAgentSkillsStandardizeResponses = {
+  201: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentSkillsStandardizeResponse
+  = PostAppsByAppIdAgentSkillsStandardizeResponses[keyof PostAppsByAppIdAgentSkillsStandardizeResponses]
+
+export type PostAppsByAppIdAgentSkillsUploadData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent/skills/upload'
+}
+
+export type PostAppsByAppIdAgentSkillsUploadErrors = {
+  400: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentSkillsUploadError
+  = PostAppsByAppIdAgentSkillsUploadErrors[keyof PostAppsByAppIdAgentSkillsUploadErrors]
+
+export type PostAppsByAppIdAgentSkillsUploadResponses = {
+  201: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentSkillsUploadResponse
+  = PostAppsByAppIdAgentSkillsUploadResponses[keyof PostAppsByAppIdAgentSkillsUploadResponses]
+
 export type PostAppsByAppIdAnnotationReplyByActionData = {
   body: AnnotationReplyPayload
   path: {
