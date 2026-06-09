@@ -340,11 +340,12 @@ def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
 
         from libs.login import current_user
 
-        user = current_user._get_current_object()  # type: ignore
-        if not isinstance(user, Account):
-            raise Forbidden()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        if not dify_config.RBAC_ENABLED:
+            user = current_user._get_current_object()  # type: ignore
+            if not isinstance(user, Account):
+                raise Forbidden()
+            if not current_user.has_edit_permission:
+                raise Forbidden()
         return f(*args, **kwargs)
 
     return decorated_function

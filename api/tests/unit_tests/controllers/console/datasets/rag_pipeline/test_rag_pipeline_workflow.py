@@ -1,18 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
 import pytest
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def _make_workflow(**overrides):
@@ -45,7 +40,7 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: 
     )
 
     api = module.DraftRagPipelineApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     response = handler(api, pipeline=SimpleNamespace(id="pipeline-1"))
 
@@ -63,7 +58,7 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
     app, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     api = module.PublishedAllRagPipelineApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
     session_state = {"open": False}
 
     class _SessionContext:
@@ -133,7 +128,7 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(app, monkeypatch:
     payload: dict[str, object] = {"marked_name": "Updated release"}
 
     api = module.RagPipelineByIdApi()
-    handler = _unwrap(api.patch)
+    handler = unwrap(api.patch)
 
     with (
         app.test_request_context("/rag/pipelines/pipeline-1/workflows/workflow-1", method="PATCH", json=payload),

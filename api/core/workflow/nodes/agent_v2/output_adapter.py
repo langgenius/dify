@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from clients.agent_backend import (
@@ -21,6 +21,13 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment
 class WorkflowAgentOutputAdapter:
     """Convert terminal Agent backend events into workflow node run results."""
 
+    def __init__(self, *, tool_file_rebacker: Callable[..., File | None] | None = None) -> None:
+        # Agent Files §4.6: resolve a bare ToolFile id into a graphon File whose
+        # metadata comes from the ToolFile row (not the untrusted sandbox payload).
+        # Injected so unit tests can stub it without DB access; None keeps the
+        # legacy payload-only behaviour for non-file or rich-payload outputs.
+        self._tool_file_rebacker = tool_file_rebacker
+
     def build_success_result(
         self,
         *,
@@ -28,6 +35,7 @@ class WorkflowAgentOutputAdapter:
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
+        tenant_id: str | None = None,
     ) -> NodeRunResult:
         metadata = self._with_terminal_metadata(metadata, event, "succeeded")
         usage = self._usage_from_metadata(metadata)
@@ -35,7 +43,7 @@ class WorkflowAgentOutputAdapter:
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
-            outputs=self._normalize_outputs(event.output),
+            outputs=self._normalize_outputs(event.output, tenant_id=tenant_id),
             metadata=self._build_node_metadata(metadata=metadata, usage=usage),
             llm_usage=usage or LLMUsage.empty_usage(),
         )
@@ -101,49 +109,93 @@ class WorkflowAgentOutputAdapter:
             error_type="agent_backend_stream_error",
         )
 
-    @classmethod
-    def _normalize_outputs(cls, output: Any) -> dict[str, Any]:
+    def _normalize_outputs(self, output: Any, *, tenant_id: str | None) -> dict[str, Any]:
         if isinstance(output, dict):
-            if cls._is_file_payload(output):
-                return {"file": cls._file_segment_from_payload(output)}
-            return {key: cls._normalize_output_value(value) for key, value in output.items()}
+            if self._is_file_payload(output):
+                file = self._file_from_payload(output, tenant_id=tenant_id)
+                if file is not None:
+                    return {"file": FileSegment(value=file)}
+            return {key: self._normalize_output_value(value, tenant_id=tenant_id) for key, value in output.items()}
         if isinstance(output, str):
             return {"text": output}
         return {"result": output}
 
-    @classmethod
-    def _normalize_output_value(cls, value: Any) -> Any:
+    def _normalize_output_value(self, value: Any, *, tenant_id: str | None) -> Any:
         if isinstance(value, File | FileSegment | ArrayFileSegment):
             return value
         if isinstance(value, Mapping):
-            if cls._is_file_payload(value):
-                return cls._file_segment_from_payload(value)
-            return {key: cls._normalize_output_value(item) for key, item in value.items()}
+            if self._is_file_payload(value):
+                file = self._file_from_payload(value, tenant_id=tenant_id)
+                if file is not None:
+                    return FileSegment(value=file)
+                # A bare ref that did not resolve to a tenant file: treat as a plain object.
+            return {key: self._normalize_output_value(item, tenant_id=tenant_id) for key, item in value.items()}
         if isinstance(value, list):
-            if value and all(isinstance(item, Mapping) and cls._is_file_payload(item) for item in value):
-                return ArrayFileSegment(value=[cls._file_from_payload(item) for item in value])
-            return [cls._normalize_output_value(item) for item in value]
+            if value and all(isinstance(item, Mapping) and self._is_file_payload(item) for item in value):
+                files = [self._file_from_payload(item, tenant_id=tenant_id) for item in value]
+                if all(file is not None for file in files):
+                    return ArrayFileSegment(value=[file for file in files if file is not None])
+            return [self._normalize_output_value(item, tenant_id=tenant_id) for item in value]
         return value
 
-    @staticmethod
-    def _is_file_payload(value: Mapping[str, Any]) -> bool:
-        return any(value.get(key) for key in ("file_id", "upload_file_id", "tool_file_id", "url", "remote_url")) and (
-            "filename" in value or "mime_type" in value or "url" in value or "remote_url" in value
+    # Keys a file-output ref may legitimately carry. A dict is treated as a file
+    # ref only if it has an id/url AND every key is one of these — so a bare
+    # ``{"id": "..."}`` (Agent Files §4.6 canonical) is recognized while ordinary
+    # business objects that merely contain an ``id`` field are not.
+    _FILE_FIELD_KEYS: frozenset[str] = frozenset(
+        {
+            "id",
+            "file_id",
+            "upload_file_id",
+            "tool_file_id",
+            "url",
+            "remote_url",
+            "filename",
+            "name",
+            "mime_type",
+            "mimetype",
+            "extension",
+            "size",
+            "type",
+            "file_type",
+        }
+    )
+
+    @classmethod
+    def _is_file_payload(cls, value: Mapping[str, Any]) -> bool:
+        has_ref = any(
+            isinstance(value.get(key), str) and value.get(key)
+            for key in ("id", "file_id", "upload_file_id", "tool_file_id", "url", "remote_url")
         )
+        return has_ref and all(key in cls._FILE_FIELD_KEYS for key in value)
 
-    @classmethod
-    def _file_segment_from_payload(cls, value: Mapping[str, Any]) -> FileSegment:
-        return FileSegment(value=cls._file_from_payload(value))
+    @staticmethod
+    def _is_rich_payload(value: Mapping[str, Any]) -> bool:
+        """The payload carries its own metadata, so it can build a File without DB reback."""
+        return any(value.get(key) for key in ("filename", "name", "mime_type", "mimetype", "url", "remote_url"))
 
-    @classmethod
-    def _file_from_payload(cls, value: Mapping[str, Any]) -> File:
-        remote_url = cls._string_value(value.get("remote_url") or value.get("url"))
-        upload_file_id = cls._string_value(value.get("upload_file_id") or value.get("file_id"))
-        tool_file_id = cls._string_value(value.get("tool_file_id"))
-        filename = cls._string_value(value.get("filename") or value.get("name"))
-        mime_type = cls._string_value(value.get("mime_type") or value.get("mimetype"))
-        extension = cls._extension_from_payload(value, filename)
-        file_type = cls._file_type_from_payload(value, mime_type)
+    def _file_from_payload(self, value: Mapping[str, Any], *, tenant_id: str | None) -> File | None:
+        # Canonical Agent output file is a ToolFile referenced by ``id`` (or the
+        # ``tool_file_id`` alias). Reback its metadata authoritatively from the
+        # ToolFile row instead of trusting the sandbox payload.
+        tool_file_id = self._string_value(value.get("tool_file_id") or value.get("id"))
+        remote_url = self._string_value(value.get("remote_url") or value.get("url"))
+        upload_file_id = self._string_value(value.get("upload_file_id") or value.get("file_id"))
+
+        if tool_file_id and self._tool_file_rebacker is not None and tenant_id:
+            rebacked = self._tool_file_rebacker(tenant_id=tenant_id, tool_file_id=tool_file_id)
+            if rebacked is not None:
+                return rebacked
+
+        # No authoritative reback: only build a File from the payload when it
+        # actually carries file metadata; a bare unresolved id is not a file.
+        if not self._is_rich_payload(value):
+            return None
+
+        filename = self._string_value(value.get("filename") or value.get("name"))
+        mime_type = self._string_value(value.get("mime_type") or value.get("mimetype"))
+        extension = self._extension_from_payload(value, filename)
+        file_type = self._file_type_from_payload(value, mime_type)
         size = value.get("size")
         if not isinstance(size, int):
             size = -1

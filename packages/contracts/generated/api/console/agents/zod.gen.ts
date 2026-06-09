@@ -213,44 +213,32 @@ export const zAgentTextToSpeechFeatureConfig = z.object({
 })
 
 /**
- * AgentSecretRefConfig
- */
-export const zAgentSecretRefConfig = z.object({
-  id: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  permission: z.record(z.string(), z.unknown()).optional(),
-  permission_status: z.string().max(64).nullish(),
-  provider: z.string().max(255).nullish(),
-  type: z.string().max(64).nullish(),
-})
-
-/**
  * AgentEnvVariableConfig
  */
 export const zAgentEnvVariableConfig = z.object({
+  default: z.unknown().optional(),
+  env_name: z.string().max(255).nullish(),
+  key: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
   required: z.boolean().optional().default(false),
   type: z.string().max(64).nullish(),
   value: z.unknown().optional(),
-})
-
-/**
- * AgentSoulEnvConfig
- */
-export const zAgentSoulEnvConfig = z.object({
-  secret_refs: z.array(zAgentSecretRefConfig).optional(),
-  variables: z.array(zAgentEnvVariableConfig).optional(),
+  variable: z.string().max(255).nullish(),
 })
 
 /**
  * AgentHumanContactConfig
  */
 export const zAgentHumanContactConfig = z.object({
+  channel: z.string().max(64).nullish(),
   contact_id: z.string().max(255).nullish(),
+  contact_method: z.string().max(64).nullish(),
   email: z.string().max(255).nullish(),
   human_id: z.string().max(255).nullish(),
   id: z.string().max(255).nullish(),
+  method: z.string().max(64).nullish(),
   name: z.string().max(255).nullish(),
+  tenant_id: z.string().max(255).nullish(),
 })
 
 /**
@@ -337,6 +325,7 @@ export const zAgentSoulModelCredentialRef = z.object({
  * AgentSandboxProviderConfig
  */
 export const zAgentSandboxProviderConfig = z.object({
+  cpu: z.int().gte(1).nullish(),
   env: z.array(zAgentEnvVariableConfig).optional(),
   image: z.string().nullish(),
   working_dir: z.string().nullish(),
@@ -354,10 +343,15 @@ export const zAgentSoulSandboxConfig = z.object({
  * AgentFileRefConfig
  */
 export const zAgentFileRefConfig = z.object({
+  file_id: z.string().max(255).nullish(),
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
+  reference: z.string().max(255).nullish(),
+  remote_url: z.string().nullish(),
+  tenant_id: z.string().max(255).nullish(),
   transfer_method: z.string().max(64).nullish(),
   type: z.string().max(64).nullish(),
+  upload_file_id: z.string().max(255).nullish(),
   url: z.string().nullish(),
 })
 
@@ -378,6 +372,41 @@ export const zAgentSkillRefConfig = z.object({
 export const zAgentSoulSkillsFilesConfig = z.object({
   files: z.array(zAgentFileRefConfig).optional(),
   skills: z.array(zAgentSkillRefConfig).optional(),
+})
+
+/**
+ * AgentPermissionConfig
+ */
+export const zAgentPermissionConfig = z.object({
+  allowed: z.boolean().nullish(),
+  state: z.string().max(64).nullish(),
+  status: z.string().max(64).nullish(),
+})
+
+/**
+ * AgentSecretRefConfig
+ */
+export const zAgentSecretRefConfig = z.object({
+  credential_id: z.string().max(255).nullish(),
+  env_name: z.string().max(255).nullish(),
+  id: z.string().max(255).nullish(),
+  key: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+  permission: zAgentPermissionConfig.optional(),
+  permission_status: z.string().max(64).nullish(),
+  provider: z.string().max(255).nullish(),
+  provider_credential_id: z.string().max(255).nullish(),
+  ref: z.string().max(255).nullish(),
+  type: z.string().max(64).nullish(),
+  variable: z.string().max(255).nullish(),
+})
+
+/**
+ * AgentSoulEnvConfig
+ */
+export const zAgentSoulEnvConfig = z.object({
+  secret_refs: z.array(zAgentSecretRefConfig).optional(),
+  variables: z.array(zAgentEnvVariableConfig).optional(),
 })
 
 /**
@@ -453,17 +482,28 @@ export const zAgentCliToolRiskLevel = z.enum(['dangerous', 'safe', 'unknown'])
  * AgentCliToolConfig
  */
 export const zAgentCliToolConfig = z.object({
+  approved: z.boolean().optional().default(false),
   authorization_status: zAgentCliToolAuthorizationStatus.optional(),
   command: z.string().nullish(),
   dangerous: z.boolean().optional().default(false),
+  dangerous_accepted: z.boolean().optional().default(false),
   dangerous_acknowledged: z.boolean().optional().default(false),
+  dangerous_command: z.boolean().optional().default(false),
   description: z.string().nullish(),
   enabled: z.boolean().optional().default(true),
+  install: z.string().nullish(),
+  install_command: z.string().nullish(),
+  install_commands: z.array(z.string()).optional(),
   invoke_metadata: z.record(z.string(), z.unknown()).optional(),
+  label: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
-  permission: z.record(z.string(), z.unknown()).optional(),
+  permission: zAgentPermissionConfig.optional(),
   pre_authorized: z.boolean().nullish(),
+  requires_confirmation: z.boolean().optional().default(false),
+  risk_accepted: z.boolean().optional().default(false),
   risk_level: zAgentCliToolRiskLevel.optional(),
+  setup_command: z.string().nullish(),
+  tool_name: z.string().max(255).nullish(),
 })
 
 /**
