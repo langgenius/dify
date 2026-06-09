@@ -1,14 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 
 import CreateAppCard from '../new-app-card'
 
 const mockReplace = vi.fn()
+let mockSearchParams = new URLSearchParams()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }))
 
 const mockOnPlanInfoChanged = vi.fn()
@@ -58,6 +59,7 @@ describe('CreateAppCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchParams = new URLSearchParams()
   })
 
   describe('Rendering', () => {
@@ -204,6 +206,32 @@ describe('CreateAppCard', () => {
   })
 
   describe('User Interactions - DSL Import Modal', () => {
+    it('should keep remote DSL modal closed when create actions load into disabled state', () => {
+      mockSearchParams = new URLSearchParams('remoteInstallUrl=https://example.com/app.yml')
+
+      const { rerender } = render(<CreateAppCard ref={defaultRef} isLoading />)
+
+      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
+
+      rerender(<CreateAppCard ref={defaultRef} disabled />)
+
+      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
+    })
+
+    it('should open remote DSL modal after create actions become available', async () => {
+      mockSearchParams = new URLSearchParams('remoteInstallUrl=https://example.com/app.yml')
+
+      const { rerender } = render(<CreateAppCard ref={defaultRef} isLoading />)
+
+      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
+
+      rerender(<CreateAppCard ref={defaultRef} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+      })
+    })
+
     it('should open DSL modal when clicking Import DSL', () => {
       render(<CreateAppCard ref={defaultRef} />)
 

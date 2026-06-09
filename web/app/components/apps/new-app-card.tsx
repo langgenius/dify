@@ -49,9 +49,10 @@ const CreateAppCard = ({
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
 
   const isDisabled = disabled || isLoading
+  const canOpenRemoteDSLModal = !!dslUrl && !isDisabled
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
-  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(() => !!dslUrl && !disabled)
+  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(() => canOpenRemoteDSLModal)
   const actionButtonClassName = cn(
     'flex w-full items-center rounded-lg px-6 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary',
     isDisabled
@@ -73,6 +74,19 @@ const CreateAppCard = ({
       setShowNewAppTemplateDialog(false)
     }
   }, [controlHideCreateFromTemplatePanel])
+
+  useEffect(() => {
+    if (canOpenRemoteDSLModal) {
+      // eslint-disable-next-line react/set-state-in-effect -- URL-driven install links should open only after create actions are usable
+      setShowCreateFromDSLModal(true)
+      return
+    }
+
+    if (isDisabled) {
+      // eslint-disable-next-line react/set-state-in-effect -- permission/loading changes must close hidden creation surfaces
+      setShowCreateFromDSLModal(false)
+    }
+  }, [canOpenRemoteDSLModal, isDisabled])
 
   return (
     <div
