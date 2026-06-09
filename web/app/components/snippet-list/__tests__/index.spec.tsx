@@ -303,6 +303,18 @@ describe('SnippetList', () => {
     expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
   })
 
+  it('does not fetch or render snippets without snippet list permissions', () => {
+    mockWorkspacePermissionKeys.mockReturnValue([])
+
+    renderList()
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
+      enabled: false,
+    })
+    expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+  })
+
   it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
     mockIsCurrentWorkspaceEditor.mockReturnValue(false)
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
@@ -365,14 +377,21 @@ describe('SnippetList', () => {
     expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
   })
 
-  it('does not fetch snippets or register infinite scroll for dataset operators', () => {
+  it('fetches snippets for dataset operators when they have snippet list permissions', () => {
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(true)
 
     renderList()
 
     expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
-      enabled: false,
+      enabled: true,
     })
+  })
+
+  it('does not register infinite scroll without snippet list permissions', () => {
+    mockWorkspacePermissionKeys.mockReturnValue([])
+
+    renderList()
+
     intersectionCallback?.([
       { isIntersecting: true } as IntersectionObserverEntry,
     ], {} as IntersectionObserver)

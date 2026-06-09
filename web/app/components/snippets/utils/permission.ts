@@ -13,3 +13,10 @@ export const canCreateAndModifySnippets = (workspacePermissionKeys: readonly Per
 export const canManageSnippets = (workspacePermissionKeys: readonly PermissionKey[] | null | undefined) => {
   return hasPermission(workspacePermissionKeys, SnippetPermission.Management)
 }
+
+export const canAccessSnippets = (workspacePermissionKeys: readonly PermissionKey[] | null | undefined) => {
+  return hasPermission(workspacePermissionKeys, [
+    SnippetPermission.CreateAndModify,
+    SnippetPermission.Management,
+  ])
+}

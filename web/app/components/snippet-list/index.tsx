@@ -16,7 +16,7 @@ import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
 import Empty from '../apps/empty'
 import Footer from '../apps/footer'
-import { canCreateAndModifySnippets } from '../snippets/utils/permission'
+import { canAccessSnippets, canCreateAndModifySnippets } from '../snippets/utils/permission'
 import SnippetCard from './components/snippet-card'
 import SnippetCreateButton from './components/snippet-create-button'
 import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
@@ -48,7 +48,7 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 const SnippetList = () => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceDatasetOperator, isLoadingWorkspacePermissionKeys, workspacePermissionKeys } = useAppContext()
+  const { isLoadingWorkspacePermissionKeys, workspacePermissionKeys } = useAppContext()
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
     query: { tagIDs, keywords, creatorIDs },
@@ -70,6 +70,7 @@ const SnippetList = () => {
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
     ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
   }), [creatorIDs, debouncedKeywords, tagIDs])
+  const canAccessSnippetList = canAccessSnippets(workspacePermissionKeys)
 
   const {
     data,
@@ -81,11 +82,11 @@ const SnippetList = () => {
     error,
     refetch,
   } = useInfiniteSnippetList(snippetListQuery, {
-    enabled: !isCurrentWorkspaceDatasetOperator,
+    enabled: canAccessSnippetList,
   })
 
   useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
+    if (!canAccessSnippetList)
       return
 
     const hasMore = hasNextPage ?? true
@@ -113,12 +114,12 @@ const SnippetList = () => {
     }
 
     return () => observer?.disconnect()
-  }, [error, fetchNextPage, hasNextPage, isCurrentWorkspaceDatasetOperator, isFetchingNextPage, isLoading])
+  }, [canAccessSnippetList, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading])
 
-  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
+  const pages = useMemo(() => canAccessSnippetList ? data?.pages ?? [] : [], [canAccessSnippetList, data?.pages])
   const snippets = useMemo<SnippetListItem[]>(() => pages.flatMap(({ data: pageSnippets }) => pageSnippets), [pages])
   const hasAnySnippet = (pages[0]?.total ?? 0) > 0
-  const showSkeleton = isLoading || (isFetching && pages.length === 0)
+  const showSkeleton = canAccessSnippetList && (isLoading || (isFetching && pages.length === 0))
   const canCreateSnippet = canCreateAndModifySnippets(workspacePermissionKeys)
 
   return (
