@@ -40,10 +40,12 @@ const TriggerPluginActionItem: FC<Props> = ({
   const language = useGetLanguage()
 
   const row = (
-    <div
+    <button
+      type="button"
+      disabled={disabled}
       key={payload.name}
       className={cn(
-        'flex items-center justify-between rounded-lg pr-1 pl-[21px]',
+        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-[21px] text-left focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
         disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
       )}
       onClick={() => {
@@ -79,7 +81,7 @@ const TriggerPluginActionItem: FC<Props> = ({
       {isAdded && (
         <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
       )}
-    </div>
+    </button>
   )
 
   return (

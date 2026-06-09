@@ -90,6 +90,11 @@ import {
 } from './helpers'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
+import {
+  StartPlaceholderPanelBody,
+  StartPlaceholderPanelDescription,
+  StartPlaceholderPanelTitle,
+} from './start-placeholder-panel'
 import Tab, { TabType } from './tab'
 import { TriggerSubscription } from './trigger-subscription'
 
@@ -528,9 +533,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )}
             {isStartPlaceholderPanel
               ? (
-                  <div className="mr-2 min-w-0 grow system-xl-semibold text-text-primary">
-                    {t('nodes.startPlaceholder.panelTitle', { ns: 'workflow' })}
-                  </div>
+                  <StartPlaceholderPanelTitle />
                 )
               : (
                   <TitleInput
@@ -591,9 +594,7 @@ const BasePanel: FC<BasePanelProps> = ({
           </div>
           {isStartPlaceholderPanel
             ? (
-                <div className="px-4 pb-3 system-xs-regular text-text-tertiary">
-                  {t('nodes.startPlaceholder.panelDescription', { ns: 'workflow' })}
-                </div>
+                <StartPlaceholderPanelDescription />
               )
             : (
                 <div className="p-2">
@@ -683,9 +684,9 @@ const BasePanel: FC<BasePanelProps> = ({
         </div>
 
         {isStartPlaceholderPanel && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <StartPlaceholderPanelBody>
             {panelChildren}
-          </div>
+          </StartPlaceholderPanelBody>
         )}
 
         {!isStartPlaceholderPanel && tabType === TabType.settings && (

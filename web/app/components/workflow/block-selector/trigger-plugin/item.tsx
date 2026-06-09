@@ -102,9 +102,11 @@ const TriggerPluginItem: FC<Props> = ({
       ref={ref}
     >
       <div className={cn(className)}>
-        <div
+        <button
+          type="button"
+          disabled={disabled}
           className={cn(
-            'group/item flex w-full items-center justify-between rounded-lg py-1 pr-2 pl-3 select-none',
+            'group/item flex w-full items-center justify-between rounded-lg border-0 bg-transparent py-1 pr-2 pl-3 text-left select-none focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
             disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
           )}
           onClick={() => {
@@ -156,7 +158,7 @@ const TriggerPluginItem: FC<Props> = ({
               <FoldIcon className={cn('size-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
             )}
           </div>
-        </div>
+        </button>
 
         {!notShowProvider && hasAction && !isFold && (
           <ScrollAreaRoot className="relative max-h-[240px] overflow-hidden overscroll-contain">
