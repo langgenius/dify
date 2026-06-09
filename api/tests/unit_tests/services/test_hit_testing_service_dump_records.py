@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 from services.hit_testing_service import HitTestingService
@@ -6,6 +7,14 @@ from services.hit_testing_service import HitTestingService
 def _retrieval_record(payload: dict):
     record = Mock()
     record.model_dump.return_value = payload
+    segment = payload.get("segment")
+    if isinstance(segment, dict):
+        record.segment = Mock()
+        record.segment.id = segment.get("id")
+        record.segment.document_id = segment.get("document_id")
+        record.segment.created_at = datetime(2024, 1, 1, 0, 0, 0)
+    else:
+        record.segment = None
     return record
 
 
@@ -38,12 +47,14 @@ class TestHitTestingServiceDumpRecords:
         }
 
     def test_dump_retrieval_records_returns_dumped_records_without_document_ids(self):
-        record = _retrieval_record({"segment": None, "score": 0.95})
+        record = _retrieval_record({"segment": {"id": "segment-1", "document_id": None}, "score": 0.95})
+        record.segment.document_id = None
 
-        assert HitTestingService._dump_retrieval_records([record]) == [{"segment": None, "score": 0.95}]
+        assert HitTestingService._dump_retrieval_records([record]) == [
+            {"segment": {"id": "segment-1", "document_id": None}, "score": 0.95}
+        ]
 
-    def test_dump_retrieval_records_injects_documents_and_keeps_non_segment_records(self):
-        record_without_segment = _retrieval_record({"segment": None, "score": 0.95})
+    def test_dump_retrieval_records_injects_documents(self):
         record_with_document = _retrieval_record(
             {
                 "segment": {
@@ -57,16 +68,17 @@ class TestHitTestingServiceDumpRecords:
         scalars_result.all.return_value = [_dataset_document()]
 
         with patch("services.hit_testing_service.db.session.scalars", return_value=scalars_result):
-            result = HitTestingService._dump_retrieval_records([record_without_segment, record_with_document])
+            result = HitTestingService._dump_retrieval_records([record_with_document])
 
-        assert result[0] == {"segment": None, "score": 0.95}
-        assert result[1]["segment"]["document"] == {
+        assert result[0]["segment"]["document"] == {
             "id": "document-1",
             "data_source_type": "upload_file",
             "name": "guide.md",
             "doc_type": None,
             "doc_metadata": None,
         }
+
+        assert result[0]["segment"]["created_at"] == datetime(2024, 1, 1, 0, 0, 0)
 
     def test_dump_retrieval_records_skips_records_with_missing_documents(self, caplog):
         record = _retrieval_record(
