@@ -5,7 +5,7 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field, field_validator
-from sqlalchemy import and_, select
+from sqlalchemy import and_, exists, or_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.fields import SimpleMessageResponse, SimpleResultMessageResponse
@@ -24,8 +24,8 @@ from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from libs.login import login_required
-from models import Account, App, InstalledApp, RecommendedApp
-from models.model import IconType
+from models import Account, App, AppModelConfig, InstalledApp, RecommendedApp, Workflow
+from models.model import AppMode, IconType
 from services.account_service import TenantService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -59,6 +59,24 @@ def _safe_primitive(value: Any) -> Any:
     if value is None or isinstance(value, (str, int, float, bool, datetime)):
         return value
     return None
+
+
+def _published_app_filter():
+    """Return the SQL predicate for installed-app web API availability.
+
+    The installed-app parameters endpoint reads the published workflow for
+    workflow-style apps and the published app model config for easy UI apps.
+    Keep the list endpoint aligned in SQL so it does not return entries that
+    will immediately fail with app_unavailable when opened.
+    """
+    workflow_app_modes = (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
+    has_published_workflow = exists(select(Workflow.id).where(Workflow.id == App.workflow_id))
+    has_published_model_config = exists(select(AppModelConfig.id).where(AppModelConfig.id == App.app_model_config_id))
+
+    return or_(
+        and_(App.mode.in_(workflow_app_modes), App.workflow_id.isnot(None), has_published_workflow),
+        and_(~App.mode.in_(workflow_app_modes), App.app_model_config_id.isnot(None), has_published_model_config),
+    )
 
 
 class InstalledAppInfoResponse(ResponseModel):
@@ -141,31 +159,21 @@ class InstalledAppsListApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account):
         query = InstalledAppsListQuery.model_validate(request.args.to_dict())
 
+        stmt = (
+            select(InstalledApp, App)
+            .join(App, App.id == InstalledApp.app_id)
+            .where(InstalledApp.tenant_id == current_tenant_id, _published_app_filter())
+        )
         if query.app_id:
-            installed_apps = db.session.scalars(
-                select(InstalledApp).where(
-                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == query.app_id)
-                )
-            ).all()
-        else:
-            installed_apps = db.session.scalars(
-                select(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id)
-            ).all()
+            stmt = stmt.where(InstalledApp.app_id == query.app_id)
+
+        installed_apps = db.session.execute(stmt).all()
 
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
-
-        app_ids = [installed_app.app_id for installed_app in installed_apps]
-        apps = db.session.scalars(select(App).where(App.id.in_(app_ids))).all() if app_ids else []
-        apps_by_id = {app.id: app for app in apps}
-
         installed_app_list: list[dict[str, Any]] = []
-        for installed_app in installed_apps:
-            app_model = apps_by_id.get(installed_app.app_id)
-            if app_model is None:
-                continue
-
+        for installed_app, app_model in installed_apps:
             installed_app_list.append(
                 {
                     "id": installed_app.id,
