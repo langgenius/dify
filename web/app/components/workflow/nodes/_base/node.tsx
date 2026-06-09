@@ -324,7 +324,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     </div>
   )
 
-  const isStartNode = data.type === BlockEnum.Start
+  const isStartNode = data.type === BlockEnum.Start || data.type === BlockEnum.StartPlaceholder
   const isEntryNode = isEntryWorkflowNode(data.type)
 
   return isEntryNode

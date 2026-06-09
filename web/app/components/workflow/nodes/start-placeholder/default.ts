@@ -14,7 +14,10 @@ const metaData = genNodeMetaData({
 
 const nodeDefault: NodeDefault<StartPlaceholderNodeType> = {
   metaData,
-  defaultValue: {},
+  defaultValue: {
+    title: 'Workflow start',
+    desc: '',
+  },
   checkValid(_payload, t) {
     return {
       isValid: false,

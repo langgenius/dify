@@ -479,6 +479,19 @@ const BasePanel: FC<BasePanelProps> = ({
   const singleRunActionLabel = isSingleRunning
     ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
     : runThisStepLabel
+  const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
+  const panelChildren = cloneElement(children as any, {
+    id,
+    data,
+    panelProps: {
+      getInputVars,
+      toVarInputs,
+      runInputData,
+      setRunInputData,
+      runResult,
+      runInputDataRef,
+    },
+  })
 
   return (
     <div
@@ -505,16 +518,26 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
-            <BlockIcon
-              className="mr-1 shrink-0"
-              type={data.type}
-              toolIcon={toolIcon}
-              size="md"
-            />
-            <TitleInput
-              value={data.title || ''}
-              onBlur={handleTitleBlur}
-            />
+            {!isStartPlaceholderPanel && (
+              <BlockIcon
+                className="mr-1 shrink-0"
+                type={data.type}
+                toolIcon={toolIcon}
+                size="md"
+              />
+            )}
+            {isStartPlaceholderPanel
+              ? (
+                  <div className="mr-2 min-w-0 grow system-xl-semibold text-text-primary">
+                    {t('nodes.startPlaceholder.panelTitle', { ns: 'workflow' })}
+                  </div>
+                )
+              : (
+                  <TitleInput
+                    value={data.title || ''}
+                    onBlur={handleTitleBlur}
+                  />
+                )}
             {viewingUsers.length > 0 && (
               <div className="ml-3 shrink-0">
                 <UserAvatarList
@@ -566,101 +589,109 @@ const BasePanel: FC<BasePanelProps> = ({
               </div>
             </div>
           </div>
-          <div className="p-2">
-            <DescriptionInput
-              value={data.desc || ''}
-              onChange={handleDescriptionChange}
-            />
-          </div>
-          {
-            needsToolAuth && (
-              <PluginAuth
-                className="px-4 pb-2"
-                pluginPayload={{
-                  provider: currToolCollection?.name || '',
-                  providerType: currToolCollection?.type || '',
-                  category: AuthCategory.tool,
-                  detail: currToolCollection as any,
-                }}
-              >
-                <div className="flex items-center justify-between pr-3 pl-4">
-                  <Tab
-                    value={tabType}
-                    onChange={setTabType}
+          {isStartPlaceholderPanel
+            ? (
+                <div className="px-4 pb-3 system-xs-regular text-text-tertiary">
+                  {t('nodes.startPlaceholder.panelDescription', { ns: 'workflow' })}
+                </div>
+              )
+            : (
+                <div className="p-2">
+                  <DescriptionInput
+                    value={data.desc || ''}
+                    onChange={handleDescriptionChange}
                   />
-                  <AuthorizedInNode
+                </div>
+              )}
+          {!isStartPlaceholderPanel && (
+            <>
+              {
+                needsToolAuth && (
+                  <PluginAuth
+                    className="px-4 pb-2"
                     pluginPayload={{
                       provider: currToolCollection?.name || '',
                       providerType: currToolCollection?.type || '',
                       category: AuthCategory.tool,
                       detail: currToolCollection as any,
                     }}
-                    onAuthorizationItemClick={handleAuthorizationItemClick}
-                    credentialId={data.credential_id}
-                  />
-                </div>
-              </PluginAuth>
-            )
-          }
-          {
-            !!currentDataSource && (
-              <PluginAuthInDataSourceNode
-                onJumpToDataSourcePage={handleJumpToDataSourcePage}
-                isAuthorized={currentDataSource.is_authorized}
-              >
-                <div className="flex items-center justify-between pr-3 pl-4">
-                  <Tab
-                    value={tabType}
-                    onChange={setTabType}
-                  />
-                  <AuthorizedInDataSourceNode
+                  >
+                    <div className="flex items-center justify-between pr-3 pl-4">
+                      <Tab
+                        value={tabType}
+                        onChange={setTabType}
+                      />
+                      <AuthorizedInNode
+                        pluginPayload={{
+                          provider: currToolCollection?.name || '',
+                          providerType: currToolCollection?.type || '',
+                          category: AuthCategory.tool,
+                          detail: currToolCollection as any,
+                        }}
+                        onAuthorizationItemClick={handleAuthorizationItemClick}
+                        credentialId={data.credential_id}
+                      />
+                    </div>
+                  </PluginAuth>
+                )
+              }
+              {
+                !!currentDataSource && (
+                  <PluginAuthInDataSourceNode
                     onJumpToDataSourcePage={handleJumpToDataSourcePage}
-                    authorizationsNum={3}
-                  />
-                </div>
-              </PluginAuthInDataSourceNode>
-            )
-          }
-          {
-            currentTriggerPlugin && (
-              <TriggerSubscription
-                subscriptionIdSelected={data.subscription_id}
-                onSubscriptionChange={handleSubscriptionChange}
-              >
-                <Tab
-                  value={tabType}
-                  onChange={setTabType}
-                />
-              </TriggerSubscription>
-            )
-          }
-          {
-            !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
-              <div className="flex items-center justify-between pr-3 pl-4">
-                <Tab
-                  value={tabType}
-                  onChange={setTabType}
-                />
-              </div>
-            )
-          }
-          <Split />
+                    isAuthorized={currentDataSource.is_authorized}
+                  >
+                    <div className="flex items-center justify-between pr-3 pl-4">
+                      <Tab
+                        value={tabType}
+                        onChange={setTabType}
+                      />
+                      <AuthorizedInDataSourceNode
+                        onJumpToDataSourcePage={handleJumpToDataSourcePage}
+                        authorizationsNum={3}
+                      />
+                    </div>
+                  </PluginAuthInDataSourceNode>
+                )
+              }
+              {
+                currentTriggerPlugin && (
+                  <TriggerSubscription
+                    subscriptionIdSelected={data.subscription_id}
+                    onSubscriptionChange={handleSubscriptionChange}
+                  >
+                    <Tab
+                      value={tabType}
+                      onChange={setTabType}
+                    />
+                  </TriggerSubscription>
+                )
+              }
+              {
+                !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
+                  <div className="flex items-center justify-between pr-3 pl-4">
+                    <Tab
+                      value={tabType}
+                      onChange={setTabType}
+                    />
+                  </div>
+                )
+              }
+              <Split />
+            </>
+          )}
         </div>
-        {tabType === TabType.settings && (
+
+        {isStartPlaceholderPanel && (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {panelChildren}
+          </div>
+        )}
+
+        {!isStartPlaceholderPanel && tabType === TabType.settings && (
           <div className="flex flex-1 flex-col overflow-y-auto">
             <div>
-              {cloneElement(children as any, {
-                id,
-                data,
-                panelProps: {
-                  getInputVars,
-                  toVarInputs,
-                  runInputData,
-                  setRunInputData,
-                  runResult,
-                  runInputDataRef,
-                },
-              })}
+              {panelChildren}
             </div>
             <Split />
             {
@@ -696,7 +727,7 @@ const BasePanel: FC<BasePanelProps> = ({
           </div>
         )}
 
-        {tabType === TabType.lastRun && (
+        {!isStartPlaceholderPanel && tabType === TabType.lastRun && (
           <LastRun
             appId={appDetail?.id || ''}
             nodeId={id}

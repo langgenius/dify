@@ -20,8 +20,6 @@ import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-syn
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-const i18nPrefix = 'nodes.startPlaceholder'
-
 const getTriggerPluginNodeData = (
   triggerConfig: TriggerDefaultValue,
   fallbackTitle?: string,
@@ -114,7 +112,7 @@ const Panel: FC<NodePanelProps<StartPlaceholderNodeType>> = ({
 
     setNodes(nextNodes)
     setHasSelectedStartNode?.(true)
-    setShouldAutoOpenStartNodeSelector?.(true)
+    setShouldAutoOpenStartNodeSelector?.(false)
 
     handleSyncWorkflowDraft(true, false, {
       onSuccess: () => {
@@ -135,16 +133,8 @@ const Panel: FC<NodePanelProps<StartPlaceholderNodeType>> = ({
   ])
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="px-4 pt-2 pb-3">
-        <div className="system-md-semibold text-text-primary">
-          {t(`${i18nPrefix}.panelTitle`, { ns: 'workflow' })}
-        </div>
-        <div className="mt-1 system-xs-regular text-text-tertiary">
-          {t(`${i18nPrefix}.panelDescription`, { ns: 'workflow' })}
-        </div>
-      </div>
-      <div className="px-4 pb-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="px-3 py-2">
         <SearchBox
           search={searchText}
           onSearchChange={setSearchText}
@@ -154,22 +144,21 @@ const Panel: FC<NodePanelProps<StartPlaceholderNodeType>> = ({
           inputClassName="grow"
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden px-2 pb-3">
-        <div className="h-full overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg">
-          <AllStartBlocks
-            className="max-w-none min-w-0"
-            searchText={searchText}
-            onSelect={handleSelectStartNode}
-            availableBlocksTypes={[
-              BlockEnum.Start,
-              BlockEnum.TriggerSchedule,
-              BlockEnum.TriggerWebhook,
-              BlockEnum.TriggerPlugin,
-            ]}
-            tags={tags}
-            allowUserInputSelection
-          />
-        </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <AllStartBlocks
+          className="max-w-none min-w-0"
+          searchText={searchText}
+          onSelect={handleSelectStartNode}
+          availableBlocksTypes={[
+            BlockEnum.Start,
+            BlockEnum.TriggerSchedule,
+            BlockEnum.TriggerWebhook,
+            BlockEnum.TriggerPlugin,
+          ]}
+          tags={tags}
+          allowUserInputSelection
+          variant="panel"
+        />
       </div>
     </div>
   )
