@@ -97,7 +97,7 @@ class AppDescribeApi(AppReadResource):
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 
-        app = self._load(app_id, workspace_id=query.workspace_id)
+        app = self._load(app_id)
 
         requested = query.fields
         want_info = requested is None or "info" in requested
