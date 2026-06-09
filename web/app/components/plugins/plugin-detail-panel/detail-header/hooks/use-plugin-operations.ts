@@ -3,6 +3,7 @@
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from './use-detail-header-state'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -39,6 +40,7 @@ export const usePluginOperations = ({
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
@@ -46,10 +48,24 @@ export const usePluginOperations = ({
 
   const { id, meta, plugin_id } = detail
   const { author, category, name } = detail.declaration || detail
+  const hasAgentStrategy = !!detail.declaration?.agent_strategy
   const handlePluginUpdated = useCallback((isDelete?: boolean) => {
     invalidateCheckInstalled()
     onUpdate?.(isDelete)
-  }, [invalidateCheckInstalled, onUpdate])
+
+    // Invalidate category-specific caches so the detail panel shows fresh data
+    if (PluginCategoryEnum.model.includes(category)) {
+      refreshModelProviders()
+      queryClient.invalidateQueries({ queryKey: ['models', 'model-list'] })
+    }
+    if (PluginCategoryEnum.tool.includes(category)) {
+      invalidateAllToolProviders()
+      queryClient.invalidateQueries({ queryKey: ['tools', 'builtin-provider-tools'] })
+    }
+    if (hasAgentStrategy) {
+      queryClient.invalidateQueries({ queryKey: ['strategy', 'detail'] })
+    }
+  }, [invalidateCheckInstalled, onUpdate, category, refreshModelProviders, invalidateAllToolProviders, queryClient, hasAgentStrategy])
 
   const handleUpdate = useCallback(async (isDowngrade?: boolean) => {
     if (isFromMarketplace) {
@@ -121,12 +137,6 @@ export const usePluginOperations = ({
       toast.success(t('action.deleteSuccess', { ns: 'plugin' }))
       handlePluginUpdated(true)
 
-      if (PluginCategoryEnum.model.includes(category))
-        refreshModelProviders()
-
-      if (PluginCategoryEnum.tool.includes(category))
-        invalidateAllToolProviders()
-
       trackEvent('plugin_uninstalled', { plugin_id, plugin_name: name })
     }
   }, [
@@ -136,8 +146,6 @@ export const usePluginOperations = ({
     name,
     modalStates,
     handlePluginUpdated,
-    refreshModelProviders,
-    invalidateAllToolProviders,
   ])
 
   return {
