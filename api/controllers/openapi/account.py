@@ -39,8 +39,8 @@ from services.oauth_device_flow import (
 
 @openapi_ns.route("/account")
 class AccountApi(Resource):
-    @openapi_ns.response(200, "Account info", openapi_ns.models[AccountResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, AccountResponse, description="Account info")
     def get(self, *, auth_data: AuthData):
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{auth_data.account_id}")
 
@@ -55,16 +55,16 @@ class AccountApi(Resource):
             account=_account_payload(account) if account else None,
             workspaces=[_workspace_payload(m) for m in memberships],
             default_workspace_id=default_ws_id,
-        ).model_dump(mode="json")
+        )
 
 
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
-    @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, RevokeResponse, description="Session revoked")
     def delete(self, *, auth_data: AuthData):
         revoke_oauth_token(db.session, redis_client, str(auth_data.token_id))
-        return RevokeResponse(status="revoked").model_dump(mode="json"), 200
+        return RevokeResponse(status="revoked")
 
 
 @openapi_ns.route("/account/sessions")
@@ -110,8 +110,8 @@ class AccountSessionsApi(Resource):
 
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
-    @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, RevokeResponse, description="Session revoked")
     def delete(self, session_id: str, *, auth_data: AuthData):
         ctx = get_auth_ctx()
 
@@ -121,7 +121,7 @@ class AccountSessionByIdApi(Resource):
             raise NotFound("session not found")
 
         revoke_oauth_token(db.session, redis_client, session_id)
-        return RevokeResponse(status="revoked").model_dump(mode="json"), 200
+        return RevokeResponse(status="revoked")
 
 
 def _iso(dt: datetime | None) -> str | None:

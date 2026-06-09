@@ -13,7 +13,7 @@ from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, 
 import services
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._contract import accepts
+from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
@@ -153,10 +153,10 @@ class AppRunApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
 class AppRunTaskStopApi(Resource):
-    @openapi_ns.response(200, "Task stopped", openapi_ns.models[TaskStopResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
+    @returns(200, TaskStopResponse, description="Task stopped")
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()
         AppQueueManager.set_stop_flag_no_user_check(task_id)
         GraphEngineManager(redis_client).send_stop_command(task_id)
-        return {"result": "success"}
+        return TaskStopResponse(result="success")

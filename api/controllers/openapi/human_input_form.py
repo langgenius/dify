@@ -17,7 +17,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts
+from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import FormSubmitResponse
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
@@ -72,7 +72,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         return _jsonify_form_definition(form)
 
     @auth_router.guard(scope=Scope.APPS_RUN)
-    @openapi_ns.response(200, "Form submitted", openapi_ns.models[FormSubmitResponse.__name__])
+    @returns(200, FormSubmitResponse, description="Form submitted")
     @accepts(body=HumanInputFormSubmitPayload)
     def post(self, app_id: str, form_token: str, *, auth_data: AuthData, body: HumanInputFormSubmitPayload):
         app_model, caller, caller_kind = auth_data.require_app_context()
@@ -108,4 +108,4 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         except FormNotFoundError:
             raise NotFound("Form not found")
 
-        return {}, 200
+        return FormSubmitResponse()

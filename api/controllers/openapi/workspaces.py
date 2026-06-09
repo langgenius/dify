@@ -109,18 +109,18 @@ def _check_member_invite_quota(tenant_id: str) -> None:
 
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
-    @openapi_ns.response(200, "Workspace list", openapi_ns.models[WorkspaceListResponse.__name__])
     @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, WorkspaceListResponse, description="Workspace list")
     def get(self, *, auth_data: AuthData):
         rows = TenantService.get_workspaces_for_account(db.session, str(auth_data.account_id))
 
-        return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows))).model_dump(mode="json"), 200
+        return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows)))
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
-    @openapi_ns.response(200, "Workspace detail", openapi_ns.models[WorkspaceDetailResponse.__name__])
     @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, WorkspaceDetailResponse, description="Workspace detail")
     def get(self, workspace_id: str, *, auth_data: AuthData):
         row = TenantService.find_workspace_for_account(db.session, str(auth_data.account_id), workspace_id)
         # 404 (not 403) on non-member so workspace IDs don't leak across tenants.
@@ -128,7 +128,7 @@ class WorkspaceByIdApi(Resource):
             raise NotFound("workspace not found")
 
         tenant, membership = row
-        return _workspace_detail(tenant, membership).model_dump(mode="json"), 200
+        return _workspace_detail(tenant, membership)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/switch")
@@ -140,8 +140,8 @@ class WorkspaceSwitchApi(Resource):
     that ``hosts.yml`` never diverges from the server's ``current`` state.
     """
 
-    @openapi_ns.response(200, "Workspace detail", openapi_ns.models[WorkspaceDetailResponse.__name__])
     @auth_router.guard_workspace(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, WorkspaceDetailResponse, description="Workspace detail")
     def post(self, workspace_id: str, *, auth_data: AuthData):
         account = _load_account(auth_data.account_id)
 
@@ -154,7 +154,7 @@ class WorkspaceSwitchApi(Resource):
         if row is None:
             raise NotFound("workspace not found")
         tenant, membership = row
-        return _workspace_detail(tenant, membership).model_dump(mode="json"), 200
+        return _workspace_detail(tenant, membership)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members")
@@ -187,7 +187,7 @@ class WorkspaceMembersApi(Resource):
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
-    @openapi_ns.response(201, "Member invited", openapi_ns.models[MemberInviteResponse.__name__])
+    @returns(201, MemberInviteResponse, description="Member invited")
     @accepts(body=MemberInvitePayload)
     def post(self, workspace_id: str, *, auth_data: AuthData, body: MemberInvitePayload):
         inviter = _load_account(auth_data.account_id)
@@ -224,7 +224,7 @@ class WorkspaceMembersApi(Resource):
             member_id=str(member.id),
             invite_url=invite_url,
             tenant_id=str(tenant.id),
-        ).model_dump(mode="json"), 201
+        )
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members/<string:member_id>")
@@ -236,12 +236,12 @@ class WorkspaceMemberApi(Resource):
     400 per the spec, with the service's message preserved.
     """
 
-    @openapi_ns.response(200, "Member removed", openapi_ns.models[MemberActionResponse.__name__])
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
+    @returns(200, MemberActionResponse, description="Member removed")
     def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
         operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
@@ -258,7 +258,7 @@ class WorkspaceMemberApi(Resource):
         except MemberNotInTenantError as exc:
             raise NotFound(str(exc))
 
-        return MemberActionResponse().model_dump(mode="json"), 200
+        return MemberActionResponse()
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members/<string:member_id>/role")
@@ -274,7 +274,7 @@ class WorkspaceMemberRoleApi(Resource):
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
-    @openapi_ns.response(200, "Role updated", openapi_ns.models[MemberActionResponse.__name__])
+    @returns(200, MemberActionResponse, description="Role updated")
     @accepts(body=MemberRoleUpdatePayload)
     def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData, body: MemberRoleUpdatePayload):
         operator = _load_account(auth_data.account_id)
@@ -294,7 +294,7 @@ class WorkspaceMemberRoleApi(Resource):
         except RoleAlreadyAssignedError as exc:
             raise BadRequest(str(exc))
 
-        return MemberActionResponse().model_dump(mode="json"), 200
+        return MemberActionResponse()
 
 
 def _workspace_summary(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceSummaryResponse:
