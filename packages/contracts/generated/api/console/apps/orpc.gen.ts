@@ -3971,10 +3971,16 @@ export const run10 = {
 
 /**
  * Server-Sent Events stream of inspector deltas for a draft workflow run.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const get66 = oc
   .route({
-    description: 'Server-Sent Events stream of inspector deltas for a draft workflow run.',
+    deprecated: true,
+    description:
+      'Server-Sent Events stream of inspector deltas for a draft workflow run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEvents',
@@ -4434,10 +4440,16 @@ export const publish = {
 
 /**
  * Server-Sent Events stream of inspector deltas for a published workflow run.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const get75 = oc
   .route({
-    description: 'Server-Sent Events stream of inspector deltas for a published workflow run.',
+    deprecated: true,
+    description:
+      'Server-Sent Events stream of inspector deltas for a published workflow run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEvents',

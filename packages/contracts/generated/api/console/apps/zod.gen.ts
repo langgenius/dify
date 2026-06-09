@@ -538,11 +538,6 @@ export const zDraftWorkflowRunPayload = z.object({
   start_node_id: z.string(),
 })
 
-/**
- * InspectorEventStreamResponse
- */
-export const zInspectorEventStreamResponse = z.string()
-
 export const zDraftWorkflowTriggerRunRequest = z.object({
   node_id: z.string(),
 })
@@ -4646,8 +4641,10 @@ export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath = z.o
 /**
  * Workflow run node output event stream
  */
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse
-  = zInspectorEventStreamResponse
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath = z.object({
   app_id: z.string(),
@@ -4813,8 +4810,10 @@ export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath =
 /**
  * Workflow run node output event stream
  */
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse
-  = zInspectorEventStreamResponse
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath = z.object({
   app_id: z.string(),

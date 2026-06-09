@@ -73,7 +73,7 @@ RuntimeParameterValue = JsonPrimitive | list[str] | list[int] | list[float] | li
 
 
 class AgentFlexibleConfig(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow", json_schema_extra={"x-dify-opaque": True})
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.model_dump(mode="python").get(key, default)

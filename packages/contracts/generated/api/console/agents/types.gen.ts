@@ -161,6 +161,7 @@ export type AgentSoulAppFeaturesConfig = {
   suggested_questions?: Array<string> | null
   suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig
   text_to_speech?: AgentTextToSpeechFeatureConfig
+  [key: string]: unknown
 }
 
 export type AppVariableConfig = {
@@ -228,18 +229,21 @@ export type AgentConfigRevisionOperation
 
 export type AgentFeatureToggleConfig = {
   enabled?: boolean
+  [key: string]: unknown
 }
 
 export type AgentSensitiveWordAvoidanceFeatureConfig = {
   config?: AgentModerationProviderConfig
   enabled?: boolean
   type?: string | null
+  [key: string]: unknown
 }
 
 export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
   enabled?: boolean
   model?: AgentSoulModelConfig
   prompt?: string | null
+  [key: string]: unknown
 }
 
 export type AgentTextToSpeechFeatureConfig = {
@@ -247,6 +251,7 @@ export type AgentTextToSpeechFeatureConfig = {
   enabled?: boolean
   language?: string | null
   voice?: string | null
+  [key: string]: unknown
 }
 
 export type AgentSecretRefConfig = {
@@ -262,6 +267,7 @@ export type AgentSecretRefConfig = {
   ref?: string | null
   type?: string | null
   variable?: string | null
+  [key: string]: unknown
 }
 
 export type AgentEnvVariableConfig = {
@@ -273,6 +279,7 @@ export type AgentEnvVariableConfig = {
   type?: string | null
   value?: unknown
   variable?: string | null
+  [key: string]: unknown
 }
 
 export type AgentHumanContactConfig = {
@@ -285,18 +292,21 @@ export type AgentHumanContactConfig = {
   method?: string | null
   name?: string | null
   tenant_id?: string | null
+  [key: string]: unknown
 }
 
 export type AgentHumanToolConfig = {
   description?: string | null
   enabled?: boolean
   name?: string | null
+  [key: string]: unknown
 }
 
 export type AgentKnowledgeDatasetConfig = {
   description?: string | null
   id?: string | null
   name?: string | null
+  [key: string]: unknown
 }
 
 export type AgentKnowledgeQueryConfig = {
@@ -304,6 +314,7 @@ export type AgentKnowledgeQueryConfig = {
   score_threshold?: number | null
   score_threshold_enabled?: boolean | null
   top_k?: number | null
+  [key: string]: unknown
 }
 
 export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
@@ -313,6 +324,7 @@ export type AgentMemoryArtifactConfig = {
   name?: string | null
   type?: string | null
   url?: string | null
+  [key: string]: unknown
 }
 
 export type AgentSoulModelCredentialRef = {
@@ -336,6 +348,7 @@ export type AgentSandboxProviderConfig = {
   env?: Array<AgentEnvVariableConfig>
   image?: string | null
   working_dir?: string | null
+  [key: string]: unknown
 }
 
 export type AgentFileRefConfig = {
@@ -349,6 +362,7 @@ export type AgentFileRefConfig = {
   type?: string | null
   upload_file_id?: string | null
   url?: string | null
+  [key: string]: unknown
 }
 
 export type AgentSkillRefConfig = {
@@ -357,6 +371,7 @@ export type AgentSkillRefConfig = {
   id?: string | null
   name?: string | null
   path?: string | null
+  [key: string]: unknown
 }
 
 export type AgentCliToolConfig = {
@@ -384,6 +399,7 @@ export type AgentCliToolConfig = {
   risk_level?: AgentCliToolRiskLevel
   setup_command?: string | null
   tool_name?: string | null
+  [key: string]: unknown
 }
 
 export type AgentSoulDifyToolConfig = {
@@ -407,6 +423,7 @@ export type AgentModerationProviderConfig = {
   inputs_config?: AgentModerationIoConfig
   keywords?: string | null
   outputs_config?: AgentModerationIoConfig
+  [key: string]: unknown
 }
 
 export type AgentPermissionConfig = {
@@ -417,6 +434,7 @@ export type AgentPermissionConfig = {
 
 export type AgentModelResponseFormatConfig = {
   type?: string | null
+  [key: string]: unknown
 }
 
 export type AgentCliToolAuthorizationStatus
@@ -440,6 +458,7 @@ export type AgentSoulDifyToolCredentialRef = {
 export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
+  [key: string]: unknown
 }
 
 export type GetAgentsData = {

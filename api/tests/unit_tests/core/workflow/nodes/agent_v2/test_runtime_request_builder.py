@@ -44,6 +44,28 @@ class CapturingCredentialsProvider:
         return {"api_key": "secret-key"}
 
 
+def test_agent_soul_round_trip_preserves_existing_app_feature_fields():
+    config = AgentSoulConfig.model_validate(
+        {
+            "app_features": {
+                "file_upload": {
+                    "enabled": True,
+                    "allowed_file_upload_methods": ["local_file"],
+                },
+                "annotation_reply": {"enabled": True},
+                "more_like_this": {"enabled": False},
+            }
+        }
+    )
+
+    dumped = config.model_dump(mode="json")
+
+    assert dumped["app_features"]["file_upload"]["enabled"] is True
+    assert dumped["app_features"]["file_upload"]["allowed_file_upload_methods"] == ["local_file"]
+    assert dumped["app_features"]["annotation_reply"] == {"enabled": True}
+    assert dumped["app_features"]["more_like_this"] == {"enabled": False}
+
+
 class FakePluginToolsBuilder:
     def __init__(self) -> None:
         # Capture the runtime invocation source so tests can assert it was

@@ -29,7 +29,6 @@ from uuid import UUID
 
 from flask import Response
 from flask_restx import Resource
-from pydantic import RootModel
 
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
@@ -52,10 +51,6 @@ from services.workflow.node_output_inspector_service import (
 logger = logging.getLogger(__name__)
 
 
-class InspectorEventStreamResponse(RootModel[str]):
-    pass
-
-
 # Heartbeat cadence — every N empty subscribe ticks emit a SSE comment so
 # intervening proxies (nginx, ingress) don't reap the idle connection.
 # ``inspector_events.subscribe`` ticks at 1s, so 15 → 15s heartbeat.
@@ -72,7 +67,6 @@ register_response_schema_models(
     NodeOutputsView,
     WorkflowRunSnapshotView,
     OutputPreviewView,
-    InspectorEventStreamResponse,
 )
 
 
@@ -333,11 +327,7 @@ class WorkflowDraftRunNodeOutputEventsApi(Resource):
     @console_ns.doc("stream_workflow_draft_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(
-        200,
-        "Workflow run node output event stream",
-        console_ns.models[InspectorEventStreamResponse.__name__],
-    )
+    @console_ns.response(200, "Workflow run node output event stream")
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
@@ -434,11 +424,7 @@ class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     @console_ns.doc("stream_workflow_published_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(
-        200,
-        "Workflow run node output event stream",
-        console_ns.models[InspectorEventStreamResponse.__name__],
-    )
+    @console_ns.response(200, "Workflow run node output event stream")
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
