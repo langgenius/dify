@@ -52,7 +52,7 @@ export async function cleanupRegisteredConversations(): Promise<void> {
   if (_conversations.length === 0)
     return
 
-  console.log(`[E2E teardown] Cleaning up ${_conversations.length} staged conversation(s)…`)
+  console.warn(`[E2E teardown] Cleaning up ${_conversations.length} staged conversation(s)…`)
 
   const results = await Promise.allSettled(
     _conversations.map(({ host, token, appId, conversationId }) =>
@@ -68,7 +68,7 @@ export async function cleanupRegisteredConversations(): Promise<void> {
     )
   }
   else {
-    console.log(`[E2E teardown] All conversations cleaned up.`)
+    console.warn(`[E2E teardown] All conversations cleaned up.`)
   }
 
   _conversations.length = 0
