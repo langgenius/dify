@@ -3695,10 +3695,10 @@ Server-Sent Events stream of inspector deltas for a draft workflow run.
 
 ##### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Workflow run node output event stream | [InspectorEventStreamResponse](#inspectoreventstreamresponse) |
-| 404 | Workflow run not found |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Workflow run node output event stream |
+| 404 | Workflow run not found |
 
 ### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
 
@@ -4019,10 +4019,10 @@ Server-Sent Events stream of inspector deltas for a published workflow run.
 
 ##### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Workflow run node output event stream | [InspectorEventStreamResponse](#inspectoreventstreamresponse) |
-| 404 | Workflow run not found |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Workflow run node output event stream |
+| 404 | Workflow run not found |
 
 ### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
 
@@ -15070,12 +15070,6 @@ Input field definition for snippet parameters.
 | placeholder | string |  | No |
 | required | boolean |  | No |
 | type | string |  | No |
-
-#### InspectorEventStreamResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InspectorEventStreamResponse | string |  |  |
 
 #### InstallPermission
 
