@@ -21,7 +21,11 @@ function SectionDivider({ label }: { label: string }) {
   )
 }
 
-export function StarredAppList({ apps, isCurrentWorkspaceEditor, onRefresh }: StarredAppListProps) {
+export function StarredAppList({
+  apps,
+  isCurrentWorkspaceEditor,
+  onRefresh,
+}: StarredAppListProps) {
   const { t } = useTranslation()
 
   if (apps.length === 0)

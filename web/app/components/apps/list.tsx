@@ -29,7 +29,7 @@ import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import { StarredAppList } from './starred-app-list'
 
-const STARRED_APP_LIMIT = 4
+const STARRED_APP_LIMIT = 100
 
 function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
   const { t } = useTranslation()
@@ -120,7 +120,10 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
     limit: STARRED_APP_LIMIT,
   }), [appListQuery])
 
-  const { data: starredAppList, refetch: refetchStarredAppList } = useQuery({
+  const {
+    data: starredAppList,
+    refetch: refetchStarredAppList,
+  } = useQuery({
     ...consoleQuery.apps.starredList.queryOptions({
       input: {
         query: starredAppListQuery,

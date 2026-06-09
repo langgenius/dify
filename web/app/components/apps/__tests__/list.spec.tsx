@@ -192,7 +192,7 @@ let mockStarredAppData: MockStarredAppData = {
   data: [],
   total: 0,
   page: 1,
-  limit: 4,
+  limit: 100,
   has_more: false,
 }
 
@@ -374,7 +374,7 @@ describe('List', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 4,
+      limit: 100,
       has_more: false,
     }
     mockUseWorkflowOnlineUsers.mockClear()
@@ -467,7 +467,7 @@ describe('List', () => {
         }],
         total: 1,
         page: 1,
-        limit: 4,
+        limit: 100,
         has_more: false,
       }
 
@@ -665,7 +665,7 @@ describe('List', () => {
       expect(options.input).toEqual({
         query: {
           page: 1,
-          limit: 4,
+          limit: 100,
           name: 'sales',
           sort_by: 'last_modified',
           tag_ids: ['tag-1'],
