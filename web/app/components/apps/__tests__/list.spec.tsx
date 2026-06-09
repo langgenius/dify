@@ -400,7 +400,7 @@ describe('List', () => {
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.completion' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
@@ -846,7 +846,7 @@ describe('List', () => {
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.completion' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
     })
 
     it('should update category for each app type option click', async () => {
@@ -855,7 +855,7 @@ describe('List', () => {
         { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
         { mode: AppModeEnum.CHAT, text: 'app.types.chatbot' },
         { mode: AppModeEnum.AGENT_CHAT, text: 'app.types.agent' },
-        { mode: AppModeEnum.COMPLETION, text: 'app.types.completion' },
+        { mode: AppModeEnum.COMPLETION, text: 'app.newApp.completeApp' },
       ]
 
       for (const { mode, text } of appTypeTexts) {
