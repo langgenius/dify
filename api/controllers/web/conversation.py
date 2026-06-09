@@ -83,7 +83,7 @@ class ConversationListApi(WebApiResource):
     )
     def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         raw_args = request.args.to_dict()
@@ -129,7 +129,7 @@ class ConversationApi(WebApiResource):
     )
     def delete(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -168,7 +168,7 @@ class ConversationRenameApi(WebApiResource):
     )
     def post(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -206,7 +206,7 @@ class ConversationPinApi(WebApiResource):
     @web_ns.response(200, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
     def patch(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -237,7 +237,7 @@ class ConversationUnPinApi(WebApiResource):
     @web_ns.response(200, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
     def patch(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)

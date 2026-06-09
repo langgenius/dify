@@ -3,7 +3,7 @@
 import json
 import logging
 import uuid
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 from sqlalchemy import delete, select
 
@@ -44,6 +44,7 @@ class ParentChildFormatPreviewDict(TypedDict):
 
 
 class ParentChildIndexProcessor(BaseIndexProcessor):
+    @override
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
             extract_setting=extract_setting,
@@ -54,6 +55,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return text_docs
 
+    @override
     def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
@@ -129,6 +131,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return all_documents
 
+    @override
     def load(
         self,
         dataset: Dataset,
@@ -149,6 +152,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
+    @override
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # node_ids is segment's node_ids
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
@@ -219,6 +223,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     )
                     db.session.commit()
 
+    @override
     def retrieve(
         self,
         retrieval_method: RetrievalMethod,
@@ -283,6 +288,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_nodes.append(child_document)
         return child_nodes
 
+    @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
         documents = []
@@ -356,6 +362,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
 
+    @override
     def format_preview(self, chunks: Any) -> ParentChildFormatPreviewDict:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
         preview = []
@@ -369,6 +376,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         }
         return result
 
+    @override
     def generate_summary_preview(
         self,
         tenant_id: str,

@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
@@ -156,24 +157,30 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_reasons: Sequence[HumanInputRequired]
 
     @property
+    @override
     def id(self) -> str:
         return self.pause_id
 
     @property
+    @override
     def workflow_execution_id(self) -> str:
         return self.workflow_run_id
 
+    @override
     def get_state(self) -> bytes:
         raise AssertionError("state is not required for snapshot tests")
 
     @property
+    @override
     def resumed_at(self) -> datetime | None:
         return None
 
     @property
+    @override
     def paused_at(self) -> datetime:
         return self.paused_at_value
 
+    @override
     def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
         return self.pause_reasons
 
@@ -593,7 +600,11 @@ class TestHitlServiceApi:
             form_id="form-1",
             form_content="Rendered",
             inputs=[
-                ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="field", default=None),
+                ParagraphInputConfig(
+                    type=FormInputType.PARAGRAPH,
+                    output_variable_name="field",
+                    default=None,
+                ),
             ],
             actions=[UserActionConfig(id="approve", title="Approve")],
             display_in_ui=True,
@@ -607,7 +618,7 @@ class TestHitlServiceApi:
             paused_nodes=["node-id"],
         )
 
-        runtime_state = SimpleNamespace(total_tokens=0, node_run_steps=0)
+        runtime_state = SimpleNamespace(total_tokens=0, node_run_steps=0, variable_pool=VariablePool())
         responses = converter.workflow_pause_to_stream_response(
             event=queue_event,
             task_id="task",

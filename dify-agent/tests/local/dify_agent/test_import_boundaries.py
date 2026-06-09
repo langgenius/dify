@@ -83,6 +83,7 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
             "dify_agent.layers.dify_plugin.llm_layer",
             "dify_agent.layers.dify_plugin.tools_layer",
             "dify_agent.layers.output.output_layer",
+            "dify_agent.layers.shell.layer",
             "dify_agent.runtime",
             "dify_agent.server",
             "fastapi",
@@ -91,18 +92,22 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
             "openai",
             "pydantic_settings",
             "redis",
+            "shell_session_manager.shellctl.client",
+            "shell_session_manager.shellctl.server",
         ],
         imports=[
             "dify_agent.protocol",
             "dify_agent.layers.execution_context",
             "dify_agent.layers.dify_plugin",
             "dify_agent.layers.output",
+            "dify_agent.layers.shell",
         ],
         assertions=[
             "assert hasattr(dify_agent_protocol, 'PydanticAIStreamRunEvent')",
             "assert dify_agent_layers_execution_context.__all__ == ['DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID', 'DifyExecutionContextInvokeFrom', 'DifyExecutionContextLayerConfig']",
             "assert dify_agent_layers_dify_plugin.__all__ == ['DIFY_PLUGIN_LLM_LAYER_TYPE_ID', 'DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID', 'DifyPluginCredentialValue', 'DifyPluginLLMLayerConfig', 'DifyPluginToolCredentialType', 'DifyPluginToolConfig', 'DifyPluginToolOption', 'DifyPluginToolParameter', 'DifyPluginToolParameterForm', 'DifyPluginToolParameterType', 'DifyPluginToolsLayerConfig', 'DifyPluginToolValue']",
             "assert dify_agent_layers_output.__all__ == ['DIFY_OUTPUT_LAYER_TYPE_ID', 'DifyOutputLayerConfig']",
+            "assert dify_agent_layers_shell.__all__ == ['DIFY_SHELL_LAYER_TYPE_ID', 'DifyShellCliToolConfig', 'DifyShellEnvVarConfig', 'DifyShellLayerConfig', 'DifyShellSandboxConfig', 'DifyShellSecretRefConfig']",
         ],
     )
 

@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { ComponentProps } from 'react'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useState } from 'react'
-import SearchInput from '.'
+import { SearchInput } from '.'
 
 const meta = {
   title: 'Base/Data Entry/SearchInput',
@@ -20,17 +21,13 @@ const meta = {
       control: 'text',
       description: 'Search input value',
     },
-    onChange: {
-      action: 'changed',
-      description: 'Change handler',
+    onValueChange: {
+      action: 'value changed',
+      description: 'Value change handler',
     },
     placeholder: {
       control: 'text',
       description: 'Placeholder text',
-    },
-    white: {
-      control: 'boolean',
-      description: 'White background variant',
     },
     className: {
       control: 'text',
@@ -38,7 +35,7 @@ const meta = {
     },
   },
   args: {
-    onChange: (v) => {
+    onValueChange: (v: string) => {
       console.log('Search value changed:', v)
     },
   },
@@ -47,8 +44,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-// Interactive demo wrapper
-const SearchInputDemo = (args: any) => {
+const SearchInputDemo = (args: ComponentProps<typeof SearchInput>) => {
   const [value, setValue] = useState(args.value || '')
 
   return (
@@ -56,7 +52,7 @@ const SearchInputDemo = (args: any) => {
       <SearchInput
         {...args}
         value={value}
-        onChange={(v) => {
+        onValueChange={(v: string) => {
           setValue(v)
           console.log('Search value changed:', v)
         }}
@@ -77,21 +73,10 @@ export const Default: Story = {
   render: args => <SearchInputDemo {...args} />,
   args: {
     placeholder: 'Search...',
-    white: false,
     value: '',
-    onChange: (v) => {
+    onValueChange: (v: string) => {
       console.log('Search value changed:', v)
     },
-  },
-}
-
-// White variant
-export const WhiteBackground: Story = {
-  render: args => <SearchInputDemo {...args} />,
-  args: {
-    placeholder: 'Search...',
-    white: true,
-    value: '',
   },
 }
 
@@ -101,7 +86,6 @@ export const WithInitialValue: Story = {
   args: {
     value: 'Initial search query',
     placeholder: 'Search...',
-    white: false,
   },
 }
 
@@ -110,7 +94,6 @@ export const CustomPlaceholder: Story = {
   render: args => <SearchInputDemo {...args} />,
   args: {
     placeholder: 'Search documents, files, and more...',
-    white: false,
     value: '',
   },
 }
@@ -138,7 +121,7 @@ const UserListSearchDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">Team Members</h3>
       <SearchInput
         value={searchQuery}
-        onChange={setSearchQuery}
+        onValueChange={setSearchQuery}
         placeholder="Search by name, email, or role..."
       />
       <div className="mt-4 space-y-2">
@@ -212,9 +195,8 @@ const ProductSearchDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">Product Catalog</h3>
       <SearchInput
         value={searchQuery}
-        onChange={setSearchQuery}
+        onValueChange={setSearchQuery}
         placeholder="Search products..."
-        white
       />
       <div className="mt-4 grid grid-cols-2 gap-3">
         {filteredProducts.length > 0
@@ -272,10 +254,8 @@ const DocumentationSearchDemo = () => {
       <p className="mb-4 text-sm text-gray-600">Search our comprehensive guides and API references</p>
       <SearchInput
         value={searchQuery}
-        onChange={setSearchQuery}
+        onValueChange={setSearchQuery}
         placeholder="Search documentation..."
-        white
-        className="h-10!"
       />
       <div className="mt-4 space-y-3">
         {filteredDocs.length > 0
@@ -338,10 +318,8 @@ const CommandPaletteDemo = () => {
       <div className="border-b border-gray-200 p-4">
         <SearchInput
           value={searchQuery}
-          onChange={setSearchQuery}
+          onValueChange={setSearchQuery}
           placeholder="Type a command or search..."
-          white
-          className="h-10!"
         />
       </div>
       <div className="max-h-[400px] overflow-y-auto">
@@ -413,13 +391,13 @@ const LiveSearchWithCountDemo = () => {
       </div>
       <SearchInput
         value={searchQuery}
-        onChange={setSearchQuery}
+        onValueChange={setSearchQuery}
         placeholder="Search resources..."
       />
       <div className="mt-4 space-y-2">
-        {filteredItems.map((item, index) => (
+        {filteredItems.map(item => (
           <div
-            key={index}
+            key={item}
             className="cursor-pointer rounded-lg border border-gray-200 p-3 transition-colors hover:border-blue-300 hover:bg-blue-50"
           >
             <div className="text-sm font-medium">{item}</div>
@@ -445,24 +423,22 @@ const SizeVariationsDemo = () => {
     <div style={{ width: '500px' }} className="space-y-4">
       <div>
         <label className="mb-2 block text-xs font-medium text-gray-600">Default Size</label>
-        <SearchInput value={value1} onChange={setValue1} placeholder="Search..." />
+        <SearchInput value={value1} onValueChange={setValue1} placeholder="Search..." />
       </div>
       <div>
         <label className="mb-2 block text-xs font-medium text-gray-600">Medium Size</label>
         <SearchInput
           value={value2}
-          onChange={setValue2}
+          onValueChange={setValue2}
           placeholder="Search..."
-          className="h-10!"
         />
       </div>
       <div>
         <label className="mb-2 block text-xs font-medium text-gray-600">Large Size</label>
         <SearchInput
           value={value3}
-          onChange={setValue3}
+          onValueChange={setValue3}
           placeholder="Search..."
-          className="h-12!"
         />
       </div>
     </div>
@@ -480,6 +456,5 @@ export const Playground: Story = {
   args: {
     value: '',
     placeholder: 'Search...',
-    white: false,
   },
 }

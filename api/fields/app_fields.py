@@ -1,4 +1,5 @@
 import json
+from typing import override
 
 from flask_restx import fields
 
@@ -7,6 +8,7 @@ from libs.helper import AppIconUrlField, TimestampField
 
 
 class JsonStringField(fields.Raw):
+    @override
     def format(self, value):
         if isinstance(value, str):
             try:

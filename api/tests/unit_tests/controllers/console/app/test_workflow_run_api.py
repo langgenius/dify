@@ -9,6 +9,7 @@ from flask import Flask
 from flask_restx import marshal
 
 from controllers.console.app import workflow_run as workflow_run_module
+from models import Account
 
 
 def _unwrap(func):
@@ -30,6 +31,12 @@ def _serialize_200_response(handler, payload: Any) -> Any:
 
 def _account() -> SimpleNamespace:
     return SimpleNamespace(id="account-1", name="Alice", email="alice@example.com")
+
+
+def _current_account() -> Account:
+    account = Account(name="Alice", email="alice@example.com")
+    account.id = "account-1"
+    return account
 
 
 def _workflow_run_summary(**overrides) -> SimpleNamespace:
@@ -208,13 +215,14 @@ def test_workflow_run_node_executions_return_frontend_trace_contract(
             return [_workflow_run_node_execution()]
 
     monkeypatch.setattr(workflow_run_module, "WorkflowRunService", WorkflowRunService)
-    monkeypatch.setattr(workflow_run_module, "current_user", SimpleNamespace(id="account-1"))
 
     api = workflow_run_module.WorkflowRunNodeExecutionListApi()
     handler = _unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/workflow-runs/run-1/node-executions", method="GET"):
-        payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"), run_id="run-1")
+        payload = handler(
+            api, _current_account(), app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"), run_id="run-1"
+        )
 
     response = _serialize_200_response(api.get, payload)
 

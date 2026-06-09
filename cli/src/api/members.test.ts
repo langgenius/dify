@@ -2,7 +2,7 @@ import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isBaseError } from '@/errors/base'
+import { isHttpClientError } from '@/errors/base'
 import { MembersClient } from './members.js'
 import { WorkspacesClient } from './workspaces.js'
 
@@ -62,7 +62,7 @@ describe('MembersClient.list', () => {
     stub = await startStubServer(cap => jsonResponder(403, { error: 'forbidden' }, cap))
 
     await expect(makeClient(stub.url).list('ws-1')).rejects.toSatisfy(
-      err => isBaseError(err) && err.httpStatus === 403,
+      err => isHttpClientError(err) && err.httpStatus === 403,
     )
   })
 
@@ -70,7 +70,7 @@ describe('MembersClient.list', () => {
     stub = await startStubServer(cap => jsonResponder(404, { error: 'not found' }, cap))
 
     await expect(makeClient(stub.url).list('ws-missing')).rejects.toSatisfy(
-      err => isBaseError(err) && err.httpStatus === 404,
+      err => isHttpClientError(err) && err.httpStatus === 404,
     )
   })
 })
@@ -117,7 +117,7 @@ describe('MembersClient.invite', () => {
 
     await expect(
       makeClient(stub.url).invite('ws-1', { email: 'u@e.com', role: 'normal' }),
-    ).rejects.toSatisfy(err => isBaseError(err) && err.httpStatus === 400)
+    ).rejects.toSatisfy(err => isHttpClientError(err) && err.httpStatus === 400)
   })
 })
 
@@ -142,7 +142,7 @@ describe('MembersClient.remove', () => {
     stub = await startStubServer(cap => jsonResponder(400, { error: 'cannot operate self' }, cap))
 
     await expect(makeClient(stub.url).remove('ws-1', 'm-1')).rejects.toSatisfy(
-      err => isBaseError(err) && err.httpStatus === 400,
+      err => isHttpClientError(err) && err.httpStatus === 400,
     )
   })
 })
@@ -170,7 +170,7 @@ describe('MembersClient.updateRole', () => {
 
     await expect(
       makeClient(stub.url).updateRole('ws-1', 'm-1', { role: 'admin' }),
-    ).rejects.toSatisfy(err => isBaseError(err) && err.httpStatus === 400)
+    ).rejects.toSatisfy(err => isHttpClientError(err) && err.httpStatus === 400)
   })
 })
 
@@ -209,7 +209,7 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
 
     const client = new WorkspacesClient(testHttpClient(stub.url, 'dfoa_test'))
     await expect(client.switch('ws-x')).rejects.toSatisfy(
-      err => isBaseError(err) && err.httpStatus === 404,
+      err => isHttpClientError(err) && err.httpStatus === 404,
     )
   })
 })

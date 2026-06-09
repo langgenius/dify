@@ -73,6 +73,9 @@ export type ClientOptions = {
 }
 
 export type HttpClient = {
+  // The resolved base URL this client was created with (e.g. openAPIBase(host)). Exposed so
+  // callers can build a contract/oRPC facade over the same transport without re-deriving it.
+  readonly baseURL: string
   readonly get: <T>(path: string, opts?: RequestOptions) => Promise<T>
   readonly post: <T>(path: string, opts?: RequestOptions) => Promise<T>
   readonly put: <T>(path: string, opts?: RequestOptions) => Promise<T>
@@ -80,5 +83,8 @@ export type HttpClient = {
   readonly delete: <T>(path: string, opts?: RequestOptions) => Promise<T>
   readonly fetch: (path: string, opts?: RequestOptions) => Promise<Response>
   readonly stream: (path: string, opts?: RequestOptions) => Promise<Response>
+  // Low-level entrypoint for oRPC's OpenAPILink: runs a pre-built, absolute-URL Request
+  // through the transport (UA+bearer, retry, timeout, error-map) without re-joining baseURL.
+  readonly request: (req: Request, init?: RequestInit) => Promise<Response>
   readonly extend: (overrides: Partial<ClientOptions>) => HttpClient
 }

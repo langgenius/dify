@@ -38,6 +38,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AudioTrunk
+from core.ops.entities.trace_entity import TraceTaskName
 from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
@@ -899,8 +900,10 @@ class TestEasyUiBasedGenerateTaskPipeline:
     def test_save_message_persists_fields_and_emits_trace(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
+        application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        application_generate_entity.extras = {"trace_session_id": "session-1"}
         pipeline = EasyUIBasedGenerateTaskPipeline(
-            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            application_generate_entity=application_generate_entity,
             queue_manager=SimpleNamespace(),
             conversation=conversation,
             message=message,
@@ -946,7 +949,12 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert message_obj.message == "serialized-prompt"
         assert message_obj.answer == "hello"
         assert message_obj.provider_response_latency == 5.0
-        assert trace_manager.add_trace_task.called
+        trace_manager.add_trace_task.assert_called_once()
+        trace_task = trace_manager.add_trace_task.call_args.args[0]
+        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
+        assert trace_task.conversation_id == "conv"
+        assert trace_task.message_id == "msg"
+        assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert len(sent_payloads) == 1
 
     def test_save_message_raises_when_message_not_found(self):

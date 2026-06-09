@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from enum import StrEnum
-from typing import Any
+from typing import Any, override
 
 from clickhouse_connect import get_client  # type: ignore[import-untyped]
 from pydantic import BaseModel
@@ -46,9 +46,11 @@ class MyScaleVector(BaseVector):
         )
         self._client.command("SET allow_experimental_object_type=1")
 
+    @override
     def get_type(self) -> str:
         return VectorType.MYSCALE
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection(dimension)
@@ -71,6 +73,7 @@ class MyScaleVector(BaseVector):
         """
         self._client.command(sql)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = []
         columns = ["id", "text", "vector", "metadata"]
@@ -97,10 +100,12 @@ class MyScaleVector(BaseVector):
     def escape_str(value: Any) -> str:
         return "".join(" " if c in {"\\", "'"} else c for c in str(value))
 
+    @override
     def text_exists(self, id: str) -> bool:
         results = self._client.query(f"SELECT id FROM {self._config.database}.{self._collection_name} WHERE id='{id}'")
         return results.row_count > 0
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
@@ -108,20 +113,24 @@ class MyScaleVector(BaseVector):
             f"DELETE FROM {self._config.database}.{self._collection_name} WHERE id IN {str(tuple(ids))}"
         )
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         rows = self._client.query(
             f"SELECT DISTINCT id FROM {self._config.database}.{self._collection_name} WHERE metadata.{key}='{value}'"
         ).result_rows
         return [row[0] for row in rows]
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         self._client.command(
             f"DELETE FROM {self._config.database}.{self._collection_name} WHERE metadata.{key}='{value}'"
         )
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         return self._search(f"distance(vector, {str(query_vector)})", self._vec_order, **kwargs)
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._search(f"TextSearch('enable_nlq=false')(text, '{query}')", SortOrder.DESC, **kwargs)
 
@@ -156,11 +165,13 @@ class MyScaleVector(BaseVector):
             logger.exception("Vector search operation failed")
             return []
 
+    @override
     def delete(self):
         self._client.command(f"DROP TABLE IF EXISTS {self._config.database}.{self._collection_name}")
 
 
 class MyScaleVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MyScaleVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
