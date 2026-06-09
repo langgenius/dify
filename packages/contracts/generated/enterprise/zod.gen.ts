@@ -34,6 +34,14 @@ export const zDeploymentStatus = z.enum([
   'DEPLOYMENT_STATUS_CANCELLED',
 ])
 
+export const zDeploymentAction = z.enum([
+  'DEPLOYMENT_ACTION_UNSPECIFIED',
+  'DEPLOYMENT_ACTION_DEPLOY',
+  'DEPLOYMENT_ACTION_PROMOTE',
+  'DEPLOYMENT_ACTION_ROLLBACK',
+  'DEPLOYMENT_ACTION_UNDEPLOY',
+])
+
 export const zDeveloperApiUrlStatus = z.enum([
   'DEVELOPER_API_URL_STATUS_UNSPECIFIED',
   'DEVELOPER_API_URL_STATUS_CONFIGURED',
@@ -233,8 +241,8 @@ export const zAppInstance = z.object({
   tenantId: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
-  createdBy: z.string().optional(),
-  updatedBy: z.string().optional(),
+  createdBy: zActor.optional(),
+  updatedBy: zActor.optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 })
@@ -664,6 +672,8 @@ export const zDeployment = z.object({
   error: zError.optional(),
   createdAt: z.string().optional(),
   finalizedAt: z.string().optional(),
+  deployer: zActor.optional(),
+  action: zDeploymentAction.optional(),
 })
 
 export const zDeployReply = z.object({
@@ -674,6 +684,17 @@ export const zDeployReply = z.object({
 
 export const zDeploymentReply = z.object({
   deployment: zDeployment.optional(),
+})
+
+/**
+ * EnvironmentAppInstance is one app instance as seen from a single environment:
+ * its current release, runtime status, and derived last error in THIS env.
+ */
+export const zEnvironmentAppInstance = z.object({
+  appInstance: zAppInstance.optional(),
+  currentRelease: zRelease.optional(),
+  status: zRuntimeInstanceStatus.optional(),
+  lastError: zError.optional(),
 })
 
 export const zEnvironmentDeployment = z.object({
@@ -698,6 +719,16 @@ export const zAppInstanceSummary = z.object({
   latestRelease: zRelease.optional(),
   accessChannels: zAccessChannels.optional(),
   apiKeySummary: zApiKeySummary.optional(),
+})
+
+/**
+ * EnvironmentDeploymentHistoryItem is one deployment row in an environment's
+ * history, with a thin reference to the owning app instance.
+ */
+export const zEnvironmentDeploymentHistoryItem = z.object({
+  deployment: zDeployment.optional(),
+  appInstanceId: z.string().optional(),
+  appInstanceName: z.string().optional(),
 })
 
 export const zGetAppInstanceOverviewReply = z.object({
@@ -2207,6 +2238,16 @@ export const zListAppInstancesReply = z.object({
 
 export const zListDeploymentsReply = z.object({
   data: z.array(zDeployment).optional(),
+  pagination: zPagination.optional(),
+})
+
+export const zListEnvironmentAppInstancesReply = z.object({
+  data: z.array(zEnvironmentAppInstance).optional(),
+  pagination: zPagination.optional(),
+})
+
+export const zListEnvironmentDeploymentHistoryReply = z.object({
+  data: z.array(zEnvironmentDeploymentHistoryItem).optional(),
   pagination: zPagination.optional(),
 })
 

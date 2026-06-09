@@ -62,6 +62,16 @@ export const DeploymentStatus = {
 
 export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
 
+export const DeploymentAction = {
+  DEPLOYMENT_ACTION_UNSPECIFIED: 'DEPLOYMENT_ACTION_UNSPECIFIED',
+  DEPLOYMENT_ACTION_DEPLOY: 'DEPLOYMENT_ACTION_DEPLOY',
+  DEPLOYMENT_ACTION_PROMOTE: 'DEPLOYMENT_ACTION_PROMOTE',
+  DEPLOYMENT_ACTION_ROLLBACK: 'DEPLOYMENT_ACTION_ROLLBACK',
+  DEPLOYMENT_ACTION_UNDEPLOY: 'DEPLOYMENT_ACTION_UNDEPLOY',
+} as const
+
+export type DeploymentAction = (typeof DeploymentAction)[keyof typeof DeploymentAction]
+
 export const DeveloperApiUrlStatus = {
   DEVELOPER_API_URL_STATUS_UNSPECIFIED: 'DEVELOPER_API_URL_STATUS_UNSPECIFIED',
   DEVELOPER_API_URL_STATUS_CONFIGURED: 'DEVELOPER_API_URL_STATUS_CONFIGURED',
@@ -296,8 +306,8 @@ export type AppInstance = {
   tenantId?: string
   name?: string
   description?: string
-  createdBy?: string
-  updatedBy?: string
+  createdBy?: Actor
+  updatedBy?: Actor
   createdAt?: string
   updatedAt?: string
 }
@@ -485,6 +495,8 @@ export type Deployment = {
   error?: Error
   createdAt?: string
   finalizedAt?: string
+  deployer?: Actor
+  action?: DeploymentAction
 }
 
 export type DeploymentOptions = {
@@ -556,6 +568,13 @@ export type EnvironmentAccessPolicy = {
   resolvedSubjects?: Array<Subject>
 }
 
+export type EnvironmentAppInstance = {
+  appInstance?: AppInstance
+  currentRelease?: Release
+  status?: RuntimeInstanceStatus
+  lastError?: Error
+}
+
 export type EnvironmentDeployment = {
   appInstanceId?: string
   environment?: Environment
@@ -566,6 +585,12 @@ export type EnvironmentDeployment = {
   error?: Error
   updatedAt?: string
   releasesBehind?: number
+}
+
+export type EnvironmentDeploymentHistoryItem = {
+  deployment?: Deployment
+  appInstanceId?: string
+  appInstanceName?: string
 }
 
 export type EnvironmentDeploymentRecord = {
@@ -690,6 +715,16 @@ export type ListDeployableEnvironmentsReply = {
 
 export type ListDeploymentsReply = {
   data?: Array<Deployment>
+  pagination?: Pagination
+}
+
+export type ListEnvironmentAppInstancesReply = {
+  data?: Array<EnvironmentAppInstance>
+  pagination?: Pagination
+}
+
+export type ListEnvironmentDeploymentHistoryReply = {
+  data?: Array<EnvironmentDeploymentHistoryItem>
   pagination?: Pagination
 }
 
