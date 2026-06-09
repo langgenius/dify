@@ -272,33 +272,43 @@ class DatasetService:
                     should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
 
                 if not should_show_all_datasets:
-                    # show all datasets that the user has permission to access
-                    # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
-                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                    Dataset.id.in_(permitted_dataset_ids),
-                                ),
-                            )
-                        )
+                    if dify_config.RBAC_ENABLED:
+                        # RBAC visibility comes from resource grants, not Dataset.permission.
+                        visibility_conditions = [Dataset.created_by == user.id]
+                        if permitted_dataset_ids:
+                            visibility_conditions.append(Dataset.id.in_(permitted_dataset_ids))
+                        query = query.where(sa.or_(*visibility_conditions))
                     else:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
+                        # Keep legacy visibility rules when RBAC is disabled.
+                        if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                            query = query.where(
+                                sa.or_(
+                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
+                                    ),
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                        Dataset.id.in_(permitted_dataset_ids),
+                                    ),
+                                )
                             )
-                        )
+                        else:
+                            query = query.where(
+                                sa.or_(
+                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
+                                    ),
+                                )
+                            )
         else:
-            # if no user, only show datasets that are shared with all team members
-            query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
+            if dify_config.RBAC_ENABLED:
+                # Without an account we cannot resolve RBAC resource visibility.
+                query = query.where(sa.false())
+            else:
+                # if no user, only show datasets that are shared with all team members
+                query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
             escaped_search = helper.escape_like_pattern(search)

@@ -219,6 +219,52 @@ class TestDatasetServiceRetrievalPermissions:
         select_stmt = mock_db.paginate.call_args.kwargs["select"]
         assert len(select_stmt._where_criteria) == 2
 
+    def test_get_datasets_rbac_filters_by_creator_or_permitted_dataset_ids(self):
+        mock_db = MagicMock()
+        mock_db.session.scalars.return_value.all.return_value = [
+            SimpleNamespace(dataset_id="dataset-1"),
+            SimpleNamespace(dataset_id="dataset-2"),
+        ]
+        mock_db.paginate.return_value.items = []
+        mock_db.paginate.return_value.total = 0
+
+        user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
+
+        with (
+            patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
+            ),
+        ):
+            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user)
+
+        mock_db.session.scalars.assert_called_once()
+        mock_db.paginate.assert_called_once()
+        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        assert len(select_stmt._where_criteria) == 2
+        where_clause = str(select_stmt._where_criteria[-1])
+        assert "created_by" in where_clause
+        assert "IN" in where_clause
+
+    def test_get_datasets_rbac_without_user_returns_empty_result(self):
+        mock_db = MagicMock()
+        mock_db.session.scalars.return_value.all.return_value = []
+        mock_db.paginate.return_value.items = []
+        mock_db.paginate.return_value.total = 0
+
+        with (
+            patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
+        ):
+            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=None)
+
+        mock_db.session.scalars.assert_not_called()
+        mock_db.paginate.assert_called_once()
+        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        assert len(select_stmt._where_criteria) == 2
+
     def test_get_datasets_legacy_owner_include_all_keeps_full_access(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
