@@ -32,6 +32,9 @@ abstract class FileBasedStore implements Store {
   constructor(filePath: string) {
     this.filePath = filePath
     this.platform = resolvePlatform()
+  }
+
+  private ensureDir(): void {
     fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
   }
 
@@ -50,6 +53,7 @@ abstract class FileBasedStore implements Store {
     }
 
     if (this.rawContent !== undefined) {
+      this.ensureDir()
       const tmp = `${this.filePath}.tmp.${pid()}.${Date.now()}`
       try {
         fs.writeFileSync(tmp, this.rawContent, { mode: FILE_PERM })
@@ -68,6 +72,7 @@ abstract class FileBasedStore implements Store {
   }
 
   lock(): void {
+    this.ensureDir()
     try {
       lockfile.lockSync(`${this.filePath}.lock`, {
         stale: 30_000,
