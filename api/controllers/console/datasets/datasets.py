@@ -629,9 +629,10 @@ class DatasetApi(Resource):
             payload.is_multimodal = is_multimodal
         payload_data = payload.model_dump(exclude_unset=True)
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        DatasetPermissionService.check_permission(
-            current_user, dataset, payload.permission, payload.partial_member_list
-        )
+        if not dify_config.RBAC_ENABLED:
+            DatasetPermissionService.check_permission(
+                current_user, dataset, payload.permission, payload.partial_member_list
+            )
 
         dataset = DatasetService.update_dataset(dataset_id_str, payload_data, current_user)
 

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, m
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
     query_params_from_model,
@@ -460,13 +461,14 @@ class DatasetApi(DatasetApiResource):
                 retrieval_model.reranking_model.reranking_model_name,
             )
 
-        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        DatasetPermissionService.check_permission(
-            current_user,
-            dataset,
-            str(payload.permission) if payload.permission else None,
-            payload.partial_member_list,
-        )
+        if not dify_config.RBAC_ENABLED:
+            # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+            DatasetPermissionService.check_permission(
+                current_user,
+                dataset,
+                str(payload.permission) if payload.permission else None,
+                payload.partial_member_list,
+            )
 
         dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user)
 
