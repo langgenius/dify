@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import BlockIcon from '../block-icon'
 import { BlockEnum as BlockEnumValues } from '../types'
+import { BlockSelectorRow } from './block-selector-row'
 // import { useNodeMetaData } from '../hooks'
 import { START_BLOCKS } from './constants'
 
@@ -96,14 +97,10 @@ const StartBlocks = ({
     const label = t(`blocks.${block.type}`, { ns: 'workflow' })
     const disabledReason = t('nodes.startPlaceholder.userInputConflictTip', { ns: 'workflow' })
     const row = (
-      <button
-        type="button"
+      <BlockSelectorRow
         aria-disabled={isRowDisabled}
         aria-label={isUserInputDisabled ? `${label}. ${disabledReason}` : label}
-        className={cn(
-          'flex h-8 w-full items-center rounded-lg border-0 bg-transparent pr-2 pl-3 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
-          isRowDisabled ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-state-base-hover',
-        )}
+        disabled={isRowDisabled}
         onClick={() => {
           if (isRowDisabled)
             return
@@ -114,7 +111,7 @@ const StartBlocks = ({
           <BlockIcon
             className="mr-2 shrink-0"
             type={block.type}
-            size="md"
+            size="sm"
           />
           <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
             <span className="truncate system-sm-medium">{label}</span>
@@ -133,7 +130,7 @@ const StartBlocks = ({
             )}
           </div>
         </div>
-      </button>
+      </BlockSelectorRow>
     )
 
     if (isUserInputDisabled) {

@@ -217,12 +217,13 @@ describe('FeaturedTriggers', () => {
       )
 
       const installedRow = screen.getByText('Provider One').closest('.select-none')
-      expect(installedRow).toHaveClass('py-1', 'pr-2', 'pl-3')
+      expect(installedRow).toHaveClass('h-8', 'pr-2', 'pl-3')
       expect(installedRow?.parentElement?.parentElement?.parentElement).toHaveClass('p-1')
 
       const uninstalledRow = screen.getByText('Plugin Two').closest('.group')
-      expect(uninstalledRow).toHaveClass('py-1', 'pr-2', 'pl-3')
-      expect(uninstalledRow?.parentElement).toHaveClass('p-1')
+      expect(uninstalledRow).toHaveClass('h-8', 'pr-2', 'pl-3')
+      expect(uninstalledRow?.parentElement).toHaveClass('mb-1', 'last-of-type:mb-0')
+      expect(uninstalledRow?.parentElement?.parentElement).toHaveClass('p-1')
     })
   })
 })

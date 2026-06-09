@@ -21,6 +21,7 @@ import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
+import { BlockSelectorRow } from '../block-selector-row'
 import TriggerPluginActionItem from './action-item'
 
 const normalizeProviderIcon = (icon?: TriggerWithProvider['icon']) => {
@@ -102,13 +103,10 @@ const TriggerPluginItem: FC<Props> = ({
       ref={ref}
     >
       <div className={cn(className)}>
-        <button
-          type="button"
+        <BlockSelectorRow
+          nativeDisabled={disabled}
           disabled={disabled}
-          className={cn(
-            'group/item flex w-full items-center justify-between rounded-lg border-0 bg-transparent py-1 pr-2 pl-3 text-left select-none focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
-            disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
-          )}
+          className="group/item justify-between select-none"
           onClick={() => {
             if (disabled)
               return
@@ -141,13 +139,14 @@ const TriggerPluginItem: FC<Props> = ({
             })
           }}
         >
-          <div className="flex h-6 grow items-center">
+          <div className="flex min-w-0 grow items-center">
             <BlockIcon
-              className="shrink-0"
+              className="mr-2 shrink-0"
               type={BlockEnum.TriggerPlugin}
+              size="sm"
               toolIcon={providerIcon}
             />
-            <div className="ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary">
+            <div className="flex min-w-0 flex-1 items-center text-sm text-text-primary">
               <span className="max-w-[200px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
               <span className="ml-2 truncate system-xs-regular text-text-quaternary">{groupName}</span>
             </div>
@@ -158,7 +157,7 @@ const TriggerPluginItem: FC<Props> = ({
               <FoldIcon className={cn('size-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
             )}
           </div>
-        </button>
+        </BlockSelectorRow>
 
         {!notShowProvider && hasAction && !isFold && (
           <ScrollAreaRoot className="relative max-h-[240px] overflow-hidden overscroll-contain">

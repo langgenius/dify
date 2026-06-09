@@ -19,6 +19,7 @@ import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
+import { BlockSelectorRow } from './block-selector-row'
 import { TriggerPluginActionPreviewCard } from './trigger-plugin/action-item'
 import TriggerPluginItem from './trigger-plugin/item'
 
@@ -141,38 +142,31 @@ const FeaturedTriggers = ({
           )}
 
           {!showEmptyState && !isLoading && (
-            <>
-              {visibleInstalledProviders.length > 0 && (
-                <div className="mt-1 p-1">
-                  {visibleInstalledProviders.map(provider => (
-                    <TriggerPluginItem
-                      key={provider.id}
-                      payload={provider}
-                      hasSearchText={false}
-                      previewCardHandle={triggerActionPreviewCardHandle}
-                      onSelect={onSelect}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="mt-1 p-1">
+              {visibleInstalledProviders.map(provider => (
+                <TriggerPluginItem
+                  key={provider.id}
+                  payload={provider}
+                  hasSearchText={false}
+                  previewCardHandle={triggerActionPreviewCardHandle}
+                  onSelect={onSelect}
+                />
+              ))}
 
-              {visibleUninstalledPlugins.length > 0 && (
-                <div className="mt-1 flex flex-col gap-1 p-1">
-                  {visibleUninstalledPlugins.map(plugin => (
-                    <FeaturedTriggerUninstalledItem
-                      key={plugin.plugin_id}
-                      plugin={plugin}
-                      language={language}
-                      previewCardHandle={previewCardHandle}
-                      onInstallSuccess={async () => {
-                        await onInstallSuccess?.()
-                      }}
-                      t={t}
-                    />
-                  ))}
+              {visibleUninstalledPlugins.map(plugin => (
+                <div key={plugin.plugin_id} className="mb-1 last-of-type:mb-0">
+                  <FeaturedTriggerUninstalledItem
+                    plugin={plugin}
+                    language={language}
+                    previewCardHandle={previewCardHandle}
+                    onInstallSuccess={async () => {
+                      await onInstallSuccess?.()
+                    }}
+                    t={t}
+                  />
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
 
           {!isLoading && totalVisible > 0 && canToggleVisibility && (
@@ -255,12 +249,10 @@ function FeaturedTriggerUninstalledItem({
   }, [actionOpen])
 
   const row = (
-    <div
-      className="group flex w-full items-center rounded-lg py-1 pr-2 pl-3 hover:bg-state-base-hover"
-    >
-      <div className="flex h-6 min-w-0 items-center">
-        <BlockIcon type={BlockEnum.TriggerPlugin} toolIcon={plugin.icon} />
-        <div className="ml-2 min-w-0">
+    <BlockSelectorRow as="div" className="group select-none">
+      <div className="flex min-w-0 items-center">
+        <BlockIcon className="mr-2 shrink-0" type={BlockEnum.TriggerPlugin} size="sm" toolIcon={plugin.icon} />
+        <div className="min-w-0">
           <div className="truncate system-sm-medium text-text-secondary">{label}</div>
         </div>
       </div>
@@ -288,7 +280,7 @@ function FeaturedTriggerUninstalledItem({
           />
         </div>
       </div>
-    </div>
+    </BlockSelectorRow>
   )
 
   return (
