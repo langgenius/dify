@@ -266,7 +266,7 @@ const AllStartBlocks = ({
                   <>
                     <MarketplaceFooterDivider />
                     <span className="flex items-center gap-1">
-                      <span className="i-custom-vender-main-nav-marketplace size-3 shrink-0" aria-hidden />
+                      <span className="i-custom-vender-workflow-marketplace size-3 shrink-0" aria-hidden />
                       <span>{t('nodes.startPlaceholder.browseMoreOnMarketplace', { ns: 'workflow' })}</span>
                     </span>
                   </>

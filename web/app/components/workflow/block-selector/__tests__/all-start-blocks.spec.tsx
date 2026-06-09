@@ -252,7 +252,7 @@ describe('AllStartBlocks', () => {
       expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
       expect(footer).toHaveClass('flex-col')
       expect(footer.querySelector('.w-8 .bg-divider-subtle')).toBeInTheDocument()
-      expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).toBeInTheDocument()
+      expect(footer.querySelector('.i-custom-vender-workflow-marketplace')).toBeInTheDocument()
       expect(footer.querySelector('svg')).not.toBeInTheDocument()
     })
 
