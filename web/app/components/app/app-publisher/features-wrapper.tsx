@@ -37,10 +37,10 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
   const features = useFeatures(s => s.features)
   const featuresStore = useFeaturesStore()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
-  const { more_like_this, opening_statement, suggested_questions, sensitive_word_avoidance, speech_to_text, text_to_speech, suggested_questions_after_answer, retriever_resource, annotation_reply, file_upload, resetAppConfig } = props.publishedConfig.modelConfig
+  const { more_like_this, opening_statement, suggested_questions, sensitive_word_avoidance, speech_to_text, text_to_speech, suggested_questions_after_answer, retriever_resource, annotation_reply, file_upload } = props.publishedConfig.modelConfig
 
   const handleConfirm = useCallback(() => {
-    resetAppConfig?.()
+    props.resetAppConfig?.()
     const {
       features,
       setFeatures,
