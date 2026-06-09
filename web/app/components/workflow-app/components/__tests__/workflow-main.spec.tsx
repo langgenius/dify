@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -299,6 +301,7 @@ describe('WorkflowMain', () => {
     collaborationListeners.workflowUpdate = null
     collaborationListeners.syncRequest = null
     mockFetchWorkflowDraft.mockReset()
+    useAppStore.setState({ appDetail: undefined })
   })
 
   it('should render the inner workflow context with children and forwarded graph props', () => {
@@ -404,6 +407,30 @@ describe('WorkflowMain', () => {
       handleExportDSL: hookFns.handleExportDSL,
       fetchInspectVars: hookFns.fetchInspectVars,
       configsMap: { flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } },
+    })
+  })
+
+  it('should pass view-layout ACL permission as comment-only workflow access', () => {
+    useAppStore.setState({
+      appDetail: {
+        permission_keys: [AppACLPermission.ViewLayout],
+      } as never,
+    })
+
+    render(
+      <WorkflowMain
+        nodes={[]}
+        edges={[]}
+        viewport={{ x: 0, y: 0, zoom: 1 }}
+      />,
+    )
+
+    expect(capturedContextProps?.hooksStore).toMatchObject({
+      accessControl: {
+        canEdit: false,
+        canComment: true,
+        canRun: false,
+      },
     })
   })
 

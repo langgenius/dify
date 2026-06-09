@@ -122,7 +122,7 @@ describe('permission', () => {
       expect(capabilities.canEdit).toBe(false)
     })
 
-    it('allows view-layout users to preview the app but not run/debug', () => {
+    it('allows view-layout users to preview the app and comment but not run/debug', () => {
       const capabilities = getAppACLCapabilities([AppACLPermission.ViewLayout])
 
       expect(capabilities.canPreviewApp).toBe(true)

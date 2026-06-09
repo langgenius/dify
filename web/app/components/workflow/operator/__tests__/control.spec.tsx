@@ -24,6 +24,7 @@ const {
 
 let mockNodesReadOnly = false
 let mockCanComment = true
+let mockCanEdit = true
 let mockStoreState: WorkflowStoreState
 
 vi.mock('../../hooks', () => ({
@@ -54,10 +55,11 @@ vi.mock('../../store', () => ({
 }))
 
 vi.mock('../../hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { accessControl: { canComment: boolean } }) => T): T =>
+  useHooksStore: <T,>(selector: (state: { accessControl: { canComment: boolean, canEdit: boolean } }) => T): T =>
     selector({
       accessControl: {
         canComment: mockCanComment,
+        canEdit: mockCanEdit,
       },
     }),
 }))
@@ -85,6 +87,7 @@ describe('Control', () => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
     mockCanComment = true
+    mockCanEdit = true
     mockStoreState = {
       controlMode: ControlMode.Pointer,
       maximizeCanvas: false,
@@ -134,8 +137,9 @@ describe('Control', () => {
       expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
     })
 
-    it('should block note creation when commenting is not allowed', () => {
-      mockCanComment = false
+    it('should block note creation when editing is not allowed', () => {
+      mockCanEdit = false
+      mockCanComment = true
 
       render(<Control />)
 

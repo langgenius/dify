@@ -103,7 +103,7 @@ export function PanelContextmenu({
             }}
           />
         )}
-        {canCommentWorkflow && (
+        {canEditWorkflow && (
           <ContextMenuItem
             className="justify-between gap-4 px-3 text-text-secondary"
             onClick={(e) => {
