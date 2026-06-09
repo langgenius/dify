@@ -597,7 +597,9 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
         agent_stub_url="https://agent.example.com/agent-stub",
-        agent_stub_token_factory=lambda execution_context, *, session_id: f"token-for:{execution_context.tenant_id}:{session_id}",
+        agent_stub_token_factory=lambda execution_context, *, session_id: (
+            f"token-for:{execution_context.tenant_id}:{session_id}"
+        ),
     )
     layer.deps = layer.deps_type(execution_context=_execution_context_layer())
     tools = {tool.name: tool for tool in layer.tools}
@@ -638,7 +640,9 @@ def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency()
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
         agent_stub_url="https://agent.example.com/agent-stub",
-        agent_stub_token_factory=lambda execution_context, *, session_id: f"token-for:{execution_context.tenant_id}:{session_id}",
+        agent_stub_token_factory=lambda execution_context, *, session_id: (
+            f"token-for:{execution_context.tenant_id}:{session_id}"
+        ),
     )
     tools = {tool.name: tool for tool in layer.tools}
 

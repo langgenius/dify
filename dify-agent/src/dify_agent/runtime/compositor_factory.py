@@ -40,6 +40,7 @@ from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer, create_shellctl_client_factory
+
 type DifyAgentLayerProvider = LayerProvider[Any]
 
 
@@ -63,6 +64,7 @@ def create_default_layer_providers(
     shellctl_token = shellctl_auth_token or ""
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     if agent_stub_token_codec is not None:
+
         def build_agent_stub_token(
             execution_context: DifyExecutionContextLayerConfig,
             *,

@@ -7,8 +7,8 @@ from flask import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.entities.provider_entities import BasicProviderConfig
-from core.workflow.file_reference import is_canonical_file_reference
 from core.plugin.utils.http_parser import deserialize_response
+from core.workflow.file_reference import is_canonical_file_reference
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,

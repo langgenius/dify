@@ -17,39 +17,39 @@ class AgentStubServiceBase(abc.ABC):
     @abc.abstractmethod
     async def Connect(
         self,
-        stream: 'grpclib.server.Stream[agent_stub_pb2.ConnectRequest, agent_stub_pb2.ConnectResponse]',
+        stream: "grpclib.server.Stream[agent_stub_pb2.ConnectRequest, agent_stub_pb2.ConnectResponse]",
     ) -> None:
         pass
 
     @abc.abstractmethod
     async def CreateFileUploadRequest(
         self,
-        stream: 'grpclib.server.Stream[agent_stub_pb2.FileUploadRequest, agent_stub_pb2.FileUploadResponse]',
+        stream: "grpclib.server.Stream[agent_stub_pb2.FileUploadRequest, agent_stub_pb2.FileUploadResponse]",
     ) -> None:
         pass
 
     @abc.abstractmethod
     async def CreateFileDownloadRequest(
         self,
-        stream: 'grpclib.server.Stream[agent_stub_pb2.FileDownloadRequest, agent_stub_pb2.FileDownloadResponse]',
+        stream: "grpclib.server.Stream[agent_stub_pb2.FileDownloadRequest, agent_stub_pb2.FileDownloadResponse]",
     ) -> None:
         pass
 
     def __mapping__(self) -> typing.Dict[str, grpclib.const.Handler]:
         return {
-            '/dify.agent.stub.v1.AgentStubService/Connect': grpclib.const.Handler(
+            "/dify.agent.stub.v1.AgentStubService/Connect": grpclib.const.Handler(
                 self.Connect,
                 grpclib.const.Cardinality.UNARY_UNARY,
                 agent_stub_pb2.ConnectRequest,
                 agent_stub_pb2.ConnectResponse,
             ),
-            '/dify.agent.stub.v1.AgentStubService/CreateFileUploadRequest': grpclib.const.Handler(
+            "/dify.agent.stub.v1.AgentStubService/CreateFileUploadRequest": grpclib.const.Handler(
                 self.CreateFileUploadRequest,
                 grpclib.const.Cardinality.UNARY_UNARY,
                 agent_stub_pb2.FileUploadRequest,
                 agent_stub_pb2.FileUploadResponse,
             ),
-            '/dify.agent.stub.v1.AgentStubService/CreateFileDownloadRequest': grpclib.const.Handler(
+            "/dify.agent.stub.v1.AgentStubService/CreateFileDownloadRequest": grpclib.const.Handler(
                 self.CreateFileDownloadRequest,
                 grpclib.const.Cardinality.UNARY_UNARY,
                 agent_stub_pb2.FileDownloadRequest,
@@ -62,19 +62,19 @@ class AgentStubServiceStub:
     def __init__(self, channel: grpclib.client.Channel) -> None:
         self.Connect = grpclib.client.UnaryUnaryMethod(
             channel,
-            '/dify.agent.stub.v1.AgentStubService/Connect',
+            "/dify.agent.stub.v1.AgentStubService/Connect",
             agent_stub_pb2.ConnectRequest,
             agent_stub_pb2.ConnectResponse,
         )
         self.CreateFileUploadRequest = grpclib.client.UnaryUnaryMethod(
             channel,
-            '/dify.agent.stub.v1.AgentStubService/CreateFileUploadRequest',
+            "/dify.agent.stub.v1.AgentStubService/CreateFileUploadRequest",
             agent_stub_pb2.FileUploadRequest,
             agent_stub_pb2.FileUploadResponse,
         )
         self.CreateFileDownloadRequest = grpclib.client.UnaryUnaryMethod(
             channel,
-            '/dify.agent.stub.v1.AgentStubService/CreateFileDownloadRequest',
+            "/dify.agent.stub.v1.AgentStubService/CreateFileDownloadRequest",
             agent_stub_pb2.FileDownloadRequest,
             agent_stub_pb2.FileDownloadResponse,
         )

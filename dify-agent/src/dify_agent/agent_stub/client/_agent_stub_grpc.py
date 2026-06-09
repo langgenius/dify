@@ -143,7 +143,9 @@ def request_agent_stub_file_download_grpc_sync(
             url=url,
             auth_jwe=auth_jwe,
             method_name="CreateFileDownloadRequest",
-            request_factory=lambda runtime: _require_conversions().proto_file_download_request(runtime.agent_stub_pb2, file=file),
+            request_factory=lambda runtime: _require_conversions().proto_file_download_request(
+                runtime.agent_stub_pb2, file=file
+            ),
             response_parser=lambda response: _require_conversions().file_download_response_from_proto(response),
             timeout=timeout,
         )

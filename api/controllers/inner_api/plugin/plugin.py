@@ -12,7 +12,6 @@ from core.plugin.backwards_invocation.node import PluginNodeBackwardsInvocation
 from core.plugin.backwards_invocation.tool import PluginToolBackwardsInvocation
 from core.plugin.entities.request import (
     RequestFetchAppInfo,
-    RequestRequestDownloadFile,
     RequestInvokeApp,
     RequestInvokeEncrypt,
     RequestInvokeLLM,
@@ -26,6 +25,7 @@ from core.plugin.entities.request import (
     RequestInvokeTextEmbedding,
     RequestInvokeTool,
     RequestInvokeTTS,
+    RequestRequestDownloadFile,
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType

@@ -602,7 +602,11 @@ class DeclaredOutputConfig(BaseModel):
             return False
 
         if transfer_method == FileTransferMethod.REMOTE_URL:
-            return set(value) == {"transfer_method", "url"} and isinstance(value.get("url"), str) and bool(value.get("url"))
+            return (
+                set(value) == {"transfer_method", "url"}
+                and isinstance(value.get("url"), str)
+                and bool(value.get("url"))
+            )
 
         reference = value.get("reference")
         return (

@@ -118,18 +118,14 @@ class ServerSettings(BaseSettings):
     def validate_agent_stub_requirements(self) -> "ServerSettings":
         """Require the server secret and Dify API file settings in valid pairs."""
         if self.agent_stub_url is not None and self.server_secret_key is None:
-            raise ValueError(
-                "DIFY_AGENT_SERVER_SECRET_KEY is required when DIFY_AGENT_STUB_URL is set."
-            )
+            raise ValueError("DIFY_AGENT_SERVER_SECRET_KEY is required when DIFY_AGENT_STUB_URL is set.")
         if self.agent_stub_grpc_bind_address is not None:
             if self.agent_stub_url is None:
                 raise ValueError("DIFY_AGENT_STUB_URL is required when DIFY_AGENT_STUB_GRPC_BIND_ADDRESS is set.")
             if not parse_agent_stub_endpoint(self.agent_stub_url).is_grpc:
                 raise ValueError("DIFY_AGENT_STUB_GRPC_BIND_ADDRESS requires a grpc:// DIFY_AGENT_STUB_URL.")
         if (self.dify_api_base_url is None) != (self.dify_api_inner_api_key is None):
-            raise ValueError(
-                "DIFY_AGENT_DIFY_API_BASE_URL and DIFY_AGENT_DIFY_API_INNER_API_KEY must be set together."
-            )
+            raise ValueError("DIFY_AGENT_DIFY_API_BASE_URL and DIFY_AGENT_DIFY_API_INNER_API_KEY must be set together.")
         return self
 
     def create_agent_stub_token_codec(self) -> AgentStubTokenCodec | None:

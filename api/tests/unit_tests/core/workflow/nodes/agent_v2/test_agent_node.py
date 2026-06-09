@@ -3,6 +3,7 @@ from typing import cast
 from unittest.mock import patch
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
 
 from clients.agent_backend import (
     AgentBackendRunEventAdapter,
@@ -11,7 +12,6 @@ from clients.agent_backend import (
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
-from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
@@ -153,8 +153,9 @@ class FileOutputBackendClient(FakeAgentBackendRunClient):
         self.output_payload = output_payload
 
     def _events(self, run_id: str):
-        from clients.agent_backend.fake_client import _FIXED_TIME
         from agenton.compositor import CompositorSessionSnapshot
+
+        from clients.agent_backend.fake_client import _FIXED_TIME
 
         return (
             RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),

@@ -1,5 +1,6 @@
-from agenton.compositor import CompositorSessionSnapshot
 from unittest.mock import patch
+
+from agenton.compositor import CompositorSessionSnapshot
 
 from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,

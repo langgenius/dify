@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from dify_agent.agent_stub.server.grpc_bind import derive_agent_stub_grpc_bind_target, parse_agent_stub_grpc_bind_address
+from dify_agent.agent_stub.server.grpc_bind import (
+    derive_agent_stub_grpc_bind_target,
+    parse_agent_stub_grpc_bind_address,
+)
 
 
 def test_derive_agent_stub_grpc_bind_target_defaults_to_all_interfaces() -> None:

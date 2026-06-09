@@ -437,7 +437,10 @@ def test_object_output_preview_does_not_augment_canonical_file_mapping_shape():
     ex = _execution(node_id="agent-1", outputs={"meta": raw_value})
     with (
         _patch_session(workflow_run=run, executions=[ex]),
-        patch("services.workflow.node_output_inspector_service._resolve_preview_url", return_value="https://signed.example/x.pdf"),
+        patch(
+            "services.workflow.node_output_inspector_service._resolve_preview_url",
+            return_value="https://signed.example/x.pdf",
+        ),
     ):
         snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1")
         preview = service.output_preview(

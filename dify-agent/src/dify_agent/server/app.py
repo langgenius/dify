@@ -70,7 +70,10 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             layer_providers=layer_providers,
         )
         grpc_server = None
-        if resolved_settings.agent_stub_url is not None and parse_agent_stub_endpoint(resolved_settings.agent_stub_url).is_grpc:
+        if (
+            resolved_settings.agent_stub_url is not None
+            and parse_agent_stub_endpoint(resolved_settings.agent_stub_url).is_grpc
+        ):
             grpc_server = await start_agent_stub_grpc_server(
                 public_url=resolved_settings.agent_stub_url,
                 bind_address=resolved_settings.agent_stub_grpc_bind_address,

@@ -53,6 +53,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
+from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
 from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingError,
@@ -68,7 +69,6 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import helpers as file_helpers
-from core.app.file_access import DatabaseFileAccessController
 from models import App
 from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
@@ -297,6 +297,8 @@ def _retried_attempt_count(metadata: Mapping[str, Any] | None) -> int:
 
 
 _PREVIEW_TEXT_LIMIT = 500
+
+
 def _looks_like_file_ref(value: Any) -> bool:
     """Return whether ``value`` looks like a canonical Agent v2 file mapping."""
     if not isinstance(value, Mapping):
@@ -497,14 +499,21 @@ class NodeOutputInspectorService:
                 "node_output_not_declared",
                 f"Output {output_name!r} is not declared on node {node_id!r}.",
             )
-        declaration = next((d for d in self._resolve_declared_outputs(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            workflow_id=workflow_run.workflow_id,
-            node_id=node_id,
-            raw_node=raw_node,
-            execution=execution,
-        ) if d.name == output_name), _ResolvedDeclaration(name=output_name, declared_type=view.type, array_item_type=None, inferred=True))
+        declaration = next(
+            (
+                d
+                for d in self._resolve_declared_outputs(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    workflow_id=workflow_run.workflow_id,
+                    node_id=node_id,
+                    raw_node=raw_node,
+                    execution=execution,
+                )
+                if d.name == output_name
+            ),
+            _ResolvedDeclaration(name=output_name, declared_type=view.type, array_item_type=None, inferred=True),
+        )
 
         # ``node_detail`` already produced a truncated value_preview; reload
         # the raw value from the execution payload so the preview endpoint can
@@ -784,7 +793,9 @@ class NodeOutputInspectorService:
         outputs = _decode_json_blob(execution.outputs)
         if not outputs:
             return []
-        return [_ResolvedDeclaration(name=name, declared_type=None, array_item_type=None, inferred=True) for name in outputs]
+        return [
+            _ResolvedDeclaration(name=name, declared_type=None, array_item_type=None, inferred=True) for name in outputs
+        ]
 
 
 def _is_passing(result: Mapping[str, Any]) -> bool:

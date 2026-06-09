@@ -83,7 +83,9 @@ def file_upload_response_from_proto(message: agent_stub_pb2.FileUploadResponse) 
     return AgentStubFileUploadResponse.model_validate({"upload_url": message.upload_url})
 
 
-def proto_file_upload_response(response: AgentStubFileUploadResponse, *, pb2_module=None) -> agent_stub_pb2.FileUploadResponse:
+def proto_file_upload_response(
+    response: AgentStubFileUploadResponse, *, pb2_module=None
+) -> agent_stub_pb2.FileUploadResponse:
     """Build one protobuf file-upload response from the public DTO."""
     resolved_pb2 = pb2_module or _require_pb2_module()
     return resolved_pb2.FileUploadResponse(upload_url=response.upload_url)

@@ -221,8 +221,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert store.run_retention_seconds == 7
         assert any(getattr(route, "path", None) == "/agent-stub/connections" for route in create_app(settings).routes)
         assert any(
-            getattr(route, "path", None) == "/agent-stub/files/upload-request"
-            for route in create_app(settings).routes
+            getattr(route, "path", None) == "/agent-stub/files/upload-request" for route in create_app(settings).routes
         )
         assert any(
             getattr(route, "path", None) == "/agent-stub/files/download-request"

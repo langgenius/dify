@@ -50,7 +50,9 @@ def test_stub_server_cli_switches_to_grpc_when_agent_stub_url_uses_grpc(monkeypa
         captured.update(settings=settings, host=host, port=port)
 
     monkeypatch.setattr(cli_module, "_serve_grpc", fake_serve_grpc)
-    monkeypatch.setattr(cli_module, "ServerSettings", lambda: type("Settings", (), {"agent_stub_url": "grpc://agent:9091"})())
+    monkeypatch.setattr(
+        cli_module, "ServerSettings", lambda: type("Settings", (), {"agent_stub_url": "grpc://agent:9091"})()
+    )
 
     cli_module.main(["--host", "0.0.0.0", "--port", "9092"])
 

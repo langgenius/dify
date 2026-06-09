@@ -234,7 +234,9 @@ def test_connect_agent_stub_sync_dispatches_grpc_urls(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.client._agent_stub_grpc.connect_agent_stub_grpc_sync",
-        lambda **kwargs: captured.update(kwargs) or type("Response", (), {"connection_id": "conn-1", "status": "connected"})(),
+        lambda **kwargs: (
+            captured.update(kwargs) or type("Response", (), {"connection_id": "conn-1", "status": "connected"})()
+        ),
     )
 
     response = connect_agent_stub_sync(url="grpc://agent.example.com:9091", auth_jwe="token", argv=["connect"])
@@ -262,7 +264,9 @@ def test_request_agent_stub_file_upload_sync_dispatches_grpc_urls(monkeypatch: p
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.client._agent_stub_grpc.request_agent_stub_file_upload_grpc_sync",
-        lambda **kwargs: captured.update(kwargs) or type("Response", (), {"upload_url": "https://files.example.com/upload"})(),
+        lambda **kwargs: (
+            captured.update(kwargs) or type("Response", (), {"upload_url": "https://files.example.com/upload"})()
+        ),
     )
 
     response = request_agent_stub_file_upload_sync(
@@ -288,17 +292,19 @@ def test_request_agent_stub_file_download_sync_dispatches_grpc_urls(monkeypatch:
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.client._agent_stub_grpc.request_agent_stub_file_download_grpc_sync",
-        lambda **kwargs: captured.update(kwargs)
-        or type(
-            "Response",
-            (),
-            {
-                "filename": "report.pdf",
-                "mime_type": "application/pdf",
-                "size": 123,
-                "download_url": "https://files.example.com/download",
-            },
-        )(),
+        lambda **kwargs: (
+            captured.update(kwargs)
+            or type(
+                "Response",
+                (),
+                {
+                    "filename": "report.pdf",
+                    "mime_type": "application/pdf",
+                    "size": 123,
+                    "download_url": "https://files.example.com/download",
+                },
+            )()
+        ),
     )
 
     response = request_agent_stub_file_download_sync(

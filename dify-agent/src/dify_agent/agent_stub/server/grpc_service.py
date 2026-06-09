@@ -159,7 +159,9 @@ def create_agent_stub_grpc_service(
             request = await stream.recv_message()
             if request is None:
                 raise _grpc_error("INVALID_ARGUMENT", "missing Agent Stub request message")
-            await stream.send_message(await transport.create_file_upload_request(request=request, metadata=stream.metadata))
+            await stream.send_message(
+                await transport.create_file_upload_request(request=request, metadata=stream.metadata)
+            )
 
         async def CreateFileDownloadRequest(
             self,

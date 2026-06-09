@@ -11,9 +11,9 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from graphon.file import FileTransferMethod
 
 from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+from graphon.file import FileTransferMethod
 
 
 def test_empty_inputs_return_false_without_db_hit():

@@ -34,8 +34,7 @@ class StubFileValidator:
         # Mapping: tenant_id -> {file_id, ...}
         self._allowed = {tenant: set(ids) for tenant, ids in (allowed or {}).items()}
         self._allowed_by_method = {
-            (tenant, transfer_method): set(ids)
-            for (tenant, transfer_method), ids in (allowed_by_method or {}).items()
+            (tenant, transfer_method): set(ids) for (tenant, transfer_method), ids in (allowed_by_method or {}).items()
         }
 
     def is_accessible_file_mapping(

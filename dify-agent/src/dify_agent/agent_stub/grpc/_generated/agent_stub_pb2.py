@@ -4,6 +4,7 @@
 # source: dify/agent/stub/v1/agent_stub.proto
 # Protobuf Python Version: 6.33.5
 """Generated protocol buffer code."""
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
@@ -29,23 +30,23 @@ DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'dify_agent.agent_stub.grpc._generated.agent_stub_pb2', _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "dify_agent.agent_stub.grpc._generated.agent_stub_pb2", _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
     DESCRIPTOR._loaded_options = None
-    _globals['_CONNECTREQUEST']._serialized_start = 59
-    _globals['_CONNECTREQUEST']._serialized_end = 138
-    _globals['_CONNECTRESPONSE']._serialized_start = 140
-    _globals['_CONNECTRESPONSE']._serialized_end = 196
-    _globals['_FILEUPLOADREQUEST']._serialized_start = 198
-    _globals['_FILEUPLOADREQUEST']._serialized_end = 253
-    _globals['_FILEUPLOADRESPONSE']._serialized_start = 255
-    _globals['_FILEUPLOADRESPONSE']._serialized_end = 295
-    _globals['_FILEMAPPING']._serialized_start = 297
-    _globals['_FILEMAPPING']._serialized_end = 399
-    _globals['_FILEDOWNLOADREQUEST']._serialized_start = 401
-    _globals['_FILEDOWNLOADREQUEST']._serialized_end = 469
-    _globals['_FILEDOWNLOADRESPONSE']._serialized_start = 471
-    _globals['_FILEDOWNLOADRESPONSE']._serialized_end = 585
-    _globals['_AGENTSTUBSERVICE']._serialized_start = 588
-    _globals['_AGENTSTUBSERVICE']._serialized_end = 908
+    _globals["_CONNECTREQUEST"]._serialized_start = 59
+    _globals["_CONNECTREQUEST"]._serialized_end = 138
+    _globals["_CONNECTRESPONSE"]._serialized_start = 140
+    _globals["_CONNECTRESPONSE"]._serialized_end = 196
+    _globals["_FILEUPLOADREQUEST"]._serialized_start = 198
+    _globals["_FILEUPLOADREQUEST"]._serialized_end = 253
+    _globals["_FILEUPLOADRESPONSE"]._serialized_start = 255
+    _globals["_FILEUPLOADRESPONSE"]._serialized_end = 295
+    _globals["_FILEMAPPING"]._serialized_start = 297
+    _globals["_FILEMAPPING"]._serialized_end = 399
+    _globals["_FILEDOWNLOADREQUEST"]._serialized_start = 401
+    _globals["_FILEDOWNLOADREQUEST"]._serialized_end = 469
+    _globals["_FILEDOWNLOADRESPONSE"]._serialized_start = 471
+    _globals["_FILEDOWNLOADRESPONSE"]._serialized_end = 585
+    _globals["_AGENTSTUBSERVICE"]._serialized_start = 588
+    _globals["_AGENTSTUBSERVICE"]._serialized_end = 908
 # @@protoc_insertion_point(module_scope)

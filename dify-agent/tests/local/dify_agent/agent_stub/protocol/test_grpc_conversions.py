@@ -68,6 +68,11 @@ def test_proto_responses_preserve_optional_fields() -> None:
     )
 
     assert message.HasField("mime_type") is True
-    assert connect_response_from_proto(
-        agent_stub_pb2.ConnectResponse(**AgentStubConnectResponse(connection_id="conn-1", status="connected").model_dump())
-    ).connection_id == "conn-1"
+    assert (
+        connect_response_from_proto(
+            agent_stub_pb2.ConnectResponse(
+                **AgentStubConnectResponse(connection_id="conn-1", status="connected").model_dump()
+            )
+        ).connection_id
+        == "conn-1"
+    )

@@ -130,7 +130,9 @@ def test_cli_reports_structurally_invalid_agent_stub_url_environment_value(
     assert expected_message in captured.err
 
 
-def test_cli_connect_accepts_grpc_agent_stub_url(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_connect_accepts_grpc_agent_stub_url(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setenv("DIFY_AGENT_STUB_URL", "grpc://agent.example.com:9091")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 

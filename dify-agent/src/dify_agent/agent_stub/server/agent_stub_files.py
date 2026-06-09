@@ -166,7 +166,9 @@ class DifyApiAgentStubFileRequestHandler:
         except ValidationError as exc:
             raise AgentStubFileRequestError(502, "Dify API download request response is invalid") from exc
 
-    def _require_user_context(self, execution_context: DifyExecutionContextLayerConfig) -> DifyExecutionContextLayerConfig:
+    def _require_user_context(
+        self, execution_context: DifyExecutionContextLayerConfig
+    ) -> DifyExecutionContextLayerConfig:
         if execution_context.user_id is None:
             raise AgentStubFileRequestError(400, "execution context user_id is required for file operations")
         return execution_context
