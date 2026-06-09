@@ -119,13 +119,12 @@ export default function AppSelector() {
 
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
+  const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
   const clearEducationReverifyPrevExpireAt = useSetLocalStorage<number>(EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY)
   const clearEducationReverifyHasNoticed = useSetLocalStorage<boolean>(EDUCATION_REVERIFY_HAS_NOTICED_KEY)
   const clearEducationExpiredHasNoticed = useSetLocalStorage<boolean>(EDUCATION_EXPIRED_HAS_NOTICED_KEY)
-  const canViewMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
 
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
@@ -179,7 +178,7 @@ export default function AppSelector() {
             <AccountMenuActionItem
               iconClassName="i-ri-settings-3-line"
               label={t('userProfile.settings', { ns: 'common' })}
-              onClick={() => setShowAccountSettingModal({ payload: canViewMembers ? ACCOUNT_SETTING_TAB.MEMBERS : ACCOUNT_SETTING_TAB.PROVIDER })}
+              onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
             />
           </DropdownMenuGroup>
           <DropdownMenuSeparator className="my-0! bg-divider-subtle" />

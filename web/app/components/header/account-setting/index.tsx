@@ -58,7 +58,6 @@ export default function AccountSetting({
   const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const containerRef = useRef<HTMLDivElement>(null)
-  const canViewMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const canViewRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
 
   const workplaceGroupItems: GroupItem[] = (() => {
@@ -71,14 +70,12 @@ export default function AccountSetting({
       },
     ]
 
-    if (canViewMembers) {
-      items.push({
-        key: ACCOUNT_SETTING_TAB.MEMBERS,
-        name: t('settings.members', { ns: 'common' }),
-        icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
-      })
-    }
+    items.push({
+      key: ACCOUNT_SETTING_TAB.MEMBERS,
+      name: t('settings.members', { ns: 'common' }),
+      icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    })
 
     if (systemFeatures.rbac_enabled && canViewRoles) {
       items.push(
