@@ -35,66 +35,12 @@ import { deploymentEnvironmentOptions } from './use-deployment-target-options'
 
 type RefetchDeployableEnvironments = () => Promise<QueryObserverResult<ListDeployableEnvironmentsReply>>
 
-function hasMissingRequiredEnvVarValue(slot: EnvVarBindingSlot, values: EnvVarValues) {
-  const selection = values[slot.key]
-  if (!selection)
-    throw new Error(`Missing env var selection for ${slot.key}.`)
-
-  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
-    return !slot.hasLastValue
-  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
-    return !slot.hasDefaultValue
-
-  const value = selection.value
-  if (!value)
-    return true
-
-  return slot.valueType === 'number' && Number.isNaN(Number(value))
-}
-
-function selectedDeploymentEnvVars(slots: EnvVarBindingSlot[], values: EnvVarValues): EnvVarInput[] {
-  return slots.flatMap((slot): EnvVarInput[] => {
-    const selection = values[slot.key]
-    if (!selection)
-      throw new Error(`Missing env var selection for ${slot.key}.`)
-
-    if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
-      return slot.hasLastValue
-        ? [{
-            key: slot.key,
-            valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
-          }]
-        : []
-    }
-
-    if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
-      return slot.hasDefaultValue
-        ? [{
-            key: slot.key,
-            valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
-          }]
-        : []
-    }
-
-    if (!selection.value)
-      return []
-    if (slot.valueType === 'number' && Number.isNaN(Number(selection.value)))
-      return []
-
-    return [{
-      key: slot.key,
-      value: selection.value,
-      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
-    }]
-  })
-}
-
 export function useCreateDeploymentSubmission({
   bindingSelections,
   bindingSlots,
   deploymentOptionsDslDigest,
   dslContent,
-  effectiveEnvVarValues,
+  envVarValues,
   effectiveSelectedApp,
   encodedDslContent,
   envVarSlots,
@@ -115,7 +61,7 @@ export function useCreateDeploymentSubmission({
   bindingSlots: CredentialSlot[]
   deploymentOptionsDslDigest?: string
   dslContent: string
-  effectiveEnvVarValues: EnvVarValues
+  envVarValues: EnvVarValues
   effectiveSelectedApp?: App
   encodedDslContent: string
   envVarSlots: EnvVarBindingSlot[]
@@ -238,11 +184,58 @@ export function useCreateDeploymentSubmission({
       const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
       if (missingRequiredBinding)
         throw new Error('Missing required deployment binding.')
-      const missingRequiredEnvVar = envVarSlots.some(slot => hasMissingRequiredEnvVarValue(slot, effectiveEnvVarValues))
+      const missingRequiredEnvVar = envVarSlots.some((slot) => {
+        const selection = envVarValues[slot.key]
+        const valueSource = selection?.valueSource
+          ?? (slot.hasDefaultValue
+            ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
+            : slot.hasLastValue
+              ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+              : ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL)
+
+        if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
+          return !slot.hasLastValue
+        if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
+          return !slot.hasDefaultValue
+        if (!selection?.value)
+          return true
+
+        return slot.valueType === 'number' && Number.isNaN(Number(selection.value))
+      })
       if (missingRequiredEnvVar)
         throw new Error('Missing required deployment environment variable.')
 
       const idempotencyKey = createDeploymentIdempotencyKey()
+      const envVars = envVarSlots.flatMap((slot): EnvVarInput[] => {
+        const selection = envVarValues[slot.key]
+        const valueSource = selection?.valueSource
+          ?? (slot.hasDefaultValue
+            ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
+            : slot.hasLastValue
+              ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+              : ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL)
+
+        if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
+          return slot.hasLastValue
+            ? [{ key: slot.key, valueSource }]
+            : []
+        }
+
+        if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
+          return slot.hasDefaultValue
+            ? [{ key: slot.key, valueSource }]
+            : []
+        }
+
+        if (!selection?.value || (slot.valueType === 'number' && Number.isNaN(Number(selection.value))))
+          return []
+
+        return [{
+          key: slot.key,
+          value: selection.value,
+          valueSource,
+        }]
+      })
       const response = method === 'importDsl'
         ? await createInitialDeployment.mutateAsync({
             body: {
@@ -255,7 +248,7 @@ export function useCreateDeploymentSubmission({
               releaseName: submittedReleaseName,
               releaseDescription: submittedReleaseDescription || undefined,
               credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
-              envVars: selectedDeploymentEnvVars(envVarSlots, effectiveEnvVarValues),
+              envVars,
               idempotencyKey,
               expectedDslDigest: deploymentOptionsDslDigest,
             },
@@ -272,7 +265,7 @@ export function useCreateDeploymentSubmission({
                 releaseName: submittedReleaseName,
                 releaseDescription: submittedReleaseDescription || undefined,
                 credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
-                envVars: selectedDeploymentEnvVars(envVarSlots, effectiveEnvVarValues),
+                envVars,
                 idempotencyKey,
                 expectedDslDigest: deploymentOptionsDslDigest,
               },

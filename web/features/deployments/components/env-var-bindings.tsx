@@ -24,6 +24,7 @@ export type EnvVarValueSelection = {
   value?: string
 }
 export type EnvVarValues = Record<string, EnvVarValueSelection>
+type EnvVarDefaultSourcePriority = 'dslDefault' | 'lastDeployment'
 
 type EnvVarValueSourceOption = {
   value: EnvVarValueSource
@@ -41,6 +42,7 @@ type EnvVarBindingsPanelProps = {
   lastDeploymentSourceLabel: string
   valueTypeLabels: Record<EnvVarValueType, string>
   sourceAriaLabel: (key: string) => string
+  defaultSourcePriority?: EnvVarDefaultSourcePriority
   envVarCountLabel?: string
   missingRequiredLabel?: string
   showMissingRequired?: boolean
@@ -91,15 +93,6 @@ function envVarValueSourceOptions(slot: EnvVarBindingSlot, labels: {
   return options
 }
 
-function envVarSelectionDisplayValue(slot: EnvVarBindingSlot, selection: EnvVarValueSelection) {
-  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
-    return slot.defaultValue ?? ''
-  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
-    return slot.lastValue ?? ''
-
-  return selection.value ?? ''
-}
-
 export function EnvVarBindingsPanel({
   slots,
   values,
@@ -111,6 +104,7 @@ export function EnvVarBindingsPanel({
   lastDeploymentSourceLabel,
   valueTypeLabels,
   sourceAriaLabel,
+  defaultSourcePriority,
   envVarCountLabel,
   missingRequiredLabel,
   showMissingRequired = false,
@@ -144,20 +138,29 @@ export function EnvVarBindingsPanel({
           const description = slot.description
           const inputId = envVarInputId(index, slot.key)
           const selection = values[slot.key]
-          if (!selection)
-            throw new Error(`Missing env var selection for ${slot.key}.`)
-
-          const invalidLiteralNumber = slot.valueType === 'number' && Number.isNaN(Number(selection.value))
+          const defaultValueSource = defaultSourcePriority === 'lastDeployment' && slot.hasLastValue
+            ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+            : slot.hasDefaultValue
+              ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
+              : slot.hasLastValue
+                ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+                : ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
+          const valueSource = selection?.valueSource ?? defaultValueSource
+          const invalidLiteralNumber = slot.valueType === 'number' && Number.isNaN(Number(selection?.value))
           const missing = showMissingRequired
-            && selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
-            && (!selection.value || invalidLiteralNumber)
+            && valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
+            && (!selection?.value || invalidLiteralNumber)
           const sourceOptions = envVarValueSourceOptions(slot, {
             literal: literalSourceLabel,
             defaultValue: defaultSourceLabel,
             lastDeployment: lastDeploymentSourceLabel,
           })
-          const isLiteralValue = selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
-          const displayValue = envVarSelectionDisplayValue(slot, selection)
+          const isLiteralValue = valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
+          const displayValue = valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
+            ? slot.defaultValue ?? ''
+            : valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+              ? slot.lastValue ?? ''
+              : selection?.value ?? ''
 
           return (
             <div key={slot.key} className="flex min-w-0 flex-col gap-2 border-b border-divider-subtle px-3 py-3 last:border-b-0">
@@ -176,13 +179,13 @@ export function EnvVarBindingsPanel({
                   {sourceOptions.length > 1 && (
                     <SegmentedControl<EnvVarValueSource>
                       aria-label={sourceAriaLabel(slot.key)}
-                      value={[selection.valueSource]}
+                      value={[valueSource]}
                       onValueChange={(value) => {
                         const nextSource = value[0]
                         if (!nextSource)
                           return
                         onChange(slot.key, {
-                          ...selection,
+                          value: selection?.value,
                           valueSource: nextSource,
                         })
                       }}
@@ -208,7 +211,6 @@ export function EnvVarBindingsPanel({
                   type={ENV_VAR_INPUT_TYPES[slot.valueType]}
                   value={displayValue}
                   onChange={event => onChange(slot.key, {
-                    ...selection,
                     value: event.target.value,
                     valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
                   })}

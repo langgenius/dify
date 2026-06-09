@@ -7,7 +7,6 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import { CreateReleaseControl } from '../components/create-release-control'
-import { DeployDrawer } from '../components/deploy-drawer'
 import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
 import { DeploymentSidebar } from './deployment-sidebar'
 import { DeveloperApiHeaderActions, DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
@@ -55,43 +54,40 @@ export function InstanceDetail({ appInstanceId, children }: {
   useDocumentTitle(t('documentTitle.detail'))
 
   return (
-    <>
-      <div className="relative flex h-full min-w-0 overflow-hidden rounded-t-2xl shadow-xs">
-        <DeploymentSidebar appInstanceId={appInstanceId} />
-        <div className="min-w-0 grow overflow-hidden bg-components-panel-bg">
-          <div className="h-full min-w-0 overflow-y-auto">
-            <div className="flex min-h-full w-full flex-col">
-              <div className="flex w-full flex-col gap-y-0.5 px-4 pt-3 pb-2 sm:px-6">
-                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-                      <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
-                      {activeTab === 'api-tokens' && (
-                        <div className="shrink-0">
-                          <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
+    <div className="relative flex h-full min-w-0 overflow-hidden rounded-t-2xl shadow-xs">
+      <DeploymentSidebar appInstanceId={appInstanceId} />
+      <div className="min-w-0 grow overflow-hidden bg-components-panel-bg">
+        <div className="h-full min-w-0 overflow-y-auto">
+          <div className="flex min-h-full w-full flex-col">
+            <div className="flex w-full flex-col gap-y-0.5 px-4 pt-3 pb-2 sm:px-6">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                    <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
+                    {activeTab === 'api-tokens' && (
+                      <div className="shrink-0">
+                        <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
+                      </div>
+                    )}
                   </div>
-                  {(activeTab === 'api-tokens' || activeTab === 'instances' || activeTab === 'releases') && (
-                    <div className="w-full shrink-0 pt-1 sm:w-auto sm:pt-1.5 [&_button]:w-full sm:[&_button]:w-auto">
-                      {activeTab === 'api-tokens'
-                        ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
-                        : activeTab === 'instances'
-                          ? <NewDeploymentHeaderAction appInstanceId={appInstanceId} />
-                          : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
-                    </div>
-                  )}
+                  <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
                 </div>
+                {(activeTab === 'api-tokens' || activeTab === 'instances' || activeTab === 'releases') && (
+                  <div className="w-full shrink-0 pt-1 sm:w-auto sm:pt-1.5 [&_button]:w-full sm:[&_button]:w-auto">
+                    {activeTab === 'api-tokens'
+                      ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
+                      : activeTab === 'instances'
+                        ? <NewDeploymentHeaderAction appInstanceId={appInstanceId} />
+                        : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
+                  </div>
+                )}
               </div>
-              <MobileDetailTabs appInstanceId={appInstanceId} activeTab={activeTab} />
-              {children}
             </div>
+            <MobileDetailTabs appInstanceId={appInstanceId} activeTab={activeTab} />
+            {children}
           </div>
         </div>
       </div>
-      <DeployDrawer />
-    </>
+    </div>
   )
 }

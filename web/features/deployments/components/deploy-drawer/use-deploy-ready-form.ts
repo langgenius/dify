@@ -1,22 +1,24 @@
 'use client'
 
 import type {
+  CredentialSelectionInput,
+  CredentialSlot,
+  Environment,
   EnvironmentDeployment,
   EnvVarInput,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
+import type { Getter } from 'jotai'
 import type {
   EnvVarBindingSlot,
   EnvVarValues,
   EnvVarValueSelection,
 } from '../env-var-bindings'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
-import type { EnvironmentOption } from './form-sections'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
-import { useState } from 'react'
+import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { environmentId } from '../../environment'
@@ -30,7 +32,9 @@ import {
   selectedRuntimeCredentialSelections,
 } from '../runtime-credential-bindings-utils'
 
-type UseDeployReadyFormParams = {
+export type EnvironmentOption = Environment & { id: string }
+
+export type DeployReadyFormConfig = {
   appInstanceId: string
   environments: EnvironmentOption[]
   releases: Release[]
@@ -38,153 +42,159 @@ type UseDeployReadyFormParams = {
   defaultReleaseId?: string
   lockedEnvId?: string
   presetReleaseId?: string
+  releaseEmptyLabel?: string
 }
 
-function releaseDeploymentEnvVarSlots(slots: EnvVarBindingSlot[]) {
-  return slots.map((slot) => {
-    const {
-      defaultValue: _defaultValue,
-      hasDefaultValue: _hasDefaultValue,
-      ...slotWithoutDefaultValue
-    } = slot
+export const deployReadyFormConfigAtom = atom<DeployReadyFormConfig | undefined>(undefined)
 
-    return slotWithoutDefaultValue
-  })
+const selectedEnvIdAtom = atom<string | undefined>(undefined)
+const selectedReleaseIdAtom = atom<string | undefined>(undefined)
+const manualBindingsAtom = atom<RuntimeCredentialBindingSelections>({})
+const envVarValuesAtom = atom<EnvVarValues>({})
+const showValidationErrorsAtom = atom(false)
+
+function formConfig(get: Getter) {
+  const config = get(deployReadyFormConfigAtom)
+  if (!config)
+    throw new Error('Missing deploy ready form config.')
+
+  return config
 }
 
-function defaultEnvVarSelection(slot: EnvVarBindingSlot): EnvVarValueSelection {
-  if (slot.hasLastValue) {
-    return {
-      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
-    }
-  }
+const resetDeployBindingsAtom = atom(null, (_get, set) => {
+  set(manualBindingsAtom, {})
+  set(envVarValuesAtom, {})
+  set(showValidationErrorsAtom, false)
+})
 
-  if (slot.hasDefaultValue) {
-    return {
-      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
-    }
-  }
+export const selectDeployEnvironmentAtom = atom(null, (_get, set, environmentId: string) => {
+  set(selectedEnvIdAtom, environmentId)
+  set(resetDeployBindingsAtom)
+})
+
+export const selectDeployReleaseAtom = atom(null, (_get, set, releaseId: string) => {
+  set(selectedReleaseIdAtom, releaseId)
+  set(resetDeployBindingsAtom)
+})
+
+export const showDeployValidationErrorsAtom = atom(null, (_get, set) => {
+  set(showValidationErrorsAtom, true)
+})
+
+export const deployPresetReleaseAtom = atom((get) => {
+  const config = formConfig(get)
+  return config.presetReleaseId ? config.releases.find(r => r.id === config.presetReleaseId) : undefined
+})
+
+export const deployDisplayedReleaseAtom = atom((get): Release | undefined => {
+  const config = formConfig(get)
+  const presetRelease = get(deployPresetReleaseAtom)
+  return presetRelease ?? (config.presetReleaseId ? { id: config.presetReleaseId } : undefined)
+})
+
+export const deployIsExistingReleaseAtom = atom((get) => {
+  const config = formConfig(get)
+  return Boolean(config.presetReleaseId)
+})
+
+export const deploySelectedEnvironmentIdAtom = atom((get) => {
+  const config = formConfig(get)
+  return get(selectedEnvIdAtom) || config.lockedEnvId || config.environments[0]?.id || ''
+})
+
+export const deploySelectedEnvironmentAtom = atom((get) => {
+  const config = formConfig(get)
+  const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
+  return config.environments.find(env => env.id === selectedEnvironmentId)
+})
+
+export const deploySelectedReleaseIdAtom = atom((get) => {
+  const config = formConfig(get)
+  const displayedRelease = get(deployDisplayedReleaseAtom)
+  return get(selectedReleaseIdAtom) || displayedRelease?.id || config.defaultReleaseId || ''
+})
+
+export const deploySelectedReleaseAtom = atom((get) => {
+  const config = formConfig(get)
+  const selectedReleaseId = get(deploySelectedReleaseIdAtom)
+  return config.releases.find(release => release.id === selectedReleaseId)
+})
+
+export const deployTargetReleaseAtom = atom((get) => {
+  return get(deployDisplayedReleaseAtom) ?? get(deploySelectedReleaseAtom)
+})
+
+export const deployTargetReleaseIdAtom = atom((get) => {
+  const targetRelease = get(deployTargetReleaseAtom)
+  return targetRelease?.id ?? get(deploySelectedReleaseIdAtom)
+})
+
+export const deployHasSelectedEnvironmentAtom = atom((get) => {
+  return Boolean(get(deploySelectedEnvironmentIdAtom) && get(deploySelectedEnvironmentAtom))
+})
+
+export function useDeployReadyFormConfig() {
+  const config = useAtomValue(deployReadyFormConfigAtom)
+  if (!config)
+    throw new Error('Missing deploy ready form config.')
+
+  return config
+}
+
+export function useDeployReleaseField() {
+  const config = useDeployReadyFormConfig()
+  const displayedRelease = useAtomValue(deployDisplayedReleaseAtom)
+  const isExistingRelease = useAtomValue(deployIsExistingReleaseAtom)
+  const selectedReleaseId = useAtomValue(deploySelectedReleaseIdAtom)
+  const selectRelease = useSetAtom(selectDeployReleaseAtom)
 
   return {
-    valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
+    displayedRelease,
+    emptyLabel: config.releaseEmptyLabel,
+    isExistingRelease,
+    releases: config.releases,
+    selectedReleaseId,
+    selectRelease,
   }
 }
 
-function envVarValuesWithSlotDefaults(values: EnvVarValues, slots: EnvVarBindingSlot[]) {
-  let hasChanges = false
-  const nextValues: EnvVarValues = { ...values }
+export function useDeployEnvironmentField() {
+  const config = useDeployReadyFormConfig()
+  const selectedEnvironmentId = useAtomValue(deploySelectedEnvironmentIdAtom)
+  const selectEnvironment = useSetAtom(selectDeployEnvironmentAtom)
+  const lockedEnv = config.lockedEnvId ? config.environments.find(e => e.id === config.lockedEnvId) : undefined
 
-  slots.forEach((slot) => {
-    if (nextValues[slot.key])
-      return
-
-    nextValues[slot.key] = defaultEnvVarSelection(slot)
-    hasChanges = true
-  })
-
-  return hasChanges ? nextValues : values
+  return {
+    environments: config.environments,
+    lockedEnv,
+    lockedEnvId: config.lockedEnvId,
+    selectedEnvironmentId,
+    selectEnvironment,
+  }
 }
 
-function hasMissingRequiredEnvVarValue(slot: EnvVarBindingSlot, values: EnvVarValues) {
-  const selection = values[slot.key]
-  if (!selection)
-    throw new Error(`Missing env var selection for ${slot.key}.`)
-
-  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
-    return !slot.hasLastValue
-  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
-    return !slot.hasDefaultValue
-
-  const value = selection.value
-  if (!value)
-    return true
-
-  return slot.valueType === 'number' && Number.isNaN(Number(value))
-}
-
-function selectedDeploymentEnvVars(slots: EnvVarBindingSlot[], values: EnvVarValues): EnvVarInput[] {
-  return slots.flatMap((slot): EnvVarInput[] => {
-    const selection = values[slot.key]
-    if (!selection)
-      throw new Error(`Missing env var selection for ${slot.key}.`)
-
-    if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
-      return slot.hasLastValue
-        ? [{
-            key: slot.key,
-            valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
-          }]
-        : []
-    }
-
-    if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
-      return slot.hasDefaultValue
-        ? [{
-            key: slot.key,
-            valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
-          }]
-        : []
-    }
-
-    if (!selection.value)
-      return []
-    if (slot.valueType === 'number' && Number.isNaN(Number(selection.value)))
-      return []
-
-    return [{
-      key: slot.key,
-      value: selection.value,
-      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
-    }]
-  })
-}
-
-export function useDeployReadyForm({
-  appInstanceId,
-  environments,
-  releases,
-  runtimeRows,
-  defaultReleaseId,
-  lockedEnvId,
-  presetReleaseId,
-}: UseDeployReadyFormParams) {
-  const { t } = useTranslation('deployments')
-  const closeDeployDrawer = useSetAtom(closeDeployDrawerAtom)
-  const promoteRelease = useMutation(consoleQuery.enterprise.deploymentService.promote.mutationOptions())
-  const rollbackRelease = useMutation(consoleQuery.enterprise.deploymentService.rollback.mutationOptions())
-  const presetRelease = presetReleaseId ? releases.find(r => r.id === presetReleaseId) : undefined
-  const displayedRelease: Release | undefined = presetRelease ?? (presetReleaseId ? { id: presetReleaseId } : undefined)
-  const isExistingRelease = Boolean(presetReleaseId)
-
-  const [selectedEnvId, setSelectedEnvId] = useState<string>(
-    () => lockedEnvId ?? environments[0]?.id ?? '',
-  )
-  const selectedEnvironmentId = selectedEnvId || lockedEnvId || environments[0]?.id || ''
-  const selectedEnvironment = environments.find(env => env.id === selectedEnvironmentId)
-  const [selectedReleaseId, setSelectedReleaseId] = useState<string>(
-    () => displayedRelease?.id ?? defaultReleaseId ?? '',
-  )
-  const selectedRelease = releases.find(release => release.id === selectedReleaseId)
-  const targetRelease = displayedRelease ?? selectedRelease
-  const targetReleaseId = targetRelease?.id ?? selectedReleaseId
-  const hasSelectedEnvironment = Boolean(selectedEnvironmentId && selectedEnvironment)
-  const shouldLoadBindingOptions = Boolean(appInstanceId && targetReleaseId && hasSelectedEnvironment)
-  const bindingOptions = useQuery(consoleQuery.enterprise.releaseService.listReleaseCredentialCandidates.queryOptions({
-    input: shouldLoadBindingOptions
+export function useReleaseDeploymentOptions() {
+  const config = useDeployReadyFormConfig()
+  const hasSelectedEnvironment = useAtomValue(deployHasSelectedEnvironmentAtom)
+  const releaseId = useAtomValue(deployTargetReleaseIdAtom)
+  const selectedEnvironmentId = useAtomValue(deploySelectedEnvironmentIdAtom)
+  const shouldLoadCredentialCandidates = Boolean(config.appInstanceId && releaseId && hasSelectedEnvironment)
+  const credentialCandidatesQuery = useQuery(consoleQuery.enterprise.releaseService.listReleaseCredentialCandidates.queryOptions({
+    input: shouldLoadCredentialCandidates
       ? {
           params: {
-            releaseId: targetReleaseId,
+            releaseId,
           },
         }
       : skipToken,
   }))
-  const shouldLoadDeploymentOptions = Boolean(targetReleaseId && selectedEnvironmentId && hasSelectedEnvironment)
+  const shouldLoadDeploymentOptions = Boolean(releaseId && selectedEnvironmentId && hasSelectedEnvironment)
   const deploymentOptionsQuery = useQuery({
     ...consoleQuery.enterprise.releaseService.getReleaseDeploymentOptions.queryOptions({
       input: shouldLoadDeploymentOptions
         ? {
             params: {
-              releaseId: targetReleaseId,
+              releaseId,
             },
             query: {
               environmentId: selectedEnvironmentId,
@@ -194,69 +204,122 @@ export function useDeployReadyForm({
     }),
     retry: false,
   })
-  const deploymentOptionCredentialSlots = deploymentOptionsQuery.data?.options?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
-  const credentialCandidateSlots = bindingOptions.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
-  const bindingSlots = deploymentOptionCredentialSlots.length > 0 ? deploymentOptionCredentialSlots : credentialCandidateSlots
-  const deploymentOptionEnvVarSlots = releaseDeploymentEnvVarSlots(
-    (deploymentOptionsQuery.data?.options?.envVarSlots ?? []) as EnvVarBindingSlot[],
+  const deploymentOptionCredentialSlots = deploymentOptionsQuery.data?.options?.credentialSlots
+  const shouldUseCredentialCandidateSlots = Boolean(
+    deploymentOptionsQuery.data && deploymentOptionCredentialSlots === undefined,
   )
-  const envVarSlots = deploymentOptionEnvVarSlots
-  const [manualBindings, setManualBindings] = useState<RuntimeCredentialBindingSelections>({})
-  const [envVarValues, setEnvVarValues] = useState<EnvVarValues>({})
-  const [showValidationErrors, setShowValidationErrors] = useState(false)
-  const effectiveEnvVarValues = envVarValuesWithSlotDefaults(envVarValues, envVarSlots)
-  const selectedBindings = selectedRuntimeCredentialSelections(bindingSlots, manualBindings)
-  const deploymentCredentials = selectedDeploymentRuntimeCredentials(bindingSlots, selectedBindings)
-  const deploymentEnvVars = selectedDeploymentEnvVars(envVarSlots, effectiveEnvVarValues)
-  const bindingOptionsLoading = Boolean(
-    targetReleaseId
+  const normalizedDeploymentOptionCredentialSlots = deploymentOptionCredentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
+  const credentialCandidateSlots = credentialCandidatesQuery.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
+  const bindingSlots = shouldUseCredentialCandidateSlots
+    ? credentialCandidateSlots
+    : normalizedDeploymentOptionCredentialSlots
+  const envVarSlots = deploymentOptionsQuery.data?.options?.envVarSlots?.flatMap((slot): EnvVarBindingSlot[] => {
+    const key = slot.key?.trim()
+    if (!key)
+      return []
+
+    return [{
+      ...slot,
+      key,
+      valueType: slot.valueType === 'number' || slot.valueType === 'secret' ? slot.valueType : 'string',
+    }]
+  }) ?? []
+  const deploymentOptionsLoading = deploymentOptionsQuery.isLoading || deploymentOptionsQuery.isFetching
+  const credentialCandidatesLoading = shouldUseCredentialCandidateSlots
+    && (credentialCandidatesQuery.isLoading || credentialCandidatesQuery.isFetching)
+  const isBindingOptionsLoading = Boolean(
+    releaseId
     && hasSelectedEnvironment
     && (
-      bindingOptions.isLoading
-      || bindingOptions.isFetching
-      || deploymentOptionsQuery.isLoading
-      || deploymentOptionsQuery.isFetching
+      deploymentOptionsLoading
+      || credentialCandidatesLoading
     ),
   )
-  const bindingOptionsError = Boolean(bindingOptions.isError || deploymentOptionsQuery.isError)
-  const bindingOptionsReady = Boolean(
-    targetReleaseId
+  const hasBindingOptionsError = Boolean(
+    deploymentOptionsQuery.isError
+    || (shouldUseCredentialCandidateSlots && credentialCandidatesQuery.isError),
+  )
+  const credentialSlotsReady = !shouldUseCredentialCandidateSlots || Boolean(credentialCandidatesQuery.data)
+  const isBindingOptionsReady = Boolean(
+    releaseId
     && hasSelectedEnvironment
-    && (bindingOptions.data || deploymentOptionsQuery.data)
-    && !bindingOptionsLoading
-    && !bindingOptionsError,
+    && deploymentOptionsQuery.data
+    && credentialSlotsReady
+    && !isBindingOptionsLoading
+    && !hasBindingOptionsError,
   )
+
+  return {
+    bindingSlots,
+    envVarSlots,
+    hasBindingOptionsError,
+    isBindingOptionsLoading,
+    isBindingOptionsReady,
+  }
+}
+
+export function useDeployBindings({
+  bindingSlots,
+  envVarSlots,
+}: {
+  bindingSlots: CredentialSlot[]
+  envVarSlots: EnvVarBindingSlot[]
+}) {
+  const [manualBindings, setManualBindings] = useAtom(manualBindingsAtom)
+  const [envVarValues, setEnvVarValues] = useAtom(envVarValuesAtom)
+  const showValidationErrors = useAtomValue(showValidationErrorsAtom)
+  const showDeploymentValidationErrors = useSetAtom(showDeployValidationErrorsAtom)
+  const selectedBindings = selectedRuntimeCredentialSelections(bindingSlots, manualBindings)
+  const deploymentCredentials = selectedDeploymentRuntimeCredentials(bindingSlots, selectedBindings)
+  const deploymentEnvVars = envVarSlots.flatMap((slot): EnvVarInput[] => {
+    const selection = envVarValues[slot.key]
+    const valueSource = selection?.valueSource
+      ?? (slot.hasLastValue
+        ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+        : slot.hasDefaultValue
+          ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
+          : ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL)
+
+    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
+      return slot.hasLastValue
+        ? [{ key: slot.key, valueSource }]
+        : []
+    }
+
+    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
+      return slot.hasDefaultValue
+        ? [{ key: slot.key, valueSource }]
+        : []
+    }
+
+    if (!selection?.value || (slot.valueType === 'number' && Number.isNaN(Number(selection.value))))
+      return []
+
+    return [{
+      key: slot.key,
+      value: selection.value,
+      valueSource,
+    }]
+  })
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, selectedBindings[runtimeCredentialSlotKey(slot)]))
-  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, effectiveEnvVarValues))
-  const isSubmitting = promoteRelease.isPending || rollbackRelease.isPending
-  const deployFormReady = Boolean(
-    selectedEnvironmentId
-    && selectedEnvironment
-    && targetReleaseId
-    && bindingOptionsReady
-    && !isSubmitting,
-  )
-  const canDeploy = Boolean(
-    deployFormReady
-    && requiredBindingsReady
-    && requiredEnvVarsReady,
-  )
+  const requiredEnvVarsReady = envVarSlots.every((slot) => {
+    const selection = envVarValues[slot.key]
+    const valueSource = selection?.valueSource
+      ?? (slot.hasLastValue
+        ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+        : slot.hasDefaultValue
+          ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
+          : ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL)
 
-  function resetBindingSelections() {
-    setManualBindings({})
-    setEnvVarValues({})
-    setShowValidationErrors(false)
-  }
+    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
+      return Boolean(slot.hasLastValue)
+    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
+      return Boolean(slot.hasDefaultValue)
+    if (!selection?.value)
+      return false
 
-  function handleSelectRelease(releaseId: string) {
-    setSelectedReleaseId(releaseId)
-    resetBindingSelections()
-  }
-
-  function handleSelectEnvironment(environmentId: string) {
-    setSelectedEnvId(environmentId)
-    resetBindingSelections()
-  }
+    return slot.valueType !== 'number' || !Number.isNaN(Number(selection.value))
+  })
 
   function handleBindingChange(slot: string, value: string) {
     setManualBindings(prev => ({ ...prev, [slot]: value }))
@@ -266,18 +329,47 @@ export function useDeployReadyForm({
     setEnvVarValues(prev => ({ ...prev, [key]: value }))
   }
 
-  function handleDeploy() {
-    setShowValidationErrors(true)
+  return {
+    deploymentCredentials,
+    deploymentEnvVars,
+    handleBindingChange,
+    handleEnvVarChange,
+    envVarValues,
+    requiredBindingsReady,
+    requiredEnvVarsReady,
+    selectedBindings,
+    showDeploymentValidationErrors,
+    showValidationErrors,
+  }
+}
 
-    if (!canDeploy || !targetReleaseId)
+export function useDeployReleaseSubmission({
+  deploymentCredentials,
+  deploymentEnvVars,
+}: {
+  deploymentCredentials: CredentialSelectionInput[]
+  deploymentEnvVars: EnvVarInput[]
+}) {
+  const { t } = useTranslation('deployments')
+  const config = useDeployReadyFormConfig()
+  const closeDeployDrawer = useSetAtom(closeDeployDrawerAtom)
+  const promoteRelease = useMutation(consoleQuery.enterprise.deploymentService.promote.mutationOptions())
+  const rollbackRelease = useMutation(consoleQuery.enterprise.deploymentService.rollback.mutationOptions())
+  const isSubmitting = promoteRelease.isPending || rollbackRelease.isPending
+  const selectedEnvironmentId = useAtomValue(deploySelectedEnvironmentIdAtom)
+  const targetRelease = useAtomValue(deployTargetReleaseAtom)
+  const targetReleaseId = useAtomValue(deployTargetReleaseIdAtom)
+
+  function deployRelease() {
+    if (!targetReleaseId || !selectedEnvironmentId)
       return
 
     const idempotencyKey = createDeploymentIdempotencyKey()
-    const currentRelease = runtimeRows.find(row => environmentId(row.environment) === selectedEnvironmentId)?.currentRelease
+    const currentRelease = config.runtimeRows.find(row => environmentId(row.environment) === selectedEnvironmentId)?.currentRelease
     const action = releaseDeploymentAction({
       targetRelease,
       currentRelease,
-      releaseRows: releases,
+      releaseRows: config.releases,
       isExistingRelease: true,
     })
     const mutationOptions = {
@@ -293,11 +385,11 @@ export function useDeployReadyForm({
       rollbackRelease.mutate(
         {
           params: {
-            appInstanceId,
+            appInstanceId: config.appInstanceId,
             environmentId: selectedEnvironmentId,
           },
           body: {
-            appInstanceId,
+            appInstanceId: config.appInstanceId,
             environmentId: selectedEnvironmentId,
             targetReleaseId,
             idempotencyKey,
@@ -311,11 +403,11 @@ export function useDeployReadyForm({
     promoteRelease.mutate(
       {
         params: {
-          appInstanceId,
+          appInstanceId: config.appInstanceId,
           environmentId: selectedEnvironmentId,
         },
         body: {
-          appInstanceId,
+          appInstanceId: config.appInstanceId,
           environmentId: selectedEnvironmentId,
           releaseId: targetReleaseId,
           credentials: deploymentCredentials,
@@ -328,25 +420,7 @@ export function useDeployReadyForm({
   }
 
   return {
-    bindingOptionsError,
-    bindingOptionsLoading,
-    bindingSlots,
-    deployFormReady,
-    displayedRelease,
-    effectiveEnvVarValues,
-    envVarSlots,
-    handleBindingChange,
-    handleDeploy,
-    handleEnvVarChange,
-    handleSelectEnvironment,
-    handleSelectRelease,
-    hasSelectedEnvironment,
-    isExistingRelease,
-    selectedBindings,
-    selectedEnvironmentId,
-    selectedReleaseId,
-    showValidationErrors,
-    submitLabel: isSubmitting ? t('deployDrawer.deploying') : t('deployDrawer.deploy'),
-    targetReleaseId,
+    deployRelease,
+    isSubmitting,
   }
 }

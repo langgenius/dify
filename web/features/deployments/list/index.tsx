@@ -12,7 +12,6 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
-import { DeployDrawer } from '../components/deploy-drawer'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../components/empty-state'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 import { deploymentStatusPollingInterval } from '../runtime-status'
@@ -214,33 +213,30 @@ export function DeploymentsList() {
   }, [error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading])
 
   return (
-    <>
-      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-        <DeploymentsListControls />
-        <div className={cn(
-          'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-4 pt-2 sm:px-6 lg:px-12',
-          showEmptyState && 'overflow-hidden',
-        )}
-        >
-          {showSkeleton
-            ? <DeploymentsListSkeleton />
-            : isError
-              ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
-              : appInstanceSummaries.length === 0
-                ? <DeploymentsListEmpty />
-                : appInstanceSummaries.map((summary, index) => (
-                    <InstanceCard
-                      key={summary.appInstance?.id ?? index}
-                      summary={summary}
-                    />
-                  ))}
-          {isFetchingNextPage && <DeploymentsListSkeleton />}
-        </div>
-
-        <div ref={anchorRef} className="h-0" />
-        <div className="py-4" />
+    <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+      <DeploymentsListControls />
+      <div className={cn(
+        'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-4 pt-2 sm:px-6 lg:px-12',
+        showEmptyState && 'overflow-hidden',
+      )}
+      >
+        {showSkeleton
+          ? <DeploymentsListSkeleton />
+          : isError
+            ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
+            : appInstanceSummaries.length === 0
+              ? <DeploymentsListEmpty />
+              : appInstanceSummaries.map((summary, index) => (
+                  <InstanceCard
+                    key={summary.appInstance?.id ?? index}
+                    summary={summary}
+                  />
+                ))}
+        {isFetchingNextPage && <DeploymentsListSkeleton />}
       </div>
-      <DeployDrawer />
-    </>
+
+      <div ref={anchorRef} className="h-0" />
+      <div className="py-4" />
+    </div>
   )
 }

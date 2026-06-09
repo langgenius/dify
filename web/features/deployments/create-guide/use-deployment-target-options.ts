@@ -2,7 +2,6 @@
 
 import type {
   Environment,
-  EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
 import type { EnvVarBindingSlot, EnvVarValues, EnvVarValueSelection } from '../components/env-var-bindings'
 import type { BindingSelections, EnvironmentOption, GuideMethod } from './types'
@@ -19,10 +18,6 @@ import { dslEnvVarSlots } from '../dsl'
 import { environmentMatchesIdentifier } from '../environment'
 import { useUnsupportedDslNodesFromError } from './use-unsupported-dsl-nodes'
 
-type EnvVarMetadataSlot = EnvVarSlot & {
-  key: string
-}
-
 export function deploymentEnvironmentOptions(environments?: Environment[]): EnvironmentOption[] {
   return environments?.flatMap((environment) => {
     const environmentId = environment.id
@@ -36,7 +31,7 @@ export function deploymentEnvironmentOptions(environments?: Environment[]): Envi
   }) ?? []
 }
 
-function mergeEnvVarSlotMetadata(slots: EnvVarBindingSlot[], metadataSlots: EnvVarMetadataSlot[]) {
+function mergeEnvVarSlotMetadata(slots: EnvVarBindingSlot[], metadataSlots: EnvVarBindingSlot[]) {
   if (metadataSlots.length === 0)
     return slots
 
@@ -64,68 +59,6 @@ function mergeEnvVarSlotMetadata(slots: EnvVarBindingSlot[], metadataSlots: EnvV
       ...(lastValue !== undefined ? { lastValue } : {}),
     }
   })
-}
-
-function createDeploymentEnvVarSlots(slots: EnvVarBindingSlot[]) {
-  return slots.map((slot) => {
-    const {
-      hasLastValue: _hasLastValue,
-      lastValue: _lastValue,
-      ...slotWithoutLastValue
-    } = slot
-
-    return slotWithoutLastValue
-  })
-}
-
-function defaultEnvVarSelection(slot: EnvVarBindingSlot): EnvVarValueSelection {
-  if (slot.hasDefaultValue) {
-    return {
-      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
-    }
-  }
-
-  if (slot.hasLastValue) {
-    return {
-      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
-    }
-  }
-
-  return {
-    valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
-  }
-}
-
-function envVarValuesWithSlotDefaults(values: EnvVarValues, slots: EnvVarBindingSlot[]) {
-  let hasChanges = false
-  const nextValues: EnvVarValues = { ...values }
-
-  slots.forEach((slot) => {
-    if (nextValues[slot.key])
-      return
-
-    nextValues[slot.key] = defaultEnvVarSelection(slot)
-    hasChanges = true
-  })
-
-  return hasChanges ? nextValues : values
-}
-
-function hasMissingRequiredEnvVarValue(slot: EnvVarBindingSlot, values: EnvVarValues) {
-  const selection = values[slot.key]
-  if (!selection)
-    throw new Error(`Missing env var selection for ${slot.key}.`)
-
-  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
-    return !slot.hasLastValue
-  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
-    return !slot.hasDefaultValue
-
-  const value = selection.value
-  if (!value)
-    return true
-
-  return slot.valueType === 'number' && Number.isNaN(Number(value))
 }
 
 export function useDeploymentTargetOptions({
@@ -204,17 +137,53 @@ export function useDeploymentTargetOptions({
     ? deploymentOptions?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
     : []
   const deploymentOptionEnvVarSlots = shouldLoadDeploymentTarget
-    ? (deploymentOptions?.envVarSlots ?? []) as EnvVarBindingSlot[]
+    ? deploymentOptions?.envVarSlots?.flatMap((slot): EnvVarBindingSlot[] => {
+        const key = slot.key?.trim()
+        if (!key)
+          return []
+
+        return [{
+          ...slot,
+          key,
+          valueType: slot.valueType === 'number' || slot.valueType === 'secret' ? slot.valueType : 'string',
+        }]
+      }) ?? []
     : []
-  const dslEnvVarSlotMetadata = method === 'importDsl' && dslContent ? dslEnvVarSlots(dslContent) : []
-  const envVarSlots = createDeploymentEnvVarSlots(
-    mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata),
-  )
-  const effectiveEnvVarValues = envVarValuesWithSlotDefaults(envVarValues, envVarSlots)
+  const dslEnvVarSlotMetadata = method === 'importDsl' && dslContent
+    ? dslEnvVarSlots(dslContent).flatMap((slot): EnvVarBindingSlot[] => {
+        const key = slot.key?.trim()
+        if (!key)
+          return []
+
+        return [{
+          ...slot,
+          key,
+          valueType: slot.valueType === 'number' || slot.valueType === 'secret' ? slot.valueType : 'string',
+        }]
+      })
+    : []
+  const envVarSlots = mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata)
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId)) ?? environments[0]
   const bindingSelections = selectedRuntimeCredentialSelections(bindingSlots, manualBindingSelections)
-  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, effectiveEnvVarValues))
+  const requiredEnvVarsReady = envVarSlots.every((slot) => {
+    const selection = envVarValues[slot.key]
+    const valueSource = selection?.valueSource
+      ?? (slot.hasDefaultValue
+        ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
+        : slot.hasLastValue
+          ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+          : ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL)
+
+    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
+      return Boolean(slot.hasLastValue)
+    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
+      return Boolean(slot.hasDefaultValue)
+    if (!selection?.value)
+      return false
+
+    return slot.valueType !== 'number' || !Number.isNaN(Number(selection.value))
+  })
   const isEnvironmentLoading = shouldLoadDeploymentTarget && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
   const isBindingLoading = shouldLoadDeploymentTarget && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
 
@@ -231,11 +200,10 @@ export function useDeploymentTargetOptions({
     deployableEnvironmentsQuery,
     deploymentOptions,
     deploymentOptionsQuery,
-    effectiveEnvVarValues,
     effectiveSelectedEnvironmentId,
     environments,
     envVarSlots,
-    envVarValues: effectiveEnvVarValues,
+    envVarValues,
     isBindingLoading,
     isEnvironmentLoading,
     onSelectBinding: (slot: string, value: string) => {

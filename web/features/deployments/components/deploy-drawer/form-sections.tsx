@@ -1,33 +1,26 @@
 'use client'
 
-import type {
-  CredentialSlot,
-  Environment,
-  Release,
-} from '@dify/contracts/enterprise/types.gen'
-import type {
-  EnvVarBindingSlot,
-  EnvVarValues,
-  EnvVarValueSelection,
-} from '../env-var-bindings'
+import type { CredentialSlot } from '@dify/contracts/enterprise/types.gen'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
+import type { EnvironmentOption } from './use-deploy-ready-form'
 import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { environmentBackend, environmentMode, environmentName } from '../../environment'
 import { formatDate, releaseCommit, releaseLabel } from '../../release'
 import { DeploymentStateMessage } from '../empty-state'
-import { EnvVarBindingsPanel } from '../env-var-bindings'
 import { RuntimeCredentialBindingsPanel } from '../runtime-credential-bindings'
 import {
   DeploymentSelect,
   EnvironmentRow,
   Field,
 } from './select'
+import {
+  useDeployEnvironmentField,
+  useDeployReleaseField,
+} from './use-deploy-ready-form'
 
-export type EnvironmentOption = Environment & { id: string }
-
-const DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME = 'max-h-none overflow-visible'
+export const DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME = 'max-h-none overflow-visible'
 
 function environmentOptionLabel(env: EnvironmentOption, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
   const description = env.description?.trim()
@@ -37,7 +30,7 @@ function environmentOptionLabel(env: EnvironmentOption, t: ReturnType<typeof use
   return `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(env).toUpperCase()}`
 }
 
-function BindingOptionsPanel({
+export function BindingOptionsPanel({
   slots,
   selections,
   isLoading,
@@ -109,22 +102,16 @@ export function DeployFormHeader() {
   )
 }
 
-export function ReleaseField({
-  displayedRelease,
-  emptyLabel,
-  isExistingRelease,
-  releases,
-  selectedReleaseId,
-  onSelectRelease,
-}: {
-  displayedRelease?: Release
-  emptyLabel?: string
-  isExistingRelease: boolean
-  releases: Release[]
-  selectedReleaseId: string
-  onSelectRelease: (releaseId: string) => void
-}) {
+export function ReleaseField() {
   const { t } = useTranslation('deployments')
+  const {
+    displayedRelease,
+    emptyLabel,
+    isExistingRelease,
+    releases,
+    selectedReleaseId,
+    selectRelease,
+  } = useDeployReleaseField()
 
   return (
     <Field label={t('deployDrawer.releaseLabel')}>
@@ -153,7 +140,7 @@ export function ReleaseField({
           : (
               <DeploymentSelect
                 value={selectedReleaseId}
-                onChange={onSelectRelease}
+                onChange={selectRelease}
                 options={releases.flatMap((release) => {
                   const releaseId = release.id
                   if (!releaseId)
@@ -171,20 +158,15 @@ export function ReleaseField({
   )
 }
 
-export function EnvironmentField({
-  environments,
-  lockedEnv,
-  lockedEnvId,
-  selectedEnvironmentId,
-  onSelectEnvironment,
-}: {
-  environments: EnvironmentOption[]
-  lockedEnv?: EnvironmentOption
-  lockedEnvId?: string
-  selectedEnvironmentId: string
-  onSelectEnvironment: (environmentId: string) => void
-}) {
+export function EnvironmentField() {
   const { t } = useTranslation('deployments')
+  const {
+    environments,
+    lockedEnv,
+    lockedEnvId,
+    selectedEnvironmentId,
+    selectEnvironment,
+  } = useDeployEnvironmentField()
 
   return (
     <Field
@@ -202,7 +184,7 @@ export function EnvironmentField({
           : (
               <DeploymentSelect
                 value={selectedEnvironmentId}
-                onChange={onSelectEnvironment}
+                onChange={selectEnvironment}
                 options={environments.map(env => ({
                   value: env.id,
                   label: environmentOptionLabel(env, t),
@@ -211,68 +193,5 @@ export function EnvironmentField({
               />
             )}
     </Field>
-  )
-}
-
-export function DeploymentBindingsSection({
-  bindingSlots,
-  bindingSelections,
-  bindingOptionsLoading,
-  bindingOptionsError,
-  envVarSlots,
-  envVarValues,
-  showMissingRequiredBindings,
-  showMissingRequiredEnvVars,
-  onBindingChange,
-  onEnvVarChange,
-}: {
-  bindingSlots: CredentialSlot[]
-  bindingSelections: RuntimeCredentialBindingSelections
-  bindingOptionsLoading: boolean
-  bindingOptionsError: boolean
-  envVarSlots: EnvVarBindingSlot[]
-  envVarValues: EnvVarValues
-  showMissingRequiredBindings: boolean
-  showMissingRequiredEnvVars: boolean
-  onBindingChange: (slot: string, value: string) => void
-  onEnvVarChange: (key: string, value: EnvVarValueSelection) => void
-}) {
-  const { t } = useTranslation('deployments')
-
-  return (
-    <>
-      <BindingOptionsPanel
-        slots={bindingSlots}
-        selections={bindingSelections}
-        isLoading={bindingOptionsLoading}
-        hasError={bindingOptionsError}
-        bindingCountLabel={t('deployDrawer.bindingCount', { count: bindingSlots.length })}
-        showMissingRequired={showMissingRequiredBindings}
-        onChange={onBindingChange}
-      />
-      {!bindingOptionsLoading && !bindingOptionsError && (
-        <EnvVarBindingsPanel
-          slots={envVarSlots}
-          values={envVarValues}
-          title={t('deployDrawer.envVars')}
-          hint={t('deployDrawer.envVarHint')}
-          envVarPlaceholder={t('deployDrawer.envVarPlaceholder')}
-          literalSourceLabel={t('deployDrawer.envVarSource.literal')}
-          defaultSourceLabel={t('deployDrawer.envVarSource.default')}
-          lastDeploymentSourceLabel={t('deployDrawer.envVarSource.lastDeployment')}
-          valueTypeLabels={{
-            string: t('deployDrawer.envVarType.string'),
-            number: t('deployDrawer.envVarType.number'),
-            secret: t('deployDrawer.envVarType.secret'),
-          }}
-          sourceAriaLabel={key => t('deployDrawer.envVarSource.ariaLabel', { key })}
-          envVarCountLabel={t('deployDrawer.envVarCount', { count: envVarSlots.length })}
-          missingRequiredLabel={t('deployDrawer.missingRequiredEnvVar')}
-          listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}
-          showMissingRequired={showMissingRequiredEnvVars}
-          onChange={onEnvVarChange}
-        />
-      )}
-    </>
   )
 }

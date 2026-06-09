@@ -4,17 +4,20 @@ import type {
   EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
-import type { EnvironmentOption } from './form-sections'
+import type { EnvironmentOption } from './use-deploy-ready-form'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
+import { createStore, Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
+import { EnvVarBindingsPanel } from '../env-var-bindings'
 import {
+  BindingOptionsPanel,
+  DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME,
   DeployFormHeader,
-  DeploymentBindingsSection,
   EnvironmentField,
   ReleaseField,
 } from './form-sections'
@@ -23,7 +26,17 @@ import {
   currentReleaseIdForEnvironment,
   selectableDeployReleases,
 } from './release-options'
-import { useDeployReadyForm } from './use-deploy-ready-form'
+import {
+  deployHasSelectedEnvironmentAtom,
+  deployReadyFormConfigAtom,
+  deploySelectedEnvironmentAtom,
+  deploySelectedEnvironmentIdAtom,
+  deployTargetReleaseIdAtom,
+  showDeployValidationErrorsAtom,
+  useDeployBindings,
+  useDeployReleaseSubmission,
+  useReleaseDeploymentOptions,
+} from './use-deploy-ready-form'
 
 type DeployFormProps = {
   appInstanceId: string
@@ -39,99 +52,177 @@ type DeployReadyFormProps = DeployFormProps & {
   releaseEmptyLabel?: string
 }
 
-function DeployReadyForm({
+function DeployRuntimeCredentialBindingsSection() {
+  const { t } = useTranslation('deployments')
+  const deploymentOptions = useReleaseDeploymentOptions()
+  const deploymentBindings = useDeployBindings({
+    bindingSlots: deploymentOptions.bindingSlots,
+    envVarSlots: deploymentOptions.envVarSlots,
+  })
+
+  return (
+    <BindingOptionsPanel
+      slots={deploymentOptions.bindingSlots}
+      selections={deploymentBindings.selectedBindings}
+      isLoading={deploymentOptions.isBindingOptionsLoading}
+      hasError={deploymentOptions.hasBindingOptionsError}
+      bindingCountLabel={t('deployDrawer.bindingCount', { count: deploymentOptions.bindingSlots.length })}
+      showMissingRequired={deploymentBindings.showValidationErrors}
+      onChange={deploymentBindings.handleBindingChange}
+    />
+  )
+}
+
+function DeployEnvVarBindingsSection() {
+  const { t } = useTranslation('deployments')
+  const deploymentOptions = useReleaseDeploymentOptions()
+  const deploymentBindings = useDeployBindings({
+    bindingSlots: deploymentOptions.bindingSlots,
+    envVarSlots: deploymentOptions.envVarSlots,
+  })
+
+  if (deploymentOptions.isBindingOptionsLoading || deploymentOptions.hasBindingOptionsError)
+    return null
+
+  return (
+    <EnvVarBindingsPanel
+      slots={deploymentOptions.envVarSlots}
+      values={deploymentBindings.envVarValues}
+      title={t('deployDrawer.envVars')}
+      hint={t('deployDrawer.envVarHint')}
+      envVarPlaceholder={t('deployDrawer.envVarPlaceholder')}
+      literalSourceLabel={t('deployDrawer.envVarSource.literal')}
+      defaultSourceLabel={t('deployDrawer.envVarSource.default')}
+      lastDeploymentSourceLabel={t('deployDrawer.envVarSource.lastDeployment')}
+      valueTypeLabels={{
+        string: t('deployDrawer.envVarType.string'),
+        number: t('deployDrawer.envVarType.number'),
+        secret: t('deployDrawer.envVarType.secret'),
+      }}
+      sourceAriaLabel={key => t('deployDrawer.envVarSource.ariaLabel', { key })}
+      defaultSourcePriority="lastDeployment"
+      envVarCountLabel={t('deployDrawer.envVarCount', { count: deploymentOptions.envVarSlots.length })}
+      missingRequiredLabel={t('deployDrawer.missingRequiredEnvVar')}
+      listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}
+      showMissingRequired={deploymentBindings.showValidationErrors}
+      onChange={deploymentBindings.handleEnvVarChange}
+    />
+  )
+}
+
+function DeployBindingsSection() {
+  const targetReleaseId = useAtomValue(deployTargetReleaseIdAtom)
+  const hasSelectedEnvironment = useAtomValue(deployHasSelectedEnvironmentAtom)
+
+  if (!targetReleaseId || !hasSelectedEnvironment)
+    return null
+
+  return (
+    <>
+      <DeployRuntimeCredentialBindingsSection />
+      <DeployEnvVarBindingsSection />
+    </>
+  )
+}
+
+function DeployFormBody() {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex flex-col gap-5">
+        <ReleaseField />
+        <EnvironmentField />
+        <DeployBindingsSection />
+      </div>
+    </div>
+  )
+}
+
+function DeployFooter() {
+  const { t } = useTranslation('deployments')
+  const closeDeployDrawer = useSetAtom(closeDeployDrawerAtom)
+  const selectedEnvironmentId = useAtomValue(deploySelectedEnvironmentIdAtom)
+  const selectedEnvironment = useAtomValue(deploySelectedEnvironmentAtom)
+  const targetReleaseId = useAtomValue(deployTargetReleaseIdAtom)
+  const showValidationErrors = useSetAtom(showDeployValidationErrorsAtom)
+  const deploymentOptions = useReleaseDeploymentOptions()
+  const deploymentBindings = useDeployBindings({
+    bindingSlots: deploymentOptions.bindingSlots,
+    envVarSlots: deploymentOptions.envVarSlots,
+  })
+  const submission = useDeployReleaseSubmission({
+    deploymentCredentials: deploymentBindings.deploymentCredentials,
+    deploymentEnvVars: deploymentBindings.deploymentEnvVars,
+  })
+  const canAttemptDeploy = Boolean(
+    selectedEnvironmentId
+    && selectedEnvironment
+    && targetReleaseId
+    && deploymentOptions.isBindingOptionsReady
+    && !submission.isSubmitting,
+  )
+  const canDeploy = Boolean(
+    canAttemptDeploy
+    && deploymentBindings.requiredBindingsReady
+    && deploymentBindings.requiredEnvVarsReady,
+  )
+  const submitLabel = submission.isSubmitting ? t('deployDrawer.deploying') : t('deployDrawer.deploy')
+
+  function handleDeploy() {
+    showValidationErrors()
+
+    if (!canDeploy)
+      return
+
+    submission.deployRelease()
+  }
+
+  return (
+    <div className="flex shrink-0 justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
+      <Button type="button" variant="secondary" onClick={closeDeployDrawer}>
+        {t('deployDrawer.cancel')}
+      </Button>
+      <Button variant="primary" disabled={!canAttemptDeploy} onClick={handleDeploy}>
+        {submitLabel}
+      </Button>
+    </div>
+  )
+}
+
+function deployReadyFormStoreKey({
   appInstanceId,
   environments,
   releases,
   runtimeRows,
   defaultReleaseId,
-  releaseEmptyLabel,
   lockedEnvId,
   presetReleaseId,
 }: DeployReadyFormProps) {
-  const { t } = useTranslation('deployments')
-  const closeDeployDrawer = useSetAtom(closeDeployDrawerAtom)
-  const lockedEnv = lockedEnvId ? environments.find(e => e.id === lockedEnvId) : undefined
-  const {
-    bindingOptionsError,
-    bindingOptionsLoading,
-    bindingSlots,
-    deployFormReady,
-    displayedRelease,
-    effectiveEnvVarValues,
-    envVarSlots,
-    handleBindingChange,
-    handleDeploy,
-    handleEnvVarChange,
-    handleSelectEnvironment,
-    handleSelectRelease,
-    hasSelectedEnvironment,
-    isExistingRelease,
-    selectedBindings,
-    selectedEnvironmentId,
-    selectedReleaseId,
-    showValidationErrors,
-    submitLabel,
-    targetReleaseId,
-  } = useDeployReadyForm({
+  return [
     appInstanceId,
-    environments,
-    releases,
-    runtimeRows,
-    defaultReleaseId,
-    lockedEnvId,
-    presetReleaseId,
+    lockedEnvId ?? 'any',
+    presetReleaseId ?? 'new',
+    defaultReleaseId ?? 'none',
+    environments.map(env => env.id).join(','),
+    releases.map(release => release.id ?? '').join(','),
+    runtimeRows.map(row => `${row.environment?.id ?? ''}:${row.currentRelease?.id ?? ''}`).join(','),
+  ].join('|')
+}
+
+function DeployReadyForm(config: DeployReadyFormProps) {
+  const [formStore] = useState(() => {
+    const store = createStore()
+    store.set(deployReadyFormConfigAtom, config)
+    return store
   })
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <DeployFormHeader />
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-        <div className="flex flex-col gap-5">
-          <ReleaseField
-            displayedRelease={displayedRelease}
-            emptyLabel={releaseEmptyLabel}
-            isExistingRelease={isExistingRelease}
-            releases={releases}
-            selectedReleaseId={selectedReleaseId}
-            onSelectRelease={handleSelectRelease}
-          />
-
-          <EnvironmentField
-            environments={environments}
-            lockedEnv={lockedEnv}
-            lockedEnvId={lockedEnvId}
-            selectedEnvironmentId={selectedEnvironmentId}
-            onSelectEnvironment={handleSelectEnvironment}
-          />
-
-          {targetReleaseId && hasSelectedEnvironment && (
-            <DeploymentBindingsSection
-              bindingSlots={bindingSlots}
-              bindingSelections={selectedBindings}
-              bindingOptionsLoading={bindingOptionsLoading}
-              bindingOptionsError={bindingOptionsError}
-              envVarSlots={envVarSlots}
-              envVarValues={effectiveEnvVarValues}
-              showMissingRequiredBindings={showValidationErrors}
-              showMissingRequiredEnvVars={showValidationErrors}
-              onBindingChange={handleBindingChange}
-              onEnvVarChange={handleEnvVarChange}
-            />
-          )}
-        </div>
+    <JotaiProvider store={formStore}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <DeployFormHeader />
+        <DeployFormBody />
+        <DeployFooter />
       </div>
-
-      <div className="flex shrink-0 justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
-        <Button type="button" variant="secondary" onClick={closeDeployDrawer}>
-          {t('deployDrawer.cancel')}
-        </Button>
-        <Button variant="primary" disabled={!deployFormReady} onClick={handleDeploy}>
-          {submitLabel}
-        </Button>
-      </div>
-    </div>
+    </JotaiProvider>
   )
 }
 
@@ -195,19 +286,22 @@ export function DeployForm({
   const releaseEmptyLabel = lockedEnvId && !presetReleaseId && currentReleaseId
     ? t('deployDrawer.noOtherReleaseAvailable')
     : undefined
-  const formKey = `${appInstanceId}-${lockedEnvId ?? 'any'}-${presetReleaseId ?? 'new'}-${defaultReleaseId ?? 'none'}`
+  const readyFormConfig = {
+    appInstanceId,
+    environments,
+    releases,
+    runtimeRows,
+    defaultReleaseId,
+    releaseEmptyLabel,
+    lockedEnvId,
+    presetReleaseId,
+  }
+  const formKey = deployReadyFormStoreKey(readyFormConfig)
 
   return (
     <DeployReadyForm
       key={formKey}
-      appInstanceId={appInstanceId}
-      environments={environments}
-      releases={releases}
-      runtimeRows={runtimeRows}
-      defaultReleaseId={defaultReleaseId}
-      releaseEmptyLabel={releaseEmptyLabel}
-      lockedEnvId={lockedEnvId}
-      presetReleaseId={presetReleaseId}
+      {...readyFormConfig}
     />
   )
 }

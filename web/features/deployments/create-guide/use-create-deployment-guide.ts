@@ -164,7 +164,7 @@ export function useCreateDeploymentGuide() {
     bindingSlots: targetOptions.bindingSlots,
     deploymentOptionsDslDigest: targetOptions.deploymentOptions?.dslDigest,
     dslContent: dslFileReader.dslContent,
-    effectiveEnvVarValues: targetOptions.effectiveEnvVarValues,
+    envVarValues: targetOptions.envVarValues,
     effectiveSelectedApp: source.effectiveSelectedApp,
     encodedDslContent,
     envVarSlots: targetOptions.envVarSlots,
