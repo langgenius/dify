@@ -5,7 +5,7 @@ import type {
   EditorState,
 } from 'lexical'
 import type { FC } from 'react'
-import type { Hotkey, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
+import type { Hotkey, ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -131,7 +131,11 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
-  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }> }>
+  shortcutPopups?: Array<{
+    hotkey: Hotkey
+    displayMode?: ShortcutPopupDisplayMode
+    Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>
+  }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({

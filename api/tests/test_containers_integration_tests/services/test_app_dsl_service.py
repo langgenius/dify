@@ -75,7 +75,7 @@ def _app_stub(**overrides: Any) -> App:
     defaults = {
         "id": str(uuid4()),
         "tenant_id": _DEFAULT_TENANT_ID,
-        "mode": AppMode.WORKFLOW.value,
+        "mode": AppMode.WORKFLOW,
         "name": "n",
         "description": "d",
         "icon_type": IconType.EMOJI,
@@ -528,7 +528,7 @@ class TestAppDslService:
 
         created_app = SimpleNamespace(
             id=str(uuid4()),
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             tenant_id=_DEFAULT_TENANT_ID,
         )
         monkeypatch.setattr(
@@ -707,7 +707,7 @@ class TestAppDslService:
         )
 
         app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="old",
             description="old-desc",
             icon_type=IconType.EMOJI,
@@ -721,7 +721,7 @@ class TestAppDslService:
             app=app,
             data={
                 "app": {
-                    "mode": AppMode.WORKFLOW.value,
+                    "mode": AppMode.WORKFLOW,
                     "name": "yaml-name",
                     "icon_type": IconType.IMAGE,
                     "icon": "X",
@@ -747,7 +747,7 @@ class TestAppDslService:
         with pytest.raises(ValueError, match="Current tenant is not set"):
             service._create_or_update_app(
                 app=None,
-                data={"app": {"mode": AppMode.WORKFLOW.value, "name": "n"}},
+                data={"app": {"mode": AppMode.WORKFLOW, "name": "n"}},
                 account=account,
             )
 
@@ -772,7 +772,7 @@ class TestAppDslService:
             )
         ]
         data = {
-            "app": {"mode": AppMode.WORKFLOW.value, "name": "n"},
+            "app": {"mode": AppMode.WORKFLOW, "name": "n"},
             "workflow": {
                 "graph": {"nodes": []},
                 "features": {},
@@ -792,8 +792,8 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing workflow data"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.WORKFLOW.value),
-                data={"app": {"mode": AppMode.WORKFLOW.value}},
+                app=_app_stub(mode=AppMode.WORKFLOW),
+                data={"app": {"mode": AppMode.WORKFLOW}},
                 account=_account_mock(),
             )
 
@@ -852,7 +852,7 @@ class TestAppDslService:
         )
 
         workflow_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             icon_type="emoji",
         )
         AppDslService.export_dsl(workflow_app)
@@ -874,7 +874,7 @@ class TestAppDslService:
         )
 
         emoji_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="Emoji App",
             icon="🎨",
             icon_type=IconType.EMOJI,
@@ -889,7 +889,7 @@ class TestAppDslService:
         assert data["app"]["icon_background"] == "#FF5733"
 
         image_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="Image App",
             icon="https://example.com/icon.png",
             icon_type=IconType.IMAGE,

@@ -8,11 +8,34 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 def test_execution_context_package_exports_client_safe_config_symbols_only() -> None:
     assert execution_context_exports.__all__ == [
         "DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID",
+        "DifyExecutionContextAgentMode",
         "DifyExecutionContextInvokeFrom",
         "DifyExecutionContextLayerConfig",
+        "DifyExecutionContextUserFrom",
     ]
     assert execution_context_exports.DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID == "dify.execution_context"
     assert not hasattr(execution_context_exports, "DifyExecutionContextLayer")
+
+
+def test_execution_context_accepts_real_invoke_from_user_from_and_agent_mode() -> None:
+    config = DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        user_from="end-user",
+        invoke_from="web-app",
+        agent_mode="agent_app",
+    )
+
+    assert config.user_from == "end-user"
+    assert config.invoke_from == "web-app"
+    assert config.agent_mode == "agent_app"
+
+
+def test_execution_context_still_accepts_legacy_agent_mode_in_invoke_from() -> None:
+    # Back-compat: older requests carried the run mode in invoke_from.
+    config = DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run")
+    assert config.invoke_from == "workflow_run"
+    assert config.agent_mode is None
 
 
 def test_execution_context_layer_config_forbids_runtime_settings_and_unknown_fields() -> None:

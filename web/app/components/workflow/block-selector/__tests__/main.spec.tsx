@@ -1,8 +1,9 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, ReactElement } from 'react'
 import type { NodeDefault } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import NodeSelector from '../main'
@@ -44,12 +45,25 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   checkValid: () => ({ isValid: true }),
 })
 
+const renderNodeSelector = (ui: ReactElement) => {
+  return renderWorkflowComponent(ui, {
+    hooksStoreProps: {
+      configsMap: {
+        flowId: 'app-1',
+        flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+
+      },
+    },
+  })
+}
+
 describe('NodeSelector', () => {
   it('opens with the real blocks tab, filters by search, selects a block, and clears search after close', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={onSelect}
         blocks={[
@@ -96,7 +110,7 @@ describe('NodeSelector', () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         disabled
         onOpenChange={onOpenChange}
@@ -121,7 +135,7 @@ describe('NodeSelector', () => {
     const user = userEvent.setup()
     const onTriggerClick = vi.fn()
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
@@ -151,7 +165,7 @@ describe('NodeSelector', () => {
       )
     }
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
@@ -176,7 +190,7 @@ describe('NodeSelector', () => {
       )
     }
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
@@ -196,7 +210,7 @@ describe('NodeSelector', () => {
   it('can render the shared Button trigger as the popover root', async () => {
     const user = userEvent.setup()
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}

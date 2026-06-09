@@ -50,7 +50,6 @@ def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app
     monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
     monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
-    monkeypatch.setattr(workflow_comment_module, "current_user", account)
 
 
 def _patch_write_services(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -100,7 +99,7 @@ class MutationResponseCase:
     expected_status: int | None = None
 
 
-def _unwrap_response(result: object) -> tuple[dict[str, object], int | None]:
+def unwrap_response(result: object) -> tuple[dict[str, object], int | None]:
     if isinstance(result, tuple):
         response, status = result
         assert isinstance(response, dict)
@@ -195,7 +194,7 @@ def test_create_comment_allows_editor(app: Flask, monkeypatch: pytest.MonkeyPatc
         with _patch_payload(payload):
             result = workflow_comment_module.WorkflowCommentListApi().post(app_id="app-123")
 
-    response, status = _unwrap_response(result)
+    response, status = unwrap_response(result)
     assert response["id"] == "comment-1"
     assert status == 201
     create_comment_mock.assert_called_once_with(
@@ -225,7 +224,7 @@ def test_update_comment_omits_mentions_when_payload_does_not_include_them(
         with _patch_payload(payload):
             result = workflow_comment_module.WorkflowCommentDetailApi().put(app_id="app-123", comment_id="comment-1")
 
-    response, status = _unwrap_response(result)
+    response, status = unwrap_response(result)
     assert response == {"id": "comment-1", "updated_at": JAN_1_2024_NOON_TS}
     assert status is None
     update_comment_mock.assert_called_once_with(
@@ -481,7 +480,7 @@ def test_mutation_endpoints_serialize_response_models(
         with _patch_payload(case.payload):
             result = getattr(case.resource_cls(), case.method_name)(**case.kwargs)
 
-    response, status = _unwrap_response(result)
+    response, status = unwrap_response(result)
     assert response == case.expected_response
     assert status == case.expected_status
 

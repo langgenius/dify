@@ -1,20 +1,27 @@
 """User-scoped identity + session endpoints under /openapi/v1/account."""
 
 import builtins
+import sys
+import uuid
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi._models import MAX_PAGE_LIMIT, AccountSessionsQuery
+from controllers.openapi._models import MAX_PAGE_LIMIT, SessionListQuery
 from controllers.openapi.account import (
     AccountApi,
     AccountSessionByIdApi,
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
+from controllers.openapi.auth.data import AuthData
+from libs.oauth_bearer import Scope, TokenType
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -74,7 +81,7 @@ def test_sessions_list_dispatches_to_sessions_api(openapi_app: Flask):
 
 
 def test_account_sessions_query_defaults():
-    query = AccountSessionsQuery.model_validate({})
+    query = SessionListQuery.model_validate({})
 
     assert query.page == 1
     assert query.limit == 100
@@ -83,26 +90,24 @@ def test_account_sessions_query_defaults():
 @pytest.mark.parametrize("value", [0, -1, "abc"])
 def test_account_sessions_query_rejects_invalid_page(value):
     with pytest.raises(ValidationError):
-        AccountSessionsQuery.model_validate({"page": value})
+        SessionListQuery.model_validate({"page": value})
 
 
 @pytest.mark.parametrize("value", [0, -1, MAX_PAGE_LIMIT + 1, "abc"])
 def test_account_sessions_query_rejects_invalid_limit(value):
     with pytest.raises(ValidationError):
-        AccountSessionsQuery.model_validate({"limit": value})
+        SessionListQuery.model_validate({"limit": value})
 
 
 def test_account_sessions_query_accepts_max_limit():
-    query = AccountSessionsQuery.model_validate({"limit": MAX_PAGE_LIMIT})
+    query = SessionListQuery.model_validate({"limit": MAX_PAGE_LIMIT})
 
     assert query.limit == MAX_PAGE_LIMIT
 
 
-def test_account_sessions_query_ignores_unrelated_params():
-    query = AccountSessionsQuery.model_validate({"page": 2, "limit": 50, "unused": "ignored"})
-
-    assert query.page == 2
-    assert query.limit == 50
+def test_account_sessions_query_rejects_unrelated_params():
+    with pytest.raises(ValidationError):
+        SessionListQuery.model_validate({"page": 2, "limit": 50, "unused": "ignored"})
 
 
 def test_sessions_list_rejects_malformed_query(openapi_app: Flask, bypass_pipeline):
@@ -178,3 +183,74 @@ def test_subject_match_for_external_sso_filters_by_email_and_issuer():
     assert "subject_email" in rendered
     assert "subject_issuer" in rendered
     assert "account_id IS NULL" in rendered
+
+
+# --- GET /account/sessions query validation (the handler routes ?page/?limit through
+# SessionListQuery so the server enforces the bounds the contract advertises). The auth ctx and
+# DB read are stubbed so these exercise only the validation + paging path; __wrapped__ skips the
+# auth guard, which is covered separately in auth/. ---
+
+_ACCOUNT_MOD = "controllers.openapi.account"
+
+
+def _session_auth_data() -> AuthData:
+    return AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        account_id=uuid.uuid4(),
+        token_hash="test",
+        token_id=uuid.uuid4(),
+        scopes=frozenset({Scope.FULL}),
+        required_scope=Scope.FULL,
+        allowed_roles=None,
+    )
+
+
+def _stub_session_deps(monkeypatch, rows):
+    mod = sys.modules[_ACCOUNT_MOD]
+    monkeypatch.setattr(mod, "get_auth_ctx", lambda: SimpleNamespace())
+    monkeypatch.setattr(mod, "list_active_sessions", lambda *args, **kwargs: rows)
+    monkeypatch.setattr(mod, "db", MagicMock())
+
+
+def test_sessions_list_valid_query_parses_page_and_limit(app, monkeypatch):
+    """A valid ?page&limit round-trips through SessionListQuery into the response envelope."""
+    api = AccountSessionsApi()
+    _stub_session_deps(monkeypatch, [])
+    with app.test_request_context("/openapi/v1/account/sessions?page=2&limit=5"):
+        body, status = api.get.__wrapped__(api, auth_data=_session_auth_data())
+    assert status == 200
+    assert body["page"] == 2
+    assert body["limit"] == 5
+    assert body["total"] == 0
+    assert body["data"] == []
+
+
+def test_sessions_list_defaults_when_query_omitted(app, monkeypatch):
+    """No query → the model's defaults (page=1, limit=100) drive the envelope."""
+    api = AccountSessionsApi()
+    _stub_session_deps(monkeypatch, [])
+    with app.test_request_context("/openapi/v1/account/sessions"):
+        body, status = api.get.__wrapped__(api, auth_data=_session_auth_data())
+    assert status == 200
+    assert body["page"] == 1
+    assert body["limit"] == 100
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "page=0",  # below ge=1 (previously coerced to a silent empty slice)
+        "page=-3",
+        "limit=0",  # below ge=1
+        "limit=999",  # above le=MAX_PAGE_LIMIT
+        "page=abc",  # not an integer (previously a 500)
+        "foo=bar",  # extra='forbid'
+    ],
+)
+def test_sessions_list_rejects_out_of_bounds_query(app, monkeypatch, query):
+    """Out-of-range / unknown query params raise 422 instead of being silently coerced."""
+    api = AccountSessionsApi()
+    _stub_session_deps(monkeypatch, [])
+    with app.test_request_context(f"/openapi/v1/account/sessions?{query}"):
+        with pytest.raises(UnprocessableEntity):
+            api.get.__wrapped__(api, auth_data=_session_auth_data())

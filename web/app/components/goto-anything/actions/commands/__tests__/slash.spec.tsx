@@ -9,6 +9,7 @@ const {
   mockRegister,
   mockSearch,
   mockUnregister,
+  featureFlag,
 } = vi.hoisted(() => ({
   mockSetTheme: vi.fn(),
   mockSetLocale: vi.fn(),
@@ -16,6 +17,14 @@ const {
   mockRegister: vi.fn(),
   mockSearch: vi.fn(),
   mockUnregister: vi.fn(),
+  // Mutable holder so each test can flip the feature-preview flag before render.
+  featureFlag: { enabled: false },
+}))
+
+vi.mock('@/config', () => ({
+  get ENABLE_FEATURE_PREVIEW() {
+    return featureFlag.enabled
+  },
 }))
 
 vi.mock('next-themes', () => ({
@@ -92,9 +101,11 @@ describe('slashAction', () => {
 describe('SlashCommandProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default: feature preview off, so /create and /refine are NOT registered.
+    featureFlag.enabled = false
   })
 
-  it('should register commands on mount and unregister them on unmount', () => {
+  it('should not register the /create and /refine preview commands when the feature flag is off', () => {
     const { unmount } = render(<SlashCommandProvider />)
 
     expect(mockRegister.mock.calls.map(call => call[0].name)).toEqual([
@@ -112,6 +123,8 @@ describe('SlashCommandProvider', () => {
 
     unmount()
 
+    // Unregister is always called for the preview commands (a no-op when they
+    // were never registered) so toggling the flag off mid-session stays clean.
     expect(mockUnregister.mock.calls.map(call => call[0])).toEqual([
       'theme',
       'language',
@@ -121,6 +134,42 @@ describe('SlashCommandProvider', () => {
       'account',
       'zen',
       'go',
+      'create',
+      'refine',
+    ])
+  })
+
+  it('should register the /create and /refine preview commands when the feature flag is on', () => {
+    featureFlag.enabled = true
+
+    const { unmount } = render(<SlashCommandProvider />)
+
+    expect(mockRegister.mock.calls.map(call => call[0].name)).toEqual([
+      'theme',
+      'language',
+      'forum',
+      'docs',
+      'community',
+      'account',
+      'zen',
+      'go',
+      'create',
+      'refine',
+    ])
+
+    unmount()
+
+    expect(mockUnregister.mock.calls.map(call => call[0])).toEqual([
+      'theme',
+      'language',
+      'forum',
+      'docs',
+      'community',
+      'account',
+      'zen',
+      'go',
+      'create',
+      'refine',
     ])
   })
 })

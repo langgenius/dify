@@ -145,6 +145,11 @@
       "count": 1
     }
   },
+  "web/app/(commonLayout)/snippets/[snippetId]/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/(shareLayout)/components/splash.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -250,6 +255,11 @@
       "count": 1
     }
   },
+  "web/app/components/app-sidebar/nav-link/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
+    }
+  },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -320,11 +330,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/app/app-publisher/features-wrapper.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "web/app/components/app/configuration/base/var-highlight/index.tsx": {
@@ -433,9 +438,6 @@
     }
   },
   "web/app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
-    "no-restricted-globals": {
-      "count": 6
-    },
     "react/set-state-in-effect": {
       "count": 4
     },
@@ -654,14 +656,6 @@
   },
   "web/app/components/app/workflow-log/trigger-by-display.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/apps/list.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -1669,11 +1663,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/last-run-block/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -1744,9 +1733,6 @@
   "web/app/components/base/search-input/index.stories.tsx": {
     "no-console": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/base/svg-gallery/index.tsx": {
@@ -3155,6 +3141,16 @@
   "web/app/components/signin/countdown.tsx": {
     "no-restricted-globals": {
       "count": 4
+    }
+  },
+  "web/app/components/snippets/hooks/use-nodes-sync-draft.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/app/components/snippets/hooks/use-snippet-run.ts": {
+    "no-restricted-imports": {
+      "count": 2
     }
   },
   "web/app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
@@ -5059,11 +5055,6 @@
       "count": 1
     }
   },
-  "web/i18n/fr-FR/app.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
   "web/i18n/fr-FR/plugin-trigger.json": {
     "no-irregular-whitespace": {
       "count": 1
@@ -5072,11 +5063,6 @@
   "web/i18n/fr-FR/tools.json": {
     "no-irregular-whitespace": {
       "count": 1
-    }
-  },
-  "web/i18n/fr-FR/workflow.json": {
-    "no-irregular-whitespace": {
-      "count": 2
     }
   },
   "web/i18n/pt-BR/common.json": {
@@ -5160,6 +5146,11 @@
     }
   },
   "web/service/__tests__/use-pipeline.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/__tests__/use-snippet-workflows.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -5431,6 +5422,11 @@
       "count": 3
     }
   },
+  "web/service/use-snippet-workflows.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/service/use-tools.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -5479,9 +5475,6 @@
     }
   },
   "web/types/app.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 9
-    },
     "ts/no-explicit-any": {
       "count": 1
     }

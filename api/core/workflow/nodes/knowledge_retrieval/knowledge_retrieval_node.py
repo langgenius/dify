@@ -6,7 +6,7 @@ the workflow node registry.
 
 import logging
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, override
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
@@ -87,9 +87,11 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         self._rag_retrieval = DatasetRetrieval()
 
     @classmethod
+    @override
     def version(cls):
         return "1"
 
+    @override
     def _run(self) -> NodeRunResult:
         usage = LLMUsage.empty_usage()
         if not self._node_data.query_variable_selector and not self._node_data.query_attachment_selector:
@@ -134,7 +136,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
                 process_data={"usage": jsonable_encoder(usage)},
-                outputs=outputs,  # type: ignore
+                outputs=outputs,
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
@@ -327,6 +329,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,

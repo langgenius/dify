@@ -1192,6 +1192,56 @@ Get agent execution logs for an application
 | 200 | Agent logs retrieved successfully | [ object ] |
 | 400 | Invalid request parameters |  |
 
+### /apps/{app_id}/agent/skills/standardize
+
+#### POST
+##### Summary
+
+Upload a Skill, validate it, and standardize it into the app agent's drive
+
+##### Description
+
+Validate + standardize a Skill into the agent drive (ENG-594)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 201 | Skill standardized into drive |
+| 400 | Invalid skill package or no bound agent |
+
+### /apps/{app_id}/agent/skills/upload
+
+#### POST
+##### Summary
+
+Validate an uploaded Skill package and persist the archive
+
+##### Description
+
+Upload + validate a Skill package (.zip/.skill) and extract its manifest
+Returns a validated skill ref (to bind into the Agent soul config on save)
+plus its manifest. Standardizing into the agent drive is ENG-594.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 201 | Skill validated |
+| 400 | Invalid skill package |
+
 ### /apps/{app_id}/annotation-reply/{action}
 
 #### POST
@@ -3674,9 +3724,10 @@ Snapshot of every node's declared outputs for a draft workflow run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node outputs | [WorkflowRunSnapshotView](#workflowrunsnapshotview) |
+| 404 | Workflow run not found |  |
 
 ### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events
 
@@ -3696,6 +3747,7 @@ Server-Sent Events stream of inspector deltas for a draft workflow run.
 
 | Code | Description |
 | ---- | ----------- |
+| 200 | Workflow run node output event stream |
 | 404 | Workflow run not found |
 
 ### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
@@ -3715,9 +3767,10 @@ One node's declared outputs for a draft workflow run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run / node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output detail | [NodeOutputsView](#nodeoutputsview) |
+| 404 | Workflow run / node not found |  |
 
 ### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
 
@@ -3737,9 +3790,10 @@ Full value for one declared output, including signed download URL for files.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run / node / output not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output preview | [OutputPreviewView](#outputpreviewview) |
+| 404 | Workflow run / node / output not found |  |
 
 ### /apps/{app_id}/workflows/draft/system-variables
 
@@ -3994,9 +4048,10 @@ Snapshot of every node's declared outputs for a published workflow run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node outputs | [WorkflowRunSnapshotView](#workflowrunsnapshotview) |
+| 404 | Workflow run not found |  |
 
 ### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events
 
@@ -4016,6 +4071,7 @@ Server-Sent Events stream of inspector deltas for a published workflow run.
 
 | Code | Description |
 | ---- | ----------- |
+| 200 | Workflow run node output event stream |
 | 404 | Workflow run not found |
 
 ### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
@@ -4035,9 +4091,10 @@ One node's declared outputs for a published workflow run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run / node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output detail | [NodeOutputsView](#nodeoutputsview) |
+| 404 | Workflow run / node not found |  |
 
 ### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
 
@@ -4057,9 +4114,10 @@ Full value for one declared output of a published run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run / node / output not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output preview | [OutputPreviewView](#outputpreviewview) |
+| 404 | Workflow run / node / output not found |  |
 
 ### /apps/{app_id}/workflows/triggers/webhook
 
@@ -7476,6 +7534,10 @@ Set datasource variables
 ### /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
 
 #### GET
+##### Summary
+
+Get draft workflow
+
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -7686,6 +7748,10 @@ Run draft workflow
 | 200 | Success |
 
 #### GET
+##### Summary
+
+Get draft workflow
+
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -7735,6 +7801,7 @@ Run draft workflow
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
+| payload | body |  | Yes | [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload) |
 
 ##### Responses
 
@@ -8068,6 +8135,610 @@ Generate structured output rules using LLM
 | 400 | Invalid request parameters |
 | 402 | Provider quota exceeded |
 
+### /snippets/{snippet_id}/workflow-runs
+
+#### GET
+##### Summary
+
+List workflow runs for snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow runs retrieved successfully | [WorkflowRunPaginationResponse](#workflowrunpaginationresponse) |
+
+### /snippets/{snippet_id}/workflow-runs/tasks/{task_id}/stop
+
+#### POST
+##### Summary
+
+Stop a running snippet workflow task
+
+##### Description
+
+Uses both the legacy stop flag mechanism and the graph engine
+command channel for backward compatibility.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Task stopped successfully |
+| 404 | Snippet not found |
+
+### /snippets/{snippet_id}/workflow-runs/{run_id}
+
+#### GET
+##### Summary
+
+Get workflow run detail for snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| run_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run detail retrieved successfully | [WorkflowRunDetailResponse](#workflowrundetailresponse) |
+| 404 | Workflow run not found |  |
+
+### /snippets/{snippet_id}/workflow-runs/{run_id}/node-executions
+
+#### GET
+##### Summary
+
+List node executions for a workflow run
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| run_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse) |
+
+### /snippets/{snippet_id}/workflows
+
+#### GET
+##### Summary
+
+Get all published workflow versions for snippet
+
+##### Description
+
+Get all published workflows for a snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SnippetWorkflowListQuery](#snippetworkflowlistquery) |
+| snippet_id | path | Snippet ID | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published workflows retrieved successfully | [WorkflowPaginationResponse](#workflowpaginationresponse) |
+
+### /snippets/{snippet_id}/workflows/default-workflow-block-configs
+
+#### GET
+##### Summary
+
+Get default block configurations for snippet workflow
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Default block configs retrieved successfully |
+
+### /snippets/{snippet_id}/workflows/draft
+
+#### GET
+##### Summary
+
+Get draft workflow for snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft workflow retrieved successfully | [SnippetWorkflowResponse](#snippetworkflowresponse) |
+| 404 | Snippet or draft workflow not found |  |
+
+#### POST
+##### Summary
+
+Sync draft workflow for snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| payload | body |  | Yes | [SnippetDraftSyncPayload](#snippetdraftsyncpayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Draft workflow synced successfully |
+| 400 | Hash mismatch |
+
+### /snippets/{snippet_id}/workflows/draft/config
+
+#### GET
+##### Summary
+
+Get snippet draft workflow configuration limits
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Draft config retrieved successfully |
+
+### /snippets/{snippet_id}/workflows/draft/conversation-variables
+
+#### GET
+##### Description
+
+Conversation variables are not used in snippet workflows; returns an empty list for API parity
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversation variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+
+### /snippets/{snippet_id}/workflows/draft/environment-variables
+
+#### GET
+##### Description
+
+Get environment variables from snippet draft workflow graph
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Environment variables retrieved successfully |
+| 404 | Draft workflow not found |
+
+### /snippets/{snippet_id}/workflows/draft/iteration/nodes/{node_id}/run
+
+#### POST
+##### Summary
+
+Run a draft workflow iteration node for snippet
+
+##### Description
+
+Run draft workflow iteration node for snippet
+Iteration nodes execute their internal sub-graph multiple times over an input list.
+Returns an SSE event stream with iteration progress and results.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SnippetIterationNodeRunPayload](#snippetiterationnoderunpayload) |
+| node_id | path | Node ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Iteration node run started successfully (SSE stream) |
+| 404 | Snippet or draft workflow not found |
+
+### /snippets/{snippet_id}/workflows/draft/loop/nodes/{node_id}/run
+
+#### POST
+##### Summary
+
+Run a draft workflow loop node for snippet
+
+##### Description
+
+Run draft workflow loop node for snippet
+Loop nodes execute their internal sub-graph repeatedly until a condition is met.
+Returns an SSE event stream with loop progress and results.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SnippetLoopNodeRunPayload](#snippetloopnoderunpayload) |
+| node_id | path | Node ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Loop node run started successfully (SSE stream) |
+| 404 | Snippet or draft workflow not found |
+
+### /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/last-run
+
+#### GET
+##### Summary
+
+Get the last run result for a specific node in snippet draft workflow
+
+##### Description
+
+Get last run result for a node in snippet draft workflow
+Returns the most recent execution record for the given node,
+including status, inputs, outputs, and timing information.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_id | path | Node ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node last run retrieved successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 404 | Snippet, draft workflow, or node last run not found |  |
+
+### /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/run
+
+#### POST
+##### Summary
+
+Run a single node in snippet draft workflow
+
+##### Description
+
+Run a single node in snippet draft workflow (single-step debugging)
+Executes a specific node with provided inputs for single-step debugging.
+Returns the node execution result including status, outputs, and timing.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SnippetDraftNodeRunPayload](#snippetdraftnoderunpayload) |
+| node_id | path | Node ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node run completed successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 404 | Snippet or draft workflow not found |  |
+
+### /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables
+
+#### DELETE
+##### Description
+
+Delete all variables for a specific node (snippet draft workflow)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Node variables deleted successfully |
+
+#### GET
+##### Description
+
+Get variables for a specific node (snippet draft workflow)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+
+### /snippets/{snippet_id}/workflows/draft/run
+
+#### POST
+##### Summary
+
+Run draft workflow for snippet
+
+##### Description
+
+Executes the snippet's draft workflow with the provided inputs
+and returns an SSE event stream with execution progress and results.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| payload | body |  | Yes | [SnippetDraftRunPayload](#snippetdraftrunpayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Draft workflow run started successfully (SSE stream) |
+| 404 | Snippet or draft workflow not found |
+
+### /snippets/{snippet_id}/workflows/draft/system-variables
+
+#### GET
+##### Description
+
+System variables are not used in snippet workflows; returns an empty list for API parity
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | System variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+
+### /snippets/{snippet_id}/workflows/draft/variables
+
+#### DELETE
+##### Description
+
+Delete all draft workflow variables for the current user (snippet scope)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Workflow variables deleted successfully |
+
+#### GET
+##### Description
+
+List draft workflow variables without values (paginated, snippet scope)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| payload | body |  | Yes | [WorkflowDraftVariableListQuery](#workflowdraftvariablelistquery) |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow variables retrieved successfully | [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue) |
+
+### /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
+
+#### DELETE
+##### Description
+
+Delete a draft workflow variable (snippet scope)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| variable_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Variable deleted successfully |
+| 404 | Variable not found |
+
+#### GET
+##### Description
+
+Get a specific draft workflow variable (snippet scope)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| variable_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable retrieved successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 404 | Variable not found |  |
+
+#### PATCH
+##### Description
+
+Update a draft workflow variable (snippet scope)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| variable_id | path |  | Yes | string |
+| payload | body |  | Yes | [WorkflowDraftVariableUpdatePayload](#workflowdraftvariableupdatepayload) |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable updated successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 404 | Variable not found |  |
+
+### /snippets/{snippet_id}/workflows/draft/variables/{variable_id}/reset
+
+#### PUT
+##### Description
+
+Reset a draft workflow variable to its default value (snippet scope)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| variable_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable reset successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 204 | Variable reset (no content) |  |
+| 404 | Variable not found |  |
+
+### /snippets/{snippet_id}/workflows/publish
+
+#### GET
+##### Summary
+
+Get published workflow for snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published workflow retrieved successfully | [SnippetWorkflowResponse](#snippetworkflowresponse) |
+| 404 | Snippet not found |  |
+
+#### POST
+##### Summary
+
+Publish snippet workflow
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| payload | body |  | Yes | [PublishWorkflowPayload](#publishworkflowpayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Workflow published successfully |
+| 400 | No draft workflow found |
+
+### /snippets/{snippet_id}/workflows/{workflow_id}/restore
+
+#### POST
+##### Summary
+
+Restore a published snippet workflow version into the draft workflow
+
+##### Description
+
+Restore a published snippet workflow version into the draft workflow
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path | Snippet ID | Yes | string |
+| workflow_id | path | Published workflow ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Workflow restored successfully |
+| 400 | Source workflow must be published |
+| 404 | Workflow not found |
+
 ### /spec/schema-definitions
 
 #### GET
@@ -8150,7 +8821,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword for tag name. | No | string |
-| type | query | Tag type filter. Can be "knowledge" or "app". | No | string |
+| type | query | Tag type filter. Can be "knowledge", "app", or "snippet". | No | string |
 
 ##### Responses
 
@@ -8493,6 +9164,27 @@ Get website crawl status
 | 400 | Invalid provider |
 | 404 | Crawl job not found |
 
+### /workflow-generate
+
+#### POST
+##### Description
+
+Generate a Dify workflow graph from natural language
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [WorkflowGeneratePayload](#workflowgeneratepayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Workflow graph generated successfully |
+| 400 | Invalid request parameters |
+| 402 | Provider quota exceeded |
+
 ### /workflow/{workflow_run_id}/events
 
 #### GET
@@ -8594,6 +9286,222 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | [ object ] |
+
+### /workspaces/current/customized-snippets
+
+#### GET
+##### Summary
+
+List customized snippets with pagination and search
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SnippetListQuery](#snippetlistquery) |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Snippets retrieved successfully | [SnippetPagination](#snippetpagination) |
+
+#### POST
+##### Summary
+
+Create a new customized snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [CreateSnippetPayload](#createsnippetpayload) |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Snippet created successfully | [Snippet](#snippet) |
+| 400 | Invalid request |  |
+
+### /workspaces/current/customized-snippets/imports
+
+#### POST
+##### Summary
+
+Import snippet from DSL
+
+##### Description
+
+Import snippet from DSL
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SnippetImportPayload](#snippetimportpayload) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Snippet imported successfully |
+| 202 | Import pending confirmation |
+| 400 | Import failed |
+
+### /workspaces/current/customized-snippets/imports/{import_id}/confirm
+
+#### POST
+##### Summary
+
+Confirm a pending snippet import
+
+##### Description
+
+Confirm a pending snippet import
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| import_id | path | Import ID to confirm | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Import confirmed successfully |
+| 400 | Import failed |
+
+### /workspaces/current/customized-snippets/{snippet_id}
+
+#### DELETE
+##### Summary
+
+Delete customized snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Snippet deleted successfully |
+| 404 | Snippet not found |
+
+#### GET
+##### Summary
+
+Get customized snippet details
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Snippet retrieved successfully | [Snippet](#snippet) |
+| 404 | Snippet not found |  |
+
+#### PATCH
+##### Summary
+
+Update customized snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path |  | Yes | string |
+| payload | body |  | Yes | [UpdateSnippetPayload](#updatesnippetpayload) |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Snippet updated successfully | [Snippet](#snippet) |
+| 400 | Invalid request |  |
+| 404 | Snippet not found |  |
+
+### /workspaces/current/customized-snippets/{snippet_id}/check-dependencies
+
+#### GET
+##### Summary
+
+Check dependencies for a snippet
+
+##### Description
+
+Check dependencies for a snippet
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path | Snippet ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Dependencies checked successfully |
+| 404 | Snippet not found |
+
+### /workspaces/current/customized-snippets/{snippet_id}/export
+
+#### GET
+##### Summary
+
+Export snippet as DSL
+
+##### Description
+
+Export snippet configuration as DSL
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path | Snippet ID to export | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Snippet exported successfully |
+| 404 | Snippet not found |
+
+### /workspaces/current/customized-snippets/{snippet_id}/use-count/increment
+
+#### POST
+##### Summary
+
+Increment snippet use count when it is inserted into a workflow
+
+##### Description
+
+Increment snippet use count by 1
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path | Snippet ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Use count incremented successfully |
+| 404 | Snippet not found |
 
 ### /workspaces/current/dataset-operators
 
@@ -10935,17 +11843,28 @@ composer/publish validators and skipped by runtime request builders.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| approved | boolean |  | No |
 | authorization_status | [AgentCliToolAuthorizationStatus](#agentclitoolauthorizationstatus) |  | No |
 | command | string |  | No |
 | dangerous | boolean |  | No |
+| dangerous_accepted | boolean |  | No |
 | dangerous_acknowledged | boolean |  | No |
+| dangerous_command | boolean |  | No |
 | description | string |  | No |
 | enabled | boolean |  | No |
+| install | string |  | No |
+| install_command | string |  | No |
+| install_commands | [ string ] |  | No |
 | invoke_metadata | object |  | No |
+| label | string |  | No |
 | name | string |  | No |
-| permission | object |  | No |
+| permission | [AgentPermissionConfig](#agentpermissionconfig) |  | No |
 | pre_authorized | boolean |  | No |
+| requires_confirmation | boolean |  | No |
+| risk_accepted | boolean |  | No |
 | risk_level | [AgentCliToolRiskLevel](#agentclitoolrisklevel) |  | No |
+| setup_command | string |  | No |
+| tool_name | string |  | No |
 
 #### AgentCliToolRiskLevel
 
@@ -11104,10 +12023,14 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| default | string<br>integer<br>number<br>boolean<br>[ string ]<br>[ integer ]<br>[ number ]<br>[ boolean ] |  | No |
+| env_name | string |  | No |
+| key | string |  | No |
 | name | string |  | No |
 | required | boolean |  | No |
 | type | string |  | No |
 | value | string<br>integer<br>number<br>boolean<br>[ string ]<br>[ integer ]<br>[ number ]<br>[ boolean ] |  | No |
+| variable | string |  | No |
 
 #### AgentFeatureToggleConfig
 
@@ -11119,21 +12042,30 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| file_id | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
+| reference | string |  | No |
+| remote_url | string |  | No |
+| tenant_id | string |  | No |
 | transfer_method | string |  | No |
 | type | string |  | No |
+| upload_file_id | string |  | No |
 | url | string |  | No |
 
 #### AgentHumanContactConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| channel | string |  | No |
 | contact_id | string |  | No |
+| contact_method | string |  | No |
 | email | string |  | No |
 | human_id | string |  | No |
 | id | string |  | No |
+| method | string |  | No |
 | name | string |  | No |
+| tenant_id | string |  | No |
 
 #### AgentHumanToolConfig
 
@@ -11277,6 +12209,14 @@ the current roster/workflow APIs scoped to Dify Agent.
 | keywords | string |  | No |
 | outputs_config | [AgentModerationIOConfig](#agentmoderationioconfig) |  | No |
 
+#### AgentPermissionConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed | boolean |  | No |
+| state | string |  | No |
+| status | string |  | No |
+
 #### AgentReferencingWorkflowResponse
 
 | Name | Type | Description | Required |
@@ -11333,6 +12273,7 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| cpu | integer |  | No |
 | env | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
 | image | string |  | No |
 | working_dir | string |  | No |
@@ -11349,12 +12290,18 @@ Visibility and lifecycle scope of an Agent record.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| credential_id | string |  | No |
+| env_name | string |  | No |
 | id | string |  | No |
+| key | string |  | No |
 | name | string |  | No |
-| permission | object |  | No |
+| permission | [AgentPermissionConfig](#agentpermissionconfig) |  | No |
 | permission_status | string |  | No |
 | provider | string |  | No |
+| provider_credential_id | string |  | No |
+| ref | string |  | No |
 | type | string |  | No |
+| variable | string |  | No |
 
 #### AgentSensitiveWordAvoidanceFeatureConfig
 
@@ -11884,6 +12831,7 @@ Enum class for api provider schema type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| creator_ids | [ string ] | Filter by creator account IDs | No |
 | is_created_by_me | boolean | Filter by creator | No |
 | limit | integer | Page size (1-100) | No |
 | mode | string | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
@@ -12191,6 +13139,15 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
+
+#### CheckResultView
+
+``type_check`` / ``output_check`` per-output summary block.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passed | boolean |  | Yes |
+| reason | string |  | No |
 
 #### ChildChunkBatchUpdatePayload
 
@@ -12584,6 +13541,19 @@ Condition detail
 | icon_type | [IconType](#icontype) | Icon type | No |
 | mode | string | App mode<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
+
+#### CreateSnippetPayload
+
+Payload for creating a new snippet.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| graph | object |  | No |
+| icon_info | [IconInfo](#iconinfo) |  | No |
+| input_fields | [ [InputFieldDefinition](#inputfielddefinition) ] |  | No |
+| name | string |  | Yes |
+| type | string | *Enum:* `"group"`, `"node"` | No |
 
 #### CredentialType
 
@@ -14026,11 +14996,30 @@ Request payload for bulk downloading documents as a zip archive.
 | form_id | string |  | Yes |
 | type | string |  | Yes |
 
+#### IconInfo
+
+Icon information model.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string | *Enum:* `"emoji"`, `"image"` | No |
+| icon_url | string |  | No |
+
 #### IconType
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | IconType | string |  |  |
+
+#### IdentityMode
+
+How Dify forwards the end-user's identity to an MCP server.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IdentityMode | string | How Dify forwards the end-user's identity to an MCP server. |  |
 
 #### Import
 
@@ -14052,9 +15041,11 @@ Request payload for bulk downloading documents as a zip archive.
 
 #### IncludeSecretQuery
 
+Query parameter for including secret variables in export.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| include_secret | string | Whether to include secret values in the exported DSL | No |
+| include_secret | string | Whether to include secret variables | No |
 
 #### IndexingEstimate
 
@@ -14114,6 +15105,21 @@ Request payload for bulk downloading documents as a zip archive.
 | model | string |  | No |
 | model_type | [ModelType](#modeltype) |  | Yes |
 | provider | string |  | No |
+
+#### InputFieldDefinition
+
+Input field definition for snippet parameters.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | string |  | No |
+| hint | boolean |  | No |
+| label | string |  | No |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| placeholder | string |  | No |
+| required | boolean |  | No |
+| type | string |  | No |
 
 #### InstallPermission
 
@@ -14325,6 +15331,7 @@ Enum class for large language model mode.
 | icon | string |  | Yes |
 | icon_background | string |  | No |
 | icon_type | string |  | Yes |
+| identity_mode | [IdentityMode](#identitymode) |  | No |
 | name | string |  | Yes |
 | server_identifier | string |  | Yes |
 | server_url | string |  | Yes |
@@ -14345,6 +15352,7 @@ Enum class for large language model mode.
 | icon | string |  | Yes |
 | icon_background | string |  | No |
 | icon_type | string |  | Yes |
+| identity_mode | [IdentityMode](#identitymode) |  | No |
 | name | string |  | Yes |
 | provider_id | string |  | Yes |
 | server_identifier | string |  | Yes |
@@ -14583,6 +15591,38 @@ Enum class for model type.
 | ---- | ---- | ----------- | -------- |
 | node_id | string |  | Yes |
 
+#### NodeOutputStatus
+
+Lifecycle status of a single declared output within a run.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeOutputStatus | string | Lifecycle status of a single declared output within a run. |  |
+
+#### NodeOutputView
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| output_check | [CheckResultView](#checkresultview) |  | No |
+| retried | integer |  | No |
+| status | [NodeOutputStatus](#nodeoutputstatus) |  | Yes |
+| type | [DeclaredOutputType](#declaredoutputtype) |  | No |
+| type_check | [CheckResultView](#checkresultview) |  | No |
+| value_preview |  |  | No |
+
+#### NodeOutputsView
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_completed_at | dateTime |  | No |
+| node_display_name | string |  | Yes |
+| node_id | string |  | Yes |
+| node_kind | string |  | Yes |
+| node_started_at | dateTime |  | No |
+| node_status | [NodeStatus](#nodestatus) |  | Yes |
+| outputs | [ [NodeOutputView](#nodeoutputview) ] |  | No |
+
 #### NodeRunPayload
 
 | Name | Type | Description | Required |
@@ -14594,6 +15634,14 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | Yes |
+
+#### NodeStatus
+
+Coarse node-level status used by Inspector to pick a banner.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeStatus | string | Coarse node-level status used by Inspector to pick a banner. |  |
 
 #### NotionEstimatePayload
 
@@ -14684,6 +15732,16 @@ output check fails and any configured retry attempts have been exhausted.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | OutputErrorStrategy | string | Per-output failure handling strategy.  Mirrors ``graphon.ErrorStrategy`` but scoped to a single declared output of a Workflow Agent Node. The runtime applies the strategy after type check or output check fails and any configured retry attempts have been exhausted. |  |
+
+#### OutputPreviewView
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| output_name | string |  | Yes |
+| status | [NodeOutputStatus](#nodeoutputstatus) |  | Yes |
+| type | [DeclaredOutputType](#declaredoutputtype) |  | No |
+| value |  |  | No |
 
 #### OwnerTransferCheckPayload
 
@@ -15188,15 +16246,24 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | string | *Enum:* `"automatic"`, `"custom"`, `"hierarchical"` | Yes |
+| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
 
-#### PublishWorkflowPayload
+#### ProcessRuleMode
+
+Dataset Process Rule Mode
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
+| ProcessRuleMode | string | Dataset Process Rule Mode |  |
+
+#### PublishWorkflowPayload
+
+Payload for publishing snippet workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| knowledge_base_setting | object |  | No |
 
 #### PublishedWorkflowRunPayload
 
@@ -15686,6 +16753,157 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
+#### Snippet
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | object |  | No |
+| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| description | string |  | No |
+| graph | object |  | No |
+| icon_info | object |  | No |
+| id | string |  | No |
+| input_fields | object |  | No |
+| is_published | boolean |  | No |
+| name | string |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| type | string |  | No |
+| updated_at | object |  | No |
+| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| use_count | integer |  | No |
+| version | integer |  | No |
+
+#### SnippetDraftNodeRunPayload
+
+Payload for running a single node in snippet draft workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ object ] |  | No |
+| inputs | object |  | Yes |
+| query | string |  | No |
+
+#### SnippetDraftRunPayload
+
+Payload for running snippet draft workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ object ] |  | No |
+| inputs | object |  | Yes |
+
+#### SnippetDraftSyncPayload
+
+Payload for syncing snippet draft workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ object ] | Ignored. Snippet workflows do not persist conversation variables. | No |
+| graph | object |  | Yes |
+| hash | string |  | No |
+| input_fields | [ object ] |  | No |
+
+#### SnippetImportPayload
+
+Payload for importing snippet from DSL.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Override snippet description | No |
+| mode | string | Import mode: yaml-content or yaml-url | Yes |
+| name | string | Override snippet name | No |
+| snippet_id | string | Snippet ID to update (optional) | No |
+| yaml_content | string | YAML content (required for yaml-content mode) | No |
+| yaml_url | string | YAML URL (required for yaml-url mode) | No |
+
+#### SnippetIterationNodeRunPayload
+
+Payload for running an iteration node in snippet draft workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| inputs | object |  | No |
+
+#### SnippetList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| created_at | object |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| icon_info | object |  | No |
+| id | string |  | No |
+| is_published | boolean |  | No |
+| name | string |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| type | string |  | No |
+| updated_at | object |  | No |
+| updated_by | string |  | No |
+| use_count | integer |  | No |
+| version | integer |  | No |
+
+#### SnippetListQuery
+
+Query parameters for listing snippets.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| creators | [ string ] | Filter by creator account IDs | No |
+| is_published | boolean | Filter by published status | No |
+| keyword | string |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+| tag_ids | [ string ] | Filter by tag IDs | No |
+
+#### SnippetLoopNodeRunPayload
+
+Payload for running a loop node in snippet draft workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| inputs | object |  | No |
+
+#### SnippetPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [_AnonymousInlineModel_7b67ac8a4db8](#_anonymousinlinemodel_7b67ac8a4db8) ] |  | No |
+| has_more | boolean |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+| total | integer |  | No |
+
+#### SnippetWorkflowListQuery
+
+Query parameters for listing snippet published workflows.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | No |
+| page | integer |  | No |
+
+#### SnippetWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
+| features | object |  | Yes |
+| graph | object |  | Yes |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| input_fields | [ object ] |  | No |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+| rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
+| tool_published | boolean |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| version | string |  | Yes |
+
 #### StatisticTimeRangeQuery
 
 | Name | Type | Description | Required |
@@ -15837,7 +17055,7 @@ Default configuration for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"` | No |
+| type | string | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"`, `"snippet"` | No |
 
 #### TagResponse
 
@@ -16179,6 +17397,16 @@ Tag type
 | max_active_requests | integer | Maximum active requests | No |
 | name | string | App name | Yes |
 | use_icon_as_answer_icon | boolean | Use icon as answer icon | No |
+
+#### UpdateSnippetPayload
+
+Payload for updating a snippet.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon_info | [IconInfo](#iconinfo) |  | No |
+| name | string |  | No |
 
 #### UpgradeMode
 
@@ -16658,6 +17886,22 @@ How a workflow node is bound to an Agent.
 | ---- | ---- | ----------- | -------- |
 | features | object | Workflow feature configuration | Yes |
 
+#### WorkflowGeneratePayload
+
+Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
+
+See ``services/workflow_generator_service.py`` for behaviour. Errors are
+surfaced through the same envelope as ``/rule-generate`` so the frontend
+can reuse its existing handler.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_graph | object | Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch | No |
+| ideal_output | string | Optional sample output for grounding | No |
+| instruction | string | Natural-language workflow description | Yes |
+| mode | string | Target app mode for the generated graph<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |
+| model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
+
 #### WorkflowListQuery
 
 | Name | Type | Description | Required |
@@ -16683,6 +17927,7 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_soul | object |  | No |
 | file_refs | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
 
 #### WorkflowNodeJobMode
@@ -16926,6 +18171,8 @@ How a workflow node is bound to an Agent.
 
 #### WorkflowRunQuery
 
+Query parameters for workflow runs.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
@@ -16937,6 +18184,14 @@ How a workflow node is bound to an Agent.
 | ---- | ---- | ----------- | -------- |
 | files | [  ] |  | No |
 | inputs | object |  | Yes |
+
+#### WorkflowRunSnapshotView
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_outputs | [ [NodeOutputsView](#nodeoutputsview) ] |  | No |
+| workflow_run_id | string |  | Yes |
+| workflow_run_status | [WorkflowExecutionStatus](#workflowexecutionstatus) |  | Yes |
 
 #### WorkflowStatisticQuery
 
@@ -17075,6 +18330,41 @@ Workflow tool configuration
 | size | integer |  | Yes |
 | text | string |  | No |
 | truncated | boolean |  | Yes |
+
+#### _AnonymousInlineModel_7b67ac8a4db8
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| created_at | object |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| icon_info | object |  | No |
+| id | string |  | No |
+| is_published | boolean |  | No |
+| name | string |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| type | string |  | No |
+| updated_at | object |  | No |
+| updated_by | string |  | No |
+| use_count | integer |  | No |
+| version | integer |  | No |
+
+#### _AnonymousInlineModel_7b8b49ca164e
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| name | string |  | No |
+| type | string |  | No |
+
+#### _AnonymousInlineModel_b0fd3f86d9d5
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
 
 #### _AnonymousInlineModel_b1954337d565
 

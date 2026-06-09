@@ -21,9 +21,9 @@ User-scoped operations
 #### GET
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Health check | [HealthResponse](#healthresponse) |
 
 ### /_version
 
@@ -111,7 +111,7 @@ User-scoped operations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
-| fields | query |  | No | [ string ] |
+| fields | query |  | No | string |
 | workspace_id | query |  | No | string |
 
 ##### Responses
@@ -170,9 +170,9 @@ Upload a file to use as an input variable when running the app
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Form submitted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form submitted | [FormSubmitResponse](#formsubmitresponse) |
 
 ### /apps/{app_id}/run
 
@@ -218,9 +218,9 @@ Upload a file to use as an input variable when running the app
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped | [TaskStopResponse](#taskstopresponse) |
 
 ### /oauth/device/approve
 
@@ -453,7 +453,7 @@ Empty / omitted → all blocks. Unknown member → ValidationError → 422.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| fields | [ string ] |  | No |
+| fields | string |  | No |
 | workspace_id | string |  | No |
 
 #### AppDescribeResponse
@@ -599,6 +599,23 @@ mode is a closed enum.
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
+#### FormSubmitResponse
+
+Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+pins `additionalProperties: false` so the generated contract is an exact `{}` rather
+than an under-annotated open object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
+#### HealthResponse
+
+Liveness payload for `GET /openapi/v1/_health` — no auth required.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ok | boolean |  | Yes |
+
 #### HumanInputFormSubmitPayload
 
 | Name | Type | Description | Required |
@@ -715,6 +732,15 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | edition | string | *Enum:* `"CLOUD"`, `"SELF_HOSTED"` | Yes |
 | version | string |  | Yes |
 
+#### SessionListQuery
+
+Pagination for GET /account/sessions. Strict (extra='forbid').
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | No |
+| page | integer |  | No |
+
 #### SessionListResponse
 
 | Name | Type | Description | Required |
@@ -742,6 +768,16 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
+
+#### TaskStopResponse
+
+200 body for POST /apps/<id>/tasks/<task_id>/stop. The handler always returns
+{"result": "success"}, so `result` is required (no default) — the generated contract
+types it as a required `'success'` rather than an optional field.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
 
 #### UsageInfo
 
