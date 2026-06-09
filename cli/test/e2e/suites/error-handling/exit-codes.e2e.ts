@@ -35,6 +35,7 @@ import type { AuthFixture } from '../../helpers/cli.js'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { ZERO } from '@/util/uuid.js'
 import { assertExitCode, assertNonZeroExit } from '../../helpers/assert.js'
 import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -85,7 +86,7 @@ describe('E2E / exit code standards (spec 5.4)', () => {
     const result = await fx.r([
       'get',
       'app',
-      '00000000-0000-0000-0000-000000000000',
+      ZERO,
       '-o',
       'json',
     ])

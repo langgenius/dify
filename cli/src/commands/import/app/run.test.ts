@@ -6,6 +6,7 @@ import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
+import { ZERO } from '@/util/uuid.js'
 import { runImportApp } from './run.js'
 
 const baseActive: ActiveContext = {
@@ -103,7 +104,7 @@ describe('runImportApp', () => {
   it('uses workspace from --workspace flag over context default', async () => {
     const dslFile = tmpDslFile()
     await runImportApp(
-      { fromFile: dslFile, workspace: 'ws-2' },
+      { fromFile: dslFile, workspace: ZERO },
       { active: baseActive, http: http() },
     )
 
