@@ -85,6 +85,36 @@ describe('FileTree', () => {
     expect(screen.container.querySelector('.i-ri-folder-open-line')).toBeInTheDocument()
   })
 
+  it('uses Remix fill icons for each non-folder file type', async () => {
+    const iconTypes = [
+      ['file', 'i-ri-file-3-fill'],
+      ['markdown', 'i-ri-markdown-fill'],
+      ['json', 'i-ri-braces-fill'],
+      ['image', 'i-ri-file-image-fill'],
+      ['code', 'i-ri-file-code-fill'],
+      ['database', 'i-ri-database-2-fill'],
+      ['text', 'i-ri-file-text-fill'],
+      ['pdf', 'i-ri-file-pdf-2-fill'],
+      ['table', 'i-ri-file-excel-fill'],
+      ['archive', 'i-ri-file-zip-fill'],
+    ] as const
+    const screen = await render(
+      <FileTreeRoot aria-label="Icon examples">
+        <FileTreeList>
+          {iconTypes.map(([type]) => (
+            <FileTreeFile key={type}>
+              <FileTreeIcon type={type} />
+              <FileTreeLabel>{type}</FileTreeLabel>
+            </FileTreeFile>
+          ))}
+        </FileTreeList>
+      </FileTreeRoot>,
+    )
+
+    for (const [, iconClassName] of iconTypes)
+      expect(screen.container.querySelector(`.${iconClassName}`)).toBeInTheDocument()
+  })
+
   it('collapses and expands folders with click and native button keyboard behavior', async () => {
     const screen = await render(<TestFileTree />)
     const src = screen.getByRole('button', { name: 'src' }).element() as HTMLElement

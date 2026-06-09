@@ -256,16 +256,16 @@ export type FileTreeIconType
     | 'archive'
 
 const fileTreeIconClassNames: Record<Exclude<FileTreeIconType, 'folder'>, string> = {
-  file: 'i-ri-file-line',
-  markdown: 'i-ri-markdown-fill',
-  json: 'i-ri-braces-line',
-  image: 'i-ri-image-line',
-  code: 'i-ri-code-s-slash-line',
-  database: 'i-ri-database-2-line',
-  text: 'i-ri-file-text-line',
-  pdf: 'i-ri-file-pdf-2-line',
-  table: 'i-ri-table-line',
-  archive: 'i-ri-file-zip-line',
+  file: 'i-ri-file-3-fill text-[#A4AABF]',
+  markdown: 'i-ri-markdown-fill text-[#309BEC]',
+  json: 'i-ri-braces-fill text-[#A4AABF]',
+  image: 'i-ri-file-image-fill text-[#00B2EA]',
+  code: 'i-ri-file-code-fill text-[#A4AABF]',
+  database: 'i-ri-database-2-fill text-[#A4AABF]',
+  text: 'i-ri-file-text-fill text-[#6F8BB5]',
+  pdf: 'i-ri-file-pdf-2-fill text-[#EA3434]',
+  table: 'i-ri-file-excel-fill text-[#01AC49]',
+  archive: 'i-ri-file-zip-fill text-[#A4AABF]',
 }
 
 export type FileTreeIconProps
