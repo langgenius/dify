@@ -94,7 +94,7 @@ export const useWorkflowTemplate = () => {
         selected: true,
         type: startPlaceholderDefault.metaData.type,
         title: t(`blocks.${startPlaceholderDefault.metaData.type}`, { ns: 'workflow' }),
-        desc: t(`blocksAbout.${startPlaceholderDefault.metaData.type}`, { ns: 'workflow' }),
+        desc: '',
       },
       position: START_INITIAL_POSITION,
     })
