@@ -259,6 +259,7 @@ class TestFileApiPost:
         mock_upload.preview_url = None
         mock_upload.source_url = None
         mock_upload.original_url = None
+        mock_upload.reference = None
         mock_upload.user_id = None
         mock_upload.tenant_id = None
         mock_upload.conversation_id = None
