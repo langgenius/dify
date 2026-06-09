@@ -174,8 +174,8 @@ describe('DatasetNav', () => {
       expect(within(menu).getByText('Null Icon Dataset')).toBeInTheDocument()
     })
 
-    it('should render correct links for navigation items', () => {
-      render(<DatasetNav />)
+    it('should navigate to correct links for navigation items', () => {
+      const { unmount } = render(<DatasetNav />)
       const selector = screen.getByRole('button', { name: /Test Dataset/i })
       fireEvent.click(selector)
 
@@ -183,15 +183,26 @@ describe('DatasetNav', () => {
       const pipelineItem = within(menu).getByText('Pipeline Dataset')
 
       // dataset-2 is rag_pipeline and not published -> /datasets/dataset-2/pipeline
-      expect(pipelineItem.closest('a')).toHaveAttribute('href', '/datasets/dataset-2/pipeline')
+      fireEvent.click(pipelineItem)
+      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-2/pipeline')
 
-      const externalItem = within(menu).getByText('External Dataset')
+      unmount()
+      mockPush.mockClear()
+      render(<DatasetNav />)
+      fireEvent.click(screen.getByRole('button', { name: /Test Dataset/i }))
+
+      const externalItem = within(screen.getByRole('menu')).getByText('External Dataset')
       // dataset-3 is provider external -> /datasets/dataset-3/hitTesting
-      expect(externalItem.closest('a')).toHaveAttribute('href', '/datasets/dataset-3/hitTesting')
+      fireEvent.click(externalItem)
+      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-3/hitTesting')
 
-      const publishedItem = within(menu).getByText('Published Pipeline')
+      mockPush.mockClear()
+      fireEvent.click(screen.getByRole('button', { name: /Test Dataset/i }))
+
+      const publishedItem = within(screen.getByRole('menu')).getByText('Published Pipeline')
       // dataset-4 is rag_pipeline and published -> /datasets/dataset-4/documents
-      expect(publishedItem.closest('a')).toHaveAttribute('href', '/datasets/dataset-4/documents')
+      fireEvent.click(publishedItem)
+      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-4/documents')
     })
   })
 
