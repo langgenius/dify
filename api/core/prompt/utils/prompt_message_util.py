@@ -113,14 +113,14 @@ class PromptMessageUtil:
         else:
             prompt_message = prompt_messages[0]
             text = ""
-            files: list[SavedPromptFile] = []
+            prompt_files: list[SavedPromptFile] = []
             if isinstance(prompt_message.content, list):
                 for content in prompt_message.content:
                     if content.type == PromptMessageContentType.TEXT:
                         text += content.data
                     else:
                         content = cast(ImagePromptMessageContent, content)
-                        files.append(
+                        prompt_files.append(
                             {
                                 "type": "image",
                                 "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
@@ -135,8 +135,8 @@ class PromptMessageUtil:
                 "text": text,
             }
 
-            if files:
-                params["files"] = files
+            if prompt_files:
+                params["files"] = prompt_files
 
             prompts.append(params)
 

@@ -4,9 +4,10 @@ import io
 import os
 import tempfile
 from collections import UserDict
+from collections.abc import Generator
 from pathlib import Path
 from types import SimpleNamespace
-from typing import override
+from typing import Protocol, cast, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,6 +17,14 @@ from docx.oxml.ns import qn
 
 import core.rag.extractor.word_extractor as we
 from core.rag.extractor.word_extractor import WordExtractor
+
+
+class _TextOxmlElement(Protocol):
+    text: str | None
+
+
+def _set_oxml_text(element: object, text: str) -> None:
+    cast(_TextOxmlElement, element).text = text
 
 
 def _generate_table_with_merged_cells():
@@ -190,8 +199,8 @@ def test_extract_images_from_docx_uses_internal_files_url():
     from configs import dify_config
 
     # Mock the configuration values
-    original_files_url = getattr(dify_config, "FILES_URL", None)
-    original_internal_files_url = getattr(dify_config, "INTERNAL_FILES_URL", None)
+    original_files_url = dify_config.FILES_URL
+    original_internal_files_url = dify_config.INTERNAL_FILES_URL
 
     try:
         # Set both URLs - INTERNAL should take precedence
@@ -233,7 +242,7 @@ def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch):
 
     new_run = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "Dify"
+    _set_oxml_text(t, "Dify")
     new_run.append(t)
     hyperlink.append(new_run)
     p._p.append(hyperlink)
@@ -286,7 +295,7 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch):
 
     run2 = OxmlElement("w:r")
     instrText = OxmlElement("w:instrText")
-    instrText.text = ' HYPERLINK "http://example.com" '
+    _set_oxml_text(instrText, ' HYPERLINK "http://example.com" ')
     run2.append(instrText)
     p._p.append(run2)
 
@@ -298,7 +307,7 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch):
 
     run4 = OxmlElement("w:r")
     t4 = OxmlElement("w:t")
-    t4.text = "Example"
+    _set_oxml_text(t4, "Example")
     run4.append(t4)
     p._p.append(run4)
 
@@ -380,20 +389,27 @@ def test_close_is_idempotent():
     extractor.temp_file.close.assert_called_once()
 
 
-async def _async_close() -> None:
-    return None
-
-
 def test_close_closes_awaitable_close_result():
+    class FakeAwaitable:
+        closed: bool = False
+
+        def __await__(self) -> Generator[None, None, None]:
+            if False:
+                yield None
+            return None
+
+        def close(self) -> None:
+            self.closed = True
+
     extractor = object.__new__(WordExtractor)
     extractor._closed = False
     extractor.temp_file = MagicMock()
-    close_result = _async_close()
+    close_result = FakeAwaitable()
     extractor.temp_file.close = MagicMock(return_value=close_result)
 
     extractor.close()
 
-    assert close_result.cr_frame is None
+    assert close_result.closed is True
     extractor.temp_file.close.assert_called_once()
 
 
@@ -504,6 +520,36 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
 
     cell = SimpleNamespace(paragraphs=[paragraph, paragraph])
     assert extractor._parse_cell(cell, image_map) == "EXT-IMGINT-IMGplain"
+
+
+def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyPatch):
+    doc = Document()
+    doc.add_paragraph("Before table")
+    table = doc.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "Header A"
+    table.cell(0, 1).text = "Header B"
+    table.cell(1, 0).text = "Cell A"
+    table.cell(1, 1).text = "Cell B"
+    doc.add_paragraph("After table")
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    extractor = object.__new__(WordExtractor)
+    monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: {})
+
+    try:
+        assert extractor.parse_docx(tmp_path) == (
+            "Before table\n"
+            "| Header A | Header B |\n"
+            "| --- | --- |\n"
+            "| Cell A | Cell B |\n"
+            "After table"
+        )
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch: pytest.MonkeyPatch):
@@ -620,8 +666,15 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
             self.element = element
             self.text = getattr(element, "text", "")
 
-    paragraph_main = SimpleNamespace(
-        _element=[
+    class FakeParagraph:
+        def __init__(self, children):
+            self._element = children
+
+    class FakeTable:
+        rows: list[object] = []
+
+    paragraph_main = FakeParagraph(
+        [
             FakeChild(
                 qn("w:r"),
                 text="run-text",
@@ -646,17 +699,16 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
             ),
         ]
     )
-    paragraph_empty = SimpleNamespace(_element=[FakeChild(qn("w:r"), text="   ")])
+    paragraph_empty = FakeParagraph([FakeChild(qn("w:r"), text="   ")])
+    table = FakeTable()
 
     fake_doc = SimpleNamespace(
         part=SimpleNamespace(rels=rels, related_parts={int_embed_id: internal_part}),
-        paragraphs=[paragraph_main, paragraph_empty],
-        tables=[SimpleNamespace(rows=[])],
-        element=SimpleNamespace(
-            body=[SimpleNamespace(tag="w:p"), SimpleNamespace(tag="w:p"), SimpleNamespace(tag="w:tbl")]
-        ),
+        iter_inner_content=lambda: iter([paragraph_main, paragraph_empty, table]),
     )
 
+    monkeypatch.setattr(we, "Paragraph", FakeParagraph)
+    monkeypatch.setattr(we, "Table", FakeTable)
     monkeypatch.setattr(we, "DocxDocument", lambda _: fake_doc)
     monkeypatch.setattr(we, "Run", FakeRun)
     monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: image_map)
@@ -688,7 +740,7 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
 
     run_elem = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "Dify"
+    _set_oxml_text(t, "Dify")
     run_elem.append(t)
     hyperlink.append(run_elem)
     p._p.append(hyperlink)
@@ -728,7 +780,7 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
 
     run_elem = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "john@test.com"
+    _set_oxml_text(t, "john@test.com")
     run_elem.append(t)
     hyperlink.append(run_elem)
     p._p.append(hyperlink)
