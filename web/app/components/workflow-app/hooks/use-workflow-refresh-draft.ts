@@ -1,12 +1,52 @@
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
+import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { generateNewNode } from '@/app/components/workflow/utils'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { AppModeEnum } from '@/types/app'
+
+const hasWorkflowEntryNode = (nodes: WorkflowDataUpdater['nodes'] = []): boolean => {
+  return nodes.some(node => (
+    node?.data?.type === BlockEnum.Start
+    || node?.data?.type === BlockEnum.TriggerSchedule
+    || node?.data?.type === BlockEnum.TriggerWebhook
+    || node?.data?.type === BlockEnum.TriggerPlugin
+  ))
+}
+
+const hasStartPlaceholderNode = (nodes: WorkflowDataUpdater['nodes'] = []): boolean => {
+  return nodes.some(node => node?.data?.type === BlockEnum.StartPlaceholder)
+}
 
 export const useWorkflowRefreshDraft = () => {
+  const { t } = useTranslation()
+  const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+
+  const getNodesWithLocalStartPlaceholder = useCallback((nodes: WorkflowDataUpdater['nodes']) => {
+    if (appDetail?.mode !== AppModeEnum.WORKFLOW || hasWorkflowEntryNode(nodes) || hasStartPlaceholderNode(nodes))
+      return nodes
+
+    const { newNode: startPlaceholderNode } = generateNewNode({
+      data: {
+        ...startPlaceholderDefault.defaultValue,
+        selected: true,
+        type: startPlaceholderDefault.metaData.type,
+        title: t(`blocks.${startPlaceholderDefault.metaData.type}`, { ns: 'workflow' }),
+        desc: '',
+      },
+      position: START_INITIAL_POSITION,
+    })
+
+    return [startPlaceholderNode, ...nodes]
+  }, [appDetail?.mode, t])
 
   const handleRefreshWorkflowDraft = useCallback((notUpdateCanvas?: boolean) => {
     const {
@@ -32,8 +72,9 @@ export const useWorkflowRefreshDraft = () => {
       .then((response) => {
         // Ensure we have a valid workflow structure with viewport
         if (!notUpdateCanvas) {
+          const nodes = response.graph?.nodes || []
           const workflowData: WorkflowDataUpdater = {
-            nodes: response.graph?.nodes || [],
+            nodes: getNodesWithLocalStartPlaceholder(nodes),
             edges: response.graph?.edges || [],
             viewport: response.graph?.viewport || { x: 0, y: 0, zoom: 1 },
           }
@@ -55,7 +96,7 @@ export const useWorkflowRefreshDraft = () => {
       .finally(() => {
         setIsSyncingWorkflowDraft(false)
       })
-  }, [handleUpdateWorkflowCanvas, workflowStore])
+  }, [getNodesWithLocalStartPlaceholder, handleUpdateWorkflowCanvas, workflowStore])
 
   return {
     handleRefreshWorkflowDraft,

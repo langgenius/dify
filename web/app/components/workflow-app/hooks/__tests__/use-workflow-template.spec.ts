@@ -57,6 +57,7 @@ describe('useWorkflowTemplate', () => {
       type: 'start-placeholder',
       title: 'workflow.blocks.start-placeholder',
       selected: true,
+      desc: '',
     })
   })
 
