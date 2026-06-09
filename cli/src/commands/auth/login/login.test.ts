@@ -74,7 +74,7 @@ describe('runLogin', () => {
     })
     const active = reg.resolveActive()
     expect(active?.ctx.account.email).toBe('tester@dify.ai')
-    expect(active?.ctx.workspace?.id).toBe('ws-1')
+    expect(active?.ctx.workspace?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(active?.ctx.available_workspaces).toHaveLength(2)
     expect(store.get(tokenKey(active!.host, 'tester@dify.ai'))).toBe('dfoa_test')
 
