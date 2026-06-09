@@ -2,17 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from flask import request
 from flask_restx import Resource
-from pydantic import ValidationError
-from werkzeug.exceptions import NotFound, UnprocessableEntity
+from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
+from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
-    PaginationEnvelope,
     RevokeResponse,
     SessionListQuery,
     SessionListResponse,
@@ -72,17 +69,13 @@ class AccountSessionsSelfApi(Resource):
 
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
-    @openapi_ns.doc(params=query_params_from_model(SessionListQuery))
-    @openapi_ns.response(200, "Session list", openapi_ns.models[SessionListResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    def get(self, *, auth_data: AuthData):
-        # Validate page/limit through the same model the contract advertises (extra='forbid',
-        # page>=1, 1<=limit<=MAX_PAGE_LIMIT) so the server actually enforces those bounds rather
-        # than silently coercing (e.g. page=0 -> empty slice). Mirrors AppDescribeQuery.
-        try:
-            query = SessionListQuery.model_validate(request.args.to_dict(flat=True))
-        except ValidationError as exc:
-            raise UnprocessableEntity(exc.json())
+    @returns(200, SessionListResponse, description="Session list")
+    @accepts(query=SessionListQuery)
+    def get(self, *, auth_data: AuthData, query: SessionListQuery):
+        # SessionListQuery enforces the advertised bounds (extra='forbid', page>=1,
+        # 1<=limit<=MAX_PAGE_LIMIT) so the server rejects out-of-range paging rather
+        # than silently coercing (e.g. page=0 -> empty slice).
         ctx = get_auth_ctx()
         now = datetime.now(UTC)
         page = query.page
@@ -106,9 +99,12 @@ class AccountSessionsApi(Resource):
             for r in sliced
         ]
 
-        return (
-            PaginationEnvelope.build(page=page, limit=limit, total=total, items=items).model_dump(mode="json"),
-            200,
+        return SessionListResponse(
+            page=page,
+            limit=limit,
+            total=total,
+            has_more=page * limit < total,
+            data=items,
         )
 
 

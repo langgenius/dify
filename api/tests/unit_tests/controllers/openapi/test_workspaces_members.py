@@ -29,7 +29,7 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._models import MemberInvitePayload, MemberRoleUpdatePayload
@@ -384,7 +384,7 @@ def test_members_list_paginates_with_query_params(app, bypass_pipeline, monkeypa
 
 
 def test_members_list_rejects_unknown_query_param(app, bypass_pipeline, monkeypatch):
-    """Strict (`extra='forbid'`) — typos like `?pg=2` surface as 400."""
+    """Strict (`extra='forbid'`) — typos like `?pg=2` surface as 422 (unified via @accepts)."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
@@ -395,7 +395,7 @@ def test_members_list_rejects_unknown_query_param(app, bypass_pipeline, monkeypa
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?pg=2"):
         _seed(_auth_ctx(account_id=acct_id))
-        with pytest.raises(BadRequest):
+        with pytest.raises(UnprocessableEntity):
             api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 

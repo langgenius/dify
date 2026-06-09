@@ -7,14 +7,13 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
-from flask import request
 from flask_restx import Resource
-from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, NotFound, UnprocessableEntity
 
 import services
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
+from controllers.openapi._contract import accepts
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
@@ -123,23 +122,18 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
 
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
-    @openapi_ns.expect(openapi_ns.models[AppRunRequest.__name__])
-    @openapi_ns.response(200, "Run result (SSE stream)")
     @auth_router.guard(scope=Scope.APPS_RUN)
-    def post(self, app_id: str, *, auth_data: AuthData):
+    @openapi_ns.response(200, "Run result (SSE stream)")
+    @accepts(body=AppRunRequest)
+    def post(self, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
         app_model, caller, caller_kind = auth_data.require_app_context()
-        body = request.get_json(silent=True) or {}
-        try:
-            payload = AppRunRequest.model_validate(body)
-        except ValidationError as exc:
-            raise UnprocessableEntity(exc.json())
 
         handler = _DISPATCH.get(app_model.mode)
         if handler is None:
             raise UnprocessableEntity("mode_not_runnable")
 
         try:
-            stream_obj = handler(app_model, caller, payload)
+            stream_obj = handler(app_model, caller, body)
         except HTTPException:
             raise
         except Exception:

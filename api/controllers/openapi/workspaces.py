@@ -20,8 +20,8 @@ from pydantic import BaseModel, ValidationError
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from configs import dify_config
-from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
+from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
@@ -174,15 +174,10 @@ class WorkspaceMembersApi(Resource):
     assigned through invite (ownership transfer is console-only).
     """
 
-    @openapi_ns.doc(params=query_params_from_model(MemberListQuery))
-    @openapi_ns.response(200, "Member list", openapi_ns.models[MemberListResponse.__name__])
     @auth_router.guard_workspace(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    def get(self, workspace_id: str, *, auth_data: AuthData):
-        try:
-            query = MemberListQuery.model_validate(request.args.to_dict(flat=True))
-        except ValidationError as exc:
-            raise BadRequest(str(exc))
-
+    @returns(200, MemberListResponse, description="Member list")
+    @accepts(query=MemberListQuery)
+    def get(self, workspace_id: str, *, auth_data: AuthData, query: MemberListQuery):
         tenant = _load_tenant(workspace_id)
         members = TenantService.get_tenant_members(tenant)
         total = len(members)
@@ -194,7 +189,7 @@ class WorkspaceMembersApi(Resource):
             total=total,
             has_more=query.page * query.limit < total,
             data=[_member_response(m) for m in page_items],
-        ).model_dump(mode="json"), 200
+        )
 
     @openapi_ns.expect(openapi_ns.models[MemberInvitePayload.__name__])
     @openapi_ns.response(201, "Member invited", openapi_ns.models[MemberInviteResponse.__name__])
