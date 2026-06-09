@@ -24,8 +24,8 @@ class PromptMessageUtil:
         """
         prompts = []
         if model_mode == ModelMode.CHAT:
-            tool_calls = []
             for prompt_message in prompt_messages:
+                tool_calls: list[dict[str, Any]] = []
                 if prompt_message.role == PromptMessageRole.USER:
                     role = "user"
                 elif prompt_message.role == PromptMessageRole.ASSISTANT:
