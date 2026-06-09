@@ -20,6 +20,7 @@
 # ===================================================================
 
 from hashlib import sha1
+from typing import cast
 
 import Crypto.Hash.SHA1
 import Crypto.Util.number
@@ -70,7 +71,8 @@ class PKCS1OAepCipher:
         if mgfunc:
             self._mgf = mgfunc
         else:
-            self._mgf = lambda x, y: MGF1(x, y, self._hashObj)
+            from Crypto.Signature.pss import HashModule
+            self._mgf = lambda x, y: MGF1(x, y, cast(HashModule, self._hashObj))
 
         self._label = bytes(label)
         self._randfunc = randfunc
