@@ -78,9 +78,9 @@ class FileTenantValidator(Protocol):
     def is_owned_by_tenant(self, *, file_id: str, tenant_id: str) -> bool: ...
 
 
-# Recognized aliases the Agent backend (or pydantic-ai) may produce for the
-# canonical file id field. The canonical spec form is ``file_id`` (§5.2).
-_FILE_ID_KEYS: tuple[str, ...] = ("file_id", "upload_file_id", "tool_file_id")
+# Recognized id fields in a file-output ref. Agent Files §4.6: the canonical
+# minimal form is ``{"id": "<tool_file_id>"}``; the rest are accepted aliases.
+_FILE_ID_KEYS: tuple[str, ...] = ("id", "file_id", "upload_file_id", "tool_file_id")
 
 
 class PerOutputTypeChecker:
