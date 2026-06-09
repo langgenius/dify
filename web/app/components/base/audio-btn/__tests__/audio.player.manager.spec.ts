@@ -90,8 +90,8 @@ describe('AudioPlayerManager', () => {
 
       expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(1)
       expect(first).toBe(second)
-      expect(mockState.instances[0].setCallback).toHaveBeenCalledTimes(1)
-      expect(mockState.instances[0].setCallback).toHaveBeenCalledWith(secondCallback)
+      expect(mockState.instances[0]!.setCallback).toHaveBeenCalledTimes(1)
+      expect(mockState.instances[0]!.setCallback).toHaveBeenCalledWith(secondCallback)
     })
 
     it('should cleanup existing player and create a new one when msg id changes', () => {
@@ -102,9 +102,9 @@ describe('AudioPlayerManager', () => {
 
       const next = manager.getAudioPlayer('/apps/1/text-to-audio', false, 'msg-2', 'world', 'en-US', callback)
 
-      expect(previous.pauseAudio).toHaveBeenCalledTimes(1)
-      expect(previous.cacheBuffers).toEqual([])
-      expect(previous.sourceBuffer?.abort).toHaveBeenCalledTimes(1)
+      expect(previous!.pauseAudio).toHaveBeenCalledTimes(1)
+      expect(previous!.cacheBuffers).toEqual([])
+      expect(previous!.sourceBuffer?.abort).toHaveBeenCalledTimes(1)
       expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(2)
       expect(next).toBe(mockState.instances[1])
     })
@@ -114,7 +114,7 @@ describe('AudioPlayerManager', () => {
       const callback = vi.fn()
       manager.getAudioPlayer('/text-to-audio', false, 'msg-1', 'hello', 'en-US', callback)
       const previous = mockState.instances[0]
-      previous.pauseAudio.mockImplementation(() => {
+      previous!.pauseAudio.mockImplementation(() => {
         throw new Error('cleanup failure')
       })
 
@@ -122,7 +122,7 @@ describe('AudioPlayerManager', () => {
         manager.getAudioPlayer('/apps/1/text-to-audio', false, 'msg-2', 'world', 'en-US', callback)
       }).not.toThrow()
 
-      expect(previous.pauseAudio).toHaveBeenCalledTimes(1)
+      expect(previous!.pauseAudio).toHaveBeenCalledTimes(1)
       expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(2)
     })
   })
@@ -135,8 +135,8 @@ describe('AudioPlayerManager', () => {
 
       manager.resetMsgId('msg-updated')
 
-      expect(mockState.instances[0].resetMsgId).toHaveBeenCalledTimes(1)
-      expect(mockState.instances[0].resetMsgId).toHaveBeenCalledWith('msg-updated')
+      expect(mockState.instances[0]!.resetMsgId).toHaveBeenCalledTimes(1)
+      expect(mockState.instances[0]!.resetMsgId).toHaveBeenCalledWith('msg-updated')
     })
 
     it('should not throw when resetting message id without an audio player', () => {

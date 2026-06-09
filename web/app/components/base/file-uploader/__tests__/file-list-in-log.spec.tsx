@@ -111,7 +111,7 @@ describe('FileListInLog', () => {
     const fileList = [{ varName: 'files', list: [createFile()] }]
     const { container } = render(<FileListInLog fileList={fileList} noPadding />)
 
-    expect(container.firstChild).toHaveClass('!p-0')
+    expect(container.firstChild).toHaveClass('p-0!')
   })
 
   it('should render image file with empty url when both base64Url and url are undefined', () => {

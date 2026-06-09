@@ -227,10 +227,10 @@ function groupPathsBySection(paths: Set<string>): Record<string, Set<string>> {
     const parts = withoutLang.split('/')
     const section = parts[0]
 
-    if (!groups[section])
-      groups[section] = new Set()
+    if (!groups[section!])
+      groups[section!] = new Set()
 
-    groups[section].add(withoutLang)
+    groups[section!]!.add(withoutLang)
   }
 
   return groups
@@ -275,7 +275,7 @@ function generateTypeDefinitions(
     typeNames.push(typeName)
 
     lines.push(`// ${sectionToTypeName(section)} paths`)
-    lines.push(`export type ${typeName} =`)
+    lines.push(`type ${typeName} =`)
 
     for (const p of paths) {
       lines.push(`  | '/${p}'`)
@@ -297,7 +297,7 @@ function generateTypeDefinitions(
   if (apiReferencePaths.length > 0) {
     const sortedPaths = [...apiReferencePaths].sort()
     lines.push('// API Reference paths (English, use apiReferencePathTranslations for other languages)')
-    lines.push('export type ApiReferencePath =')
+    lines.push('type ApiReferencePath =')
     for (const p of sortedPaths) {
       lines.push(`  | '${p}'`)
     }
@@ -307,7 +307,7 @@ function generateTypeDefinitions(
 
   // Generate base combined type
   lines.push('// Base path without language prefix')
-  lines.push('export type DocPathWithoutLangBase =')
+  lines.push('type DocPathWithoutLangBase =')
   for (const typeName of typeNames) {
     lines.push(`  | ${typeName}`)
   }
@@ -334,10 +334,10 @@ function generateTypeDefinitions(
   for (const enPath of sortedEnPaths) {
     const translations = apiPathTranslations[enPath]
     const parts: string[] = []
-    if (translations.zh)
-      parts.push(`zh: '${translations.zh}'`)
-    if (translations.ja)
-      parts.push(`ja: '${translations.ja}'`)
+    if (translations!.zh)
+      parts.push(`zh: '${translations!.zh}'`)
+    if (translations!.ja)
+      parts.push(`ja: '${translations!.ja}'`)
     if (parts.length > 0)
       lines.push(`  '${enPath}': { ${parts.join(', ')} },`)
   }
@@ -387,7 +387,7 @@ async function main(): Promise<void> {
 
     console.log(`Fetching OpenAPI spec: ${openapiPath}`)
     const pathMap = await fetchOpenAPIAndExtractPaths(openapiPath)
-    endpointMapsByLang[lang].set(fileKey, pathMap)
+    endpointMapsByLang[lang!]!.set(fileKey, pathMap)
   }
 
   // Build English paths and mapping to other languages
@@ -395,9 +395,9 @@ async function main(): Promise<void> {
   const apiPathTranslations: Record<string, { zh?: string, ja?: string }> = {}
 
   // Iterate through English endpoint maps
-  for (const [fileKey, enPathMap] of endpointMapsByLang.en) {
-    const zhPathMap = endpointMapsByLang.zh.get(fileKey)
-    const jaPathMap = endpointMapsByLang.ja.get(fileKey)
+  for (const [fileKey, enPathMap] of endpointMapsByLang.en!) {
+    const zhPathMap = endpointMapsByLang.zh!.get(fileKey)
+    const jaPathMap = endpointMapsByLang.ja!.get(fileKey)
 
     for (const [endpointKey, enPath] of enPathMap) {
       enApiPaths.push(enPath)

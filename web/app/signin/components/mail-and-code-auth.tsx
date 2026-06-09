@@ -1,13 +1,14 @@
-import type { FormEvent } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@langgenius/dify-ui/button'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendEMailLoginCode } from '@/service/common'
 
 type MailAndCodeAuthProps = {
@@ -20,27 +21,25 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const searchParams = useSearchParams()
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
-  const [loading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const locale = useLocale()
+  const setCountdownLeftTime = useSetLocalStorage<string>(COUNT_DOWN_KEY, { raw: true })
 
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+        toast.error(t('error.emailEmpty', { ns: 'login' }))
         return
       }
 
       if (!emailRegex.test(email)) {
-        Toast.notify({
-          type: 'error',
-          message: t('error.emailInValid', { ns: 'login' }),
-        })
+        toast.error(t('error.emailInValid', { ns: 'login' }))
         return
       }
-      setIsLoading(true)
+      setLoading(true)
       const ret = await sendEMailLoginCode(email, locale)
       if (ret.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
@@ -51,27 +50,31 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
       console.error(error)
     }
     finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    handleGetEMailVerificationCode()
-  }
-
   return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" className="hidden" />
-      <div className="mb-2">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
-        <div className="mt-1">
-          <Input id="email" type="email" disabled={isInvite} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
-        </div>
+    <Form
+      onFormSubmit={() => {
+        void handleGetEMailVerificationCode()
+      }}
+    >
+      <FieldRoot name="email" disabled={isInvite} className="mb-2">
+        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">{t('email', { ns: 'login' })}</FieldLabel>
+        <FieldControl
+          type="email"
+          autoComplete="email"
+          spellCheck={false}
+          disabled={isInvite}
+          value={email}
+          placeholder={t('emailPlaceholder', { ns: 'login' }) as string}
+          onValueChange={setEmail}
+        />
         <div className="mt-3">
           <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('signup.verifyMail', { ns: 'login' })}</Button>
         </div>
-      </div>
-    </form>
+      </FieldRoot>
+    </Form>
   )
 }

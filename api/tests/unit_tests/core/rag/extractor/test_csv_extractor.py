@@ -39,7 +39,7 @@ class TestCSVExtractor:
         with pytest.raises(ValueError, match="Source column 'missing_col' not found"):
             extractor.extract()
 
-    def test_extract_wraps_unicode_error_when_autodetect_disabled(self, monkeypatch):
+    def test_extract_wraps_unicode_error_when_autodetect_disabled(self, monkeypatch: pytest.MonkeyPatch):
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=False)
 
         def raise_decode(*args, **kwargs):
@@ -50,7 +50,7 @@ class TestCSVExtractor:
         with pytest.raises(RuntimeError, match="Error loading dummy.csv"):
             extractor.extract()
 
-    def test_extract_autodetect_encoding_success(self, monkeypatch):
+    def test_extract_autodetect_encoding_success(self, monkeypatch: pytest.MonkeyPatch):
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=True)
         attempted_encodings: list[str | None] = []
 
@@ -75,7 +75,7 @@ class TestCSVExtractor:
         assert docs[0].page_content == "id: source-1;body: hello"
         assert attempted_encodings == [None, "bad", "utf-8"]
 
-    def test_extract_autodetect_encoding_all_attempts_fail_returns_empty(self, monkeypatch):
+    def test_extract_autodetect_encoding_all_attempts_fail_returns_empty(self, monkeypatch: pytest.MonkeyPatch):
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=True)
 
         def always_raise(*args, **kwargs):
@@ -86,7 +86,7 @@ class TestCSVExtractor:
 
         assert extractor.extract() == []
 
-    def test_read_from_file_re_raises_csv_error(self, monkeypatch):
+    def test_read_from_file_re_raises_csv_error(self, monkeypatch: pytest.MonkeyPatch):
         extractor = CSVExtractor("dummy.csv")
 
         monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: (_ for _ in ()).throw(csv.Error("bad csv")))

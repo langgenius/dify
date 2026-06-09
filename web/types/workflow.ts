@@ -1,9 +1,7 @@
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
-import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
-import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import type {
   BlockEnum,
   CommonNodeType,
@@ -307,6 +305,7 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
   }
 }
 
@@ -333,7 +332,7 @@ export type HumanInputFormData = {
   inputs: FormInputItem[]
   actions: UserAction[]
   form_token: string
-  resolved_default_values: Record<string, string>
+  resolved_default_values: Record<string, HumanInputResolvedValue>
   display_in_ui: boolean
   expiration_time: number
 }
@@ -345,12 +344,19 @@ export type HumanInputRequiredResponse = {
   data: HumanInputFormData
 }
 
+export type HumanInputFormValue = string | FileResponse | FileResponse[]
+
+export type HumanInputResolvedValue = string | FileResponse | FileResponse[]
+
 export type HumanInputFilledFormData = {
   node_id: string
   node_title: string
   rendered_content: string
   action_id: string
   action_text: string
+  form_content?: string
+  inputs?: FormInputItem[]
+  submitted_data?: Record<string, HumanInputFormValue>
 }
 
 export type HumanInputFormFilledResponse = {
@@ -402,10 +408,6 @@ export type WorkflowRunHistoryResponse = {
   data: WorkflowRunHistory[]
 }
 
-export type ChatRunHistoryResponse = {
-  data: WorkflowRunHistory[]
-}
-
 export type NodesDefaultConfigsResponse = {
   type: string
   config: any
@@ -433,14 +435,12 @@ export type PublishWorkflowParams = {
   releaseNotes: string
 }
 
+export type WorkflowKind = 'standard'
+
 export type UpdateWorkflowParams = {
   url: string
   title: string
   releaseNotes: string
-}
-
-export type PanelExposedType = {
-  singleRunParams: Pick<BeforeRunFormProps, 'forms'> & Partial<SpecialResultPanelProps>
 }
 
 export type PanelProps = {
@@ -455,14 +455,15 @@ export type PanelProps = {
 export type NodeRunResult = NodeTracing
 
 // Var Inspect
-export enum VarInInspectType {
-  conversation = 'conversation',
-  environment = 'env',
-  node = 'node',
-  system = 'sys',
-}
+export const VarInInspectType = {
+  conversation: 'conversation',
+  environment: 'env',
+  node: 'node',
+  system: 'sys',
+} as const
+export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
 
-export type FullContent = {
+type FullContent = {
   size_bytes: number
   download_url: string
 }

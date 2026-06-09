@@ -2,16 +2,15 @@
 Unit tests for FormService.
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 
-from dify_graph.nodes.human_input.entities import (
-    FormInput,
-    UserAction,
+from graphon.nodes.human_input.entities import (
+    ParagraphInputConfig,
+    UserActionConfig,
 )
-from dify_graph.nodes.human_input.enums import (
-    FormInputType,
+from graphon.nodes.human_input.enums import (
     TimeoutUnit,
 )
 from libs.datetime_utils import naive_utc_now
@@ -50,8 +49,8 @@ class TestFormService:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "# Test Form\n\nInput: {{#$output.input#}}",
-            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="input", default=None)],
-            "user_actions": [UserAction(id="submit", title="Submit")],
+            "inputs": [ParagraphInputConfig(output_variable_name="input")],
+            "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
             "form_token": "token-xyz",
@@ -142,7 +141,7 @@ class TestFormService:
 
         # Manually expire the form by modifying expiry time
         form = form_service.get_form_by_id("form-123")
-        form.expires_at = datetime.utcnow() - timedelta(hours=1)
+        form.expires_at = naive_utc_now() - timedelta(hours=1)
         form_service.repository.save(form)
 
         # Should raise FormExpiredError
@@ -227,7 +226,7 @@ class TestFormService:
 
         # Manually expire the form
         form = form_service.get_form_by_id("form-123")
-        form.expires_at = datetime.utcnow() - timedelta(hours=1)
+        form.expires_at = naive_utc_now() - timedelta(hours=1)
         form_service.repository.save(form)
 
         # Try to submit expired form
@@ -304,8 +303,8 @@ class TestFormValidation:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "Test form",
-            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="required_input", default=None)],
-            "user_actions": [UserAction(id="submit", title="Submit")],
+            "inputs": [ParagraphInputConfig(output_variable_name="required_input")],
+            "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
         }

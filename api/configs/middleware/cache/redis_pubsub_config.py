@@ -1,7 +1,8 @@
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 from urllib.parse import quote_plus, urlunparse
 
 from pydantic import AliasChoices, Field
+from pydantic.types import NonNegativeInt
 from pydantic_settings import BaseSettings
 
 
@@ -12,16 +13,13 @@ class RedisConfigDefaults(Protocol):
     REDIS_PASSWORD: str | None
     REDIS_DB: int
     REDIS_USE_SSL: bool
-    REDIS_USE_SENTINEL: bool | None
-    REDIS_USE_CLUSTERS: bool
 
 
-class RedisConfigDefaultsMixin:
-    def _redis_defaults(self: RedisConfigDefaults) -> RedisConfigDefaults:
-        return self
+def _redis_defaults(config: object) -> RedisConfigDefaults:
+    return cast(RedisConfigDefaults, config)
 
 
-class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
+class RedisPubSubConfig(BaseSettings):
     """
     Configuration settings for event transport between API and workers.
 
@@ -41,10 +39,10 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
     )
 
     PUBSUB_REDIS_USE_CLUSTERS: bool = Field(
-        validation_alias=AliasChoices("EVENT_BUS_REDIS_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_USE_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
         description=(
             "Enable Redis Cluster mode for pub/sub or streams transport. Recommended for large deployments. "
-            "Also accepts ENV: EVENT_BUS_REDIS_CLUSTERS."
+            "Also accepts ENV: EVENT_BUS_REDIS_USE_CLUSTERS."
         ),
         default=False,
     )
@@ -73,8 +71,26 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
         default=600,
     )
 
+    PUBSUB_LISTENER_JOIN_TIMEOUT_MS: NonNegativeInt = Field(
+        validation_alias=AliasChoices("EVENT_BUS_LISTENER_JOIN_TIMEOUT_MS", "PUBSUB_LISTENER_JOIN_TIMEOUT_MS"),
+        description=(
+            "Maximum time (milliseconds) that ``Subscription.close()`` waits for its listener thread to "
+            "finish before returning. Bounds the tail latency between a terminal event being delivered to "
+            "an SSE client and the response stream actually closing.\n\n"
+            "The listener thread blocks on a polling read (XREAD BLOCK for streams, get_message timeout "
+            "for pubsub/sharded) with a fixed 1s window, so close() naturally has to wait up to ~1s for "
+            "the thread to notice the subscription was closed. Setting this lower (e.g. 100) lets close() "
+            "return promptly while the daemon listener thread cleans itself up on the next poll "
+            "boundary - safe because the listener holds no critical state and exits within one poll "
+            "window. Setting it higher (e.g. 5000) gives the listener more grace before close() gives up "
+            "and logs a warning. Default 2000ms preserves the pre-change behaviour.\n\n"
+            "Also accepts ENV: EVENT_BUS_LISTENER_JOIN_TIMEOUT_MS."
+        ),
+        default=2000,
+    )
+
     def _build_default_pubsub_url(self) -> str:
-        defaults = self._redis_defaults()
+        defaults = _redis_defaults(self)
         if not defaults.REDIS_HOST or not defaults.REDIS_PORT:
             raise ValueError("PUBSUB_REDIS_URL must be set when default Redis URL cannot be constructed")
 
@@ -91,11 +107,9 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
         if userinfo:
             userinfo = f"{userinfo}@"
 
-        host = defaults.REDIS_HOST
-        port = defaults.REDIS_PORT
         db = defaults.REDIS_DB
 
-        netloc = f"{userinfo}{host}:{port}"
+        netloc = f"{userinfo}{defaults.REDIS_HOST}:{defaults.REDIS_PORT}"
         return urlunparse((scheme, netloc, f"/{db}", "", "", ""))
 
     @property

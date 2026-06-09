@@ -7,7 +7,7 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (obj: Record<string, string>) => obj?.en_US || '',
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 
@@ -69,40 +69,40 @@ describe('StrategyDetail', () => {
     it('should render drawer', () => {
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
     })
 
     it('should render provider label', () => {
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
-      expect(screen.getByText('Test Provider')).toBeInTheDocument()
+      expect(screen.getByText('Test Provider'))!.toBeInTheDocument()
     })
 
     it('should render strategy label', () => {
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
-      expect(screen.getByText('Strategy Label')).toBeInTheDocument()
+      expect(screen.getByText('Strategy Label'))!.toBeInTheDocument()
     })
 
     it('should render parameters section', () => {
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
-      expect(screen.getByText('tools.setBuiltInTools.parameters')).toBeInTheDocument()
-      expect(screen.getByText('Parameter 1')).toBeInTheDocument()
+      expect(screen.getByText('tools.setBuiltInTools.parameters'))!.toBeInTheDocument()
+      expect(screen.getByText('Parameter 1'))!.toBeInTheDocument()
     })
 
     it('should render output schema section', () => {
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
-      expect(screen.getByText('OUTPUT')).toBeInTheDocument()
-      expect(screen.getByText('result')).toBeInTheDocument()
-      expect(screen.getByText('String')).toBeInTheDocument()
+      expect(screen.getByText('OUTPUT'))!.toBeInTheDocument()
+      expect(screen.getByText('result'))!.toBeInTheDocument()
+      expect(screen.getByText('String'))!.toBeInTheDocument()
     })
 
     it('should render BACK button', () => {
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
-      expect(screen.getByText('BACK')).toBeInTheDocument()
+      expect(screen.getByText('BACK'))!.toBeInTheDocument()
     })
   })
 
@@ -131,51 +131,51 @@ describe('StrategyDetail', () => {
     it('should display correct type for number-input', () => {
       const detailWithNumber = {
         ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0], type: 'number-input' }],
+        parameters: [{ ...mockDetail.parameters[0]!, type: 'number-input' }],
       }
       render(<StrategyDetail provider={mockProvider} detail={detailWithNumber} onHide={mockOnHide} />)
 
-      expect(screen.getByText('tools.setBuiltInTools.number')).toBeInTheDocument()
+      expect(screen.getByText('tools.setBuiltInTools.number'))!.toBeInTheDocument()
     })
 
     it('should display correct type for checkbox', () => {
       const detailWithCheckbox = {
         ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0], type: 'checkbox' }],
+        parameters: [{ ...mockDetail.parameters[0]!, type: 'checkbox' }],
       }
       render(<StrategyDetail provider={mockProvider} detail={detailWithCheckbox} onHide={mockOnHide} />)
 
-      expect(screen.getByText('boolean')).toBeInTheDocument()
+      expect(screen.getByText('boolean'))!.toBeInTheDocument()
     })
 
     it('should display correct type for file', () => {
       const detailWithFile = {
         ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0], type: 'file' }],
+        parameters: [{ ...mockDetail.parameters[0]!, type: 'file' }],
       }
       render(<StrategyDetail provider={mockProvider} detail={detailWithFile} onHide={mockOnHide} />)
 
-      expect(screen.getByText('tools.setBuiltInTools.file')).toBeInTheDocument()
+      expect(screen.getByText('tools.setBuiltInTools.file'))!.toBeInTheDocument()
     })
 
     it('should display correct type for array[tools]', () => {
       const detailWithArrayTools = {
         ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0], type: 'array[tools]' }],
+        parameters: [{ ...mockDetail.parameters[0]!, type: 'array[tools]' }],
       }
       render(<StrategyDetail provider={mockProvider} detail={detailWithArrayTools} onHide={mockOnHide} />)
 
-      expect(screen.getByText('multiple-tool-select')).toBeInTheDocument()
+      expect(screen.getByText('multiple-tool-select'))!.toBeInTheDocument()
     })
 
     it('should display original type for unknown types', () => {
       const detailWithUnknown = {
         ...mockDetail,
-        parameters: [{ ...mockDetail.parameters[0], type: 'custom-type' }],
+        parameters: [{ ...mockDetail.parameters[0]!, type: 'custom-type' }],
       }
       render(<StrategyDetail provider={mockProvider} detail={detailWithUnknown} onHide={mockOnHide} />)
 
-      expect(screen.getByText('custom-type')).toBeInTheDocument()
+      expect(screen.getByText('custom-type'))!.toBeInTheDocument()
     })
   })
 
@@ -184,7 +184,7 @@ describe('StrategyDetail', () => {
       const detailEmpty = { ...mockDetail, parameters: [] }
       render(<StrategyDetail provider={mockProvider} detail={detailEmpty} onHide={mockOnHide} />)
 
-      expect(screen.getByText('tools.setBuiltInTools.parameters')).toBeInTheDocument()
+      expect(screen.getByText('tools.setBuiltInTools.parameters'))!.toBeInTheDocument()
     })
 
     it('should handle no output schema', () => {

@@ -35,6 +35,7 @@
   "details.structureTooltip": "Struktura fragmentów określa sposób dzielenia i indeksowania dokumentów — oferując tryby Ogólne, Nadrzędny-Podrzędny oraz Q&A — i jest unikatowa dla każdej bazy wiedzy.",
   "documentSettings.title": "Ustawienia dokumentu",
   "editPipelineInfo": "Edytowanie informacji o potoku",
+  "editPipelineInfoNameRequired": "Proszę podać nazwę Bazy Wiedzy.",
   "exportDSL.errorTip": "Nie można wyeksportować DSL potoku",
   "exportDSL.successTip": "Pomyślnie wyeksportowano potok DSL",
   "inputField": "Pole wejściowe",

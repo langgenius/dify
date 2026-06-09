@@ -1,11 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import Conversion from '../conversion'
 
 const mockConvert = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
 }))
 
@@ -24,39 +24,27 @@ vi.mock('@/service/use-base', () => ({
   useInvalid: () => mockInvalidDatasetDetail,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, ...props }: Record<string, unknown>) => (
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
     <button onClick={onClick as () => void} {...props}>{children as string}</button>
   ),
-}))
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({
-    isShow,
-    onConfirm,
-    onCancel,
-    title,
-  }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-  }) =>
-    isShow
-      ? (
-          <div data-testid="confirm-modal">
-            <span>{title}</span>
-            <button data-testid="confirm-btn" onClick={onConfirm}>Confirm</button>
-            <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
-          </div>
-        )
-      : null,
 }))
 
 vi.mock('../screenshot', () => ({
@@ -101,11 +89,10 @@ describe('Conversion', () => {
   it('should show confirm modal when convert button clicked', () => {
     render(<Conversion />)
 
-    expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
+    expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
 
-    expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
     expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
   })
 
@@ -113,17 +100,19 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
+    expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('cancel-btn'))
-    expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    return waitFor(() => {
+      expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+    })
   })
 
   it('should call convert when confirm is clicked', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByTestId('confirm-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockConvert).toHaveBeenCalledWith('ds-123', expect.objectContaining({
       onSuccess: expect.any(Function),
@@ -132,7 +121,6 @@ describe('Conversion', () => {
   })
 
   it('should handle successful conversion', async () => {
-    const Toast = await import('@/app/components/base/toast')
     mockConvert.mockImplementation((_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
       opts.onSuccess({ status: 'success' })
     })
@@ -140,16 +128,13 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByTestId('confirm-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(Toast.default.notify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'success',
-    }))
+    expect(mockToast.success).toHaveBeenCalledWith('datasetPipeline.conversion.successMessage')
     expect(mockInvalidDatasetDetail).toHaveBeenCalled()
   })
 
   it('should handle failed conversion', async () => {
-    const Toast = await import('@/app/components/base/toast')
     mockConvert.mockImplementation((_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
       opts.onSuccess({ status: 'failed' })
     })
@@ -157,15 +142,12 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByTestId('confirm-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(Toast.default.notify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-    }))
+    expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
   })
 
   it('should handle conversion error', async () => {
-    const Toast = await import('@/app/components/base/toast')
     mockConvert.mockImplementation((_id: string, opts: { onError: () => void }) => {
       opts.onError()
     })
@@ -173,10 +155,8 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByTestId('confirm-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(Toast.default.notify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-    }))
+    expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
   })
 })

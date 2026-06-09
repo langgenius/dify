@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .actionItem {
   @apply h-9 py-2 px-3 mx-1 flex items-center gap-2 rounded-lg cursor-pointer;
 }
@@ -18,6 +20,7 @@
   mask-image: url(~@/assets/action.svg);
 }
 
+body .btn[data-popup-open],
 body .btn.open,
 body .btn:hover {
   background: url(~@/assets/action.svg) center center no-repeat transparent;

@@ -31,7 +31,7 @@ describe('ImageList', () => {
   describe('Rendering', () => {
     it('should render without crashing with empty list', () => {
       render(<ImageList list={[]} />)
-      expect(screen.getByTestId('image-list')).toBeInTheDocument()
+      expect(screen.getByRole('list', { name: 'common.imageUploader.imageList' })).toBeInTheDocument()
     })
 
     it('should render images for each item in the list', () => {
@@ -73,7 +73,7 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} onRemove={vi.fn()} />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
     })
 
     it('should not show remove buttons when readonly', () => {
@@ -104,7 +104,7 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
       render(<ImageList list={list} onReUpload={onReUpload} />)
 
-      expect(screen.getByTestId('retry-icon')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
       expect(screen.queryByText(/\d+\s*%/)).not.toBeInTheDocument()
     })
   })
@@ -150,8 +150,7 @@ describe('ImageList', () => {
       const onReUpload = vi.fn()
       const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
       render(<ImageList list={list} onReUpload={onReUpload} />)
-      const retryIcon = screen.getByTestId('retry-icon')
-      await user.click(retryIcon)
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
       expect(onReUpload).toHaveBeenCalledWith('file-1')
     })
 
@@ -186,7 +185,7 @@ describe('ImageList', () => {
       expect(screen.queryByTestId('image-preview-container')).toBeInTheDocument()
 
       // Close preview
-      const closeButton = screen.getByTestId('image-preview-close-button')
+      const closeButton = screen.getByRole('button', { name: 'common.operation.cancel' })
       await user.click(closeButton)
       expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
     })

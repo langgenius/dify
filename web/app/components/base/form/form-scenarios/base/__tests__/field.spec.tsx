@@ -6,8 +6,9 @@ import { useAppForm } from '../../..'
 import BaseField from '../field'
 import { BaseFieldType } from '../types'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
+  usePathname: () => '/',
 }))
 
 const createConfig = (overrides: Partial<BaseConfiguration> = {}): BaseConfiguration => ({
@@ -45,7 +46,7 @@ describe('BaseField', () => {
   it('should render a number input when configured as number input', () => {
     render(<FieldHarness config={createConfig({ type: BaseFieldType.numberInput, label: 'Age' })} initialData={{ fieldA: 20 }} />)
 
-    expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.getByText('Age')).toBeInTheDocument()
   })
 

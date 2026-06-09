@@ -265,6 +265,61 @@ def test_run_exits_on_empty_batch(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup.run()
 
 
+def test_run_records_metrics_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    cutoff = datetime.datetime.now()
+    repo = FakeRepo(
+        batches=[[FakeRun("run-free", "t_free", cutoff)]],
+        delete_result={
+            "runs": 0,
+            "node_executions": 2,
+            "offloads": 1,
+            "app_logs": 3,
+            "trigger_logs": 4,
+            "pauses": 5,
+            "pause_reasons": 6,
+        },
+    )
+    cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+
+    batch_calls: list[dict[str, object]] = []
+    completion_calls: list[dict[str, object]] = []
+    monkeypatch.setattr(cleanup._metrics, "record_batch", lambda **kwargs: batch_calls.append(kwargs))
+    monkeypatch.setattr(cleanup._metrics, "record_completion", lambda **kwargs: completion_calls.append(kwargs))
+
+    cleanup.run()
+
+    assert len(batch_calls) == 1
+    assert batch_calls[0]["batch_rows"] == 1
+    assert batch_calls[0]["targeted_runs"] == 1
+    assert batch_calls[0]["deleted_runs"] == 1
+    assert batch_calls[0]["related_action"] == "deleted"
+    assert len(completion_calls) == 1
+    assert completion_calls[0]["status"] == "success"
+
+
+def test_run_records_failed_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FailingRepo(FakeRepo):
+        def delete_runs_with_related(
+            self, runs: list[FakeRun], delete_node_executions=None, delete_trigger_logs=None
+        ) -> dict[str, int]:
+            raise RuntimeError("delete failed")
+
+    cutoff = datetime.datetime.now()
+    repo = FailingRepo(batches=[[FakeRun("run-free", "t_free", cutoff)]])
+    cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+
+    completion_calls: list[dict[str, object]] = []
+    monkeypatch.setattr(cleanup._metrics, "record_completion", lambda **kwargs: completion_calls.append(kwargs))
+
+    with pytest.raises(RuntimeError, match="delete failed"):
+        cleanup.run()
+
+    assert len(completion_calls) == 1
+    assert completion_calls[0]["status"] == "failed"
+
+
 def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     cutoff = datetime.datetime.now()
     repo = FakeRepo(

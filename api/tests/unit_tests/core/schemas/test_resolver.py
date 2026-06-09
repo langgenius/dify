@@ -1,3 +1,4 @@
+import copy
 import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
@@ -472,7 +473,7 @@ class TestSchemaResolverClass:
         assert resolved[2]["title"] == "Q&A Structure"
 
     def test_cache_performance(self):
-        """Test that caching improves performance"""
+        """Test that repeated references share cached schema lookups."""
         SchemaResolver.clear_cache()
 
         # Create a schema with many references to the same schema
@@ -484,36 +485,16 @@ class TestSchemaResolverClass:
             },
         }
 
-        # First run (no cache) - run multiple times to warm up
-        results1 = []
-        for _ in range(3):
-            SchemaResolver.clear_cache()
-            start = time.perf_counter()
-            result1 = resolve_dify_schema_refs(schema)
-            time_no_cache = time.perf_counter() - start
-            results1.append(time_no_cache)
+        registry = SchemaRegistry.default_registry()
+        file_schema = registry.get_schema("https://dify.ai/schemas/v1/file.json")
+        assert file_schema is not None
 
-        avg_time_no_cache = sum(results1) / len(results1)
+        with patch.object(registry, "get_schema", wraps=registry.get_schema) as mock_get:
+            result1 = resolve_dify_schema_refs(copy.deepcopy(schema), registry=registry)
+            result2 = resolve_dify_schema_refs(copy.deepcopy(schema), registry=registry)
 
-        # Second run (with cache) - run multiple times
-        # Warm up cache first
-        resolve_dify_schema_refs(schema)
-
-        results2 = []
-        for _ in range(3):
-            start = time.perf_counter()
-            result2 = resolve_dify_schema_refs(schema)
-            time_with_cache = time.perf_counter() - start
-            results2.append(time_with_cache)
-
-        avg_time_with_cache = sum(results2) / len(results2)
-
-        # Cache should make it faster (more lenient check)
         assert result1 == result2
-        # Cache should provide some performance benefit (allow for measurement variance)
-        # We expect cache to be faster, but allow for small timing variations
-        performance_ratio = avg_time_with_cache / avg_time_no_cache if avg_time_no_cache > 0 else 1.0
-        assert performance_ratio <= 2.0, f"Cache performance degraded too much: {performance_ratio}"
+        mock_get.assert_called_once_with("https://dify.ai/schemas/v1/file.json")
 
     def test_fast_path_performance_no_refs(self):
         """Test that schemas without $refs use fast path and avoid deep copying"""

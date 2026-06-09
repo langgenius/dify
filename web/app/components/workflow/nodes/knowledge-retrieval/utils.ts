@@ -13,10 +13,6 @@ import {
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 
-export const checkNodeValid = () => {
-  return true
-}
-
 export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
   if (datasets === null)
     datasets = []
@@ -139,8 +135,8 @@ export const getMultipleRetrievalConfig = (
           : allHighQualityFullTextSearch
             ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.semantic
             : DEFAULT_WEIGHTED_SCORE.other.semantic,
-        embedding_provider_name: selectedDatasets[0].embedding_model_provider,
-        embedding_model_name: selectedDatasets[0].embedding_model,
+        embedding_provider_name: selectedDatasets[0]!.embedding_model_provider,
+        embedding_model_name: selectedDatasets[0]!.embedding_model,
       },
       keyword_setting: {
         keyword_weight: allHighQualityVectorSearch

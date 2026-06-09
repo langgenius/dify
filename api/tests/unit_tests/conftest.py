@@ -121,36 +121,32 @@ def _configure_session_factory(_unit_test_engine):
         configure_session_factory(_unit_test_engine, expire_on_commit=False)
 
 
-def setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account):
+def setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_owner):
     """
-    Helper to set up the mock DB query chain for tenant/account authentication.
+    Helper to stub the tenant-owner execute result for service API app authentication.
 
-    This configures the mock to return (tenant, account) for the join query used
-    by validate_app_token and validate_dataset_token decorators.
+    The validate_app_token decorator currently resolves the active tenant owner
+    via db.session.execute(select(Tenant, Account)...).one_or_none().
 
     Args:
         mock_db: The mocked db object
         mock_tenant: Mock tenant object to return
-        mock_account: Mock account object to return
+        mock_owner: Mock owner object to return from the execute result
     """
-    query = mock_db.session.query.return_value
-    join_chain = query.join.return_value.join.return_value
-    where_chain = join_chain.where.return_value
-    where_chain.one_or_none.return_value = (mock_tenant, mock_account)
+    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
 
 
-def setup_mock_dataset_tenant_query(mock_db, mock_tenant, mock_ta):
+def setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_tenant_account_join):
     """
-    Helper to set up the mock DB query chain for dataset tenant authentication.
+    Helper to stub the tenant-owner execute result for dataset token authentication.
 
-    This configures the mock to return (tenant, tenant_account) for the where chain
-    query used by validate_dataset_token decorator.
+    The validate_dataset_token decorator currently resolves the owner mapping via
+    db.session.execute(select(Tenant, TenantAccountJoin)...).one_or_none(), and
+    then loads the Account separately via db.session.get(...).
 
     Args:
         mock_db: The mocked db object
         mock_tenant: Mock tenant object to return
-        mock_ta: Mock tenant account object to return
+        mock_tenant_account_join: Mock tenant-account join object to return
     """
-    query = mock_db.session.query.return_value
-    where_chain = query.where.return_value.where.return_value.where.return_value.where.return_value
-    where_chain.one_or_none.return_value = (mock_tenant, mock_ta)
+    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_tenant_account_join)

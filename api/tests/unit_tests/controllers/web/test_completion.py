@@ -18,7 +18,7 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from dify_graph.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 
 
 def _completion_app() -> SimpleNamespace:

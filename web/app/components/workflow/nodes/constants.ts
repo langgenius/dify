@@ -1,8 +1,6 @@
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { TransferMethod } from '@/types/app'
 
-export const CUSTOM_NODE_TYPE = 'custom'
-
 type OptionItem = {
   value: string
   i18nKey: I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>

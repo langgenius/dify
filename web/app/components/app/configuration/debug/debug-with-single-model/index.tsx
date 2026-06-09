@@ -1,9 +1,9 @@
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Avatar from '@/app/components/base/avatar'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -168,7 +168,7 @@ const DebugWithSingleModel = (
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       onStopResponding={handleStop}
       showPromptLog
-      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={40} />}
+      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       allToolIcons={allToolIcons}
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}

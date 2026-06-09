@@ -312,9 +312,11 @@
         }
         targetIframe.style.display =
           targetIframe.style.display === "none" ? "block" : "none";
-        targetIframe.style.display === "none"
-          ? setSvgIcon("open")
-          : setSvgIcon("close");
+        if (targetIframe.style.display === "none") {
+          setSvgIcon("open")
+        } else {
+          setSvgIcon("close")
+        }
 
         if (targetIframe.style.display === "none") {
           document.removeEventListener("keydown", handleEscKey);

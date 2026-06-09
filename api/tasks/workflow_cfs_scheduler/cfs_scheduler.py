@@ -11,12 +11,10 @@ class AsyncWorkflowCFSPlanEntity(WorkflowScheduleCFSPlanEntity):
     queue: AsyncWorkflowQueue
 
 
-class AsyncWorkflowCFSPlanScheduler(CFSPlanScheduler):
+class AsyncWorkflowCFSPlanScheduler(CFSPlanScheduler[AsyncWorkflowCFSPlanEntity]):
     """
     Trigger workflow CFS plan scheduler.
     """
-
-    plan: AsyncWorkflowCFSPlanEntity
 
     def can_schedule(self) -> SchedulerCommand:
         """

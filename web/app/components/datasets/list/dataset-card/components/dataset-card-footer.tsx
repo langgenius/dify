@@ -1,11 +1,11 @@
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiFileTextFill, RiRobot2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { cn } from '@/utils/classnames'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -35,22 +35,36 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
   return (
     <div
       className={cn(
-        'flex items-center gap-x-3 px-4 pb-3 pt-2 text-text-tertiary',
+        'flex items-center gap-x-3 px-4 pt-2 pb-3 text-text-tertiary',
         !dataset.embedding_available && 'opacity-30',
       )}
     >
-      <Tooltip popupContent={documentCountTooltip}>
-        <div className="flex items-center gap-x-1">
-          <RiFileTextFill className="size-3 text-text-quaternary" />
-          <span className="system-xs-medium">{documentCount}</span>
-        </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={(
+            <div className="flex items-center gap-x-1">
+              <RiFileTextFill className="size-3 text-text-quaternary" />
+              <span className="system-xs-medium">{documentCount}</span>
+            </div>
+          )}
+        />
+        <TooltipContent>
+          {documentCountTooltip}
+        </TooltipContent>
       </Tooltip>
       {!isExternalProvider && (
-        <Tooltip popupContent={`${dataset.app_count} ${t('appCount', { ns: 'dataset' })}`}>
-          <div className="flex items-center gap-x-1">
-            <RiRobot2Fill className="size-3 text-text-quaternary" />
-            <span className="system-xs-medium">{dataset.app_count}</span>
-          </div>
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <div className="flex items-center gap-x-1">
+                <RiRobot2Fill className="size-3 text-text-quaternary" />
+                <span className="system-xs-medium">{dataset.app_count}</span>
+              </div>
+            )}
+          />
+          <TooltipContent>
+            {`${dataset.app_count} ${t('appCount', { ns: 'dataset' })}`}
+          </TooltipContent>
         </Tooltip>
       )}
       <span className="system-xs-regular text-divider-deep">/</span>

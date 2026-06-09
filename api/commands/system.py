@@ -2,6 +2,7 @@ import logging
 
 import click
 import sqlalchemy as sa
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
@@ -13,6 +14,7 @@ from libs.rsa import generate_key_pair
 from models import Tenant
 from models.model import App, AppMode, Conversation
 from models.provider import Provider, ProviderModel
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +24,16 @@ DB_UPGRADE_LOCK_TTL_SECONDS = 60
 @click.command(
     "reset-encrypt-key-pair",
     help="Reset the asymmetric key pair of workspace for encrypt LLM credentials. "
-    "After the reset, all LLM credentials will become invalid, "
-    "requiring re-entry."
+    "After the reset, all LLM credentials and tool provider credentials "
+    "(builtin / API / MCP) will be purged, requiring re-entry. "
     "Only support SELF_HOSTED mode.",
 )
 @click.confirmation_option(
     prompt=click.style(
-        "Are you sure you want to reset encrypt key pair? This operation cannot be rolled back!", fg="red"
+        "Are you sure you want to reset encrypt key pair? "
+        "This will also purge builtin / API / MCP tool provider records for every tenant. "
+        "This operation cannot be rolled back!",
+        fg="red",
     )
 )
 def reset_encrypt_key_pair():
@@ -41,7 +46,7 @@ def reset_encrypt_key_pair():
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        tenants = session.query(Tenant).all()
+        tenants = session.scalars(select(Tenant)).all()
         for tenant in tenants:
             if not tenant:
                 click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
@@ -49,8 +54,15 @@ def reset_encrypt_key_pair():
 
             tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
-            session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
-            session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
+            session.execute(delete(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id))
+            session.execute(delete(ProviderModel).where(ProviderModel.tenant_id == tenant.id))
+
+            # Purge tool provider records that hold credentials encrypted under the
+            # tenant key. Leaving them in place causes /console/api/workspaces/current/
+            # tool-providers to 500 because decryption fails on stale ciphertext (#35396).
+            session.execute(delete(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant.id))
+            session.execute(delete(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant.id))
+            session.execute(delete(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant.id))
 
             click.echo(
                 click.style(
@@ -93,7 +105,7 @@ def convert_to_agent_apps():
                 app_id = str(i.id)
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
-                    app = db.session.query(App).where(App.id == app_id).first()
+                    app = db.session.scalar(select(App).where(App.id == app_id))
                     if app is not None:
                         apps.append(app)
 
@@ -108,8 +120,8 @@ def convert_to_agent_apps():
                 db.session.commit()
 
                 # update conversation mode to agent
-                db.session.query(Conversation).where(Conversation.app_id == app.id).update(
-                    {Conversation.mode: AppMode.AGENT_CHAT}
+                db.session.execute(
+                    update(Conversation).where(Conversation.app_id == app.id).values(mode=AppMode.AGENT_CHAT)
                 )
 
                 db.session.commit()
@@ -177,7 +189,7 @@ where sites.id is null limit 1000"""
                     continue
 
                 try:
-                    app = db.session.query(App).where(App.id == app_id).first()
+                    app = db.session.scalar(select(App).where(App.id == app_id))
                     if not app:
                         logger.info("App %s not found", app_id)
                         continue
