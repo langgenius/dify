@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.app.file_access import FileAccessScope
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope
 from core.workflow.file_reference import build_file_reference
 from services.file_request_service import FileRequestService
 
@@ -30,7 +30,9 @@ def test_request_download_url_builds_file_under_bound_scope(
     with (
         patch("services.file_request_service.bind_file_access_scope", return_value=nullcontext()) as bind_scope,
         patch.object(service, "_build_file", return_value=fake_file) as build_file,
-        patch("services.file_request_service.file_helpers.resolve_file_url", return_value="https://files.example.com/x"),
+        patch(
+            "services.file_request_service.file_helpers.resolve_file_url", return_value="https://files.example.com/x"
+        ),
     ):
         result = service.request_download_url(
             tenant_id="tenant-1",
@@ -64,7 +66,7 @@ def test_request_download_url_rejects_unsupported_files() -> None:
         patch.object(service, "_build_file", return_value=MagicMock(filename="report.pdf", mime_type=None, size=1)),
         patch("services.file_request_service.file_helpers.resolve_file_url", return_value=None),
     ):
-        try:
+        with pytest.raises(ValueError, match="file does not support signed download"):
             service.request_download_url(
                 tenant_id="tenant-1",
                 user_id="user-1",
@@ -72,7 +74,3 @@ def test_request_download_url_rejects_unsupported_files() -> None:
                 invoke_from="debugger",
                 file_mapping={"transfer_method": "unknown"},
             )
-        except ValueError as exc:
-            assert str(exc) == "file does not support signed download"
-        else:
-            raise AssertionError("expected ValueError")

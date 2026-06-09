@@ -242,10 +242,14 @@ class PerOutputTypeChecker:
         except ValueError:
             return f"unsupported file transfer_method {transfer_method_raw!r}"
 
-        expected_keys = {"transfer_method", "url"} if transfer_method == FileTransferMethod.REMOTE_URL else {
-            "transfer_method",
-            "reference",
-        }
+        expected_keys = (
+            {"transfer_method", "url"}
+            if transfer_method == FileTransferMethod.REMOTE_URL
+            else {
+                "transfer_method",
+                "reference",
+            }
+        )
         actual_keys = set(value)
         if actual_keys != expected_keys:
             unexpected_keys = sorted(actual_keys - expected_keys)
@@ -255,7 +259,10 @@ class PerOutputTypeChecker:
                 details.append(f"missing {', '.join(missing_keys)}")
             if unexpected_keys:
                 details.append(f"unexpected {', '.join(unexpected_keys)}")
-            return f"{transfer_method.value} file mapping must contain exactly {sorted(expected_keys)} ({'; '.join(details)})"
+            return (
+                f"{transfer_method.value} file mapping must contain exactly "
+                f"{sorted(expected_keys)} ({'; '.join(details)})"
+            )
 
         if transfer_method == FileTransferMethod.REMOTE_URL:
             url = value.get("url")

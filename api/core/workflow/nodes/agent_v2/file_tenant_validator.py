@@ -12,11 +12,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from graphon.file import FileTransferMethod
 from sqlalchemy import select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 
 from core.db.session_factory import session_factory
+from graphon.file import FileTransferMethod
 from models import ToolFile
 from models.model import UploadFile
 
@@ -45,16 +45,14 @@ class DatabaseFileTenantValidator:
         except (ValueError, TypeError):
             return False
 
-        if transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.DATASOURCE_FILE}:
-            model = UploadFile
-        elif transfer_method == FileTransferMethod.TOOL_FILE:
-            model = ToolFile
-        else:
-            return False
-
         try:
             with session_factory.create_session() as session:
-                owner_tenant_id = session.scalar(select(model.tenant_id).where(model.id == file_id))
+                if transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.DATASOURCE_FILE}:
+                    owner_tenant_id = session.scalar(select(UploadFile.tenant_id).where(UploadFile.id == file_id))
+                elif transfer_method == FileTransferMethod.TOOL_FILE:
+                    owner_tenant_id = session.scalar(select(ToolFile.tenant_id).where(ToolFile.id == file_id))
+                else:
+                    return False
         except (DataError, SQLAlchemyError):
             return False
         return owner_tenant_id == tenant_id

@@ -5,7 +5,11 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import (
+    DifyExecutionContextInvokeFrom,
+    DifyExecutionContextLayerConfig,
+    DifyExecutionContextUserFrom,
+)
 from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
@@ -171,7 +175,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
-                    user_from=context.dify_context.user_from.value,
+                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
@@ -181,7 +185,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_id=context.agent.id,
                     agent_config_version_id=context.snapshot.id,
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
-                    invoke_from=context.dify_context.invoke_from.value,
+                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                 ),
                 agent_soul_prompt=agent_soul.prompt.system_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
