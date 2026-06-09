@@ -923,31 +923,33 @@ class WorkflowGenerator:
     @classmethod
     def _rewrite_refs_in_data(cls, value: Any, id_map: dict[str, str]) -> None:
         """Recursive sibling of ``_collect_refs_in_data`` that does rewrites."""
-        if isinstance(value, dict):
-            for k, v in list(value.items()):
-                if k in cls._ID_FIELDS and isinstance(v, str):
-                    # Direct id field — apply the longest matching prefix
-                    # (handles ``"nodeKstart"`` where ``nodeK`` is the
-                    # container's old id).
-                    for old, new in sorted(id_map.items(), key=lambda kv: -len(kv[0])):
-                        if old in v:
-                            value[k] = v.replace(old, new)
-                            v = value[k]
-                if isinstance(v, str):
-                    rewritten = cls._LENIENT_VAR_REF_RE.sub(lambda m: cls._rewrite_var_ref(m, id_map), v)
-                    if rewritten != v:
-                        value[k] = rewritten
-                elif isinstance(v, list) and len(v) == 2 and all(isinstance(x, str) for x in v) and v[0] in id_map:
-                    # 2-element ``["node-id", "var"]`` selector list.
-                    value[k] = [id_map[v[0]], v[1]]
-                else:
-                    cls._rewrite_refs_in_data(v, id_map)
-        elif isinstance(value, list):
-            for item in value:
-                cls._rewrite_refs_in_data(item, id_map)
+        match value:
+            case dict():
+                for k, v in list(value.items()):
+                    if k in cls._ID_FIELDS and isinstance(v, str):
+                        # Direct id field — apply the longest matching prefix
+                        # (handles ``"nodeKstart"`` where ``nodeK`` is the
+                        # container's old id).
+                        for old, new in sorted(id_map.items(), key=lambda kv: -len(kv[0])):
+                            if old in v:
+                                value[k] = v.replace(old, new)
+                                v = value[k]
+                    match v:
+                        case str():
+                            rewritten = cls._LENIENT_VAR_REF_RE.sub(lambda m: cls._rewrite_var_ref(m, id_map), v)
+                            if rewritten != v:
+                                value[k] = rewritten
+                        case [str(v0), str(v1)] if v0 in id_map:
+                            # 2-element ``["node-id", "var"]`` selector list.
+                            value[k] = [id_map[v0], v1]
+                        case _:
+                            cls._rewrite_refs_in_data(v, id_map)
+            case list():
+                for item in value:
+                    cls._rewrite_refs_in_data(item, id_map)
 
     @classmethod
-    def _rewrite_var_ref(cls, m: "re.Match[str]", id_map: dict[str, str]) -> str:
+    def _rewrite_var_ref(cls, m: re.Match[str], id_map: dict[str, str]) -> str:
         node_id = m.group(1)
         rest = m.group(2)
         new_id = id_map.get(node_id, node_id)
