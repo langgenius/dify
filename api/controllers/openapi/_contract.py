@@ -63,23 +63,24 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
 def returns(code: int, model: type[BaseModel], description: str | None = None) -> Callable:
     """Serialise the handler's returned Pydantic model and emit the response schema.
 
-    The handler returns a ``BaseModel`` (serialised with ``code``) or a
-    ``(payload, status)`` tuple (the model in ``payload`` is serialised, the
-    status is honoured). Anything else — a dict, a ``flask.Response`` (e.g. an SSE
-    stream) — is passed through untouched.
+    The handler returns a ``BaseModel`` (serialised with ``code``) or a Flask
+    response tuple whose first element is a model — ``(model, status)`` or
+    ``(model, status, headers)`` — in which case the model is serialised and the
+    trailing status/headers are honoured. Anything else — a bare ``(dict, status)``
+    tuple, a ``flask.Response`` (e.g. an SSE stream) — is passed through untouched.
     """
 
     def decorator(view: Callable) -> Callable:
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = view(*args, **kwargs)
-            if isinstance(result, tuple):
-                payload, status = result
-                if isinstance(payload, BaseModel):
-                    payload = payload.model_dump(mode="json")
-                return payload, status
             if isinstance(result, BaseModel):
                 return result.model_dump(mode="json"), code
+            # Flask response tuples are (body[, status[, headers]]); only rewrite the
+            # body when it is a model, preserving any trailing status/headers verbatim.
+            if isinstance(result, tuple) and result and isinstance(result[0], BaseModel):
+                payload, *rest = result
+                return (payload.model_dump(mode="json"), *rest)
             return result
 
         openapi_ns.response(code, description or model.__name__, openapi_ns.models[model.__name__])(wrapper)

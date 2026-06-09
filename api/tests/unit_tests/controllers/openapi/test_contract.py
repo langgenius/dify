@@ -4,6 +4,8 @@ Exercises the decorators in isolation (not through a real controller): a plain
 view function decorated with @accepts/@returns, driven inside a request context.
 """
 
+from functools import wraps
+
 import pytest
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import UnprocessableEntity
@@ -30,10 +32,29 @@ class ContractResp(BaseModel):
     value: int
 
 
-# @accepts(body=) and @returns emit Swagger via openapi_ns, which resolves models
-# by name — register the body/response models so those lookups succeed.
-register_schema_model(openapi_ns, ContractBody)
-register_response_schema_model(openapi_ns, ContractResp)
+@pytest.fixture(autouse=True, scope="module")
+def _register_contract_test_models():
+    """Register the body/response models so @accepts(body=)/@returns name lookups
+    resolve, then drop them on teardown so these test-only models don't leak into
+    the shared openapi_ns (and the generated spec) for sibling test modules.
+    """
+    register_schema_model(openapi_ns, ContractBody)
+    register_response_schema_model(openapi_ns, ContractResp)
+    yield
+    openapi_ns.models.pop(ContractBody.__name__, None)
+    openapi_ns.models.pop(ContractResp.__name__, None)
+
+
+def _guard_like(view):
+    """Stand-in for ``@auth_router.guard`` — an outermost @wraps layer. Asserts the
+    contract decorators' Swagger metadata survives being wrapped by the guard.
+    """
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        return view(*args, **kwargs)
+
+    return wrapper
 
 
 def test_accepts_injects_validated_query(app):
@@ -129,3 +150,47 @@ def test_returns_passes_through_non_model(app):
         result = view()
 
     assert result is sentinel
+
+
+def test_returns_serializes_model_in_three_tuple_with_headers(app):
+    """A (model, status, headers) tuple keeps its trailing status/headers intact."""
+
+    @returns(200, ContractResp)
+    def view():
+        return ContractResp(value=3), 202, {"X-Test": "1"}
+
+    with app.test_request_context("/"):
+        body, status, headers = view()
+
+    assert body == {"value": 3}
+    assert status == 202
+    assert headers == {"X-Test": "1"}
+
+
+# ---------------------------------------------------------------------------
+# Swagger metadata survives the full decorator stack (guard outermost). flask_restx
+# reads __apidoc__ off the registered view; @wraps must carry the contract
+# decorators' params/expect/responses up through the guard layer or the docs vanish.
+# ---------------------------------------------------------------------------
+
+
+def test_accepts_returns_emit_apidoc_through_guard_stack():
+    @_guard_like
+    @returns(200, ContractResp)
+    @accepts(query=ContractQuery)
+    def view(*, query):
+        return ContractResp(value=1)
+
+    apidoc = getattr(view, "__apidoc__", {})
+    assert "page" in apidoc.get("params", {})  # from @accepts(query=)
+    assert "200" in apidoc.get("responses", {})  # from @returns (flask_restx keys by str code)
+
+
+def test_accepts_body_emits_expect_through_guard_stack():
+    @_guard_like
+    @accepts(body=ContractBody)
+    def view(*, body):
+        return body
+
+    apidoc = getattr(view, "__apidoc__", {})
+    assert apidoc.get("expect")  # body schema advertised via @openapi_ns.expect

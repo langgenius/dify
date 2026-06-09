@@ -14,9 +14,8 @@ from __future__ import annotations
 from itertools import starmap
 from urllib import parse
 
-from flask import jsonify, make_response, request
+from flask import jsonify, make_response
 from flask_restx import Resource
-from pydantic import BaseModel, ValidationError
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from configs import dify_config
@@ -51,14 +50,6 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
 )
 from services.feature_service import FeatureService
-
-
-def _validate_body[M: BaseModel](model: type[M]) -> M:
-    body = request.get_json(silent=True) or {}
-    try:
-        return model.model_validate(body)
-    except ValidationError as exc:
-        raise BadRequest(str(exc))
 
 
 def _member_response(account: Account) -> MemberResponse:
@@ -191,15 +182,14 @@ class WorkspaceMembersApi(Resource):
             data=[_member_response(m) for m in page_items],
         )
 
-    @openapi_ns.expect(openapi_ns.models[MemberInvitePayload.__name__])
-    @openapi_ns.response(201, "Member invited", openapi_ns.models[MemberInviteResponse.__name__])
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
-    def post(self, workspace_id: str, *, auth_data: AuthData):
-        payload = _validate_body(MemberInvitePayload)
+    @openapi_ns.response(201, "Member invited", openapi_ns.models[MemberInviteResponse.__name__])
+    @accepts(body=MemberInvitePayload)
+    def post(self, workspace_id: str, *, auth_data: AuthData, body: MemberInvitePayload):
         inviter = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
 
@@ -208,9 +198,9 @@ class WorkspaceMembersApi(Resource):
         try:
             token = RegisterService.invite_new_member(
                 tenant=tenant,
-                email=payload.email,
+                email=body.email,
                 language=None,
-                role=payload.role,
+                role=body.role,
                 inviter=inviter,
             )
         except AccountAlreadyInTenantError as exc:
@@ -220,7 +210,7 @@ class WorkspaceMembersApi(Resource):
         except AccountRegisterError as exc:
             raise BadRequest(str(exc))
 
-        normalized_email = payload.email.lower()
+        normalized_email = body.email.lower()
         member = AccountService.get_account_by_email_with_case_fallback(normalized_email)
         if member is None:
             # invite_new_member just created or fetched this account.
@@ -230,7 +220,7 @@ class WorkspaceMembersApi(Resource):
         invite_url = f"{dify_config.CONSOLE_WEB_URL}/activate?email={encoded_email}&token={token}"
         return MemberInviteResponse(
             email=normalized_email,
-            role=payload.role,
+            role=body.role,
             member_id=str(member.id),
             invite_url=invite_url,
             tenant_id=str(tenant.id),
@@ -279,15 +269,14 @@ class WorkspaceMemberRoleApi(Resource):
     standing owner (service NoPermissionError → 400, per spec).
     """
 
-    @openapi_ns.expect(openapi_ns.models[MemberRoleUpdatePayload.__name__])
-    @openapi_ns.response(200, "Role updated", openapi_ns.models[MemberActionResponse.__name__])
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
-    def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
-        payload = _validate_body(MemberRoleUpdatePayload)
+    @openapi_ns.response(200, "Role updated", openapi_ns.models[MemberActionResponse.__name__])
+    @accepts(body=MemberRoleUpdatePayload)
+    def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData, body: MemberRoleUpdatePayload):
         operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
         member = AccountService.get_account_by_id(db.session, member_id)
@@ -295,7 +284,7 @@ class WorkspaceMemberRoleApi(Resource):
             raise NotFound("member not found")
 
         try:
-            TenantService.update_member_role(tenant, member, payload.role, operator)
+            TenantService.update_member_role(tenant, member, body.role, operator)
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
