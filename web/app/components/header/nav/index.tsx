@@ -46,7 +46,7 @@ const Nav = ({
 
   return (
     <div className={`
-      flex h-8 max-w-167.5 min-w-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1024px]:max-w-100
+      flex h-8 max-w-167.5 min-w-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1120px]:max-w-100
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active font-semibold shadow-md'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}
@@ -74,7 +74,7 @@ const Nav = ({
                   : icon
             }
           </div>
-          <div className="ml-2 max-[1024px]:hidden">
+          <div className="ml-2 max-[1120px]:hidden">
             {text}
           </div>
         </div>

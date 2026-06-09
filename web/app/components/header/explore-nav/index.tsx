@@ -28,7 +28,7 @@ export function ExploreNav({
           ? <RiPlanetFill className="size-4" />
           : <RiPlanetLine className="size-4" />
       }
-      <div className="ml-2 max-[1200px]:hidden">
+      <div className="ml-2 max-[1120px]:hidden">
         {t('menus.explore', { ns: 'common' })}
       </div>
     </Link>

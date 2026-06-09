@@ -139,9 +139,9 @@ describe('Nav Component', () => {
       )
 
       expect(screen.getByText('Nav Text')).toBeInTheDocument()
-      expect(screen.getByText('Nav Text')).toHaveClass('max-[1024px]:hidden')
+      expect(screen.getByText('Nav Text')).toHaveClass('max-[1120px]:hidden')
       expect(screen.getByRole('link', { name: 'SNIPPETS' })).toHaveAttribute('href', '/snippets')
-      expect(screen.getByRole('link', { name: 'SNIPPETS' })).not.toHaveClass('max-[1024px]:hidden')
+      expect(screen.getByRole('link', { name: 'SNIPPETS' })).not.toHaveClass('max-[1120px]:hidden')
     })
 
     it('should not show hover background if not activated', () => {

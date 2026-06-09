@@ -95,7 +95,7 @@ export function Header() {
 
   return (
     <div className="flex h-[56px] items-center">
-      <div className="flex min-w-0 flex-1 items-center overflow-hidden pr-2 pl-3 min-[1280px]:pr-3">
+      <div className="flex min-w-0 shrink-0 items-center overflow-hidden pr-2 pl-3 min-[1280px]:pr-3">
         {renderLogo()}
         <div className="mx-1.5 shrink-0 font-light text-divider-deep">/</div>
         <WorkspaceProvider>
@@ -103,14 +103,14 @@ export function Header() {
         </WorkspaceProvider>
         {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
       </div>
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden">
         {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
         {!isCurrentWorkspaceDatasetOperator && <AppNav />}
         {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
         {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
         {canUseAppDeploy && <DeploymentsNav />}
       </div>
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-2 pr-3 pl-2 min-[1280px]:pl-3">
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 pr-3 pl-2 min-[1280px]:pl-3">
         <EnvNav />
         <PluginsNav />
         <AccountDropdown />
