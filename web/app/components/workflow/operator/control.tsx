@@ -70,7 +70,7 @@ const Control = () => {
           disabled={notesReadOnly}
           className={cn(
             'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${notesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            notesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={addNote}
         >
@@ -86,7 +86,7 @@ const Control = () => {
           className={cn(
             'mr-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
             controlMode === ControlMode.Pointer ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleModePointer}
         >
@@ -101,7 +101,7 @@ const Control = () => {
           className={cn(
             'flex size-8 cursor-pointer items-center justify-center rounded-lg',
             controlMode === ControlMode.Hand ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleModeHand}
         >
@@ -117,7 +117,7 @@ const Control = () => {
             className={cn(
               'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
               controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-              `${commentsReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+              commentsReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
             )}
             onClick={handleModeComment}
           >
@@ -133,7 +133,7 @@ const Control = () => {
           disabled={nodesReadOnly}
           className={cn(
             'flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleLayout}
         >
