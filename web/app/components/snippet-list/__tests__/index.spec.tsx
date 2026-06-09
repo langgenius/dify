@@ -239,6 +239,8 @@ describe('SnippetList', () => {
   it('renders the dedicated snippets list layout', () => {
     renderList()
 
+    expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
     expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('workflow.tabs.searchSnippets')).toBeInTheDocument()

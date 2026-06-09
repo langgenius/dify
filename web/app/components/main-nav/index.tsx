@@ -160,7 +160,7 @@ const MainNav = ({
           {
             href: '/apps',
             label: t('menus.apps', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/apps') || path.startsWith('/app/'),
+            active: (path: string) => path.startsWith('/apps') || path.startsWith('/app/') || path.startsWith('/snippets'),
             icon: 'i-custom-vender-main-nav-studio',
             activeIcon: 'i-custom-vender-main-nav-studio-active',
           },
