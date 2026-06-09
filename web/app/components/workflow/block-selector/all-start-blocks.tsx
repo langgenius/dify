@@ -7,6 +7,7 @@ import type { ListRef } from './market-place-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
@@ -32,7 +33,7 @@ import PluginList from './market-place-plugin/list'
 import StartBlocks from './start-blocks'
 import TriggerPluginList from './trigger-plugin/list'
 
-const popoverMarketplaceFooterClassName = 'system-xs-medium z-10 flex h-8 flex-none cursor-pointer items-center gap-1 border-t border-divider-subtle px-4 py-2 text-text-tertiary hover:text-text-secondary'
+const popoverMarketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 const panelMarketplaceFooterClassName = 'system-xs-regular z-10 flex flex-none cursor-pointer flex-col items-start gap-2 px-4 pt-2 pb-4 text-text-tertiary hover:text-text-secondary'
 
 const SectionDivider = () => (
@@ -272,8 +273,8 @@ const AllStartBlocks = ({
                 )
               : (
                   <>
-                    <span>{t('nodes.startPlaceholder.findMoreToolsInMarketplace', { ns: 'workflow' })}</span>
-                    <span className="i-ri-arrow-right-up-line size-3 shrink-0" aria-hidden />
+                    <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
+                    <RiArrowRightUpLine className="ml-0.5 size-3" />
                   </>
                 )}
           </Link>

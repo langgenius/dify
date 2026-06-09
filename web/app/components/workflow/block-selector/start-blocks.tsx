@@ -110,32 +110,28 @@ const StartBlocks = ({
           onSelect(block.type)
         }}
       >
-        <BlockIcon
-          className="mr-2 shrink-0"
-          type={block.type}
-          size="md"
-        />
-        <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
-          <span className={cn('truncate system-sm-medium', isUserInputDisabled && 'text-text-disabled')}>{label}</span>
-          {isUserInput && showUserInputAdded && (
-            <span className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
-              {t('operation.added', { ns: 'common' })}
-            </span>
-          )}
-          {isUserInput && showMostCommonBadge && !showUserInputAdded && (
-            <span className={cn(
-              'ml-2 shrink-0 rounded-[5px] border px-1 py-0.5 system-2xs-medium-uppercase',
-              isUserInputDisabled
-                ? 'border-divider-subtle bg-components-button-secondary-bg-disabled text-text-disabled'
-                : 'border-divider-deep text-text-tertiary',
+        <div className={cn('flex min-w-0 flex-1 items-center', isUserInputDisabled && 'opacity-30')}>
+          <BlockIcon
+            className="mr-2 shrink-0"
+            type={block.type}
+            size="md"
+          />
+          <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
+            <span className="truncate system-sm-medium">{label}</span>
+            {isUserInput && showUserInputAdded && (
+              <span className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
+                {t('operation.added', { ns: 'common' })}
+              </span>
             )}
-            >
-              {t('blocks.mostCommon', { ns: 'workflow' })}
-            </span>
-          )}
-          {isUserInput && !showMostCommonBadge && !showUserInputAdded && !showUserInputDisabled && (
-            <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
-          )}
+            {isUserInput && showMostCommonBadge && !showUserInputAdded && (
+              <span className="ml-2 shrink-0 rounded-[5px] border border-divider-deep px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                {t('blocks.mostCommon', { ns: 'workflow' })}
+              </span>
+            )}
+            {isUserInput && !showMostCommonBadge && !showUserInputAdded && !showUserInputDisabled && (
+              <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
+            )}
+          </div>
         </div>
       </button>
     )
@@ -210,6 +206,11 @@ function StartBlockPreviewCard({
   const description = block.type === BlockEnumValues.Start
     ? t('nodes.start.userInputTipDescription', { ns: 'workflow' })
     : t(`blocksAbout.${block.type}`, { ns: 'workflow' })
+  const showDifyTeamAuthor = [
+    BlockEnumValues.Start,
+    BlockEnumValues.TriggerWebhook,
+    BlockEnumValues.TriggerSchedule,
+  ].includes(block.type)
 
   return (
     <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 pt-3 pb-4">
@@ -220,14 +221,12 @@ function StartBlockPreviewCard({
           type={block.type}
         />
         <div className="mb-1 system-md-medium text-text-primary">
-          {block.type === BlockEnumValues.TriggerWebhook
-            ? t('customWebhook', { ns: 'workflow' })
-            : t(`blocks.${block.type}`, { ns: 'workflow' })}
+          {t(`blocks.${block.type}`, { ns: 'workflow' })}
         </div>
         <div className="system-xs-regular wrap-break-word text-text-secondary">
           {description}
         </div>
-        {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
+        {showDifyTeamAuthor && (
           <div className="my-1 system-xs-regular text-text-tertiary">
             {t('author', { ns: 'tools' })}
             {' '}
