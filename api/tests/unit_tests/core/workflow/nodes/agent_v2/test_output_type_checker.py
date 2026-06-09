@@ -296,6 +296,37 @@ def test_file_ref_rejects_legacy_id_only_shape():
     assert outcome.failures[0].reason == "file mapping missing transfer_method"
 
 
+@pytest.mark.parametrize(
+    ("raw_value", "expected_reason"),
+    [
+        ("not-a-list", "expected array, got str"),
+        (123, "expected canonical file mapping object, got int"),
+        ({"transfer_method": "unsupported", "reference": "x"}, "unsupported file transfer_method 'unsupported'"),
+        ({"transfer_method": "remote_url", "url": ""}, "remote_url file mapping missing url"),
+    ],
+)
+def test_rejects_additional_invalid_array_and_file_shapes(raw_value: object, expected_reason: str) -> None:
+    checker = _make_checker()
+    declared = (
+        DeclaredOutputConfig(
+            name="r",
+            type=DeclaredOutputType.ARRAY,
+            array_item=DeclaredArrayItem(type=DeclaredOutputType.STRING),
+        )
+        if raw_value == "not-a-list"
+        else DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
+    )
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={"r": raw_value},
+        tenant_id="t-1",
+    )
+
+    assert outcome.has_failures
+    assert outcome.failures[0].reason == expected_reason
+
+
 def test_file_ref_rejects_extra_rich_descriptor_fields() -> None:
     checker = _make_checker(allowed={"t-1": {"tool-file-1"}})
     declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)

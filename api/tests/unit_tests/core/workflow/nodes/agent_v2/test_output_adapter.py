@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from agenton.compositor import CompositorSessionSnapshot
 
 from clients.agent_backend import (
@@ -86,6 +87,24 @@ def test_unresolved_minimal_id_stays_a_plain_object():
         tenant_id="tenant-1",
     )
     assert result.outputs["thing"] == {"id": "not-a-file"}
+
+
+def test_invalid_minimal_id_stays_a_plain_object_without_reback():
+    adapter = WorkflowAgentOutputAdapter(tool_file_rebacker=lambda **_: _rebacked_tool_file("unexpected"))
+    result = adapter.build_success_result(
+        event=_succeeded({"thing": {"id": 123}}),
+        inputs={},
+        process_data={},
+        metadata={},
+        tenant_id="tenant-1",
+    )
+    assert result.outputs["thing"] == {"id": 123}
+
+
+def test_success_output_adapter_preserves_existing_file_segment():
+    file = _rebacked_tool_file("tool-file-1")
+    segment = FileSegment(value=file)
+    assert WorkflowAgentOutputAdapter()._normalize_output_value(segment) is segment
 
 
 def test_array_of_minimal_id_file_outputs_rebacked():
@@ -240,6 +259,48 @@ def test_success_output_adapter_normalizes_file_output_to_file_segments():
     assert isinstance(attachments, ArrayFileSegment)
     assert attachments.value[0].transfer_method == FileTransferMethod.TOOL_FILE
     assert attachments.value[0].reference == tool_reference
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_error"),
+    [
+        ({}, "file mapping missing transfer_method"),
+        (
+            {"transfer_method": "remote_url", "url": "https://example.com/report.pdf", "extra": "nope"},
+            "remote_url file mapping must contain exactly",
+        ),
+        ({"transfer_method": "remote_url", "url": ""}, "remote_url file mapping missing url"),
+        ({"transfer_method": "tool_file", "reference": ""}, "tool_file file mapping missing reference"),
+        (
+            {"transfer_method": "tool_file", "reference": "raw-tool-file-id"},
+            "tool_file file mapping has invalid canonical reference",
+        ),
+    ],
+)
+def test_success_output_adapter_rejects_invalid_declared_file_mappings(
+    payload: dict[str, object],
+    expected_error: str,
+) -> None:
+    with pytest.raises(ValueError, match=expected_error):
+        WorkflowAgentOutputAdapter().build_success_result(
+            event=_succeeded({"report": payload}),
+            inputs={},
+            process_data={},
+            metadata={"tenant_id": "tenant-1"},
+            declared_outputs=[DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)],
+        )
+
+
+def test_success_output_adapter_requires_tenant_for_canonical_file_mapping():
+    reference = build_file_reference(record_id="tool-file-1")
+    with pytest.raises(ValueError, match="tenant_id is required"):
+        WorkflowAgentOutputAdapter().build_success_result(
+            event=_succeeded({"report": {"transfer_method": "tool_file", "reference": reference}}),
+            inputs={},
+            process_data={},
+            metadata={},
+            declared_outputs=[DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)],
+        )
 
 
 def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_file_output():
