@@ -1,4 +1,4 @@
-import type { Key, Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,11 +8,12 @@ import { ENV_CONFIG_DIR } from '@/store/dir'
 import { bufferStreams } from '@/sys/io/streams'
 import { runLogout } from './logout.js'
 
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T { return (this.entries.get(key.key) as T | undefined) ?? key.default }
-  set<T>(key: Key<T>, value: T): void { this.entries.set(key.key, value) }
-  unset<T>(key: Key<T>): void { this.entries.delete(key.key) }
+class MemStore implements TokenStore {
+  readonly entries = new Map<string, string>()
+  private k(host: string, email: string): string { return `${host} ${email}` }
+  read(host: string, email: string): string { return this.entries.get(this.k(host, email)) ?? '' }
+  write(host: string, email: string, bearer: string): void { this.entries.set(this.k(host, email), bearer) }
+  remove(host: string, email: string): void { this.entries.delete(this.k(host, email)) }
 }
 
 describe('runLogout', () => {
@@ -37,8 +38,8 @@ describe('runLogout', () => {
     reg.setHost('h1')
     reg.setAccount('a@x')
     reg.save()
-    store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
-    store.set({ key: 'tokens.h1.b@x', default: '' }, 'dfoa_b')
+    store.write('h1', 'a@x', 'dfoa_a')
+    store.write('h1', 'b@x', 'dfoa_b')
   }
 
   it('removes only the active context, keeps others, unsets pointers, file survives', async () => {
@@ -49,8 +50,8 @@ describe('runLogout', () => {
     expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
     expect(after?.hosts.h1?.accounts['b@x']).toBeDefined()
     expect(after?.current_host).toBeUndefined()
-    expect(store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
-    expect(store.get({ key: 'tokens.h1.b@x', default: '' })).toBe('dfoa_b')
+    expect(store.read('h1', 'a@x')).toBe('')
+    expect(store.read('h1', 'b@x')).toBe('dfoa_b')
     const raw = await readFile(join(dir, 'hosts.yml'), 'utf8')
     expect(raw).toContain('b@x')
   })

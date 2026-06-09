@@ -1,4 +1,4 @@
-import type { Key, Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,12 +8,13 @@ import { ENV_CONFIG_DIR } from '@/store/dir'
 import { bufferStreams } from '@/sys/io/streams'
 import { runUseAccount } from './use-account'
 
-function memStore(seed: Record<string, string>): Store {
-  const m = new Map<string, unknown>(Object.entries(seed))
+function memStore(seed: Record<string, string>): TokenStore {
+  const k = (host: string, email: string): string => `${host} ${email}`
+  const m = new Map<string, string>(Object.entries(seed))
   return {
-    get<T>(k: Key<T>): T { return (m.get(k.key) as T | undefined) ?? k.default },
-    set<T>(k: Key<T>, v: T): void { m.set(k.key, v) },
-    unset<T>(k: Key<T>): void { m.delete(k.key) },
+    read(host: string, email: string): string { return m.get(k(host, email)) ?? '' },
+    write(host: string, email: string, bearer: string): void { m.set(k(host, email), bearer) },
+    remove(host: string, email: string): void { m.delete(k(host, email)) },
   }
 }
 
@@ -39,7 +40,7 @@ describe('runUseAccount', () => {
   })
 
   it('switches current_account when email valid + token present', async () => {
-    await runUseAccount({ io: bufferStreams(), email: 'b@x', store: memStore({ 'tokens.h1.b@x': 'dfoa_b' }) })
+    await runUseAccount({ io: bufferStreams(), email: 'b@x', store: memStore({ 'h1 b@x': 'dfoa_b' }) })
     expect(Registry.load().hosts.h1?.current_account).toBe('b@x')
   })
 
@@ -50,7 +51,7 @@ describe('runUseAccount', () => {
   })
 
   it('errors when the email is unknown on the current host', async () => {
-    await expect(runUseAccount({ io: bufferStreams(), email: 'z@x', store: memStore({ 'tokens.h1.z@x': 'x' }) }))
+    await expect(runUseAccount({ io: bufferStreams(), email: 'z@x', store: memStore({ 'h1 z@x': 'x' }) }))
       .rejects
       .toThrow(/unknown account|no account/i)
   })

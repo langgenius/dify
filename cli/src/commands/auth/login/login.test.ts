@@ -1,6 +1,6 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { Clock } from './device-flow.js'
-import type { Key, Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,7 +10,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { DeviceFlowApi } from '@/api/oauth-device'
 import { createHttpClient } from '@/http/client'
 import { ENV_CONFIG_DIR } from '@/store/dir'
-import { tokenKey } from '@/store/manager'
 import { bufferStreams } from '@/sys/io/streams'
 import { openAPIBase } from '@/util/host'
 import { runLogin } from './login.js'
@@ -22,18 +21,22 @@ const noopClock: Clock = {
 
 const noopBrowser = async (): Promise<void> => { /* skip OS open */ }
 
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T {
-    return (this.entries.get(key.key) as T | undefined) ?? key.default
+class MemStore implements TokenStore {
+  readonly entries = new Map<string, string>()
+  private k(host: string, email: string): string {
+    return `${host} ${email}`
   }
 
-  set<T>(key: Key<T>, value: T): void {
-    this.entries.set(key.key, value)
+  read(host: string, email: string): string {
+    return this.entries.get(this.k(host, email)) ?? ''
   }
 
-  unset<T>(key: Key<T>): void {
-    this.entries.delete(key.key)
+  write(host: string, email: string, bearer: string): void {
+    this.entries.set(this.k(host, email), bearer)
+  }
+
+  remove(host: string, email: string): void {
+    this.entries.delete(this.k(host, email))
   }
 }
 
@@ -74,9 +77,8 @@ describe('runLogin', () => {
     })
     const active = reg.resolveActive()
     expect(active?.ctx.account.email).toBe('tester@dify.ai')
-    expect(active?.ctx.workspace?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
-    expect(active?.ctx.available_workspaces).toHaveLength(2)
-    expect(store.get(tokenKey(active!.host, 'tester@dify.ai'))).toBe('dfoa_test')
+    expect(active?.ctx.workspace?.id).toBe('ws-1')
+    expect(store.read(active!.host, 'tester@dify.ai')).toBe('dfoa_test')
 
     const hostsRaw = await readFile(join(configDir, 'hosts.yml'), 'utf8')
     expect(hostsRaw).toContain('current_host:')
@@ -109,7 +111,7 @@ describe('runLogin', () => {
     expect(active?.ctx.external_subject?.email).toBe('sso@dify.ai')
     expect(active?.ctx.external_subject?.issuer).toBe('https://issuer.example')
     expect(active?.ctx.account.email).toBe('')
-    expect(store.get(tokenKey(active!.host, 'sso@dify.ai'))).toBe('dfoe_test')
+    expect(store.read(active!.host, 'sso@dify.ai')).toBe('dfoe_test')
     expect(io.outBuf()).toContain('external SSO')
     expect(io.outBuf()).toContain('sso@dify.ai')
   })

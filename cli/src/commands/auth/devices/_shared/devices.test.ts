@@ -2,7 +2,7 @@ import type { SessionListResponse, SessionRow } from '@dify/contracts/api/openap
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { AccountSessionsClient } from '@/api/account-sessions'
 import type { ActiveContext } from '@/auth/hosts'
-import type { Key, Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -11,22 +11,25 @@ import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Registry } from '@/auth/hosts'
 import { ENV_CONFIG_DIR } from '@/store/dir'
-import { tokenKey } from '@/store/manager'
 import { bufferStreams } from '@/sys/io/streams'
 import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
 
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T {
-    return (this.entries.get(key.key) as T | undefined) ?? key.default
+class MemStore implements TokenStore {
+  readonly entries = new Map<string, string>()
+  private k(host: string, email: string): string {
+    return `${host} ${email}`
   }
 
-  set<T>(key: Key<T>, value: T): void {
-    this.entries.set(key.key, value)
+  read(host: string, email: string): string {
+    return this.entries.get(this.k(host, email)) ?? ''
   }
 
-  unset<T>(key: Key<T>): void {
-    this.entries.delete(key.key)
+  write(host: string, email: string, bearer: string): void {
+    this.entries.set(this.k(host, email), bearer)
+  }
+
+  remove(host: string, email: string): void {
+    this.entries.delete(this.k(host, email))
   }
 }
 
@@ -35,10 +38,6 @@ function buildRegistry(host: string, email: string, tokenId: string): { reg: Reg
   reg.upsert(host, email, {
     account: { id: 'acct-1', email, name: 'Test Tester' },
     workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [
-      { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: 'ws-2', name: 'Other', role: 'normal' },
-    ],
     token_id: tokenId,
   })
   reg.setHost(host)
@@ -103,7 +102,7 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
-    store.set(tokenKey(mock.url, 'tester@dify.ai'), 'dfoa_test')
+    store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
     reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 
@@ -168,7 +167,7 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
-    store.set(tokenKey(mock.url, 'tester@dify.ai'), 'dfoa_test')
+    store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
     reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 

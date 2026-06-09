@@ -1,5 +1,5 @@
 import type { AccountContext } from './hosts'
-import type { Key, Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -52,6 +52,20 @@ describe('RegistrySchema', () => {
       external_subject: { email: 'sso@x.io', issuer: 'https://issuer' },
     })
     expect(ctx.external_subject?.issuer).toBe('https://issuer')
+  })
+
+  it('strips a stale available_workspaces field from legacy contexts', () => {
+    const raw = {
+      account: { id: 'acct-1', email: 'bob@corp.com', name: 'Bob' },
+      workspace: { id: 'ws-1', name: 'Space', role: 'owner' },
+      available_workspaces: [
+        { id: 'ws-1', name: 'Space', role: 'owner' },
+        { id: 'ws-2', name: 'Other', role: 'normal' },
+      ],
+    } as unknown as Record<string, unknown>
+    const ctx = AccountContextSchema.parse(raw)
+    expect((ctx as Record<string, unknown>).available_workspaces).toBeUndefined()
+    expect(ctx.workspace?.id).toBe('ws-1')
   })
 })
 
@@ -158,11 +172,12 @@ describe('Registry.load / Registry.save', () => {
   })
 })
 
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T { return (this.entries.get(key.key) as T | undefined) ?? key.default }
-  set<T>(key: Key<T>, value: T): void { this.entries.set(key.key, value) }
-  unset<T>(key: Key<T>): void { this.entries.delete(key.key) }
+class MemStore implements TokenStore {
+  readonly entries = new Map<string, string>()
+  private k(host: string, email: string): string { return `${host} ${email}` }
+  read(host: string, email: string): string { return this.entries.get(this.k(host, email)) ?? '' }
+  write(host: string, email: string, bearer: string): void { this.entries.set(this.k(host, email), bearer) }
+  remove(host: string, email: string): void { this.entries.delete(this.k(host, email)) }
 }
 
 describe('Registry.forget', () => {
@@ -188,12 +203,12 @@ describe('Registry.forget', () => {
     reg.setHost('h1')
     reg.setAccount('a@x')
     reg.save()
-    store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
+    store.write('h1', 'a@x', 'dfoa_a')
 
     const active = reg.resolveActive()!
     reg.forget(active, store)
 
-    expect(store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
+    expect(store.read('h1', 'a@x')).toBe('')
     const after = Registry.load()
     expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
     expect(after?.hosts.h1?.accounts['b@x']).toBeDefined()
