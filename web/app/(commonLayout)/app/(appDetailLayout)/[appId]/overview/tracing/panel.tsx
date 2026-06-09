@@ -46,13 +46,6 @@ const Panel: FC = () => {
       toast(t('api.success', { ns: 'common' }), { type: 'success' })
     }
   }
-
-  const handleTracingEnabledChange = (enabled: boolean) => {
-    handleTracingStatusChange({
-      tracing_provider: tracingStatus?.tracing_provider || null,
-      enabled,
-    })
-  }
   const handleChooseProvider = (provider: TracingProvider) => {
     handleTracingStatusChange({
       tracing_provider: provider,
@@ -86,6 +79,36 @@ const Panel: FC = () => {
   const [databricksConfig, setDatabricksConfig] = useState<DatabricksConfig | null>(null)
   const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
   const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig || tencentConfig)
+  const configuredProvider: TracingProvider | null
+    = langFuseConfig
+      ? TracingProvider.langfuse
+      : langSmithConfig
+        ? TracingProvider.langSmith
+        : opikConfig
+          ? TracingProvider.opik
+          : arizeConfig
+            ? TracingProvider.arize
+            : phoenixConfig
+              ? TracingProvider.phoenix
+              : weaveConfig
+                ? TracingProvider.weave
+                : aliyunConfig
+                  ? TracingProvider.aliyun
+                  : mlflowConfig
+                    ? TracingProvider.mlflow
+                    : databricksConfig
+                      ? TracingProvider.databricks
+                      : tencentConfig
+                        ? TracingProvider.tencent
+                        : null
+
+  const handleTracingEnabledChange = (enabled: boolean) => {
+    handleTracingStatusChange({
+      tracing_provider: tracingStatus?.tracing_provider
+        || (enabled ? configuredProvider : null),
+      enabled,
+    })
+  }
 
   const fetchTracingConfig = async () => {
     const getArizeConfig = async () => {
