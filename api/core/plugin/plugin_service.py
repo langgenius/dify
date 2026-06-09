@@ -201,13 +201,23 @@ class PluginService:
             if generation == 0:
                 cache_keys.append(cls._get_plugin_model_providers_cache_key(tenant_id))
 
-        for cache_key in cache_keys:
-            try:
-                cached_providers = redis_client.get(cache_key)
-            except (RedisError, RuntimeError):
-                logger.warning("Failed to read cached plugin model providers for tenant %s.", tenant_id, exc_info=True)
-                return None
+        if not cache_keys:
+            return None
 
+        try:
+            cached_provider_entries = redis_client.mget(cache_keys)
+        except (RedisError, RuntimeError):
+            logger.warning("Failed to read cached plugin model providers for tenant %s.", tenant_id, exc_info=True)
+            return None
+
+        if len(cached_provider_entries) != len(cache_keys):
+            logger.warning(
+                "Unexpected cached plugin model providers response size for tenant %s.",
+                tenant_id,
+            )
+            return None
+
+        for cache_key, cached_providers in zip(cache_keys, cached_provider_entries):
             if not cached_providers:
                 continue
 
@@ -249,18 +259,15 @@ class PluginService:
     def invalidate_plugin_model_providers_cache(cls, tenant_id: str) -> None:
         """Invalidate tenant-scoped provider metadata across Redis and worker-local mirrors."""
         cls._plugin_model_providers_memory_cache.pop(tenant_id, None)
+        cache_key = cls._get_plugin_model_providers_cache_key(tenant_id)
+        generation_key = cls._get_plugin_model_providers_generation_cache_key(tenant_id)
         try:
-            redis_client.delete(cls._get_plugin_model_providers_cache_key(tenant_id))
+            pipe = redis_client.pipeline(transaction=False)
+            pipe.delete(cache_key)
+            pipe.incr(generation_key)
+            pipe.execute()
         except (RedisError, RuntimeError):
             logger.warning("Failed to invalidate plugin model providers cache for tenant %s.", tenant_id, exc_info=True)
-        try:
-            redis_client.incr(cls._get_plugin_model_providers_generation_cache_key(tenant_id))
-        except (RedisError, RuntimeError):
-            logger.warning(
-                "Failed to bump plugin model provider generation for tenant %s.",
-                tenant_id,
-                exc_info=True,
-            )
 
     @classmethod
     def fetch_plugin_model_providers(
