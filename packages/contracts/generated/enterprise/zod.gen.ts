@@ -7,27 +7,75 @@ export const zDifyEnterpriseApiEnterpriseEnvironmentError = z.object({
   message: z.string().optional(),
 })
 
+export const zAccessMode = z.enum([
+  'ACCESS_MODE_UNSPECIFIED',
+  'ACCESS_MODE_PUBLIC',
+  'ACCESS_MODE_PRIVATE',
+  'ACCESS_MODE_PRIVATE_ALL',
+])
+
+export const zSubjectType = z.enum([
+  'SUBJECT_TYPE_UNSPECIFIED',
+  'SUBJECT_TYPE_ACCOUNT',
+  'SUBJECT_TYPE_GROUP',
+])
+
+export const zPluginCategory = z.enum([
+  'PLUGIN_CATEGORY_UNSPECIFIED',
+  'PLUGIN_CATEGORY_MODEL',
+  'PLUGIN_CATEGORY_TOOL',
+])
+
+export const zDeploymentStatus = z.enum([
+  'DEPLOYMENT_STATUS_UNSPECIFIED',
+  'DEPLOYMENT_STATUS_DEPLOYING',
+  'DEPLOYMENT_STATUS_READY',
+  'DEPLOYMENT_STATUS_FAILED',
+  'DEPLOYMENT_STATUS_CANCELLED',
+])
+
+export const zDeveloperApiUrlStatus = z.enum([
+  'DEVELOPER_API_URL_STATUS_UNSPECIFIED',
+  'DEVELOPER_API_URL_STATUS_CONFIGURED',
+  'DEVELOPER_API_URL_STATUS_NOT_CONFIGURED',
+])
+
+export const zEnvVarValueSource = z.enum([
+  'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
+  'ENV_VAR_VALUE_SOURCE_LITERAL',
+  'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT',
+  'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT',
+])
+
+export const zEnvironmentMode = z.enum([
+  'ENVIRONMENT_MODE_UNSPECIFIED',
+  'ENVIRONMENT_MODE_SHARED',
+  'ENVIRONMENT_MODE_ISOLATED',
+])
+
+export const zRuntimeBackend = z.enum([
+  'RUNTIME_BACKEND_UNSPECIFIED',
+  'RUNTIME_BACKEND_K8S',
+  'RUNTIME_BACKEND_EXTERNAL',
+])
+
+export const zEnvironmentStatus = z.enum([
+  'ENVIRONMENT_STATUS_UNSPECIFIED',
+  'ENVIRONMENT_STATUS_ADMISSION',
+  'ENVIRONMENT_STATUS_BOOTSTRAPPING',
+  'ENVIRONMENT_STATUS_READY',
+  'ENVIRONMENT_STATUS_FAILED',
+])
+
 export const zDifyEnterpriseApiEnterpriseEnvironment = z.object({
   id: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
-  mode: z
-    .enum(['ENVIRONMENT_MODE_UNSPECIFIED', 'ENVIRONMENT_MODE_SHARED', 'ENVIRONMENT_MODE_ISOLATED'])
-    .optional(),
-  backend: z
-    .enum(['RUNTIME_BACKEND_UNSPECIFIED', 'RUNTIME_BACKEND_K8S', 'RUNTIME_BACKEND_EXTERNAL'])
-    .optional(),
+  mode: zEnvironmentMode.optional(),
+  backend: zRuntimeBackend.optional(),
   namespace: z.string().optional(),
   apiServer: z.string().optional(),
-  status: z
-    .enum([
-      'ENVIRONMENT_STATUS_UNSPECIFIED',
-      'ENVIRONMENT_STATUS_ADMISSION',
-      'ENVIRONMENT_STATUS_BOOTSTRAPPING',
-      'ENVIRONMENT_STATUS_READY',
-      'ENVIRONMENT_STATUS_FAILED',
-    ])
-    .optional(),
+  status: zEnvironmentStatus.optional(),
   statusMessage: z.string().optional(),
   lastError: zDifyEnterpriseApiEnterpriseEnvironmentError.optional(),
   managedBy: z.string().optional(),
@@ -41,6 +89,104 @@ export const zDifyEnterpriseApiEnterpriseEnvironment = z.object({
     .optional(),
 })
 
+export const zRuntimeInstanceStatus = z.enum([
+  'RUNTIME_INSTANCE_STATUS_UNSPECIFIED',
+  'RUNTIME_INSTANCE_STATUS_UNDEPLOYED',
+  'RUNTIME_INSTANCE_STATUS_DEPLOYING',
+  'RUNTIME_INSTANCE_STATUS_READY',
+  'RUNTIME_INSTANCE_STATUS_FAILED',
+  'RUNTIME_INSTANCE_STATUS_DRIFTED',
+  'RUNTIME_INSTANCE_STATUS_INVALID',
+  'RUNTIME_INSTANCE_STATUS_UNDEPLOYING',
+])
+
+export const zOperatorType = z.enum([
+  'OPERATOR_TYPE_UNKNOWN',
+  'OPERATOR_TYPE_END_USER',
+  'OPERATOR_TYPE_ACCOUNT',
+  'OPERATOR_TYPE_SERVICE_ACCOUNT',
+  'OPERATOR_TYPE_SYSTEM',
+])
+
+export const zReleaseSource = z.enum([
+  'RELEASE_SOURCE_UNSPECIFIED',
+  'RELEASE_SOURCE_SOURCE_APP',
+  'RELEASE_SOURCE_UPLOAD',
+])
+
+export const zReleaseEnvironmentActionKind = z.enum([
+  'RELEASE_ENVIRONMENT_ACTION_KIND_UNSPECIFIED',
+  'RELEASE_ENVIRONMENT_ACTION_KIND_PROMOTE',
+  'RELEASE_ENVIRONMENT_ACTION_KIND_ROLLBACK',
+  'RELEASE_ENVIRONMENT_ACTION_KIND_CURRENT',
+  'RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING',
+  'RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED',
+])
+
+export const zSlotType = z.enum([
+  'SLOT_TYPE_UNSPECIFIED',
+  'SLOT_TYPE_PLUGIN_CREDENTIAL',
+  'SLOT_TYPE_ENV_VAR',
+])
+
+export const zPasswordChangeReason = z.enum([
+  'PASSWORD_CHANGE_REASON_UNSPECIFIED',
+  'PASSWORD_CHANGE_REASON_TEMP',
+  'PASSWORD_CHANGE_REASON_EXPIRED',
+  'PASSWORD_CHANGE_REASON_POLICY',
+])
+
+export const zAppRunnerLaunchProfileMode = z.enum([
+  'APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED',
+  'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG',
+])
+
+export const zOtelEndpointMode = z.enum([
+  'OTEL_ENDPOINT_MODE_UNIFIED',
+  'OTEL_ENDPOINT_MODE_DEDICATED',
+])
+
+export const zAppStatus = z.enum([
+  'APP_STATUS_UNSPECIFIED',
+  'APP_STATUS_PUBLISHED',
+  'APP_STATUS_UNPUBLISHED',
+  'APP_STATUS_DELETED',
+])
+
+export const zLimitType = z.enum([
+  'LIMIT_TYPE_UNSPECIFIED',
+  'LIMIT_TYPE_RPM',
+  'LIMIT_TYPE_CONCURRENCY',
+  'LIMIT_TYPE_TOKEN',
+])
+
+export const zLimitAction = z.enum([
+  'LIMIT_ACTION_UNSPECIFIED',
+  'LIMIT_ACTION_BLOCK',
+  'LIMIT_ACTION_TRACK',
+])
+
+export const zPasswordStrengthLevel = z.enum([
+  'PASSWORD_STRENGTH_LEVEL_UNSPECIFIED',
+  'PASSWORD_STRENGTH_LEVEL_WEAK',
+  'PASSWORD_STRENGTH_LEVEL_MEDIUM',
+  'PASSWORD_STRENGTH_LEVEL_STRONG',
+])
+
+export const zPluginInstallationScope = z.enum([
+  'PLUGIN_INSTALLATION_SCOPE_ALL',
+  'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY',
+  'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS',
+  'PLUGIN_INSTALLATION_SCOPE_NONE',
+])
+
+export const zLimitStatus = z.enum([
+  'LIMIT_STATUS_UNSPECIFIED',
+  'LIMIT_STATUS_NA',
+  'LIMIT_STATUS_NORMAL',
+  'LIMIT_STATUS_THROTTLED',
+])
+
 export const zAccessChannels = z.object({
   id: z.string().optional(),
   appInstanceId: z.string().optional(),
@@ -52,9 +198,7 @@ export const zAccessChannels = z.object({
 })
 
 export const zAccessSubject = z.object({
-  subjectType: z
-    .enum(['SUBJECT_TYPE_UNSPECIFIED', 'SUBJECT_TYPE_ACCOUNT', 'SUBJECT_TYPE_GROUP'])
-    .optional(),
+  subjectType: zSubjectType.optional(),
   subjectId: z.string().optional(),
 })
 
@@ -62,14 +206,7 @@ export const zAccessPolicy = z.object({
   id: z.string().optional(),
   appInstanceId: z.string().optional(),
   environmentId: z.string().optional(),
-  mode: z
-    .enum([
-      'ACCESS_MODE_UNSPECIFIED',
-      'ACCESS_MODE_PUBLIC',
-      'ACCESS_MODE_PRIVATE',
-      'ACCESS_MODE_PRIVATE_ALL',
-    ])
-    .optional(),
+  mode: zAccessMode.optional(),
   subjects: z.array(zAccessSubject).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -186,9 +323,7 @@ export const zCreateReleaseFromSourceAppReq = z.object({
 export const zCredentialCandidate = z.object({
   credentialId: z.string().optional(),
   providerId: z.string().optional(),
-  category: z
-    .enum(['PLUGIN_CATEGORY_UNSPECIFIED', 'PLUGIN_CATEGORY_MODEL', 'PLUGIN_CATEGORY_TOOL'])
-    .optional(),
+  category: zPluginCategory.optional(),
   displayName: z.string().optional(),
   fromEnterprise: z.boolean().optional(),
 })
@@ -199,9 +334,7 @@ export const zCredentialCandidate = z.object({
  */
 export const zCredentialSelectionInput = z.object({
   providerId: z.string().optional(),
-  category: z
-    .enum(['PLUGIN_CATEGORY_UNSPECIFIED', 'PLUGIN_CATEGORY_MODEL', 'PLUGIN_CATEGORY_TOOL'])
-    .optional(),
+  category: zPluginCategory.optional(),
   credentialId: z.string().optional(),
 })
 
@@ -211,9 +344,7 @@ export const zCredentialSelectionInput = z.object({
  */
 export const zCredentialSlot = z.object({
   providerId: z.string().optional(),
-  category: z
-    .enum(['PLUGIN_CATEGORY_UNSPECIFIED', 'PLUGIN_CATEGORY_MODEL', 'PLUGIN_CATEGORY_TOOL'])
-    .optional(),
+  category: zPluginCategory.optional(),
   candidates: z.array(zCredentialCandidate).optional(),
   lastCredentialId: z.string().optional(),
 })
@@ -236,13 +367,7 @@ export const zDeploymentOptionsReleaseDefaults = z.object({
 
 export const zDeveloperApiUrl = z.object({
   apiUrl: z.string().optional(),
-  status: z
-    .enum([
-      'DEVELOPER_API_URL_STATUS_UNSPECIFIED',
-      'DEVELOPER_API_URL_STATUS_CONFIGURED',
-      'DEVELOPER_API_URL_STATUS_NOT_CONFIGURED',
-    ])
-    .optional(),
+  status: zDeveloperApiUrlStatus.optional(),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),
 })
@@ -265,14 +390,7 @@ export const zApiKeySummary = z.object({
 export const zEnvVarInput = z.object({
   key: z.string().optional(),
   value: z.string().optional(),
-  valueSource: z
-    .enum([
-      'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
-      'ENV_VAR_VALUE_SOURCE_LITERAL',
-      'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT',
-      'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT',
-    ])
-    .optional(),
+  valueSource: zEnvVarValueSource.optional(),
 })
 
 export const zEnvVarSlot = z.object({
@@ -295,15 +413,7 @@ export const zDeploymentOptions = z.object({
 
 export const zEnvironmentDeploymentRecord = z.object({
   id: z.string().optional(),
-  status: z
-    .enum([
-      'DEPLOYMENT_STATUS_UNSPECIFIED',
-      'DEPLOYMENT_STATUS_DEPLOYING',
-      'DEPLOYMENT_STATUS_READY',
-      'DEPLOYMENT_STATUS_FAILED',
-      'DEPLOYMENT_STATUS_CANCELLED',
-    ])
-    .optional(),
+  status: zDeploymentStatus.optional(),
   createdAt: z.string().optional(),
   finalizedAt: z.string().optional(),
 })
@@ -317,23 +427,11 @@ export const zEnvironment = z.object({
   id: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
-  mode: z
-    .enum(['ENVIRONMENT_MODE_UNSPECIFIED', 'ENVIRONMENT_MODE_SHARED', 'ENVIRONMENT_MODE_ISOLATED'])
-    .optional(),
-  backend: z
-    .enum(['RUNTIME_BACKEND_UNSPECIFIED', 'RUNTIME_BACKEND_K8S', 'RUNTIME_BACKEND_EXTERNAL'])
-    .optional(),
+  mode: zEnvironmentMode.optional(),
+  backend: zRuntimeBackend.optional(),
   namespace: z.string().optional(),
   apiServer: z.string().optional(),
-  status: z
-    .enum([
-      'ENVIRONMENT_STATUS_UNSPECIFIED',
-      'ENVIRONMENT_STATUS_ADMISSION',
-      'ENVIRONMENT_STATUS_BOOTSTRAPPING',
-      'ENVIRONMENT_STATUS_READY',
-      'ENVIRONMENT_STATUS_FAILED',
-    ])
-    .optional(),
+  status: zEnvironmentStatus.optional(),
   statusMessage: z.string().optional(),
   lastError: zEnvironmentError.optional(),
   managedBy: z.string().optional(),
@@ -441,15 +539,7 @@ export const zDeployReq = z.object({
  * Operator is who triggered the run (the "END USER OR ACCOUNT" column).
  */
 export const zOperator = z.object({
-  type: z
-    .enum([
-      'OPERATOR_TYPE_UNKNOWN',
-      'OPERATOR_TYPE_END_USER',
-      'OPERATOR_TYPE_ACCOUNT',
-      'OPERATOR_TYPE_SERVICE_ACCOUNT',
-      'OPERATOR_TYPE_SYSTEM',
-    ])
-    .optional(),
+  type: zOperatorType.optional(),
   id: z.string().optional(),
   name: z.string().optional(),
 })
@@ -495,14 +585,7 @@ export const zPutAccessPolicyReply = z.object({
 export const zPutAccessPolicyReq = z.object({
   appInstanceId: z.string().optional(),
   environmentId: z.string().optional(),
-  mode: z
-    .enum([
-      'ACCESS_MODE_UNSPECIFIED',
-      'ACCESS_MODE_PUBLIC',
-      'ACCESS_MODE_PRIVATE',
-      'ACCESS_MODE_PRIVATE_ALL',
-    ])
-    .optional(),
+  mode: zAccessMode.optional(),
   subjects: z.array(zAccessSubject).optional(),
 })
 
@@ -523,16 +606,7 @@ export const zCheckReleaseContentReply = z.object({
 
 export const zReleaseEnvironmentAction = z.object({
   environment: zEnvironment.optional(),
-  kind: z
-    .enum([
-      'RELEASE_ENVIRONMENT_ACTION_KIND_UNSPECIFIED',
-      'RELEASE_ENVIRONMENT_ACTION_KIND_PROMOTE',
-      'RELEASE_ENVIRONMENT_ACTION_KIND_ROLLBACK',
-      'RELEASE_ENVIRONMENT_ACTION_KIND_CURRENT',
-      'RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING',
-      'RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED',
-    ])
-    .optional(),
+  kind: zReleaseEnvironmentActionKind.optional(),
   disabledReason: z.string().optional(),
   requiresRuntimeInputs: z.boolean().optional(),
   currentReleaseId: z.string().optional(),
@@ -545,18 +619,7 @@ export const zReleaseEnvironmentAction = z.object({
  */
 export const zReleaseEnvironmentDeployment = z.object({
   environment: zEnvironment.optional(),
-  status: z
-    .enum([
-      'RUNTIME_INSTANCE_STATUS_UNSPECIFIED',
-      'RUNTIME_INSTANCE_STATUS_UNDEPLOYED',
-      'RUNTIME_INSTANCE_STATUS_DEPLOYING',
-      'RUNTIME_INSTANCE_STATUS_READY',
-      'RUNTIME_INSTANCE_STATUS_FAILED',
-      'RUNTIME_INSTANCE_STATUS_DRIFTED',
-      'RUNTIME_INSTANCE_STATUS_INVALID',
-      'RUNTIME_INSTANCE_STATUS_UNDEPLOYING',
-    ])
-    .optional(),
+  status: zRuntimeInstanceStatus.optional(),
 })
 
 export const zReportRuntimeAssignmentStatusReply = z.object({
@@ -569,13 +632,9 @@ export const zReportRuntimeAssignmentStatusReply = z.object({
  * DSL.
  */
 export const zRequiredSlot = z.object({
-  type: z
-    .enum(['SLOT_TYPE_UNSPECIFIED', 'SLOT_TYPE_PLUGIN_CREDENTIAL', 'SLOT_TYPE_ENV_VAR'])
-    .optional(),
+  type: zSlotType.optional(),
   providerId: z.string().optional(),
-  category: z
-    .enum(['PLUGIN_CATEGORY_UNSPECIFIED', 'PLUGIN_CATEGORY_MODEL', 'PLUGIN_CATEGORY_TOOL'])
-    .optional(),
+  category: zPluginCategory.optional(),
   name: z.string().optional(),
 })
 
@@ -584,9 +643,7 @@ export const zRelease = z.object({
   appInstanceId: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
-  source: z
-    .enum(['RELEASE_SOURCE_UNSPECIFIED', 'RELEASE_SOURCE_SOURCE_APP', 'RELEASE_SOURCE_UPLOAD'])
-    .optional(),
+  source: zReleaseSource.optional(),
   sourceAppId: z.string().optional(),
   gateCommitId: z.string().optional(),
   requiredSlots: z.array(zRequiredSlot).optional(),
@@ -601,15 +658,7 @@ export const zCreateReleaseReply = z.object({
 
 export const zDeployment = z.object({
   id: z.string().optional(),
-  status: z
-    .enum([
-      'DEPLOYMENT_STATUS_UNSPECIFIED',
-      'DEPLOYMENT_STATUS_DEPLOYING',
-      'DEPLOYMENT_STATUS_READY',
-      'DEPLOYMENT_STATUS_FAILED',
-      'DEPLOYMENT_STATUS_CANCELLED',
-    ])
-    .optional(),
+  status: zDeploymentStatus.optional(),
   environment: zEnvironment.optional(),
   release: zRelease.optional(),
   error: zError.optional(),
@@ -630,18 +679,7 @@ export const zDeploymentReply = z.object({
 export const zEnvironmentDeployment = z.object({
   appInstanceId: z.string().optional(),
   environment: zEnvironment.optional(),
-  status: z
-    .enum([
-      'RUNTIME_INSTANCE_STATUS_UNSPECIFIED',
-      'RUNTIME_INSTANCE_STATUS_UNDEPLOYED',
-      'RUNTIME_INSTANCE_STATUS_DEPLOYING',
-      'RUNTIME_INSTANCE_STATUS_READY',
-      'RUNTIME_INSTANCE_STATUS_FAILED',
-      'RUNTIME_INSTANCE_STATUS_DRIFTED',
-      'RUNTIME_INSTANCE_STATUS_INVALID',
-      'RUNTIME_INSTANCE_STATUS_UNDEPLOYING',
-    ])
-    .optional(),
+  status: zRuntimeInstanceStatus.optional(),
   currentRelease: zRelease.optional(),
   desiredRelease: zRelease.optional(),
   currentDeployment: zEnvironmentDeploymentRecord.optional(),
@@ -897,14 +935,7 @@ export const zBrandingInfo = z.object({
 
 export const zCheckPasswordStatusReply = z.object({
   requirePasswordChange: z.boolean().optional(),
-  changeReason: z
-    .enum([
-      'PASSWORD_CHANGE_REASON_UNSPECIFIED',
-      'PASSWORD_CHANGE_REASON_TEMP',
-      'PASSWORD_CHANGE_REASON_EXPIRED',
-      'PASSWORD_CHANGE_REASON_POLICY',
-    ])
-    .optional(),
+  changeReason: zPasswordChangeReason.optional(),
   daysToExpire: z
     .int()
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
@@ -926,9 +957,7 @@ export const zCreateAppRunnerLaunchProfileReply = z.object({
 
 export const zCreateAppRunnerLaunchProfileReq = z.object({
   environmentId: z.string().optional(),
-  mode: z
-    .enum(['APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED', 'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG'])
-    .optional(),
+  mode: zAppRunnerLaunchProfileMode.optional(),
   controlEndpoint: z.string().optional(),
   pluginDaemonBaseUrl: z.string().optional(),
   runtimeListenAddr: z.string().optional(),
@@ -1122,14 +1151,7 @@ export const zGroupAppItem = z.object({
   app_name: z.string().optional(),
   workspace_id: z.string().optional(),
   workspace_name: z.string().optional(),
-  app_status: z
-    .enum([
-      'APP_STATUS_UNSPECIFIED',
-      'APP_STATUS_PUBLISHED',
-      'APP_STATUS_UNPUBLISHED',
-      'APP_STATUS_DELETED',
-    ])
-    .optional(),
+  app_status: zAppStatus.optional(),
   token_usage: z.string().optional(),
   rpm: z.string().optional(),
   concurrency: z.string().optional(),
@@ -1249,12 +1271,8 @@ export const zK8sEnvironmentConfig = z.object({
 export const zCreateEnvironmentReq = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
-  mode: z
-    .enum(['ENVIRONMENT_MODE_UNSPECIFIED', 'ENVIRONMENT_MODE_SHARED', 'ENVIRONMENT_MODE_ISOLATED'])
-    .optional(),
-  backend: z
-    .enum(['RUNTIME_BACKEND_UNSPECIFIED', 'RUNTIME_BACKEND_K8S', 'RUNTIME_BACKEND_EXTERNAL'])
-    .optional(),
+  mode: zEnvironmentMode.optional(),
+  backend: zRuntimeBackend.optional(),
   k8s: zK8sEnvironmentConfig.optional(),
   external: zExternalAppRunnerConfig.optional(),
   cpuCount: z
@@ -1265,18 +1283,9 @@ export const zCreateEnvironmentReq = z.object({
 })
 
 export const zLimitConfig = z.object({
-  type: z
-    .enum([
-      'LIMIT_TYPE_UNSPECIFIED',
-      'LIMIT_TYPE_RPM',
-      'LIMIT_TYPE_CONCURRENCY',
-      'LIMIT_TYPE_TOKEN',
-    ])
-    .optional(),
+  type: zLimitType.optional(),
   threshold: z.string().optional(),
-  action: z
-    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
-    .optional(),
+  action: zLimitAction.optional(),
   reached: z.boolean().optional(),
 })
 
@@ -1403,7 +1412,7 @@ export const zOtelExporterEndpoint = z.object({
 })
 
 export const zEndpointReply = z.object({
-  mode: z.enum(['OTEL_ENDPOINT_MODE_UNIFIED', 'OTEL_ENDPOINT_MODE_DEDICATED']).optional(),
+  mode: zOtelEndpointMode.optional(),
   metricsEndpoint: zOtelExporterEndpoint.optional(),
   tracesEndpoint: zOtelExporterEndpoint.optional(),
 })
@@ -1437,14 +1446,7 @@ export const zPasswordPolicyConfig = z.object({
 })
 
 export const zPasswordStrengthReply = z.object({
-  level: z
-    .enum([
-      'PASSWORD_STRENGTH_LEVEL_UNSPECIFIED',
-      'PASSWORD_STRENGTH_LEVEL_WEAK',
-      'PASSWORD_STRENGTH_LEVEL_MEDIUM',
-      'PASSWORD_STRENGTH_LEVEL_STRONG',
-    ])
-    .optional(),
+  level: zPasswordStrengthLevel.optional(),
 })
 
 export const zPasswordStrengthReq = z.object({
@@ -1457,14 +1459,7 @@ export const zPluginInstallationPermissionInfo = z.object({
 })
 
 export const zPluginInstallationSettingsReply = z.object({
-  pluginInstallationScope: z
-    .enum([
-      'PLUGIN_INSTALLATION_SCOPE_ALL',
-      'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY',
-      'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS',
-      'PLUGIN_INSTALLATION_SCOPE_NONE',
-    ])
-    .optional(),
+  pluginInstallationScope: zPluginInstallationScope.optional(),
   restrictToMarketplaceOnly: z.boolean().optional(),
 })
 
@@ -1512,21 +1507,15 @@ export const zResourceGroupDetail = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  rpm_action: z
-    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
-    .optional(),
+  rpm_action: zLimitAction.optional(),
   concurrency_limit: z
     .int()
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  concurrency_action: z
-    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
-    .optional(),
+  concurrency_action: zLimitAction.optional(),
   token_quota: z.string().optional(),
-  token_action: z
-    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
-    .optional(),
+  token_action: zLimitAction.optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 })
@@ -1549,22 +1538,8 @@ export const zResourceGroupItem = z.object({
   token_quota: z.string().optional(),
   token_usage: z.string().optional(),
   app_count: z.string().optional(),
-  rpm_status: z
-    .enum([
-      'LIMIT_STATUS_UNSPECIFIED',
-      'LIMIT_STATUS_NA',
-      'LIMIT_STATUS_NORMAL',
-      'LIMIT_STATUS_THROTTLED',
-    ])
-    .optional(),
-  conc_status: z
-    .enum([
-      'LIMIT_STATUS_UNSPECIFIED',
-      'LIMIT_STATUS_NA',
-      'LIMIT_STATUS_NORMAL',
-      'LIMIT_STATUS_THROTTLED',
-    ])
-    .optional(),
+  rpm_status: zLimitStatus.optional(),
+  conc_status: zLimitStatus.optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 })
@@ -1692,14 +1667,7 @@ export const zSearchAppItem = z.object({
   app_name: z.string().optional(),
   workspace_id: z.string().optional(),
   workspace_name: z.string().optional(),
-  app_status: z
-    .enum([
-      'APP_STATUS_UNSPECIFIED',
-      'APP_STATUS_PUBLISHED',
-      'APP_STATUS_UNPUBLISHED',
-      'APP_STATUS_DELETED',
-    ])
-    .optional(),
+  app_status: zAppStatus.optional(),
   icon: z.string().optional(),
   icon_type: z.string().optional(),
   icon_background: z.string().optional(),
@@ -1766,9 +1734,7 @@ export const zGetWebAppWhitelistSubjectsRes = z.object({
  */
 export const zSubject = z.object({
   subjectId: z.string().optional(),
-  subjectType: z
-    .enum(['SUBJECT_TYPE_UNSPECIFIED', 'SUBJECT_TYPE_ACCOUNT', 'SUBJECT_TYPE_GROUP'])
-    .optional(),
+  subjectType: zSubjectType.optional(),
   accountData: zSubjectAccountData.optional(),
   groupData: zSubjectGroupData.optional(),
 })
@@ -2000,14 +1966,7 @@ export const zUpdateOfflineLicenseReq = z.object({
 })
 
 export const zUpdatePluginInstallationSettingsRequest = z.object({
-  pluginInstallationScope: z
-    .enum([
-      'PLUGIN_INSTALLATION_SCOPE_ALL',
-      'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY',
-      'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS',
-      'PLUGIN_INSTALLATION_SCOPE_NONE',
-    ])
-    .optional(),
+  pluginInstallationScope: zPluginInstallationScope.optional(),
   restrictToMarketplaceOnly: z.boolean().optional(),
 })
 
@@ -2021,21 +1980,15 @@ export const zUpdateResourceGroupRequest = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  rpm_action: z
-    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
-    .optional(),
+  rpm_action: zLimitAction.optional(),
   concurrency_limit: z
     .int()
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  concurrency_action: z
-    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
-    .optional(),
+  concurrency_action: zLimitAction.optional(),
   token_quota: z.string().optional(),
-  token_action: z
-    .enum(['LIMIT_ACTION_UNSPECIFIED', 'LIMIT_ACTION_BLOCK', 'LIMIT_ACTION_TRACK'])
-    .optional(),
+  token_action: zLimitAction.optional(),
 })
 
 export const zUpdateUserReply = z.object({

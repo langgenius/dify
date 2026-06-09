@@ -1,7 +1,5 @@
-import type {
-  EnvVarInput,
-  EnvVarSlot,
-} from '@dify/contracts/enterprise/types.gen'
+import type { EnvVarInput, EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
+import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 
 export type EnvVarValueSource = NonNullable<EnvVarInput['valueSource']>
 
@@ -15,13 +13,6 @@ export type EnvVarValueType = 'string' | 'number' | 'secret'
 export type EnvVarValueSelectionOptions = {
   preferDefaultValue?: boolean
 }
-
-export const ENV_VAR_VALUE_SOURCE_LITERAL = 'ENV_VAR_VALUE_SOURCE_LITERAL' satisfies EnvVarValueSource
-export const ENV_VAR_VALUE_SOURCE_DSL_DEFAULT = 'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT' satisfies EnvVarValueSource
-export const ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT = 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT' satisfies EnvVarValueSource
-const ENV_VAR_VALUE_TYPE_STRING = 'string' satisfies EnvVarValueType
-export const ENV_VAR_VALUE_TYPE_NUMBER = 'number' satisfies EnvVarValueType
-export const ENV_VAR_VALUE_TYPE_SECRET = 'secret' satisfies EnvVarValueType
 
 export function envVarSlotKey(slot: EnvVarSlot) {
   return slot.key?.trim() ?? ''
@@ -41,12 +32,12 @@ export function hasEnvVarLastValue(slot: EnvVarSlot) {
 
 export function envVarSlotValueType(slot: EnvVarSlot): EnvVarValueType {
   const valueType = slot.valueType?.trim().toLowerCase()
-  if (valueType === ENV_VAR_VALUE_TYPE_NUMBER)
-    return ENV_VAR_VALUE_TYPE_NUMBER
-  if (valueType === ENV_VAR_VALUE_TYPE_SECRET)
-    return ENV_VAR_VALUE_TYPE_SECRET
+  if (valueType === 'number')
+    return 'number'
+  if (valueType === 'secret')
+    return 'secret'
 
-  return ENV_VAR_VALUE_TYPE_STRING
+  return 'string'
 }
 
 export function envVarSlotValue(value: unknown) {
@@ -71,24 +62,24 @@ function defaultEnvVarValueSelection(
 ): EnvVarValueSelection {
   if (options?.preferDefaultValue && hasEnvVarDefaultValue(slot)) {
     return {
-      valueSource: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
     }
   }
 
   if (hasEnvVarLastValue(slot)) {
     return {
-      valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
     }
   }
 
   if (hasEnvVarDefaultValue(slot)) {
     return {
-      valueSource: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
     }
   }
 
   return {
-    valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
+    valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
   }
 }
 
@@ -100,21 +91,21 @@ export function envVarValueSelectionForSlot(
   if (!selection)
     return defaultEnvVarValueSelection(slot, options)
 
-  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT && hasEnvVarLastValue(slot))
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT && hasEnvVarLastValue(slot))
     return selection
 
-  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT && hasEnvVarDefaultValue(slot))
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT && hasEnvVarDefaultValue(slot))
     return selection
 
-  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT && hasEnvVarLastValue(slot)) {
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT && hasEnvVarLastValue(slot)) {
     return {
-      valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+      valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
     }
   }
 
   return {
     ...selection,
-    valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
+    valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
   }
 }
 
@@ -125,15 +116,15 @@ export function hasMissingRequiredEnvVarValue(slot: EnvVarSlot, values: EnvVarVa
 
   const selection = envVarValueSelectionForSlot(slot, values[key])
 
-  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
     return !hasEnvVarLastValue(slot)
-  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
     return !hasEnvVarDefaultValue(slot)
 
   const value = selection.value?.trim()
   if (!value)
     return true
-  if (envVarSlotValueType(slot) === ENV_VAR_VALUE_TYPE_NUMBER)
+  if (envVarSlotValueType(slot) === 'number')
     return Number.isNaN(Number(value))
 
   return false
@@ -243,36 +234,36 @@ export function selectedDeploymentEnvVars(
 
       const selection = envVarValueSelectionForSlot(slot, values[key])
 
-      if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
+      if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
         if (!hasEnvVarLastValue(slot))
           return []
 
         return [{
           key,
-          valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+          valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
         }]
       }
 
-      if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
+      if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
         if (!hasEnvVarDefaultValue(slot))
           return []
 
         return [{
           key,
-          valueSource: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+          valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
         }]
       }
 
       const literalValue = selection.value?.trim()
       if (!literalValue)
         return []
-      if (envVarSlotValueType(slot) === ENV_VAR_VALUE_TYPE_NUMBER && Number.isNaN(Number(literalValue)))
+      if (envVarSlotValueType(slot) === 'number' && Number.isNaN(Number(literalValue)))
         return []
 
       return [{
         key,
         value: selection.value,
-        valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
+        valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
       }]
     })
 }

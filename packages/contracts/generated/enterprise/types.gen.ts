@@ -8,16 +8,11 @@ export type DifyEnterpriseApiEnterpriseEnvironment = {
   id?: string
   name?: string
   description?: string
-  mode?: 'ENVIRONMENT_MODE_UNSPECIFIED' | 'ENVIRONMENT_MODE_SHARED' | 'ENVIRONMENT_MODE_ISOLATED'
-  backend?: 'RUNTIME_BACKEND_UNSPECIFIED' | 'RUNTIME_BACKEND_K8S' | 'RUNTIME_BACKEND_EXTERNAL'
+  mode?: EnvironmentMode
+  backend?: RuntimeBackend
   namespace?: string
   apiServer?: string
-  status?:
-    | 'ENVIRONMENT_STATUS_UNSPECIFIED'
-    | 'ENVIRONMENT_STATUS_ADMISSION'
-    | 'ENVIRONMENT_STATUS_BOOTSTRAPPING'
-    | 'ENVIRONMENT_STATUS_READY'
-    | 'ENVIRONMENT_STATUS_FAILED'
+  status?: EnvironmentStatus
   statusMessage?: string
   lastError?: DifyEnterpriseApiEnterpriseEnvironmentError
   managedBy?: string
@@ -31,6 +26,217 @@ export type DifyEnterpriseApiEnterpriseEnvironmentError = {
   code?: string
   message?: string
 }
+
+export const AccessMode = {
+  ACCESS_MODE_UNSPECIFIED: 'ACCESS_MODE_UNSPECIFIED',
+  ACCESS_MODE_PUBLIC: 'ACCESS_MODE_PUBLIC',
+  ACCESS_MODE_PRIVATE: 'ACCESS_MODE_PRIVATE',
+  ACCESS_MODE_PRIVATE_ALL: 'ACCESS_MODE_PRIVATE_ALL',
+} as const
+
+export type AccessMode = (typeof AccessMode)[keyof typeof AccessMode]
+
+export const SubjectType = {
+  SUBJECT_TYPE_UNSPECIFIED: 'SUBJECT_TYPE_UNSPECIFIED',
+  SUBJECT_TYPE_ACCOUNT: 'SUBJECT_TYPE_ACCOUNT',
+  SUBJECT_TYPE_GROUP: 'SUBJECT_TYPE_GROUP',
+} as const
+
+export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType]
+
+export const PluginCategory = {
+  PLUGIN_CATEGORY_UNSPECIFIED: 'PLUGIN_CATEGORY_UNSPECIFIED',
+  PLUGIN_CATEGORY_MODEL: 'PLUGIN_CATEGORY_MODEL',
+  PLUGIN_CATEGORY_TOOL: 'PLUGIN_CATEGORY_TOOL',
+} as const
+
+export type PluginCategory = (typeof PluginCategory)[keyof typeof PluginCategory]
+
+export const DeploymentStatus = {
+  DEPLOYMENT_STATUS_UNSPECIFIED: 'DEPLOYMENT_STATUS_UNSPECIFIED',
+  DEPLOYMENT_STATUS_DEPLOYING: 'DEPLOYMENT_STATUS_DEPLOYING',
+  DEPLOYMENT_STATUS_READY: 'DEPLOYMENT_STATUS_READY',
+  DEPLOYMENT_STATUS_FAILED: 'DEPLOYMENT_STATUS_FAILED',
+  DEPLOYMENT_STATUS_CANCELLED: 'DEPLOYMENT_STATUS_CANCELLED',
+} as const
+
+export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
+
+export const DeveloperApiUrlStatus = {
+  DEVELOPER_API_URL_STATUS_UNSPECIFIED: 'DEVELOPER_API_URL_STATUS_UNSPECIFIED',
+  DEVELOPER_API_URL_STATUS_CONFIGURED: 'DEVELOPER_API_URL_STATUS_CONFIGURED',
+  DEVELOPER_API_URL_STATUS_NOT_CONFIGURED: 'DEVELOPER_API_URL_STATUS_NOT_CONFIGURED',
+} as const
+
+export type DeveloperApiUrlStatus
+  = (typeof DeveloperApiUrlStatus)[keyof typeof DeveloperApiUrlStatus]
+
+export const EnvVarValueSource = {
+  ENV_VAR_VALUE_SOURCE_UNSPECIFIED: 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
+  ENV_VAR_VALUE_SOURCE_LITERAL: 'ENV_VAR_VALUE_SOURCE_LITERAL',
+  ENV_VAR_VALUE_SOURCE_DSL_DEFAULT: 'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT',
+  ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT: 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT',
+} as const
+
+export type EnvVarValueSource = (typeof EnvVarValueSource)[keyof typeof EnvVarValueSource]
+
+export const EnvironmentMode = {
+  ENVIRONMENT_MODE_UNSPECIFIED: 'ENVIRONMENT_MODE_UNSPECIFIED',
+  ENVIRONMENT_MODE_SHARED: 'ENVIRONMENT_MODE_SHARED',
+  ENVIRONMENT_MODE_ISOLATED: 'ENVIRONMENT_MODE_ISOLATED',
+} as const
+
+export type EnvironmentMode = (typeof EnvironmentMode)[keyof typeof EnvironmentMode]
+
+export const RuntimeBackend = {
+  RUNTIME_BACKEND_UNSPECIFIED: 'RUNTIME_BACKEND_UNSPECIFIED',
+  RUNTIME_BACKEND_K8S: 'RUNTIME_BACKEND_K8S',
+  RUNTIME_BACKEND_EXTERNAL: 'RUNTIME_BACKEND_EXTERNAL',
+} as const
+
+export type RuntimeBackend = (typeof RuntimeBackend)[keyof typeof RuntimeBackend]
+
+export const EnvironmentStatus = {
+  ENVIRONMENT_STATUS_UNSPECIFIED: 'ENVIRONMENT_STATUS_UNSPECIFIED',
+  ENVIRONMENT_STATUS_ADMISSION: 'ENVIRONMENT_STATUS_ADMISSION',
+  ENVIRONMENT_STATUS_BOOTSTRAPPING: 'ENVIRONMENT_STATUS_BOOTSTRAPPING',
+  ENVIRONMENT_STATUS_READY: 'ENVIRONMENT_STATUS_READY',
+  ENVIRONMENT_STATUS_FAILED: 'ENVIRONMENT_STATUS_FAILED',
+} as const
+
+export type EnvironmentStatus = (typeof EnvironmentStatus)[keyof typeof EnvironmentStatus]
+
+export const RuntimeInstanceStatus = {
+  RUNTIME_INSTANCE_STATUS_UNSPECIFIED: 'RUNTIME_INSTANCE_STATUS_UNSPECIFIED',
+  RUNTIME_INSTANCE_STATUS_UNDEPLOYED: 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED',
+  RUNTIME_INSTANCE_STATUS_DEPLOYING: 'RUNTIME_INSTANCE_STATUS_DEPLOYING',
+  RUNTIME_INSTANCE_STATUS_READY: 'RUNTIME_INSTANCE_STATUS_READY',
+  RUNTIME_INSTANCE_STATUS_FAILED: 'RUNTIME_INSTANCE_STATUS_FAILED',
+  RUNTIME_INSTANCE_STATUS_DRIFTED: 'RUNTIME_INSTANCE_STATUS_DRIFTED',
+  RUNTIME_INSTANCE_STATUS_INVALID: 'RUNTIME_INSTANCE_STATUS_INVALID',
+  RUNTIME_INSTANCE_STATUS_UNDEPLOYING: 'RUNTIME_INSTANCE_STATUS_UNDEPLOYING',
+} as const
+
+export type RuntimeInstanceStatus
+  = (typeof RuntimeInstanceStatus)[keyof typeof RuntimeInstanceStatus]
+
+export const OperatorType = {
+  OPERATOR_TYPE_UNKNOWN: 'OPERATOR_TYPE_UNKNOWN',
+  OPERATOR_TYPE_END_USER: 'OPERATOR_TYPE_END_USER',
+  OPERATOR_TYPE_ACCOUNT: 'OPERATOR_TYPE_ACCOUNT',
+  OPERATOR_TYPE_SERVICE_ACCOUNT: 'OPERATOR_TYPE_SERVICE_ACCOUNT',
+  OPERATOR_TYPE_SYSTEM: 'OPERATOR_TYPE_SYSTEM',
+} as const
+
+export type OperatorType = (typeof OperatorType)[keyof typeof OperatorType]
+
+export const ReleaseSource = {
+  RELEASE_SOURCE_UNSPECIFIED: 'RELEASE_SOURCE_UNSPECIFIED',
+  RELEASE_SOURCE_SOURCE_APP: 'RELEASE_SOURCE_SOURCE_APP',
+  RELEASE_SOURCE_UPLOAD: 'RELEASE_SOURCE_UPLOAD',
+} as const
+
+export type ReleaseSource = (typeof ReleaseSource)[keyof typeof ReleaseSource]
+
+export const ReleaseEnvironmentActionKind = {
+  RELEASE_ENVIRONMENT_ACTION_KIND_UNSPECIFIED: 'RELEASE_ENVIRONMENT_ACTION_KIND_UNSPECIFIED',
+  RELEASE_ENVIRONMENT_ACTION_KIND_PROMOTE: 'RELEASE_ENVIRONMENT_ACTION_KIND_PROMOTE',
+  RELEASE_ENVIRONMENT_ACTION_KIND_ROLLBACK: 'RELEASE_ENVIRONMENT_ACTION_KIND_ROLLBACK',
+  RELEASE_ENVIRONMENT_ACTION_KIND_CURRENT: 'RELEASE_ENVIRONMENT_ACTION_KIND_CURRENT',
+  RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING: 'RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING',
+  RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED: 'RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED',
+} as const
+
+export type ReleaseEnvironmentActionKind
+  = (typeof ReleaseEnvironmentActionKind)[keyof typeof ReleaseEnvironmentActionKind]
+
+export const SlotType = {
+  SLOT_TYPE_UNSPECIFIED: 'SLOT_TYPE_UNSPECIFIED',
+  SLOT_TYPE_PLUGIN_CREDENTIAL: 'SLOT_TYPE_PLUGIN_CREDENTIAL',
+  SLOT_TYPE_ENV_VAR: 'SLOT_TYPE_ENV_VAR',
+} as const
+
+export type SlotType = (typeof SlotType)[keyof typeof SlotType]
+
+export const PasswordChangeReason = {
+  PASSWORD_CHANGE_REASON_UNSPECIFIED: 'PASSWORD_CHANGE_REASON_UNSPECIFIED',
+  PASSWORD_CHANGE_REASON_TEMP: 'PASSWORD_CHANGE_REASON_TEMP',
+  PASSWORD_CHANGE_REASON_EXPIRED: 'PASSWORD_CHANGE_REASON_EXPIRED',
+  PASSWORD_CHANGE_REASON_POLICY: 'PASSWORD_CHANGE_REASON_POLICY',
+} as const
+
+export type PasswordChangeReason = (typeof PasswordChangeReason)[keyof typeof PasswordChangeReason]
+
+export const AppRunnerLaunchProfileMode = {
+  APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED: 'APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED',
+  APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG: 'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG',
+} as const
+
+export type AppRunnerLaunchProfileMode
+  = (typeof AppRunnerLaunchProfileMode)[keyof typeof AppRunnerLaunchProfileMode]
+
+export const OtelEndpointMode = {
+  OTEL_ENDPOINT_MODE_UNIFIED: 'OTEL_ENDPOINT_MODE_UNIFIED',
+  OTEL_ENDPOINT_MODE_DEDICATED: 'OTEL_ENDPOINT_MODE_DEDICATED',
+} as const
+
+export type OtelEndpointMode = (typeof OtelEndpointMode)[keyof typeof OtelEndpointMode]
+
+export const AppStatus = {
+  APP_STATUS_UNSPECIFIED: 'APP_STATUS_UNSPECIFIED',
+  APP_STATUS_PUBLISHED: 'APP_STATUS_PUBLISHED',
+  APP_STATUS_UNPUBLISHED: 'APP_STATUS_UNPUBLISHED',
+  APP_STATUS_DELETED: 'APP_STATUS_DELETED',
+} as const
+
+export type AppStatus = (typeof AppStatus)[keyof typeof AppStatus]
+
+export const LimitType = {
+  LIMIT_TYPE_UNSPECIFIED: 'LIMIT_TYPE_UNSPECIFIED',
+  LIMIT_TYPE_RPM: 'LIMIT_TYPE_RPM',
+  LIMIT_TYPE_CONCURRENCY: 'LIMIT_TYPE_CONCURRENCY',
+  LIMIT_TYPE_TOKEN: 'LIMIT_TYPE_TOKEN',
+} as const
+
+export type LimitType = (typeof LimitType)[keyof typeof LimitType]
+
+export const LimitAction = {
+  LIMIT_ACTION_UNSPECIFIED: 'LIMIT_ACTION_UNSPECIFIED',
+  LIMIT_ACTION_BLOCK: 'LIMIT_ACTION_BLOCK',
+  LIMIT_ACTION_TRACK: 'LIMIT_ACTION_TRACK',
+} as const
+
+export type LimitAction = (typeof LimitAction)[keyof typeof LimitAction]
+
+export const PasswordStrengthLevel = {
+  PASSWORD_STRENGTH_LEVEL_UNSPECIFIED: 'PASSWORD_STRENGTH_LEVEL_UNSPECIFIED',
+  PASSWORD_STRENGTH_LEVEL_WEAK: 'PASSWORD_STRENGTH_LEVEL_WEAK',
+  PASSWORD_STRENGTH_LEVEL_MEDIUM: 'PASSWORD_STRENGTH_LEVEL_MEDIUM',
+  PASSWORD_STRENGTH_LEVEL_STRONG: 'PASSWORD_STRENGTH_LEVEL_STRONG',
+} as const
+
+export type PasswordStrengthLevel
+  = (typeof PasswordStrengthLevel)[keyof typeof PasswordStrengthLevel]
+
+export const PluginInstallationScope = {
+  PLUGIN_INSTALLATION_SCOPE_ALL: 'PLUGIN_INSTALLATION_SCOPE_ALL',
+  PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY: 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY',
+  PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS:
+    'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS',
+  PLUGIN_INSTALLATION_SCOPE_NONE: 'PLUGIN_INSTALLATION_SCOPE_NONE',
+} as const
+
+export type PluginInstallationScope
+  = (typeof PluginInstallationScope)[keyof typeof PluginInstallationScope]
+
+export const LimitStatus = {
+  LIMIT_STATUS_UNSPECIFIED: 'LIMIT_STATUS_UNSPECIFIED',
+  LIMIT_STATUS_NA: 'LIMIT_STATUS_NA',
+  LIMIT_STATUS_NORMAL: 'LIMIT_STATUS_NORMAL',
+  LIMIT_STATUS_THROTTLED: 'LIMIT_STATUS_THROTTLED',
+} as const
+
+export type LimitStatus = (typeof LimitStatus)[keyof typeof LimitStatus]
 
 export type AccessChannels = {
   id?: string
@@ -51,18 +257,14 @@ export type AccessPolicy = {
   id?: string
   appInstanceId?: string
   environmentId?: string
-  mode?:
-    | 'ACCESS_MODE_UNSPECIFIED'
-    | 'ACCESS_MODE_PUBLIC'
-    | 'ACCESS_MODE_PRIVATE'
-    | 'ACCESS_MODE_PRIVATE_ALL'
+  mode?: AccessMode
   subjects?: Array<AccessSubject>
   createdAt?: string
   updatedAt?: string
 }
 
 export type AccessSubject = {
-  subjectType?: 'SUBJECT_TYPE_UNSPECIFIED' | 'SUBJECT_TYPE_ACCOUNT' | 'SUBJECT_TYPE_GROUP'
+  subjectType?: SubjectType
   subjectId?: string
 }
 
@@ -226,20 +428,20 @@ export type CreateReleaseReply = {
 export type CredentialCandidate = {
   credentialId?: string
   providerId?: string
-  category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
+  category?: PluginCategory
   displayName?: string
   fromEnterprise?: boolean
 }
 
 export type CredentialSelectionInput = {
   providerId?: string
-  category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
+  category?: PluginCategory
   credentialId?: string
 }
 
 export type CredentialSlot = {
   providerId?: string
-  category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
+  category?: PluginCategory
   candidates?: Array<CredentialCandidate>
   lastCredentialId?: string
 }
@@ -277,12 +479,7 @@ export type DeployReq = {
 
 export type Deployment = {
   id?: string
-  status?:
-    | 'DEPLOYMENT_STATUS_UNSPECIFIED'
-    | 'DEPLOYMENT_STATUS_DEPLOYING'
-    | 'DEPLOYMENT_STATUS_READY'
-    | 'DEPLOYMENT_STATUS_FAILED'
-    | 'DEPLOYMENT_STATUS_CANCELLED'
+  status?: DeploymentStatus
   environment?: Environment
   release?: Release
   error?: Error
@@ -314,10 +511,7 @@ export type DeploymentReply = {
 
 export type DeveloperApiUrl = {
   apiUrl?: string
-  status?:
-    | 'DEVELOPER_API_URL_STATUS_UNSPECIFIED'
-    | 'DEVELOPER_API_URL_STATUS_CONFIGURED'
-    | 'DEVELOPER_API_URL_STATUS_NOT_CONFIGURED'
+  status?: DeveloperApiUrlStatus
   errorCode?: string
   errorMessage?: string
 }
@@ -325,11 +519,7 @@ export type DeveloperApiUrl = {
 export type EnvVarInput = {
   key?: string
   value?: string
-  valueSource?:
-    | 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED'
-    | 'ENV_VAR_VALUE_SOURCE_LITERAL'
-    | 'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT'
-    | 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT'
+  valueSource?: EnvVarValueSource
 }
 
 export type EnvVarSlot = {
@@ -346,16 +536,11 @@ export type Environment = {
   id?: string
   name?: string
   description?: string
-  mode?: 'ENVIRONMENT_MODE_UNSPECIFIED' | 'ENVIRONMENT_MODE_SHARED' | 'ENVIRONMENT_MODE_ISOLATED'
-  backend?: 'RUNTIME_BACKEND_UNSPECIFIED' | 'RUNTIME_BACKEND_K8S' | 'RUNTIME_BACKEND_EXTERNAL'
+  mode?: EnvironmentMode
+  backend?: RuntimeBackend
   namespace?: string
   apiServer?: string
-  status?:
-    | 'ENVIRONMENT_STATUS_UNSPECIFIED'
-    | 'ENVIRONMENT_STATUS_ADMISSION'
-    | 'ENVIRONMENT_STATUS_BOOTSTRAPPING'
-    | 'ENVIRONMENT_STATUS_READY'
-    | 'ENVIRONMENT_STATUS_FAILED'
+  status?: EnvironmentStatus
   statusMessage?: string
   lastError?: EnvironmentError
   managedBy?: string
@@ -374,15 +559,7 @@ export type EnvironmentAccessPolicy = {
 export type EnvironmentDeployment = {
   appInstanceId?: string
   environment?: Environment
-  status?:
-    | 'RUNTIME_INSTANCE_STATUS_UNSPECIFIED'
-    | 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED'
-    | 'RUNTIME_INSTANCE_STATUS_DEPLOYING'
-    | 'RUNTIME_INSTANCE_STATUS_READY'
-    | 'RUNTIME_INSTANCE_STATUS_FAILED'
-    | 'RUNTIME_INSTANCE_STATUS_DRIFTED'
-    | 'RUNTIME_INSTANCE_STATUS_INVALID'
-    | 'RUNTIME_INSTANCE_STATUS_UNDEPLOYING'
+  status?: RuntimeInstanceStatus
   currentRelease?: Release
   desiredRelease?: Release
   currentDeployment?: EnvironmentDeploymentRecord
@@ -393,12 +570,7 @@ export type EnvironmentDeployment = {
 
 export type EnvironmentDeploymentRecord = {
   id?: string
-  status?:
-    | 'DEPLOYMENT_STATUS_UNSPECIFIED'
-    | 'DEPLOYMENT_STATUS_DEPLOYING'
-    | 'DEPLOYMENT_STATUS_READY'
-    | 'DEPLOYMENT_STATUS_FAILED'
-    | 'DEPLOYMENT_STATUS_CANCELLED'
+  status?: DeploymentStatus
   createdAt?: string
   finalizedAt?: string
 }
@@ -554,12 +726,7 @@ export type NewAppInstance = {
 }
 
 export type Operator = {
-  type?:
-    | 'OPERATOR_TYPE_UNKNOWN'
-    | 'OPERATOR_TYPE_END_USER'
-    | 'OPERATOR_TYPE_ACCOUNT'
-    | 'OPERATOR_TYPE_SERVICE_ACCOUNT'
-    | 'OPERATOR_TYPE_SYSTEM'
+  type?: OperatorType
   id?: string
   name?: string
 }
@@ -580,11 +747,7 @@ export type PutAccessPolicyReply = {
 export type PutAccessPolicyReq = {
   appInstanceId?: string
   environmentId?: string
-  mode?:
-    | 'ACCESS_MODE_UNSPECIFIED'
-    | 'ACCESS_MODE_PUBLIC'
-    | 'ACCESS_MODE_PRIVATE'
-    | 'ACCESS_MODE_PRIVATE_ALL'
+  mode?: AccessMode
   subjects?: Array<AccessSubject>
 }
 
@@ -593,7 +756,7 @@ export type Release = {
   appInstanceId?: string
   name?: string
   description?: string
-  source?: 'RELEASE_SOURCE_UNSPECIFIED' | 'RELEASE_SOURCE_SOURCE_APP' | 'RELEASE_SOURCE_UPLOAD'
+  source?: ReleaseSource
   sourceAppId?: string
   gateCommitId?: string
   requiredSlots?: Array<RequiredSlot>
@@ -609,13 +772,7 @@ export type ReleaseContentMatch = {
 
 export type ReleaseEnvironmentAction = {
   environment?: Environment
-  kind?:
-    | 'RELEASE_ENVIRONMENT_ACTION_KIND_UNSPECIFIED'
-    | 'RELEASE_ENVIRONMENT_ACTION_KIND_PROMOTE'
-    | 'RELEASE_ENVIRONMENT_ACTION_KIND_ROLLBACK'
-    | 'RELEASE_ENVIRONMENT_ACTION_KIND_CURRENT'
-    | 'RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING'
-    | 'RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED'
+  kind?: ReleaseEnvironmentActionKind
   disabledReason?: string
   requiresRuntimeInputs?: boolean
   currentReleaseId?: string
@@ -623,15 +780,7 @@ export type ReleaseEnvironmentAction = {
 
 export type ReleaseEnvironmentDeployment = {
   environment?: Environment
-  status?:
-    | 'RUNTIME_INSTANCE_STATUS_UNSPECIFIED'
-    | 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED'
-    | 'RUNTIME_INSTANCE_STATUS_DEPLOYING'
-    | 'RUNTIME_INSTANCE_STATUS_READY'
-    | 'RUNTIME_INSTANCE_STATUS_FAILED'
-    | 'RUNTIME_INSTANCE_STATUS_DRIFTED'
-    | 'RUNTIME_INSTANCE_STATUS_INVALID'
-    | 'RUNTIME_INSTANCE_STATUS_UNDEPLOYING'
+  status?: RuntimeInstanceStatus
 }
 
 export type ReleaseSummary = {
@@ -657,9 +806,9 @@ export type ReportRuntimeAssignmentStatusReq = {
 }
 
 export type RequiredSlot = {
-  type?: 'SLOT_TYPE_UNSPECIFIED' | 'SLOT_TYPE_PLUGIN_CREDENTIAL' | 'SLOT_TYPE_ENV_VAR'
+  type?: SlotType
   providerId?: string
-  category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
+  category?: PluginCategory
   name?: string
 }
 
@@ -842,11 +991,7 @@ export type BrandingInfo = {
 
 export type CheckPasswordStatusReply = {
   requirePasswordChange?: boolean
-  changeReason?:
-    | 'PASSWORD_CHANGE_REASON_UNSPECIFIED'
-    | 'PASSWORD_CHANGE_REASON_TEMP'
-    | 'PASSWORD_CHANGE_REASON_EXPIRED'
-    | 'PASSWORD_CHANGE_REASON_POLICY'
+  changeReason?: PasswordChangeReason
   daysToExpire?: number
   message?: string
 }
@@ -866,7 +1011,7 @@ export type CreateAppRunnerLaunchProfileReply = {
 
 export type CreateAppRunnerLaunchProfileReq = {
   environmentId?: string
-  mode?: 'APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED' | 'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG'
+  mode?: AppRunnerLaunchProfileMode
   controlEndpoint?: string
   pluginDaemonBaseUrl?: string
   runtimeListenAddr?: string
@@ -884,8 +1029,8 @@ export type CreateEnvironmentReply = {
 export type CreateEnvironmentReq = {
   name?: string
   description?: string
-  mode?: 'ENVIRONMENT_MODE_UNSPECIFIED' | 'ENVIRONMENT_MODE_SHARED' | 'ENVIRONMENT_MODE_ISOLATED'
-  backend?: 'RUNTIME_BACKEND_UNSPECIFIED' | 'RUNTIME_BACKEND_K8S' | 'RUNTIME_BACKEND_EXTERNAL'
+  mode?: EnvironmentMode
+  backend?: RuntimeBackend
   k8s?: K8sEnvironmentConfig
   external?: ExternalAppRunnerConfig
   cpuCount?: number
@@ -999,7 +1144,7 @@ export type DeleteWorkspaceReply = {
 }
 
 export type EndpointReply = {
-  mode?: 'OTEL_ENDPOINT_MODE_UNIFIED' | 'OTEL_ENDPOINT_MODE_DEDICATED'
+  mode?: OtelEndpointMode
   metricsEndpoint?: OtelExporterEndpoint
   tracesEndpoint?: OtelExporterEndpoint
 }
@@ -1110,11 +1255,7 @@ export type GroupAppItem = {
   app_name?: string
   workspace_id?: string
   workspace_name?: string
-  app_status?:
-    | 'APP_STATUS_UNSPECIFIED'
-    | 'APP_STATUS_PUBLISHED'
-    | 'APP_STATUS_UNPUBLISHED'
-    | 'APP_STATUS_DELETED'
+  app_status?: AppStatus
   token_usage?: string
   rpm?: string
   concurrency?: string
@@ -1265,9 +1406,9 @@ export type LicenseStatus = {
 }
 
 export type LimitConfig = {
-  type?: 'LIMIT_TYPE_UNSPECIFIED' | 'LIMIT_TYPE_RPM' | 'LIMIT_TYPE_CONCURRENCY' | 'LIMIT_TYPE_TOKEN'
+  type?: LimitType
   threshold?: string
-  action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
+  action?: LimitAction
   reached?: boolean
 }
 
@@ -1434,11 +1575,7 @@ export type PasswordPolicyConfig = {
 }
 
 export type PasswordStrengthReply = {
-  level?:
-    | 'PASSWORD_STRENGTH_LEVEL_UNSPECIFIED'
-    | 'PASSWORD_STRENGTH_LEVEL_WEAK'
-    | 'PASSWORD_STRENGTH_LEVEL_MEDIUM'
-    | 'PASSWORD_STRENGTH_LEVEL_STRONG'
+  level?: PasswordStrengthLevel
 }
 
 export type PasswordStrengthReq = {
@@ -1451,11 +1588,7 @@ export type PluginInstallationPermissionInfo = {
 }
 
 export type PluginInstallationSettingsReply = {
-  pluginInstallationScope?:
-    | 'PLUGIN_INSTALLATION_SCOPE_ALL'
-    | 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY'
-    | 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS'
-    | 'PLUGIN_INSTALLATION_SCOPE_NONE'
+  pluginInstallationScope?: PluginInstallationScope
   restrictToMarketplaceOnly?: boolean
 }
 
@@ -1493,11 +1626,11 @@ export type ResourceGroupDetail = {
   description?: string
   enabled?: boolean
   rpm_limit?: number
-  rpm_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
+  rpm_action?: LimitAction
   concurrency_limit?: number
-  concurrency_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
+  concurrency_action?: LimitAction
   token_quota?: string
-  token_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
+  token_action?: LimitAction
   created_at?: string
   updated_at?: string
 }
@@ -1512,16 +1645,8 @@ export type ResourceGroupItem = {
   token_quota?: string
   token_usage?: string
   app_count?: string
-  rpm_status?:
-    | 'LIMIT_STATUS_UNSPECIFIED'
-    | 'LIMIT_STATUS_NA'
-    | 'LIMIT_STATUS_NORMAL'
-    | 'LIMIT_STATUS_THROTTLED'
-  conc_status?:
-    | 'LIMIT_STATUS_UNSPECIFIED'
-    | 'LIMIT_STATUS_NA'
-    | 'LIMIT_STATUS_NORMAL'
-    | 'LIMIT_STATUS_THROTTLED'
+  rpm_status?: LimitStatus
+  conc_status?: LimitStatus
   created_at?: string
   updated_at?: string
 }
@@ -1569,11 +1694,7 @@ export type SearchAppItem = {
   app_name?: string
   workspace_id?: string
   workspace_name?: string
-  app_status?:
-    | 'APP_STATUS_UNSPECIFIED'
-    | 'APP_STATUS_PUBLISHED'
-    | 'APP_STATUS_UNPUBLISHED'
-    | 'APP_STATUS_DELETED'
+  app_status?: AppStatus
   icon?: string
   icon_type?: string
   icon_background?: string
@@ -1609,7 +1730,7 @@ export type SetDefaultWorkspaceReq = {
 
 export type Subject = {
   subjectId?: string
-  subjectType?: 'SUBJECT_TYPE_UNSPECIFIED' | 'SUBJECT_TYPE_ACCOUNT' | 'SUBJECT_TYPE_GROUP'
+  subjectType?: SubjectType
   accountData?: SubjectAccountData
   groupData?: SubjectGroupData
 }
@@ -1798,11 +1919,7 @@ export type UpdateOfflineLicenseReq = {
 }
 
 export type UpdatePluginInstallationSettingsRequest = {
-  pluginInstallationScope?:
-    | 'PLUGIN_INSTALLATION_SCOPE_ALL'
-    | 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY'
-    | 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS'
-    | 'PLUGIN_INSTALLATION_SCOPE_NONE'
+  pluginInstallationScope?: PluginInstallationScope
   restrictToMarketplaceOnly?: boolean
 }
 
@@ -1812,11 +1929,11 @@ export type UpdateResourceGroupRequest = {
   description?: string
   enabled?: boolean
   rpm_limit?: number
-  rpm_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
+  rpm_action?: LimitAction
   concurrency_limit?: number
-  concurrency_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
+  concurrency_action?: LimitAction
   token_quota?: string
-  token_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
+  token_action?: LimitAction
 }
 
 export type UpdateUserReply = {

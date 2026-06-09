@@ -1,10 +1,8 @@
 import type { EnvVarValues } from '../env-var-bindings-utils'
+import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
 import { dslEnvVarSlots } from '../../dsl'
 import {
-  ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
-  ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
-  ENV_VAR_VALUE_SOURCE_LITERAL,
   envVarSlotsWithoutDefaultValues,
   envVarSlotsWithoutLastDeploymentValues,
   envVarSlotValueType,
@@ -28,13 +26,13 @@ describe('env-var-bindings-utils', () => {
       const selection = envVarValueSelectionForSlot(slot)
 
       expect(selection).toEqual({
-        valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+        valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
       })
       expect(hasMissingRequiredEnvVarValue(slot, { API_KEY: selection })).toBe(false)
       expect(selectedDeploymentEnvVars([slot], { API_KEY: selection })).toEqual([
         {
           key: 'API_KEY',
-          valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+          valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
         },
       ])
     })
@@ -59,12 +57,12 @@ describe('env-var-bindings-utils', () => {
         },
       ])
       expect(values.API_KEY).toEqual({
-        valueSource: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+        valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
       })
       expect(selectedDeploymentEnvVars(createDeploymentSlots, values)).toEqual([
         {
           key: 'API_KEY',
-          valueSource: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+          valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
         },
       ])
     })
@@ -89,12 +87,12 @@ describe('env-var-bindings-utils', () => {
         },
       ])
       expect(values.API_KEY).toEqual({
-        valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+        valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
       })
       expect(selectedDeploymentEnvVars(existingReleaseSlots, values)).toEqual([
         {
           key: 'API_KEY',
-          valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+          valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
         },
       ])
     })
@@ -109,7 +107,7 @@ describe('env-var-bindings-utils', () => {
       }
       const values: EnvVarValues = {
         RETRIES: {
-          valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
+          valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
           value: 'not-a-number',
         },
       }

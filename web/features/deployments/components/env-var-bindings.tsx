@@ -1,14 +1,13 @@
 'use client'
 
-import type {
-  EnvVarSlot,
-} from '@dify/contracts/enterprise/types.gen'
+import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
 import type {
   EnvVarValues,
   EnvVarValueSelection,
   EnvVarValueSource,
   EnvVarValueType,
 } from './env-var-bindings-utils'
+import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import {
@@ -16,11 +15,6 @@ import {
   SegmentedControlItem,
 } from '@langgenius/dify-ui/segmented-control'
 import {
-  ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
-  ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
-  ENV_VAR_VALUE_SOURCE_LITERAL,
-  ENV_VAR_VALUE_TYPE_NUMBER,
-  ENV_VAR_VALUE_TYPE_SECRET,
   envVarSlotKey,
   envVarSlotValue,
   envVarSlotValueType,
@@ -69,21 +63,21 @@ function envVarValueSourceOptions(slot: EnvVarSlot, labels: {
 }): EnvVarValueSourceOption[] {
   const options: EnvVarValueSourceOption[] = [
     {
-      value: ENV_VAR_VALUE_SOURCE_LITERAL,
+      value: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
       label: labels.literal,
     },
   ]
 
   if (hasEnvVarDefaultValue(slot)) {
     options.push({
-      value: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+      value: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
       label: labels.defaultValue,
     })
   }
 
   if (hasEnvVarLastValue(slot)) {
     options.push({
-      value: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+      value: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
       label: labels.lastDeployment,
     })
   }
@@ -92,18 +86,18 @@ function envVarValueSourceOptions(slot: EnvVarSlot, labels: {
 }
 
 function envVarSelectionDisplayValue(slot: EnvVarSlot, selection: EnvVarValueSelection) {
-  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
     return envVarSlotValue(slot.defaultValue) ?? ''
-  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
+  if (selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
     return envVarSlotValue(slot.lastValue) ?? ''
 
   return selection.value ?? ''
 }
 
 function envVarInputType(valueType: EnvVarValueType) {
-  if (valueType === ENV_VAR_VALUE_TYPE_NUMBER)
+  if (valueType === 'number')
     return 'number'
-  if (valueType === ENV_VAR_VALUE_TYPE_SECRET)
+  if (valueType === 'secret')
     return 'password'
 
   return 'text'
@@ -161,7 +155,7 @@ export function EnvVarBindingsPanel({
             lastDeployment: lastDeploymentSourceLabel,
           })
           const valueType = envVarSlotValueType(slot)
-          const isLiteralValue = selection.valueSource === ENV_VAR_VALUE_SOURCE_LITERAL
+          const isLiteralValue = selection.valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
           const displayValue = envVarSelectionDisplayValue(slot, selection)
 
           return (
@@ -215,7 +209,7 @@ export function EnvVarBindingsPanel({
                   onChange={event => onChange(key, {
                     ...selection,
                     value: event.target.value,
-                    valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
+                    valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
                   })}
                   placeholder={envVarPlaceholder}
                   autoComplete="off"

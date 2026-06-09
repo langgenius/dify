@@ -1,6 +1,7 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 
-type RuntimeInstanceStatus = NonNullable<EnvironmentDeployment['status']>
+type RuntimeInstanceStatusValue = NonNullable<EnvironmentDeployment['status']>
 
 export type DeploymentUiStatus
   = | 'ready'
@@ -12,13 +13,16 @@ export type DeploymentUiStatus
     | 'unknown'
 
 const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
-// Mirrors appdeploy/v1/common.proto RuntimeInstanceStatus for EnvironmentDeployment.status.
-const RUNTIME_INSTANCE_STATUS_UNDEPLOYED = 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED' satisfies RuntimeInstanceStatus
-const RUNTIME_INSTANCE_STATUS_DEPLOYING = 'RUNTIME_INSTANCE_STATUS_DEPLOYING' satisfies RuntimeInstanceStatus
-const RUNTIME_INSTANCE_STATUS_READY = 'RUNTIME_INSTANCE_STATUS_READY' satisfies RuntimeInstanceStatus
-const RUNTIME_INSTANCE_STATUS_FAILED = 'RUNTIME_INSTANCE_STATUS_FAILED' satisfies RuntimeInstanceStatus
-const RUNTIME_INSTANCE_STATUS_DRIFTED = 'RUNTIME_INSTANCE_STATUS_DRIFTED' satisfies RuntimeInstanceStatus
-const RUNTIME_INSTANCE_STATUS_INVALID = 'RUNTIME_INSTANCE_STATUS_INVALID' satisfies RuntimeInstanceStatus
+const deploymentUiStatusByRuntimeStatus = {
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNSPECIFIED]: 'unknown',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED]: 'not_deployed',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING]: 'deploying',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY]: 'ready',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED]: 'deploy_failed',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DRIFTED]: 'drifted',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_INVALID]: 'invalid',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING]: 'unknown',
+} satisfies Record<RuntimeInstanceStatusValue, DeploymentUiStatus>
 
 export function isUndeployedDeploymentRow(row?: EnvironmentDeployment) {
   return deploymentStatus(row) === 'not_deployed'
@@ -37,19 +41,7 @@ export function deploymentStatus(row?: EnvironmentDeployment): DeploymentUiStatu
   const status = row?.status
   if (!status)
     return 'unknown'
-  if (status === RUNTIME_INSTANCE_STATUS_UNDEPLOYED)
-    return 'not_deployed'
-  if (status === RUNTIME_INSTANCE_STATUS_DEPLOYING)
-    return 'deploying'
-  if (status === RUNTIME_INSTANCE_STATUS_FAILED)
-    return 'deploy_failed'
-  if (status === RUNTIME_INSTANCE_STATUS_READY)
-    return 'ready'
-  if (status === RUNTIME_INSTANCE_STATUS_DRIFTED)
-    return 'drifted'
-  if (status === RUNTIME_INSTANCE_STATUS_INVALID)
-    return 'invalid'
-  return 'unknown'
+  return deploymentUiStatusByRuntimeStatus[status]
 }
 
 function hasDeployingDeployment(rows?: EnvironmentDeployment[]) {
