@@ -36,7 +36,7 @@ function useDeveloperApiSettings(appInstanceId: string) {
   }))
   const accessChannels = developerApiSettingsQuery.data?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
-  const environments = developerApiSettingsQuery.data?.environments?.filter((environment): environment is Environment & { id: string } => Boolean(environment.id)) ?? []
+  const environments = developerApiSettingsQuery.data?.environments ?? []
   const apiKeys: ApiKey[] = developerApiSettingsQuery.data?.apiKeys ?? []
   const apiUrl = developerApiSettingsQuery.data?.developerApiUrl?.apiUrl
 
@@ -208,6 +208,7 @@ export function DeveloperApiSection({
   const visibleCreatedApiToken = createdApiToken?.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined
+  const hasSelectableEnvironment = environments.some(environment => Boolean(environment.id))
 
   if (isLoading)
     return <DeveloperApiSkeleton />
@@ -234,7 +235,7 @@ export function DeveloperApiSection({
           apiUrl={apiUrl}
         />
       )}
-      {environments.length > 0
+      {hasSelectableEnvironment
         ? (
             <ApiKeyGenerateMenu
               appInstanceId={appInstanceId}

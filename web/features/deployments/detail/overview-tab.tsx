@@ -90,7 +90,7 @@ export function OverviewTab({ appInstanceId }: {
   const releaseRows = overviewQuery.data?.recentReleases ?? []
   // recentReleases is a capped preview; totalReleaseCount is the true total.
   const releaseCount = overviewQuery.data?.totalReleaseCount ?? releaseRows.length
-  const runtimeRows = overviewQuery.data?.environmentDeployments?.filter(row => row.environment?.id) ?? []
+  const runtimeRows = overviewQuery.data?.environmentDeployments ?? []
   const deployedEnvironmentCount = runtimeRows.filter(hasRuntimeInstanceDeployment).length
   const latestRelease = releaseRows[0]
   const accessChannels = overviewQuery.data?.accessChannels

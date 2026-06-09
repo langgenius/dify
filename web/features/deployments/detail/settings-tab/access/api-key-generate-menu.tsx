@@ -52,9 +52,18 @@ export function ApiKeyGenerateMenu({
   const [draftName, setDraftName] = useState('')
   const [nameError, setNameError] = useState(false)
   const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
-  const selectableEnvironments = environments.filter(env => env.id)
+  const selectableEnvironments = environments.flatMap((environment) => {
+    const environmentId = environment.id
+    if (!environmentId)
+      return []
+
+    return [{
+      ...environment,
+      id: environmentId,
+    }]
+  })
   const selectedEnvironment = selectedEnvironmentId
-    ? environments.find(env => env.id === selectedEnvironmentId)
+    ? selectableEnvironments.find(env => env.id === selectedEnvironmentId)
     : undefined
   const disabled = selectableEnvironments.length === 0
   const isCreating = generateApiKey.isPending
@@ -196,7 +205,7 @@ export function ApiKeyGenerateMenu({
                   </SelectTrigger>
                   <SelectContent>
                     {selectableEnvironments.map(env => (
-                      <SelectItem key={env.id} value={env.id!}>
+                      <SelectItem key={env.id} value={env.id}>
                         <SelectItemText>{environmentName(env)}</SelectItemText>
                         <SelectItemIndicator />
                       </SelectItem>

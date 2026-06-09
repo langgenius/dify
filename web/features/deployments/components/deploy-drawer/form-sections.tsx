@@ -154,10 +154,16 @@ export function ReleaseField({
               <DeploymentSelect
                 value={selectedReleaseId}
                 onChange={onSelectRelease}
-                options={releases.filter(release => release.id).map(release => ({
-                  value: release.id!,
-                  label: `${releaseLabel(release)} · ${releaseCommit(release)}`,
-                }))}
+                options={releases.flatMap((release) => {
+                  const releaseId = release.id
+                  if (!releaseId)
+                    return []
+
+                  return [{
+                    value: releaseId,
+                    label: `${releaseLabel(release)} · ${releaseCommit(release)}`,
+                  }]
+                })}
                 placeholder={t('deployDrawer.selectRelease')}
               />
             )}
@@ -197,8 +203,8 @@ export function EnvironmentField({
               <DeploymentSelect
                 value={selectedEnvironmentId}
                 onChange={onSelectEnvironment}
-                options={environments.filter(env => env.id).map(env => ({
-                  value: env.id!,
+                options={environments.map(env => ({
+                  value: env.id,
                   label: environmentOptionLabel(env, t),
                 }))}
                 placeholder={t('deployDrawer.selectEnv')}

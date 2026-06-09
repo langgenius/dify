@@ -36,6 +36,15 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Name values by their domain role and backend API contract, and keep that name stable across the call chain, especially persistent IDs and route params. Normalize framework or route params at the boundary.
 - Keep fallback and invariant checks at the lowest component that already handles that state; avoid defensive fallbacks that mask impossible states.
 
+## Nullable API Data
+
+- Prefer nullable-tolerant call boundaries. Pass API-returned types through for render-only rows, and let the component render fallback, disabled state, or nothing.
+- Narrow only where a real value is required, such as mutation params, route hrefs, select values, or query input. Build that target model with `flatMap`, a local loop, or an early return so the required value is captured in the same branch.
+- Do not drop rows only to satisfy props or React keys; use a stable fallback key when possible.
+- Use conditional spreads or explicit pushes for conditional array items instead of `undefined` placeholders followed by a narrowing filter.
+- Avoid truthiness type guards, `filter(Boolean)`, `filter(item => item.id)`, and `!` after those filters.
+- Use type guards only for meaningful domain or runtime validation, such as enum membership, object shape, or a reusable business invariant.
+
 ## Queries And Mutations
 
 - Keep `web/contract/*` as the single source of truth for API shape; follow existing domain/router patterns and the `{ params, query?, body? }` input shape.

@@ -28,28 +28,26 @@ function dedupeReleaseDeployments(items: ReleaseDeployment[]) {
   })
 }
 
-function releaseSummaryEnvironmentDeployment(environment: Environment | undefined, state: ReleaseDeploymentState): ReleaseDeployment | undefined {
+function releaseSummaryEnvironmentDeployment(environment: Environment | undefined, state: ReleaseDeploymentState): ReleaseDeployment[] {
   const envId = environmentId(environment)
   if (!envId)
-    return undefined
+    return []
 
-  return {
+  return [{
     environmentId: envId,
     environmentName: environmentName(environment),
     state,
-  }
+  }]
 }
 
 export function getReleaseSummaryDeployments(summary: ReleaseSummary) {
   // Each deployed environment carries its runtime status so a failed deployment
   // surfaces as failed instead of being assumed healthy.
   const deployedItems = summary.deployedEnvironments
-    ?.map(deployment => releaseSummaryEnvironmentDeployment(deployment.environment, releaseDeploymentState(deployment.status)))
-    .filter((item): item is ReleaseDeployment => Boolean(item)) ?? []
+    ?.flatMap(deployment => releaseSummaryEnvironmentDeployment(deployment.environment, releaseDeploymentState(deployment.status))) ?? []
   const actionItems = summary.environmentActions
     ?.filter(action => action.kind === 'RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING')
-    .map(action => releaseSummaryEnvironmentDeployment(action.environment, 'deploying'))
-    .filter((item): item is ReleaseDeployment => Boolean(item)) ?? []
+    .flatMap(action => releaseSummaryEnvironmentDeployment(action.environment, 'deploying')) ?? []
 
   return dedupeReleaseDeployments([
     ...deployedItems,

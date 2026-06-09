@@ -55,8 +55,17 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
 
   const environments: EnvironmentOption[] = (environmentDeploymentsQuery.data?.data ?? [])
-    .map(row => row.environment)
-    .filter((env): env is EnvironmentOption => Boolean(env?.id))
+    .flatMap((row) => {
+      const environment = row.environment
+      const environmentId = environment?.id
+      if (!environment || !environmentId)
+        return []
+
+      return [{
+        ...environment,
+        id: environmentId,
+      }]
+    })
   const deploymentRows = environmentDeploymentsQuery.data?.data?.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)) ?? []
   const targetRelease = releaseRows.find((release): release is Release & { id: string } => release.id === releaseId)
   const appInstanceName = appInstanceData?.appInstance?.name

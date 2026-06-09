@@ -32,7 +32,7 @@ import {
 } from '../environment'
 import { deploymentErrorMessage, unsupportedDslNodeError } from '../error'
 import { createDeploymentIdempotencyKey } from '../idempotency'
-import { hasEnvironmentId } from './use-deployment-target-options'
+import { deploymentEnvironmentOptions } from './use-deployment-target-options'
 
 type RefetchDeployableEnvironments = () => Promise<{
   data?: {
@@ -146,7 +146,7 @@ export function useCreateDeploymentSubmission({
     const selectedEnvironmentIdentifier = selectedEnvironmentId || selectedEnvironment?.id || selectedEnvironment?.name || ''
     const selectedEnvironmentName = selectedEnvironment?.name || ''
     const freshResult = await refetchDeployableEnvironments()
-    const freshEnvironments = freshResult.data?.data?.filter(hasEnvironmentId) ?? []
+    const freshEnvironments = deploymentEnvironmentOptions(freshResult.data?.data)
     const freshSelectedEnvironment = freshEnvironments.find(environment => (
       environmentMatchesIdentifier(environment, selectedEnvironmentIdentifier)
       || (selectedEnvironmentName && environment.name === selectedEnvironmentName)

@@ -18,9 +18,9 @@ function DeploymentErrorDetails({ error }: {
   const { t } = useTranslation('deployments')
   const message = error?.message?.trim() || t('deployTab.panel.unknownError')
   const metadata = [
-    error?.phase ? { label: t('deployTab.errorPhase'), value: error.phase } : undefined,
-    error?.code ? { label: t('deployTab.errorCode'), value: error.code } : undefined,
-  ].filter((item): item is { label: string, value: string } => Boolean(item))
+    ...(error?.phase ? [{ label: t('deployTab.errorPhase'), value: error.phase }] : []),
+    ...(error?.code ? [{ label: t('deployTab.errorCode'), value: error.code }] : []),
+  ]
 
   return (
     <div className="rounded-xl border border-divider-subtle bg-background-default-subtle p-3">

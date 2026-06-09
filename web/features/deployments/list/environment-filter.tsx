@@ -1,6 +1,5 @@
 'use client'
 
-import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -23,10 +22,6 @@ type EnvironmentFilterOption = {
   icon: ReactNode
 }
 
-function hasEnvironmentId(environment?: Environment): environment is Environment & { id: string } {
-  return Boolean(environment?.id)
-}
-
 function EnvironmentOptionIcon() {
   return <span className="i-ri-server-line size-[14px]" />
 }
@@ -43,12 +38,17 @@ export function EnvironmentFilter({ className }: {
     },
   }))
   const environmentOptions: EnvironmentFilterOption[] = environmentsQuery.data?.data
-    ?.filter(hasEnvironmentId)
-    .map(environment => ({
-      value: environmentId(environment),
-      text: environmentName(environment),
-      icon: <EnvironmentOptionIcon />,
-    })) ?? []
+    ?.flatMap((environment) => {
+      const value = environmentId(environment)
+      if (!value)
+        return []
+
+      return [{
+        value,
+        text: environmentName(environment),
+        icon: <EnvironmentOptionIcon />,
+      }]
+    }) ?? []
   const filterOptions: EnvironmentFilterOption[] = [
     {
       value: null,

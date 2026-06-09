@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessChannels, Environment, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
+import type { AccessChannels, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -20,10 +20,6 @@ import {
 import { EnvironmentPermissionRow } from './permissions'
 
 const ACCESS_PERMISSIONS_SKELETON_KEYS = ['production', 'staging', 'development']
-
-function hasEnvironment(environment?: Environment): environment is Environment & { id: string } {
-  return Boolean(environment?.id)
-}
 
 function AccessPermissionsSkeleton() {
   const { t } = useTranslation('deployments')
@@ -70,7 +66,20 @@ export function AccessPermissionsSection({
   isError: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const policyRows = environmentPolicies?.filter(row => hasEnvironment(row.environment)) ?? []
+  const policyRows = environmentPolicies?.flatMap((row) => {
+    const environment = row.environment
+    const environmentId = environment?.id
+    if (!environment || !environmentId)
+      return []
+
+    return [{
+      ...row,
+      environment: {
+        ...environment,
+        id: environmentId,
+      },
+    }]
+  }) ?? []
   const permissionsDisabled = !(accessChannels?.webAppEnabled ?? false)
 
   return (
@@ -103,7 +112,7 @@ export function AccessPermissionsSection({
                   </DetailTableHeader>
                   <DetailTableBody className="block pc:table-row-group">
                     {policyRows.map((environmentPolicy) => {
-                      const environment = environmentPolicy.environment!
+                      const environment = environmentPolicy.environment
                       return (
                         <EnvironmentPermissionRow
                           key={environment.id}

@@ -69,11 +69,16 @@ function runtimeCredentialCandidateLabel(candidate: CredentialCandidate) {
 
 export function runtimeCredentialCandidateOptions(slot: CredentialSlot): RuntimeCredentialSelectOption[] {
   return (slot.candidates ?? [])
-    .filter(candidate => candidate.credentialId)
-    .map(candidate => ({
-      value: candidate.credentialId!,
-      label: runtimeCredentialCandidateLabel(candidate),
-    }))
+    .flatMap((candidate) => {
+      const credentialId = candidate.credentialId
+      if (!credentialId)
+        return []
+
+      return [{
+        value: credentialId,
+        label: runtimeCredentialCandidateLabel(candidate),
+      }]
+    })
 }
 
 export function hasMissingRequiredRuntimeCredentialBinding(_slot: CredentialSlot, selectedValue?: string) {
@@ -104,17 +109,16 @@ export function selectedDeploymentRuntimeCredentials(
   selections: RuntimeCredentialBindingSelections,
 ): CredentialSelectionInput[] {
   return slots
-    .map((slot): CredentialSelectionInput | undefined => {
+    .flatMap((slot): CredentialSelectionInput[] => {
       const slotKey = runtimeCredentialSlotKey(slot)
       const selectedValue = selections[slotKey]
       if (!slotKey || !selectedValue)
-        return undefined
+        return []
 
-      return {
+      return [{
         providerId: slot.providerId,
         category: slot.category,
         credentialId: selectedValue,
-      }
+      }]
     })
-    .filter((binding): binding is CredentialSelectionInput => Boolean(binding))
 }

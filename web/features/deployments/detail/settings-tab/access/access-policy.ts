@@ -107,20 +107,19 @@ export function policySubjects(subjects: SelectableAccessSubject[]): AccessSubje
 
 export function selectedSubjectsFromPolicy(policy?: AccessPolicy, labelSubjects: SelectableAccessSubject[] = []) {
   return policy?.subjects
-    ?.map((subject): SelectableAccessSubject | undefined => {
+    ?.flatMap((subject): SelectableAccessSubject[] => {
       if (!subject.subjectId || !subject.subjectType)
-        return undefined
+        return []
       const matchedSubject = labelSubjects.find(labelSubject =>
         labelSubject.id === subject.subjectId && labelSubject.subjectType === subject.subjectType,
       )
-      return {
+      return [{
         id: subject.subjectId,
         subjectType: subject.subjectType,
         name: matchedSubject?.name,
         memberCount: matchedSubject?.memberCount,
-      }
-    })
-    .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
+      }]
+    }) ?? []
 }
 
 function selectableSubjectToGroup(subject: SelectableAccessSubject): AccessControlGroup {

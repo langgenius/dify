@@ -151,11 +151,13 @@ export function mergeEnvVarSlotMetadata(
 
   const metadataByKey = new Map(
     metadataSlots
-      .map((slot): [string, DeploymentEnvVarSlot] | undefined => {
+      .flatMap((slot): [string, DeploymentEnvVarSlot][] => {
         const key = envVarSlotKey(slot)
-        return key ? [key, slot] : undefined
-      })
-      .filter((entry): entry is [string, DeploymentEnvVarSlot] => Boolean(entry)),
+        if (!key)
+          return []
+
+        return [[key, slot]]
+      }),
   )
 
   return slots.map((slot) => {
@@ -238,44 +240,43 @@ export function selectedDeploymentEnvVars(
   values: EnvVarValues,
 ): EnvVarInput[] {
   return slots
-    .map((slot): EnvVarInput | undefined => {
+    .flatMap((slot): EnvVarInput[] => {
       const key = envVarSlotKey(slot)
       if (!key)
-        return undefined
+        return []
 
       const selection = envVarValueSelectionForSlot(slot, values[key])
 
       if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
         if (!hasEnvVarLastValue(slot))
-          return undefined
+          return []
 
-        return {
+        return [{
           key,
           valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
-        }
+        }]
       }
 
       if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
         if (!hasEnvVarDefaultValue(slot))
-          return undefined
+          return []
 
-        return {
+        return [{
           key,
           valueSource: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
-        }
+        }]
       }
 
       const literalValue = selection.value?.trim()
       if (!literalValue)
-        return undefined
+        return []
       if (envVarSlotValueType(slot) === ENV_VAR_VALUE_TYPE_NUMBER && Number.isNaN(Number(literalValue)))
-        return undefined
+        return []
 
-      return {
+      return [{
         key,
         value: selection.value,
         valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
-      }
+      }]
     })
-    .filter((envVar): envVar is EnvVarInput => Boolean(envVar))
 }

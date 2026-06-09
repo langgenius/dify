@@ -122,7 +122,16 @@ export function AccessChannelsSection({
 }) {
   const { t } = useTranslation('deployments')
   const runEnabled = accessChannels?.webAppEnabled ?? false
-  const webappRows = webAppEndpoints?.filter(endpoint => Boolean(endpoint.environment?.id && endpoint.endpointUrl)) ?? []
+  const webappRows = webAppEndpoints?.flatMap((endpoint) => {
+    const endpointUrl = endpoint.endpointUrl
+    if (!endpointUrl)
+      return []
+
+    return [{
+      endpoint,
+      endpointUrl,
+    }]
+  }) ?? []
   const cliDomain = getUrlOrigin(cliEndpoint?.endpointUrl)
   const cliDocsUrl = cliDomain ? `${cliDomain}/cli` : undefined
 
@@ -167,19 +176,15 @@ export function AccessChannelsSection({
                     {webappRows.length > 0
                       ? (
                           <div className="flex flex-col gap-1.5">
-                            {webappRows.map((endpoint) => {
-                              const endpointUrl = endpoint.endpointUrl ?? ''
-
-                              return (
-                                <EndpointRow
-                                  key={`webapp-${endpoint.environment?.id ?? endpoint.endpointUrl}`}
-                                  envName={environmentName(endpoint.environment)}
-                                  label={t('access.runAccess.urlLabel')}
-                                  value={endpointUrl}
-                                  openLabel={t('access.runAccess.openWebapp')}
-                                />
-                              )
-                            })}
+                            {webappRows.map(({ endpoint, endpointUrl }) => (
+                              <EndpointRow
+                                key={`webapp-${endpoint.environment?.id ?? endpointUrl}`}
+                                envName={environmentName(endpoint.environment)}
+                                label={t('access.runAccess.urlLabel')}
+                                value={endpointUrl}
+                                openLabel={t('access.runAccess.openWebapp')}
+                              />
+                            ))}
                           </div>
                         )
                       : (

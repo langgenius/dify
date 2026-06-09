@@ -23,8 +23,17 @@ import { dslEnvVarSlots } from '../dsl'
 import { environmentMatchesIdentifier } from '../environment'
 import { useUnsupportedDslNodesFromError } from './use-unsupported-dsl-nodes'
 
-export function hasEnvironmentId(environment?: Environment): environment is EnvironmentOption {
-  return Boolean(environment?.id)
+export function deploymentEnvironmentOptions(environments?: Environment[]): EnvironmentOption[] {
+  return environments?.flatMap((environment) => {
+    const environmentId = environment.id
+    if (!environmentId)
+      return []
+
+    return [{
+      ...environment,
+      id: environmentId,
+    }]
+  }) ?? []
 }
 
 export function useDeploymentTargetOptions({
@@ -97,7 +106,7 @@ export function useDeploymentTargetOptions({
     isError: deploymentOptionsQuery.isError,
   })
   const environments = shouldLoadDeploymentTarget
-    ? deployableEnvironmentsQuery.data?.data?.filter(hasEnvironmentId) ?? []
+    ? deploymentEnvironmentOptions(deployableEnvironmentsQuery.data?.data)
     : []
   const bindingSlots = shouldLoadDeploymentTarget
     ? deploymentOptions?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []

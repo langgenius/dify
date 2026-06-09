@@ -71,8 +71,10 @@ export function EnvironmentPermissionRow({
   const subjectLabelCandidates = [
     ...(draft.subjects ?? []),
     ...resolvedSubjects
-      .map(normalizeResolvedSubject)
-      .filter((subject): subject is SelectableAccessSubject => Boolean(subject)),
+      .flatMap((subject) => {
+        const normalizedSubject = normalizeResolvedSubject(subject)
+        return normalizedSubject ? [normalizedSubject] : []
+      }),
   ]
   const hasDraft = draft.fingerprint === policyFingerprint
   const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind

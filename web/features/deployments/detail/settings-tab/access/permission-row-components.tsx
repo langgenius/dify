@@ -91,9 +91,9 @@ export function SubjectsSummary({
   const groupCount = subjects.filter(subject => subject.subjectType === SUBJECT_TYPE_GROUP).length
   const memberCount = subjects.length - groupCount
   const countLabels = [
-    groupCount > 0 ? t('access.members.groupCount', { count: groupCount }) : undefined,
-    memberCount > 0 ? t('access.members.memberCount', { count: memberCount }) : undefined,
-  ].filter((label): label is string => Boolean(label))
+    ...(groupCount > 0 ? [t('access.members.groupCount', { count: groupCount })] : []),
+    ...(memberCount > 0 ? [t('access.members.memberCount', { count: memberCount })] : []),
+  ]
 
   return (
     <div className="flex min-h-8 min-w-0 items-center gap-1.5 system-xs-regular text-text-tertiary">

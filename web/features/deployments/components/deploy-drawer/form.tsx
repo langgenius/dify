@@ -160,12 +160,30 @@ export function DeployForm({
   }
 
   const runtimeRows = releaseDeploymentViewQuery.data?.environmentDeployments ?? []
-  const selectableEnvironmentRows = runtimeRows
-    .filter(row => lockedEnvId ? Boolean(row.environment?.id) : isAvailableDeploymentTarget(row))
-  const environments = selectableEnvironmentRows
-    .map(row => row.environment)
-    .filter((environment): environment is EnvironmentOption => Boolean(environment?.id))
-  const releaseRows = releaseDeploymentViewQuery.data?.releases?.filter(release => release.id) ?? []
+  const environments = runtimeRows.flatMap((row): EnvironmentOption[] => {
+    if (!lockedEnvId && !isAvailableDeploymentTarget(row))
+      return []
+
+    const environment = row.environment
+    const environmentId = environment?.id
+    if (!environment || !environmentId)
+      return []
+
+    return [{
+      ...environment,
+      id: environmentId,
+    }]
+  })
+  const releaseRows = releaseDeploymentViewQuery.data?.releases?.flatMap((release) => {
+    const releaseId = release.id
+    if (!releaseId)
+      return []
+
+    return [{
+      ...release,
+      id: releaseId,
+    }]
+  }) ?? []
   const currentReleaseId = currentReleaseIdForEnvironment(runtimeRows, lockedEnvId)
   const releases = selectableDeployReleases({
     releases: releaseRows,

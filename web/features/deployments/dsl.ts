@@ -115,20 +115,20 @@ export function dslEnvVarSlots(content: string): DeploymentEnvVarSlot[] {
   const seenKeys = new Set<string>()
 
   return environmentVariables
-    .map((envVar): DeploymentEnvVarSlot | undefined => {
+    .flatMap((envVar): DeploymentEnvVarSlot[] => {
       if (!isRecord(envVar))
-        return undefined
+        return []
 
       const key = stringValue(envVar.name ?? envVar.key ?? envVar.variable)
       if (!key || seenKeys.has(key))
-        return undefined
+        return []
 
       seenKeys.add(key)
       const description = stringValue(envVar.description)
       const defaultValue = envVarDefaultValue(envVar)
       const valueType = envVarValueType(envVar)
 
-      return {
+      return [{
         key,
         ...(description ? { description } : {}),
         ...(valueType ? { valueType } : {}),
@@ -138,7 +138,6 @@ export function dslEnvVarSlots(content: string): DeploymentEnvVarSlot[] {
               hasDefaultValue: true,
             }
           : {}),
-      }
+      }]
     })
-    .filter((slot): slot is DeploymentEnvVarSlot => Boolean(slot))
 }

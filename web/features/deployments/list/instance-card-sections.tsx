@@ -177,31 +177,31 @@ export function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
   }
 
   const links = [
-    access?.webAppEnabled
-      ? {
+    ...(access?.webAppEnabled
+      ? [{
           key: 'webapp',
           href: getInstanceTabHref(appInstanceId, 'access'),
           label: t('card.access.webApp'),
           icon: 'i-ri-global-line',
-        }
-      : undefined,
-    access?.webAppEnabled
-      ? {
+        }]
+      : []),
+    ...(access?.webAppEnabled
+      ? [{
           key: 'cli',
           href: getInstanceTabHref(appInstanceId, 'access'),
           label: t('card.access.cli'),
           icon: 'i-ri-terminal-box-line',
-        }
-      : undefined,
-    access?.developerApiEnabled
-      ? {
+        }]
+      : []),
+    ...(access?.developerApiEnabled
+      ? [{
           key: 'api-tokens',
           href: getInstanceTabHref(appInstanceId, 'api-tokens'),
           label: t('card.access.api'),
           icon: 'i-ri-code-s-slash-line',
-        }
-      : undefined,
-  ].filter((link): link is { key: string, href: string, label: string, icon: string } => Boolean(link))
+        }]
+      : []),
+  ]
 
   if (links.length === 0) {
     return (

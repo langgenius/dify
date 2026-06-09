@@ -412,7 +412,6 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
         avatar_url: user.avatar || null,
       }
     })
-    .filter(user => Boolean(user.id))
 
   return (
     <>

@@ -26,7 +26,10 @@ export function ReleaseHistoryTable({ appInstanceId }: {
     },
     placeholderData: keepPreviousData,
   }))
-  const releaseRows = releaseHistoryQuery.data?.data?.map(releaseRowFromSummary).filter((row): row is NonNullable<typeof row> => Boolean(row)) ?? []
+  const releaseRows = releaseHistoryQuery.data?.data?.flatMap((releaseSummary) => {
+    const releaseRow = releaseRowFromSummary(releaseSummary)
+    return releaseRow ? [releaseRow] : []
+  }) ?? []
   const totalReleases = releaseHistoryQuery.data?.pagination?.totalCount ?? releaseRows.length
   const totalReleasePages = Math.ceil(totalReleases / RELEASE_HISTORY_PAGE_SIZE)
   const isLoading = releaseHistoryQuery.isLoading
