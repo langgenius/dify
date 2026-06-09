@@ -3,10 +3,10 @@
 import type {
   CredentialSlot,
   Environment,
+  EnvVarSlot,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type {
-  DeploymentEnvVarSlot,
   EnvVarValues,
   EnvVarValueSelection,
 } from '../env-var-bindings-utils'
@@ -230,7 +230,7 @@ export function DeploymentBindingsSection({
   bindingSelections: RuntimeCredentialBindingSelections
   bindingOptionsLoading: boolean
   bindingOptionsError: boolean
-  envVarSlots: DeploymentEnvVarSlot[]
+  envVarSlots: EnvVarSlot[]
   envVarValues: EnvVarValues
   showMissingRequiredBindings: boolean
   showMissingRequiredEnvVars: boolean

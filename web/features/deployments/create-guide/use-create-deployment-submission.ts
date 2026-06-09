@@ -3,8 +3,9 @@
 import type {
   CredentialSlot,
   Environment,
+  EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
-import type { DeploymentEnvVarSlot, EnvVarValues } from '../components/env-var-bindings-utils'
+import type { EnvVarValues } from '../components/env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../components/runtime-credential-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
 import type { EnvironmentOption, GuideMethod } from './types'
@@ -69,7 +70,7 @@ export function useCreateDeploymentSubmission({
   effectiveEnvVarValues: EnvVarValues
   effectiveSelectedApp?: App
   encodedDslContent: string
-  envVarSlots: DeploymentEnvVarSlot[]
+  envVarSlots: EnvVarSlot[]
   hasDslContent: boolean
   hasInstanceNameConflict: boolean
   instanceDescription: string

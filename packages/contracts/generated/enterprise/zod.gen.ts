@@ -282,6 +282,7 @@ export const zEnvVarSlot = z.object({
   hasLastValue: z.boolean().optional(),
   lastValue: z.string().optional(),
   valueType: z.string().optional(),
+  description: z.string().optional(),
 })
 
 export const zDeploymentOptions = z.object({

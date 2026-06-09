@@ -1,4 +1,4 @@
-import type { DeploymentEnvVarSlot } from './components/env-var-bindings-utils'
+import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
 import { load as yamlLoad } from 'js-yaml'
 import { AppModeEnum } from '@/types/app'
 
@@ -107,7 +107,7 @@ export function isWorkflowDsl(content: string) {
   return dslAppMode(content) === AppModeEnum.WORKFLOW
 }
 
-export function dslEnvVarSlots(content: string): DeploymentEnvVarSlot[] {
+export function dslEnvVarSlots(content: string): EnvVarSlot[] {
   const environmentVariables = parseDsl(content)?.workflow?.environment_variables
   if (!Array.isArray(environmentVariables))
     return []
@@ -115,7 +115,7 @@ export function dslEnvVarSlots(content: string): DeploymentEnvVarSlot[] {
   const seenKeys = new Set<string>()
 
   return environmentVariables
-    .flatMap((envVar): DeploymentEnvVarSlot[] => {
+    .flatMap((envVar): EnvVarSlot[] => {
       if (!isRecord(envVar))
         return []
 

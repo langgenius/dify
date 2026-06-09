@@ -15,9 +15,6 @@ export type EnvVarValueType = 'string' | 'number' | 'secret'
 export type EnvVarValueSelectionOptions = {
   preferDefaultValue?: boolean
 }
-export type DeploymentEnvVarSlot = EnvVarSlot & {
-  description?: string
-}
 
 export const ENV_VAR_VALUE_SOURCE_LITERAL = 'ENV_VAR_VALUE_SOURCE_LITERAL' satisfies EnvVarValueSource
 export const ENV_VAR_VALUE_SOURCE_DSL_DEFAULT = 'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT' satisfies EnvVarValueSource
@@ -34,7 +31,7 @@ export function hasEnvVarSlotKey(slot?: EnvVarSlot) {
   return Boolean(slot && envVarSlotKey(slot))
 }
 
-export function hasEnvVarDefaultValue(slot: EnvVarSlot | DeploymentEnvVarSlot) {
+export function hasEnvVarDefaultValue(slot: EnvVarSlot) {
   return Boolean(slot.hasDefaultValue || envVarSlotValue(slot.defaultValue) !== undefined)
 }
 
@@ -42,7 +39,7 @@ export function hasEnvVarLastValue(slot: EnvVarSlot) {
   return Boolean(slot.hasLastValue || envVarSlotValue(slot.lastValue) !== undefined)
 }
 
-export function envVarSlotValueType(slot: EnvVarSlot | DeploymentEnvVarSlot): EnvVarValueType {
+export function envVarSlotValueType(slot: EnvVarSlot): EnvVarValueType {
   const valueType = slot.valueType?.trim().toLowerCase()
   if (valueType === ENV_VAR_VALUE_TYPE_NUMBER)
     return ENV_VAR_VALUE_TYPE_NUMBER
@@ -69,7 +66,7 @@ export function envVarSlotValue(value: unknown) {
 }
 
 function defaultEnvVarValueSelection(
-  slot: EnvVarSlot | DeploymentEnvVarSlot,
+  slot: EnvVarSlot,
   options?: EnvVarValueSelectionOptions,
 ): EnvVarValueSelection {
   if (options?.preferDefaultValue && hasEnvVarDefaultValue(slot)) {
@@ -96,7 +93,7 @@ function defaultEnvVarValueSelection(
 }
 
 export function envVarValueSelectionForSlot(
-  slot: EnvVarSlot | DeploymentEnvVarSlot,
+  slot: EnvVarSlot,
   selection?: EnvVarValueSelection,
   options?: EnvVarValueSelectionOptions,
 ): EnvVarValueSelection {
@@ -144,14 +141,14 @@ export function hasMissingRequiredEnvVarValue(slot: EnvVarSlot, values: EnvVarVa
 
 export function mergeEnvVarSlotMetadata(
   slots: EnvVarSlot[],
-  metadataSlots: DeploymentEnvVarSlot[],
-): DeploymentEnvVarSlot[] {
+  metadataSlots: EnvVarSlot[],
+): EnvVarSlot[] {
   if (metadataSlots.length === 0)
     return slots
 
   const metadataByKey = new Map(
     metadataSlots
-      .flatMap((slot): [string, DeploymentEnvVarSlot][] => {
+      .flatMap((slot): [string, EnvVarSlot][] => {
         const key = envVarSlotKey(slot)
         if (!key)
           return []
@@ -166,10 +163,9 @@ export function mergeEnvVarSlotMetadata(
     if (!metadata)
       return slot
 
-    const currentSlot = slot as DeploymentEnvVarSlot
-    const description = currentSlot.description?.trim() || metadata.description?.trim()
-    const defaultValue = currentSlot.defaultValue ?? metadata.defaultValue
-    const lastValue = currentSlot.lastValue ?? metadata.lastValue
+    const description = slot.description?.trim() || metadata.description?.trim()
+    const defaultValue = slot.defaultValue ?? metadata.defaultValue
+    const lastValue = slot.lastValue ?? metadata.lastValue
     const hasDefaultValue = slot.hasDefaultValue ?? metadata.hasDefaultValue ?? defaultValue !== undefined
     const hasLastValue = slot.hasLastValue ?? metadata.hasLastValue ?? lastValue !== undefined
     const valueType = slot.valueType ?? metadata.valueType
@@ -186,7 +182,7 @@ export function mergeEnvVarSlotMetadata(
   })
 }
 
-export function envVarSlotsWithoutLastDeploymentValues(slots: DeploymentEnvVarSlot[]) {
+export function envVarSlotsWithoutLastDeploymentValues(slots: EnvVarSlot[]) {
   return slots.map((slot) => {
     const {
       hasLastValue: _hasLastValue,
@@ -198,7 +194,7 @@ export function envVarSlotsWithoutLastDeploymentValues(slots: DeploymentEnvVarSl
   })
 }
 
-export function envVarSlotsWithoutDefaultValues(slots: DeploymentEnvVarSlot[]) {
+export function envVarSlotsWithoutDefaultValues(slots: EnvVarSlot[]) {
   return slots.map((slot) => {
     const {
       hasDefaultValue: _hasDefaultValue,
@@ -212,7 +208,7 @@ export function envVarSlotsWithoutDefaultValues(slots: DeploymentEnvVarSlot[]) {
 
 export function envVarValuesWithDefaults(
   values: EnvVarValues,
-  slots: DeploymentEnvVarSlot[],
+  slots: EnvVarSlot[],
   options?: EnvVarValueSelectionOptions,
 ): EnvVarValues {
   let hasChanges = false

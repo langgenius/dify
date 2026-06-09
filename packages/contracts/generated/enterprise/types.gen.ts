@@ -339,6 +339,7 @@ export type EnvVarSlot = {
   hasLastValue?: boolean
   lastValue?: string
   valueType?: string
+  description?: string
 }
 
 export type Environment = {

@@ -1,7 +1,9 @@
 'use client'
 
 import type {
-  DeploymentEnvVarSlot,
+  EnvVarSlot,
+} from '@dify/contracts/enterprise/types.gen'
+import type {
   EnvVarValues,
   EnvVarValueSelection,
   EnvVarValueSource,
@@ -35,7 +37,7 @@ type EnvVarValueSourceOption = {
 }
 
 type EnvVarBindingsPanelProps = {
-  slots: DeploymentEnvVarSlot[]
+  slots: EnvVarSlot[]
   values: EnvVarValues
   title: string
   hint: string
@@ -60,7 +62,7 @@ function envVarInputId(index: number, key: string) {
   return `env-var-binding-${index}-${safeKey}`
 }
 
-function envVarValueSourceOptions(slot: DeploymentEnvVarSlot, labels: {
+function envVarValueSourceOptions(slot: EnvVarSlot, labels: {
   literal: string
   defaultValue: string
   lastDeployment: string
@@ -89,7 +91,7 @@ function envVarValueSourceOptions(slot: DeploymentEnvVarSlot, labels: {
   return options
 }
 
-function envVarSelectionDisplayValue(slot: DeploymentEnvVarSlot, selection: EnvVarValueSelection) {
+function envVarSelectionDisplayValue(slot: EnvVarSlot, selection: EnvVarValueSelection) {
   if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
     return envVarSlotValue(slot.defaultValue) ?? ''
   if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
@@ -200,9 +202,11 @@ export function EnvVarBindingsPanel({
                   )}
                 </div>
                 {description && (
-                  <div className="system-xs-regular text-text-tertiary">
-                    {description}
-                  </div>
+                  <TitleTooltip content={description}>
+                    <div className="line-clamp-2 system-xs-regular text-text-tertiary">
+                      {description}
+                    </div>
+                  </TitleTooltip>
                 )}
                 <Input
                   id={inputId}

@@ -2,9 +2,9 @@
 
 import type {
   CredentialSlot,
+  EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
 import type {
-  DeploymentEnvVarSlot,
   EnvVarValues,
   EnvVarValueSelection,
 } from '../components/env-var-bindings-utils'
@@ -102,7 +102,7 @@ function TargetBindingSkeleton() {
 export type TargetReviewSectionsProps = {
   environments: EnvironmentOption[]
   bindingSlots: CredentialSlot[]
-  envVarSlots: DeploymentEnvVarSlot[]
+  envVarSlots: EnvVarSlot[]
   selectedEnvironmentId: string
   bindingSelections: BindingSelections
   envVarValues: EnvVarValues
