@@ -32,6 +32,7 @@ from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.conversation_service import ConversationService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -188,6 +189,12 @@ class ChatApi(WebApiResource):
 
         streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
         args["auto_generate_name"] = False
+
+        # Eagerly validate conversation to avoid hanging on invalid conversation_id
+        if payload.conversation_id:
+            ConversationService.get_conversation(
+                app_model=app_model, conversation_id=payload.conversation_id, user=end_user
+            )
 
         try:
             response = AppGenerateService.generate(
