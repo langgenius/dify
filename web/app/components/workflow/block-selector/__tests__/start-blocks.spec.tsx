@@ -1,5 +1,5 @@
 import type { CommonNodeType } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useAvailableNodesMetaData } from '../../../workflow-app/hooks'
@@ -91,6 +91,31 @@ describe('StartBlocks', () => {
       expect(screen.queryByText('workflow.blocks.originalStartNode')).not.toBeInTheDocument()
     })
 
+    it('should render built-in start block preview titles and Dify Team author', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <StartBlocks
+          searchText=""
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.Start, BlockEnum.TriggerWebhook]}
+        />,
+      )
+
+      await user.hover(screen.getByText('workflow.blocks.trigger-webhook'))
+
+      expect(screen.queryByText('workflow.customWebhook')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getAllByText('workflow.blocks.trigger-webhook')).toHaveLength(2)
+      })
+
+      await user.hover(screen.getByText('workflow.blocks.start'))
+
+      await waitFor(() => {
+        expect(document.body).toHaveTextContent('tools.author workflow.difyTeam')
+      })
+    })
+
     it('should keep disabled user input reachable from the keyboard with the conflict reason', async () => {
       const user = userEvent.setup()
       const onSelect = vi.fn()
@@ -109,6 +134,7 @@ describe('StartBlocks', () => {
         name: /workflow\.blocks\.start.*workflow\.nodes\.startPlaceholder\.userInputConflictTip/,
       })
       expect(userInputButton).toHaveAttribute('aria-disabled', 'true')
+      expect(userInputButton.querySelector('.i-custom-vender-workflow-user-input')?.closest('.opacity-30')).toBeInTheDocument()
 
       await user.tab()
       expect(userInputButton).toHaveFocus()

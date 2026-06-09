@@ -229,11 +229,11 @@ describe('AllStartBlocks', () => {
         />,
       )
 
-      const footer = await screen.findByRole('link', { name: /workflow\.nodes\.startPlaceholder\.findMoreToolsInMarketplace/ })
+      const footer = await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/ })
       expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
-      expect(footer).toHaveClass('h-8')
+      expect(footer).toHaveClass('system-sm-medium', 'h-8', 'rounded-b-lg', 'bg-components-panel-bg-blur', 'text-text-accent-light-mode-only', 'shadow-lg')
       expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).not.toBeInTheDocument()
-      expect(footer.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
+      expect(footer.querySelector('svg')).toBeInTheDocument()
     })
 
     it('should keep the panel marketplace footer icon style', async () => {
@@ -253,7 +253,7 @@ describe('AllStartBlocks', () => {
       expect(footer).toHaveClass('flex-col')
       expect(footer.querySelector('.w-8 .bg-divider-subtle')).toBeInTheDocument()
       expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).toBeInTheDocument()
-      expect(footer.querySelector('.i-ri-arrow-right-up-line')).not.toBeInTheDocument()
+      expect(footer.querySelector('svg')).not.toBeInTheDocument()
     })
 
     it('should keep the panel divider between user input and installed triggers', async () => {
@@ -335,10 +335,10 @@ describe('AllStartBlocks', () => {
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
       expect(screen.getByText('common.operation.added')).toBeInTheDocument()
-      const footer = screen.getByRole('link', { name: /workflow\.nodes\.startPlaceholder\.findMoreToolsInMarketplace/ })
-      expect(footer).toHaveClass('h-8')
+      const footer = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/ })
+      expect(footer).toHaveClass('system-sm-medium', 'h-8', 'rounded-b-lg', 'bg-components-panel-bg-blur', 'text-text-accent-light-mode-only', 'shadow-lg')
       expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).not.toBeInTheDocument()
-      expect(footer.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
+      expect(footer.querySelector('svg')).toBeInTheDocument()
 
       fireEvent.click(screen.getByText('workflow.blocks.start'))
       fireEvent.click(screen.getByText('Provider One'))
@@ -361,7 +361,7 @@ describe('AllStartBlocks', () => {
 
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
-      expect(screen.getByText('workflow.blocks.mostCommon')).toHaveClass('text-text-disabled')
+      expect(screen.getByText('workflow.blocks.mostCommon').closest('.opacity-30')).toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.start').closest('.cursor-not-allowed')).toBeInTheDocument()
 
       await user.hover(screen.getByText('workflow.blocks.start'))
@@ -408,7 +408,7 @@ describe('AllStartBlocks', () => {
         'href',
         'https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml',
       )
-      expect(screen.getByRole('link', { name: /workflow\.nodes\.startPlaceholder\.findMoreToolsInMarketplace/ })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/ })).toHaveAttribute(
         'href',
         'https://marketplace.test/plugins/trigger',
       )
