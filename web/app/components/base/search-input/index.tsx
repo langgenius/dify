@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import type { InputProps } from '@langgenius/dify-ui/input'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useRef, useState } from 'react'
@@ -9,13 +9,14 @@ type SearchInputProps = {
   onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-} & Pick<ComponentProps<'input'>, 'aria-label'>
+} & Pick<InputProps, 'aria-label' | 'autoFocus'>
 
 export function SearchInput({
   placeholder,
   className,
   value,
   onValueChange,
+  autoFocus,
   'aria-label': ariaLabel,
 }: SearchInputProps) {
   const { t } = useTranslation()
@@ -83,6 +84,7 @@ export function SearchInput({
           onValueChange(e.currentTarget.value)
         }}
         autoComplete="off"
+        autoFocus={autoFocus}
         enterKeyHint="search"
       />
       {!!inputValue && (

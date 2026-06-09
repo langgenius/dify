@@ -17,6 +17,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
 from controllers.openapi import openapi_ns
+from controllers.openapi._models import FormSubmitResponse
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
@@ -70,7 +71,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         return _jsonify_form_definition(form)
 
     @openapi_ns.expect(openapi_ns.models[HumanInputFormSubmitPayload.__name__])
-    @openapi_ns.response(200, "Form submitted")
+    @openapi_ns.response(200, "Form submitted", openapi_ns.models[FormSubmitResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, form_token: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()

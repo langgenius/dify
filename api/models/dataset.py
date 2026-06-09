@@ -9,7 +9,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, ClassVar, TypedDict, cast
+from typing import Any, ClassVar, TypedDict, cast, override
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -1790,5 +1790,6 @@ class DocumentSegmentSummary(TypeBase):
         init=False,
     )
 
+    @override
     def __repr__(self):
         return f"<DocumentSegmentSummary id={self.id} chunk_id={self.chunk_id} status={self.status}>"
