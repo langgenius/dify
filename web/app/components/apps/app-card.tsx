@@ -35,6 +35,7 @@ import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
+import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -51,7 +52,7 @@ import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
-import { useDeleteAppMutation } from '@/service/use-apps'
+import { useDeleteAppMutation, useToggleAppStarMutation } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection, getRedirectionPath } from '@/utils/app-redirection'
@@ -254,6 +255,402 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
   )
 }
 
+type AppCardActionBarProps = {
+  app: App
+  onRefresh?: () => void
+}
+
+export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefresh }) => {
+  const { t } = useTranslation()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { onPlanInfoChanged } = useProviderContext()
+  const { push } = useRouter()
+
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const [showAccessControl, setShowAccessControl] = useState(false)
+  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
+  const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+
+  const onConfirmDelete = useCallback(async () => {
+    try {
+      await mutateDeleteApp(app.id)
+      toast.success(t('appDeleted', { ns: 'app' }))
+      onPlanInfoChanged()
+      setShowConfirmDelete(false)
+      setConfirmDeleteInput('')
+    }
+    catch (e) {
+      const message = e instanceof Error ? e.message : ''
+      toast.error(`${t('appDeleteFailed', { ns: 'app' })}${message ? `: ${message}` : ''}`)
+    }
+  }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
+
+  const onDeleteDialogOpenChange = useCallback((open: boolean) => {
+    if (isDeleting)
+      return
+
+    setShowConfirmDelete(open)
+    if (!open)
+      setConfirmDeleteInput('')
+  }, [isDeleting])
+
+  const isDeleteConfirmDisabled = isDeleting || confirmDeleteInput !== app.name
+
+  const onDeleteDialogSubmit: React.FormEventHandler<HTMLFormElement> = useCallback((e) => {
+    e.preventDefault()
+    if (isDeleteConfirmDisabled)
+      return
+
+    void onConfirmDelete()
+  }, [isDeleteConfirmDisabled, onConfirmDelete])
+
+  const handleShowEditModal = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowEditModal(true)
+    })
+  }, [])
+
+  const handleShowDuplicateModal = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowDuplicateModal(true)
+    })
+  }, [])
+
+  const handleShowSwitchModal = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowSwitchModal(true)
+    })
+  }, [])
+
+  const handleShowDeleteConfirm = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowConfirmDelete(true)
+    })
+  }, [])
+
+  const handleShowAccessControl = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowAccessControl(true)
+    })
+  }, [])
+
+  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
+    name,
+    icon_type,
+    icon,
+    icon_background,
+    description,
+    use_icon_as_answer_icon,
+    max_active_requests,
+  }) => {
+    try {
+      await updateAppInfo({
+        appID: app.id,
+        name,
+        icon_type,
+        icon,
+        icon_background,
+        description,
+        use_icon_as_answer_icon,
+        max_active_requests,
+      })
+      setShowEditModal(false)
+      toast.success(t('editDone', { ns: 'app' }))
+      onRefresh?.()
+    }
+    catch (e) {
+      toast.error(e instanceof Error ? e.message : t('editFailed', { ns: 'app' }))
+    }
+  }, [app.id, onRefresh, t])
+
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
+    try {
+      const newApp = await copyApp({
+        appID: app.id,
+        name,
+        icon_type,
+        icon,
+        icon_background,
+        mode: app.mode,
+      })
+      setShowDuplicateModal(false)
+      toast.success(t('newApp.appCreated', { ns: 'app' }))
+      setNeedRefresh('1')
+      onRefresh?.()
+      onPlanInfoChanged()
+      getRedirection(isCurrentWorkspaceEditor, newApp, push)
+    }
+    catch {
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+    }
+  }
+
+  const onExport = async (include = false) => {
+    try {
+      const { data } = await exportAppConfig({
+        appID: app.id,
+        include,
+      })
+      const file = new Blob([data], { type: 'application/yaml' })
+      downloadBlob({ data: file, fileName: `${app.name}.yml` })
+    }
+    catch {
+      toast.error(t('exportFailed', { ns: 'app' }))
+    }
+  }
+
+  const exportCheck = async () => {
+    setIsOperationsMenuOpen(false)
+    if (app.mode !== AppModeEnum.WORKFLOW && app.mode !== AppModeEnum.ADVANCED_CHAT) {
+      onExport()
+      return
+    }
+    try {
+      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
+      if (list.length === 0) {
+        onExport()
+        return
+      }
+      setSecretEnvList(list)
+    }
+    catch {
+      toast.error(t('exportFailed', { ns: 'app' }))
+    }
+  }
+
+  const onSwitch = () => {
+    onRefresh?.()
+    setShowSwitchModal(false)
+  }
+
+  const onUpdateAccessControl = useCallback(() => {
+    onRefresh?.()
+    setShowAccessControl(false)
+  }, [onRefresh, setShowAccessControl])
+
+  const handleToggleStar = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+
+    if (isTogglingStar)
+      return
+
+    try {
+      await mutateToggleAppStar({
+        appId: app.id,
+        isStarred: Boolean(app.is_starred),
+      })
+      onRefresh?.()
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('studio.starFailed', { ns: 'app' }))
+    }
+  }, [app.id, app.is_starred, isTogglingStar, mutateToggleAppStar, onRefresh, t])
+
+  const shouldShowSwitchOption = app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT
+  const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
+  const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
+  const starActionLabel = app.is_starred
+    ? t('studio.unstarApp', { ns: 'app' })
+    : t('studio.starApp', { ns: 'app' })
+
+  return (
+    <>
+      <div
+        className={cn(
+          'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
+          isOperationsMenuOpen
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+        )}
+      >
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <button
+                type="button"
+                aria-label={starActionLabel}
+                disabled={isTogglingStar}
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={handleToggleStar}
+              >
+                <StarIcon
+                  aria-hidden
+                  className={cn(
+                    app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
+                    'size-[18px]',
+                  )}
+                />
+              </button>
+            )}
+          />
+          <TooltipContent>{starActionLabel}</TooltipContent>
+        </Tooltip>
+        {isCurrentWorkspaceEditor && (
+          <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+            <DropdownMenuTrigger
+              aria-label={t('operation.more', { ns: 'common' })}
+              className={cn(
+                'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+              )}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+              }}
+            >
+              <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
+              <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              placement="bottom-end"
+              sideOffset={4}
+              popupClassName={operationsMenuWidthClassName}
+            >
+              {systemFeatures.webapp_auth.enabled
+                ? (
+                    <AppCardOperationsMenuContent
+                      app={app}
+                      shouldShowSwitchOption={shouldShowSwitchOption}
+                      shouldShowAccessControlOption={shouldShowAccessControlOption}
+                      onEdit={handleShowEditModal}
+                      onDuplicate={handleShowDuplicateModal}
+                      onExport={exportCheck}
+                      onSwitch={handleShowSwitchModal}
+                      onDelete={handleShowDeleteConfirm}
+                      onAccessControl={handleShowAccessControl}
+                    />
+                  )
+                : (
+                    <AppCardOperationsMenu
+                      app={app}
+                      shouldShowSwitchOption={shouldShowSwitchOption}
+                      shouldShowOpenInExploreOption={!app.has_draft_trigger}
+                      shouldShowAccessControlOption={shouldShowAccessControlOption}
+                      onEdit={handleShowEditModal}
+                      onDuplicate={handleShowDuplicateModal}
+                      onExport={exportCheck}
+                      onSwitch={handleShowSwitchModal}
+                      onDelete={handleShowDeleteConfirm}
+                      onAccessControl={handleShowAccessControl}
+                    />
+                  )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+      {showEditModal && (
+        <EditAppModal
+          isEditModal
+          appName={app.name}
+          appIconType={app.icon_type}
+          appIcon={app.icon}
+          appIconBackground={app.icon_background}
+          appIconUrl={app.icon_url}
+          appDescription={app.description}
+          appMode={app.mode}
+          appUseIconAsAnswerIcon={app.use_icon_as_answer_icon}
+          max_active_requests={app.max_active_requests ?? null}
+          show={showEditModal}
+          onConfirm={onEdit}
+          onHide={() => setShowEditModal(false)}
+        />
+      )}
+      {showDuplicateModal && (
+        <DuplicateAppModal
+          appName={app.name}
+          icon_type={app.icon_type}
+          icon={app.icon}
+          icon_background={app.icon_background}
+          icon_url={app.icon_url}
+          show={showDuplicateModal}
+          onConfirm={onCopy}
+          onHide={() => setShowDuplicateModal(false)}
+        />
+      )}
+      {showSwitchModal && (
+        <SwitchAppModal
+          show={showSwitchModal}
+          appDetail={app}
+          onClose={() => setShowSwitchModal(false)}
+          onSuccess={onSwitch}
+        />
+      )}
+      <AlertDialog open={showConfirmDelete} onOpenChange={onDeleteDialogOpenChange}>
+        <AlertDialogContent>
+          <form className="flex flex-col" onSubmit={onDeleteDialogSubmit}>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+                {t('deleteAppConfirmTitle', { ns: 'app' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('deleteAppConfirmContent', { ns: 'app' })}
+              </AlertDialogDescription>
+              <FieldRoot name="confirm-app-name" className="mt-2">
+                <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
+                  <Trans
+                    i18nKey="deleteAppConfirmInputLabel"
+                    ns="app"
+                    values={{ appName: app.name }}
+                    components={{
+                      appName: <span className="system-sm-semibold text-text-primary" translate="no" />,
+                    }}
+                  />
+                </FieldLabel>
+                <FieldControl
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
+                  value={confirmDeleteInput}
+                  onValueChange={setConfirmDeleteInput}
+                  className="border-components-input-border-hover bg-components-input-bg-normal focus:border-components-input-border-active focus:bg-components-input-bg-active"
+                />
+              </FieldRoot>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton type="button" disabled={isDeleting}>
+                {t('operation.cancel', { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                type="submit"
+                loading={isDeleting}
+                disabled={isDeleteConfirmDisabled}
+              >
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+      {secretEnvList.length > 0 && (
+        <DSLExportConfirmModal
+          envList={secretEnvList}
+          onConfirm={onExport}
+          onClose={() => setSecretEnvList([])}
+        />
+      )}
+      {showAccessControl && (
+        <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
+      )}
+    </>
+  )
+}
+
 const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => { } }: AppCardProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -270,6 +667,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
+  const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
   const onConfirmDelete = useCallback(async () => {
@@ -439,6 +837,25 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     setShowAccessControl(false)
   }, [onRefresh, setShowAccessControl])
 
+  const handleToggleStar = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+
+    if (isTogglingStar)
+      return
+
+    try {
+      await mutateToggleAppStar({
+        appId: app.id,
+        isStarred: Boolean(app.is_starred),
+      })
+      onRefresh?.()
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('studio.starFailed', { ns: 'app' }))
+    }
+  }, [app.id, app.is_starred, isTogglingStar, mutateToggleAppStar, onRefresh, t])
+
   const shouldShowSwitchOption = app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT
   const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
@@ -484,6 +901,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const appNameId = useId()
   const appDescriptionId = useId()
   const appHref = getRedirectionPath(isCurrentWorkspaceEditor, app)
+  const starActionLabel = app.is_starred
+    ? t('studio.unstarApp', { ns: 'app' })
+    : t('studio.starApp', { ns: 'app' })
 
   return (
     <>
@@ -553,32 +973,51 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           </div>
         )}
         <AppAccessModeIcon accessMode={app.access_mode} />
-        {isCurrentWorkspaceEditor && (
-          <div
-            className={cn(
-              'absolute top-2 right-2 flex items-start justify-end transition-opacity',
-              isOperationsMenuOpen
-                ? 'pointer-events-auto opacity-100'
-                : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-            )}
-          >
+        <div
+          className={cn(
+            'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
+            isOperationsMenuOpen
+              ? 'pointer-events-auto opacity-100'
+              : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+          )}
+        >
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <button
+                  type="button"
+                  aria-label={starActionLabel}
+                  disabled={isTogglingStar}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={handleToggleStar}
+                >
+                  <StarIcon
+                    aria-hidden
+                    className={cn(
+                      app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
+                      'size-[18px]',
+                    )}
+                  />
+                </button>
+              )}
+            />
+            <TooltipContent>{starActionLabel}</TooltipContent>
+          </Tooltip>
+          {isCurrentWorkspaceEditor && (
             <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
               <DropdownMenuTrigger
                 aria-label={t('operation.more', { ns: 'common' })}
                 className={cn(
-                  isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
-                  'flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 backdrop-blur-xs hover:bg-components-actionbar-bg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                  isOperationsMenuOpen ? 'shadow-none' : 'shadow-lg',
+                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                  isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                 )}
                 onClick={(e) => {
                   e.stopPropagation()
                   e.preventDefault()
                 }}
               >
-                <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover">
-                  <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
-                  <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
-                </div>
+                <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
+                <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 placement="bottom-end"
@@ -615,8 +1054,8 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                     )}
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {showEditModal && (
         <EditAppModal

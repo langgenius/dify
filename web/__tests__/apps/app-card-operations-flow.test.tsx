@@ -100,6 +100,10 @@ vi.mock('@/service/use-apps', () => ({
     mutateAsync: mockDeleteAppMutation,
     isPending: mockDeleteMutationPending,
   }),
+  useToggleAppStarMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/service/apps', () => ({

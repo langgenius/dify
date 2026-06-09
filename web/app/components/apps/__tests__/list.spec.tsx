@@ -13,14 +13,17 @@ vi.mock('react-i18next', async () => {
     'app.types.all': 'All',
     'app.studio.filters.types': 'Types',
     'app.studio.filters.creators': 'Creators',
+    'app.studio.allApps': 'All Apps',
     'app.studio.sort.earliestCreated': 'Earliest created',
     'app.studio.sort.lastModified': 'Last modified',
     'app.studio.sort.recentlyCreated': 'Recently created',
     'app.studio.sort.sortBy': 'Sort by',
+    'app.studio.starred': 'Starred',
   })
 })
 
 const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+const mockAppStarredListQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
   onlineUsersMap: {},
 })))
@@ -44,6 +47,9 @@ vi.mock('@/service/client', () => ({
     apps: {
       list: {
         infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+      starredList: {
+        queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
       },
     },
     tags: {
@@ -128,6 +134,7 @@ vi.mock('../hooks/use-workflow-online-users', () => ({
 }))
 
 const mockRefetch = vi.fn()
+const mockRefetchStarredAppList = vi.fn()
 const mockFetchNextPage = vi.fn()
 
 const mockServiceState = {
@@ -173,10 +180,31 @@ const defaultAppData = {
 }
 let mockAppData = defaultAppData
 
+type MockStarredAppData = {
+  data: Array<Record<string, unknown>>
+  total: number
+  page: number
+  limit: number
+  has_more: boolean
+}
+
+let mockStarredAppData: MockStarredAppData = {
+  data: [],
+  total: 0,
+  page: 1,
+  limit: 4,
+  has_more: false,
+}
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
+    useQuery: () => ({
+      data: mockStarredAppData,
+      isLoading: false,
+      refetch: mockRefetchStarredAppList,
+    }),
     useInfiniteQuery: () => ({
       data: mockAppData,
       isLoading: mockServiceState.isLoading,
@@ -192,6 +220,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useToggleAppStarMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
@@ -244,6 +276,13 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
+  AppCardActionBar: ({ app, onRefresh }: { app: { id: string }, onRefresh?: () => void }) => {
+    return React.createElement('button', {
+      'data-testid': `app-card-action-bar-${app.id}`,
+      'type': 'button',
+      'onClick': onRefresh,
+    })
+  },
   default: ({ app }: { app: { id: string, name: string } }) => {
     return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
   },
@@ -300,6 +339,12 @@ type AppListInfiniteOptions = {
   getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
 }
 
+type AppStarredListQueryOptions = {
+  input: {
+    query: Record<string, unknown>
+  }
+}
+
 const openAppTypeSelect = async (user = userEvent.setup()) => {
   await user.click(screen.getByRole('button', { name: /^(Types|app\.types\.)/ }))
   return user
@@ -325,7 +370,15 @@ describe('List', () => {
     mockQueryState.keywords = ''
     mockQueryState.creatorIDs = []
     mockAppData = defaultAppData
+    mockStarredAppData = {
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 4,
+      has_more: false,
+    }
     mockUseWorkflowOnlineUsers.mockClear()
+    mockRefetchStarredAppList.mockClear()
     intersectionCallbacks.length = 0
     localStorage.clear()
   })
@@ -387,6 +440,55 @@ describe('List', () => {
 
       expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
+    })
+
+    it('should hide starred section when there are no starred apps', () => {
+      renderList()
+
+      expect(screen.queryByText('Starred')).not.toBeInTheDocument()
+      expect(screen.queryByText('All Apps')).not.toBeInTheDocument()
+    })
+
+    it('should render starred apps before all app cards when starred apps exist', () => {
+      mockStarredAppData = {
+        data: [{
+          id: 'starred-app-1',
+          name: 'Starred App',
+          description: 'Starred description',
+          mode: AppModeEnum.CHAT,
+          icon: '⭐',
+          icon_type: 'emoji',
+          icon_background: '#FFEAD5',
+          icon_url: null,
+          tags: [],
+          author_name: 'Author 1',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        }],
+        total: 1,
+        page: 1,
+        limit: 4,
+        has_more: false,
+      }
+
+      renderList()
+
+      const starredLabel = screen.getByText('Starred')
+      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const allAppsLabel = screen.getByText('All Apps')
+      const firstAppCard = screen.getByTestId('app-card-app-1')
+      const actionBar = screen.getByTestId('app-card-action-bar-starred-app-1')
+
+      expect(starredCard).toBeInTheDocument()
+      expect(actionBar).toBeInTheDocument()
+      expect(starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(starredCard.compareDocumentPosition(allAppsLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(allAppsLabel.compareDocumentPosition(firstAppCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+      fireEvent.click(actionBar)
+
+      expect(mockRefetch).toHaveBeenCalledTimes(1)
+      expect(mockRefetchStarredAppList).toHaveBeenCalledTimes(1)
     })
 
     it('should not render new app card in the app grid', () => {
@@ -548,6 +650,29 @@ describe('List', () => {
       })
       expect(options.getNextPageParam({ has_more: true, page: 2 })).toBe(3)
       expect(options.getNextPageParam({ has_more: false, page: 2 })).toBeUndefined()
+    })
+
+    it('should build starred query input from active filters with the starred limit', () => {
+      mockQueryState.keywords = 'sales'
+      mockQueryState.creatorIDs = ['creator-1']
+      mockQueryState.category = AppModeEnum.WORKFLOW
+
+      renderList()
+      fireEvent.click(screen.getByText('common.tag.placeholder'))
+
+      const options = mockAppStarredListQueryOptions.mock.calls.at(-1)?.[0] as AppStarredListQueryOptions
+
+      expect(options.input).toEqual({
+        query: {
+          page: 1,
+          limit: 4,
+          name: 'sales',
+          sort_by: 'last_modified',
+          tag_ids: ['tag-1'],
+          creator_ids: ['creator-1'],
+          mode: AppModeEnum.WORKFLOW,
+        },
+      })
     })
 
     it('should remove legacy tagIDs from URL while preserving other filters', async () => {

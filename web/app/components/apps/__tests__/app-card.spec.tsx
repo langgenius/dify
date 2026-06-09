@@ -85,11 +85,17 @@ vi.mock('@/service/apps', () => ({
 }))
 
 const mockDeleteAppMutation = vi.fn(() => Promise.resolve())
+const mockToggleAppStarMutation = vi.fn(() => Promise.resolve())
 let mockDeleteMutationPending = false
+let mockToggleStarMutationPending = false
 vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
     mutateAsync: mockDeleteAppMutation,
     isPending: mockDeleteMutationPending,
+  }),
+  useToggleAppStarMutation: () => ({
+    mutateAsync: mockToggleAppStarMutation,
+    isPending: mockToggleStarMutationPending,
   }),
 }))
 
@@ -343,6 +349,7 @@ describe('AppCard', () => {
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
     mockDeleteMutationPending = false
+    mockToggleStarMutationPending = false
   })
 
   describe('Rendering', () => {
@@ -473,6 +480,36 @@ describe('AppCard', () => {
 
       expect(cardLink).toHaveClass('focus-visible:ring-2')
       expect(cardLink).toHaveClass('focus-visible:ring-state-accent-solid')
+    })
+
+    it('should star the app from the card action without navigating', async () => {
+      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.starApp' }))
+
+      await waitFor(() => {
+        expect(mockToggleAppStarMutation).toHaveBeenCalledWith({
+          appId: mockApp.id,
+          isStarred: false,
+        })
+      })
+      expect(mockOnRefresh).toHaveBeenCalledTimes(1)
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('should unstar the app from the filled star action', async () => {
+      const starredApp = createMockApp({ is_starred: true })
+      render(<AppCard app={starredApp} onRefresh={mockOnRefresh} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.unstarApp' }))
+
+      await waitFor(() => {
+        expect(mockToggleAppStarMutation).toHaveBeenCalledWith({
+          appId: starredApp.id,
+          isStarred: true,
+        })
+      })
+      expect(mockOnRefresh).toHaveBeenCalledTimes(1)
     })
   })
 
