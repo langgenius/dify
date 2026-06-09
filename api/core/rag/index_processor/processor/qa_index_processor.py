@@ -4,7 +4,7 @@ import logging
 import re
 import threading
 import uuid
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 import pandas as pd
 from flask import Flask, current_app
@@ -43,6 +43,7 @@ class QAFormatPreviewDict(TypedDict):
 
 
 class QAIndexProcessor(BaseIndexProcessor):
+    @override
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
             extract_setting=extract_setting,
@@ -52,6 +53,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         )
         return text_docs
 
+    @override
     def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
@@ -139,6 +141,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError(str(e))
         return text_docs
 
+    @override
     def load(
         self,
         dataset: Dataset,
@@ -153,6 +156,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
+    @override
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
@@ -183,6 +187,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         else:
             vector.delete()
 
+    @override
     def retrieve(
         self,
         retrieval_method: RetrievalMethod,
@@ -211,6 +216,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 docs.append(doc)
         return docs
 
+    @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         documents = []
@@ -234,6 +240,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             else:
                 raise ValueError("Indexing technique must be high quality.")
 
+    @override
     def format_preview(self, chunks: Any) -> QAFormatPreviewDict:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         preview = []
@@ -246,6 +253,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         }
         return result
 
+    @override
     def generate_summary_preview(
         self,
         tenant_id: str,

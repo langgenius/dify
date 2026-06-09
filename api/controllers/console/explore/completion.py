@@ -18,6 +18,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.wraps import with_current_user_id
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -135,20 +136,18 @@ class CompletionApi(InstalledAppResource):
 )
 class CompletionStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, installed_app: InstalledApp, task_id: str):
+    @with_current_user_id
+    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
-
         AppTaskService.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
-            user_id=current_user.id,
+            user_id=current_user_id,
             app_mode=AppMode.value_of(app_model.mode),
         )
 
@@ -215,7 +214,8 @@ class ChatApi(InstalledAppResource):
 )
 class ChatStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, installed_app: InstalledApp, task_id: str):
+    @with_current_user_id
+    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -223,13 +223,10 @@ class ChatStopApi(InstalledAppResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
-
         AppTaskService.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
-            user_id=current_user.id,
+            user_id=current_user_id,
             app_mode=app_mode,
         )
 

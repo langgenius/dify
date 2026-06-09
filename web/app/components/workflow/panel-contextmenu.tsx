@@ -9,6 +9,7 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { TEST_RUN_MENU_HOTKEY } from './header/shortcuts'
 import {
   useDSL,
   useIsChatMode,
@@ -120,7 +121,7 @@ export function PanelContextmenu({
           onClick={handleRunAction}
         >
           {isChatMode ? t('common.debugAndPreview', { ns: 'workflow' }) : t('common.run', { ns: 'workflow' })}
-          {!isChatMode && <ShortcutKbd shortcut="workflow.open-test-run-menu" />}
+          {!isChatMode && <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} />}
         </ContextMenuItem>
       </ContextMenuGroup>
       <ContextMenuSeparator />

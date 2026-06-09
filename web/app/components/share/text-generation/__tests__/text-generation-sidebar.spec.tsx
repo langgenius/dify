@@ -3,9 +3,9 @@ import type { PromptConfig, SavedMessage } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { defaultSystemFeatures } from '@/features/system-features/config'
 import { AccessMode } from '@/models/access-control'
 import { Resolution, TransferMethod } from '@/types/app'
-import { defaultSystemFeatures } from '@/types/feature'
 import TextGenerationSidebar from '../text-generation-sidebar'
 
 const runOncePropsSpy = vi.fn()

@@ -1,4 +1,4 @@
-import type { CommandConstructor } from './command.js'
+import type { CommandConstructor } from './command'
 
 export type CommandNode = {
   readonly command?: CommandConstructor
@@ -56,6 +56,24 @@ function editDistance(a: string, b: string): number {
     prev = curr
   }
   return prev[n] ?? 0
+}
+
+export function collectCommands(
+  tree: CommandTree,
+): Array<{ command: CommandConstructor, path: string[] }> {
+  const results: Array<{ command: CommandConstructor, path: string[] }> = []
+
+  function walk(node: CommandNode, path: string[]): void {
+    if (node.command && node.command.hidden !== true)
+      results.push({ command: node.command, path })
+    for (const [key, child] of Object.entries(node.subcommands))
+      walk(child, [...path, key])
+  }
+
+  for (const [key, node] of Object.entries(tree))
+    walk(node, [key])
+
+  return results
 }
 
 export function findSuggestions(tree: CommandTree, argv: string[]): string[] {

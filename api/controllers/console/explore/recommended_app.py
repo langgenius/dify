@@ -8,10 +8,11 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, with_current_user
 from fields.base import ResponseModel
 from libs.helper import build_icon_url
-from libs.login import current_user, login_required
+from libs.login import login_required
+from models import Account
 from services.recommended_app_service import RecommendedAppService
 
 
@@ -79,13 +80,14 @@ class RecommendedAppListApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[RecommendedAppListResponse.__name__])
     @login_required
     @account_initialization_required
-    def get(self):
+    @with_current_user
+    def get(self, current_user: Account):
         # language args
         args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
         language = args.language
         if language and language in languages:
             language_prefix = language
-        elif current_user and current_user.interface_language:
+        elif current_user.interface_language:
             language_prefix = current_user.interface_language
         else:
             language_prefix = languages[0]

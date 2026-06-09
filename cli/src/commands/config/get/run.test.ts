@@ -1,43 +1,49 @@
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { FILE_NAME } from '../../../config/schema.js'
-import { isBaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { YamlStore } from '../../../store/store.js'
-import { runConfigGet } from './run.js'
-
-function makeStore(dir: string): YamlStore {
-  return new YamlStore(join(dir, FILE_NAME))
-}
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { isBaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { getConfigurationStore } from '@/store/manager'
+import { runConfigGet } from './run'
 
 describe('runConfigGet', () => {
   let dir: string
+  let prevConfigDir: string | undefined
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'difyctl-get-'))
+    prevConfigDir = process.env[ENV_CONFIG_DIR]
+    process.env[ENV_CONFIG_DIR] = dir
   })
 
-  it('returns set value with trailing newline', async () => {
-    await writeFile(
-      join(dir, FILE_NAME),
-      'schema_version: 1\ndefaults:\n  format: yaml\n',
-      'utf8',
-    )
-    const out = runConfigGet({ store: makeStore(dir), key: 'defaults.format' })
+  afterEach(async () => {
+    if (prevConfigDir === undefined)
+      delete process.env[ENV_CONFIG_DIR]
+    else
+      process.env[ENV_CONFIG_DIR] = prevConfigDir
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('returns set value with trailing newline', () => {
+    getConfigurationStore().setTyped({
+      schema_version: 1,
+      defaults: { format: 'yaml' },
+    })
+    const out = runConfigGet({ store: getConfigurationStore(), key: 'defaults.format' })
     expect(out).toBe('yaml\n')
   })
 
   it('returns empty line when key is unset (matches Go fmt.Fprintln)', () => {
-    const out = runConfigGet({ store: makeStore(dir), key: 'defaults.format' })
+    const out = runConfigGet({ store: getConfigurationStore(), key: 'defaults.format' })
     expect(out).toBe('\n')
   })
 
   it('throws BaseError(config_invalid_key) on unknown key', () => {
     let caught: unknown
     try {
-      runConfigGet({ store: makeStore(dir), key: 'bogus.key' })
+      runConfigGet({ store: getConfigurationStore(), key: 'bogus.key' })
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
@@ -45,13 +51,12 @@ describe('runConfigGet', () => {
       expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
   })
 
-  it('returns numeric limit as string', async () => {
-    await writeFile(
-      join(dir, FILE_NAME),
-      'schema_version: 1\ndefaults:\n  limit: 75\n',
-      'utf8',
-    )
-    const out = runConfigGet({ store: makeStore(dir), key: 'defaults.limit' })
+  it('returns numeric limit as string', () => {
+    getConfigurationStore().setTyped({
+      schema_version: 1,
+      defaults: { limit: 75 },
+    })
+    const out = runConfigGet({ store: getConfigurationStore(), key: 'defaults.limit' })
     expect(out).toBe('75\n')
   })
 })

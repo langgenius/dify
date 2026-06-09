@@ -1,48 +1,61 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { FILE_NAME } from '../../../config/schema.js'
-import { isBaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { YamlStore } from '../../../store/store.js'
-import { runConfigUnset } from './run.js'
-
-function makeStore(dir: string): YamlStore {
-  return new YamlStore(join(dir, FILE_NAME))
-}
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { loadConfig } from '@/config/config-loader'
+import { isBaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { getConfigurationStore } from '@/store/manager'
+import { runConfigUnset } from './run'
 
 describe('runConfigUnset', () => {
   let dir: string
+  let prevConfigDir: string | undefined
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'difyctl-unset-'))
+    prevConfigDir = process.env[ENV_CONFIG_DIR]
+    process.env[ENV_CONFIG_DIR] = dir
   })
 
-  it('clears the requested key, leaves others intact', async () => {
-    await writeFile(
-      join(dir, FILE_NAME),
-      'schema_version: 1\ndefaults:\n  format: json\n  limit: 25\n',
-      'utf8',
-    )
-    const out = runConfigUnset({ store: makeStore(dir), key: 'defaults.format' })
-    expect(out).toBe('unset defaults.format\n')
-    const raw = await readFile(join(dir, FILE_NAME), 'utf8')
-    expect(raw).not.toContain('format:')
-    expect(raw).toContain('limit: 25')
+  afterEach(async () => {
+    if (prevConfigDir === undefined)
+      delete process.env[ENV_CONFIG_DIR]
+    else
+      process.env[ENV_CONFIG_DIR] = prevConfigDir
+    await rm(dir, { recursive: true, force: true })
   })
 
-  it('is a no-op (writes empty config) when key was already unset', async () => {
-    const out = runConfigUnset({ store: makeStore(dir), key: 'defaults.format' })
+  it('clears the requested key, leaves others intact', () => {
+    getConfigurationStore().setTyped({
+      schema_version: 1,
+      defaults: { format: 'json', limit: 25 },
+    })
+    const out = runConfigUnset({ store: getConfigurationStore(), key: 'defaults.format' })
     expect(out).toBe('unset defaults.format\n')
-    const raw = await readFile(join(dir, FILE_NAME), 'utf8')
-    expect(raw).toContain('schema_version: 1')
+
+    const r = loadConfig(getConfigurationStore())
+    expect(r.found).toBe(true)
+    if (r.found) {
+      expect(r.config.defaults.format).not.toBe('json')
+      expect(r.config.defaults.limit).toBe(25)
+    }
+  })
+
+  it('is a no-op (writes empty config) when key was already unset', () => {
+    const out = runConfigUnset({ store: getConfigurationStore(), key: 'defaults.format' })
+    expect(out).toBe('unset defaults.format\n')
+    const r = loadConfig(getConfigurationStore())
+    expect(r.found).toBe(true)
+    if (r.found)
+      expect(r.config.schema_version).toBe(1)
   })
 
   it('rejects unknown key', () => {
     let caught: unknown
     try {
-      runConfigUnset({ store: makeStore(dir), key: 'bogus' })
+      runConfigUnset({ store: getConfigurationStore(), key: 'bogus' })
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)

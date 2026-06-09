@@ -2,7 +2,7 @@ import type { UserConfig } from '@hey-api/openapi-ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from '@hey-api/openapi-ts'
+import { $, defineConfig } from '@hey-api/openapi-ts'
 
 type JsonObject = Record<string, unknown>
 
@@ -658,6 +658,14 @@ const isEmptySchemaObject = (value: unknown) => {
   return isObject(value) && Object.keys(value).length === 0
 }
 
+// A field the backend marked deliberately open via the `x-dify-opaque` vendor extension — e.g. a
+// JSON Schema document or an app-config blob whose shape is genuinely arbitrary. Such a field is
+// intentionally an open object, not an under-annotated one, so the readiness detector must not
+// flag it (or its owning operation) as inaccurate.
+const isIntentionallyOpaque = (schema: SwaggerSchema) => {
+  return (schema as { 'x-dify-opaque'?: unknown })['x-dify-opaque'] === true
+}
+
 const isLooseObjectSchema = (schema: SwaggerSchema) => {
   if (hasProperties(schema))
     return false
@@ -675,6 +683,9 @@ const hasLooseSchema = (
 ): boolean => {
   if (!schema)
     return true
+
+  if (isIntentionallyOpaque(schema))
+    return false
 
   const ref = schema?.$ref
   if (ref?.startsWith('#/definitions/')) {
@@ -976,6 +987,12 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       'name': 'zod',
       '~resolvers': {
         enum: markNullableEnumSchema,
+        string: (ctx) => {
+          if (ctx.schema.format !== 'binary')
+            return undefined
+
+          return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+        },
       },
     },
     {

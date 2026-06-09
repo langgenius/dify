@@ -1,4 +1,5 @@
 import base64
+from typing import override
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.index_processor.constant.doc_type import DocType
@@ -16,6 +17,7 @@ class RerankModelRunner(BaseRerankRunner):
     def __init__(self, rerank_model_instance: ModelInstance):
         self.rerank_model_instance = rerank_model_instance
 
+    @override
     def run(
         self,
         query: str,

@@ -112,7 +112,7 @@ function compareStrings(a: string, b: string): number {
 
 function emitImports(entries: readonly CommandEntry[]): string {
   const sorted = [...entries].sort((a, b) => compareStrings(a.importPath, b.importPath))
-  const lines = [`import type { CommandTree } from '../framework/registry.js'`]
+  const lines = [`import type { CommandTree } from '@/framework/registry'`]
   for (const e of sorted)
     lines.push(`import ${e.identifier} from '${e.importPath}'`)
   return lines.join('\n')
@@ -219,7 +219,7 @@ export async function discoverCommands(commandsDir: string): Promise<CommandEntr
     entries.push({
       tokens,
       identifier: tokensToIdentifier(tokens),
-      importPath: `./${tokens.join('/')}/index.js`,
+      importPath: `@/commands/${tokens.join('/')}/index`,
     })
   }
 

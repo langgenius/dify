@@ -11,11 +11,12 @@ export const ErrorCode = {
   UsageMissingArg: 'usage_missing_arg',
   ConfigInvalidKey: 'config_invalid_key',
   ConfigInvalidValue: 'config_invalid_value',
-  NetworkTimeout: 'network_timeout',
-  NetworkDns: 'network_dns',
+  NetworkConnection: 'network_connection',
   Server5xx: 'server_5xx',
   Server4xxOther: 'server_4xx_other',
+  ClientError: 'client_error',
   Unknown: 'unknown',
+  IllegalArgumentError: 'illegal_argument',
 } as const
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -43,11 +44,12 @@ const CODE_TO_EXIT: Readonly<Record<ErrorCodeValue, ExitCodeValue>> = {
   usage_missing_arg: ExitCode.Usage,
   config_invalid_key: ExitCode.Usage,
   config_invalid_value: ExitCode.Usage,
-  network_timeout: ExitCode.Generic,
-  network_dns: ExitCode.Generic,
+  network_connection: ExitCode.Generic,
   server_5xx: ExitCode.Generic,
   server_4xx_other: ExitCode.Generic,
+  client_error: ExitCode.Generic,
   unknown: ExitCode.Generic,
+  illegal_argument: ExitCode.Usage,
 }
 
 export function exitFor(code: string): ExitCodeValue {

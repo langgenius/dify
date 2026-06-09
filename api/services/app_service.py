@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast, override
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
@@ -23,6 +23,7 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
+from models.agent import AgentIconType
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
@@ -38,9 +39,10 @@ logger = logging.getLogger(__name__)
 class AppListParams(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"] = "all"
+    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
     name: str | None = None
     tag_ids: list[str] | None = None
+    creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     status: str | None = None
     openapi_visible: bool = False
@@ -49,7 +51,7 @@ class AppListParams(BaseModel):
 class CreateAppParams(BaseModel):
     name: str = Field(min_length=1)
     description: str | None = None
-    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+    mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
@@ -124,6 +126,8 @@ class AppService:
             filters.append(App.mode == AppMode.ADVANCED_CHAT)
         elif params.mode == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT)
+        elif params.mode == "agent":
+            filters.append(App.mode == AppMode.AGENT)
 
         if params.status:
             filters.append(App.status == params.status)
@@ -135,6 +139,8 @@ class AppService:
             filters.append(App.enable_api.is_(True))
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
+        if params.creator_ids:
+            filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
             from libs.helper import escape_like_pattern
 
@@ -246,6 +252,39 @@ class AppService:
             db.session.flush()
 
             app.app_model_config_id = app_model_config.id
+        elif app_mode == AppMode.AGENT:
+            # An Agent App keeps its model / prompt / tools in the bound Agent
+            # Soul, so the app_model_config row carries no model — only the
+            # app-level presentation features the PRD requires (conversation
+            # opener, follow-up suggestions, citations, moderation, annotation).
+            # They default to disabled/empty here and are read by both the
+            # webapp /parameters endpoint and the chat pipeline. agent_mode is
+            # left unset so App.is_agent stays False (this is the new Agent App
+            # type, not a legacy function-call/react agent).
+            agent_app_model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
+            db.session.add(agent_app_model_config)
+            db.session.flush()
+
+            app.app_model_config_id = agent_app_model_config.id
+
+        # Agent App type is backed 1:1 by a roster Agent (linked via Agent.app_id).
+        # Created in the same transaction so the App and its backing Agent persist
+        # atomically; the Agent Soul (model/prompt/tools) is configured afterward
+        # in the Composer.
+        if app_mode == AppMode.AGENT:
+            from services.agent.roster_service import AgentRosterService
+
+            icon_type = AgentIconType(params.icon_type) if params.icon_type else None
+            AgentRosterService(db.session).create_backing_agent_for_app(
+                tenant_id=tenant_id,
+                account_id=account.id,
+                app_id=app.id,
+                name=params.name,
+                description=params.description or "",
+                icon_type=icon_type,
+                icon=params.icon,
+                icon_background=params.icon_background,
+            )
 
         db.session.commit()
 
@@ -321,6 +360,7 @@ class AppService:
                     self.__dict__.update(app.__dict__)
 
                 @property
+                @override
                 def app_model_config(self):
                     return model_config
 
@@ -512,9 +552,9 @@ class AppService:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 # current tool standard
-                provider_type = tool.get("provider_type", "")
-                provider_id = tool.get("provider_id", "")
-                tool_name = tool.get("tool_name", "")
+                provider_type = str(tool.get("provider_type", ""))
+                provider_id = str(tool.get("provider_id", ""))
+                tool_name = str(tool.get("tool_name", ""))
                 if provider_type == "builtin":
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":

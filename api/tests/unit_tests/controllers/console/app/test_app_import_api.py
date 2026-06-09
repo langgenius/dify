@@ -61,10 +61,9 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED, app_id=None),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         session.rollback.assert_called_once_with()
         session.commit.assert_not_called()
@@ -83,10 +82,9 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.PENDING),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         session.commit.assert_called_once_with()
         session.rollback.assert_not_called()
@@ -107,10 +105,9 @@ class TestAppImportApi:
         )
         update_access = MagicMock()
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         session.commit.assert_called_once_with()
         session.rollback.assert_not_called()
@@ -135,10 +132,9 @@ class TestAppImportConfirmApi:
             "confirm_import",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(import_id="import-1")
+            response, status = method(SimpleNamespace(id="u1"), import_id="import-1")
 
         session.rollback.assert_called_once_with()
         session.commit.assert_not_called()

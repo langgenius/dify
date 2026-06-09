@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import override
+
 from pydantic import Field
 from sqlalchemy import select
 
@@ -122,6 +124,7 @@ class ApiToolProviderController(ToolProviderController):
         )
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.API
 
@@ -194,6 +197,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
+    @override
     def get_tool(self, tool_name: str) -> ApiTool:
         """
         get tool by name

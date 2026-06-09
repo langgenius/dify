@@ -197,7 +197,7 @@ export const useGetHumanInputForm = (token: string, options: ShareQueryOptions =
 type SubmitHumanInputFormParams = {
   token: string
   data: {
-    inputs: Record<string, string>
+    inputs: Record<string, unknown>
     action: string
   }
 }

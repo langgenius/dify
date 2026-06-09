@@ -1,13 +1,21 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp, enableAppSiteAndGetURL, publishWorkflowApp, syncRunnableWorkflowDraft } from '../../../support/api'
+import {
+  createTestApp,
+  enableAppSiteAndGetURL,
+  publishWorkflowApp,
+  syncRunnableWorkflowDraft,
+} from '../../../support/api'
 
 When('I enable the Web App share', async function (this: DifyWorld) {
   const page = this.getPage()
   const appName = this.lastCreatedAppName
-  if (!appName)
-    throw new Error('No app name available. Run "a \\"workflow\\" app has been created via API" first.')
+  if (!appName) {
+    throw new Error(
+      'No app name available. Run "a \\"workflow\\" app has been created via API" first.',
+    )
+  }
 
   await page.locator('button').filter({ hasText: appName }).filter({ hasText: 'Workflow' }).click()
   await expect(page.getByRole('switch').first()).toBeEnabled({ timeout: 15_000 })
@@ -28,8 +36,11 @@ Given('a workflow app has been published and shared via API', async function (th
 })
 
 When('I open the shared app URL', async function (this: DifyWorld) {
-  if (!this.shareURL)
-    throw new Error('No share URL available. Run "a workflow app has been published and shared via API" first.')
+  if (!this.shareURL) {
+    throw new Error(
+      'No share URL available. Run "a workflow app has been published and shared via API" first.',
+    )
+  }
   await this.getPage().goto(this.shareURL, { timeout: 20_000 })
 })
 

@@ -3,7 +3,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Any, cast, override
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
@@ -95,21 +95,25 @@ class OpikDataTrace(BaseTraceInstance):
         self.project = opik_config.project
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        if isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        if isinstance(trace_info, ModerationTraceInfo):
-            self.moderation_trace(trace_info)
-        if isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self.suggested_question_trace(trace_info)
-        if isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        if isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
-        if isinstance(trace_info, GenerateNameTraceInfo):
-            self.generate_name_trace(trace_info)
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case ModerationTraceInfo():
+                self.moderation_trace(trace_info)
+            case SuggestedQuestionTraceInfo():
+                self.suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case GenerateNameTraceInfo():
+                self.generate_name_trace(trace_info)
+            case _:
+                pass
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         workflow_metadata = wrap_metadata(
