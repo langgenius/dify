@@ -200,7 +200,9 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             raise ValueError("tools in agent_mode must be a list of objects")
 
         for tool in agent_mode["tools"]:
-            key = list(tool.keys())[0]
+            if not tool:
+                continue
+            key = next(iter(tool))
             if key in OLD_TOOLS:
                 # old style, use tool name as key
                 tool_item = tool[key]
