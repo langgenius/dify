@@ -101,6 +101,10 @@ vi.mock('@/service/use-apps', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useToggleAppStarMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/app/components/apps/hooks/use-workflow-online-users', () => ({

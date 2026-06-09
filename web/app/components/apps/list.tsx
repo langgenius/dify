@@ -2,7 +2,7 @@
 
 import type { AppListQuery, AppListSortBy } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,13 +20,16 @@ import { AppCardSkeleton } from './app-card-skeleton'
 import { AppListCreationModals } from './app-list-creation-modals'
 import { AppListHeaderFilters } from './app-list-header-filters'
 import { AppListTagManagementModal } from './app-list-tag-management-modal'
-import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
+import { APP_LIST_GRID_CLASS_NAME, APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
 import Footer from './footer'
 import { useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
+import { StarredAppList } from './starred-app-list'
+
+const STARRED_APP_LIMIT = 4
 
 function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
   const { t } = useTranslation()
@@ -111,6 +114,26 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
 
+  const starredAppListQuery = useMemo<AppListQuery>(() => ({
+    ...appListQuery,
+    page: 1,
+    limit: STARRED_APP_LIMIT,
+  }), [appListQuery])
+
+  const { data: starredAppList, refetch: refetchStarredAppList } = useQuery({
+    ...consoleQuery.apps.starredList.queryOptions({
+      input: {
+        query: starredAppListQuery,
+      },
+    }),
+    enabled: !isCurrentWorkspaceDatasetOperator,
+  })
+
+  const refreshAppLists = useCallback(() => {
+    void refetch()
+    void refetchStarredAppList()
+  }, [refetch, refetchStarredAppList])
+
   useEffect(() => {
     if (controlRefreshList > 0)
       refetch()
@@ -156,6 +179,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
+  const starredApps = useMemo(() => starredAppList?.data ?? [], [starredAppList?.data])
 
   const workflowOnlineUserAppIds = useMemo(() => {
     const appIds = new Set<string>()
@@ -220,28 +244,37 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
               />
             )
           : (
-              <div className={cn(
-                'relative grid grow grid-cols-1 content-start gap-2.5 px-8 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
-                !hasAnyApp && 'overflow-hidden',
-              )}
-              >
-                {showSkeleton
-                  ? <AppCardSkeleton count={6} />
-                  : hasAnyApp
-                    ? apps.map(app => (
-                        <AppCard
-                          key={app.id}
-                          app={app}
-                          onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                          onRefresh={refetch}
-                          onOpenTagManagement={() => setShowTagManagementModal(true)}
-                        />
-                      ))
-                    : <Empty />}
-                {isFetchingNextPage && (
-                  <AppCardSkeleton count={3} />
+              <>
+                {starredApps.length > 0 && (
+                  <StarredAppList
+                    apps={starredApps}
+                    isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
+                    onRefresh={refreshAppLists}
+                  />
                 )}
-              </div>
+                <div className={cn(
+                  `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
+                  !hasAnyApp && 'overflow-hidden',
+                )}
+                >
+                  {showSkeleton
+                    ? <AppCardSkeleton count={6} />
+                    : hasAnyApp
+                      ? apps.map(app => (
+                          <AppCard
+                            key={app.id}
+                            app={app}
+                            onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                            onRefresh={refreshAppLists}
+                            onOpenTagManagement={() => setShowTagManagementModal(true)}
+                          />
+                        ))
+                      : <Empty />}
+                  {isFetchingNextPage && (
+                    <AppCardSkeleton count={3} />
+                  )}
+                </div>
+              </>
             )}
 
         {isCurrentWorkspaceEditor && !showFirstEmptyState && (
@@ -262,7 +295,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
         <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}
-          onTagsChange={refetch}
+          onTagsChange={refreshAppLists}
         />
       </div>
 
@@ -273,7 +306,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
         showNewAppModal={showNewAppModal}
         showNewAppTemplateDialog={showNewAppTemplateDialog}
         onPlanInfoChanged={onPlanInfoChanged}
-        onRefetch={refetch}
+        onRefetch={refreshAppLists}
         onSetDroppedDSLFile={setDroppedDSLFile}
         onSetShowCreateFromDSLModal={setShowCreateFromDSLModal}
         onSetShowNewAppModal={setShowNewAppModal}
