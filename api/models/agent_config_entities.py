@@ -73,7 +73,7 @@ RuntimeParameterValue = JsonPrimitive | list[str] | list[int] | list[float] | li
 
 
 class AgentFlexibleConfig(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.model_dump(mode="python").get(key, default)
@@ -87,10 +87,15 @@ class AgentFlexibleConfig(BaseModel):
 
 class AgentFileRefConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
+    file_id: str | None = Field(default=None, max_length=255)
+    upload_file_id: str | None = Field(default=None, max_length=255)
+    reference: str | None = Field(default=None, max_length=255)
+    tenant_id: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
     transfer_method: str | None = Field(default=None, max_length=64)
     url: str | None = None
+    remote_url: str | None = None
 
 
 class AgentSkillRefConfig(AgentFlexibleConfig):
@@ -101,17 +106,36 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     path: str | None = None
 
 
+class AgentPermissionConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    allowed: bool | None = None
+    status: str | None = Field(default=None, max_length=64)
+    state: str | None = Field(default=None, max_length=64)
+
+
 class AgentCliToolConfig(AgentFlexibleConfig):
     enabled: bool = True
     name: str | None = Field(default=None, max_length=255)
+    tool_name: str | None = Field(default=None, max_length=255)
+    label: str | None = Field(default=None, max_length=255)
     description: str | None = None
     command: str | None = None
-    invoke_metadata: dict[str, Any] = Field(default_factory=dict)
+    install_commands: list[str] = Field(default_factory=list)
+    install_command: str | None = None
+    install: str | None = None
+    setup_command: str | None = None
+    invoke_metadata: dict[str, Any] = Field(default_factory=dict, json_schema_extra={"x-dify-opaque": True})
     pre_authorized: bool | None = None
     authorization_status: AgentCliToolAuthorizationStatus | None = None
-    permission: dict[str, Any] = Field(default_factory=dict)
+    permission: AgentPermissionConfig | None = None
     dangerous: bool = False
+    dangerous_command: bool = False
+    requires_confirmation: bool = False
     dangerous_acknowledged: bool = False
+    dangerous_accepted: bool = False
+    risk_accepted: bool = False
+    approved: bool = False
     risk_level: AgentCliToolRiskLevel | None = None
 
 
@@ -132,8 +156,12 @@ class AgentHumanContactConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
     contact_id: str | None = Field(default=None, max_length=255)
     human_id: str | None = Field(default=None, max_length=255)
+    tenant_id: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
     email: str | None = Field(default=None, max_length=255)
+    channel: str | None = Field(default=None, max_length=64)
+    method: str | None = Field(default=None, max_length=64)
+    contact_method: str | None = Field(default=None, max_length=64)
 
 
 class AgentHumanToolConfig(AgentFlexibleConfig):
@@ -144,17 +172,27 @@ class AgentHumanToolConfig(AgentFlexibleConfig):
 
 class AgentEnvVariableConfig(AgentFlexibleConfig):
     name: str | None = Field(default=None, max_length=255)
+    key: str | None = Field(default=None, max_length=255)
+    env_name: str | None = Field(default=None, max_length=255)
+    variable: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
     value: RuntimeParameterValue = None
+    default: RuntimeParameterValue = None
     required: bool = False
 
 
 class AgentSecretRefConfig(AgentFlexibleConfig):
     name: str | None = Field(default=None, max_length=255)
+    key: str | None = Field(default=None, max_length=255)
+    env_name: str | None = Field(default=None, max_length=255)
+    variable: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
     id: str | None = Field(default=None, max_length=255)
+    ref: str | None = Field(default=None, max_length=255)
+    credential_id: str | None = Field(default=None, max_length=255)
+    provider_credential_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
-    permission: dict[str, Any] = Field(default_factory=dict)
+    permission: AgentPermissionConfig | None = None
     permission_status: str | None = Field(default=None, max_length=64)
 
 
@@ -162,6 +200,7 @@ class AgentSandboxProviderConfig(AgentFlexibleConfig):
     image: str | None = None
     working_dir: str | None = None
     env: list[AgentEnvVariableConfig] = Field(default_factory=list)
+    cpu: int | None = Field(default=None, ge=1)
 
 
 class AgentMemoryArtifactConfig(AgentFlexibleConfig):
@@ -176,7 +215,7 @@ class AgentModelResponseFormatConfig(AgentFlexibleConfig):
 
 
 class AgentSoulModelSettings(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     temperature: float | None = None
     top_p: float | None = None
@@ -241,9 +280,10 @@ class WorkflowPreviousNodeOutputRef(AgentFlexibleConfig):
 
 
 class WorkflowNodeJobMetadata(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     file_refs: list[AgentFileRefConfig] | None = None
+    agent_soul: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
 
 
 class AgentSoulPromptConfig(BaseModel):
@@ -391,7 +431,7 @@ class AppVariableConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: str = Field(min_length=1, max_length=64)
     required: bool = False
-    default: Any = None
+    default: Any = Field(default=None, json_schema_extra={"x-dify-opaque": True})
 
 
 class AgentSoulConfig(BaseModel):
@@ -490,7 +530,7 @@ class DeclaredOutputFailureStrategy(BaseModel):
     # When ``on_failure == DEFAULT_VALUE`` this value replaces the failed output. The
     # value's shape must match the owning ``DeclaredOutputConfig.type``; that match is
     # enforced at ``DeclaredOutputConfig`` level so the strategy stays type-agnostic.
-    default_value: Any = None
+    default_value: Any = Field(default=None, json_schema_extra={"x-dify-opaque": True})
 
     @model_validator(mode="after")
     def _require_default_value_when_default_strategy(self) -> DeclaredOutputFailureStrategy:

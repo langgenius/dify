@@ -853,6 +853,32 @@ export type DraftWorkflowRunPayload = {
   start_node_id: string
 }
 
+export type WorkflowRunSnapshotView = {
+  node_outputs?: Array<NodeOutputsView>
+  workflow_run_id: string
+  workflow_run_status: WorkflowExecutionStatus
+}
+
+export type InspectorEventStreamResponse = string
+
+export type NodeOutputsView = {
+  node_completed_at?: string | null
+  node_display_name: string
+  node_id: string
+  node_kind: string
+  node_started_at?: string | null
+  node_status: NodeStatus
+  outputs?: Array<NodeOutputView>
+}
+
+export type OutputPreviewView = {
+  node_id: string
+  output_name: string
+  status: NodeOutputStatus
+  type?: DeclaredOutputType
+  value?: unknown
+}
+
 export type DraftWorkflowTriggerRunRequest = {
   node_id: string
 }
@@ -1118,21 +1144,18 @@ export type ComposerCandidateCapabilities = {
 
 export type AgentFeatureToggleConfig = {
   enabled?: boolean
-  [key: string]: unknown
 }
 
 export type AgentSensitiveWordAvoidanceFeatureConfig = {
   config?: AgentModerationProviderConfig
   enabled?: boolean
   type?: string | null
-  [key: string]: unknown
 }
 
 export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
   enabled?: boolean
   model?: AgentSoulModelConfig
   prompt?: string | null
-  [key: string]: unknown
 }
 
 export type AgentTextToSpeechFeatureConfig = {
@@ -1140,7 +1163,6 @@ export type AgentTextToSpeechFeatureConfig = {
   enabled?: boolean
   language?: string | null
   voice?: string | null
-  [key: string]: unknown
 }
 
 export type AgentReferencingWorkflowResponse = {
@@ -1479,6 +1501,38 @@ export type AgentComposerImpactBindingResponse = {
   workflow_id: string
 }
 
+export type WorkflowExecutionStatus
+  = | 'failed'
+    | 'partial-succeeded'
+    | 'paused'
+    | 'running'
+    | 'scheduled'
+    | 'stopped'
+    | 'succeeded'
+
+export type NodeStatus = 'failed' | 'idle' | 'ready' | 'running'
+
+export type NodeOutputView = {
+  name: string
+  output_check?: CheckResultView
+  retried?: number
+  status: NodeOutputStatus
+  type?: DeclaredOutputType
+  type_check?: CheckResultView
+  value_preview?: unknown
+}
+
+export type NodeOutputStatus
+  = | 'failed'
+    | 'not_produced'
+    | 'output_check_failed'
+    | 'pending'
+    | 'ready'
+    | 'running'
+    | 'type_check_failed'
+
+export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+
 export type WorkflowDraftVariableWithoutValue = {
   description?: string
   edited?: boolean
@@ -1539,7 +1593,6 @@ export type AgentSoulAppFeaturesConfig = {
   suggested_questions?: Array<string> | null
   suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig
   text_to_speech?: AgentTextToSpeechFeatureConfig
-  [key: string]: unknown
 }
 
 export type AppVariableConfig = {
@@ -1599,17 +1652,22 @@ export type AgentSoulToolsConfig = {
 }
 
 export type AgentHumanContactConfig = {
+  channel?: string | null
   contact_id?: string | null
+  contact_method?: string | null
   email?: string | null
   human_id?: string | null
   id?: string | null
+  method?: string | null
   name?: string | null
-  [key: string]: unknown
+  tenant_id?: string | null
 }
 
 export type WorkflowNodeJobMetadata = {
+  agent_soul?: {
+    [key: string]: unknown
+  } | null
   file_refs?: Array<AgentFileRefConfig> | null
-  [key: string]: unknown
 }
 
 export type WorkflowNodeJobMode = 'let_agent_figure_it_out' | 'tell_agent_what_to_do'
@@ -1623,28 +1681,33 @@ export type WorkflowPreviousNodeOutputRef = {
   value_selector?: Array<unknown> | null
   variable?: string | null
   variable_selector?: Array<unknown> | null
-  [key: string]: unknown
 }
 
-export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
-
 export type AgentCliToolConfig = {
+  approved?: boolean
   authorization_status?: AgentCliToolAuthorizationStatus
   command?: string | null
   dangerous?: boolean
+  dangerous_accepted?: boolean
   dangerous_acknowledged?: boolean
+  dangerous_command?: boolean
   description?: string | null
   enabled?: boolean
+  install?: string | null
+  install_command?: string | null
+  install_commands?: Array<string>
   invoke_metadata?: {
     [key: string]: unknown
   }
+  label?: string | null
   name?: string | null
-  permission?: {
-    [key: string]: unknown
-  }
+  permission?: AgentPermissionConfig
   pre_authorized?: boolean | null
+  requires_confirmation?: boolean
+  risk_accepted?: boolean
   risk_level?: AgentCliToolRiskLevel
-  [key: string]: unknown
+  setup_command?: string | null
+  tool_name?: string | null
 }
 
 export type AgentComposerDifyToolCandidateResponse = {
@@ -1660,7 +1723,6 @@ export type AgentKnowledgeDatasetConfig = {
   description?: string | null
   id?: string | null
   name?: string | null
-  [key: string]: unknown
 }
 
 export type AgentSkillRefConfig = {
@@ -1669,7 +1731,6 @@ export type AgentSkillRefConfig = {
   id?: string | null
   name?: string | null
   path?: string | null
-  [key: string]: unknown
 }
 
 export type AgentModerationProviderConfig = {
@@ -1677,7 +1738,6 @@ export type AgentModerationProviderConfig = {
   inputs_config?: AgentModerationIoConfig
   keywords?: string | null
   outputs_config?: AgentModerationIoConfig
-  [key: string]: unknown
 }
 
 export type SimpleModelConfig = {
@@ -1776,31 +1836,41 @@ export type DeclaredOutputFileConfig = {
   mime_types?: Array<string>
 }
 
+export type CheckResultView = {
+  passed: boolean
+  reason?: string | null
+}
+
 export type AgentSecretRefConfig = {
+  credential_id?: string | null
+  env_name?: string | null
   id?: string | null
+  key?: string | null
   name?: string | null
-  permission?: {
-    [key: string]: unknown
-  }
+  permission?: AgentPermissionConfig
   permission_status?: string | null
   provider?: string | null
+  provider_credential_id?: string | null
+  ref?: string | null
   type?: string | null
-  [key: string]: unknown
+  variable?: string | null
 }
 
 export type AgentEnvVariableConfig = {
+  default?: unknown
+  env_name?: string | null
+  key?: string | null
   name?: string | null
   required?: boolean
   type?: string | null
   value?: unknown
-  [key: string]: unknown
+  variable?: string | null
 }
 
 export type AgentHumanToolConfig = {
   description?: string | null
   enabled?: boolean
   name?: string | null
-  [key: string]: unknown
 }
 
 export type AgentKnowledgeQueryConfig = {
@@ -1808,7 +1878,6 @@ export type AgentKnowledgeQueryConfig = {
   score_threshold?: number | null
   score_threshold_enabled?: boolean | null
   top_k?: number | null
-  [key: string]: unknown
 }
 
 export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
@@ -1818,7 +1887,6 @@ export type AgentMemoryArtifactConfig = {
   name?: string | null
   type?: string | null
   url?: string | null
-  [key: string]: unknown
 }
 
 export type AgentSoulModelCredentialRef = {
@@ -1835,23 +1903,26 @@ export type AgentSoulModelSettings = {
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
-  [key: string]: unknown
 }
 
 export type AgentSandboxProviderConfig = {
+  cpu?: number | null
   env?: Array<AgentEnvVariableConfig>
   image?: string | null
   working_dir?: string | null
-  [key: string]: unknown
 }
 
 export type AgentFileRefConfig = {
+  file_id?: string | null
   id?: string | null
   name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
   transfer_method?: string | null
   type?: string | null
+  upload_file_id?: string | null
   url?: string | null
-  [key: string]: unknown
 }
 
 export type AgentSoulDifyToolConfig = {
@@ -1880,12 +1951,17 @@ export type AgentCliToolAuthorizationStatus
     | 'pre_authorized'
     | 'unauthorized'
 
+export type AgentPermissionConfig = {
+  allowed?: boolean | null
+  state?: string | null
+  status?: string | null
+}
+
 export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
 
 export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
-  [key: string]: unknown
 }
 
 export type UserActionConfig = {
@@ -1908,7 +1984,6 @@ export type DeclaredOutputRetryConfig = {
 
 export type AgentModelResponseFormatConfig = {
   type?: string | null
-  [key: string]: unknown
 }
 
 export type AgentSoulDifyToolCredentialRef = {
@@ -5301,9 +5376,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsError
   = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowRunSnapshotView
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse
@@ -5329,9 +5402,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsError
   = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: InspectorEventStreamResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse
@@ -5358,9 +5429,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdError
   = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: NodeOutputsView
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse
@@ -5389,9 +5458,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNa
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: OutputPreviewView
   }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
@@ -5673,9 +5740,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsError
   = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowRunSnapshotView
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse
@@ -5701,9 +5766,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsError
   = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: InspectorEventStreamResponse
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse
@@ -5730,9 +5793,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdError
   = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: NodeOutputsView
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse
@@ -5763,9 +5824,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutp
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: OutputPreviewView
   }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
