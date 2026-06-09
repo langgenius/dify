@@ -222,7 +222,7 @@
   "newAppFromTemplate.sidebar.Assistant": "Assistant",
   "newAppFromTemplate.sidebar.HR": "RH",
   "newAppFromTemplate.sidebar.Programming": "Programmation",
-  "newAppFromTemplate.sidebar.Recommended": "Recommandé",
+  "newAppFromTemplate.sidebar.Recommended": "Tous",
   "newAppFromTemplate.sidebar.Workflow": "Flux de travail",
   "newAppFromTemplate.sidebar.Writing": "Écriture",
   "noAccessPermission": "Pas de permission d'accéder à l'application web",
