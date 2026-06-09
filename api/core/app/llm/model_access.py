@@ -58,8 +58,12 @@ class DifyCredentialsProvider:
         self.credentials_cache = {}
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
-        # Check for per-run credential override for this provider
-        override_credential_id = self.credential_overrides.get(provider_name)
+        # Check for per-run credential override for this provider (accept provider aliases)
+        override_credential_id = None
+        for provider_alias in ProviderManager._get_provider_names(provider_name):
+            override_credential_id = self.credential_overrides.get(provider_alias)
+            if override_credential_id:
+                break
         if override_credential_id:
             cache_key_override = (f"__override__{provider_name}", override_credential_id)
             if cache_key_override in self.credentials_cache:
@@ -114,7 +118,7 @@ class DifyCredentialsProvider:
                 f"Credential '{credential_id}' not found or does not belong to this workspace."
             )
 
-        if credential_record.provider_name != provider_name:
+        if credential_record.provider_name not in ProviderManager._get_provider_names(provider_name):
             raise ValueError(
                 f"Credential '{credential_id}' belongs to provider '{credential_record.provider_name}', "
                 f"but was requested for provider '{provider_name}'."
