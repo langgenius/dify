@@ -1,7 +1,6 @@
 import { API_PREFIX } from '@/config'
 import { fetchWithRetry } from '@/utils'
 import { isClient } from '@/utils/client'
-import { withWorkspaceIdHeader } from './workspace-id-header'
 
 const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
 
@@ -50,9 +49,9 @@ async function getNewAccessToken(timeout: number): Promise<void> {
       const [error, ret] = await fetchWithRetry(globalThis.fetch(`${API_PREFIX}/refresh-token`, {
         method: 'POST',
         credentials: 'include', // Important: include cookies in the request
-        headers: withWorkspaceIdHeader({
+        headers: {
           'Content-Type': 'application/json;utf-8',
-        }),
+        },
         // No body needed - refresh token is in cookie
       }))
       if (error) {

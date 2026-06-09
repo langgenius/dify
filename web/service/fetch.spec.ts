@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { base, postWithKeepalive } from './fetch'
-import { setCurrentWorkspaceId } from './workspace-id-header'
+import { base } from './fetch'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -14,60 +13,6 @@ const { toast } = await import('@langgenius/dify-ui/toast')
 describe('base', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setCurrentWorkspaceId('')
-  })
-
-  describe('Workspace header', () => {
-    it('should attach the current workspace id to Dify API requests', async () => {
-      // Arrange
-      setCurrentWorkspaceId('tenant-id')
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
-        JSON.stringify({ result: 'success' }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ))
-
-      // Act
-      await base('/apps')
-
-      // Assert
-      const [, requestInit] = vi.mocked(globalThis.fetch).mock.calls[0]!
-      expect(new Headers(requestInit?.headers).get('X-Workspace-Id')).toBe('tenant-id')
-    })
-
-    it('should not attach the current workspace id to Marketplace API requests', async () => {
-      // Arrange
-      setCurrentWorkspaceId('tenant-id')
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
-        JSON.stringify({ result: 'success' }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ))
-
-      // Act
-      await base('/plugins', {}, { isMarketplaceAPI: true })
-
-      // Assert
-      const [, requestInit] = vi.mocked(globalThis.fetch).mock.calls[0]!
-      expect(new Headers(requestInit?.headers).has('X-Workspace-Id')).toBe(false)
-    })
-
-    it('should attach the current workspace id to keepalive requests', () => {
-      // Arrange
-      setCurrentWorkspaceId('tenant-id')
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }))
-
-      // Act
-      postWithKeepalive('/apps/app-1/draft', { foo: 'bar' })
-
-      // Assert
-      const [, requestInit] = vi.mocked(globalThis.fetch).mock.calls[0]!
-      expect(new Headers(requestInit?.headers).get('X-Workspace-Id')).toBe('tenant-id')
-    })
   })
 
   describe('Error responses', () => {

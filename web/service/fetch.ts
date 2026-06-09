@@ -5,7 +5,6 @@ import Cookies from 'js-cookie'
 import ky, { HTTPError } from 'ky'
 import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
-import { withWorkspaceIdHeader } from './workspace-id-header'
 
 const TIME_OUT = 100000
 
@@ -169,7 +168,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     request,
   } = otherOptions
 
-  const headers = withWorkspaceIdHeader(headersFromProps || {}, { isMarketplaceAPI })
+  const headers = new Headers(headersFromProps || {})
 
   let base: string
   if (isMarketplaceAPI)
@@ -261,7 +260,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
  * standard `base()` fetch wrapper.
  */
 export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
-  const headers = withWorkspaceIdHeader({
+  const headers = new Headers({
     'Content-Type': ContentType.json,
     [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
   })

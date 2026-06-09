@@ -36,7 +36,6 @@ import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPassport } from './webapp-auth'
-import { applyWorkspaceIdHeader, getCurrentWorkspaceId, WORKSPACE_ID_HEADER } from './workspace-id-header'
 
 const TIME_OUT = 100000
 
@@ -432,9 +431,6 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
     url: options.url || defaultOptions.url,
     headers: { ...defaultOptions.headers, ...options.headers } as Record<string, string>,
   }
-  const currentWorkspaceId = getCurrentWorkspaceId()
-  if (currentWorkspaceId)
-    mergedOptions.headers[WORKSPACE_ID_HEADER] = currentWorkspaceId
   return new Promise((resolve, reject) => {
     const xhr = mergedOptions.xhr
     xhr.open(mergedOptions.method, mergedOptions.url)
@@ -513,7 +509,7 @@ export const ssePost = async (
       [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
-  options.headers = applyWorkspaceIdHeader(new Headers(options.headers))
+  options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
   if (!contentType)
@@ -665,7 +661,7 @@ export const sseGet = async (
       [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
-  options.headers = applyWorkspaceIdHeader(new Headers(options.headers))
+  options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
   if (!contentType)
