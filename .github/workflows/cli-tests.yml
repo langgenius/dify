@@ -37,6 +37,11 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Validate release manifest
         if: matrix.os == 'depot-ubuntu-24.04'
         run: scripts/release-validate-manifest.sh
