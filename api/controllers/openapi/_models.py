@@ -440,6 +440,29 @@ class TaskStopResponse(BaseModel):
     result: Literal["success"]
 
 
+class AppDslImportPayload(BaseModel):
+    """Request body for POST /workspaces/<workspace_id>/apps/imports."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: str = Field(..., description="Import mode: yaml-content or yaml-url")
+    yaml_content: str | None = Field(None, description="Inline YAML DSL string (required when mode is yaml-content)")
+    yaml_url: str | None = Field(None, description="Remote URL to fetch YAML from (required when mode is yaml-url)")
+    name: str | None = Field(None, description="Override the app name from the DSL")
+    description: str | None = Field(None, description="Override the app description from the DSL")
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+    app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
+
+
+class AppDslExportQuery(BaseModel):
+    """Query parameters for GET /apps/<app_id>/export."""
+
+    include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
+    workflow_id: str | None = Field(None, description="Export a specific workflow version instead of the current draft")
+
+
 class FormSubmitResponse(BaseModel):
     """Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
     pins `additionalProperties: false` so the generated contract is an exact `{}` rather
