@@ -147,7 +147,7 @@
     }
   },
   "scripts": {
-    "storybook": "storybook dev",
+    "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "test": "vp test",
     "test:watch": "vp test --watch",

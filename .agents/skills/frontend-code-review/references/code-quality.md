@@ -29,10 +29,11 @@ Prefer:
 Flag:
 
 - New CSS modules or ad hoc CSS when Tailwind utilities and Dify tokens cover the need.
+- Component-level plain `.css` files or component CSS imported through `globals.css`; use scoped `*.module.css` only when Tailwind and component variants cannot express the style.
 - Generic color utilities where Dify semantic tokens exist.
 - Hardcoded magic class values for colors, spacing, radius, shadow, z-index, or typography when Dify tokens, component variants, or documented radius mappings exist.
 - `!` important modifiers or important CSS overrides without a narrow, documented reason.
-- Manual string concatenation for conditional classes.
+- Manual string concatenation, template strings, array `.join(' ')`, or custom ternaries for conditional or multi-line classes.
 - JS conditional class branches for primitive visual states already exposed by Dify UI/Base UI `data-*` selectors.
 - Incoming `className` placed before default classes in `cn(...)`, preventing call-site overrides.
 - Arbitrary z-index or one-off layering fixes on overlays.
@@ -59,8 +60,9 @@ Flag:
 Flag:
 
 - User-facing hardcoded strings in `web/`.
+- Added or renamed i18n keys that are not present in every supported locale file for the touched namespace.
 - Translation namespace drift, especially using unrelated module namespaces for local feature copy.
 - Generic button labels like `Continue` where the action is specific.
 - Error messages that state only the failure and not the next step.
 
-Use feature-local translation keys by default. Alias only when crossing namespaces.
+Use feature-local translation keys by default. Alias only when crossing namespaces. `pnpm i18n:check --file <name>` should pass for any touched translation namespace.
