@@ -245,10 +245,10 @@ export const BothAxes: Story = {
       <div className={cn(panelClassName, 'h-85 w-full max-w-140')}>
         <ScrollAreaRoot className={cn(rootClassName, 'h-full p-1')}>
           <ScrollAreaViewport aria-label="Numbered grid" role="region" className={viewportClassName}>
-            <ScrollAreaContent className="p-4">
+            <ScrollAreaContent className="pt-3 pr-6 pb-6 pl-3">
               <div className="grid grid-cols-[repeat(10,6.25rem)] grid-rows-[repeat(10,6.25rem)] gap-3">
                 {gridCells.map(cell => (
-                  <div key={cell} className="flex items-center justify-center rounded-xl border border-divider-subtle bg-components-panel-bg-alt tabular-nums system-md-semibold text-text-secondary">
+                  <div key={cell} className="flex items-center justify-center rounded-lg border border-divider-subtle bg-components-panel-bg-alt tabular-nums system-md-semibold text-text-secondary">
                     {cell}
                   </div>
                 ))}
@@ -261,7 +261,7 @@ export const BothAxes: Story = {
           <ScrollAreaScrollbar orientation="horizontal" className={scrollbarClassName}>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
-          <ScrollAreaCorner className="bg-components-panel-bg-alt" />
+          <ScrollAreaCorner />
         </ScrollAreaRoot>
       </div>
     </StorySection>
