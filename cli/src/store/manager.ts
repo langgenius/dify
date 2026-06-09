@@ -62,7 +62,7 @@ export function detectTokenStore(opts: GetTokenStoreOptions = {}): { store: Toke
   try {
     const k = TOKEN_STORE_OPENERS.keychain(opts)
     k.write(PROBE_HOST, PROBE_EMAIL, PROBE_VALUE)
-    let got: string
+    let got = ''
     try {
       got = k.read(PROBE_HOST, PROBE_EMAIL)
     }

@@ -26,8 +26,16 @@ export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
     return inputs.env
   }
   const wsId = inputs.active?.ctx.workspace?.id
-  if (truthy(wsId))
+  if (truthy(wsId)) {
+    if (!isValidUuid(wsId)) {
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: `stored workspace ID ${JSON.stringify(wsId)} is not a valid UUID`,
+        hint: 'run \'difyctl use workspace\' to update your active workspace',
+      })
+    }
     return wsId
+  }
   throw new BaseError({
     code: ErrorCode.UsageMissingArg,
     message: 'no workspace selected',

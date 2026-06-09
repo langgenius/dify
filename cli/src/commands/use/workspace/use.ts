@@ -72,7 +72,7 @@ async function pickWorkspaceId(client: WorkspacesClient, deps: UseWorkspaceDeps)
   const items = list.workspaces.map<Workspace>(w => ({ id: w.id, name: w.name, role: w.role }))
   if (items.length === 0) {
     throw new BaseError({
-      code: ErrorCode.UsageMissingArg,
+      code: ErrorCode.AccessDenied,
       message: 'no workspaces available to switch to',
     })
   }
