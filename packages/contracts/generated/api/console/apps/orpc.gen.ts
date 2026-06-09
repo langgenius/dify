@@ -269,6 +269,10 @@ import {
   zPostAppsByAppIdAgentFeaturesBody,
   zPostAppsByAppIdAgentFeaturesPath,
   zPostAppsByAppIdAgentFeaturesResponse,
+  zPostAppsByAppIdAgentSkillsStandardizePath,
+  zPostAppsByAppIdAgentSkillsStandardizeResponse,
+  zPostAppsByAppIdAgentSkillsUploadPath,
+  zPostAppsByAppIdAgentSkillsUploadResponse,
   zPostAppsByAppIdAnnotationReplyByActionBody,
   zPostAppsByAppIdAnnotationReplyByActionPath,
   zPostAppsByAppIdAnnotationReplyByActionResponse,
@@ -1036,8 +1040,74 @@ export const logs = {
   get: get10,
 }
 
+/**
+ * Upload a Skill, validate it, and standardize it into the app agent's drive
+ *
+ * Validate + standardize a Skill into the agent drive (ENG-594)
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const post11 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Validate + standardize a Skill into the agent drive (ENG-594)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdAgentSkillsStandardize',
+    path: '/apps/{app_id}/agent/skills/standardize',
+    successStatus: 201,
+    summary: 'Upload a Skill, validate it, and standardize it into the app agent\'s drive',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdAgentSkillsStandardizePath }))
+  .output(zPostAppsByAppIdAgentSkillsStandardizeResponse)
+
+export const standardize = {
+  post: post11,
+}
+
+/**
+ * Validate an uploaded Skill package and persist the archive
+ *
+ * Upload + validate a Skill package (.zip/.skill) and extract its manifest
+ * Returns a validated skill ref (to bind into the Agent soul config on save)
+ * plus its manifest. Standardizing into the agent drive is ENG-594.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const post12 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Upload + validate a Skill package (.zip/.skill) and extract its manifest\nReturns a validated skill ref (to bind into the Agent soul config on save)\nplus its manifest. Standardizing into the agent drive is ENG-594.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdAgentSkillsUpload',
+    path: '/apps/{app_id}/agent/skills/upload',
+    successStatus: 201,
+    summary: 'Validate an uploaded Skill package and persist the archive',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdAgentSkillsUploadPath }))
+  .output(zPostAppsByAppIdAgentSkillsUploadResponse)
+
+export const upload = {
+  post: post12,
+}
+
+export const skills = {
+  standardize,
+  upload,
+}
+
 export const agent = {
   logs,
+  skills,
 }
 
 /**
@@ -1076,7 +1146,7 @@ export const status = {
  *
  * @deprecated
  */
-export const post11 = oc
+export const post13 = oc
   .route({
     deprecated: true,
     description:
@@ -1096,7 +1166,7 @@ export const post11 = oc
   .output(zPostAppsByAppIdAnnotationReplyByActionResponse)
 
 export const byAction = {
-  post: post11,
+  post: post13,
   status,
 }
 
@@ -1136,7 +1206,7 @@ export const annotationSetting = {
  *
  * @deprecated
  */
-export const post12 = oc
+export const post14 = oc
   .route({
     deprecated: true,
     description:
@@ -1156,7 +1226,7 @@ export const post12 = oc
   .output(zPostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponse)
 
 export const byAnnotationSettingId = {
-  post: post12,
+  post: post14,
 }
 
 export const annotationSettings = {
@@ -1170,7 +1240,7 @@ export const annotationSettings = {
  *
  * @deprecated
  */
-export const post13 = oc
+export const post15 = oc
   .route({
     deprecated: true,
     description:
@@ -1185,7 +1255,7 @@ export const post13 = oc
   .output(zPostAppsByAppIdAnnotationsBatchImportResponse)
 
 export const batchImport = {
-  post: post13,
+  post: post15,
 }
 
 /**
@@ -1305,7 +1375,7 @@ export const delete_ = oc
  *
  * @deprecated
  */
-export const post14 = oc
+export const post16 = oc
   .route({
     deprecated: true,
     description:
@@ -1326,7 +1396,7 @@ export const post14 = oc
 
 export const byAnnotationId = {
   delete: delete_,
-  post: post14,
+  post: post16,
   hitHistories,
 }
 
@@ -1382,7 +1452,7 @@ export const get17 = oc
  *
  * @deprecated
  */
-export const post15 = oc
+export const post17 = oc
   .route({
     deprecated: true,
     description:
@@ -1402,7 +1472,7 @@ export const post15 = oc
 export const annotations = {
   delete: delete2,
   get: get17,
-  post: post15,
+  post: post17,
   batchImport,
   batchImportStatus,
   count: count2,
@@ -1417,7 +1487,7 @@ export const annotations = {
  *
  * @deprecated
  */
-export const post16 = oc
+export const post18 = oc
   .route({
     deprecated: true,
     description:
@@ -1432,13 +1502,13 @@ export const post16 = oc
   .output(zPostAppsByAppIdApiEnableResponse)
 
 export const apiEnable = {
-  post: post16,
+  post: post18,
 }
 
 /**
  * Transcript audio to text for chat messages
  */
-export const post17 = oc
+export const post19 = oc
   .route({
     description: 'Transcript audio to text for chat messages',
     inputStructure: 'detailed',
@@ -1451,7 +1521,7 @@ export const post17 = oc
   .output(zPostAppsByAppIdAudioToTextResponse)
 
 export const audioToText = {
-  post: post17,
+  post: post19,
 }
 
 /**
@@ -1547,7 +1617,7 @@ export const byMessageId = {
 /**
  * Stop a running chat message generation
  */
-export const post18 = oc
+export const post20 = oc
   .route({
     description: 'Stop a running chat message generation',
     inputStructure: 'detailed',
@@ -1560,7 +1630,7 @@ export const post18 = oc
   .output(zPostAppsByAppIdChatMessagesByTaskIdStopResponse)
 
 export const stop = {
-  post: post18,
+  post: post20,
 }
 
 export const byTaskId = {
@@ -1666,7 +1736,7 @@ export const completionConversations = {
 /**
  * Stop a running completion message generation
  */
-export const post19 = oc
+export const post21 = oc
   .route({
     description: 'Stop a running completion message generation',
     inputStructure: 'detailed',
@@ -1679,7 +1749,7 @@ export const post19 = oc
   .output(zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse)
 
 export const stop2 = {
-  post: post19,
+  post: post21,
 }
 
 export const byTaskId2 = {
@@ -1693,7 +1763,7 @@ export const byTaskId2 = {
  *
  * @deprecated
  */
-export const post20 = oc
+export const post22 = oc
   .route({
     deprecated: true,
     description:
@@ -1713,7 +1783,7 @@ export const post20 = oc
   .output(zPostAppsByAppIdCompletionMessagesResponse)
 
 export const completionMessages = {
-  post: post20,
+  post: post22,
   byTaskId: byTaskId2,
 }
 
@@ -1748,7 +1818,7 @@ export const conversationVariables = {
  * Convert expert mode of chatbot app to workflow mode
  * Convert Completion App to Workflow App
  */
-export const post21 = oc
+export const post23 = oc
   .route({
     description:
       'Convert application to workflow mode\nConvert expert mode of chatbot app to workflow mode\nConvert Completion App to Workflow App',
@@ -1768,7 +1838,7 @@ export const post21 = oc
   .output(zPostAppsByAppIdConvertToWorkflowResponse)
 
 export const convertToWorkflow = {
-  post: post21,
+  post: post23,
 }
 
 /**
@@ -1780,7 +1850,7 @@ export const convertToWorkflow = {
  *
  * @deprecated
  */
-export const post22 = oc
+export const post24 = oc
   .route({
     deprecated: true,
     description:
@@ -1797,7 +1867,7 @@ export const post22 = oc
   .output(zPostAppsByAppIdCopyResponse)
 
 export const copy = {
-  post: post22,
+  post: post24,
 }
 
 /**
@@ -1857,7 +1927,7 @@ export const export3 = {
 /**
  * Create or update message feedback (like/dislike)
  */
-export const post23 = oc
+export const post25 = oc
   .route({
     description: 'Create or update message feedback (like/dislike)',
     inputStructure: 'detailed',
@@ -1870,7 +1940,7 @@ export const post23 = oc
   .output(zPostAppsByAppIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post23,
+  post: post25,
   export: export3,
 }
 
@@ -1881,7 +1951,7 @@ export const feedbacks = {
  *
  * @deprecated
  */
-export const post24 = oc
+export const post26 = oc
   .route({
     deprecated: true,
     description:
@@ -1896,7 +1966,7 @@ export const post24 = oc
   .output(zPostAppsByAppIdIconResponse)
 
 export const icon = {
-  post: post24,
+  post: post26,
 }
 
 /**
@@ -1937,7 +2007,7 @@ export const messages = {
  *
  * @deprecated
  */
-export const post25 = oc
+export const post27 = oc
   .route({
     deprecated: true,
     description:
@@ -1955,7 +2025,7 @@ export const post25 = oc
   .output(zPostAppsByAppIdModelConfigResponse)
 
 export const modelConfig = {
-  post: post25,
+  post: post27,
 }
 
 /**
@@ -1965,7 +2035,7 @@ export const modelConfig = {
  *
  * @deprecated
  */
-export const post26 = oc
+export const post28 = oc
   .route({
     deprecated: true,
     description:
@@ -1980,13 +2050,13 @@ export const post26 = oc
   .output(zPostAppsByAppIdNameResponse)
 
 export const name = {
-  post: post26,
+  post: post28,
 }
 
 /**
  * Publish app to Creators Platform
  */
-export const post27 = oc
+export const post29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1999,7 +2069,7 @@ export const post27 = oc
   .output(zPostAppsByAppIdPublishToCreatorsPlatformResponse)
 
 export const publishToCreatorsPlatform = {
-  post: post27,
+  post: post29,
 }
 
 /**
@@ -2030,7 +2100,7 @@ export const get28 = oc
  *
  * @deprecated
  */
-export const post28 = oc
+export const post30 = oc
   .route({
     deprecated: true,
     description:
@@ -2068,14 +2138,14 @@ export const put2 = oc
 
 export const server = {
   get: get28,
-  post: post28,
+  post: post30,
   put: put2,
 }
 
 /**
  * Reset access token for application site
  */
-export const post29 = oc
+export const post31 = oc
   .route({
     description: 'Reset access token for application site',
     inputStructure: 'detailed',
@@ -2088,13 +2158,13 @@ export const post29 = oc
   .output(zPostAppsByAppIdSiteAccessTokenResetResponse)
 
 export const accessTokenReset = {
-  post: post29,
+  post: post31,
 }
 
 /**
  * Update application site configuration
  */
-export const post30 = oc
+export const post32 = oc
   .route({
     description: 'Update application site configuration',
     inputStructure: 'detailed',
@@ -2107,7 +2177,7 @@ export const post30 = oc
   .output(zPostAppsByAppIdSiteResponse)
 
 export const site = {
-  post: post30,
+  post: post32,
   accessTokenReset,
 }
 
@@ -2118,7 +2188,7 @@ export const site = {
  *
  * @deprecated
  */
-export const post31 = oc
+export const post33 = oc
   .route({
     deprecated: true,
     description:
@@ -2133,7 +2203,7 @@ export const post31 = oc
   .output(zPostAppsByAppIdSiteEnableResponse)
 
 export const siteEnable = {
-  post: post31,
+  post: post33,
 }
 
 /**
@@ -2424,7 +2494,7 @@ export const voices = {
  *
  * @deprecated
  */
-export const post32 = oc
+export const post34 = oc
   .route({
     deprecated: true,
     description:
@@ -2441,7 +2511,7 @@ export const post32 = oc
   .output(zPostAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post32,
+  post: post34,
   voices,
 }
 
@@ -2472,7 +2542,7 @@ export const get38 = oc
 /**
  * Update app tracing configuration
  */
-export const post33 = oc
+export const post35 = oc
   .route({
     description: 'Update app tracing configuration',
     inputStructure: 'detailed',
@@ -2486,7 +2556,7 @@ export const post33 = oc
 
 export const trace = {
   get: get38,
-  post: post33,
+  post: post35,
 }
 
 /**
@@ -2571,7 +2641,7 @@ export const patch = oc
  *
  * @deprecated
  */
-export const post34 = oc
+export const post36 = oc
   .route({
     deprecated: true,
     description:
@@ -2593,13 +2663,13 @@ export const traceConfig = {
   delete: delete5,
   get: get39,
   patch,
-  post: post34,
+  post: post36,
 }
 
 /**
  * Update app trigger (enable/disable)
  */
-export const post35 = oc
+export const post37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2617,7 +2687,7 @@ export const post35 = oc
   .output(zPostAppsByAppIdTriggerEnableResponse)
 
 export const triggerEnable = {
-  post: post35,
+  post: post37,
 }
 
 /**
@@ -2725,7 +2795,7 @@ export const count3 = {
  *
  * Stop running workflow task
  */
-export const post36 = oc
+export const post38 = oc
   .route({
     description: 'Stop running workflow task',
     inputStructure: 'detailed',
@@ -2739,7 +2809,7 @@ export const post36 = oc
   .output(zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post36,
+  post: post38,
 }
 
 export const byTaskId3 = {
@@ -3016,7 +3086,7 @@ export const byReplyId = {
  *
  * Add a reply to a workflow comment
  */
-export const post37 = oc
+export const post39 = oc
   .route({
     description: 'Add a reply to a workflow comment',
     inputStructure: 'detailed',
@@ -3036,7 +3106,7 @@ export const post37 = oc
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponse)
 
 export const replies = {
-  post: post37,
+  post: post39,
   byReplyId,
 }
 
@@ -3045,7 +3115,7 @@ export const replies = {
  *
  * Resolve a workflow comment
  */
-export const post38 = oc
+export const post40 = oc
   .route({
     description: 'Resolve a workflow comment',
     inputStructure: 'detailed',
@@ -3059,7 +3129,7 @@ export const post38 = oc
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse)
 
 export const resolve = {
-  post: post38,
+  post: post40,
 }
 
 /**
@@ -3153,7 +3223,7 @@ export const get53 = oc
  *
  * Create a new workflow comment
  */
-export const post39 = oc
+export const post41 = oc
   .route({
     description: 'Create a new workflow comment',
     inputStructure: 'detailed',
@@ -3174,7 +3244,7 @@ export const post39 = oc
 
 export const comments = {
   get: get53,
-  post: post39,
+  post: post41,
   mentionUsers,
   byCommentId,
 }
@@ -3401,7 +3471,7 @@ export const get60 = oc
  *
  * @deprecated
  */
-export const post40 = oc
+export const post42 = oc
   .route({
     deprecated: true,
     description:
@@ -3422,7 +3492,7 @@ export const post40 = oc
 
 export const conversationVariables2 = {
   get: get60,
-  post: post40,
+  post: post42,
 }
 
 /**
@@ -3456,7 +3526,7 @@ export const get61 = oc
  *
  * @deprecated
  */
-export const post41 = oc
+export const post43 = oc
   .route({
     deprecated: true,
     description:
@@ -3477,7 +3547,7 @@ export const post41 = oc
 
 export const environmentVariables = {
   get: get61,
-  post: post41,
+  post: post43,
 }
 
 /**
@@ -3487,7 +3557,7 @@ export const environmentVariables = {
  *
  * @deprecated
  */
-export const post42 = oc
+export const post44 = oc
   .route({
     deprecated: true,
     description:
@@ -3507,7 +3577,7 @@ export const post42 = oc
   .output(zPostAppsByAppIdWorkflowsDraftFeaturesResponse)
 
 export const features = {
-  post: post42,
+  post: post44,
 }
 
 /**
@@ -3519,7 +3589,7 @@ export const features = {
  *
  * @deprecated
  */
-export const post43 = oc
+export const post45 = oc
   .route({
     deprecated: true,
     description:
@@ -3540,7 +3610,7 @@ export const post43 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse)
 
 export const deliveryTest = {
-  post: post43,
+  post: post45,
 }
 
 /**
@@ -3552,7 +3622,7 @@ export const deliveryTest = {
  *
  * @deprecated
  */
-export const post44 = oc
+export const post46 = oc
   .route({
     deprecated: true,
     description:
@@ -3573,7 +3643,7 @@ export const post44 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
 
 export const preview4 = {
-  post: post44,
+  post: post46,
 }
 
 /**
@@ -3585,7 +3655,7 @@ export const preview4 = {
  *
  * @deprecated
  */
-export const post45 = oc
+export const post47 = oc
   .route({
     deprecated: true,
     description:
@@ -3606,7 +3676,7 @@ export const post45 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
 
 export const run5 = {
-  post: post45,
+  post: post47,
 }
 
 export const form2 = {
@@ -3636,7 +3706,7 @@ export const humanInput2 = {
  *
  * @deprecated
  */
-export const post46 = oc
+export const post48 = oc
   .route({
     deprecated: true,
     description:
@@ -3657,7 +3727,7 @@ export const post46 = oc
   .output(zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
 
 export const run6 = {
-  post: post46,
+  post: post48,
 }
 
 export const byNodeId6 = {
@@ -3681,7 +3751,7 @@ export const iteration2 = {
  *
  * @deprecated
  */
-export const post47 = oc
+export const post49 = oc
   .route({
     deprecated: true,
     description:
@@ -3702,7 +3772,7 @@ export const post47 = oc
   .output(zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
 
 export const run7 = {
-  post: post47,
+  post: post49,
 }
 
 export const byNodeId7 = {
@@ -3747,7 +3817,7 @@ export const candidates2 = {
  *
  * @deprecated
  */
-export const post48 = oc
+export const post50 = oc
   .route({
     deprecated: true,
     description:
@@ -3767,7 +3837,7 @@ export const post48 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
 
 export const impact = {
-  post: post48,
+  post: post50,
 }
 
 /**
@@ -3775,7 +3845,7 @@ export const impact = {
  *
  * @deprecated
  */
-export const post49 = oc
+export const post51 = oc
   .route({
     deprecated: true,
     description:
@@ -3795,7 +3865,7 @@ export const post49 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
 
 export const saveToRoster = {
-  post: post49,
+  post: post51,
 }
 
 /**
@@ -3803,7 +3873,7 @@ export const saveToRoster = {
  *
  * @deprecated
  */
-export const post50 = oc
+export const post52 = oc
   .route({
     deprecated: true,
     description:
@@ -3823,7 +3893,7 @@ export const post50 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
 
 export const validate2 = {
-  post: post50,
+  post: post52,
 }
 
 /**
@@ -3906,7 +3976,7 @@ export const lastRun = {
  *
  * @deprecated
  */
-export const post51 = oc
+export const post53 = oc
   .route({
     deprecated: true,
     description:
@@ -3927,7 +3997,7 @@ export const post51 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
 
 export const run8 = {
-  post: post51,
+  post: post53,
 }
 
 /**
@@ -3939,7 +4009,7 @@ export const run8 = {
  *
  * @deprecated
  */
-export const post52 = oc
+export const post54 = oc
   .route({
     deprecated: true,
     description:
@@ -3955,7 +4025,7 @@ export const post52 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse)
 
 export const run9 = {
-  post: post52,
+  post: post54,
 }
 
 export const trigger = {
@@ -4025,7 +4095,7 @@ export const nodes7 = {
  *
  * @deprecated
  */
-export const post53 = oc
+export const post55 = oc
   .route({
     deprecated: true,
     description:
@@ -4046,7 +4116,7 @@ export const post53 = oc
   .output(zPostAppsByAppIdWorkflowsDraftRunResponse)
 
 export const run10 = {
-  post: post53,
+  post: post55,
 }
 
 /**
@@ -4202,7 +4272,7 @@ export const systemVariables = {
  *
  * @deprecated
  */
-export const post54 = oc
+export const post56 = oc
   .route({
     deprecated: true,
     description:
@@ -4223,7 +4293,7 @@ export const post54 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunResponse)
 
 export const run11 = {
-  post: post54,
+  post: post56,
 }
 
 /**
@@ -4235,7 +4305,7 @@ export const run11 = {
  *
  * @deprecated
  */
-export const post55 = oc
+export const post57 = oc
   .route({
     deprecated: true,
     description:
@@ -4256,7 +4326,7 @@ export const post55 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse)
 
 export const runAll = {
-  post: post55,
+  post: post57,
 }
 
 export const trigger2 = {
@@ -4443,7 +4513,7 @@ export const get73 = oc
  *
  * @deprecated
  */
-export const post56 = oc
+export const post58 = oc
   .route({
     deprecated: true,
     description:
@@ -4465,7 +4535,7 @@ export const post56 = oc
 
 export const draft2 = {
   get: get73,
-  post: post56,
+  post: post58,
   conversationVariables: conversationVariables2,
   environmentVariables,
   features,
@@ -4511,7 +4581,7 @@ export const get74 = oc
  *
  * @deprecated
  */
-export const post57 = oc
+export const post59 = oc
   .route({
     deprecated: true,
     description:
@@ -4533,7 +4603,7 @@ export const post57 = oc
 
 export const publish = {
   get: get74,
-  post: post57,
+  post: post59,
 }
 
 /**
@@ -4705,7 +4775,7 @@ export const triggers2 = {
  *
  * @deprecated
  */
-export const post58 = oc
+export const post60 = oc
   .route({
     deprecated: true,
     description:
@@ -4720,7 +4790,7 @@ export const post58 = oc
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
-  post: post58,
+  post: post60,
 }
 
 /**
@@ -4978,7 +5048,7 @@ export const get82 = oc
  *
  * Create a new API key for an app
  */
-export const post59 = oc
+export const post61 = oc
   .route({
     description: 'Create a new API key for an app',
     inputStructure: 'detailed',
@@ -4994,7 +5064,7 @@ export const post59 = oc
 
 export const apiKeys = {
   get: get82,
-  post: post59,
+  post: post61,
   byApiKeyId,
 }
 
@@ -5062,7 +5132,7 @@ export const get84 = oc
  *
  * @deprecated
  */
-export const post60 = oc
+export const post62 = oc
   .route({
     deprecated: true,
     description:
@@ -5080,7 +5150,7 @@ export const post60 = oc
 
 export const apps = {
   get: get84,
-  post: post60,
+  post: post62,
   imports,
   workflows,
   byAppId: byAppId2,

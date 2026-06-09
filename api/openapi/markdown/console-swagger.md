@@ -1192,6 +1192,56 @@ Get agent execution logs for an application
 | 200 | Agent logs retrieved successfully | [ object ] |
 | 400 | Invalid request parameters |  |
 
+### /apps/{app_id}/agent/skills/standardize
+
+#### POST
+##### Summary
+
+Upload a Skill, validate it, and standardize it into the app agent's drive
+
+##### Description
+
+Validate + standardize a Skill into the agent drive (ENG-594)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 201 | Skill standardized into drive |
+| 400 | Invalid skill package or no bound agent |
+
+### /apps/{app_id}/agent/skills/upload
+
+#### POST
+##### Summary
+
+Validate an uploaded Skill package and persist the archive
+
+##### Description
+
+Upload + validate a Skill package (.zip/.skill) and extract its manifest
+Returns a validated skill ref (to bind into the Agent soul config on save)
+plus its manifest. Standardizing into the agent drive is ENG-594.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 201 | Skill validated |
+| 400 | Invalid skill package |
+
 ### /apps/{app_id}/annotation-reply/{action}
 
 #### POST
