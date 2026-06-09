@@ -1111,6 +1111,7 @@ class ConvertToWorkflowApi(Resource):
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
+        _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ConvertToWorkflowPayload.model_validate(payload).model_dump(exclude_none=True)
 
