@@ -276,6 +276,20 @@ function VisualStates() {
           <FileTreeLabel>disabled.json</FileTreeLabel>
         </FileTreeFile>
       </StateFrame>
+      <StateFrame label="Disabled folder">
+        <FileTreeFolder disabled>
+          <FileTreeFolderTrigger>
+            <FileTreeIcon type="folder" />
+            <FileTreeLabel>disabled-folder</FileTreeLabel>
+          </FileTreeFolderTrigger>
+          <FileTreeFolderPanel>
+            <FileTreeFile>
+              <FileTreeIcon type="code" />
+              <FileTreeLabel>nested.ts</FileTreeLabel>
+            </FileTreeFile>
+          </FileTreeFolderPanel>
+        </FileTreeFolder>
+      </StateFrame>
       <StateFrame label="Closed folder">
         <FileTreeFolder>
           <FileTreeFolderTrigger>

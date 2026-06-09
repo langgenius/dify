@@ -44,6 +44,7 @@ function fileTreeRowClassName({
     'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-state-accent-solid',
     'data-[selected]:bg-state-base-active',
     'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
+    'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
     className,
   )
 }
@@ -115,7 +116,6 @@ export type FileTreeFolderTriggerProps
     & {
       className?: string
       level?: number
-      selected?: boolean
     }
 
 export function FileTreeFolderTrigger({
@@ -123,7 +123,6 @@ export function FileTreeFolderTrigger({
   children,
   disabled,
   level: levelProp,
-  selected = false,
   ...props
 }: FileTreeFolderTriggerProps) {
   const contextLevel = useFileTreeLevel()
@@ -133,9 +132,7 @@ export function FileTreeFolderTrigger({
     <BaseCollapsible.Trigger
       className={fileTreeRowClassName({ className })}
       disabled={disabled}
-      data-selected={selected || undefined}
       data-disabled={disabled || undefined}
-      aria-current={selected ? 'true' : undefined}
       {...props}
     >
       {renderGuides(level)}
@@ -213,16 +210,14 @@ export function FileTreeFile({
     ),
   } as useRender.ElementProps<'button'>
 
-  return (
-    <li className="min-w-0">
-      {useRender({
-        defaultTagName: 'button',
-        render,
-        state,
-        props: mergeProps<'button'>(defaultProps, props),
-      })}
-    </li>
-  )
+  const file = useRender({
+    defaultTagName: 'button',
+    render,
+    state,
+    props: mergeProps<'button'>(defaultProps, props),
+  })
+
+  return <li className="min-w-0">{file}</li>
 }
 
 export type FileTreeGuideProps = useRender.ComponentProps<'span'>

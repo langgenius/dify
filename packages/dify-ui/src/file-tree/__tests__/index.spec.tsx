@@ -67,6 +67,8 @@ describe('FileTree', () => {
     await expect.element(root).not.toHaveAttribute('role', 'tree')
     await expect.element(src).toHaveAttribute('aria-expanded', 'true')
     await expect.element(src).toHaveAttribute('aria-controls')
+    await expect.element(src).not.toHaveAttribute('aria-current')
+    await expect.element(src).not.toHaveAttribute('data-selected')
     await expect.element(selectedFile).toHaveAttribute('aria-current', 'true')
     await expect.element(selectedFile).toHaveAttribute('data-selected')
   })
@@ -127,5 +129,35 @@ describe('FileTree', () => {
     await expect.element(screen.getByRole('button', { name: 'disabled.txt' })).toBeDisabled()
     await expect.element(screen.getByRole('button', { name: 'disabled.txt' })).toHaveAttribute('data-disabled')
     await expect.element(screen.getByRole('button', { name: 'disabled.txt' })).toHaveClass('data-disabled:cursor-not-allowed')
+  })
+
+  it('styles disabled folder triggers from the resolved collapsible state', async () => {
+    const onOpenChange = vi.fn()
+    const screen = await render(
+      <FileTreeRoot aria-label="Disabled folders">
+        <FileTreeList>
+          <FileTreeFolder disabled defaultOpen onOpenChange={onOpenChange}>
+            <FileTreeFolderTrigger>
+              <FileTreeIcon type="folder" />
+              <FileTreeLabel>locked</FileTreeLabel>
+            </FileTreeFolderTrigger>
+            <FileTreeFolderPanel>
+              <FileTreeFile>
+                <FileTreeIcon type="file" />
+                <FileTreeLabel>nested.txt</FileTreeLabel>
+              </FileTreeFile>
+            </FileTreeFolderPanel>
+          </FileTreeFolder>
+        </FileTreeList>
+      </FileTreeRoot>,
+    )
+    const trigger = screen.getByRole('button', { name: 'locked' })
+
+    asHTMLElement(trigger.element()).click()
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await expect.element(trigger).toHaveAttribute('aria-disabled', 'true')
+    await expect.element(trigger).toHaveAttribute('aria-expanded', 'true')
+    await expect.element(trigger).toHaveClass('aria-disabled:cursor-not-allowed')
   })
 })
