@@ -26,7 +26,11 @@ export default class Logout extends DifyCommand {
 
     let http: HttpClient | undefined
     if (active !== undefined) {
-      const bearer = getTokenStore(reg.token_storage).read(active.host, active.email)
+      let bearer = ''
+      try {
+        bearer = getTokenStore(reg.token_storage).read(active.host, active.email)
+      }
+      catch { /* keyring locked — skip remote revocation, local cleanup still runs */ }
       if (bearer !== '') {
         http = createHttpClient({ baseURL: openAPIBase(hostWithScheme(active.host, active.scheme)), bearer, retryAttempts: 0 })
       }

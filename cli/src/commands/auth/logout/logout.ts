@@ -22,7 +22,11 @@ export async function runLogout(opts: LogoutOptions): Promise<void> {
   const active = reg.requireActive()
 
   const store = opts.store ?? getTokenStore(reg.token_storage)
-  const bearer = store.read(active.host, active.email)
+  let bearer = ''
+  try {
+    bearer = store.read(active.host, active.email)
+  }
+  catch { /* keyring locked — skip remote revocation, local cleanup still runs */ }
 
   let revokeWarning = ''
   if (bearer !== '' && revokeAllowed(bearer) && opts.http !== undefined) {

@@ -56,6 +56,17 @@ describe('runLogout', () => {
     expect(raw).toContain('b@x')
   })
 
+  it('clears local credentials even when the store.read throws (e.g. keyring locked)', async () => {
+    const store = new MemStore()
+    seed(store)
+    store.read = () => {
+      throw new Error('keyring locked')
+    }
+    await runLogout({ io: bufferStreams(), reg: Registry.load(), store })
+    const after = Registry.load()
+    expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
+  })
+
   it('throws NotLoggedIn when no active context', async () => {
     Registry.empty('file').save()
     await expect(runLogout({ io: bufferStreams(), reg: Registry.load(), store: new MemStore() }))

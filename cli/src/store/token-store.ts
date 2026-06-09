@@ -28,7 +28,10 @@ export class FileTokenStore implements TokenStore {
 
   read(host: string, email: string): string {
     const doc = this.store.getTyped<TokenDoc>()
-    if (doc === null || doc.version !== DOC_VERSION)
+    if (doc === null)
+      return ''
+    // missing version = legacy pre-v1 format (same data shape); future unknown versions are rejected
+    if (doc.version !== undefined && doc.version !== DOC_VERSION)
       return ''
     return doc.tokens?.[host]?.[email] ?? ''
   }
@@ -43,7 +46,9 @@ export class FileTokenStore implements TokenStore {
 
   remove(host: string, email: string): void {
     const doc = this.store.getTyped<TokenDoc>()
-    if (doc === null || doc.version !== DOC_VERSION)
+    if (doc === null)
+      return
+    if (doc.version !== undefined && doc.version !== DOC_VERSION)
       return
     const tokens = doc.tokens ?? {}
     const hostMap = tokens[host]
@@ -57,9 +62,11 @@ export class FileTokenStore implements TokenStore {
 
   private load(): { version: number, tokens: Record<string, Record<string, string>> } {
     const doc = this.store.getTyped<TokenDoc>()
-    if (doc === null || doc.version !== DOC_VERSION)
+    if (doc === null)
       return { version: DOC_VERSION, tokens: {} }
-    return { version: DOC_VERSION, tokens: doc.tokens ?? {} }
+    if (doc.version !== undefined && doc.version !== DOC_VERSION)
+      return { version: DOC_VERSION, tokens: {} }
+    return { version: DOC_VERSION, tokens: (doc.tokens ?? {}) as Record<string, Record<string, string>> }
   }
 }
 
@@ -93,7 +100,12 @@ export class KeychainTokenStore implements TokenStore {
   }
 
   write(host: string, email: string, bearer: string): void {
-    new Entry(this.service, entryName(host, email)).setPassword(JSON.stringify(bearer))
+    try {
+      new Entry(this.service, entryName(host, email)).setPassword(JSON.stringify(bearer))
+    }
+    catch (err) {
+      throw keyringUnavailableError(err)
+    }
   }
 
   remove(host: string, email: string): void {

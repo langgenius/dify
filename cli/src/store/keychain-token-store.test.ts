@@ -7,6 +7,7 @@ type EntryArgs = { service: string, username: string }
 const passwords = new Map<string, string>()
 const constructed: EntryArgs[] = []
 let getPasswordError: Error | null = null
+let setPasswordError: Error | null = null
 
 class FakeEntry {
   private readonly key: string
@@ -16,6 +17,8 @@ class FakeEntry {
   }
 
   setPassword(value: string): void {
+    if (setPasswordError !== null)
+      throw setPasswordError
     passwords.set(this.key, value)
   }
 
@@ -45,6 +48,7 @@ beforeEach(() => {
   passwords.clear()
   constructed.length = 0
   getPasswordError = null
+  setPasswordError = null
 })
 
 describe('KeychainTokenStore', () => {
@@ -104,12 +108,26 @@ describe('KeychainTokenStore', () => {
     expect(store.read('h', 'e')).toBe('')
   })
 
-  it('throws KeyringUnavailable (not empty string) when keyring access fails', () => {
+  it('throws KeyringUnavailable (not empty string) when keyring access fails on read', () => {
     getPasswordError = new Error('keyring locked')
     const store = new KeychainTokenStore(SERVICE)
     let caught: unknown
     try {
       store.read('h', 'e')
+    }
+    catch (err) {
+      caught = err
+    }
+    expect(caught).toBeInstanceOf(BaseError)
+    expect((caught as BaseError).code).toBe(ErrorCode.KeyringUnavailable)
+  })
+
+  it('throws KeyringUnavailable when keyring access fails on write', () => {
+    setPasswordError = new Error('keyring locked')
+    const store = new KeychainTokenStore(SERVICE)
+    let caught: unknown
+    try {
+      store.write('h', 'e', 'dfoa_secret')
     }
     catch (err) {
       caught = err
