@@ -51,8 +51,8 @@ const NavLink = ({
   )
 
   const renderIcon = () => (
-    <div className={cn(isCollapsed && 'flex size-5 items-center justify-center')}>
-      <NavIcon className={cn('shrink-0', isCollapsed ? 'size-[18px]' : 'size-4')} aria-hidden="true" />
+    <div className="flex size-5 items-center justify-center">
+      <NavIcon className="size-[18px] shrink-0" aria-hidden="true" />
     </div>
   )
 
