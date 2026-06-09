@@ -269,6 +269,7 @@ class TestPluginModelProviderCache:
 
             first_result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
             redis_client.get.reset_mock()
+            redis_client.mget.reset_mock()
             redis_client.setex.reset_mock()
             client.fetch_model_providers.reset_mock()
 

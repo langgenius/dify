@@ -28,6 +28,9 @@ class _FakeRedis:
     def get(self, key: str) -> str | None:
         return self._values.get(key)
 
+    def mget(self, keys: list[str]) -> list[str | None]:
+        return [self.get(key) for key in keys]
+
     def setex(self, key: str, ttl: int, value: str) -> None:
         self._values[key] = value
         self.setex_calls.append((key, ttl, value))
@@ -336,6 +339,7 @@ class TestPluginModelRuntime:
             "redis_client",
             SimpleNamespace(
                 get=Mock(return_value=None),
+                mget=Mock(return_value=[None, None]),
                 delete=Mock(),
                 setex=Mock(),
             ),
