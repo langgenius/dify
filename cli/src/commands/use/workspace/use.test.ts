@@ -40,7 +40,7 @@ function makeActive(reg: Registry): ActiveContext {
 
 function makeDetail(over: Partial<WorkspaceDetailResponse> = {}): WorkspaceDetailResponse {
   return {
-    id: 'ws-2',
+    id: '00000000-0000-0000-0000-000000000002',
     name: 'Two',
     role: 'owner',
     status: 'normal',
@@ -59,7 +59,7 @@ function fakeClient(opts: {
     list: vi.fn(opts.list ?? (() => Promise.resolve({
       workspaces: [
         { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
-        { id: 'ws-2', name: 'Two', role: 'owner', status: 'normal', current: false },
+        { id: '00000000-0000-0000-0000-000000000002', name: 'Two', role: 'owner', status: 'normal', current: false },
       ],
     }))),
   }
@@ -91,7 +91,7 @@ describe('runUseWorkspace', () => {
     const client = fakeClient({})
 
     const next = await runUseWorkspace(
-      { workspaceId: 'ws-2' },
+      { workspaceId: '00000000-0000-0000-0000-000000000002' },
       {
         reg,
         active,
@@ -101,20 +101,20 @@ describe('runUseWorkspace', () => {
       },
     )
 
-    expect(client.switch).toHaveBeenCalledExactlyOnceWith('ws-2')
+    expect(client.switch).toHaveBeenCalledExactlyOnceWith('00000000-0000-0000-0000-000000000002')
     expect(client.list).not.toHaveBeenCalled()
 
     const activeCtx = next.resolveActive()
-    expect(activeCtx?.ctx.workspace).toEqual({ id: 'ws-2', name: 'Two', role: 'owner' })
+    expect(activeCtx?.ctx.workspace).toEqual({ id: '00000000-0000-0000-0000-000000000002', name: 'Two', role: 'owner' })
     expect((activeCtx?.ctx as Record<string, unknown> | undefined)?.available_workspaces).toBeUndefined()
 
     const reloaded = Registry.load()
     const reloadedActive = reloaded?.resolveActive()
-    expect(reloadedActive?.ctx.workspace?.id).toBe('ws-2')
+    expect(reloadedActive?.ctx.workspace?.id).toBe('00000000-0000-0000-0000-000000000002')
     expect(reloadedActive?.ctx.workspace?.name).toBe('Two')
     expect((reloadedActive?.ctx as Record<string, unknown> | undefined)?.available_workspaces).toBeUndefined()
 
-    expect(io.outBuf()).toMatch(/Switched to Two \(ws-2\)/)
+    expect(io.outBuf()).toMatch(/Switched to Two \(00000000-0000-0000-0000-000000000002\)/)
   })
 
   it('no-arg + no-TTY: rejects with usage_missing_arg and never switches', async () => {
@@ -149,7 +149,7 @@ describe('runUseWorkspace', () => {
 
     await expect(
       runUseWorkspace(
-        { workspaceId: 'ws-2' },
+        { workspaceId: '00000000-0000-0000-0000-000000000002' },
         { reg, active, http: {} as HttpClient, io, workspacesFactory: () => client as never },
       ),
     ).rejects.toThrow(/forbidden/)
@@ -167,7 +167,7 @@ describe('runUseWorkspace', () => {
     const active = makeActive(reg)
     const client = fakeClient({})
 
-    selectFromListMock.mockResolvedValue({ id: 'ws-2', name: 'Two', role: 'owner' })
+    selectFromListMock.mockResolvedValue({ id: '00000000-0000-0000-0000-000000000002', name: 'Two', role: 'owner' })
 
     await runUseWorkspace(
       { workspaceId: undefined },
@@ -179,11 +179,11 @@ describe('runUseWorkspace', () => {
     const passed = selectFromListMock.mock.calls[0]![0]
     expect(passed.items).toEqual([
       { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: 'ws-2', name: 'Two', role: 'owner' },
+      { id: '00000000-0000-0000-0000-000000000002', name: 'Two', role: 'owner' },
     ])
-    expect(client.switch).toHaveBeenCalledExactlyOnceWith('ws-2')
+    expect(client.switch).toHaveBeenCalledExactlyOnceWith('00000000-0000-0000-0000-000000000002')
 
     const reloadedActive = Registry.load()?.resolveActive()
-    expect(reloadedActive?.ctx.workspace?.id).toBe('ws-2')
+    expect(reloadedActive?.ctx.workspace?.id).toBe('00000000-0000-0000-0000-000000000002')
   })
 })

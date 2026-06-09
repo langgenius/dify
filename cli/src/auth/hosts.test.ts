@@ -60,7 +60,7 @@ describe('RegistrySchema', () => {
       workspace: { id: 'ws-1', name: 'Space', role: 'owner' },
       available_workspaces: [
         { id: 'ws-1', name: 'Space', role: 'owner' },
-        { id: 'ws-2', name: 'Other', role: 'normal' },
+        { id: '00000000-0000-0000-0000-000000000002', name: 'Other', role: 'normal' },
       ],
     } as unknown as Record<string, unknown>
     const ctx = AccountContextSchema.parse(raw)

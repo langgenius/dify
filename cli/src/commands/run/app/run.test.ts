@@ -135,7 +135,7 @@ describe('runApp', () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
-      { appId: 'app-4', workspace: 'ws-2', message: 'do research' },
+      { appId: 'app-4', workspace: '00000000-0000-0000-0000-000000000002', message: 'do research' },
       { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('do research')
@@ -146,7 +146,7 @@ describe('runApp', () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
-      { appId: 'app-4', workspace: 'ws-2', message: 'go', stream: true },
+      { appId: 'app-4', workspace: '00000000-0000-0000-0000-000000000002', message: 'go', stream: true },
       { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('go')
