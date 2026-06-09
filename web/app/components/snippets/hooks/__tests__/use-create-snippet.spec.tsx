@@ -8,12 +8,14 @@ const {
   mockSyncDraftWorkflow,
   mockToastError,
   mockToastSuccess,
+  mockWorkspacePermissionKeys,
 } = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),
   mockPush: vi.fn(),
   mockSyncDraftWorkflow: vi.fn(),
   mockToastError: vi.fn(),
   mockToastSuccess: vi.fn(),
+  mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify']),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -35,6 +37,12 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }),
+}))
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
@@ -45,6 +53,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 describe('useCreateSnippet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
   })
 
   describe('State', () => {
