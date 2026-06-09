@@ -501,6 +501,11 @@ class DatasetListApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
+        if dify_config.RBAC_ENABLED:
+            permission = payload.permission or DatasetPermissionEnum.ALL_TEAM
+        else:
+            permission = payload.permission or DatasetPermissionEnum.ONLY_ME
+
         try:
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=current_tenant_id,
@@ -508,7 +513,7 @@ class DatasetListApi(Resource):
                 description=payload.description,
                 indexing_technique=payload.indexing_technique,
                 account=current_user,
-                permission=payload.permission or DatasetPermissionEnum.ONLY_ME,
+                permission=permission,
                 provider=payload.provider,
                 external_knowledge_api_id=payload.external_knowledge_api_id,
                 external_knowledge_id=payload.external_knowledge_id,
