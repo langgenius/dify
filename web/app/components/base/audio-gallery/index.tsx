@@ -1,9 +1,9 @@
 import * as React from 'react'
 import AudioPlayer from './AudioPlayer'
 
-type Props = {
+type Props = Readonly<{
   srcs: string[]
-}
+}>
 
 const AudioGallery: React.FC<Props> = ({ srcs }) => {
   const validSrcs = srcs.filter(src => src)

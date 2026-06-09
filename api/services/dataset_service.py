@@ -2173,7 +2173,7 @@ class DocumentService:
                         )
                         documents_map = {document.name: document for document in db_documents}
                         for file in files:
-                            data_source_info: dict[str, str | bool] = {
+                            data_source_info: dict[str, object] = {
                                 "upload_file_id": file.id,
                             }
                             document = documents_map.get(file.name)
@@ -2706,7 +2706,7 @@ class DocumentService:
         # update document data source
         if document_data.data_source:
             file_name = ""
-            data_source_info: dict[str, str | bool] = {}
+            data_source_info: dict[str, object] = {}
             if document_data.data_source.info_list.data_source_type == "upload_file":
                 if not document_data.data_source.info_list.file_info_list:
                     raise ValueError("No file info list found.")

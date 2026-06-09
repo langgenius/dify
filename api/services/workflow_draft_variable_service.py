@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence, Set
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, ClassVar, NotRequired, TypedDict
+from typing import Any, ClassVar, NotRequired, TypedDict, cast, override
 
 from sqlalchemy import Engine, delete, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -107,6 +107,7 @@ class DraftVarLoader(VariableLoader):
     def _selector_to_tuple(self, selector: Sequence[str]) -> tuple[str, str]:
         return (selector[0], selector[1])
 
+    @override
     def load_variables(self, selectors: list[list[str]]) -> list[VariableBase]:
         if not selectors:
             return []
@@ -1068,9 +1069,10 @@ class DraftVariableSaver:
             original_length = len(value_seg.value)
 
         # Prepare content for storage
+        original_content_serialized: str
         if isinstance(value_seg, StringSegment):
             # For string types, store as plain text
-            original_content_serialized = value_seg.value
+            original_content_serialized = cast(str, value_seg.value)
             content_type = "text/plain"
             filename = f"{self._generate_filename(name)}.txt"
         else:

@@ -1,4 +1,4 @@
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 from sqlalchemy import select
 
@@ -43,14 +43,17 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
     Retrieval recommended app from database
     """
 
+    @override
     def get_recommended_apps_and_categories(self, language: str) -> RecommendedAppsResultDict:
         result = self.fetch_recommended_apps_from_db(language)
         return result
 
+    @override
     def get_recommend_app_detail(self, app_id: str) -> RecommendedAppDetailDict | None:
         result = self.fetch_recommended_app_detail_from_db(app_id)
         return result
 
+    @override
     def get_type(self) -> str:
         return RecommendAppType.DATABASE
 

@@ -862,15 +862,20 @@ class RetrievalService:
                     str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
                 )
 
-                query = query or attachment_id
-                if not query:
+                if query:
+                    rerank_query = query
+                    query_type = QueryType.TEXT_QUERY
+                elif attachment_id:
+                    rerank_query = attachment_id
+                    query_type = QueryType.IMAGE_QUERY
+                else:
                     return
                 all_documents_item = data_post_processor.invoke(
-                    query=query,
+                    query=rerank_query,
                     documents=all_documents_item,
                     score_threshold=score_threshold,
                     top_n=top_k,
-                    query_type=QueryType.TEXT_QUERY if query else QueryType.IMAGE_QUERY,
+                    query_type=query_type,
                 )
                 if not data_post_processor.rerank_runner and score_threshold:
                     all_documents_item = self._filter_documents_by_vector_score_threshold(

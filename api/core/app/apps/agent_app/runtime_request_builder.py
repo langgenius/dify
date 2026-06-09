@@ -13,7 +13,11 @@ from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import (
+    DifyExecutionContextInvokeFrom,
+    DifyExecutionContextLayerConfig,
+    DifyExecutionContextUserFrom,
+)
 from dify_agent.protocol import CreateRunRequest
 
 from clients.agent_backend import (
@@ -126,7 +130,10 @@ class AgentAppRuntimeRequestBuilder:
                     conversation_id=context.conversation_id,
                     agent_id=context.agent_id,
                     agent_config_version_id=context.agent_config_snapshot_id,
-                    invoke_from="agent_app",
+                    # Agent Files §1.3: real Dify access context + agent run mode.
+                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
+                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    agent_mode="agent_app",
                 ),
                 agent_soul_prompt=agent_soul.prompt.system_prompt or None,
                 user_prompt=context.user_query,
