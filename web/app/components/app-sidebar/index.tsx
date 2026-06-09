@@ -79,7 +79,7 @@ const AppDetailNav = ({
       setCollapseOrExpand(appSidebarExpand)
       setAppSidebarExpand(appSidebarExpand)
     }
-  }, [appSidebarExpand, setAppSidebarExpand])
+  }, [appSidebarExpand, setCollapseOrExpand, setAppSidebarExpand])
 
   useHotkey('Mod+B', (e) => {
     e.preventDefault()
