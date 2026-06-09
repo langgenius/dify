@@ -9,6 +9,7 @@ const STATUS_TONE: Record<DeploymentUiStatus, DeploymentStatusTone> = {
   invalid: 'danger',
   not_deployed: 'neutral',
   ready: 'success',
+  undeploying: 'info',
   unknown: 'neutral',
 }
 
@@ -42,6 +43,7 @@ const STATUS_LABEL_KEYS = {
   invalid: 'status.invalid',
   not_deployed: 'status.notDeployed',
   ready: 'status.ready',
+  undeploying: 'status.undeploying',
   unknown: 'status.unknown',
 } as const satisfies Record<DeploymentUiStatus, string>
 

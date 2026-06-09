@@ -7,8 +7,8 @@ import type {
 import type { EnvironmentOption } from './use-deploy-ready-form'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { createStore, Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
-import { useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
@@ -29,6 +29,7 @@ import {
 import {
   deployHasSelectedEnvironmentAtom,
   deployReadyFormConfigAtom,
+  deployReadyFormLocalAtoms,
   deploySelectedEnvironmentAtom,
   deploySelectedEnvironmentIdAtom,
   deployTargetReleaseIdAtom,
@@ -209,20 +210,20 @@ function deployReadyFormStoreKey({
 }
 
 function DeployReadyForm(config: DeployReadyFormProps) {
-  const [formStore] = useState(() => {
-    const store = createStore()
-    store.set(deployReadyFormConfigAtom, config)
-    return store
-  })
-
   return (
-    <JotaiProvider store={formStore}>
+    <ScopeProvider
+      atoms={[
+        [deployReadyFormConfigAtom, config],
+        ...deployReadyFormLocalAtoms,
+      ]}
+      name="DeployReadyForm"
+    >
       <div className="flex min-h-0 flex-1 flex-col">
         <DeployFormHeader />
         <DeployFormBody />
         <DeployFooter />
       </div>
-    </JotaiProvider>
+    </ScopeProvider>
   )
 }
 

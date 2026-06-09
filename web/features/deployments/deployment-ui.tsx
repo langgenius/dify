@@ -25,6 +25,7 @@ export function DeploymentStatusBadge({
   ...props
 }: DeploymentStatusBadgeProps) {
   const toneClassNames = deploymentStatusToneClassNames(status)
+  const isInProgress = status === 'deploying' || status === 'undeploying'
 
   return (
     <span
@@ -38,7 +39,7 @@ export function DeploymentStatusBadge({
     >
       <span
         aria-hidden
-        className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, status === 'deploying' && 'animate-pulse')}
+        className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, isInProgress && 'animate-pulse')}
       />
       <span className="truncate">{label}</span>
     </span>
@@ -64,6 +65,7 @@ export function EnvironmentDeploymentBadge({
   const name = environmentName(row.environment)
   const status = deploymentStatus(row)
   const toneClassNames = deploymentStatusToneClassNames(status)
+  const isInProgress = status === 'deploying' || status === 'undeploying'
   const statusLabel = t(deploymentStatusLabelKey(status))
   const label = summaryLabel ?? `${name} · ${statusLabel}`
   const visibleLabel = showStatus ? `${name} · ${statusLabel}` : name
@@ -79,7 +81,7 @@ export function EnvironmentDeploymentBadge({
       )}
       {...props}
     >
-      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, status === 'deploying' && 'animate-pulse')} />
+      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, isInProgress && 'animate-pulse')} />
       <span className="truncate">{visibleLabel}</span>
     </span>
   )

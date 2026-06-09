@@ -10,6 +10,7 @@ export type DeploymentUiStatus
     | 'drifted'
     | 'invalid'
     | 'not_deployed'
+    | 'undeploying'
     | 'unknown'
 
 const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
@@ -21,12 +22,13 @@ const deploymentUiStatusByRuntimeStatus = {
   [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED]: 'deploy_failed',
   [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DRIFTED]: 'drifted',
   [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_INVALID]: 'invalid',
-  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING]: 'unknown',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING]: 'undeploying',
 } satisfies Record<RuntimeInstanceStatusValue, DeploymentUiStatus>
 
 export function isUndeployedDeploymentRow(row?: EnvironmentDeployment) {
-  return deploymentStatus(row) === 'not_deployed'
-    || (!row?.currentRelease?.id && !row?.desiredRelease?.id && !row?.currentDeployment?.id)
+  const status = deploymentStatus(row)
+  return status === 'not_deployed'
+    || (status === 'unknown' && !row?.currentRelease?.id && !row?.desiredRelease?.id && !row?.currentDeployment?.id)
 }
 
 export function hasRuntimeInstanceDeployment(row?: EnvironmentDeployment) {
@@ -45,7 +47,10 @@ export function deploymentStatus(row?: EnvironmentDeployment): DeploymentUiStatu
 }
 
 function hasDeployingDeployment(rows?: EnvironmentDeployment[]) {
-  return rows?.some(row => deploymentStatus(row) === 'deploying') ?? false
+  return rows?.some((row) => {
+    const status = deploymentStatus(row)
+    return status === 'deploying' || status === 'undeploying'
+  }) ?? false
 }
 
 export function deploymentStatusPollingInterval(rows?: EnvironmentDeployment[]) {

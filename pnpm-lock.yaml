@@ -381,6 +381,9 @@ catalogs:
     jotai:
       specifier: 2.20.0
       version: 2.20.0
+    jotai-scope:
+      specifier: 0.11.0
+      version: 0.11.0
     js-audio-recorder:
       specifier: 1.0.7
       version: 1.0.7
@@ -1158,6 +1161,9 @@ importers:
       jotai:
         specifier: 'catalog:'
         version: 2.20.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.17)(react@19.2.7)
+      jotai-scope:
+        specifier: 'catalog:'
+        version: 0.11.0(jotai@2.20.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
       js-audio-recorder:
         specifier: 'catalog:'
         version: 1.0.7
@@ -6824,6 +6830,13 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
+
+  jotai-scope@0.11.0:
+    resolution: {integrity: sha512-ofiW0Z0i3lTw509Gx0+T6fqsDPMDxMn+AHmNs9iF9OA8CmK1/0xRprPxuZ89UZdBzt6jcrTYdunNZSF2255zJQ==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      jotai: '>=2.20.0'
+      react: '>=16.0.0'
 
   jotai@2.20.0:
     resolution: {integrity: sha512-b5GAqgmXmXzB4WPaTH26ppk9Sl7AA9WSQX7yfdM+gJ1rFROiWcVbi97gFuN/yVCojOcbcvop2sfLL+fjxW0JVg==}
@@ -15235,6 +15248,11 @@ snapshots:
 
   jiti@2.7.0: {}
 
+  jotai-scope@0.11.0(jotai@2.20.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7):
+    dependencies:
+      jotai: 2.20.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.17)(react@19.2.7)
+      react: 19.2.7
+
   jotai@2.20.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.17)(react@19.2.7):
     optionalDependencies:
       '@babel/core': 7.29.0
@@ -18207,6 +18225,7 @@ time:
   i18next@26.3.1: '2026-06-03T14:14:17.016Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
   immer@11.1.8: '2026-05-08T15:09:33.021Z'
+  jotai-scope@0.11.0: '2026-05-13T18:43:15.331Z'
   jotai@2.20.0: '2026-05-06T01:10:00.036Z'
   js-audio-recorder@1.0.7: '2021-01-09T10:20:49.923Z'
   js-cookie@3.0.8: '2026-05-29T10:51:39.065Z'

@@ -29,7 +29,7 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
   const undeployInFlightRef = useRef(false)
   const isUndeployRequesting = undeployDeployment.isPending || isUndeploying
   const undeployActionDisabled = isUndeployRequesting || !envId
-  const isDeploying = status === 'deploying'
+  const isDeploymentInProgress = status === 'deploying' || status === 'undeploying'
   const isDeployFailed = status === 'deploy_failed'
   const currentReleaseId = row.currentRelease?.id
   const failedReleaseId = row.desiredRelease?.id || row.currentRelease?.id
@@ -76,7 +76,7 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
         deployActionLabel={deployActionLabel}
         failedReleaseId={failedReleaseId}
         isDeployFailed={isDeployFailed}
-        isDeploying={isDeploying}
+        isDeploymentInProgress={isDeploymentInProgress}
         isUndeployed={isUndeployed}
         undeployActionDisabled={undeployActionDisabled}
         onDeploy={handleDeployAction}
@@ -92,7 +92,7 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
         />
       )}
 
-      {!isUndeployed && !isDeploying && (
+      {!isUndeployed && !isDeploymentInProgress && (
         <UndeployDeploymentDialog
           open={showUndeployConfirm}
           row={row}

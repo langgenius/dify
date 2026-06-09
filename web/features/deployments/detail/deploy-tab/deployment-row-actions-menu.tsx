@@ -17,7 +17,7 @@ export function DeploymentActionsDropdown({
   deployActionLabel,
   failedReleaseId,
   isDeployFailed,
-  isDeploying,
+  isDeploymentInProgress,
   isUndeployed,
   undeployActionDisabled,
   onDeploy,
@@ -28,7 +28,7 @@ export function DeploymentActionsDropdown({
   deployActionLabel: string
   failedReleaseId?: string
   isDeployFailed: boolean
-  isDeploying: boolean
+  isDeploymentInProgress: boolean
   isUndeployed: boolean
   undeployActionDisabled: boolean
   onDeploy: (releaseId?: string) => void
@@ -38,7 +38,7 @@ export function DeploymentActionsDropdown({
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
 
-  if (isDeploying)
+  if (isDeploymentInProgress)
     return null
 
   function handleDeployAction(releaseId?: string) {

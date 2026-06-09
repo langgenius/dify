@@ -52,6 +52,13 @@ const selectedReleaseIdAtom = atom<string | undefined>(undefined)
 const manualBindingsAtom = atom<RuntimeCredentialBindingSelections>({})
 const envVarValuesAtom = atom<EnvVarValues>({})
 const showValidationErrorsAtom = atom(false)
+export const deployReadyFormLocalAtoms = [
+  selectedEnvIdAtom,
+  selectedReleaseIdAtom,
+  manualBindingsAtom,
+  envVarValuesAtom,
+  showValidationErrorsAtom,
+] as const
 
 function formConfig(get: Getter) {
   const config = get(deployReadyFormConfigAtom)

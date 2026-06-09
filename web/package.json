@@ -103,6 +103,7 @@
     "i18next-resources-to-backend": "catalog:",
     "immer": "catalog:",
     "jotai": "catalog:",
+    "jotai-scope": "catalog:",
     "js-audio-recorder": "catalog:",
     "js-cookie": "catalog:",
     "js-yaml": "catalog:",

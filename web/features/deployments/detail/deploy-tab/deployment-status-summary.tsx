@@ -13,6 +13,17 @@ export function DeploymentStatusSummary({ row }: {
   row: EnvironmentDeployment
 }) {
   const { t } = useTranslation('deployments')
+  const status = deploymentStatus(row)
+
+  if (status === 'undeploying') {
+    return (
+      <DeploymentStatusBadge
+        status="undeploying"
+        label={t('status.undeploying')}
+      />
+    )
+  }
+
   if (isUndeployedDeploymentRow(row)) {
     return (
       <DeploymentStatusBadge
@@ -22,16 +33,24 @@ export function DeploymentStatusSummary({ row }: {
     )
   }
 
-  const status = deploymentStatus(row)
-
   if (status === 'deploying') {
     const targetRelease = row.desiredRelease ?? row.currentRelease
     const hasTargetRelease = !!(targetRelease?.name || targetRelease?.id)
-    const statusLabel = hasTargetRelease
-      ? t('deployTab.status.deployingRelease', { release: releaseLabel(targetRelease) })
-      : t('status.undeploying')
+    if (!hasTargetRelease) {
+      return (
+        <DeploymentStatusBadge
+          status="undeploying"
+          label={t('status.undeploying')}
+        />
+      )
+    }
 
-    return <DeploymentStatusBadge status="deploying" label={statusLabel} />
+    return (
+      <DeploymentStatusBadge
+        status="deploying"
+        label={t('deployTab.status.deployingRelease', { release: releaseLabel(targetRelease) })}
+      />
+    )
   }
 
   if (status === 'deploy_failed') {
