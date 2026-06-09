@@ -109,8 +109,8 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(expandedIconWrapper).not.toHaveClass('-ml-1')
 
       // Icon itself maintains consistent classes - no margin changes
-      expect(iconElement).toHaveClass('h-4')
-      expect(iconElement).toHaveClass('w-4')
+      expect(iconElement).toHaveClass('size-4')
+      expect(iconElement).toHaveClass('size-4')
       expect(iconElement).toHaveClass('shrink-0')
 
       // This wrapper approach eliminates the icon margin shift issue
@@ -168,8 +168,8 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(iconWrapper).toHaveClass('-ml-1')
 
       // Icon itself has consistent classes
-      expect(iconElement).toHaveClass('h-4')
-      expect(iconElement).toHaveClass('w-4')
+      expect(iconElement).toHaveClass('size-4')
+      expect(iconElement).toHaveClass('size-4')
       expect(iconElement).toHaveClass('shrink-0')
 
       rerender(<NavLink {...mockProps} mode="expand" />)
@@ -180,8 +180,8 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(expandedIconWrapper).not.toHaveClass('-ml-1')
 
       // Icon classes remain consistent - no margin shifts
-      expect(iconElement).toHaveClass('h-4')
-      expect(iconElement).toHaveClass('w-4')
+      expect(iconElement).toHaveClass('size-4')
+      expect(iconElement).toHaveClass('size-4')
       expect(iconElement).toHaveClass('shrink-0')
     })
   })
@@ -260,6 +260,22 @@ describe('NavLink Animation and Layout Issues', () => {
 
       const iconWrapper = screen.getByTestId('nav-icon').parentElement
       expect(iconWrapper).toHaveClass('-ml-1')
+    })
+  })
+
+  describe('Button Mode', () => {
+    it('should render as an interactive button when href is omitted', () => {
+      const onClick = vi.fn()
+
+      render(<NavLink {...mockProps} href={undefined} active={true} onClick={onClick} />)
+
+      const buttonElement = screen.getByText('Orchestrate').closest('button')
+      expect(buttonElement).not.toBeNull()
+      expect(buttonElement).toHaveClass('bg-components-menu-item-bg-active')
+      expect(buttonElement).toHaveClass('text-text-accent-light-mode-only')
+
+      buttonElement?.click()
+      expect(onClick).toHaveBeenCalledTimes(1)
     })
   })
 })

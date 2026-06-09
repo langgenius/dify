@@ -69,7 +69,7 @@ describe('VersionHistory Filter Components', () => {
         />,
       )
 
-      const trigger = container.querySelector('.h-6.w-6')
+      const trigger = container.querySelector('.size-6')
       if (!trigger)
         throw new Error('Expected filter trigger to exist')
 

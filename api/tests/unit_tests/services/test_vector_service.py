@@ -77,22 +77,12 @@ def _make_segment(
 def _mock_db_session_for_update_multimodel(*, upload_files: list[_UploadFileStub] | None) -> MagicMock:
     session = MagicMock(name="session")
 
-    binding_query = MagicMock(name="binding_query")
-    binding_query.where.return_value = binding_query
-    binding_query.delete.return_value = 1
+    # db.session.execute() is used for delete(SegmentAttachmentBinding).where(...)
+    session.execute = MagicMock(name="execute")
 
-    upload_query = MagicMock(name="upload_query")
-    upload_query.where.return_value = upload_query
-    upload_query.all.return_value = upload_files or []
+    # db.session.scalars(select(UploadFile).where(...)).all() returns upload files
+    session.scalars.return_value.all.return_value = upload_files or []
 
-    def query_side_effect(model: object) -> MagicMock:
-        if model is vector_service_module.SegmentAttachmentBinding:
-            return binding_query
-        if model is vector_service_module.UploadFile:
-            return upload_query
-        return MagicMock(name=f"query({model})")
-
-    session.query.side_effect = query_side_effect
     db_mock = MagicMock(name="db")
     db_mock.session = session
     return db_mock
@@ -165,22 +155,15 @@ def _mock_parent_child_queries(
 ) -> MagicMock:
     session = MagicMock(name="session")
 
-    doc_query = MagicMock(name="doc_query")
-    doc_query.filter_by.return_value = doc_query
-    doc_query.first.return_value = dataset_document
+    get_dispatch: dict[object, object | None] = {
+        vector_service_module.DatasetDocument: dataset_document,
+        vector_service_module.DatasetProcessRule: processing_rule,
+    }
 
-    rule_query = MagicMock(name="rule_query")
-    rule_query.where.return_value = rule_query
-    rule_query.first.return_value = processing_rule
+    def get_side_effect(model: object, pk: object) -> object | None:
+        return get_dispatch.get(model)
 
-    def query_side_effect(model: object) -> MagicMock:
-        if model is vector_service_module.DatasetDocument:
-            return doc_query
-        if model is vector_service_module.DatasetProcessRule:
-            return rule_query
-        return MagicMock(name=f"query({model})")
-
-    session.query.side_effect = query_side_effect
+    session.get.side_effect = get_side_effect
     db_mock = MagicMock(name="db")
     db_mock.session = session
     return db_mock
@@ -609,7 +592,7 @@ def test_update_multimodel_vector_deletes_bindings_and_commits_on_empty_new_ids(
 
     vector_cls.assert_called_once_with(dataset=dataset)
     vector_instance.delete_by_ids.assert_called_once_with(["old-1", "old-2"])
-    db_mock.session.query.assert_called_once_with(vector_service_module.SegmentAttachmentBinding)
+    db_mock.session.execute.assert_called_once()
     db_mock.session.commit.assert_called_once()
     db_mock.session.add_all.assert_not_called()
     vector_instance.add_texts.assert_not_called()
@@ -644,6 +627,8 @@ def test_update_multimodel_vector_adds_bindings_and_vectors_and_skips_missing_up
 
     binding_ctor = MagicMock(side_effect=lambda **kwargs: kwargs)
     monkeypatch.setattr(vector_service_module, "SegmentAttachmentBinding", binding_ctor)
+    monkeypatch.setattr(vector_service_module, "delete", MagicMock())
+    monkeypatch.setattr(vector_service_module, "select", MagicMock())
 
     logger_mock = MagicMock()
     monkeypatch.setattr(vector_service_module, "logger", logger_mock)
@@ -677,6 +662,8 @@ def test_update_multimodel_vector_updates_bindings_without_multimodal_vector_ops
     monkeypatch.setattr(
         vector_service_module, "SegmentAttachmentBinding", MagicMock(side_effect=lambda **kwargs: kwargs)
     )
+    monkeypatch.setattr(vector_service_module, "delete", MagicMock())
+    monkeypatch.setattr(vector_service_module, "select", MagicMock())
 
     VectorService.update_multimodel_vector(segment=segment, attachment_ids=["file-1"], dataset=dataset)
 
@@ -698,6 +685,8 @@ def test_update_multimodel_vector_rolls_back_and_reraises_on_error(monkeypatch: 
     monkeypatch.setattr(
         vector_service_module, "SegmentAttachmentBinding", MagicMock(side_effect=lambda **kwargs: kwargs)
     )
+    monkeypatch.setattr(vector_service_module, "delete", MagicMock())
+    monkeypatch.setattr(vector_service_module, "select", MagicMock())
 
     logger_mock = MagicMock()
     monkeypatch.setattr(vector_service_module, "logger", logger_mock)

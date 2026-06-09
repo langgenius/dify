@@ -1,5 +1,5 @@
 import type { Credential } from '@/app/components/tools/types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import ConfigCredential from '../config-credentials'
@@ -79,6 +79,25 @@ describe('ConfigCredential', () => {
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
       expect(mockOnHide).toHaveBeenCalledTimes(1)
+      expect(mockOnChange).not.toHaveBeenCalled()
+    })
+
+    it('should call onHide when Escape is pressed', async () => {
+      await act(async () => {
+        render(
+          <ConfigCredential
+            credential={baseCredential}
+            onChange={mockOnChange}
+            onHide={mockOnHide}
+          />,
+        )
+      })
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+
+      await waitFor(() => {
+        expect(mockOnHide).toHaveBeenCalledTimes(1)
+      })
       expect(mockOnChange).not.toHaveBeenCalled()
     })
 

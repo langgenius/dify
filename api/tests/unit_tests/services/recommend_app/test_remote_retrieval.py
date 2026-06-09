@@ -85,7 +85,7 @@ class TestFetchFromDifyOfficial:
 
     @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_returns_sorted_categories_on_200(self, mock_get, mock_config):
+    def test_apps_preserves_remote_categories_order_on_200(self, mock_get, mock_config):
         mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {
@@ -96,7 +96,7 @@ class TestFetchFromDifyOfficial:
 
         result = RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
 
-        assert result["categories"] == ["agent", "chat", "writing"]
+        assert result["categories"] == ["writing", "agent", "chat"]
 
     @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")

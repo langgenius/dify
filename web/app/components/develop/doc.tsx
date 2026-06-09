@@ -1,12 +1,12 @@
 'use client'
 import type { ComponentType } from 'react'
 import type { App, AppSSO } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { getDocLanguage } from '@/i18n-config/language'
 import { AppModeEnum, Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { useDocToc } from './hooks/use-doc-toc'
 import TemplateEn from './template/template.en.mdx'
 import TemplateJa from './template/template.ja.mdx'
@@ -78,7 +78,7 @@ const Doc = ({ appDetail }: IDocProps) => {
 
   return (
     <div className="flex">
-      <div className={`fixed right-20 top-32 z-10 transition-all duration-150 ease-out ${isTocExpanded ? 'w-[280px]' : 'w-11'}`}>
+      <div className={`fixed top-32 right-20 z-10 transition-all duration-150 ease-out ${isTocExpanded ? 'w-[280px]' : 'w-11'}`}>
         <TocPanel
           toc={toc}
           activeSection={activeSection}

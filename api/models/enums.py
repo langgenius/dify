@@ -113,6 +113,7 @@ class DataSourceType(StrEnum):
     WEBSITE_CRAWL = "website_crawl"
     LOCAL_FILE = "local_file"
     ONLINE_DOCUMENT = "online_document"
+    ONLINE_DRIVE = "online_drive"
 
 
 class ProcessRuleMode(StrEnum):
@@ -184,6 +185,7 @@ class InvokeFrom(StrEnum):
     DEBUGGER = "debugger"
     PUBLISHED_PIPELINE = "published"
     VALIDATION = "validation"
+    OPENAPI = "openapi"
 
     @classmethod
     def value_of(cls, value: str) -> "InvokeFrom":
@@ -196,6 +198,7 @@ class InvokeFrom(StrEnum):
             InvokeFrom.EXPLORE: "explore_app",
             InvokeFrom.TRIGGER: "trigger",
             InvokeFrom.SERVICE_API: "api",
+            InvokeFrom.OPENAPI: "openapi",
         }
         return source_mapping.get(self, "dev")
 
@@ -221,6 +224,7 @@ class TagType(StrEnum):
 
     KNOWLEDGE = "knowledge"
     APP = "app"
+    SNIPPET = "snippet"
 
 
 class DatasetMetadataType(StrEnum):
@@ -353,3 +357,11 @@ class ApiTokenType(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+
+
+class PermissionEnum(StrEnum):
+    """Shared permission levels for resources (datasets, credentials, etc.)"""
+
+    ONLY_ME = "only_me"
+    ALL_TEAM = "all_team_members"
+    PARTIAL_TEAM = "partial_members"

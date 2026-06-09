@@ -7,11 +7,9 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, cast, overload
+from typing import Any, Literal, cast, overload
 
 from flask import Flask, current_app
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,7 +27,11 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
@@ -43,6 +45,8 @@ from core.repositories.factory import (
     WorkflowNodeExecutionRepository,
 )
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
@@ -62,7 +66,7 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -77,7 +81,7 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -92,28 +96,28 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]: ...
 
     def generate(
         self,
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -278,7 +282,7 @@ class PipelineGenerator(BaseAppGenerator):
         context: contextvars.Context,
         pipeline: Pipeline,
         workflow_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         application_generate_entity: RagPipelineGenerateEntity,
         invoke_from: InvokeFrom,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -286,7 +290,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -302,7 +306,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
             # init queue manager
-            workflow = db.session.query(Workflow).where(Workflow.id == workflow_id).first()
+            workflow = db.session.get(Workflow, workflow_id)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             queue_manager = PipelineQueueManager(
@@ -624,10 +628,14 @@ class PipelineGenerator(BaseAppGenerator):
         application_generate_entity: RagPipelineGenerateEntity,
         workflow: Workflow,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -668,7 +676,7 @@ class PipelineGenerator(BaseAppGenerator):
         datasource_info: Mapping[str, Any],
         created_from: str,
         position: int,
-        account: Union[Account, EndUser],
+        account: Account | EndUser,
         batch: str,
         document_form: str,
     ):
@@ -715,7 +723,7 @@ class PipelineGenerator(BaseAppGenerator):
         pipeline: Pipeline,
         workflow: Workflow,
         start_node_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
     ) -> list[Mapping[str, Any]]:
         """
         Format datasource info list.
@@ -782,11 +790,26 @@ class PipelineGenerator(BaseAppGenerator):
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: dict | None = None,
+        next_page_parameters: dict[str, Any] | None = None,
+        _visited_folder_ids: set[str] | None = None,
     ):
         """
         Get files in a folder.
+
+        Recursively lists all files inside the given folder prefix.
+        ``_visited_folder_ids`` tracks folders already expanded so that a
+        self-referencing folder (where the API returns the folder as its own
+        child) cannot cause infinite recursion.
         """
+        if _visited_folder_ids is None:
+            _visited_folder_ids = set()
+
+        # Guard: skip folders we have already expanded to prevent infinite
+        # recursion from self-referencing folder entries in the API response.
+        if prefix in _visited_folder_ids:
+            return
+        _visited_folder_ids.add(prefix)
+
         result_generator = datasource_runtime.online_drive_browse_files(
             user_id=user_id,
             request=OnlineDriveBrowseFilesRequest(
@@ -798,10 +821,14 @@ class PipelineGenerator(BaseAppGenerator):
             provider_type=datasource_runtime.datasource_provider_type(),
         )
         is_truncated = False
+        has_files = False
         for result in result_generator:
             for files in result.result:
                 for file in files.files:
+                    has_files = True
                     if file.type == "folder":
+                        if file.id in _visited_folder_ids:
+                            continue
                         self._get_files_in_folder(
                             datasource_runtime,
                             file.id,
@@ -810,6 +837,7 @@ class PipelineGenerator(BaseAppGenerator):
                             all_files,
                             datasource_info,
                             None,
+                            _visited_folder_ids,
                         )
                     else:
                         all_files.append(
@@ -822,7 +850,17 @@ class PipelineGenerator(BaseAppGenerator):
                 is_truncated = files.is_truncated
                 next_page_parameters = files.next_page_parameters
 
-        if is_truncated:
+        # Guard: only follow pagination when the API actually returned files.
+        # An empty folder that incorrectly reports ``is_truncated=True`` would
+        # otherwise recurse forever on the same empty page.
+        if is_truncated and has_files:
             self._get_files_in_folder(
-                datasource_runtime, prefix, bucket, user_id, all_files, datasource_info, next_page_parameters
+                datasource_runtime,
+                prefix,
+                bucket,
+                user_id,
+                all_files,
+                datasource_info,
+                next_page_parameters,
+                _visited_folder_ids,
             )

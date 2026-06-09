@@ -59,7 +59,7 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
     success: vi.fn(),
@@ -311,14 +311,14 @@ describe('Dataset Settings Flow - Cross-Module Configuration Cascade', () => {
         await result.current.handleSave()
       })
 
-      const savedBody = mockUpdateDatasetSetting.mock.calls[0][0].body as Record<string, unknown>
+      const savedBody = mockUpdateDatasetSetting.mock.calls[0]![0].body as Record<string, unknown>
       expect(savedBody).not.toHaveProperty('partial_member_list')
     })
   })
 
   describe('Form Submission Validation → All Fields Together', () => {
     it('should reject empty name on save', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       const { result } = renderHook(() => useFormState())
 
       act(() => {

@@ -6,9 +6,9 @@ import click
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
+from core.db.session_factory import session_factory
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from events.document_index_event import document_index_created
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document
 from models.enums import IndexingStatus
@@ -22,24 +22,25 @@ def handle(sender, **kwargs):
     document_ids = kwargs.get("document_ids", [])
     documents = []
     start_at = time.perf_counter()
-    for document_id in document_ids:
-        logger.info(click.style(f"Start process document: {document_id}", fg="green"))
+    with session_factory.create_session() as session:
+        for document_id in document_ids:
+            logger.info(click.style(f"Start process document: {document_id}", fg="green"))
 
-        document = db.session.scalar(
-            select(Document).where(
-                Document.id == document_id,
-                Document.dataset_id == dataset_id,
+            document = session.scalar(
+                select(Document).where(
+                    Document.id == document_id,
+                    Document.dataset_id == dataset_id,
+                )
             )
-        )
 
-        if not document:
-            raise NotFound("Document not found")
+            if not document:
+                raise NotFound("Document not found")
 
-        document.indexing_status = IndexingStatus.PARSING
-        document.processing_started_at = naive_utc_now()
-        documents.append(document)
-        db.session.add(document)
-    db.session.commit()
+            document.indexing_status = IndexingStatus.PARSING
+            document.processing_started_at = naive_utc_now()
+            documents.append(document)
+            session.add(document)
+        session.commit()
 
     with contextlib.suppress(Exception):
         try:

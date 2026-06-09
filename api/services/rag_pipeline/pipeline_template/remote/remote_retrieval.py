@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import httpx
 
@@ -15,28 +16,25 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval recommended app from dify official
     """
 
-    def get_pipeline_template_detail(self, template_id: str) -> dict | None:
-        result: dict | None
+    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
         try:
-            result = self.fetch_pipeline_template_detail_from_dify_official(template_id)
+            return self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:
             logger.warning("fetch recommended app detail from dify official failed: %r, switch to database.", e)
-            result = DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
-        return result
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
 
-    def get_pipeline_templates(self, language: str) -> dict:
+    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
         try:
-            result = self.fetch_pipeline_templates_from_dify_official(language)
+            return self.fetch_pipeline_templates_from_dify_official(language)
         except Exception as e:
             logger.warning("fetch pipeline templates from dify official failed: %r, switch to database.", e)
-            result = DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language)
-        return result
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language)
 
     def get_type(self) -> str:
         return PipelineTemplateType.REMOTE
 
     @classmethod
-    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> dict:
+    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> dict[str, Any]:
         """
         Fetch pipeline template detail from dify official.
 
@@ -53,11 +51,11 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
                 + f" status_code: {response.status_code},"
                 + f" response: {response.text[:1000]}"
             )
-        data: dict = response.json()
+        data: dict[str, Any] = response.json()
         return data
 
     @classmethod
-    def fetch_pipeline_templates_from_dify_official(cls, language: str) -> dict:
+    def fetch_pipeline_templates_from_dify_official(cls, language: str) -> dict[str, Any]:
         """
         Fetch pipeline templates from dify official.
         :param language: language
@@ -69,6 +67,6 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         if response.status_code != 200:
             raise ValueError(f"fetch pipeline templates failed, status code: {response.status_code}")
 
-        result: dict = response.json()
+        result: dict[str, Any] = response.json()
 
         return result

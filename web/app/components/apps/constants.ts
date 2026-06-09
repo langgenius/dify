@@ -1,0 +1,1 @@
+export const APP_LIST_SEARCH_DEBOUNCE_MS = 500

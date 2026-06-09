@@ -7,16 +7,15 @@ import os
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, NotRequired, Optional
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 from urllib.parse import unquote, urlparse
 
 import httpx
 from sqlalchemy import select
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
@@ -118,11 +117,12 @@ class BaseIndexProcessor(ABC):
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional["ModelInstance"],
+        embedding_model_instance: "ModelInstance | None",
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
+        character_splitter: TextSplitter
         if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
@@ -148,7 +148,7 @@ class BaseIndexProcessor(ABC):
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter  # type: ignore
+        return character_splitter
 
     def _get_content_files(self, document: Document, current_user: Account | None = None) -> list[AttachmentDocument]:
         """
@@ -243,7 +243,7 @@ class BaseIndexProcessor(ABC):
 
         try:
             # Download with timeout
-            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT)
+            response = remote_fetcher.make_request("GET", image_url, timeout=DOWNLOAD_TIMEOUT)
             response.raise_for_status()
 
             # Check Content-Length header if available

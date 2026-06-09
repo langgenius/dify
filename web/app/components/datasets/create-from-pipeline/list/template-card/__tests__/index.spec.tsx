@@ -19,8 +19,8 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
   return {
     ...actual,
     toast: {
@@ -35,33 +35,6 @@ vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
 vi.mock('@/utils/download', () => ({
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
-}))
-
-// Capture Confirm callbacks
-let _capturedOnConfirm: (() => void) | undefined
-let _capturedOnCancel: (() => void) | undefined
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title, content }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-    content: string
-  }) => {
-    _capturedOnConfirm = onConfirm
-    _capturedOnCancel = onCancel
-    return isShow
-      ? (
-          <div data-testid="confirm-dialog">
-            <div data-testid="confirm-title">{title}</div>
-            <div data-testid="confirm-content">{content}</div>
-            <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
-            <button data-testid="confirm-submit" onClick={onConfirm}>Confirm</button>
-          </div>
-        )
-      : null
-  },
 }))
 
 // Capture Actions callbacks
@@ -182,13 +155,14 @@ describe('TemplateCard', () => {
     type: 'customized' as const,
   }
 
+  const getDeleteConfirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
+  const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockToastSuccess.mockReset()
     mockToastError.mockReset()
     mockIsExporting = false
-    _capturedOnConfirm = undefined
-    _capturedOnCancel = undefined
     _capturedHandleDelete = undefined
     _capturedHandleExportDSL = undefined
     _capturedOpenEditModal = undefined
@@ -343,6 +317,21 @@ describe('TemplateCard', () => {
 
       const closeButton = screen.getByTestId('details-close')
       fireEvent.click(closeButton)
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should close details modal when dialog requests close', async () => {
+      render(<TemplateCard {...defaultProps} />)
+      fireEvent.click(screen.getByTestId('action-details'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+      })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
         expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
@@ -507,7 +496,7 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
     })
 
@@ -517,14 +506,13 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
 
-      const cancelButton = screen.getByTestId('confirm-cancel')
-      fireEvent.click(cancelButton)
+      fireEvent.click(getDeleteCancelButton())
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByText('datasetPipeline.deletePipeline.title')).not.toBeInTheDocument()
       })
     })
 
@@ -539,11 +527,10 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
 
-      const confirmButton = screen.getByTestId('confirm-submit')
-      fireEvent.click(confirmButton)
+      fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
         expect(mockDeletePipeline).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
@@ -561,11 +548,10 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
 
-      const confirmButton = screen.getByTestId('confirm-submit')
-      fireEvent.click(confirmButton)
+      fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
         expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
@@ -583,14 +569,13 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
       })
 
-      const confirmButton = screen.getByTestId('confirm-submit')
-      fireEvent.click(confirmButton)
+      fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByText('datasetPipeline.deletePipeline.title')).not.toBeInTheDocument()
       })
     })
   })
@@ -618,6 +603,21 @@ describe('TemplateCard', () => {
 
       const closeButton = screen.getByTestId('edit-close')
       fireEvent.click(closeButton)
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('edit-pipeline-info')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should close edit modal when dialog requests close', async () => {
+      render(<TemplateCard {...defaultProps} />)
+      fireEvent.click(screen.getByTestId('action-edit'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-pipeline-info')).toBeInTheDocument()
+      })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
         expect(screen.queryByTestId('edit-pipeline-info')).not.toBeInTheDocument()

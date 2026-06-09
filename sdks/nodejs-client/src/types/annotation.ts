@@ -15,4 +15,5 @@ export type AnnotationListOptions = {
   keyword?: string;
 };
 
-export type AnnotationResponse = Record<string, unknown>;
+export type AnnotationResponse = JsonObject;
+import type { JsonObject } from "./common";

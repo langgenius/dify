@@ -7,7 +7,7 @@ from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
-from services.trigger.webhook_service import WebhookService
+from services.trigger.webhook_service import RawWebhookDataDict, WebhookService
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ def _prepare_webhook_execution(webhook_id: str, is_debug: bool = False):
         webhook_id, is_debug=is_debug
     )
 
+    webhook_data: RawWebhookDataDict
     try:
         # Use new unified extraction and validation
         webhook_data = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)

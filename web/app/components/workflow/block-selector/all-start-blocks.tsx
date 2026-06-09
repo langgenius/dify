@@ -5,7 +5,10 @@ import type {
 import type { BlockEnum, OnSelectBlock } from '../types'
 import type { ListRef } from './market-place-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
   useEffect,
@@ -14,14 +17,12 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
@@ -54,13 +55,18 @@ const AllStartBlocks = ({
   const { t } = useTranslation()
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
-  const entryNodeTypes = availableBlocksTypes?.length
-    ? availableBlocksTypes
-    : ENTRY_NODE_TYPES
+  const entryNodeTypes = useMemo(() => {
+    return availableBlocksTypes?.length
+      ? availableBlocksTypes
+      : [...ENTRY_NODE_TYPES]
+  }, [availableBlocksTypes])
   const enableTriggerPlugin = entryNodeTypes.includes(BlockEnumValue.TriggerPlugin)
   const { data: triggerProviders = [] } = useAllTriggerPlugins(enableTriggerPlugin)
   const providerMap = useMemo(() => {
@@ -94,7 +100,8 @@ const AllStartBlocks = ({
   const shouldShowFeatured = enableTriggerPlugin
     && enable_marketplace
     && !hasFilter
-  const shouldShowTriggerListTitle = hasStartBlocksContent || hasPluginContent
+  const hasTriggerOptions = entryNodeTypes.some(type => type !== BlockEnumValue.Start)
+  const shouldShowTriggerListTitle = hasTriggerOptions && (hasStartBlocksContent || hasPluginContent)
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
   const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {
@@ -127,7 +134,7 @@ const AllStartBlocks = ({
   }, [enableTriggerPlugin, enable_marketplace, hasFilter, fetchPlugins, searchText, tags])
 
   return (
-    <div className={cn('min-w-[400px] max-w-[500px]', className)}>
+    <div className={cn('max-w-[500px] min-w-[400px]', className)}>
       <div className="flex max-h-[640px] flex-col">
         <div
           ref={wrapElemRef}
@@ -147,12 +154,12 @@ const AllStartBlocks = ({
                   }}
                 />
                 <div className="px-3">
-                  <Divider className="!h-px" />
+                  <Divider className="h-px!" />
                 </div>
               </>
             )}
             {shouldShowTriggerListTitle && (
-              <div className="px-3 pb-1 pt-2">
+              <div className="px-3 pt-2 pb-1">
                 <span className="system-xs-medium text-text-primary">{t('tabs.allTriggers', { ns: 'workflow' })}</span>
               </div>
             )}
@@ -187,7 +194,7 @@ const AllStartBlocks = ({
 
           {shouldShowEmptyState && (
             <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
-              <SearchMenu className="h-8 w-8 text-text-quaternary" />
+              <SearchMenu className="size-8 text-text-quaternary" />
               <div className="text-sm font-medium text-text-secondary">
                 {t('tabs.noPluginsFound', { ns: 'workflow' })}
               </div>
@@ -215,7 +222,7 @@ const AllStartBlocks = ({
             target="_blank"
           >
             <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         )}
       </div>

@@ -6,6 +6,9 @@ from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
+
+from constants import HIDDEN_VALUE
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -15,9 +18,6 @@ from graphon.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
-from pytest_mock import MockerFixture
-
-from constants import HIDDEN_VALUE
 from models.provider import LoadBalancingModelConfig
 from services.model_load_balancing_service import ModelLoadBalancingService
 
@@ -104,7 +104,7 @@ def test_enable_disable_model_load_balancing_should_call_provider_configuration_
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
 
     # Act
-    getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value)
+    getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM)
 
     # Assert
     getattr(provider_configuration, expected_provider_method).assert_called_once_with(
@@ -125,7 +125,7 @@ def test_enable_disable_model_load_balancing_should_raise_value_error_when_provi
 
     # Act + Assert
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value)
+        getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM)
 
 
 def test_get_load_balancing_configs_should_raise_value_error_when_provider_missing(
@@ -136,7 +136,7 @@ def test_get_load_balancing_configs_should_raise_value_error_when_provider_missi
 
     # Act + Assert
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        service.get_load_balancing_configs("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value)
+        service.get_load_balancing_configs("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM)
 
 
 def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_for_custom_provider(
@@ -158,7 +158,7 @@ def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_fo
         credential_id="cred-1",
         enabled=True,
     )
-    mock_db.session.query.return_value.where.return_value.order_by.return_value.all.return_value = [config]
+    mock_db.session.scalars.return_value.all.return_value = [config]
     mocker.patch(
         "services.model_load_balancing_service.encrypter.get_decrypt_decoding",
         return_value=("rsa", "cipher"),
@@ -177,7 +177,7 @@ def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_fo
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
     )
 
     # Assert
@@ -216,7 +216,7 @@ def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate
         credential_id=None,
         enabled=False,
     )
-    mock_db.session.query.return_value.where.return_value.order_by.return_value.all.return_value = [
+    mock_db.session.scalars.return_value.all.return_value = [
         normal_config,
         inherit_config,
     ]
@@ -238,7 +238,7 @@ def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         config_from="predefined-model",
     )
 
@@ -259,7 +259,7 @@ def test_get_load_balancing_config_should_raise_value_error_when_provider_missin
 
     # Act + Assert
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value, "cfg-1")
+        service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1")
 
 
 def test_get_load_balancing_config_should_return_none_when_config_not_found(
@@ -269,10 +269,10 @@ def test_get_load_balancing_config_should_return_none_when_config_not_found(
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.query.return_value.where.return_value.first.return_value = None
+    mock_db.session.scalar.return_value = None
 
     # Act
-    result = service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value, "cfg-1")
+    result = service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1")
 
     # Assert
     assert result is None
@@ -289,10 +289,10 @@ def test_get_load_balancing_config_should_return_obfuscated_payload_when_config_
     }
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     config = SimpleNamespace(id="cfg-1", name="primary", encrypted_config="not-json", enabled=True)
-    mock_db.session.query.return_value.where.return_value.first.return_value = config
+    mock_db.session.scalar.return_value = config
 
     # Act
-    result = service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM.value, "cfg-1")
+    result = service.get_load_balancing_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1")
 
     # Assert
     assert result == {
@@ -317,7 +317,7 @@ def test_init_inherit_config_should_create_and_persist_inherit_configuration(
     assert inherit_config.tenant_id == "tenant-1"
     assert inherit_config.provider_name == "openai"
     assert inherit_config.model_name == "gpt-4o-mini"
-    assert inherit_config.model_type == "text-generation"
+    assert inherit_config.model_type == "llm"
     assert inherit_config.name == "__inherit__"
     mock_db.session.add.assert_called_once_with(inherit_config)
     mock_db.session.commit.assert_called_once()
@@ -335,7 +335,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_provider_mi
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [],
             "custom-model",
         )
@@ -354,7 +354,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_configs_is_
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             cast(list[dict[str, object]], "invalid-configs"),
             "custom-model",
         )
@@ -375,7 +375,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_config_item
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             cast(list[dict[str, object]], ["bad-item"]),
             "custom-model",
         )
@@ -389,7 +389,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credential_
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalars.return_value.all.return_value = []
-    mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_db.session.scalar.return_value = None
 
     # Act + Assert
     with pytest.raises(ValueError, match="Provider credential with id cred-1 not found"):
@@ -397,7 +397,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credential_
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"credential_id": "cred-1", "enabled": True}],
             "predefined-model",
         )
@@ -418,7 +418,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_name_or_ena
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"enabled": True}],
             "custom-model",
         )
@@ -428,7 +428,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_name_or_ena
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"name": "cfg-without-enabled"}],
             "custom-model",
         )
@@ -450,7 +450,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_existing_co
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"id": "cfg-2", "name": "invalid", "enabled": True}],
             "custom-model",
         )
@@ -472,7 +472,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credentials
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"id": "cfg-1", "name": "new", "enabled": True, "credentials": "bad"}],
             "custom-model",
         )
@@ -482,7 +482,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credentials
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"name": "new-config", "enabled": True, "credentials": "bad"}],
             "custom-model",
         )
@@ -519,7 +519,7 @@ def test_update_load_balancing_configs_should_update_existing_create_new_and_del
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         [
             {"id": "cfg-1", "name": "updated-name", "enabled": False, "credentials": {"api_key": "plain"}},
             {"name": "new-config", "enabled": True, "credentials": {"api_key": "plain"}},
@@ -553,7 +553,7 @@ def test_update_load_balancing_configs_should_raise_value_error_for_invalid_new_
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"name": "__inherit__", "enabled": True, "credentials": {"api_key": "x"}}],
             "custom-model",
         )
@@ -563,7 +563,7 @@ def test_update_load_balancing_configs_should_raise_value_error_for_invalid_new_
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             [{"name": "new", "enabled": True}],
             "custom-model",
         )
@@ -578,14 +578,14 @@ def test_update_load_balancing_configs_should_create_from_existing_provider_cred
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalars.return_value.all.return_value = []
     credential_record = SimpleNamespace(credential_name="Main Credential", encrypted_config='{"api_key":"enc"}')
-    mock_db.session.query.return_value.filter_by.return_value.first.return_value = credential_record
+    mock_db.session.scalar.return_value = credential_record
 
     # Act
     service.update_load_balancing_configs(
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         [{"credential_id": "cred-1", "enabled": True}],
         "predefined-model",
     )
@@ -611,7 +611,7 @@ def test_validate_load_balancing_credentials_should_raise_value_error_when_provi
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             {"api_key": "plain"},
         )
 
@@ -623,7 +623,7 @@ def test_validate_load_balancing_credentials_should_raise_value_error_when_confi
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.query.return_value.where.return_value.first.return_value = None
+    mock_db.session.scalar.return_value = None
 
     # Act + Assert
     with pytest.raises(ValueError, match="Load balancing config cfg-1 does not exist"):
@@ -631,7 +631,7 @@ def test_validate_load_balancing_credentials_should_raise_value_error_when_confi
             "tenant-1",
             "openai",
             "gpt-4o-mini",
-            ModelType.LLM.value,
+            ModelType.LLM,
             {"api_key": "plain"},
             config_id="cfg-1",
         )
@@ -646,7 +646,7 @@ def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     existing_config = SimpleNamespace(id="cfg-1")
-    mock_db.session.query.return_value.where.return_value.first.return_value = existing_config
+    mock_db.session.scalar.return_value = existing_config
     mock_validate = mocker.patch.object(service, "_custom_credentials_validate")
 
     # Act
@@ -654,7 +654,7 @@ def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         {"api_key": "plain"},
         config_id="cfg-1",
     )
@@ -662,7 +662,7 @@ def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_
         "tenant-1",
         "openai",
         "gpt-4o-mini",
-        ModelType.LLM.value,
+        ModelType.LLM,
         {"api_key": "plain"},
     )
 

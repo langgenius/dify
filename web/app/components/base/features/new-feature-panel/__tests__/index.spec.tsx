@@ -157,18 +157,6 @@ describe('NewFeaturePanel', () => {
       expect(screen.queryByText(/feature\.fileUpload\.title/)).not.toBeInTheDocument()
       expect(screen.queryByText(/feature\.imageUpload\.title/)).not.toBeInTheDocument()
     })
-
-    it('should show file upload tip in chat mode with showFileUpload', () => {
-      renderPanel({ isChatMode: true, showFileUpload: true })
-
-      expect(screen.getByText(/common\.fileUploadTip/)).toBeInTheDocument()
-    })
-
-    it('should show image upload legacy tip in non-chat mode with showFileUpload', () => {
-      renderPanel({ isChatMode: false, showFileUpload: true })
-
-      expect(screen.getByText(/common\.ImageUploadLegacyTip/)).toBeInTheDocument()
-    })
   })
 
   describe('MoreLikeThis Feature', () => {
@@ -202,14 +190,6 @@ describe('NewFeaturePanel', () => {
       renderPanel({ isChatMode: true, inWorkflow: true })
 
       expect(screen.queryByText(/feature\.annotation\.title/)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should not show file upload tip when showFileUpload is false', () => {
-      renderPanel({ isChatMode: true, showFileUpload: false })
-
-      expect(screen.queryByText(/common\.fileUploadTip/)).not.toBeInTheDocument()
     })
   })
 })

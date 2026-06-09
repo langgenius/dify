@@ -1,5 +1,5 @@
 import type { App, AppSSO } from '@/types/app'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
@@ -36,24 +36,6 @@ vi.mock('@/app/components/app/duplicate-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, title, onConfirm, onCancel }: {
-    isShow: boolean
-    title: string
-    onConfirm: () => void
-    onCancel: () => void
-  }) => (
-    isShow
-      ? (
-          <div data-testid="confirm-modal" data-title={title}>
-            <button type="button" onClick={onConfirm}>Confirm</button>
-            <button type="button" onClick={onCancel}>Cancel</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   default: ({ onCancel, onBackup }: { onCancel: () => void, onBackup: () => void }) => (
     <div data-testid="import-dsl-modal">
@@ -64,6 +46,12 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
 }))
 
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
+  DSLExportConfirmContent: ({ onConfirm, onClose }: { onConfirm: (include?: boolean) => void, onClose: () => void }) => (
+    <div data-testid="dsl-export-confirm-modal">
+      <button type="button" onClick={() => onConfirm(true)}>Export Include</button>
+      <button type="button" onClick={onClose}>Close Export</button>
+    </div>
+  ),
   default: ({ onConfirm, onClose }: { onConfirm: (include?: boolean) => void, onClose: () => void }) => (
     <div data-testid="dsl-export-confirm-modal">
       <button type="button" onClick={() => onConfirm(true)}>Export Include</button>
@@ -93,9 +81,9 @@ const defaultProps = {
   setSecretEnvList: vi.fn(),
   onEdit: vi.fn(),
   onCopy: vi.fn(),
-  onExport: vi.fn(),
+  onExport: vi.fn(async () => {}),
   exportCheck: vi.fn(),
-  handleConfirmExport: vi.fn(),
+  handleConfirmExport: vi.fn(async () => {}),
   onConfirmDelete: vi.fn(),
 }
 
@@ -113,7 +101,7 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal={null} />)
     })
     expect(screen.queryByTestId('switch-modal')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
+    expect(screen.queryByText('app.deleteAppConfirmTitle')).not.toBeInTheDocument()
   })
 
   it('should render SwitchAppModal when activeModal is switch', async () => {
@@ -143,14 +131,13 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should render Confirm for delete when activeModal is delete', async () => {
+  it('should render delete alert dialog when activeModal is delete', async () => {
     await act(async () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
     await waitFor(() => {
-      const confirm = screen.getByTestId('confirm-modal')
-      expect(confirm).toBeInTheDocument()
-      expect(confirm).toHaveAttribute('data-title', 'app.deleteAppConfirmTitle')
+      expect(screen.getByText('app.deleteAppConfirmTitle')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 
@@ -163,14 +150,12 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should render export warning Confirm when activeModal is exportWarning', async () => {
+  it('should render export warning alert dialog when activeModal is exportWarning', async () => {
     await act(async () => {
       render(<AppInfoModals {...defaultProps} activeModal="exportWarning" />)
     })
     await waitFor(() => {
-      const confirm = screen.getByTestId('confirm-modal')
-      expect(confirm).toBeInTheDocument()
-      expect(confirm).toHaveAttribute('data-title', 'workflow.sidebar.exportWarning')
+      expect(screen.getByText('workflow.sidebar.exportWarning')).toBeInTheDocument()
     })
   })
 
@@ -202,10 +187,37 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
 
-    await waitFor(() => expect(screen.getByText('Cancel')).toBeInTheDocument())
-    await user.click(screen.getByText('Cancel'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
+  })
+
+  it('should clear the delete confirmation input when delete modal is cancelled', async () => {
+    const user = userEvent.setup()
+    await act(async () => {
+      render(<AppInfoModals {...defaultProps} activeModal="delete" />)
+    })
+
+    const input = await screen.findByRole('textbox')
+    await user.type(input, 'wrong-name')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
+    expect(input).toHaveValue('')
+  })
+
+  it('should not confirm delete when the form is submitted with unmatched input', async () => {
+    await act(async () => {
+      render(<AppInfoModals {...defaultProps} activeModal="delete" />)
+    })
+
+    const form = document.querySelector('form')
+    expect(form).toBeTruthy()
+
+    fireEvent.submit(form!)
+
+    expect(defaultProps.onConfirmDelete).not.toHaveBeenCalled()
   })
 
   it('should call onConfirmDelete when confirm on delete modal', async () => {
@@ -214,8 +226,8 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
 
-    await waitFor(() => expect(screen.getByText('Confirm')).toBeInTheDocument())
-    await user.click(screen.getByText('Confirm'))
+    await user.type(screen.getByRole('textbox'), 'Test App')
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(defaultProps.onConfirmDelete).toHaveBeenCalledTimes(1)
   })
@@ -226,10 +238,46 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="exportWarning" />)
     })
 
-    await waitFor(() => expect(screen.getByText('Confirm')).toBeInTheDocument())
-    await user.click(screen.getByText('Confirm'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(defaultProps.handleConfirmExport).toHaveBeenCalledTimes(1)
+  })
+
+  it('should disable export confirm button and avoid duplicate submits while confirming export', async () => {
+    let resolveConfirmExport: () => void
+    const handleConfirmExport = vi.fn(() => new Promise<void>((resolve) => {
+      resolveConfirmExport = resolve
+    }))
+    const user = userEvent.setup()
+
+    await act(async () => {
+      render(
+        <AppInfoModals
+          {...defaultProps}
+          activeModal="exportWarning"
+          handleConfirmExport={handleConfirmExport}
+        />,
+      )
+    })
+
+    const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
+
+    const firstClick = user.click(confirmButton)
+    await waitFor(() => {
+      expect(confirmButton).toBeDisabled()
+      expect(confirmButton).toHaveTextContent('common.operation.exporting')
+    })
+    await user.click(confirmButton)
+
+    expect(handleConfirmExport).toHaveBeenCalledTimes(1)
+
+    resolveConfirmExport!()
+    await firstClick
+    await waitFor(() => {
+      expect(confirmButton).not.toBeDisabled()
+      expect(confirmButton).toHaveTextContent('common.operation.confirm')
+    })
   })
 
   it('should call exportCheck when backup on importDSL modal', async () => {

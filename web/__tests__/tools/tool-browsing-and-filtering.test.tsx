@@ -6,10 +6,10 @@ import type { Collection } from '@/app/components/tools/types'
  * Input (search), and card rendering. Verifies that tab switching, keyword
  * filtering, and label filtering work together correctly.
  */
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { CollectionType } from '@/app/components/tools/types'
 
 // ---- Mocks ----
@@ -35,10 +35,6 @@ vi.mock('nuqs', async (importOriginal) => {
     useQueryState: () => ['builtin', vi.fn()],
   }
 })
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({ enable_marketplace: false }),
-}))
 
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
@@ -226,7 +222,7 @@ vi.mock('@/app/components/tools/mcp', () => ({
   default: () => <div data-testid="mcp-list">MCP List</div>,
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
@@ -237,12 +233,10 @@ vi.mock('@/app/components/workflow/block-selector/types', () => ({
 const { default: ProviderList } = await import('@/app/components/tools/provider-list')
 
 const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+  const { wrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { enable_marketplace: false },
   })
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
+  return wrapper
 }
 
 describe('Tool Browsing & Filtering Integration', () => {

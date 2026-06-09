@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import delete, select, update
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
@@ -30,7 +31,9 @@ def add_document_to_index_task(dataset_document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset_document = session.query(DatasetDocument).where(DatasetDocument.id == dataset_document_id).first()
+        dataset_document = session.scalar(
+            select(DatasetDocument).where(DatasetDocument.id == dataset_document_id).limit(1)
+        )
         if not dataset_document:
             logger.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
             return
@@ -45,15 +48,14 @@ def add_document_to_index_task(dataset_document_id: str):
             if not dataset:
                 raise Exception(f"Document {dataset_document.id} dataset {dataset_document.dataset_id} doesn't exist.")
 
-            segments = (
-                session.query(DocumentSegment)
+            segments = session.scalars(
+                select(DocumentSegment)
                 .where(
                     DocumentSegment.document_id == dataset_document.id,
                     DocumentSegment.status == SegmentStatus.COMPLETED,
                 )
                 .order_by(DocumentSegment.position.asc())
-                .all()
-            )
+            ).all()
 
             documents = []
             multimodal_documents = []
@@ -104,18 +106,15 @@ def add_document_to_index_task(dataset_document_id: str):
             index_processor.load(dataset, documents, multimodal_documents=multimodal_documents)
 
             # delete auto disable log
-            session.query(DatasetAutoDisableLog).where(
-                DatasetAutoDisableLog.document_id == dataset_document.id
-            ).delete()
+            session.execute(
+                delete(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == dataset_document.id)
+            )
 
             # update segment to enable
-            session.query(DocumentSegment).where(DocumentSegment.document_id == dataset_document.id).update(
-                {
-                    DocumentSegment.enabled: True,
-                    DocumentSegment.disabled_at: None,
-                    DocumentSegment.disabled_by: None,
-                    DocumentSegment.updated_at: naive_utc_now(),
-                }
+            session.execute(
+                update(DocumentSegment)
+                .where(DocumentSegment.document_id == dataset_document.id)
+                .values(enabled=True, disabled_at=None, disabled_by=None, updated_at=naive_utc_now())
             )
             session.commit()
 

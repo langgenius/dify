@@ -3,6 +3,7 @@ import type { ChecklistItem } from '../use-checklist'
 import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -89,7 +90,7 @@ vi.mock('../index', () => ({
   useNodesMetaData: () => ({ nodes: [], nodesMap: mockNodesMap }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -216,6 +217,31 @@ describe('useChecklist', () => {
     const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
     expect(warning).toBeDefined()
     expect(warning!.errorMessages).toContain('Model not configured')
+  })
+
+  it('should pass flow type to node validators', () => {
+    const checkValid = vi.fn(() => ({ errorMessage: '' }))
+    mockNodesMap[BlockEnum.LLM] = {
+      checkValid,
+      metaData: { isStart: false, isRequired: false },
+    }
+
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const llmNode = createNode({ id: 'llm', data: { type: BlockEnum.LLM, title: 'LLM' } })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'llm' }),
+    ]
+
+    renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
+    )
+
+    expect(checkValid).toHaveBeenCalledWith(
+      expect.objectContaining({ type: BlockEnum.LLM }),
+      expect.any(Function),
+      expect.objectContaining({ flowType: FlowType.snippet }),
+    )
   })
 
   it('should report missing start node in workflow mode', () => {
@@ -372,6 +398,41 @@ describe('useChecklist', () => {
     ])
   })
 
+  it('should detect duplicate output variables across end nodes', () => {
+    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+    const firstEndNode = createNode({
+      id: 'end-1',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 1',
+        outputs: [{ variable: 'workflow_id', value_selector: ['sys', 'workflow_id'] }],
+      },
+    })
+    const secondEndNode = createNode({
+      id: 'end-2',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 2',
+        outputs: [{ variable: 'workflow_id', value_selector: ['sys', 'workflow_id'] }],
+      },
+    })
+
+    const edges = [
+      createEdge({ source: 'start', target: 'end-1' }),
+      createEdge({ source: 'start', target: 'end-2' }),
+    ]
+
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, firstEndNode, secondEndNode], edges),
+    )
+
+    const firstWarning = result.current.find((item: ChecklistItem) => item.id === 'end-1')
+    const secondWarning = result.current.find((item: ChecklistItem) => item.id === 'end-2')
+
+    expect(firstWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(true)
+    expect(secondWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(true)
+  })
+
   it('should sync checklist items to the workflow store without render phase update warnings', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
@@ -423,6 +484,7 @@ describe('useWorkflowRunValidation', () => {
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
       initialStoreState: { nodes: nodes as Node[] },
+      hooksStoreProps: {},
     })
 
     expect(result.current.hasValidationErrors).toBe(false)
@@ -435,6 +497,7 @@ describe('useWorkflowRunValidation', () => {
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
       initialStoreState: { nodes: nodes as Node[] },
+      hooksStoreProps: {},
     })
 
     expect(typeof result.current.validateBeforeRun).toBe('function')

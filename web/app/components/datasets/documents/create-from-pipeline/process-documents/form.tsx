@@ -1,9 +1,9 @@
 import type { ZodSchema } from 'zod'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useImperativeHandle } from 'react'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
-import { toast } from '@/app/components/base/ui/toast'
 import Header from './header'
 
 type OptionsProps = {
@@ -33,7 +33,7 @@ const Form = ({
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
           toast.error(errorMessage)
           return errorMessage
         }

@@ -6,7 +6,6 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from graphon.file import helpers as file_helpers
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -16,6 +15,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from graphon.file import helpers as file_helpers
 
 if TYPE_CHECKING:
     from models.tools import MCPToolProvider

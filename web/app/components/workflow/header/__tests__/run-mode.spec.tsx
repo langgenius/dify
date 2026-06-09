@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { TestRunMenuRef } from '../test-run-menu'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -13,6 +14,10 @@ const mockHandleWorkflowRunAllTriggersInWorkflow = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockNotify = vi.fn()
 const mockTrackEvent = vi.fn()
+const hotkeyRegistrations = vi.hoisted(() => new Map<string, {
+  callback: () => void
+  options?: { ignoreInputs?: boolean }
+}>())
 
 let mockWarningNodes: Array<{ id: string }> = []
 let mockWorkflowRunningData: { result: { status: WorkflowRunningStatus }, task_id: string } | undefined
@@ -37,16 +42,26 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
+vi.mock('@/app/components/workflow/store/workflow', () => ({
   useStore: (selector: (state: { workflowRunningData?: unknown, isListening: boolean }) => unknown) =>
     selector({ workflowRunningData: mockWorkflowRunningData, isListening: mockIsListening }),
 }))
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (hotkey: string, callback: () => void, options?: { ignoreInputs?: boolean }) => {
+      hotkeyRegistrations.set(hotkey, { callback, options })
+    },
+  }
+})
 
 vi.mock('../../hooks/use-dynamic-test-run-options', () => ({
   useDynamicTestRunOptions: () => mockDynamicOptions,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -67,31 +82,29 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: () => <span data-testid="shortcuts-name">Shortcut</span>,
-}))
-
 vi.mock('@/app/components/base/icons/src/vender/line/mediaAndDevices', () => ({
   StopCircle: () => <span data-testid="stop-circle" />,
 }))
 
 vi.mock('../test-run-menu', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../test-run-menu')>()
+  const TestRunMenuMock = ({ children, options, onSelect, ref }: { children: ReactNode, options: Array<{ type: TriggerType, nodeId?: string, relatedNodeIds?: string[] }>, onSelect: (option: { type: TriggerType, nodeId?: string, relatedNodeIds?: string[] }) => void, ref?: React.Ref<TestRunMenuRef> }) => {
+    React.useImperativeHandle(ref, () => ({
+      toggle: vi.fn(),
+    }))
+    return (
+      <div>
+        <button data-testid="trigger-option" onClick={() => onSelect(options[0]!)}>
+          Trigger option
+        </button>
+        {children}
+      </div>
+    )
+  }
+
   return {
     ...actual,
-    default: React.forwardRef(({ children, options, onSelect }: { children: ReactNode, options: Array<{ type: TriggerType, nodeId?: string, relatedNodeIds?: string[] }>, onSelect: (option: { type: TriggerType, nodeId?: string, relatedNodeIds?: string[] }) => void }, ref) => {
-      React.useImperativeHandle(ref, () => ({
-        toggle: vi.fn(),
-      }))
-      return (
-        <div>
-          <button data-testid="trigger-option" onClick={() => onSelect(options[0])}>
-            Trigger option
-          </button>
-          {children}
-        </div>
-      )
-    }),
+    default: TestRunMenuMock,
   }
 })
 
@@ -101,6 +114,7 @@ describe('RunMode', () => {
     mockWarningNodes = []
     mockWorkflowRunningData = undefined
     mockIsListening = false
+    hotkeyRegistrations.clear()
     mockDynamicOptions = [
       { type: TriggerType.UserInput, nodeId: 'start-node' },
     ]
@@ -109,7 +123,7 @@ describe('RunMode', () => {
   it('should render the run trigger and start the workflow when a valid trigger is selected', () => {
     render(<RunMode />)
 
-    expect(screen.getByText(/run/i)).toBeInTheDocument()
+    expect(screen.getByText(/run/i))!.toBeInTheDocument()
     fireEvent.click(screen.getByTestId('trigger-option'))
 
     expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledTimes(1)
@@ -137,7 +151,7 @@ describe('RunMode', () => {
 
     render(<RunMode />)
 
-    expect(screen.getByText(/running/i)).toBeInTheDocument()
+    expect(screen.getByText(/running/i))!.toBeInTheDocument()
     fireEvent.click(screen.getByTestId('stop-circle').closest('button') as HTMLButtonElement)
 
     expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')
@@ -148,6 +162,14 @@ describe('RunMode', () => {
 
     render(<RunMode />)
 
-    expect(screen.getByText(/listening/i)).toBeInTheDocument()
+    expect(screen.getByText(/listening/i))!.toBeInTheDocument()
+  })
+
+  it('should register the test run menu shortcut as a page command outside text inputs', () => {
+    render(<RunMode />)
+
+    expect(hotkeyRegistrations.get('Alt+R')?.options).toEqual(
+      expect.objectContaining({ ignoreInputs: true }),
+    )
   })
 })

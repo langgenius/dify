@@ -24,7 +24,7 @@ import {
   matchTriggerProvider,
 } from '../utils/plugin-install-check'
 
-export type InstallationState = {
+type InstallationState = {
   isChecking: boolean
   isMissing: boolean
   uniqueIdentifier?: string

@@ -29,7 +29,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if dataset is None:
             raise ValueError("Dataset not found")
 
@@ -39,14 +39,15 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         try:
             if features.billing.enabled:
                 vector_space = features.vector_space
+                assert vector_space is not None
                 if 0 < vector_space.limit <= vector_space.size:
                     raise ValueError(
                         "Your total number of documents plus the number of uploads have over the limit of "
                         "your subscription."
                     )
         except Exception as e:
-            document = (
-                session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+            document = session.scalar(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
             )
             if document:
                 document.indexing_status = IndexingStatus.ERROR
@@ -58,7 +59,9 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             return
 
         logger.info(click.style(f"Start sync website document: {document_id}", fg="green"))
-        document = session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+        document = session.scalar(
+            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+        )
         if not document:
             logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
             return
@@ -68,7 +71,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
 
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
             if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
+                index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
                 # delete from vector index
                 index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 

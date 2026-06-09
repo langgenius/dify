@@ -4,9 +4,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ModifyRetrievalModal from '../modify-retrieval-modal'
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, variant }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
-    <button data-testid={variant === 'primary' ? 'save-button' : 'cancel-button'} onClick={onClick}>
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
+}))
+
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
+    <button onClick={onClick}>
       {children}
     </button>
   ),
@@ -39,10 +56,6 @@ vi.mock('@/context/dataset-detail', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
-vi.mock('../../../base/toast', () => ({
-  default: { notify: vi.fn() },
 }))
 
 vi.mock('../../settings/utils', () => ({
@@ -91,13 +104,19 @@ describe('ModifyRetrievalModal', () => {
 
   it('should call onHide when cancel button clicked', () => {
     render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('cancel-button'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel$/ }))
+    expect(defaultProps.onHide).toHaveBeenCalled()
+  })
+
+  it('should call onHide when close button clicked', () => {
+    render(<ModifyRetrievalModal {...defaultProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
     expect(defaultProps.onHide).toHaveBeenCalled()
   })
 
   it('should call onSave with retrieval config when save clicked', () => {
     render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('save-button'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.save$/ }))
     expect(defaultProps.onSave).toHaveBeenCalled()
   })
 

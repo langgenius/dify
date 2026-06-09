@@ -67,19 +67,19 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
         {selectedItem
           ? (
               <div className="flex items-center gap-2 self-stretch rounded-lg p-1">
-                <ApiConnectionMod className="h-4 w-4 text-text-secondary" />
+                <ApiConnectionMod className="size-4 text-text-secondary" />
                 <div className="flex grow items-center">
-                  <span className="system-sm-regular overflow-hidden text-ellipsis text-components-input-text-filled">{selectedItem.name}</span>
+                  <span className="overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled">{selectedItem.name}</span>
                 </div>
               </div>
             )
           : (
               <span className="system-sm-regular text-components-input-text-placeholder">{t('selectExternalKnowledgeAPI.placeholder', { ns: 'dataset' })}</span>
             )}
-        <RiArrowDownSLine className={`h-4 w-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
+        <RiArrowDownSLine className={`size-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
       </div>
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full rounded-xl border bg-components-panel-bg-blur shadow-lg">
+        <div className="absolute z-10 mt-1 w-full rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           {items.map(item => (
             <div
               key={item.value}
@@ -87,9 +87,9 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               onClick={() => handleSelect(item)}
             >
               <div className="flex w-full items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover">
-                <ApiConnectionMod className="h-4 w-4 text-text-secondary" />
-                <span className="system-sm-medium grow overflow-hidden text-ellipsis text-text-secondary">{item.name}</span>
-                <span className="system-xs-regular overflow-hidden text-ellipsis text-right text-text-tertiary">{item.url}</span>
+                <ApiConnectionMod className="size-4 text-text-secondary" />
+                <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">{item.name}</span>
+                <span className="overflow-hidden text-right system-xs-regular text-ellipsis text-text-tertiary">{item.url}</span>
               </div>
             </div>
           ))}
@@ -98,8 +98,8 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               className="flex cursor-pointer items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover"
               onClick={handleAddNewAPI}
             >
-              <RiAddLine className="h-4 w-4 text-text-secondary" />
-              <span className="system-sm-medium grow overflow-hidden text-ellipsis text-text-secondary">{t('createNewExternalAPI', { ns: 'dataset' })}</span>
+              <RiAddLine className="size-4 text-text-secondary" />
+              <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">{t('createNewExternalAPI', { ns: 'dataset' })}</span>
             </div>
           </div>
         </div>

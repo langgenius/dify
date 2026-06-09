@@ -11,7 +11,6 @@ from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -25,6 +24,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 
 
 class StubScalars:
@@ -145,6 +145,194 @@ def test_workflow_tool_does_not_use_pause_state_config(monkeypatch: pytest.Monke
     call_kwargs = generate_mock.call_args.kwargs
     assert "pause_state_config" in call_kwargs
     assert call_kwargs["pause_state_config"] is None
+
+
+def test_workflow_tool_passes_parent_trace_context_from_runtime(monkeypatch: pytest.MonkeyPatch):
+    """Ensure nested workflow runtime metadata is forwarded as parent trace context."""
+    tool = _build_tool()
+    tool.set_parent_trace_context(
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
+    )
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-1",
+        "parent_node_execution_id": "outer-node-execution-1",
+    }
+
+
+def test_workflow_tool_passes_parent_trace_session_id(monkeypatch: pytest.MonkeyPatch):
+    """Ensure nested workflows inherit the parent observability session ID."""
+    tool = _build_tool()
+    tool.entity.parameters = [
+        ToolParameter.get_simple_instance(
+            name="trace_session_id",
+            llm_description="User workflow input",
+            typ=ToolParameter.ToolParameterType.STRING,
+            required=False,
+        ),
+    ]
+    tool.set_trace_session_id("session-1")
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {"trace_session_id": "user-input-session"}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert call_kwargs["args"]["inputs"]["trace_session_id"] == "user-input-session"
+    assert call_kwargs["args"]["trace_session_id"] == "session-1"
+
+
+def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(monkeypatch: pytest.MonkeyPatch):
+    """Ensure private trace context does not overwrite same-named workflow inputs."""
+    tool = _build_tool()
+    tool.entity.parameters = [
+        ToolParameter.get_simple_instance(
+            name="outer_workflow_run_id",
+            llm_description="User workflow input",
+            typ=ToolParameter.ToolParameterType.STRING,
+            required=False,
+        ),
+        ToolParameter.get_simple_instance(
+            name="outer_node_execution_id",
+            llm_description="User node input",
+            typ=ToolParameter.ToolParameterType.STRING,
+            required=False,
+        ),
+    ]
+    tool.set_parent_trace_context(
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
+    )
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(
+        tool.invoke(
+            "test_user",
+            {
+                "outer_workflow_run_id": "user-workflow-input",
+                "outer_node_execution_id": "user-node-input",
+            },
+        )
+    )
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert call_kwargs["args"]["inputs"]["outer_workflow_run_id"] == "user-workflow-input"
+    assert call_kwargs["args"]["inputs"]["outer_node_execution_id"] == "user-node-input"
+    assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-1",
+        "parent_node_execution_id": "outer-node-execution-1",
+    }
+
+
+def test_workflow_tool_can_clear_parent_trace_context(monkeypatch: pytest.MonkeyPatch):
+    """Ensure reused WorkflowTool instances do not keep stale parent trace context."""
+    tool = _build_tool()
+    tool.set_parent_trace_context(
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
+    )
+    tool.clear_parent_trace_context()
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert "parent_trace_context" not in call_kwargs["args"]
+
+
+def test_workflow_tool_can_clear_trace_session_id(monkeypatch: pytest.MonkeyPatch):
+    """Ensure reused WorkflowTool instances do not keep stale trace session IDs."""
+    tool = _build_tool()
+    tool.set_trace_session_id("session-1")
+    tool.clear_trace_session_id()
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert "trace_session_id" not in call_kwargs["args"]
+
+
+@pytest.mark.parametrize(
+    "runtime_parameters",
+    [
+        {},
+        {"outer_workflow_run_id": "outer-workflow-run-1"},
+        {"outer_node_execution_id": "outer-node-execution-1"},
+        {"outer_workflow_run_id": None, "outer_node_execution_id": None},
+    ],
+)
+def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
+    monkeypatch: pytest.MonkeyPatch,
+    runtime_parameters: dict[str, Any],
+):
+    """Ensure incomplete runtime metadata does not leak parent trace context into generator args."""
+    tool = _build_tool()
+    tool.runtime.runtime_parameters = runtime_parameters
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert "parent_trace_context" not in call_kwargs["args"]
 
 
 def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch: pytest.MonkeyPatch):
@@ -506,6 +694,53 @@ def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch):
     invalid_params, invalid_files = tool._transform_args({"query": "hello", "files": [{"invalid": True}]})
     assert invalid_params == {"query": "hello"}
     assert invalid_files == []
+
+
+@pytest.mark.parametrize("empty_value", [None, "", [], [None], [""]])
+def test_transform_args_normalizes_optional_files_parameter(
+    monkeypatch: pytest.MonkeyPatch,
+    empty_value: Any,
+):
+    """Pass optional workflow file-list inputs as an empty list when no files were provided."""
+    tool = _build_tool()
+    images_param = ToolParameter.get_simple_instance(
+        name="images",
+        llm_description="images",
+        typ=ToolParameter.ToolParameterType.FILES,
+        required=False,
+    )
+    images_param.form = ToolParameter.ToolParameterForm.FORM
+    monkeypatch.setattr(tool, "get_merged_runtime_parameters", lambda: [images_param])
+
+    params, files = tool._transform_args({"images": empty_value})
+
+    assert params == {"images": []}
+    assert files == []
+
+
+def test_workflow_tool_invocation_normalizes_optional_files_parameter(monkeypatch: pytest.MonkeyPatch):
+    """Ensure casted empty FILES values do not reach workflow input validation as [None]."""
+    tool = _build_tool()
+    images_param = ToolParameter.get_simple_instance(
+        name="images",
+        llm_description="images",
+        typ=ToolParameter.ToolParameterType.FILES,
+        required=False,
+    )
+    images_param.form = ToolParameter.ToolParameterForm.FORM
+    tool.entity.parameters = [images_param]
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: Mock())
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+
+    list(tool.invoke("test_user", {"images": None}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert call_kwargs["args"]["inputs"]["images"] == []
 
 
 def test_extract_files():

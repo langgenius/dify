@@ -1,12 +1,10 @@
 import logging
-from typing import Any
 
-from graphon.graph_engine.manager import GraphEngineManager
-from graphon.model_runtime.errors.invoke import InvokeError
-from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
-from controllers.common.schema import register_schema_models
+from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
@@ -25,20 +23,17 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from extensions.ext_redis import redis_client
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 
-
-class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any] = Field(description="Input variables for the workflow")
-    files: list[dict[str, Any]] | None = Field(default=None, description="Files to be processed by the workflow")
-
-
 logger = logging.getLogger(__name__)
 
 register_schema_models(web_ns, WorkflowRunPayload)
+register_response_schema_models(web_ns, SimpleResultResponse)
 
 
 @web_ns.route("/workflows/run")
@@ -109,6 +104,7 @@ class WorkflowTaskStopApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Stop workflow task

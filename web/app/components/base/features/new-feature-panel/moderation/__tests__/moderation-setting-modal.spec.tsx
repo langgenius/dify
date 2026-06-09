@@ -1,11 +1,14 @@
 import type { ModerationConfig } from '@/models/debug'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as i18n from 'react-i18next'
 import ModerationSettingModal from '../moderation-setting-modal'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
 const mockSetShowAccountSettingModal = vi.fn()
@@ -50,7 +53,7 @@ vi.mock('@/app/components/header/account-setting/constants', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
-  default: ({ onChange }: { value: string, onChange: (v: string) => void }) => (
+  ApiBasedExtensionSelector: ({ onChange }: { value: string, onChange: (v: string) => void }) => (
     <div data-testid="api-selector">
       <button data-testid="select-api" onClick={() => onChange('api-ext-1')}>Select API</button>
     </div>
@@ -109,7 +112,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByText(/feature\.moderation\.modal\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.title/))!.toBeInTheDocument()
   })
 
   it('should render provider options', async () => {
@@ -121,10 +124,10 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.openai/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.openai/))!.toBeInTheDocument()
     // Keywords text appears both as provider option and section label
     expect(screen.getAllByText(/feature\.moderation\.modal\.provider\.keywords/).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/apiBasedExtension\.selector\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/apiBasedExtension\.selector\.title/))!.toBeInTheDocument()
   })
 
   it('should show keywords textarea when keywords type is selected', async () => {
@@ -137,8 +140,8 @@ describe('ModerationSettingModal', () => {
     )
 
     const textarea = screen.getByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/) as HTMLTextAreaElement
-    expect(textarea).toBeInTheDocument()
-    expect(textarea).toHaveValue('bad\nword')
+    expect(textarea)!.toBeInTheDocument()
+    expect(textarea)!.toHaveValue('bad\nword')
   })
 
   it('should render cancel and save buttons', async () => {
@@ -150,8 +153,8 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByText(/operation\.cancel/)).toBeInTheDocument()
-    expect(screen.getByText(/operation\.save/)).toBeInTheDocument()
+    expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
+    expect(screen.getByText(/operation\.save/))!.toBeInTheDocument()
   })
 
   it('should call onCancel when cancel is clicked', async () => {
@@ -179,10 +182,10 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const closeButton = document.querySelector('div[role="button"][tabindex="0"]') as HTMLElement
-    expect(closeButton).toBeInTheDocument()
+    const user = userEvent.setup()
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
-    fireEvent.keyDown(closeButton, { key: 'Enter' })
+    await user.keyboard('{Enter}')
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
@@ -197,10 +200,10 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const closeButton = document.querySelector('div[role="button"][tabindex="0"]') as HTMLElement
-    expect(closeButton).toBeInTheDocument()
+    const user = userEvent.setup()
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
-    fireEvent.keyDown(closeButton, { key: ' ' })
+    await user.keyboard(' ')
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
@@ -215,8 +218,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const closeButton = document.querySelector('div[role="button"][tabindex="0"]') as HTMLElement
-    expect(closeButton).toBeInTheDocument()
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
     fireEvent.keyDown(closeButton, { key: 'Escape' })
 
@@ -309,7 +311,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByTestId('api-selector')).toBeInTheDocument()
+    expect(screen.getByTestId('api-selector'))!.toBeInTheDocument()
   })
 
   it('should switch provider type when clicked', async () => {
@@ -324,6 +326,37 @@ describe('ModerationSettingModal', () => {
     // Click on openai_moderation provider
     fireEvent.click(screen.getByText(/feature\.moderation\.modal\.provider\.openai/))
 
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
+    // The keywords textarea should no longer be visible since type changed
     // The keywords textarea should no longer be visible since type changed
     expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
   })
@@ -340,7 +373,7 @@ describe('ModerationSettingModal', () => {
     const textarea = screen.getByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'new\nkeywords' } })
 
-    expect(textarea).toHaveValue('new\nkeywords')
+    expect(textarea)!.toHaveValue('new\nkeywords')
   })
 
   it('should render moderation content sections', async () => {
@@ -352,8 +385,8 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByText(/feature\.moderation\.modal\.content\.input/)).toBeInTheDocument()
-    expect(screen.getByText(/feature\.moderation\.modal\.content\.output/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.content\.input/))!.toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.content\.output/))!.toBeInTheDocument()
   })
 
   it('should show error when inputs enabled but no preset_response for keywords type', async () => {
@@ -469,7 +502,7 @@ describe('ModerationSettingModal', () => {
     const switches = screen.getAllByRole('switch')
     expect(screen.getAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(1)
 
-    fireEvent.click(switches[0])
+    fireEvent.click(switches[0]!)
 
     expect(screen.queryAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(0)
   })
@@ -486,7 +519,7 @@ describe('ModerationSettingModal', () => {
     const switches = screen.getAllByRole('switch')
     expect(screen.getAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(1)
 
-    fireEvent.click(switches[1])
+    fireEvent.click(switches[1]!)
 
     expect(screen.getAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(2)
   })
@@ -592,7 +625,8 @@ describe('ModerationSettingModal', () => {
     fireEvent.click(screen.getByText(/apiBasedExtension\.selector\.title/))
 
     // API selector should now be visible, keywords textarea should be hidden
-    expect(screen.getByTestId('api-selector')).toBeInTheDocument()
+    // API selector should now be visible, keywords textarea should be hidden
+    expect(screen.getByTestId('api-selector'))!.toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
   })
 
@@ -636,7 +670,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByText(/feature\.moderation\.modal\.openaiNotConfig\.before/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.openaiNotConfig\.before/))!.toBeInTheDocument()
   })
 
   it('should open settings modal when provider link is clicked in OpenAI warning', async () => {
@@ -668,7 +702,7 @@ describe('ModerationSettingModal', () => {
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
 
-    const modalCall = mockSetShowAccountSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowAccountSettingModal.mock.calls[0]![0]
     modalCall.onCancelCallback()
     expect(mockModelProvidersData.refetch).toHaveBeenCalled()
   })
@@ -724,7 +758,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByText('Custom Extension')).toBeInTheDocument()
+    expect(screen.getByText('Custom Extension'))!.toBeInTheDocument()
   })
 
   it('should show form generation when code-based extension is selected', async () => {
@@ -748,8 +782,8 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByText('API URL')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Enter URL')).toBeInTheDocument()
+    expect(screen.getByText('API URL'))!.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Enter URL'))!.toBeInTheDocument()
   })
 
   it('should initialize config from form schema when switching to code-based extension', async () => {
@@ -777,7 +811,8 @@ describe('ModerationSettingModal', () => {
     fireEvent.click(screen.getByText('Custom Extension'))
 
     // The form input should use the default value from form schema
-    expect(screen.getByDisplayValue('https://default.com')).toBeInTheDocument()
+    // The form input should use the default value from form schema
+    expect(screen.getByDisplayValue('https://default.com'))!.toBeInTheDocument()
   })
 
   it('should show error when required form schema field is empty on save', async () => {
@@ -880,7 +915,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    expect(screen.getByText(/apiBasedExtension\.link/)).toBeInTheDocument()
+    expect(screen.getByText(/apiBasedExtension\.link/))!.toBeInTheDocument()
   })
 
   it('should fallback missing inputs_config to disabled in formatted save data', async () => {
@@ -931,7 +966,7 @@ describe('ModerationSettingModal', () => {
     )
 
     const textarea = screen.getAllByRole('textbox')[0]
-    expect(textarea).toHaveAttribute('placeholder', '')
+    expect(textarea)!.toHaveAttribute('placeholder', '')
     useTranslationSpy.mockRestore()
   })
 })

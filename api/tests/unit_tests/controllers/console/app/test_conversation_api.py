@@ -29,16 +29,20 @@ def test_completion_conversation_list_returns_paginated_result(app, monkeypatch:
     method = _unwrap(api.get)
 
     account = _make_account()
-    monkeypatch.setattr(conversation_module, "current_account_with_tenant", lambda: (account, "t1"))
     monkeypatch.setattr(conversation_module, "parse_time_range", lambda *_args, **_kwargs: (None, None))
 
     paginate_result = MagicMock()
+    paginate_result.page = 1
+    paginate_result.per_page = 20
+    paginate_result.total = 0
+    paginate_result.has_next = False
+    paginate_result.items = []
     monkeypatch.setattr(conversation_module.db, "paginate", lambda *_args, **_kwargs: paginate_result)
 
     with app.test_request_context("/console/api/apps/app-1/completion-conversations", method="GET"):
-        response = method(app_model=SimpleNamespace(id="app-1"))
+        response = method(account, app_model=SimpleNamespace(id="app-1"))
 
-    assert response is paginate_result
+    assert response == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
 
 def test_completion_conversation_list_invalid_time_range(app, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -46,7 +50,6 @@ def test_completion_conversation_list_invalid_time_range(app, monkeypatch: pytes
     method = _unwrap(api.get)
 
     account = _make_account()
-    monkeypatch.setattr(conversation_module, "current_account_with_tenant", lambda: (account, "t1"))
     monkeypatch.setattr(
         conversation_module,
         "parse_time_range",
@@ -59,7 +62,7 @@ def test_completion_conversation_list_invalid_time_range(app, monkeypatch: pytes
         query_string={"start": "bad"},
     ):
         with pytest.raises(BadRequest):
-            method(app_model=SimpleNamespace(id="app-1"))
+            method(account, app_model=SimpleNamespace(id="app-1"))
 
 
 def test_chat_conversation_list_advanced_chat_calls_paginate(app, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -67,16 +70,20 @@ def test_chat_conversation_list_advanced_chat_calls_paginate(app, monkeypatch: p
     method = _unwrap(api.get)
 
     account = _make_account()
-    monkeypatch.setattr(conversation_module, "current_account_with_tenant", lambda: (account, "t1"))
     monkeypatch.setattr(conversation_module, "parse_time_range", lambda *_args, **_kwargs: (None, None))
 
     paginate_result = MagicMock()
+    paginate_result.page = 1
+    paginate_result.per_page = 20
+    paginate_result.total = 0
+    paginate_result.has_next = False
+    paginate_result.items = []
     monkeypatch.setattr(conversation_module.db, "paginate", lambda *_args, **_kwargs: paginate_result)
 
     with app.test_request_context("/console/api/apps/app-1/chat-conversations", method="GET"):
-        response = method(app_model=SimpleNamespace(id="app-1", mode=AppMode.ADVANCED_CHAT))
+        response = method(account, app_model=SimpleNamespace(id="app-1", mode=AppMode.ADVANCED_CHAT))
 
-    assert response is paginate_result
+    assert response == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
 
 def test_get_conversation_updates_read_at(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -85,10 +92,9 @@ def test_get_conversation_updates_read_at(monkeypatch: pytest.MonkeyPatch) -> No
     session = MagicMock()
     session.scalar.return_value = conversation
 
-    monkeypatch.setattr(conversation_module, "current_account_with_tenant", lambda: (_make_account(), "t1"))
     monkeypatch.setattr(conversation_module.db, "session", session)
 
-    result = conversation_module._get_conversation(SimpleNamespace(id="app-1"), "c1")
+    result = conversation_module._get_conversation(_make_account(), SimpleNamespace(id="app-1"), "c1")
 
     assert result is conversation
     session.execute.assert_called_once()
@@ -100,18 +106,16 @@ def test_get_conversation_missing_raises_not_found(monkeypatch: pytest.MonkeyPat
     session = MagicMock()
     session.scalar.return_value = None
 
-    monkeypatch.setattr(conversation_module, "current_account_with_tenant", lambda: (_make_account(), "t1"))
     monkeypatch.setattr(conversation_module.db, "session", session)
 
     with pytest.raises(NotFound):
-        conversation_module._get_conversation(SimpleNamespace(id="app-1"), "missing")
+        conversation_module._get_conversation(_make_account(), SimpleNamespace(id="app-1"), "missing")
 
 
 def test_completion_conversation_delete_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_module.CompletionConversationDetailApi()
     method = _unwrap(api.delete)
 
-    monkeypatch.setattr(conversation_module, "current_account_with_tenant", lambda: (_make_account(), "t1"))
     monkeypatch.setattr(
         conversation_module.ConversationService,
         "delete",
@@ -119,4 +123,4 @@ def test_completion_conversation_delete_maps_not_found(monkeypatch: pytest.Monke
     )
 
     with pytest.raises(NotFound):
-        method(app_model=SimpleNamespace(id="app-1"), conversation_id="c1")
+        method(_make_account(), app_model=SimpleNamespace(id="app-1"), conversation_id="c1")

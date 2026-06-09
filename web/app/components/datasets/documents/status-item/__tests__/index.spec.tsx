@@ -3,26 +3,45 @@ import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StatusItem from '../index'
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => {
+  const record = vi.fn()
+  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
+  return {
+    record,
+    api: Object.assign(api, {
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    }),
+  }
+})
 vi.mock('use-context-selector', () => ({
   createContext: (defaultValue: unknown) => React.createContext(defaultValue),
   useContext: () => ({
-    notify: mockNotify,
+    notify: toastMocks.api,
   }),
   useContextSelector: (context: unknown, selector: (state: unknown) => unknown) => selector({}),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMocks.api,
 }))
 
 // Mock useIndexStatus hook
 vi.mock('../hooks', () => ({
   useIndexStatus: () => ({
-    queuing: { text: 'Queuing', color: 'orange' },
-    indexing: { text: 'Indexing', color: 'blue' },
-    paused: { text: 'Paused', color: 'yellow' },
-    error: { text: 'Error', color: 'red' },
-    available: { text: 'Available', color: 'green' },
-    enabled: { text: 'Enabled', color: 'green' },
-    disabled: { text: 'Disabled', color: 'gray' },
-    archived: { text: 'Archived', color: 'gray' },
+    queuing: { text: 'Queuing', status: 'warning' },
+    indexing: { text: 'Indexing', status: 'normal' },
+    paused: { text: 'Paused', status: 'warning' },
+    error: { text: 'Error', status: 'error' },
+    available: { text: 'Available', status: 'success' },
+    enabled: { text: 'Enabled', status: 'success' },
+    disabled: { text: 'Disabled', status: 'disabled' },
+    archived: { text: 'Archived', status: 'disabled' },
   }),
 }))
 
@@ -121,12 +140,12 @@ describe('StatusItem', () => {
   describe('error message tooltip', () => {
     it('should show tooltip trigger when error message is provided', () => {
       render(<StatusItem status="error" errorMessage="Test error message" />)
-      expect(screen.getByTestId('error-tooltip-trigger')).toBeInTheDocument()
+      expect(screen.getByLabelText('Test error message')).toBeInTheDocument()
     })
 
     it('should not show tooltip trigger when no error message', () => {
       render(<StatusItem status="error" />)
-      expect(screen.queryByTestId('error-tooltip-trigger')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Test error message')).not.toBeInTheDocument()
     })
   })
 
@@ -346,7 +365,7 @@ describe('StatusItem', () => {
         // Flush promises
         await Promise.resolve()
       })
-      expect(mockNotify).toHaveBeenCalledWith({
+      expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       })
@@ -406,7 +425,7 @@ describe('StatusItem', () => {
         // Flush promises
         await Promise.resolve()
       })
-      expect(mockNotify).toHaveBeenCalledWith({
+      expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'common.actionMsg.modifiedUnsuccessfully',
       })

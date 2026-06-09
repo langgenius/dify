@@ -17,7 +17,6 @@ export type WorkflowSliceShape = {
   setHasShownOnboarding: (hasShownOnboarding: boolean) => void
 }
 
-export type CreateWorkflowSlice = StateCreator<WorkflowSliceShape>
 export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   appId: '',
   appName: '',

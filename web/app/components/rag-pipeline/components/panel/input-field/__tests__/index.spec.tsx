@@ -195,61 +195,51 @@ describe('InputFieldPanel', () => {
     it('should render panel without crashing', () => {
       render(<InputFieldPanel />)
 
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.title'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.inputFieldPanel.title'))!.toBeInTheDocument()
     })
 
     it('should render panel title correctly', () => {
       render(<InputFieldPanel />)
 
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.title'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.inputFieldPanel.title'))!.toBeInTheDocument()
     })
 
     it('should render panel description', () => {
       render(<InputFieldPanel />)
 
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.description'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.inputFieldPanel.description'))!.toBeInTheDocument()
     })
 
     it('should render preview button', () => {
       render(<InputFieldPanel />)
 
-      expect(
-        screen.getByText('datasetPipeline.operations.preview'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.operations.preview'))!.toBeInTheDocument()
     })
 
     it('should render close button', () => {
       render(<InputFieldPanel />)
 
-      const closeButton = screen.getByRole('button', { name: '' })
-      expect(closeButton).toBeInTheDocument()
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
+      expect(closeButton)!.toBeInTheDocument()
     })
 
     it('should render footer tip component', () => {
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('footer-tip')).toBeInTheDocument()
+      expect(screen.getByTestId('footer-tip'))!.toBeInTheDocument()
     })
 
     it('should render unique inputs section title', () => {
       render(<InputFieldPanel />)
 
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.uniqueInputs.title'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.inputFieldPanel.uniqueInputs.title'))!.toBeInTheDocument()
     })
 
     it('should render global inputs field list', () => {
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-shared')).toBeInTheDocument()
-      expect(screen.getByTestId('global-inputs-label')).toBeInTheDocument()
+      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
+      expect(screen.getByTestId('global-inputs-label'))!.toBeInTheDocument()
     })
   })
 
@@ -263,8 +253,8 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-node-1')).toBeInTheDocument()
-      expect(screen.getByTestId('field-list-node-2')).toBeInTheDocument()
+      expect(screen.getByTestId('field-list-node-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('field-list-node-2'))!.toBeInTheDocument()
     })
 
     it('should render datasource label for each node', () => {
@@ -273,9 +263,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(
-        screen.getByTestId('datasource-label-My DataSource'),
-      ).toBeInTheDocument()
+      expect(screen.getByTestId('datasource-label-My DataSource'))!.toBeInTheDocument()
     })
 
     it('should not render any datasource field lists when no nodes exist', () => {
@@ -284,7 +272,7 @@ describe('InputFieldPanel', () => {
       render(<InputFieldPanel />)
 
       expect(screen.queryByTestId('field-list-node-1')).not.toBeInTheDocument()
-      expect(screen.getByTestId('field-list-shared')).toBeInTheDocument()
+      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
     })
 
     it('should filter only DataSource type nodes', () => {
@@ -303,10 +291,8 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-ds-node')).toBeInTheDocument()
-      expect(
-        screen.queryByTestId('field-list-other-node'),
-      ).not.toBeInTheDocument()
+      expect(screen.getByTestId('field-list-ds-node'))!.toBeInTheDocument()
+      expect(screen.queryByTestId('field-list-other-node')).not.toBeInTheDocument()
     })
   })
 
@@ -322,8 +308,8 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-fields-count-node-1')).toHaveTextContent('2')
-      expect(screen.getByTestId('field-list-fields-count-shared')).toHaveTextContent('1')
+      expect(screen.getByTestId('field-list-fields-count-node-1'))!.toHaveTextContent('2')
+      expect(screen.getByTestId('field-list-fields-count-shared'))!.toHaveTextContent('1')
     })
 
     it('should show zero fields for nodes without variables', () => {
@@ -332,7 +318,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-fields-count-node-1')).toHaveTextContent('0')
+      expect(screen.getByTestId('field-list-fields-count-node-1'))!.toHaveTextContent('0')
     })
 
     it('should pass all variable names to field lists', () => {
@@ -345,10 +331,10 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-all-vars-node-1')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-all-vars-node-1'))!.toHaveTextContent(
         'var1,var2',
       )
-      expect(screen.getByTestId('field-list-all-vars-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
         'var1,var2',
       )
     })
@@ -386,7 +372,7 @@ describe('InputFieldPanel', () => {
       const previewButton = screen
         .getByText('datasetPipeline.operations.preview')
         .closest('button')
-      expect(previewButton).toBeDisabled()
+      expect(previewButton)!.toBeDisabled()
     })
 
     it('should not disable preview button when not editing', () => {
@@ -410,8 +396,8 @@ describe('InputFieldPanel', () => {
       const previewButton = screen
         .getByText('datasetPipeline.operations.preview')
         .closest('button')
-      expect(previewButton).toHaveClass('bg-state-accent-active')
-      expect(previewButton).toHaveClass('text-text-accent')
+      expect(previewButton)!.toHaveClass('bg-state-accent-active')
+      expect(previewButton)!.toHaveClass('text-text-accent')
     })
 
     it('should set readonly to true when previewing', () => {
@@ -419,7 +405,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-readonly-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent(
         'true',
       )
     })
@@ -429,7 +415,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-readonly-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent(
         'true',
       )
     })
@@ -439,7 +425,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-readonly-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent(
         'false',
       )
     })
@@ -484,15 +470,15 @@ describe('InputFieldPanel', () => {
         expect(mockSetRagPipelineVariables).toHaveBeenCalled()
       })
 
-      const setVarsCall = mockSetRagPipelineVariables.mock.calls[0][0] as RAGPipelineVariables
+      const setVarsCall = mockSetRagPipelineVariables.mock.calls[0]![0] as RAGPipelineVariables
       const isNotShared = (v: RAGPipelineVariable) => v.belong_to_node_id !== 'shared'
       const isShared = (v: RAGPipelineVariable) => v.belong_to_node_id === 'shared'
       const dsFields = setVarsCall.filter(isNotShared)
       const sharedFields = setVarsCall.filter(isShared)
 
       if (dsFields.length > 0 && sharedFields.length > 0) {
-        const firstDsIndex = setVarsCall.indexOf(dsFields[0])
-        const firstSharedIndex = setVarsCall.indexOf(sharedFields[0])
+        const firstDsIndex = setVarsCall.indexOf(dsFields[0]!)
+        const firstSharedIndex = setVarsCall.indexOf(sharedFields[0]!)
         expect(firstDsIndex).toBeLessThan(firstSharedIndex)
       }
     })
@@ -523,7 +509,7 @@ describe('InputFieldPanel', () => {
         expect(mockSetRagPipelineVariables).toHaveBeenCalled()
       })
 
-      const setVarsCall = mockSetRagPipelineVariables.mock.calls[0][0] as RAGPipelineVariables
+      const setVarsCall = mockSetRagPipelineVariables.mock.calls[0]![0] as RAGPipelineVariables
       const isSharedField = (v: RAGPipelineVariable) => v.belong_to_node_id === 'shared'
       const hasSharedField = setVarsCall.some(isSharedField)
       expect(hasSharedField).toBe(true)
@@ -537,15 +523,13 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(
-        screen.getByTestId('field-list-classname-node-1'),
-      ).toHaveTextContent('pt-1 pb-1')
+      expect(screen.getByTestId('field-list-classname-node-1'))!.toHaveTextContent('pt-1 pb-1')
     })
 
     it('should pass correct className to global inputs field list', () => {
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-classname-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-classname-shared'))!.toHaveTextContent(
         'pt-2 pb-1',
       )
     })
@@ -559,7 +543,7 @@ describe('InputFieldPanel', () => {
 
       rerender(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-node-1')).toBeInTheDocument()
+      expect(screen.getByTestId('field-list-node-1'))!.toBeInTheDocument()
     })
 
     it('should compute allVariableNames correctly', () => {
@@ -572,7 +556,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-all-vars-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
         'alpha,beta,gamma',
       )
     })
@@ -621,7 +605,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-all-vars-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
         '',
       )
     })
@@ -632,7 +616,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-shared')).toBeInTheDocument()
+      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
     })
 
     it('should handle null variable names in allVariableNames', () => {
@@ -644,7 +628,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-shared')).toBeInTheDocument()
+      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
     })
 
     it('should handle large number of datasource nodes', () => {
@@ -655,7 +639,7 @@ describe('InputFieldPanel', () => {
       render(<InputFieldPanel />)
 
       nodes.forEach((_, i) => {
-        expect(screen.getByTestId(`field-list-node-${i}`)).toBeInTheDocument()
+        expect(screen.getByTestId(`field-list-node-${i}`))!.toBeInTheDocument()
       })
     })
 
@@ -666,7 +650,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-fields-count-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-fields-count-shared'))!.toHaveTextContent(
         '100',
       )
     })
@@ -680,7 +664,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-all-vars-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
         'var_with_underscore,varWithCamelCase',
       )
     })
@@ -717,8 +701,8 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-fields-count-node-1')).toHaveTextContent('1')
-      expect(screen.getByTestId('field-list-fields-count-node-2')).toHaveTextContent('2')
+      expect(screen.getByTestId('field-list-fields-count-node-1'))!.toHaveTextContent('1')
+      expect(screen.getByTestId('field-list-fields-count-node-2'))!.toHaveTextContent('2')
     })
   })
 
@@ -727,25 +711,21 @@ describe('InputFieldPanel', () => {
       const { container } = render(<InputFieldPanel />)
 
       const panel = container.firstChild as HTMLElement
-      expect(panel).toHaveClass('w-[400px]')
+      expect(panel)!.toHaveClass('w-[400px]')
     })
 
     it('should have overflow scroll on content area', () => {
       const { container } = render(<InputFieldPanel />)
 
       const scrollContainer = container.querySelector('.overflow-y-auto')
-      expect(scrollContainer).toBeInTheDocument()
+      expect(scrollContainer)!.toBeInTheDocument()
     })
 
     it('should render header section with proper spacing', () => {
       render(<InputFieldPanel />)
 
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.title'),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.description'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.inputFieldPanel.title'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.inputFieldPanel.description'))!.toBeInTheDocument()
     })
   })
 
@@ -763,9 +743,9 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-node-1')).toBeInTheDocument()
-      expect(screen.getByTestId('field-list-readonly-node-1')).toHaveTextContent('true')
-      expect(screen.getByTestId('field-list-fields-count-node-1')).toHaveTextContent('1')
+      expect(screen.getByTestId('field-list-node-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('field-list-readonly-node-1'))!.toHaveTextContent('true')
+      expect(screen.getByTestId('field-list-fields-count-node-1'))!.toHaveTextContent('1')
     })
 
     it('should pass correct props to FieldList for shared node', () => {
@@ -776,9 +756,9 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-shared')).toBeInTheDocument()
-      expect(screen.getByTestId('field-list-readonly-shared')).toHaveTextContent('true')
-      expect(screen.getByTestId('field-list-fields-count-shared')).toHaveTextContent('1')
+      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
+      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('true')
+      expect(screen.getByTestId('field-list-fields-count-shared'))!.toHaveTextContent('1')
     })
   })
 
@@ -793,7 +773,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-all-vars-shared')).toHaveTextContent(
+      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
         'first,second,third',
       )
     })
@@ -810,7 +790,7 @@ describe('useFloatingRight Hook Integration', () => {
 
   it('should render panel correctly with default floating state', () => {
     render(<InputFieldPanel />)
-    expect(screen.getByTestId('field-list-shared')).toBeInTheDocument()
+    expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
   })
 })
 
@@ -823,7 +803,7 @@ describe('FooterTip Integration', () => {
   it('should render footer tip at the bottom of the panel', () => {
     render(<InputFieldPanel />)
 
-    expect(screen.getByTestId('footer-tip')).toBeInTheDocument()
+    expect(screen.getByTestId('footer-tip'))!.toBeInTheDocument()
   })
 })
 
@@ -836,7 +816,7 @@ describe('Label Components Integration', () => {
   it('should render GlobalInputs label for shared field list', () => {
     render(<InputFieldPanel />)
 
-    expect(screen.getByTestId('global-inputs-label')).toBeInTheDocument()
+    expect(screen.getByTestId('global-inputs-label'))!.toBeInTheDocument()
   })
 
   it('should render Datasource label for each datasource node', () => {
@@ -848,12 +828,8 @@ describe('Label Components Integration', () => {
 
     render(<InputFieldPanel />)
 
-    expect(
-      screen.getByTestId('datasource-label-First DataSource'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByTestId('datasource-label-Second DataSource'),
-    ).toBeInTheDocument()
+    expect(screen.getByTestId('datasource-label-First DataSource'))!.toBeInTheDocument()
+    expect(screen.getByTestId('datasource-label-Second DataSource'))!.toBeInTheDocument()
   })
 })
 
@@ -868,10 +844,8 @@ describe('Component Memo Behavior', () => {
 
     rerender(<InputFieldPanel />)
 
-    expect(screen.getByTestId('field-list-shared')).toBeInTheDocument()
-    expect(
-      screen.getByText('datasetPipeline.inputFieldPanel.title'),
-    ).toBeInTheDocument()
+    expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
+    expect(screen.getByText('datasetPipeline.inputFieldPanel.title'))!.toBeInTheDocument()
   })
 
   it('should handle state updates correctly with memo', async () => {

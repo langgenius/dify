@@ -5,13 +5,14 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { useWorkflowStore } from '../store'
 import AllStartBlocks from './all-start-blocks'
@@ -20,7 +21,7 @@ import Blocks from './blocks'
 import DataSources from './data-sources'
 import { TabsEnum } from './types'
 
-export type TabsProps = {
+type TabsProps = {
   activeTab: TabsEnum
   onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
@@ -34,12 +35,14 @@ export type TabsProps = {
     key: TabsEnum
     name: string
     disabled?: boolean
+    disabledTip?: string
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
   noTools?: boolean
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
   allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
+  snippetsElem?: React.ReactNode
 }
 
 const normalizeToolList = (list: ToolWithProvider[] | undefined, currentBasePath?: string) => {
@@ -128,19 +131,22 @@ const TabHeaderItem = ({
 
   if (tab.disabled) {
     return (
-      <Tooltip
-        key={tab.key}
-        position="top"
-        popupClassName="max-w-[200px]"
-        popupContent={disabledTip}
-      >
-        <div
-          className={className}
-          aria-disabled={tab.disabled}
-          onClick={handleClick}
-        >
-          {tab.name}
-        </div>
+      <Tooltip key={tab.key}>
+        <TooltipTrigger
+          render={(
+            <button
+              type="button"
+              className={className}
+              aria-disabled={tab.disabled}
+              onClick={handleClick}
+            >
+              {tab.name}
+            </button>
+          )}
+        />
+        <TooltipContent placement="top" className="max-w-[200px]">
+          {disabledTip}
+        </TooltipContent>
       </Tooltip>
     )
   }
@@ -173,6 +179,7 @@ const Tabs: FC<TabsProps> = ({
   noTools,
   forceShowStartContent = false,
   allowStartNodeSelection = false,
+  snippetsElem,
 }) => {
   const { t } = useTranslation()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -180,7 +187,10 @@ const Tabs: FC<TabsProps> = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const workflowStore = useWorkflowStore()
   const inRAGPipeline = dataSources.length > 0
   const {
@@ -212,10 +222,10 @@ const Tabs: FC<TabsProps> = ({
   }, [normalizedBuiltInTools, normalizedCustomTools, normalizedMcpTools, normalizedWorkflowTools, workflowStore])
 
   return (
-    <div onClick={e => e.stopPropagation()}>
+    <div className="w-full min-w-0" onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className="relative flex bg-background-section-burn pl-1 pt-1">
+          <div className="relative flex w-full min-w-0 bg-background-section-burn pt-1 pl-1">
             {
               tabs.map(tab => (
                 <TabHeaderItem
@@ -223,7 +233,7 @@ const Tabs: FC<TabsProps> = ({
                   tab={tab}
                   activeTab={activeTab}
                   onActiveTabChange={onActiveTabChange}
-                  disabledTip={disabledTip}
+                  disabledTip={tab.disabledTip || disabledTip}
                 />
               ))
             }
@@ -288,6 +298,15 @@ const Tabs: FC<TabsProps> = ({
             }}
           />
         )
+      }
+      {
+        activeTab === TabsEnum.Snippets && Boolean(snippetsElem)
+          ? (
+              <div className="border-t border-divider-subtle">
+                {snippetsElem}
+              </div>
+            )
+          : null
       }
     </div>
   )

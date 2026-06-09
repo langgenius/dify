@@ -3,10 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
-
-from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 
 
 class CodeExecutorJinja2TemplateRenderer(Jinja2TemplateRenderer):

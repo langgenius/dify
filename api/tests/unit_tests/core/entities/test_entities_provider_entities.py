@@ -1,5 +1,4 @@
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelType
 
 from core.entities.parameter_entities import AppSelectorScope
 from core.entities.provider_entities import (
@@ -9,6 +8,7 @@ from core.entities.provider_entities import (
     ProviderQuotaType,
 )
 from core.tools.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 def test_provider_quota_type_value_of_returns_enum_member() -> None:

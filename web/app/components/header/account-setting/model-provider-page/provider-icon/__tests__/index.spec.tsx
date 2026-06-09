@@ -115,6 +115,32 @@ describe('ProviderIcon', () => {
     expect(img.src).toBe('https://example.com/dark.png')
   })
 
+  it('should fall back to light icon when dark icon is empty', () => {
+    const mockTheme = vi.mocked(useTheme)
+    mockTheme.mockReturnValue({ theme: Theme.dark, themes: [], setTheme: vi.fn() } as UseThemeReturnType)
+    const provider = createProvider({
+      icon_small: { en_US: 'https://example.com/light.png', zh_Hans: 'https://example.com/light.png' },
+      icon_small_dark: { en_US: '', zh_Hans: '' },
+    })
+
+    render(<ProviderIcon provider={provider} />)
+
+    const img = screen.getByAltText('provider-icon') as HTMLImageElement
+    expect(img.src).toBe('https://example.com/light.png')
+  })
+
+  it('should render fallback icon when provider icon is empty', () => {
+    const provider = createProvider({
+      icon_small: { en_US: '', zh_Hans: '' },
+      icon_small_dark: { en_US: '', zh_Hans: '' },
+    })
+
+    const { container } = render(<ProviderIcon provider={provider} />)
+
+    expect(screen.queryByAltText('provider-icon')).not.toBeInTheDocument()
+    expect(container.querySelector('.i-custom-vender-other-group')).toBeInTheDocument()
+  })
+
   it('should fall back to localized labels when available', () => {
     const mockLang = vi.mocked(useLanguage)
     mockLang.mockReturnValue('zh_Hans')

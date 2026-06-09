@@ -12,6 +12,7 @@ from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
+from models.enums import SummaryStatus
 from services.summary_index_service import SummaryIndexService
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ def regenerate_summary_index_task(
 
     try:
         with session_factory.create_session() as session:
-            dataset = session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 logger.error(click.style(f"Dataset not found: {dataset_id}", fg="red"))
                 return
@@ -84,8 +85,8 @@ def regenerate_summary_index_task(
                 # For embedding_model change: directly query all segments with existing summaries
                 # Don't require document indexing_status == "completed"
                 # Include summaries with status "completed" or "error" (if they have content)
-                segments_with_summaries = (
-                    session.query(DocumentSegment, DocumentSegmentSummary)
+                segments_with_summaries = session.execute(
+                    select(DocumentSegment, DocumentSegmentSummary)
                     .join(
                         DocumentSegmentSummary,
                         DocumentSegment.id == DocumentSegmentSummary.chunk_id,
@@ -102,16 +103,15 @@ def regenerate_summary_index_task(
                         DocumentSegmentSummary.summary_content.isnot(None),  # Must have summary content
                         # Include completed summaries or error summaries (with content)
                         or_(
-                            DocumentSegmentSummary.status == "completed",
-                            DocumentSegmentSummary.status == "error",
+                            DocumentSegmentSummary.status == SummaryStatus.COMPLETED,
+                            DocumentSegmentSummary.status == SummaryStatus.ERROR,
                         ),
                         DatasetDocument.enabled == True,  # Document must be enabled
                         DatasetDocument.archived == False,  # Document must not be archived
                         DatasetDocument.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                     )
                     .order_by(DocumentSegment.document_id.asc(), DocumentSegment.position.asc())
-                    .all()
-                )
+                ).all()
 
                 if not segments_with_summaries:
                     logger.info(
@@ -175,7 +175,7 @@ def regenerate_summary_index_task(
                             )
                             total_segments_failed += 1
                             # Update summary record with error status
-                            summary_record.status = "error"
+                            summary_record.status = SummaryStatus.ERROR
                             summary_record.error = f"Re-vectorization failed: {str(e)}"
                             session.add(summary_record)
                             session.commit()
@@ -215,8 +215,8 @@ def regenerate_summary_index_task(
 
                     try:
                         # Get all segments with existing summaries
-                        segments = (
-                            session.query(DocumentSegment)
+                        segments = session.scalars(
+                            select(DocumentSegment)
                             .join(
                                 DocumentSegmentSummary,
                                 DocumentSegment.id == DocumentSegmentSummary.chunk_id,
@@ -229,8 +229,7 @@ def regenerate_summary_index_task(
                                 DocumentSegmentSummary.dataset_id == dataset_id,
                             )
                             .order_by(DocumentSegment.position.asc())
-                            .all()
-                        )
+                        ).all()
 
                         if not segments:
                             continue
@@ -242,19 +241,19 @@ def regenerate_summary_index_task(
                         )
 
                         for segment in segments:
-                            summary_record = None
+                            existing_summary_record: DocumentSegmentSummary | None = None
                             try:
                                 # Get existing summary record
-                                summary_record = (
-                                    session.query(DocumentSegmentSummary)
-                                    .filter_by(
-                                        chunk_id=segment.id,
-                                        dataset_id=dataset_id,
+                                existing_summary_record = session.scalar(
+                                    select(DocumentSegmentSummary)
+                                    .where(
+                                        DocumentSegmentSummary.chunk_id == segment.id,
+                                        DocumentSegmentSummary.dataset_id == dataset_id,
                                     )
-                                    .first()
+                                    .limit(1)
                                 )
 
-                                if not summary_record:
+                                if not existing_summary_record:
                                     logger.warning("Summary record not found for segment %s, skipping", segment.id)
                                     continue
 
@@ -274,10 +273,10 @@ def regenerate_summary_index_task(
                                 )
                                 total_segments_failed += 1
                                 # Update summary record with error status
-                                if summary_record:
-                                    summary_record.status = "error"
-                                    summary_record.error = f"Regeneration failed: {str(e)}"
-                                    session.add(summary_record)
+                                if existing_summary_record is not None:
+                                    existing_summary_record.status = SummaryStatus.ERROR
+                                    existing_summary_record.error = f"Regeneration failed: {str(e)}"
+                                    session.add(existing_summary_record)
                                     session.commit()
                                 continue
 

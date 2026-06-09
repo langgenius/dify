@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
@@ -43,16 +43,12 @@ const MetadataFilter = ({
       trigger={collapseIcon => (
         <div className="flex grow items-center justify-between pr-4">
           <div className="flex items-center">
-            <div className="system-sm-semibold-uppercase mr-0.5 text-text-secondary">
+            <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">
               {t('nodes.knowledgeRetrieval.metadata.title', { ns: 'workflow' })}
             </div>
-            <Tooltip
-              popupContent={(
-                <div className="w-[200px]">
-                  {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
-                </div>
-              )}
-            />
+            <Infotip aria-label={t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })} popupClassName="w-[200px]">
+              {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
+            </Infotip>
             {collapseIcon}
           </div>
           <div className="flex items-center">
@@ -75,12 +71,12 @@ const MetadataFilter = ({
         {
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
             <>
-              <div className="body-xs-regular px-4 text-text-tertiary">
+              <div className="px-4 body-xs-regular text-text-tertiary">
                 {t('nodes.knowledgeRetrieval.metadata.options.automatic.desc', { ns: 'workflow' })}
               </div>
               <div className="mt-1 px-4">
                 <ModelParameterModal
-                  popupClassName="!w-[387px]"
+                  popupClassName="w-[387px]!"
                   isInWorkflow
                   isAdvancedMode={true}
                   provider={metadataModelConfig?.provider || ''}

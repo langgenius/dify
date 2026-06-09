@@ -4,7 +4,6 @@ import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import FeaturesTrigger from '../features-trigger'
@@ -20,7 +19,24 @@ const mockUseProviderContext = vi.fn()
 const mockUseNodes = vi.fn()
 const mockUseEdges = vi.fn()
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 const mockHandleCheckBeforePublish = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockPublishWorkflow = vi.fn()
@@ -108,8 +124,11 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         <button type="button" onClick={() => { Promise.resolve(props.onPublish?.()).catch(() => undefined) }}>
           publisher-publish
         </button>
-        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ title: 'Test title', releaseNotes: 'Test notes' })).catch(() => undefined) }}>
+        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-1/workflows/publish', title: 'Test title', releaseNotes: 'Test notes' })).catch(() => undefined) }}>
           publisher-publish-with-params
+        </button>
+        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-id/workflows/publish/custom', title: 'Custom title', releaseNotes: 'Custom notes' })).catch(() => undefined) }}>
+          publisher-publish-custom
         </button>
       </div>
     )
@@ -148,12 +167,7 @@ const createProviderContext = ({
 })
 
 const renderWithToast = (ui: ReactElement) => {
-  return render(
-    // eslint-disable-next-line react/no-context-provider
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      {ui}
-    </ToastContext.Provider>,
-  )
+  return render(ui)
 }
 
 describe('FeaturesTrigger', () => {
@@ -376,7 +390,7 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
+        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
       })
       expect(mockPublishWorkflow).not.toHaveBeenCalled()
     })
@@ -422,7 +436,7 @@ describe('FeaturesTrigger', () => {
         expect(mockSetPublishedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
         expect(useAppStore.getState().appDetail).toBeDefined()
       })
@@ -439,9 +453,27 @@ describe('FeaturesTrigger', () => {
       // Assert
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          url: '/apps/app-id/workflows/publish',
+          url: '/apps/app-1/workflows/publish',
           title: 'Test title',
           releaseNotes: 'Test notes',
+        })
+      })
+    })
+
+    it('should respect the publish url passed by the publisher', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      renderWithToast(<FeaturesTrigger />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish-custom' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalledWith({
+          url: '/apps/app-id/workflows/publish/custom',
+          title: 'Custom title',
+          releaseNotes: 'Custom notes',
         })
       })
     })
@@ -459,7 +491,7 @@ describe('FeaturesTrigger', () => {
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalled()
       })
-      expect(mockNotify).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+      expect(toastMocks.call).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
       expect(mockUpdatePublishedWorkflow).not.toHaveBeenCalled()
       expect(mockInvalidateAppTriggers).not.toHaveBeenCalled()
       expect(mockSetPublishedAt).not.toHaveBeenCalled()

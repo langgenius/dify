@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, TypeAlias
+from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field, computed_field
+
+from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
-from pydantic import BaseModel, ConfigDict, computed_field
-
 from models.model import IconType
 
-JSONValue: TypeAlias = str | int | float | bool | None | dict[str, Any] | list[Any]
-JSONObject: TypeAlias = dict[str, Any]
+type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
+type JSONObject = dict[str, Any]
 
 
 class SystemParameters(BaseModel):
@@ -17,6 +18,113 @@ class SystemParameters(BaseModel):
     audio_file_size_limit: int
     file_size_limit: int
     workflow_file_upload_limit: int
+
+
+class SimpleResultResponse(ResponseModel):
+    result: str
+
+
+class SimpleResultMessageResponse(ResponseModel):
+    result: str
+    message: str
+
+
+class SimpleMessageResponse(ResponseModel):
+    message: str
+
+
+class SimpleDataResponse(ResponseModel):
+    data: str
+
+
+class SimpleResultDataResponse(ResponseModel):
+    result: str
+    data: str
+
+
+class SimpleResultStringListResponse(ResponseModel):
+    result: str
+    data: list[str]
+
+
+class SimpleResultOptionalDataResponse(ResponseModel):
+    result: str
+    data: str | None = None
+
+
+class AccessTokenData(ResponseModel):
+    access_token: str
+
+
+class AccessTokenResultResponse(ResponseModel):
+    result: str
+    data: AccessTokenData
+
+
+class VerificationTokenResponse(ResponseModel):
+    is_valid: bool
+    email: str
+    token: str
+
+
+class LoginStatusResponse(ResponseModel):
+    logged_in: bool
+    app_logged_in: bool
+
+
+class AccessModeResponse(ResponseModel):
+    access_mode: str = Field(serialization_alias="accessMode", validation_alias="accessMode")
+
+
+class BooleanResultResponse(ResponseModel):
+    result: bool
+
+
+class SuccessResponse(ResponseModel):
+    success: bool
+
+
+class UsageCheckResponse(ResponseModel):
+    is_using: bool
+
+
+class UsageCountResponse(ResponseModel):
+    is_using: bool
+    count: int
+
+
+class IndexInfoResponse(ResponseModel):
+    welcome: str
+    api_version: str
+    server_version: str
+
+
+class AvatarUrlResponse(ResponseModel):
+    avatar_url: str
+
+
+class TextContentResponse(ResponseModel):
+    content: str
+
+
+class AllowedExtensionsResponse(ResponseModel):
+    allowed_extensions: list[str]
+
+
+class UrlResponse(ResponseModel):
+    url: str
+
+
+class RedirectUrlResponse(ResponseModel):
+    redirect_url: str
+
+
+class ApiBaseUrlResponse(ResponseModel):
+    api_base_url: str
+
+
+class NewAppResponse(ResponseModel):
+    new_app_id: str
 
 
 class Parameters(BaseModel):

@@ -42,14 +42,14 @@ describe('languageCommand', () => {
       const results = await languageCommand.search('english', 'en')
 
       expect(results).toHaveLength(1)
-      expect(results[0].id).toBe('lang-en-US')
+      expect(results[0]!.id).toBe('lang-en-US')
     })
 
     it('filters languages by value query', async () => {
       const results = await languageCommand.search('zh', 'en')
 
       expect(results).toHaveLength(1)
-      expect(results[0].id).toBe('lang-zh-Hans')
+      expect(results[0]!.id).toBe('lang-zh-Hans')
     })
 
     it('returns command data with i18n.set command', async () => {

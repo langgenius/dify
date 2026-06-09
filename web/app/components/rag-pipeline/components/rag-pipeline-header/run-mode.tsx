@@ -1,15 +1,16 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 
 type RunModeProps = {
   text?: string
@@ -49,7 +50,7 @@ const RunMode = ({
       <button
         type="button"
         className={cn(
-          'system-xs-medium flex h-7 items-center gap-x-1 px-1.5 text-text-accent hover:bg-state-accent-hover',
+          'flex h-7 items-center gap-x-1 px-1.5 system-xs-medium text-text-accent hover:bg-state-accent-hover',
           isDisabled && 'cursor-not-allowed bg-state-accent-hover',
           isDisabled ? 'rounded-l-md' : 'rounded-md',
         )}
@@ -78,7 +79,11 @@ const RunMode = ({
         )}
         {
           !isDisabled && (
-            <ShortcutsName keys={['alt', 'R']} textColor="secondary" />
+            <KbdGroup>
+              {['Alt', 'R'].map(key => (
+                <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+              ))}
+            </KbdGroup>
           )
         }
       </button>

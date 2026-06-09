@@ -4,14 +4,16 @@ import { ChunkingMode } from '@/models/datasets'
 import { DocumentContext } from '../../../context'
 import ActionButtons from '../action-buttons'
 
-// Mock useKeyPress: required because tests capture registered callbacks
-// via mockUseKeyPress to verify ESC and Ctrl+S keyboard shortcut behavior.
-const mockUseKeyPress = vi.fn()
-vi.mock('ahooks', () => ({
-  useKeyPress: (keys: string | string[], callback: (e: KeyboardEvent) => void, options?: object) => {
-    mockUseKeyPress(keys, callback, options)
-  },
-}))
+const mockUseHotkey = vi.fn()
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (hotkey: string, callback: (e: KeyboardEvent) => void, options?: object) => {
+      mockUseHotkey(hotkey, callback, options)
+    },
+  }
+})
 
 // Create wrapper component for providing context
 const createWrapper = (contextValue: {
@@ -25,31 +27,20 @@ const createWrapper = (contextValue: {
   )
 }
 
-// Helper to get captured callbacks from useKeyPress mock
 const getEscCallback = (): ((e: KeyboardEvent) => void) | undefined => {
-  const escCall = mockUseKeyPress.mock.calls.find(
-    (call) => {
-      const keys = call[0]
-      return Array.isArray(keys) && keys.includes('esc')
-    },
-  )
+  const escCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Escape')
   return escCall?.[1]
 }
 
 const getCtrlSCallback = (): ((e: KeyboardEvent) => void) | undefined => {
-  const ctrlSCall = mockUseKeyPress.mock.calls.find(
-    (call) => {
-      const keys = call[0]
-      return typeof keys === 'string' && keys.includes('.s')
-    },
-  )
+  const ctrlSCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Mod+S')
   return ctrlSCall?.[1]
 }
 
 describe('ActionButtons', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseKeyPress.mockClear()
+    mockUseHotkey.mockClear()
   })
 
   describe('Rendering', () => {
@@ -63,7 +54,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render cancel button', () => {
@@ -76,7 +67,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
     })
 
     it('should render save button', () => {
@@ -89,7 +80,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
 
     it('should render ESC keyboard hint on cancel button', () => {
@@ -102,7 +93,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText('ESC')).toBeInTheDocument()
+      expect(screen.getByText('Esc'))!.toBeInTheDocument()
     })
 
     it('should render S keyboard hint on save button', () => {
@@ -115,7 +106,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText('S')).toBeInTheDocument()
+      expect(screen.getByText('S'))!.toBeInTheDocument()
     })
   })
 
@@ -132,7 +123,7 @@ describe('ActionButtons', () => {
       )
 
       const cancelButton = screen.getAllByRole('button')[0]
-      fireEvent.click(cancelButton)
+      fireEvent.click(cancelButton!)
 
       expect(mockHandleCancel).toHaveBeenCalledTimes(1)
     })
@@ -150,7 +141,7 @@ describe('ActionButtons', () => {
 
       const buttons = screen.getAllByRole('button')
       const saveButton = buttons[buttons.length - 1] // Save button is last
-      fireEvent.click(saveButton)
+      fireEvent.click(saveButton!)
 
       expect(mockHandleSave).toHaveBeenCalledTimes(1)
     })
@@ -167,7 +158,7 @@ describe('ActionButtons', () => {
 
       const buttons = screen.getAllByRole('button')
       const saveButton = buttons[buttons.length - 1]
-      expect(saveButton).toBeDisabled()
+      expect(saveButton)!.toBeDisabled()
     })
   })
 
@@ -187,7 +178,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({ docForm: ChunkingMode.parentChild, parentMode: 'paragraph' }) },
       )
 
-      expect(screen.getByText(/operation\.saveAndRegenerate/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
 
     it('should not show regeneration button when isChildChunk is true', () => {
@@ -278,7 +269,7 @@ describe('ActionButtons', () => {
       )
 
       const regenerationButton = screen.getByText(/operation\.saveAndRegenerate/i).closest('button')
-      expect(regenerationButton).toBeDisabled()
+      expect(regenerationButton)!.toBeDisabled()
     })
   })
 
@@ -298,7 +289,8 @@ describe('ActionButtons', () => {
       )
 
       // Assert - regeneration button should show with default actionType='edit'
-      expect(screen.getByText(/operation\.saveAndRegenerate/i)).toBeInTheDocument()
+      // Assert - regeneration button should show with default actionType='edit'
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
 
     it('should use default isChildChunk of false', () => {
@@ -316,7 +308,8 @@ describe('ActionButtons', () => {
       )
 
       // Assert - regeneration button should show with default isChildChunk=false
-      expect(screen.getByText(/operation\.saveAndRegenerate/i)).toBeInTheDocument()
+      // Assert - regeneration button should show with default isChildChunk=false
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
 
     it('should use default showRegenerationButton of true', () => {
@@ -334,7 +327,8 @@ describe('ActionButtons', () => {
       )
 
       // Assert - regeneration button should show with default showRegenerationButton=true
-      expect(screen.getByText(/operation\.saveAndRegenerate/i)).toBeInTheDocument()
+      // Assert - regeneration button should show with default showRegenerationButton=true
+      expect(screen.getByText(/operation\.saveAndRegenerate/i))!.toBeInTheDocument()
     })
   })
 
@@ -373,12 +367,11 @@ describe('ActionButtons', () => {
         </DocumentContext.Provider>,
       )
 
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
-      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
   })
 
-  // Keyboard shortcuts tests via useKeyPress callbacks
   describe('Keyboard Shortcuts', () => {
     it('should display ctrl key hint on save button', () => {
       render(
@@ -390,8 +383,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      // Assert - check for ctrl key hint (Ctrl or Cmd depending on system)
-      const kbdElements = document.querySelectorAll('.system-kbd')
+      const kbdElements = document.querySelectorAll('kbd')
       expect(kbdElements.length).toBeGreaterThan(0)
     })
 
@@ -458,7 +450,7 @@ describe('ActionButtons', () => {
       expect(mockHandleSave).not.toHaveBeenCalled()
     })
 
-    it('should register useKeyPress with correct options for Ctrl+S', () => {
+    it('should register the Mod+S hotkey', () => {
       render(
         <ActionButtons
           handleCancel={vi.fn()}
@@ -468,12 +460,8 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      // Assert - verify useKeyPress was called with correct options
-      const ctrlSCall = mockUseKeyPress.mock.calls.find(
-        call => typeof call[0] === 'string' && call[0].includes('.s'),
-      )
+      const ctrlSCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Mod+S')
       expect(ctrlSCall).toBeDefined()
-      expect(ctrlSCall![2]).toEqual({ exactMatch: true, useCapture: true })
     })
   })
 })

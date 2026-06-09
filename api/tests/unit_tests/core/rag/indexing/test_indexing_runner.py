@@ -49,11 +49,11 @@ for the full indexing pipeline are handled separately in the integration test su
 
 import json
 import uuid
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.errors.error import ProviderTokenNotInitError
@@ -64,6 +64,7 @@ from core.indexing_runner import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
@@ -594,6 +595,7 @@ class TestIndexingRunnerLoad:
             patch("core.indexing_runner.threading.Thread") as mock_thread,
             patch("core.indexing_runner.concurrent.futures.ThreadPoolExecutor") as mock_executor,
         ):
+            mock_app._get_current_object = Mock(return_value=Mock())
             yield {
                 "db": mock_db,
                 "model_manager": mock_model_manager,
@@ -795,32 +797,20 @@ class TestIndexingRunnerRun:
         doc = sample_dataset_documents[0]
 
         # Mock database queries
-        mock_dependencies["db"].session.get.return_value = doc
-
         mock_dataset = Mock(spec=Dataset)
         mock_dataset.id = doc.dataset_id
         mock_dataset.tenant_id = doc.tenant_id
         mock_dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
+
+        mock_current_user = MagicMock()
+        mock_current_user.set_tenant_id = MagicMock()
+
+        get_dispatch = {"Document": doc, "Dataset": mock_dataset, "Account": mock_current_user}
+        mock_dependencies["db"].session.get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
         mock_dependencies["db"].session.scalar.return_value = mock_process_rule
-
-        # Mock current_user (Account) for _transform
-        mock_current_user = MagicMock()
-        mock_current_user.set_tenant_id = MagicMock()
-
-        # Setup db.session.query to return different results based on the model
-        def mock_query_side_effect(model):
-            mock_query_result = MagicMock()
-            if model.__name__ == "Dataset":
-                mock_query_result.filter_by.return_value.first.return_value = mock_dataset
-            elif model.__name__ == "Account":
-                mock_query_result.filter_by.return_value.first.return_value = mock_current_user
-            return mock_query_result
-
-        mock_dependencies["db"].session.query.side_effect = mock_query_side_effect
 
         # Mock processor
         mock_processor = MagicMock()
@@ -891,10 +881,11 @@ class TestIndexingRunnerRun:
         doc = sample_dataset_documents[0]
 
         # Mock database
-        mock_dependencies["db"].session.get.return_value = doc
-
         mock_dataset = Mock(spec=Dataset)
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
+        mock_dataset.tenant_id = doc.tenant_id
+
+        get_dispatch = {"Document": doc, "Dataset": mock_dataset}
+        mock_dependencies["db"].session.get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
@@ -917,11 +908,12 @@ class TestIndexingRunnerRun:
         runner = IndexingRunner()
         doc = sample_dataset_documents[0]
 
-        # Mock database to raise ObjectDeletedError
-        mock_dependencies["db"].session.get.return_value = doc
-
+        # Mock database
         mock_dataset = Mock(spec=Dataset)
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
+        mock_dataset.tenant_id = doc.tenant_id
+
+        get_dispatch = {"Document": doc, "Dataset": mock_dataset}
+        mock_dependencies["db"].session.get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
@@ -945,17 +937,21 @@ class TestIndexingRunnerRun:
         docs = sample_dataset_documents
 
         # Mock database
-        def get_side_effect(model_class, doc_id):
-            for doc in docs:
-                if doc.id == doc_id:
-                    return doc
-            return None
-
-        mock_dependencies["db"].session.get.side_effect = get_side_effect
-
         mock_dataset = Mock(spec=Dataset)
         mock_dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
+        mock_current_user = MagicMock()
+        mock_current_user.set_tenant_id = MagicMock()
+
+        doc_map = {doc.id: doc for doc in docs}
+        model_dispatch = {"Dataset": mock_dataset, "Account": mock_current_user}
+
+        def get_side_effect(model_class, id):
+            name = model_class.__name__
+            if name == "Document":
+                return doc_map.get(id)
+            return model_dispatch.get(name)
+
+        mock_dependencies["db"].session.get.side_effect = get_side_effect
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
@@ -1035,9 +1031,8 @@ class TestIndexingRunnerRetryLogic:
         mock_document = Mock(spec=DatasetDocument)
         mock_document.id = document_id
 
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.count.return_value = 0
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_document
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.update.return_value = None
+        mock_dependencies["db"].session.scalar.return_value = 0
+        mock_dependencies["db"].session.get.return_value = mock_document
 
         # Act
         IndexingRunner._update_document_index_status(
@@ -1053,7 +1048,7 @@ class TestIndexingRunnerRetryLogic:
         """Test document status update when document is paused."""
         # Arrange
         document_id = str(uuid.uuid4())
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.count.return_value = 1
+        mock_dependencies["db"].session.scalar.return_value = 1
 
         # Act & Assert
         with pytest.raises(DocumentIsPausedError):
@@ -1063,8 +1058,8 @@ class TestIndexingRunnerRetryLogic:
         """Test document status update when document is deleted."""
         # Arrange
         document_id = str(uuid.uuid4())
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.count.return_value = 0
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_dependencies["db"].session.scalar.return_value = 0
+        mock_dependencies["db"].session.get.return_value = None
 
         # Act & Assert
         with pytest.raises(DocumentIsDeletedPausedError):
@@ -1402,12 +1397,10 @@ class TestIndexingRunnerEstimate:
         """Mock all external dependencies."""
         with (
             patch("core.indexing_runner.db") as mock_db,
-            patch("core.indexing_runner.FeatureService") as mock_feature_service,
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
         ):
             yield {
                 "db": mock_db,
-                "feature_service": mock_feature_service,
                 "factory": mock_factory,
             }
 
@@ -1417,13 +1410,9 @@ class TestIndexingRunnerEstimate:
         runner = IndexingRunner()
         tenant_id = str(uuid.uuid4())
 
-        # Mock feature service
-        mock_features = MagicMock()
-        mock_features.billing.enabled = True
-        mock_dependencies["feature_service"].get_features.return_value = mock_features
-
         # Create too many extract settings
         with patch("core.indexing_runner.dify_config") as mock_config:
+            mock_config.BILLING_ENABLED = True
             mock_config.BATCH_UPLOAD_LIMIT = 10
             extract_settings = [MagicMock() for _ in range(15)]
 
@@ -1435,6 +1424,42 @@ class TestIndexingRunnerEstimate:
                     tmp_processing_rule={"mode": "automatic", "rules": {}},
                     doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 )
+
+    def test_indexing_estimate_commits_preview_image_cleanup(self, mock_dependencies):
+        """Test indexing estimate persists cleanup for preview-only extracted images."""
+        runner = IndexingRunner()
+        tenant_id = str(uuid.uuid4())
+        mock_processor = MagicMock()
+        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+
+        preview_doc = Document(
+            page_content="![image](http://files.local/files/image-1/file-preview)",
+            metadata={},
+        )
+        mock_processor.extract.return_value = [preview_doc]
+        mock_processor.transform.return_value = [preview_doc]
+
+        image_file = SimpleNamespace(key="image_files/tenant-1/source-file-1/image.png")
+        mock_dependencies["db"].session.scalar.return_value = image_file
+
+        with (
+            patch("core.indexing_runner.get_image_upload_file_ids", return_value=["image-1"]),
+            patch("core.indexing_runner.storage") as mock_storage,
+            patch("core.indexing_runner.dify_config") as mock_config,
+        ):
+            mock_config.BILLING_ENABLED = False
+
+            result = runner.indexing_estimate(
+                tenant_id=tenant_id,
+                extract_settings=[MagicMock()],
+                tmp_processing_rule={"mode": "automatic", "rules": {}},
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            )
+
+        assert result.total_segments == 1
+        mock_storage.delete.assert_called_once_with(image_file.key)
+        mock_dependencies["db"].session.delete.assert_called_once_with(image_file)
+        mock_dependencies["db"].session.commit.assert_called_once()
 
 
 class TestIndexingRunnerProcessChunk:
@@ -1491,11 +1516,8 @@ class TestIndexingRunnerProcessChunk:
 
         mock_dependencies["redis"].get.return_value = None
 
-        # Mock database query for segment updates
-        mock_query = MagicMock()
-        mock_dependencies["db"].session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.update.return_value = None
+        # Mock database update for segment status
+        mock_dependencies["db"].session.execute.return_value = None
 
         # Create a proper context manager mock
         mock_context = MagicMock()

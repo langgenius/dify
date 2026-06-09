@@ -56,8 +56,8 @@ describe('useTestRunSteps', () => {
     const { result } = renderHook(() => useTestRunSteps())
 
     expect(result.current.steps).toHaveLength(2)
-    expect(result.current.steps[0].value).toBe('dataSource')
-    expect(result.current.steps[1].value).toBe('documentProcessing')
+    expect(result.current.steps[0]!.value).toBe('dataSource')
+    expect(result.current.steps[1]!.value).toBe('documentProcessing')
   })
 
   it('should increment step on handleNextStep', () => {
@@ -87,8 +87,8 @@ describe('useTestRunSteps', () => {
   it('should have translated step labels', () => {
     const { result } = renderHook(() => useTestRunSteps())
 
-    expect(result.current.steps[0].label).toBeDefined()
-    expect(typeof result.current.steps[0].label).toBe('string')
+    expect(result.current.steps[0]!.label).toBeDefined()
+    expect(typeof result.current.steps[0]!.label).toBe('string')
   })
 })
 
@@ -131,13 +131,13 @@ describe('useDatasourceOptions', () => {
     mockNodes.push(
       { id: 'ds-1', data: { type: BlockEnum.DataSource, title: 'Source' } },
       { id: 'llm-1', data: { type: BlockEnum.LLM, title: 'LLM' } },
-      { id: 'end-1', data: { type: BlockEnum.End, title: 'End' } },
+      { id: 'inset-e-1', data: { type: BlockEnum.End, title: 'End' } },
     )
 
     const { result } = renderHook(() => useDatasourceOptions())
 
     expect(result.current).toHaveLength(1)
-    expect(result.current[0].value).toBe('ds-1')
+    expect(result.current[0]!.value).toBe('ds-1')
   })
 })
 

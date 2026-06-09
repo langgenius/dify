@@ -148,7 +148,10 @@ describe('HITLInputVariableBlockComponent', () => {
         editor!.update(() => {
           $getRoot().selectEnd()
         })
-        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, createWorkflowNodesMap())
+        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+          workflowNodesMap: createWorkflowNodesMap(),
+          availableVariables: [],
+        })
       })
 
       expect(handled).toBe(true)
@@ -299,8 +302,8 @@ describe('HITLInputVariableBlockComponent', () => {
     })
   })
 
-  describe('Tooltip payload', () => {
-    it('should call getVarType with rag selector and use rag node id mapping', () => {
+  describe('Full-path preview payload', () => {
+    it('should resolve the rag node via isRagVar offset and skip the full-path preview', () => {
       const getVarType = vi.fn(() => Type.number)
       const { container } = renderVariableBlock({
         variables: ['rag', 'node-rag', 'chunk'],
@@ -311,10 +314,9 @@ describe('HITLInputVariableBlockComponent', () => {
 
       expect(screen.getByText('chunk')).toBeInTheDocument()
       expect(hasErrorIcon(container)).toBe(false)
-      expect(getVarType).toHaveBeenCalledWith({
-        nodeId: 'rag',
-        valueSelector: ['rag', 'node-rag', 'chunk'],
-      })
+      // Rag selectors always have `isShowAPart === false`, so the full-path
+      // preview is not rendered and `getVarType` is not invoked.
+      expect(getVarType).not.toHaveBeenCalled()
     })
 
     it('should use shortened display name for deep non-rag selectors', () => {

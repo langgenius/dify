@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from graphon.model_runtime.entities.llm_entities import LLMResult
-from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
-
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
+from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 
 _SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
 and you can quickly aimed at the main point of an webpage and reproduce it in your own words but
@@ -136,7 +135,7 @@ class BuiltinTool(Tool):
             else:
                 if len(messages[-1]) + len(j) < max_tokens * 0.5:
                     messages[-1] += j
-                if get_prompt_tokens(messages[-1] + j) > max_tokens * 0.7:
+                elif get_prompt_tokens(messages[-1] + j) > max_tokens * 0.7:
                     messages.append(j)
                 else:
                     messages[-1] += j

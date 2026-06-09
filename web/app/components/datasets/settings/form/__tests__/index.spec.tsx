@@ -131,14 +131,6 @@ vi.mock('@/service/use-common', () => ({
       ],
     },
   }),
-  useCurrentWorkspace: () => ({
-    data: {
-      trial_credits: 1000,
-      trial_credits_used: 100,
-      next_credit_reset_date: undefined,
-    },
-    isPending: false,
-  }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -193,7 +185,7 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
     success: vi.fn(),
@@ -396,7 +388,7 @@ describe('Form', () => {
     })
 
     it('should show error when trying to save with empty name', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       render(<Form />)
 
       // Clear the name

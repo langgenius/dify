@@ -4,6 +4,7 @@ import importlib.util
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 from unittest.mock import MagicMock
 
 import httpx
@@ -30,8 +31,8 @@ def jina_module() -> ModuleType:
     return module
 
 
-def _credentials(api_key: str | None = "test_api_key_123", auth_type: str = "bearer") -> dict:
-    config: dict = {} if api_key is None else {"api_key": api_key}
+def _credentials(api_key: str | None = "test_api_key_123", auth_type: str = "bearer") -> dict[str, Any]:
+    config: dict[str, Any] = {} if api_key is None else {"api_key": api_key}
     return {"auth_type": auth_type, "config": config}
 
 
@@ -47,7 +48,7 @@ def test_init_rejects_invalid_auth_type(jina_module: ModuleType) -> None:
 
 
 @pytest.mark.parametrize("credentials", [{"auth_type": "bearer", "config": {}}, {"auth_type": "bearer"}])
-def test_init_requires_api_key(jina_module: ModuleType, credentials: dict) -> None:
+def test_init_requires_api_key(jina_module: ModuleType, credentials: dict[str, Any]) -> None:
     with pytest.raises(ValueError, match="No API key provided"):
         jina_module.JinaAuth(credentials)
 
@@ -60,7 +61,7 @@ def test_prepare_headers_includes_bearer_api_key(jina_module: ModuleType) -> Non
 def test_post_request_calls_httpx(jina_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     auth = jina_module.JinaAuth(_credentials(api_key="k"))
     post_mock = MagicMock(name="httpx.post")
-    monkeypatch.setattr(jina_module.httpx, "post", post_mock)
+    monkeypatch.setattr(jina_module._http_client, "post", post_mock)
 
     auth._post_request("https://r.jina.ai", {"url": "https://example.com"}, {"h": "v"})
     post_mock.assert_called_once_with("https://r.jina.ai", headers={"h": "v"}, json={"url": "https://example.com"})
@@ -72,7 +73,7 @@ def test_validate_credentials_success(jina_module: ModuleType, monkeypatch: pyte
     response = MagicMock()
     response.status_code = 200
     post_mock = MagicMock(return_value=response)
-    monkeypatch.setattr(jina_module.httpx, "post", post_mock)
+    monkeypatch.setattr(jina_module._http_client, "post", post_mock)
 
     assert auth.validate_credentials() is True
     post_mock.assert_called_once_with(
@@ -90,7 +91,7 @@ def test_validate_credentials_non_200_raises_via_handle_error(
     response = MagicMock()
     response.status_code = 402
     response.json.return_value = {"error": "Payment required"}
-    monkeypatch.setattr(jina_module.httpx, "post", MagicMock(return_value=response))
+    monkeypatch.setattr(jina_module._http_client, "post", MagicMock(return_value=response))
 
     with pytest.raises(Exception, match="Status code: 402.*Payment required"):
         auth.validate_credentials()
@@ -151,7 +152,7 @@ def test_validate_credentials_propagates_network_errors(
     jina_module: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     auth = jina_module.JinaAuth(_credentials(api_key="k"))
-    monkeypatch.setattr(jina_module.httpx, "post", MagicMock(side_effect=httpx.ConnectError("boom")))
+    monkeypatch.setattr(jina_module._http_client, "post", MagicMock(side_effect=httpx.ConnectError("boom")))
 
     with pytest.raises(httpx.ConnectError, match="boom"):
         auth.validate_credentials()

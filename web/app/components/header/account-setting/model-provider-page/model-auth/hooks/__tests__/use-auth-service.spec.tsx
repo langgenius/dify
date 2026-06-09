@@ -80,15 +80,15 @@ describe('useAuthService hooks', () => {
     const { result } = renderHook(() => useAuthService('openai'), { wrapper })
 
     // Provider services
-    expect(result.current.getAddCredentialService(false)).toBe(vi.mocked(useAddProviderCredential).mock.results[0].value.mutateAsync)
-    expect(result.current.getEditCredentialService(false)).toBe(vi.mocked(useEditProviderCredential).mock.results[0].value.mutateAsync)
-    expect(result.current.getDeleteCredentialService(false)).toBe(vi.mocked(useDeleteProviderCredential).mock.results[0].value.mutateAsync)
-    expect(result.current.getActiveCredentialService(false)).toBe(vi.mocked(useActiveProviderCredential).mock.results[0].value.mutateAsync)
+    expect(result.current.getAddCredentialService(false)).toBe(vi.mocked(useAddProviderCredential).mock.results[0]!.value.mutateAsync)
+    expect(result.current.getEditCredentialService(false)).toBe(vi.mocked(useEditProviderCredential).mock.results[0]!.value.mutateAsync)
+    expect(result.current.getDeleteCredentialService(false)).toBe(vi.mocked(useDeleteProviderCredential).mock.results[0]!.value.mutateAsync)
+    expect(result.current.getActiveCredentialService(false)).toBe(vi.mocked(useActiveProviderCredential).mock.results[0]!.value.mutateAsync)
 
     // Model services
-    expect(result.current.getAddCredentialService(true)).toBe(vi.mocked(useAddModelCredential).mock.results[0].value.mutateAsync)
-    expect(result.current.getEditCredentialService(true)).toBe(vi.mocked(useEditModelCredential).mock.results[0].value.mutateAsync)
-    expect(result.current.getDeleteCredentialService(true)).toBe(vi.mocked(useDeleteModelCredential).mock.results[0].value.mutateAsync)
-    expect(result.current.getActiveCredentialService(true)).toBe(vi.mocked(useActiveModelCredential).mock.results[0].value.mutateAsync)
+    expect(result.current.getAddCredentialService(true)).toBe(vi.mocked(useAddModelCredential).mock.results[0]!.value.mutateAsync)
+    expect(result.current.getEditCredentialService(true)).toBe(vi.mocked(useEditModelCredential).mock.results[0]!.value.mutateAsync)
+    expect(result.current.getDeleteCredentialService(true)).toBe(vi.mocked(useDeleteModelCredential).mock.results[0]!.value.mutateAsync)
+    expect(result.current.getActiveCredentialService(true)).toBe(vi.mocked(useActiveModelCredential).mock.results[0]!.value.mutateAsync)
   })
 })
