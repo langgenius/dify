@@ -46,13 +46,19 @@ vi.mock('@/service/debug', () => ({
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
   default: ({
+    modelId,
+    provider,
     setModel,
     onCompletionParamsChange,
   }: {
+    modelId: string
+    provider: string
     setModel: (value: { modelId: string, provider: string, mode?: string, features?: string[] }) => void
     onCompletionParamsChange: (value: Record<string, unknown>) => void
   }) => (
     <div>
+      <div data-testid="selected-model">{modelId}</div>
+      <div data-testid="selected-provider">{provider}</div>
       <button onClick={() => setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' })}>change-model</button>
       <button onClick={() => onCompletionParamsChange({ temperature: 0.3 })}>change-params</button>
     </div>
@@ -169,6 +175,33 @@ describe('GetAutomaticRes', () => {
 
     fireEvent.click(screen.getByText('change-params'))
     expect(localStorage.getItem('auto-gen-model')).toContain('"temperature":0.3')
+  })
+
+  it('should initialize model selection from local storage', async () => {
+    localStorage.setItem('auto-gen-model', JSON.stringify({
+      name: 'stored-model',
+      provider: 'stored-provider',
+      mode: 'chat',
+      completion_params: {
+        temperature: 0.5,
+      },
+    }))
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        isBasicMode
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-model')).toHaveTextContent('stored-model')
+      expect(screen.getByTestId('selected-provider')).toHaveTextContent('stored-provider')
+    })
   })
 
   it('should block generation when instruction is empty', () => {
