@@ -34,10 +34,8 @@ class ContractResp(BaseModel):
 
 @pytest.fixture(autouse=True, scope="module")
 def _register_contract_test_models():
-    """Register the body/response models so @accepts(body=)/@returns name lookups
-    resolve, then drop them on teardown so these test-only models don't leak into
-    the shared openapi_ns (and the generated spec) for sibling test modules.
-    """
+    # Register for @accepts(body=)/@returns name lookups; drop on teardown so these
+    # test-only models don't leak into the shared openapi_ns / generated spec.
     register_schema_model(openapi_ns, ContractBody)
     register_response_schema_model(openapi_ns, ContractResp)
     yield
@@ -46,9 +44,7 @@ def _register_contract_test_models():
 
 
 def _guard_like(view):
-    """Stand-in for ``@auth_router.guard`` — an outermost @wraps layer. Asserts the
-    contract decorators' Swagger metadata survives being wrapped by the guard.
-    """
+    """Stand-in for ``@auth_router.guard`` — an outermost @wraps layer."""
 
     @wraps(view)
     def wrapper(*args, **kwargs):
@@ -91,6 +87,28 @@ def test_accepts_rejects_invalid_query_with_422(app, query_string):
     with app.test_request_context(f"/?{query_string}"):
         with pytest.raises(UnprocessableEntity):
             view()
+
+
+def test_accepts_validation_error_is_sanitized_and_structured(app):
+    """422 body is structured and leaks neither the pydantic docs url nor the user input."""
+
+    @accepts(body=ContractBody)
+    def view(*, body):
+        return body
+
+    with app.test_request_context("/", method="POST", json={"secret": "leak-me"}):
+        with pytest.raises(UnprocessableEntity) as exc_info:
+            view()
+
+    data = exc_info.value.data
+    assert data["message"] == "Request validation failed"
+    assert isinstance(data["errors"], list)
+    assert data["errors"]
+    for err in data["errors"]:
+        assert {"type", "loc", "msg"} <= err.keys()
+        assert "url" not in err
+        assert "input" not in err
+    assert "leak-me" not in str(data)
 
 
 def test_accepts_injects_validated_body(app):
@@ -167,11 +185,7 @@ def test_returns_serializes_model_in_three_tuple_with_headers(app):
     assert headers == {"X-Test": "1"}
 
 
-# ---------------------------------------------------------------------------
-# Swagger metadata survives the full decorator stack (guard outermost). flask_restx
-# reads __apidoc__ off the registered view; @wraps must carry the contract
-# decorators' params/expect/responses up through the guard layer or the docs vanish.
-# ---------------------------------------------------------------------------
+# Swagger metadata (read off __apidoc__) must survive @wraps up through the guard layer.
 
 
 def test_accepts_returns_emit_apidoc_through_guard_stack():

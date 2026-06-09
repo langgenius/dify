@@ -228,12 +228,7 @@ def test_role_payload_rejects_extra_field():
 
 
 def test_invite_rejects_invalid_body_with_422(app, bypass_pipeline):
-    """Invalid invite body surfaces as 422 through @accepts.
-
-    Previously routed through the local ``_validate_body`` helper as 400; now
-    unified with query validation and the rest of the openapi surface at 422.
-    @accepts validates before the handler body, so no service/db setup is needed.
-    """
+    """Invalid invite body → 422 via @accepts (was 400 through _validate_body)."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()

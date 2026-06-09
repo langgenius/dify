@@ -1,19 +1,12 @@
 """Request/response contract decorators for the openapi controllers.
 
-Each openapi handler used to declare its request/response shape twice against
-the same Pydantic model — once for Swagger (``@openapi_ns.doc(params=...)`` /
-``@openapi_ns.response(...)`` / ``@openapi_ns.expect(...)``) and once for runtime
-behaviour (inline ``model_validate`` / ``.model_dump``). The two could drift, and
-the inline copies disagreed on the failure status (422 vs 400).
+``@accepts`` and ``@returns`` own one slice of the contract from a single model
+reference — emitting the Swagger schema AND doing the runtime validation/
+serialisation — so the advertised and enforced contracts can't drift. Validation
+failures map to a single shape: 422.
 
-``@accepts`` and ``@returns`` each own one slice of the contract from a single
-model reference: they emit the Swagger schema AND perform the runtime
-validation/serialisation, so doc and behaviour can no longer diverge. Validation
-failures map to a single shape — 422 with ``ValidationError.json()``.
-
-These decorators must sit BELOW ``@auth_router.guard`` (guard stays outermost) so
-that auth runs before validation, and so the unit-test ``view.__wrapped__`` seam
-keeps unwrapping exactly the guard layer.
+They must sit BELOW ``@auth_router.guard`` so auth runs before validation and the
+``view.__wrapped__`` unit-test seam unwraps exactly the guard layer.
 """
 
 from __future__ import annotations
@@ -23,20 +16,18 @@ from functools import wraps
 from typing import Any
 
 from flask import request
+from flask_restx import abort
 from pydantic import BaseModel, ValidationError
-from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 
 
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
-    """Validate the request against ``query``/``body`` models and inject them as typed kwargs.
+    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs.
 
-    Emits the matching Swagger param/body schema from the same models, so the
-    advertised contract and the enforced contract stay in lockstep. Injects the
-    validated models under the keyword arguments ``query`` and ``body``; the
-    handler declares them as keyword-only parameters.
+    Emits the matching Swagger schema from the same models, so doc and enforcement
+    stay in lockstep.
     """
 
     def decorator(view: Callable) -> Callable:
@@ -48,7 +39,12 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
                 if body is not None:
                     kwargs["body"] = body.model_validate(request.get_json(silent=True) or {})
             except ValidationError as exc:
-                raise UnprocessableEntity(exc.json())
+                # Sanitized 422 — no pydantic `url` (version) or `input` (user payload) leak.
+                abort(
+                    422,
+                    message="Request validation failed",
+                    errors=exc.errors(include_url=False, include_input=False, include_context=False),
+                )
             return view(*args, **kwargs)
 
         if query is not None:
@@ -61,13 +57,11 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
 
 
 def returns(code: int, model: type[BaseModel], description: str | None = None) -> Callable:
-    """Serialise the handler's returned Pydantic model and emit the response schema.
+    """Serialise the handler's returned model and emit the response schema.
 
-    The handler returns a ``BaseModel`` (serialised with ``code``) or a Flask
-    response tuple whose first element is a model — ``(model, status)`` or
-    ``(model, status, headers)`` — in which case the model is serialised and the
-    trailing status/headers are honoured. Anything else — a bare ``(dict, status)``
-    tuple, a ``flask.Response`` (e.g. an SSE stream) — is passed through untouched.
+    Accepts a ``BaseModel`` (serialised with ``code``) or a ``(model, status[, headers])``
+    tuple (status/headers honoured). Other returns — a bare ``(dict, status)``, an SSE
+    ``Response`` — pass through untouched.
     """
 
     def decorator(view: Callable) -> Callable:
@@ -76,8 +70,6 @@ def returns(code: int, model: type[BaseModel], description: str | None = None) -
             result = view(*args, **kwargs)
             if isinstance(result, BaseModel):
                 return result.model_dump(mode="json"), code
-            # Flask response tuples are (body[, status[, headers]]); only rewrite the
-            # body when it is a model, preserving any trailing status/headers verbatim.
             if isinstance(result, tuple) and result and isinstance(result[0], BaseModel):
                 payload, *rest = result
                 return (payload.model_dump(mode="json"), *rest)

@@ -235,11 +235,7 @@ class TestOpenApiHumanInputFormPost:
         assert result == ({}, 200)
 
     def test_post_rejects_invalid_body_with_422(self, app: Flask, bypass_pipeline):
-        """A malformed body is rejected at 422 by @accepts before the handler runs.
-
-        Previously the inline ``model_validate`` raised an unmapped pydantic error
-        (surfacing as 500); now it is unified with the rest of the openapi surface.
-        """
+        """Malformed body → 422 via @accepts (was an unmapped pydantic error → 500)."""
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         api = OpenApiWorkflowHumanInputFormApi()

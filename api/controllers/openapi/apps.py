@@ -90,8 +90,7 @@ class AppDescribeApi(AppReadResource):
     @returns(200, AppDescribeResponse, description="App description")
     @accepts(query=AppDescribeQuery)
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
-        # main #37212 dropped the workspace_id query param from describe (UUID-only app-id lookup);
-        # keep that behavior while adopting the @accepts/@returns migration.
+        # describe is UUID-only (workspace_id query param dropped in #37212).
         app = self._load(app_id)
 
         requested = query.fields
