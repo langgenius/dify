@@ -132,14 +132,6 @@ def _pagination_options() -> svc.ListOption:
     return _PaginationQuery.model_validate(request.args.to_dict(flat=True)).to_inner_options()
 
 
-def _filter_out_owner(paginated: svc.Paginated[svc.RBACRole]) -> svc.Paginated[svc.RBACRole]:
-    filtered = [r for r in paginated.data if r.name not in {"所有者", "owner"}]
-    return svc.Paginated[svc.RBACRole](
-        data=filtered,
-        pagination=paginated.pagination,
-    )
-
-
 def _legacy_workspace_roles(options: svc.ListOption | None = None) -> svc.Paginated[svc.RBACRole]:
     """Return the built-in legacy workspace roles in the RBAC list shape.
 
@@ -245,9 +237,8 @@ class RBACRolesApi(Resource):
         if not dify_config.RBAC_ENABLED:
             result = _legacy_workspace_roles(options)
         else:
-            result = svc.RBACService.Roles.list(tenant_id, account_id, options=options)
-        if query.include_owner == 0:
-            result = _filter_out_owner(result)
+            result = svc.RBACService.Roles.list(
+                tenant_id, account_id, include_owner=query.include_owner, options=options)
 
         return _dump(result)
 
