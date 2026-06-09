@@ -168,6 +168,20 @@ def test_file_ref_must_be_tenant_owned():
     assert outcome.has_failures
 
 
+def test_file_ref_accepts_canonical_id_alias():
+    """Agent Files §4.6: the canonical minimal file ref is ``{"id": "<tool_file_id>"}``."""
+    checker = _make_checker(allowed={"t-1": {"tool-file-1"}})
+    declared = DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={"report": {"id": "tool-file-1"}},
+        tenant_id="t-1",
+    )
+    assert not outcome.has_failures
+    assert outcome.results[0].status == OutputTypeCheckStatus.READY
+
+
 def test_file_ref_missing_id_field_fails():
     checker = _make_checker()
     declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)

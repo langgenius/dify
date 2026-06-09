@@ -20,7 +20,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.db.session_factory import session_factory
-from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
+from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
@@ -210,6 +210,30 @@ class MCPProviderBasePayload(BaseModel):
     configuration: dict[str, Any] | None = Field(default_factory=dict)
     headers: dict[str, Any] | None = Field(default_factory=dict)
     authentication: dict[str, Any] | None = Field(default_factory=dict)
+    # None means "leave unchanged" on update; the controller resolves it to a
+    # concrete IdentityMode before calling the service (see _resolve_identity_mode).
+    identity_mode: IdentityMode | None = None
+
+
+def _resolve_identity_mode(requested: IdentityMode | None, *, current: IdentityMode) -> IdentityMode:
+    """Resolve the effective MCP identity_mode for a create/update request.
+
+    Keeps two API-layer concerns out of the service so the service always
+    receives a concrete value:
+
+    * ``None`` means "leave unchanged" (update semantics) — fall back to
+      ``current`` (``IdentityMode.OFF`` for a brand-new provider).
+    * Identity forwarding is an enterprise-only capability. On non-enterprise
+      deployments any non-OFF value is coerced back to OFF so a persisted row
+      can never imply forwarding that the runtime won't perform. This gates the
+      API surface to match the backend gate in
+      ``MCPTool._forwarding_requested`` — both the API and the backend
+      invocation must be gated on ``dify_config.ENTERPRISE_ENABLED``.
+    """
+    mode = current if requested is None else requested
+    if mode != IdentityMode.OFF and not dify_config.ENTERPRISE_ENABLED:
+        return IdentityMode.OFF
+    return mode
 
 
 class MCPProviderCreatePayload(MCPProviderBasePayload):
@@ -1000,6 +1024,7 @@ class ToolProviderMCPApi(Resource):
                 headers=payload.headers or {},
                 configuration=configuration,
                 authentication=authentication,
+                identity_mode=_resolve_identity_mode(payload.identity_mode, current=IdentityMode.OFF),
             )
 
         # 2) Try to fetch tools immediately after creation so they appear without a second save.
@@ -1054,6 +1079,11 @@ class ToolProviderMCPApi(Resource):
         # Step 3: Perform database update in a transaction
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
+            # Resolve "leave unchanged" (None) against the stored value, and gate
+            # the result on ENTERPRISE_ENABLED — both are API-layer concerns, so
+            # the service receives a concrete IdentityMode.
+            existing = service.get_provider(provider_id=payload.provider_id, tenant_id=current_tenant_id)
+            identity_mode = _resolve_identity_mode(payload.identity_mode, current=IdentityMode(existing.identity_mode))
             service.update_provider(
                 tenant_id=current_tenant_id,
                 provider_id=payload.provider_id,
@@ -1067,6 +1097,7 @@ class ToolProviderMCPApi(Resource):
                 configuration=configuration,
                 authentication=authentication,
                 validation_result=validation_result,
+                identity_mode=identity_mode,
             )
 
         return {"result": "success"}

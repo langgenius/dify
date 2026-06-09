@@ -1,3 +1,5 @@
+from typing import override
+
 """Unit tests for Weaviate vector database implementation.
 
 Focuses on verifying that doc_type is properly handled in:
@@ -23,6 +25,7 @@ from core.rag.models.document import Document
 class TestWeaviateVector(unittest.TestCase):
     """Tests for WeaviateVector class with focus on doc_type metadata handling."""
 
+    @override
     def setUp(self):
         weaviate_vector_module._weaviate_client = None
         self.config = WeaviateConfig(
@@ -33,6 +36,7 @@ class TestWeaviateVector(unittest.TestCase):
         self.collection_name = "Test_Collection_Node"
         self.attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
 
+    @override
     def tearDown(self):
         weaviate_vector_module._weaviate_client = None
 

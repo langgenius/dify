@@ -18,6 +18,7 @@ Accept repeated TanStack Query calls in siblings when each component independent
 
 Flag:
 
+- React component files over 300 lines when the file mixes multiple responsibilities that can be split into focused colocated components, hooks, or utilities.
 - Shallow wrappers that only rename props or hide the real primitive.
 - Extra DOM wrappers that do not provide layout, semantics, accessibility, state ownership, or library integration.
 - Dialog/dropdown/popover hidden surfaces that obscure the parent flow when they should be extracted into a small local component.
@@ -29,6 +30,7 @@ Prefer colocated components split by actual data and state needs.
 
 Flag:
 
+- Refactors of existing navigation, sidebar, dropdown, webapp list, or app-switching UI that do not preserve behavior-sensitive interactions such as expand/collapse arrows, hover persistence, pin/delete controls, routing, keyboard/focus handling, or open-state ownership.
 - Components that mix data fetching, mutation side effects, popup state, form validation, layout, and row rendering without a clear owner.
 - Generic components with many boolean props that encode one feature's workflow.
 - A shared component that imports feature-specific copy, routes, or API contracts.
@@ -37,6 +39,8 @@ Flag:
 - A wrapper that changes accessible semantics of the primitive it wraps.
 - A component that exposes controlled props but still keeps a competing private state for the same value.
 - A component that cannot render empty, loading, or missing optional API fields without caller-side preprocessing.
+
+When existing components already own interaction logic, prefer reusing or extending them. If a refactor is necessary, preserve the old interaction contract and add or update focused tests for changed behavior.
 
 ## Props And Types
 

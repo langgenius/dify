@@ -438,9 +438,6 @@
     }
   },
   "web/app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
-    "no-restricted-globals": {
-      "count": 6
-    },
     "react/set-state-in-effect": {
       "count": 4
     },
@@ -5058,11 +5055,6 @@
       "count": 1
     }
   },
-  "web/i18n/fr-FR/app.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
   "web/i18n/fr-FR/plugin-trigger.json": {
     "no-irregular-whitespace": {
       "count": 1
@@ -5071,11 +5063,6 @@
   "web/i18n/fr-FR/tools.json": {
     "no-irregular-whitespace": {
       "count": 1
-    }
-  },
-  "web/i18n/fr-FR/workflow.json": {
-    "no-irregular-whitespace": {
-      "count": 2
     }
   },
   "web/i18n/pt-BR/common.json": {

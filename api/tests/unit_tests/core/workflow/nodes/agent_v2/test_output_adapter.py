@@ -8,8 +8,83 @@ from clients.agent_backend import (
 )
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
+
+
+def _rebacked_tool_file(tool_file_id: str) -> File:
+    return File(
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        remote_url=None,
+        related_id=tool_file_id,
+        filename="authoritative.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=99,
+    )
+
+
+def _succeeded(output: object) -> AgentBackendRunSucceededInternalEvent:
+    return AgentBackendRunSucceededInternalEvent(
+        run_id="run-1",
+        source_event_id="2-0",
+        output=output,
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+    )
+
+
+def test_minimal_id_file_output_is_rebacked_from_tool_file():
+    """Agent Files §4.6: a bare {"id": ...} output is rebacked from the ToolFile row."""
+    calls: list[tuple[str, str]] = []
+
+    def rebacker(*, tenant_id: str, tool_file_id: str) -> File | None:
+        calls.append((tenant_id, tool_file_id))
+        return _rebacked_tool_file(tool_file_id) if tool_file_id == "tool-file-1" else None
+
+    adapter = WorkflowAgentOutputAdapter(tool_file_rebacker=rebacker)
+    result = adapter.build_success_result(
+        event=_succeeded({"report": {"id": "tool-file-1"}}),
+        inputs={},
+        process_data={},
+        metadata={},
+        tenant_id="tenant-1",
+    )
+
+    report = result.outputs["report"]
+    assert isinstance(report, FileSegment)
+    assert report.value.reference == "tool-file-1"
+    # metadata comes from the reback, not the sandbox payload
+    assert report.value.filename == "authoritative.pdf"
+    assert calls == [("tenant-1", "tool-file-1")]
+
+
+def test_unresolved_minimal_id_stays_a_plain_object():
+    adapter = WorkflowAgentOutputAdapter(tool_file_rebacker=lambda **_: None)
+    result = adapter.build_success_result(
+        event=_succeeded({"thing": {"id": "not-a-file"}}),
+        inputs={},
+        process_data={},
+        metadata={},
+        tenant_id="tenant-1",
+    )
+    assert result.outputs["thing"] == {"id": "not-a-file"}
+
+
+def test_array_of_minimal_id_file_outputs_rebacked():
+    adapter = WorkflowAgentOutputAdapter(
+        tool_file_rebacker=lambda *, tenant_id, tool_file_id: _rebacked_tool_file(tool_file_id)
+    )
+    result = adapter.build_success_result(
+        event=_succeeded({"files": [{"id": "tool-file-1"}, {"id": "tool-file-2"}]}),
+        inputs={},
+        process_data={},
+        metadata={},
+        tenant_id="tenant-1",
+    )
+    files = result.outputs["files"]
+    assert isinstance(files, ArrayFileSegment)
+    assert [f.reference for f in files.value] == ["tool-file-1", "tool-file-2"]
 
 
 def test_success_output_adapter_preserves_dict_output():

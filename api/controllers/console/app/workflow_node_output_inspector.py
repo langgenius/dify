@@ -30,6 +30,7 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 
+from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -38,8 +39,13 @@ from libs.login import login_required
 from models import App, AppMode
 from services.workflow import inspector_events
 from services.workflow.node_output_inspector_service import (
+    CheckResultView,
     NodeOutputInspectorError,
     NodeOutputInspectorService,
+    NodeOutputsView,
+    NodeOutputView,
+    OutputPreviewView,
+    WorkflowRunSnapshotView,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,6 +59,15 @@ _HEARTBEAT_EVERY_TICKS = 15
 # event (engine crashed, redis dropped the message), force-close after this
 # many ticks (= seconds).
 _STREAM_HARD_TIMEOUT_TICKS = 1800  # 30 min
+
+register_response_schema_models(
+    console_ns,
+    CheckResultView,
+    NodeOutputView,
+    NodeOutputsView,
+    WorkflowRunSnapshotView,
+    OutputPreviewView,
+)
 
 
 def _service() -> NodeOutputInspectorService:
@@ -124,6 +139,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
     @console_ns.doc("get_workflow_draft_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Workflow run node outputs", console_ns.models[WorkflowRunSnapshotView.__name__])
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
@@ -146,6 +162,7 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
             "node_id": "Node ID inside the workflow graph",
         }
     )
+    @console_ns.response(200, "Workflow run node output detail", console_ns.models[NodeOutputsView.__name__])
     @console_ns.response(404, "Workflow run / node not found")
     @setup_required
     @login_required
@@ -171,6 +188,7 @@ class WorkflowDraftRunNodeOutputPreviewApi(Resource):
             "output_name": "Declared output name as exposed by Composer",
         }
     )
+    @console_ns.response(200, "Workflow run node output preview", console_ns.models[OutputPreviewView.__name__])
     @console_ns.response(404, "Workflow run / node / output not found")
     @setup_required
     @login_required
@@ -309,6 +327,7 @@ class WorkflowDraftRunNodeOutputEventsApi(Resource):
     @console_ns.doc("stream_workflow_draft_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Workflow run node output event stream")
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
@@ -338,6 +357,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     @console_ns.doc("get_workflow_published_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Workflow run node outputs", console_ns.models[WorkflowRunSnapshotView.__name__])
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
@@ -360,6 +380,7 @@ class WorkflowPublishedRunNodeOutputDetailApi(Resource):
             "node_id": "Node ID inside the workflow graph",
         }
     )
+    @console_ns.response(200, "Workflow run node output detail", console_ns.models[NodeOutputsView.__name__])
     @console_ns.response(404, "Workflow run / node not found")
     @setup_required
     @login_required
@@ -386,6 +407,7 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
             "output_name": "Declared output name as exposed by Composer",
         }
     )
+    @console_ns.response(200, "Workflow run node output preview", console_ns.models[OutputPreviewView.__name__])
     @console_ns.response(404, "Workflow run / node / output not found")
     @setup_required
     @login_required
@@ -402,6 +424,7 @@ class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     @console_ns.doc("stream_workflow_published_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Workflow run node output event stream")
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required

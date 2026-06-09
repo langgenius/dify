@@ -704,6 +704,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     await setEditorText(editor, '{', true)
     const typeaheadMenu = document.getElementById('typeahead-menu')
     expect(typeaheadMenu).not.toBeNull()
+    expect(typeaheadMenu).toHaveClass('z-50')
 
     const ce = screen.getByTestId(CONTENT_EDITABLE_TEST_ID)
     const fiber = getReactFiberFromDom(ce)
