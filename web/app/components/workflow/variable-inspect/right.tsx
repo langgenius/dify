@@ -36,12 +36,12 @@ import { BlockEnum } from '../types'
 import Empty from './empty'
 import ValueContent from './value-content'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   currentNodeVar?: currentVarType
   handleOpenMenu: () => void
   isValueFetching?: boolean
-}
+}>
 
 const Right = ({
   nodeId,

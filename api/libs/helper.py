@@ -260,6 +260,18 @@ def parse_uuid_str_or_none(value: str | None) -> str | None:
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
 
 
+def _strict_uuid(value: str | UUID) -> str:
+    if not value:
+        raise ValueError("must be a non-empty valid UUID")
+    try:
+        return uuid_value(value)
+    except ValueError as exc:
+        raise ValueError("must be a valid UUID") from exc
+
+
+UUIDStr = Annotated[str, AfterValidator(_strict_uuid)]
+
+
 def alphanumeric(value: str):
     # check if the value is alphanumeric and underlined
     if re.match(r"^[a-zA-Z0-9_]+$", value):

@@ -231,6 +231,20 @@ class RequestRequestUploadFile(BaseModel):
     mimetype: str
 
 
+class RequestRequestDownloadFile(BaseModel):
+    """Request a signed download URL for a workflow file ref (Agent Files §3.1.1).
+
+    ``user_from`` / ``invoke_from`` are the flattened Dify file-access context (the
+    dify-agent server reads them from the execution context). ``file`` is a standard
+    file mapping: ``transfer_method`` plus ``reference`` (local_file / tool_file /
+    datasource_file) or ``url`` (remote_url).
+    """
+
+    user_from: str
+    invoke_from: str
+    file: Mapping[str, Any]
+
+
 class RequestFetchAppInfo(BaseModel):
     """
     Request to fetch app info

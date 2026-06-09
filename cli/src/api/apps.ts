@@ -32,13 +32,10 @@ export class AppsClient {
     })
   }
 
-  async describe(appId: string, workspaceId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
+  async describe(appId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
     return this.orpc.apps.byAppId.describe.get({
       params: { app_id: appId },
       query: {
-        workspace_id: workspaceId,
-        // The backend parses a comma-separated string (validator splits on ','); the contract
-        // types `fields` as a string accordingly, so join here rather than send an array.
         fields: fields !== undefined && fields.length > 0 ? fields.join(',') : undefined,
       },
     })
