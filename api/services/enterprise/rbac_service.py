@@ -1252,9 +1252,6 @@ class RBACService:
                 params={"account_id": member_account_id},
             )
             rst = MemberRolesResponse.model_validate(data or {})
-            for role in rst.roles:
-                if role.name in ("所有者", "owner"):
-                    role.role_tag = "owner"
             return rst
 
         @staticmethod
@@ -1276,9 +1273,6 @@ class RBACService:
             rst = []
             for item in items:
                 tmp = MemberRolesResponse.model_validate(item)
-                for role in tmp.roles:
-                    if role.name in ("所有者", "owner"):
-                        role.role_tag = "owner"
                 rst.append(tmp)
             return rst
 

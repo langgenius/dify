@@ -249,14 +249,6 @@ class RBACRolesApi(Resource):
         if query.include_owner == 0:
             result = _filter_out_owner(result)
 
-        data = []
-        for role in result.data:
-            if role.name in {"所有者", "owner"}:
-                role.role_tag = "owner"
-            else:
-                role.role_tag = ""
-            data.append(role)
-        result.data = data
         return _dump(result)
 
     @login_required
