@@ -100,14 +100,15 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         model.created_at = datetime.now()
 
     finished_at = data.get("finished_at")
-    if finished_at:
-        match finished_at:
-            case str():
-                model.finished_at = datetime.fromisoformat(finished_at)
-            case int() | float():
-                model.finished_at = datetime.fromtimestamp(finished_at)
-            case _:
-                model.finished_at = finished_at
+    match finished_at:
+        case None:
+            ...
+        case str():
+            model.finished_at = datetime.fromisoformat(finished_at)
+        case int() | float():
+            model.finished_at = datetime.fromtimestamp(finished_at)
+        case _:
+            model.finished_at = finished_at
 
     return model
 
