@@ -1,5 +1,6 @@
 import json
 import unittest
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,6 +23,7 @@ except ImportError:
 
 
 class TestAlibabaCloudMySQLVector(unittest.TestCase):
+    @override
     def setUp(self):
         self.config = AlibabaCloudMySQLVectorConfig(
             host="localhost",

@@ -10,11 +10,11 @@ type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
 type CarouselOptions = UseCarouselParameters[0]
 type CarouselPlugin = UseCarouselParameters[1]
 
-type CarouselProps = {
+type CarouselProps = Readonly<{
   opts?: CarouselOptions
   plugins?: CarouselPlugin
   orientation?: 'horizontal' | 'vertical'
-}
+}>
 
 type CarouselContextValue = {
   carouselRef: ReturnType<typeof useEmblaCarousel>[0]
@@ -160,9 +160,9 @@ const CarouselItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
 )
 CarouselItem.displayName = 'CarouselItem'
 
-type CarouselActionProps = {
+type CarouselActionProps = Readonly<{
   children?: React.ReactNode
-} & Omit<React.HTMLAttributes<HTMLButtonElement>, 'disabled' | 'onClick'>
+}> & Omit<React.HTMLAttributes<HTMLButtonElement>, 'disabled' | 'onClick'>
 
 const CarouselPrevious = React.forwardRef<HTMLButtonElement, CarouselActionProps>(
   ({ children, ...props }, ref) => {

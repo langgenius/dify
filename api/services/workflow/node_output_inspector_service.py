@@ -115,7 +115,7 @@ class NodeOutputView(BaseModel):
     name: str
     type: DeclaredOutputType | None = None
     status: NodeOutputStatus
-    value_preview: Any = None
+    value_preview: Any = Field(default=None, json_schema_extra={"x-dify-opaque": True})
     type_check: CheckResultView | None = None
     output_check: CheckResultView | None = None
     retried: int = 0
@@ -148,7 +148,7 @@ class OutputPreviewView(BaseModel):
     output_name: str
     type: DeclaredOutputType | None = None
     status: NodeOutputStatus
-    value: Any = None  # full value (with signed URL for file refs)
+    value: Any = Field(default=None, json_schema_extra={"x-dify-opaque": True})
 
 
 class NodeOutputInspectorError(Exception):

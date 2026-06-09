@@ -389,3 +389,50 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
 
 # Back-compat alias for the shipped workflow lifecycle code (PR #36724).
 WorkflowAgentRuntimeSession = AgentRuntimeSession
+
+
+class AgentDriveFileKind(StrEnum):
+    """Kind of existing file record an agent-drive KV entry points at."""
+
+    UPLOAD_FILE = "upload_file"
+    TOOL_FILE = "tool_file"
+
+
+class AgentDriveFile(DefaultFieldsMixin, Base):
+    """Per-agent path-like KV index into existing file records (agent 网盘 / agent drive).
+
+    A row maps a path-like ``key`` to a *pointer* (``file_kind`` + ``file_id``) at an
+    existing ``UploadFile`` / ``ToolFile`` — it never stores file bytes. Scope/ownership
+    is ``tenant_id -> agent-<agent_id>`` (the drive ref; no standalone ``drive_id`` this
+    phase). ``key`` is opaque/path-like and carries no directory, permission, or
+    parent-child semantics on the API side; it maps 1:1 to a sandbox-relative path when
+    synced. ``value_owned_by_drive`` gates physical cleanup: only drive-owned values
+    (created by the agent runtime or Skill standardization, not shared with other
+    business records) have their storage object + record deleted when the KV entry is
+    overwritten or removed; otherwise only the KV row is dropped. Lifecycle never relies
+    on ``UploadFile.used/used_by`` (not a reliable refcount).
+    """
+
+    __tablename__ = "agent_drive_files"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_drive_file_pkey"),
+        UniqueConstraint("tenant_id", "agent_id", "key", name="agent_drive_file_scope_key_unique"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # drive ref = agent-<agent_id>; this phase has no standalone drive_id.
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # path-like opaque key; not a filesystem (no dir/permission/parent semantics).
+    # Bounded at 512 so the (tenant_id, agent_id, key) unique index stays within
+    # MySQL's 3072-byte index limit (CHAR(36)*2 + VARCHAR(512) utf8mb4 = 2336).
+    key: Mapped[str] = mapped_column(String(512), nullable=False)
+    file_kind: Mapped[AgentDriveFileKind] = mapped_column(EnumText(AgentDriveFileKind, length=32), nullable=False)
+    # points at UploadFile.id / ToolFile.id (the value), never the bytes.
+    file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    value_owned_by_drive: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
+    )
+    size: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
+    hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mime_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)

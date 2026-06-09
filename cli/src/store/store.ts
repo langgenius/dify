@@ -32,6 +32,7 @@ abstract class FileBasedStore implements Store {
   constructor(filePath: string) {
     this.filePath = filePath
     this.platform = resolvePlatform()
+    fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
   }
 
   unlock(): void {
@@ -42,8 +43,6 @@ abstract class FileBasedStore implements Store {
    * atomically write raw_content (if any)
    */
   flush(): void {
-    fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
-
     // we don't handle A-B-A scenario,
     // which is not likely to happen in cli
     if (!this.dirty) {

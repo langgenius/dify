@@ -5,7 +5,7 @@ saved, using the deterministic fake backend client (no live stack)."""
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, override
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
@@ -21,7 +21,7 @@ from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppSessionScope
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
 from models.agent_config_entities import AgentSoulConfig
 
@@ -48,6 +48,7 @@ class _FakeQueueManager:
 
 
 class _StoppedQueueManager(_FakeQueueManager):
+    @override
     def is_stopped(self) -> bool:
         return True
 
@@ -57,6 +58,7 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         super().__init__(**kwargs)
         self.cancelled_run_ids: list[str] = []
 
+    @override
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancelled_run_ids.append(run_id)
         return super().cancel_run(run_id, request=request)
@@ -88,7 +90,13 @@ def _soul() -> AgentSoulConfig:
 
 
 def _dify_ctx() -> Any:
-    return SimpleNamespace(tenant_id="tenant-1", app_id="app-1", user_id="user-1", invoke_from=InvokeFrom.WEB_APP)
+    return SimpleNamespace(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
 
 
 def _runner(client: FakeAgentBackendRunClient, store: _FakeSessionStore) -> AgentAppRunner:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -136,6 +136,7 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
     def __init__(self, run_context: Mapping[str, Any] | DifyRunContext) -> None:
         self._run_context = resolve_dify_run_context(run_context)
 
+    @override
     def build_from_mapping(self, *, mapping: Mapping[str, Any]):
         return file_factory.build_from_mapping(
             mapping=mapping,
@@ -151,25 +152,31 @@ class DifyPreparedLLM(LLMProtocol):
         self._model_instance = model_instance
 
     @property
+    @override
     def provider(self) -> str:
         return self._model_instance.provider
 
     @property
+    @override
     def model_name(self) -> str:
         return self._model_instance.model_name
 
     @property
+    @override
     def parameters(self) -> Mapping[str, Any]:
         return self._model_instance.parameters
 
     @parameters.setter
+    @override
     def parameters(self, value: Mapping[str, Any]) -> None:
         self._model_instance.parameters = value
 
     @property
+    @override
     def stop(self) -> Sequence[str] | None:
         return self._model_instance.stop
 
+    @override
     def get_model_schema(self) -> AIModelEntity:
         model_schema = cast(LargeLanguageModel, self._model_instance.model_type_instance).get_model_schema(
             self._model_instance.model_name,
@@ -179,6 +186,7 @@ class DifyPreparedLLM(LLMProtocol):
             raise ValueError(f"Model schema not found for {self._model_instance.model_name}")
         return model_schema
 
+    @override
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
         return self._model_instance.get_llm_num_tokens(prompt_messages)
 
@@ -204,6 +212,7 @@ class DifyPreparedLLM(LLMProtocol):
         stream: Literal[True],
     ) -> Generator[LLMResultChunk, None, None]: ...
 
+    @override
     def invoke_llm(
         self,
         *,
@@ -243,6 +252,7 @@ class DifyPreparedLLM(LLMProtocol):
         stream: Literal[True],
     ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 
+    @override
     def invoke_llm_with_structured_output(
         self,
         *,
@@ -263,11 +273,13 @@ class DifyPreparedLLM(LLMProtocol):
             stream=stream,
         )
 
+    @override
     def is_structured_output_parse_error(self, error: Exception) -> bool:
         return isinstance(error, OutputParserError)
 
 
 class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):
+    @override
     def serialize(
         self,
         *,
@@ -294,6 +306,7 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
         self._file_reference_factory = file_reference_factory
         self._segment_access_checker = segment_access_checker
 
+    @override
     def load(self, *, segment_id: str) -> Sequence[File]:
         if not is_retriever_segment_access_granted(segment_id):
             return []
@@ -341,6 +354,7 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         self._manager = ToolFileManager()
         self._conversation_id_getter = conversation_id_getter
 
+    @override
     def create_file_by_raw(
         self,
         *,
@@ -358,6 +372,7 @@ class DifyToolFileManager(ToolFileManagerProtocol):
             filename=filename,
         )
 
+    @override
     def get_file_generator_by_tool_file_id(self, tool_file_id: str):
         return self._manager.get_file_generator_by_tool_file_id(tool_file_id)
 
@@ -394,9 +409,11 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
         return self._file_reference_factory
 
+    @override
     def build_file_reference(self, *, mapping: Mapping[str, Any]):
         return self._file_reference_factory.build_from_mapping(mapping=mapping)
 
+    @override
     def get_runtime(
         self,
         *,
@@ -447,6 +464,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             )
         )
 
+    @override
     def get_runtime_parameters(
         self,
         *,
@@ -458,6 +476,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             for parameter in (tool.get_merged_runtime_parameters() or [])
         ]
 
+    @override
     def invoke(
         self,
         *,
@@ -503,6 +522,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
         return self._adapt_messages(transformed_messages, provider_name=provider_name)
 
+    @override
     def get_usage(
         self,
         *,
@@ -745,6 +765,7 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             form_repository=form_repository,
         )
 
+    @override
     def get_form(self, *, node_id: str) -> HumanInputFormStateProtocol | None:
         repo = self.build_form_repository()
         return repo.get_form(node_id)
@@ -766,6 +787,7 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             )
         return restored_data
 
+    @override
     def create_form(
         self,
         *,

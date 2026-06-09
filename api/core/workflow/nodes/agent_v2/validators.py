@@ -265,7 +265,9 @@ class WorkflowAgentNodeValidator:
         binding: WorkflowAgentNodeBinding,
         node_job: WorkflowNodeJobConfig,
     ) -> None:
-        forbidden_paths = cls._find_locked_agent_soul_paths(node_job.metadata.model_dump(mode="python"))
+        forbidden_paths = cls._find_locked_agent_soul_paths(
+            node_job.metadata.model_dump(mode="python", exclude_none=True)
+        )
         if forbidden_paths:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} cannot override locked Agent Soul fields: "
