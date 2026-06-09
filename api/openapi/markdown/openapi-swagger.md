@@ -112,7 +112,6 @@ User-scoped operations
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | fields | query |  | No | string |
-| workspace_id | query |  | No | string |
 
 ##### Responses
 
@@ -454,7 +453,6 @@ Empty / omitted → all blocks. Unknown member → ValidationError → 422.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | fields | string |  | No |
-| workspace_id | string |  | No |
 
 #### AppDescribeResponse
 
