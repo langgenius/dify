@@ -502,7 +502,7 @@ class DatasetListApi(Resource):
             raise Forbidden()
 
         if dify_config.RBAC_ENABLED:
-            permission = payload.permission or DatasetPermissionEnum.ALL_TEAM
+            permission = DatasetPermissionEnum.ALL_TEAM
         else:
             permission = payload.permission or DatasetPermissionEnum.ONLY_ME
 
