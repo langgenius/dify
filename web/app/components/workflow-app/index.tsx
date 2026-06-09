@@ -44,7 +44,12 @@ const WorkflowAppWithAdditionalContext = () => {
     fileUploadConfigResponse,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
-  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isLoadingCurrentWorkspace, currentWorkspace, isCurrentWorkspaceViewer } = useAppContext()
+
+  // Force the canvas into read-only mode for view-only roles (e.g. `viewer`).
+  useEffect(() => {
+    workflowStore.getState().setIsViewerReadOnly(isCurrentWorkspaceViewer)
+  }, [isCurrentWorkspaceViewer, workflowStore])
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()

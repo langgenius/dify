@@ -22,10 +22,11 @@ const roleI18nKeyMap = {
   admin: { label: 'members.admin', tip: 'members.adminTip' },
   editor: { label: 'members.editor', tip: 'members.editorTip' },
   normal: { label: 'members.normal', tip: 'members.normalTip' },
+  viewer: { label: 'members.viewer', tip: 'members.viewerTip' },
   dataset_operator: { label: 'members.datasetOperator', tip: 'members.datasetOperatorTip' },
 } as const
 type OperationRoleKey = keyof typeof roleI18nKeyMap
-const nonOwnerRoles = ['admin', 'editor', 'normal'] as const
+const nonOwnerRoles = ['admin', 'editor', 'normal', 'viewer'] as const
 const isNonOwnerRole = (role: Member['role']) => role !== 'owner'
 
 const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
@@ -36,6 +37,7 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     admin: t('members.admin', { ns: 'common' }),
     editor: t('members.editor', { ns: 'common' }),
     normal: t('members.normal', { ns: 'common' }),
+    viewer: t('members.viewer', { ns: 'common' }),
     dataset_operator: t('members.datasetOperator', { ns: 'common' }),
   }
   const roleList = useMemo((): OperationRoleKey[] => {
@@ -44,6 +46,7 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
         'admin',
         'editor',
         'normal',
+        'viewer',
         ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }

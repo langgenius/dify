@@ -242,6 +242,8 @@
   "members.name": "名前",
   "members.normal": "通常",
   "members.normalTip": "アプリの使用のみが可能で、アプリの構築はできません",
+  "members.viewer": "閲覧者",
+  "members.viewerTip": "ワークフローを読み取り専用モードで閲覧できますが、編集はできません",
   "members.ok": "OK",
   "members.owner": "オーナー",
   "members.pending": "保留中...",

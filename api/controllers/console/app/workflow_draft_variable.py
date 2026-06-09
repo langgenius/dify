@@ -19,6 +19,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    view_permission_required,
     with_current_user,
 )
 from controllers.web.error import InvalidArgumentError, NotFoundError
@@ -246,6 +247,28 @@ def _api_prerequisite[T, **P, R](
     return wrapper
 
 
+def _api_prerequisite_readonly[T, **P, R](
+    f: Callable[Concatenate[T, Account, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
+    """Prerequisites for read-only draft workflow variable APIs.
+
+    Same as `_api_prerequisite`, but only requires view permission so the read-only
+    `VIEWER` role can open the workflow editor without 403s on GET endpoints.
+    """
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @view_permission_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
+    @wraps(f)
+    def wrapper(self: T, current_user: Account, *args: P.args, **kwargs: P.kwargs) -> R | Response:
+        return f(self, current_user, *args, **kwargs)
+
+    return wrapper
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowDraftVariableListQuery.__name__])
@@ -256,7 +279,7 @@ class WorkflowVariableCollectionApi(Resource):
     @console_ns.response(
         200, "Workflow variables retrieved successfully", workflow_draft_variable_list_without_value_model
     )
-    @_api_prerequisite
+    @_api_prerequisite_readonly
     @marshal_with(workflow_draft_variable_list_without_value_model)
     def get(self, current_user: Account, app_model: App):
         """
@@ -320,7 +343,7 @@ class NodeVariableCollectionApi(Resource):
     @console_ns.doc(description="Get variables for a specific node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.response(200, "Node variables retrieved successfully", workflow_draft_variable_list_model)
-    @_api_prerequisite
+    @_api_prerequisite_readonly
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, current_user: Account, app_model: App, node_id: str):
         validate_node_id(node_id)
@@ -354,7 +377,7 @@ class VariableApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
     @console_ns.response(200, "Variable retrieved successfully", workflow_draft_variable_model)
     @console_ns.response(404, "Variable not found")
-    @_api_prerequisite
+    @_api_prerequisite_readonly
     @marshal_with(workflow_draft_variable_model)
     def get(self, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
@@ -526,7 +549,7 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(200, "Conversation variables retrieved successfully", workflow_draft_variable_list_model)
     @console_ns.response(404, "Draft workflow not found")
-    @_api_prerequisite
+    @_api_prerequisite_readonly
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, current_user: Account, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
@@ -576,7 +599,7 @@ class SystemVariableCollectionApi(Resource):
     @console_ns.doc(description="Get system variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
-    @_api_prerequisite
+    @_api_prerequisite_readonly
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, current_user: Account, app_model: App):
         return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id)
@@ -589,7 +612,7 @@ class EnvironmentVariableCollectionApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(200, "Environment variables retrieved successfully")
     @console_ns.response(404, "Draft workflow not found")
-    @_api_prerequisite
+    @_api_prerequisite_readonly
     def get(self, _current_user: Account, app_model: App):
         """
         Get draft workflow

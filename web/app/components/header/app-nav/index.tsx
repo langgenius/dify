@@ -27,11 +27,22 @@ const appNavListQuery = {
   name: '',
 } satisfies AppListQuery
 
-const getAppLink = (isCurrentWorkspaceEditor: boolean, appId: string, appMode: AppModeEnum) => {
-  if (!isCurrentWorkspaceEditor)
+const getAppLink = (
+  isCurrentWorkspaceEditor: boolean,
+  appId: string,
+  appMode: AppModeEnum,
+  isCurrentWorkspaceViewer = false,
+) => {
+  const isWorkflowStyle = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
+  if (!isCurrentWorkspaceEditor) {
+    // The read-only `viewer` role may open the workflow canvas (read-only) for
+    // workflow-style apps; other apps still land on the overview page.
+    if (isCurrentWorkspaceViewer && isWorkflowStyle)
+      return `/app/${appId}/workflow`
     return `/app/${appId}/overview`
+  }
 
-  if (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT)
+  if (isWorkflowStyle)
     return `/app/${appId}/workflow`
 
   return `/app/${appId}/configuration`
@@ -40,7 +51,7 @@ const getAppLink = (isCurrentWorkspaceEditor: boolean, appId: string, appMode: A
 const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceViewer } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
@@ -92,9 +103,9 @@ const AppNav = () => {
       icon_url: app.icon_url,
       name: appDetail?.id === app.id ? appDetail.name : app.name,
       mode: app.mode,
-      link: getAppLink(isCurrentWorkspaceEditor, app.id, app.mode),
+      link: getAppLink(isCurrentWorkspaceEditor, app.id, app.mode, isCurrentWorkspaceViewer),
     }))
-  }, [appDetail?.id, appDetail?.name, appsData?.pages, isCurrentWorkspaceEditor])
+  }, [appDetail?.id, appDetail?.name, appsData?.pages, isCurrentWorkspaceEditor, isCurrentWorkspaceViewer])
 
   return (
     <>

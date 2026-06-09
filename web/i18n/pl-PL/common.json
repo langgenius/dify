@@ -242,6 +242,8 @@
   "members.name": "NAZWA",
   "members.normal": "Normalny",
   "members.normalTip": "Może tylko korzystać z aplikacji, nie może tworzyć aplikacji",
+  "members.viewer": "Przeglądający",
+  "members.viewerTip": "Może przeglądać przepływy pracy w trybie tylko do odczytu, nie może edytować",
   "members.ok": "OK",
   "members.owner": "Właściciel",
   "members.pending": "Oczekujący...",

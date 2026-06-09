@@ -242,6 +242,8 @@
   "members.name": "ชื่อ",
   "members.normal": "ปกติ",
   "members.normalTip": "ใช้ได้เฉพาะแอพ สร้างแอพไม่ได้",
+  "members.viewer": "ผู้ดู",
+  "members.viewerTip": "สามารถดูเวิร์กโฟลว์ในโหมดอ่านอย่างเดียว ไม่สามารถแก้ไขได้",
   "members.ok": "ตกลง, ได้",
   "members.owner": "เจ้าของ",
   "members.pending": "รอ   ",

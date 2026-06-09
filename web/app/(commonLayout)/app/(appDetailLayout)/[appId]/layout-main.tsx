@@ -46,7 +46,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceViewer, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
   const appInfoActions = useAppInfoActions({ resetKey: appId })
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -62,9 +62,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     selectedIcon: NavIcon
   }>>([])
 
-  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
+  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum, canAccessStudio: boolean = isCurrentWorkspaceEditor) => {
     const navConfig = [
-      ...(isCurrentWorkspaceEditor
+      ...(canAccessStudio
         ? [{
             name: t('appMenus.promptEng', { ns: 'common' }),
             href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
@@ -132,21 +132,29 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const res = appDetailRes
     // redirection
     const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
+    const isWorkflowStyleApp = res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT
+    // The `viewer` role may open the workflow editor in read-only mode, but never
+    // the prompt configuration or logs pages.
+    const canIViewWorkflow = canIEditApp || (isCurrentWorkspaceViewer && isWorkflowStyleApp)
+    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('logs'))) {
       router.replace(`/app/${appId}/overview`)
       return
     }
-    if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
+    if (!canIViewWorkflow && pathname.endsWith('workflow')) {
+      router.replace(`/app/${appId}/overview`)
+      return
+    }
+    if (canIEditApp && isWorkflowStyleApp && (pathname).endsWith('configuration')) {
       router.replace(`/app/${appId}/workflow`)
     }
-    else if ((res.mode !== AppModeEnum.WORKFLOW && res.mode !== AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('workflow')) {
+    else if (canIEditApp && !isWorkflowStyleApp && (pathname).endsWith('workflow')) {
       router.replace(`/app/${appId}/configuration`)
     }
     else {
       setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
+      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode, canIViewWorkflow))
     }
-  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
+  }, [appDetailRes, isCurrentWorkspaceEditor, isCurrentWorkspaceViewer, isLoadingAppDetail, isLoadingCurrentWorkspace])
 
   useUnmount(() => {
     setAppDetail()

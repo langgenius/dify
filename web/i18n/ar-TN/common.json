@@ -242,6 +242,8 @@
   "members.name": "الاسم",
   "members.normal": "عادي",
   "members.normalTip": "يمكنه استخدام التطبيقات فقط، ولا يمكنه بناء التطبيقات",
+  "members.viewer": "مشاهد",
+  "members.viewerTip": "يمكنه عرض سير العمل في وضع القراءة فقط، ولا يمكنه التعديل",
   "members.ok": "موافق",
   "members.owner": "المالك",
   "members.pending": "قيد الانتظار...",

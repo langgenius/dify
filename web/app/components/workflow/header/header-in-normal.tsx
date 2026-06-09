@@ -43,6 +43,9 @@ const HeaderInNormal = ({
 }: HeaderInNormalProps) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
+  // The read-only `viewer` role may not run the workflow or restore versions,
+  // so hide the test-run / version-history entries (their APIs would 403).
+  const isViewerReadOnly = useStore(s => s.isViewerReadOnly)
   const { handleNodeSelect } = useNodesInteractions()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
@@ -85,7 +88,10 @@ const HeaderInNormal = ({
         <OnlineUsers />
         {components?.left}
         <Divider type="vertical" className="mx-auto h-3.5" />
-        <RunAndHistory {...runAndHistoryProps} />
+        <RunAndHistory
+          {...runAndHistoryProps}
+          {...(isViewerReadOnly ? { showRunButton: false, showPreviewButton: false } : {})}
+        />
         {showContextButtons && (
           <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
             {components?.chatVariableTrigger}
@@ -94,7 +100,7 @@ const HeaderInNormal = ({
           </div>
         )}
         {components?.middle}
-        <VersionHistoryButton onClick={onStartRestoring} />
+        {!isViewerReadOnly && <VersionHistoryButton onClick={onStartRestoring} />}
       </div>
     </div>
   )

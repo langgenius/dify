@@ -21,7 +21,12 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    view_permission_required,
+)
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -365,7 +370,7 @@ class DraftWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App):
         """
         Get draft workflow
@@ -961,7 +966,7 @@ class PublishedWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App):
         """
         Get published workflow
@@ -1025,7 +1030,7 @@ class DefaultBlockConfigsApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App):
         """
         Get default block config
@@ -1047,7 +1052,7 @@ class DefaultBlockConfigApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App, block_type: str):
         """
         Get default block config
@@ -1150,7 +1155,7 @@ class PublishedAllWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App):
         """
         Get published workflows

@@ -242,6 +242,8 @@
   "members.name": "نام",
   "members.normal": "عادی",
   "members.normalTip": "فقط می‌تواند از برنامه‌ها استفاده کند، نمی‌تواند برنامه بسازد",
+  "members.viewer": "بیننده",
+  "members.viewerTip": "می‌تواند گردش‌کارها را در حالت فقط‌خواندنی مشاهده کند، اما نمی‌تواند ویرایش کند",
   "members.ok": "تایید",
   "members.owner": "مالک",
   "members.pending": "در انتظار...",

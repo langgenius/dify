@@ -242,6 +242,8 @@
   "members.name": "NAME",
   "members.normal": "Normal",
   "members.normalTip": "Kann nur Apps verwenden, kann keine Apps erstellen",
+  "members.viewer": "Betrachter",
+  "members.viewerTip": "Kann Workflows im schreibgeschützten Modus ansehen, kann sie aber nicht bearbeiten",
   "members.ok": "OK",
   "members.owner": "Eigentümer",
   "members.pending": "Ausstehend...",
