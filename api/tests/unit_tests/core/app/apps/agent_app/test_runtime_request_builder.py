@@ -25,7 +25,12 @@ from models.agent_config_entities import AgentSoulConfig
 
 
 def _exec_ctx() -> DifyExecutionContextLayerConfig:
-    return DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="agent_app")
+    return DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        user_from="end-user",
+        invoke_from="web-app",
+        agent_mode="agent_app",
+    )
 
 
 class TestBuildForAgentApp:

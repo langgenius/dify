@@ -276,8 +276,10 @@ def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunI
         execution_context=DifyExecutionContextLayerConfig(
             tenant_id="tenant-1",
             user_id="user-1",
+            user_from="end-user",
             conversation_id="conv-1",
-            invoke_from="agent_app",
+            agent_mode="agent_app",
+            invoke_from="web-app",
         ),
         agent_soul_prompt="You are Iris.",
         user_prompt="List files.",
