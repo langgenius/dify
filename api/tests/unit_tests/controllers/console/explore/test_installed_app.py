@@ -52,12 +52,20 @@ def payload_patch():
 
 
 class TestInstalledAppsListApi:
+    def test_published_app_filter_checks_publish_targets(self):
+        compiled_filter = str(module._published_app_filter().compile(compile_kwargs={"literal_binds": True}))
+
+        assert "workflows" in compiled_filter
+        assert "app_model_configs" in compiled_filter
+        assert "workflow_id" in compiled_filter
+        assert "app_model_config_id" in compiled_filter
+
     def test_get_installed_apps(self, app: Flask, current_user, tenant_id, installed_app):
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         with (
             app.test_request_context("/"),
@@ -81,7 +89,7 @@ class TestInstalledAppsListApi:
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = []
+        session.execute.return_value.all.return_value = []
 
         with (
             app.test_request_context("/?app_id=a1"),
@@ -104,7 +112,7 @@ class TestInstalledAppsListApi:
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         mock_webapp_setting = MagicMock()
         mock_webapp_setting.access_mode = "restricted"
@@ -140,7 +148,7 @@ class TestInstalledAppsListApi:
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         mock_webapp_setting = MagicMock()
         mock_webapp_setting.access_mode = "restricted"
@@ -176,7 +184,7 @@ class TestInstalledAppsListApi:
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         mock_webapp_setting = MagicMock()
         mock_webapp_setting.access_mode = "sso_verified"
@@ -206,11 +214,52 @@ class TestInstalledAppsListApi:
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
-        installed_app_with_null = MagicMock()
-        installed_app_with_null.app = None
+        session = MagicMock()
+        session.execute.return_value.all.return_value = []
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
+            patch.object(module.db, "session", session),
+            patch.object(module.TenantService, "get_user_role", return_value="owner"),
+            patch.object(
+                module.FeatureService,
+                "get_system_features",
+                return_value=MagicMock(webapp_auth=MagicMock(enabled=False)),
+            ),
+        ):
+            result = method(api)
+
+        assert result["installed_apps"] == []
+
+    def test_get_installed_apps_filters_unpublished_chat_apps(self, app: Flask, current_user, tenant_id):
+        api = module.InstalledAppsListApi()
+        method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app_with_null]
+        session.execute.return_value.all.return_value = []
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
+            patch.object(module.db, "session", session),
+            patch.object(module.TenantService, "get_user_role", return_value="owner"),
+            patch.object(
+                module.FeatureService,
+                "get_system_features",
+                return_value=MagicMock(webapp_auth=MagicMock(enabled=False)),
+            ),
+        ):
+            result = method(api)
+
+        assert result["installed_apps"] == []
+
+    def test_get_installed_apps_filters_unpublished_workflow_apps(self, app: Flask, current_user, tenant_id):
+        api = module.InstalledAppsListApi()
+        method = unwrap(api.get)
+
+        session = MagicMock()
+        session.execute.return_value.all.return_value = []
 
         with (
             app.test_request_context("/"),
@@ -236,7 +285,7 @@ class TestInstalledAppsListApi:
         current_user.current_tenant = None
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         with (
             app.test_request_context("/"),

@@ -5,7 +5,7 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field, field_validator
-from sqlalchemy import and_, select
+from sqlalchemy import and_, exists, or_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.fields import SimpleMessageResponse, SimpleResultMessageResponse
@@ -19,8 +19,8 @@ from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from libs.login import current_account_with_tenant, login_required
-from models import App, InstalledApp, RecommendedApp
-from models.model import IconType
+from models import App, AppModelConfig, InstalledApp, RecommendedApp, Workflow
+from models.model import AppMode, IconType
 from services.account_service import TenantService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -54,6 +54,24 @@ def _safe_primitive(value: Any) -> Any:
     if value is None or isinstance(value, (str, int, float, bool, datetime)):
         return value
     return None
+
+
+def _published_app_filter():
+    """Return the SQL predicate for installed-app web API availability.
+
+    The installed-app parameters endpoint reads the published workflow for
+    workflow-style apps and the published app model config for easy UI apps.
+    Keep the list endpoint aligned in SQL so it does not return entries that
+    will immediately fail with app_unavailable when opened.
+    """
+    workflow_app_modes = (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
+    has_published_workflow = exists(select(Workflow.id).where(Workflow.id == App.workflow_id))
+    has_published_model_config = exists(select(AppModelConfig.id).where(AppModelConfig.id == App.app_model_config_id))
+
+    return or_(
+        and_(App.mode.in_(workflow_app_modes), App.workflow_id.isnot(None), has_published_workflow),
+        and_(~App.mode.in_(workflow_app_modes), App.app_model_config_id.isnot(None), has_published_model_config),
+    )
 
 
 class InstalledAppInfoResponse(ResponseModel):
@@ -135,33 +153,32 @@ class InstalledAppsListApi(Resource):
         query = InstalledAppsListQuery.model_validate(request.args.to_dict())
         current_user, current_tenant_id = current_account_with_tenant()
 
+        stmt = (
+            select(InstalledApp, App)
+            .join(App, App.id == InstalledApp.app_id)
+            .where(InstalledApp.tenant_id == current_tenant_id, _published_app_filter())
+        )
         if query.app_id:
-            installed_apps = db.session.scalars(
-                select(InstalledApp).where(
-                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == query.app_id)
-                )
-            ).all()
-        else:
-            installed_apps = db.session.scalars(
-                select(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id)
-            ).all()
+            stmt = stmt.where(InstalledApp.app_id == query.app_id)
+
+        installed_apps = db.session.execute(stmt).all()
 
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
-        installed_app_list: list[dict[str, Any]] = [
-            {
-                "id": installed_app.id,
-                "app": installed_app.app,
-                "app_owner_tenant_id": installed_app.app_owner_tenant_id,
-                "is_pinned": installed_app.is_pinned,
-                "last_used_at": installed_app.last_used_at,
-                "editable": current_user.role in {"owner", "admin"},
-                "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
-            }
-            for installed_app in installed_apps
-            if installed_app.app is not None
-        ]
+        installed_app_list: list[dict[str, Any]] = []
+        for installed_app, app_model in installed_apps:
+            installed_app_list.append(
+                {
+                    "id": installed_app.id,
+                    "app": app_model,
+                    "app_owner_tenant_id": installed_app.app_owner_tenant_id,
+                    "is_pinned": installed_app.is_pinned,
+                    "last_used_at": installed_app.last_used_at,
+                    "editable": current_user.role in {"owner", "admin"},
+                    "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
+                }
+            )
 
         # filter out apps that user doesn't have access to
         if FeatureService.get_system_features().webapp_auth.enabled:
