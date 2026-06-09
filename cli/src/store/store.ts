@@ -32,6 +32,7 @@ abstract class FileBasedStore implements Store {
   constructor(filePath: string) {
     this.filePath = filePath
     this.platform = resolvePlatform()
+    fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
   }
 
   unlock(): void {
@@ -42,8 +43,6 @@ abstract class FileBasedStore implements Store {
    * atomically write raw_content (if any)
    */
   flush(): void {
-    fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
-
     // we don't handle A-B-A scenario,
     // which is not likely to happen in cli
     if (!this.dirty) {
@@ -69,9 +68,6 @@ abstract class FileBasedStore implements Store {
   }
 
   lock(): void {
-    // Ensure the parent directory exists before creating the lock file.
-    // On a fresh CI runner /home/runner/.cache/difyctl/ may not exist yet.
-    fs.mkdirSync(dirname(`${this.filePath}.lock`), { recursive: true, mode: DIR_PERM })
     try {
       lockfile.lockSync(`${this.filePath}.lock`, {
         stale: 30_000,
