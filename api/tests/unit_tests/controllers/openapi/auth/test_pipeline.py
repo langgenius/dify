@@ -279,6 +279,8 @@ def test_guard_workspace_sets_membership_and_roles(app):
 
 
 def test_guard_workspace_without_roles(app):
+    from models.account import TenantAccountRole
+
     router = _make_router()
     received = {}
 
@@ -298,7 +300,9 @@ def test_guard_workspace_without_roles(app):
             view()
 
     assert isinstance(received["data"], AuthData)
-    assert received["data"].allowed_roles is None
+    assert received["data"].allowed_roles == frozenset(
+        {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
+    )
 
 
 def test_guard_no_external_identity_when_subject_email_absent(app):
