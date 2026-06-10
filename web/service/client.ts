@@ -77,40 +77,6 @@ export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { pa
 const APP_DEPLOY_SOURCE_APPS_PAGE_SIZE = 100
 const APP_DEPLOY_READINESS_RETRY_DELAYS = [0, 300, 700, 1200]
 
-function getRequestPathname(url: string) {
-  try {
-    return new URL(url, 'http://localhost').pathname
-  }
-  catch {
-    return url
-  }
-}
-
-function shouldUseLocalDeploymentErrorToast(url: string, method?: string) {
-  const pathname = getRequestPathname(url)
-  const normalizedMethod = method?.toUpperCase()
-
-  return pathname.includes('/enterprise/app-deploy/initial-deployments/')
-    || /\/enterprise\/app-deploy\/releases\/[^/]+\/deployment-options$/.test(pathname)
-    || (
-      normalizedMethod === 'POST'
-      && (
-        pathname.endsWith('/enterprise/app-deploy/app-instances')
-        || pathname.endsWith('/enterprise/app-deploy/deployment-options/dsl')
-        || pathname.endsWith('/enterprise/app-deploy/deployment-options/source-app')
-        || pathname.endsWith('/enterprise/app-deploy/release-content-checks/dsl')
-        || pathname.endsWith('/enterprise/app-deploy/release-content-checks/source-app')
-        || pathname.endsWith('/enterprise/app-deploy/releases/dsl')
-        || pathname.endsWith('/enterprise/app-deploy/releases/source-app')
-      )
-    )
-    || /\/enterprise\/app-deploy\/app-instances\/[^/]+\/environments\/[^/]+\/deploy$/.test(pathname)
-}
-
-function getFetchRequestMethod(input: { method?: unknown }, init?: RequestInit) {
-  return typeof input.method === 'string' ? input.method : init?.method
-}
-
 type AppDeployInvalidationOptions = {
   appInstances?: boolean
   appInstanceSummaries?: boolean
@@ -374,15 +340,12 @@ async function invalidateReleaseMutationQueries(
 const consoleLink = new OpenAPILink(consoleRouterContract, {
   url: getBaseURL(API_PREFIX),
   fetch: (input, init) => {
-    const method = getFetchRequestMethod(input, init)
-
     return request(
       input.url,
       init,
       {
         fetchCompat: true,
         request: input,
-        silent: shouldUseLocalDeploymentErrorToast(input.url, method),
       },
     )
   },
