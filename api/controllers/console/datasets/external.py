@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.fields import UsageCountResponse
 from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -34,6 +35,7 @@ from fields.dataset_fields import (
 from libs.login import login_required
 from models import Account
 from services.dataset_service import DatasetService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
@@ -285,8 +287,15 @@ class ExternalDatasetCreateApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        if not isinstance(getattr(dataset, "permission_keys", None), list):
-            dataset.permission_keys = []
+
+        item = marshal(dataset, dataset_detail_fields)
+        dataset_id_str = item["id"]
+        permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [dataset_id_str],
+        )
+        item["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
 
         return marshal(dataset, dataset_detail_fields), 201
 
