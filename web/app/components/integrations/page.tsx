@@ -189,7 +189,7 @@ export default function IntegrationsPage({
   )
 
   return (
-    <div className="flex h-full min-h-0 bg-components-panel-bg" style={sidebarWidthStyle}>
+    <div className="flex h-full min-h-0 w-full flex-1 bg-components-panel-bg" style={sidebarWidthStyle}>
       <aside className={cn(
         'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
         'w-50 items-end',

@@ -439,6 +439,8 @@ describe('IntegrationsPage', () => {
     const onSectionChange = vi.fn()
     renderWithNuqs(<IntegrationsPage section="provider" onSectionChange={onSectionChange} />)
 
+    expect(screen.getByRole('button', { name: 'common.settings.provider' })).toHaveClass('bg-state-base-active')
+
     const toolsButton = screen.getByRole('button', { name: 'common.menus.tools' })
 
     expect(toolsButton).toHaveAttribute('aria-expanded', 'false')
