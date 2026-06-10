@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from inspect import unwrap
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
+from flask import Response
 
 from clients.agent_backend.errors import AgentBackendHTTPError, AgentBackendTransportError
 from clients.agent_backend.workspace_files_client import (
@@ -12,14 +15,8 @@ from clients.agent_backend.workspace_files_client import (
     WorkspacePreviewResult,
 )
 from controllers.console import agent_app_workspace as module
+from models.model import App, AppMode, IconType
 from services.agent_app_workspace_service import AgentWorkspaceInspectorError
-
-
-def _unwrapped_get(resource_cls):
-    func = resource_cls.get
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class _AgentAppService:
@@ -87,6 +84,20 @@ class _WorkflowService:
         return WorkspaceDownloadResult(path=path, size=3, truncated=False, content=b"abc")
 
 
+def _app_model(app_id: str = "app-1") -> App:
+    return App(
+        id=app_id,
+        tenant_id="tenant-1",
+        name="App",
+        mode=AppMode.AGENT,
+        icon_type=IconType.EMOJI,
+        icon="bot",
+        icon_background="#fff",
+        enable_site=False,
+        enable_api=False,
+    )
+
+
 def test_handle_maps_workspace_and_agent_backend_errors() -> None:
     assert module._handle(AgentWorkspaceInspectorError("no_sandbox", "no sandbox", status_code=404)) == (
         {"code": "no_sandbox", "message": "no sandbox"},
@@ -108,8 +119,11 @@ def test_handle_maps_workspace_and_agent_backend_errors() -> None:
 
 
 def test_download_response_returns_binary_or_too_large_error() -> None:
-    response = module._download_response(
-        WorkspaceDownloadResult(path="dir/report.txt", size=3, truncated=False, content=b"abc")
+    response = cast(
+        Response,
+        module._download_response(
+            WorkspaceDownloadResult(path="dir/report.txt", size=3, truncated=False, content=b"abc")
+        ),
     )
 
     assert response.status_code == 200
@@ -133,17 +147,16 @@ def test_download_response_returns_binary_or_too_large_error() -> None:
 def test_agent_app_workspace_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _AgentAppService()
     monkeypatch.setattr(module, "AgentAppWorkspaceService", lambda: service)
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (None, "tenant-1"))
     monkeypatch.setattr(
         module,
         "query_params_from_request",
         lambda model: SimpleNamespace(conversation_id="conv-1", path="sub/report.txt"),
     )
-    app_model = SimpleNamespace(id="app-1")
+    app_model = _app_model()
 
-    listing = _unwrapped_get(module.AgentAppWorkspaceListResource)(object(), app_model)
-    preview = _unwrapped_get(module.AgentAppWorkspacePreviewResource)(object(), app_model)
-    download = _unwrapped_get(module.AgentAppWorkspaceDownloadResource)(object(), app_model)
+    listing = unwrap(module.AgentAppWorkspaceListResource.get)(object(), "tenant-1", app_model)
+    preview = unwrap(module.AgentAppWorkspacePreviewResource.get)(object(), "tenant-1", app_model)
+    download = unwrap(module.AgentAppWorkspaceDownloadResource.get)(object(), "tenant-1", app_model)
 
     assert listing["entries"][0]["name"] == "a.txt"
     assert preview["text"] == "hello"
@@ -161,14 +174,13 @@ def test_agent_app_workspace_resource_returns_normalized_errors(monkeypatch: pyt
             raise AgentWorkspaceInspectorError("no_active_session", "no active session", status_code=404)
 
     monkeypatch.setattr(module, "AgentAppWorkspaceService", FailingService)
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (None, "tenant-1"))
     monkeypatch.setattr(
         module,
         "query_params_from_request",
         lambda model: SimpleNamespace(conversation_id="conv-1", path="."),
     )
 
-    assert _unwrapped_get(module.AgentAppWorkspaceListResource)(object(), SimpleNamespace(id="app-1")) == (
+    assert unwrap(module.AgentAppWorkspaceListResource.get)(object(), "tenant-1", _app_model()) == (
         {"code": "no_active_session", "message": "no active session"},
         404,
     )
@@ -177,17 +189,22 @@ def test_agent_app_workspace_resource_returns_normalized_errors(monkeypatch: pyt
 def test_workflow_agent_workspace_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _WorkflowService()
     monkeypatch.setattr(module, "WorkflowAgentWorkspaceService", lambda: service)
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (None, "tenant-1"))
     monkeypatch.setattr(
         module,
         "query_params_from_request",
         lambda model: SimpleNamespace(node_execution_id="exec-1", path="out.txt"),
     )
-    app_model = SimpleNamespace(id="app-1")
+    app_model = _app_model()
 
-    listing = _unwrapped_get(module.WorkflowAgentWorkspaceListResource)(object(), app_model, "run-1", "agent-node")
-    preview = _unwrapped_get(module.WorkflowAgentWorkspacePreviewResource)(object(), app_model, "run-1", "agent-node")
-    download = _unwrapped_get(module.WorkflowAgentWorkspaceDownloadResource)(object(), app_model, "run-1", "agent-node")
+    listing = unwrap(module.WorkflowAgentWorkspaceListResource.get)(
+        object(), "tenant-1", app_model, "run-1", "agent-node"
+    )
+    preview = unwrap(module.WorkflowAgentWorkspacePreviewResource.get)(
+        object(), "tenant-1", app_model, "run-1", "agent-node"
+    )
+    download = unwrap(module.WorkflowAgentWorkspaceDownloadResource.get)(
+        object(), "tenant-1", app_model, "run-1", "agent-node"
+    )
 
     assert listing["path"] == "out.txt"
     assert preview["text"] == "hello"

@@ -1,4 +1,5 @@
 import io
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,21 +40,19 @@ from controllers.console.workspace.plugin import (
     PluginUploadFromPkgApi,
 )
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from models.account import Account, TenantAccountRole, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+def _account(role: TenantAccountRole = TenantAccountRole.OWNER) -> Account:
+    account = Account(name="Test User", email="u1@example.com")
+    account.id = "u1"
+    account.role = role
+    return account
 
 
 @pytest.fixture
 def user():
-    u = MagicMock()
-    u.id = "u1"
-    u.is_admin_or_owner = True
-    return u
+    return _account()
 
 
 @pytest.fixture
@@ -102,10 +101,9 @@ class TestPluginDebuggingKeyApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.get_debugging_key", return_value="k"),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["key"] == "k"
 
@@ -115,13 +113,12 @@ class TestPluginDebuggingKeyApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.get_debugging_key",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -166,10 +163,9 @@ class TestPluginAssetApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p&file_name=a.bin"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.extract_asset", return_value=b"x"),
         ):
-            response = method(api)
+            response = method(api, "t1")
 
         assert response.mimetype == "application/octet-stream"
 
@@ -185,10 +181,9 @@ class TestPluginUploadFromPkgApi:
 
         with (
             app.test_request_context("/", data=data, content_type="multipart/form-data"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.upload_pkg", return_value={"ok": True}),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -202,12 +197,11 @@ class TestPluginUploadFromPkgApi:
 
         with (
             app.test_request_context("/", data=data, content_type="multipart/form-data"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_PACKAGE_SIZE", 0),
             patch("controllers.console.workspace.plugin.PluginService.upload_pkg") as upload_pkg_mock,
         ):
             with pytest.raises(ValueError) as exc_info:
-                method(api)
+                method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
         upload_pkg_mock.assert_not_called()
@@ -222,12 +216,11 @@ class TestPluginInstallFromPkgApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.install_from_local_pkg", return_value={"ok": True}
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -241,10 +234,9 @@ class TestPluginUninstallApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.uninstall", return_value=True),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["success"] is True
 
@@ -254,7 +246,7 @@ class TestPluginChangePermissionApi:
         api = PluginChangePermissionApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=False)
+        user = _account(TenantAccountRole.NORMAL)
 
         payload = {
             "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
@@ -263,16 +255,15 @@ class TestPluginChangePermissionApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
         ):
             with pytest.raises(Forbidden):
-                method(api)
+                method(api, "t1", user)
 
     def test_change_permission_success(self, app: Flask):
         api = PluginChangePermissionApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=True)
+        user = _account()
 
         payload = {
             "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
@@ -281,10 +272,9 @@ class TestPluginChangePermissionApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=True),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
         assert result["success"] is True
 
@@ -296,10 +286,9 @@ class TestPluginFetchPermissionApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginPermissionService.get_permission", return_value=None),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["install_permission"] is not None
 
@@ -311,13 +300,12 @@ class TestPluginFetchDynamicSelectOptionsApi:
 
         with (
             app.test_request_context("/?plugin_id=p&provider=x&action=y&parameter=z&provider_type=tool"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
                 return_value=[1, 2],
             ),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
         assert result["options"] == [1, 2]
 
@@ -329,16 +317,15 @@ class TestPluginReadmeApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.fetch_plugin_readme", return_value="readme"),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["readme"] == "readme"
 
 
 class TestPluginListInstallationsFromIdsApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask, user):
         api = PluginListInstallationsFromIdsApi()
         method = unwrap(api.post)
 
@@ -346,13 +333,12 @@ class TestPluginListInstallationsFromIdsApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.list_installations_from_ids",
                 return_value=[{"id": "p1"}],
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert "plugins" in result
 
@@ -364,18 +350,17 @@ class TestPluginListInstallationsFromIdsApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.list_installations_from_ids",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUploadFromGithubApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask, user):
         api = PluginUploadFromGithubApi()
         method = unwrap(api.post)
 
@@ -383,12 +368,11 @@ class TestPluginUploadFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github", return_value={"ok": True}
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -400,13 +384,12 @@ class TestPluginUploadFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -427,10 +410,9 @@ class TestPluginUploadFromBundleApi:
                 data={"bundle": file},
                 content_type="multipart/form-data",
             ),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.upload_bundle", return_value={"ok": True}),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -450,12 +432,11 @@ class TestPluginUploadFromBundleApi:
                 data={"bundle": file},
                 content_type="multipart/form-data",
             ),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_BUNDLE_SIZE", 0),
             patch("controllers.console.workspace.plugin.PluginService.upload_bundle") as upload_bundle_mock,
         ):
             with pytest.raises(ValueError) as exc_info:
-                method(api)
+                method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
         upload_bundle_mock.assert_not_called()
@@ -475,10 +456,9 @@ class TestPluginInstallFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.install_from_github", return_value={"ok": True}),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -495,13 +475,12 @@ class TestPluginInstallFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.install_from_github",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -514,13 +493,12 @@ class TestPluginInstallFromMarketplaceApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.install_from_marketplace_pkg",
                 return_value={"ok": True},
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -532,13 +510,12 @@ class TestPluginInstallFromMarketplaceApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.install_from_marketplace_pkg",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -549,10 +526,9 @@ class TestPluginFetchMarketplacePkgApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.fetch_marketplace_pkg", return_value={"m": 1}),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert "manifest" in result
 
@@ -562,13 +538,12 @@ class TestPluginFetchMarketplacePkgApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.fetch_marketplace_pkg",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -582,10 +557,9 @@ class TestPluginFetchManifestApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.fetch_plugin_manifest", return_value=manifest),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert "manifest" in result
 
@@ -595,13 +569,12 @@ class TestPluginFetchManifestApi:
 
         with (
             app.test_request_context("/?plugin_unique_identifier=p"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.fetch_plugin_manifest",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -612,10 +585,9 @@ class TestPluginFetchInstallTasksApi:
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.fetch_install_tasks", return_value=[{"id": 1}]),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert "tasks" in result
 
@@ -625,13 +597,12 @@ class TestPluginFetchInstallTasksApi:
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.fetch_install_tasks",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -642,10 +613,9 @@ class TestPluginFetchInstallTaskApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.fetch_install_task", return_value={"id": "x"}),
         ):
-            result = method(api, "x")
+            result = method(api, "t1", "x")
 
         assert "task" in result
 
@@ -655,13 +625,12 @@ class TestPluginFetchInstallTaskApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.fetch_install_task",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t")
+            result = method(api, "t1", "t")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -672,10 +641,9 @@ class TestPluginDeleteInstallTaskApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.delete_install_task", return_value=True),
         ):
-            result = method(api, "x")
+            result = method(api, "t1", "x")
 
         assert result["success"] is True
 
@@ -685,13 +653,12 @@ class TestPluginDeleteInstallTaskApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.delete_install_task",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t")
+            result = method(api, "t1", "t")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -702,12 +669,11 @@ class TestPluginDeleteAllInstallTaskItemsApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.delete_all_install_task_items", return_value=True
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["success"] is True
 
@@ -717,13 +683,12 @@ class TestPluginDeleteAllInstallTaskItemsApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.delete_all_install_task_items",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -734,10 +699,9 @@ class TestPluginDeleteInstallTaskItemApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginService.delete_install_task_item", return_value=True),
         ):
-            result = method(api, "task1", "item1")
+            result = method(api, "t1", "task1", "item1")
 
         assert result["success"] is True
 
@@ -747,18 +711,17 @@ class TestPluginDeleteInstallTaskItemApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.delete_install_task_item",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "task1", "item1")
+            result = method(api, "t1", "task1", "item1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUpgradeFromMarketplaceApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask, user):
         api = PluginUpgradeFromMarketplaceApi()
         method = unwrap(api.post)
 
@@ -769,13 +732,12 @@ class TestPluginUpgradeFromMarketplaceApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_marketplace",
                 return_value={"ok": True},
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -790,13 +752,12 @@ class TestPluginUpgradeFromMarketplaceApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_marketplace",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -815,13 +776,12 @@ class TestPluginUpgradeFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_github",
                 return_value={"ok": True},
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["ok"] is True
 
@@ -839,22 +799,19 @@ class TestPluginUpgradeFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_github",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask, user):
         api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
         method = unwrap(api.post)
-
-        user = MagicMock(id="u1", is_admin_or_owner=True)
 
         payload = {
             "plugin_id": "p",
@@ -867,21 +824,18 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
                 return_value=[1],
             ),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
         assert result["options"] == [1]
 
-    def test_daemon_error(self, app: Flask):
+    def test_daemon_error(self, app: Flask, user):
         api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
         method = unwrap(api.post)
-
-        user = MagicMock(id="u1", is_admin_or_owner=True)
 
         payload = {
             "plugin_id": "p",
@@ -894,13 +848,12 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -909,7 +862,7 @@ class TestPluginChangePreferencesApi:
         api = PluginChangePreferencesApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=True)
+        user = _account()
 
         payload = {
             "permission": {
@@ -927,11 +880,10 @@ class TestPluginChangePreferencesApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=True),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
         assert result["success"] is True
 
@@ -939,7 +891,7 @@ class TestPluginChangePreferencesApi:
         api = PluginChangePreferencesApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=True)
+        user = _account()
 
         payload = {
             "permission": {
@@ -957,10 +909,9 @@ class TestPluginChangePreferencesApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=False),
         ):
-            result = method(api)
+            result = method(api, "t1", user)
 
         assert result["success"] is False
 
@@ -985,7 +936,6 @@ class TestPluginFetchPreferencesApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginPermissionService.get_permission", return_value=permission
             ),
@@ -993,7 +943,7 @@ class TestPluginFetchPreferencesApi:
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy", return_value=auto_upgrade
             ),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert "permission" in result
         assert "auto_upgrade" in result
@@ -1008,10 +958,9 @@ class TestPluginAutoUpgradeExcludePluginApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=True),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["success"] is True
 
@@ -1023,9 +972,8 @@ class TestPluginAutoUpgradeExcludePluginApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=False),
         ):
-            result = method(api)
+            result = method(api, "t1")
 
         assert result["success"] is False
