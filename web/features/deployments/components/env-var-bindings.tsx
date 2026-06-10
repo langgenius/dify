@@ -14,7 +14,7 @@ import {
 import { TitleTooltip } from './title-tooltip'
 
 export type EnvVarValueSource = NonNullable<EnvVarInput['valueSource']>
-export type EnvVarValueType = 'string' | 'number' | 'secret'
+type EnvVarValueType = 'string' | 'number' | 'secret'
 export type EnvVarBindingSlot = EnvVarSlot & {
   key: string
   valueType: EnvVarValueType

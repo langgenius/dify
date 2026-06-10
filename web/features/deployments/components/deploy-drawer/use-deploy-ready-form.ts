@@ -88,12 +88,12 @@ const resetDeployBindingsAtom = atom(null, (_get, set) => {
   set(showValidationErrorsAtom, false)
 })
 
-export const selectDeployEnvironmentAtom = atom(null, (_get, set, environmentId: string) => {
+const selectDeployEnvironmentAtom = atom(null, (_get, set, environmentId: string) => {
   set(selectedEnvIdAtom, environmentId)
   set(resetDeployBindingsAtom)
 })
 
-export const selectDeployReleaseAtom = atom(null, (_get, set, releaseId: string) => {
+const selectDeployReleaseAtom = atom(null, (_get, set, releaseId: string) => {
   set(selectedReleaseIdAtom, releaseId)
   set(resetDeployBindingsAtom)
 })
@@ -102,16 +102,16 @@ export const showDeployValidationErrorsAtom = atom(null, (_get, set) => {
   set(showValidationErrorsAtom, true)
 })
 
-export const deployPresetReleaseAtom = atom((get) => {
+const deployPresetReleaseAtom = atom((get) => {
   const config = formConfig(get)
   return config.presetReleaseId ? config.releases.find(r => r.id === config.presetReleaseId) : undefined
 })
 
-export const deployDisplayedReleaseAtom = atom((get): Release | undefined => {
+const deployDisplayedReleaseAtom = atom((get): Release | undefined => {
   return get(deployPresetReleaseAtom)
 })
 
-export const deployIsExistingReleaseAtom = atom((get) => {
+const deployIsExistingReleaseAtom = atom((get) => {
   const config = formConfig(get)
   return Boolean(config.presetReleaseId)
 })
@@ -129,13 +129,13 @@ export const deploySelectedEnvironmentAtom = atom((get) => {
     : undefined
 })
 
-export const deploySelectedReleaseIdAtom = atom((get) => {
+const deploySelectedReleaseIdAtom = atom((get) => {
   const config = formConfig(get)
   const displayedRelease = get(deployDisplayedReleaseAtom)
   return get(selectedReleaseIdAtom) ?? displayedRelease?.id ?? config.defaultReleaseId
 })
 
-export const deploySelectedReleaseAtom = atom((get) => {
+const deploySelectedReleaseAtom = atom((get) => {
   const config = formConfig(get)
   const selectedReleaseId = get(deploySelectedReleaseIdAtom)
   return selectedReleaseId
@@ -143,7 +143,7 @@ export const deploySelectedReleaseAtom = atom((get) => {
     : undefined
 })
 
-export const deployTargetReleaseAtom = atom((get) => {
+const deployTargetReleaseAtom = atom((get) => {
   return get(deployDisplayedReleaseAtom) ?? get(deploySelectedReleaseAtom)
 })
 
@@ -156,7 +156,7 @@ export const deployHasSelectedEnvironmentAtom = atom((get) => {
   return Boolean(get(deploySelectedEnvironmentAtom))
 })
 
-export function useDeployReadyFormConfig() {
+function useDeployReadyFormConfig() {
   const config = useAtomValue(deployReadyFormConfigAtom)
   if (!config)
     throw new Error('Missing deploy ready form config.')
