@@ -7,9 +7,9 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 
-type Props = {
+type Props = Readonly<{
   tool: Tool
-}
+}>
 
 const MCPToolItem = ({
   tool,

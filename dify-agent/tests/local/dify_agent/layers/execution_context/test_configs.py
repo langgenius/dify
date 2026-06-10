@@ -31,31 +31,42 @@ def test_execution_context_accepts_real_invoke_from_user_from_and_agent_mode() -
     assert config.agent_mode == "agent_app"
 
 
-def test_execution_context_still_accepts_legacy_agent_mode_in_invoke_from() -> None:
-    # Back-compat: older requests carried the run mode in invoke_from.
-    config = DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run")
-    assert config.invoke_from == "workflow_run"
-    assert config.agent_mode is None
+def test_execution_context_rejects_legacy_agent_mode_in_invoke_from() -> None:
+    with pytest.raises(ValidationError):
+        _ = DifyExecutionContextLayerConfig.model_validate(
+            {
+                "tenant_id": "tenant-1",
+                "user_from": "account",
+                "agent_mode": "workflow_run",
+                "invoke_from": "workflow_run",
+            }
+        )
 
 
 def test_execution_context_layer_config_forbids_runtime_settings_and_unknown_fields() -> None:
     config = DifyExecutionContextLayerConfig(
         tenant_id="tenant-1",
         user_id="user-1",
+        user_from="account",
         workflow_id="workflow-1",
-        invoke_from="workflow_run",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
     )
 
     assert config.tenant_id == "tenant-1"
     assert config.user_id == "user-1"
+    assert config.user_from == "account"
     assert config.workflow_id == "workflow-1"
-    assert config.invoke_from == "workflow_run"
+    assert config.agent_mode == "workflow_run"
+    assert config.invoke_from == "service-api"
 
     with pytest.raises(ValidationError):
         _ = DifyExecutionContextLayerConfig.model_validate(
             {
                 "tenant_id": "tenant-1",
-                "invoke_from": "workflow_run",
+                "user_from": "account",
+                "agent_mode": "workflow_run",
+                "invoke_from": "service-api",
                 "daemon_url": "http://daemon",
             }
         )
@@ -64,7 +75,9 @@ def test_execution_context_layer_config_forbids_runtime_settings_and_unknown_fie
         _ = DifyExecutionContextLayerConfig.model_validate(
             {
                 "tenant_id": "tenant-1",
-                "invoke_from": "workflow_run",
+                "user_from": "account",
+                "agent_mode": "workflow_run",
+                "invoke_from": "service-api",
                 "unknown": "value",
             }
         )

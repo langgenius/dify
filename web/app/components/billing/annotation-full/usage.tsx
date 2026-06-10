@@ -6,9 +6,9 @@ import { useProviderContext } from '@/context/provider-context'
 import { MessageFastPlus } from '../../base/icons/src/vender/line/communication'
 import UsageInfo from '../usage-info'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-}
+}>
 
 const Usage: FC<Props> = ({
   className,

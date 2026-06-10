@@ -12,13 +12,13 @@ import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
 import MCPCard from './provider-card'
 
-type Props = {
+type Props = Readonly<{
   searchText: string
   contentInset?: ToolsContentInset
   createdProviderId?: string
   onCreatedProviderHandled?: () => void
   showCreateCard?: boolean
-}
+}>
 
 const MCPList = ({
   searchText,

@@ -14,12 +14,12 @@ export type HeaderItem = {
   value: string
 }
 
-type Props = {
+type Props = Readonly<{
   headersItems: HeaderItem[]
   onChange: (headerItems: HeaderItem[]) => void
   readonly?: boolean
   isMasked?: boolean
-}
+}>
 
 const HeadersInput = ({
   headersItems,

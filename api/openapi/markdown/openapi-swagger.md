@@ -299,6 +299,15 @@ Upload a file to use as an input variable when running the app
 ### /permitted-external-apps
 
 #### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer |
+| mode | query |  | No | string |
+| name | query |  | No | string |
+| page | query |  | No | integer |
+
 ##### Responses
 
 | Code | Description | Schema |
@@ -592,6 +601,7 @@ mode is a closed enum.
 | name | string |  | Yes |
 | original_url | string |  | No |
 | preview_url | string |  | No |
+| reference | string |  | No |
 | size | integer |  | Yes |
 | source_url | string |  | No |
 | tenant_id | string |  | No |

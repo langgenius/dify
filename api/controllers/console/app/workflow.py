@@ -25,6 +25,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_tenant_id,
     with_current_user,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -58,7 +59,7 @@ from graphon.variables import SecretVariable, SegmentType, VariableBase
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow
@@ -1568,7 +1569,8 @@ class WorkflowOnlineUsersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
 
         app_ids = args.app_ids
@@ -1578,7 +1580,6 @@ class WorkflowOnlineUsersApi(Resource):
         if not app_ids:
             return {"data": []}
 
-        _, current_tenant_id = current_account_with_tenant()
         workflow_service = WorkflowService()
         accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id)
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]

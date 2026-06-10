@@ -234,7 +234,7 @@ const useLastRun = <T>({
       setTabType(TabType.lastRun)
 
     setInitShowLastRunTab(false)
-  }, [initShowLastRunTab])
+  }, [initShowLastRunTab, setInitShowLastRunTab])
   const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
@@ -337,6 +337,11 @@ const useLastRun = <T>({
     hideSingleRun()
   }
 
+  const showSingleRunWithDraftSync = () => {
+    handleSyncWorkflowDraft(true)
+    showSingleRun()
+  }
+
   const handleSingleRun = () => {
     if (blockIfChecklistFailed())
       return
@@ -346,7 +351,7 @@ const useLastRun = <T>({
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
       setShowVariableInspectPanel(true)
     if (isCustomRunNode || isHumanInputNode) {
-      showSingleRun()
+      showSingleRunWithDraftSync()
       return
     }
     const vars = singleRunParams?.getDependentVars?.()
@@ -360,7 +365,7 @@ const useLastRun = <T>({
       })
     }
     else {
-      showSingleRun()
+      showSingleRunWithDraftSync()
     }
   }
 
