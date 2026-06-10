@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
@@ -429,7 +429,7 @@ class AppDslImportPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    mode: str = Field(..., description="Import mode: yaml-content or yaml-url")
+    mode: Literal["yaml-content", "yaml-url"] = Field(..., description="Import mode: yaml-content or yaml-url")
     yaml_content: str | None = Field(None, description="Inline YAML DSL string (required when mode is yaml-content)")
     yaml_url: str | None = Field(None, description="Remote URL to fetch YAML from (required when mode is yaml-url)")
     name: str | None = Field(None, description="Override the app name from the DSL")
@@ -438,6 +438,14 @@ class AppDslImportPayload(BaseModel):
     icon: str | None = Field(None)
     icon_background: str | None = Field(None)
     app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
+
+    @model_validator(mode="after")
+    def _validate_source_by_mode(self) -> AppDslImportPayload:
+        if self.mode == "yaml-content" and not self.yaml_content:
+            raise ValueError("yaml_content is required when mode is 'yaml-content'")
+        if self.mode == "yaml-url" and not self.yaml_url:
+            raise ValueError("yaml_url is required when mode is 'yaml-url'")
+        return self
 
 
 class AppDslExportQuery(BaseModel):
