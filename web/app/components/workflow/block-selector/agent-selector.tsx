@@ -30,8 +30,12 @@ import BlockIcon from '../block-icon'
 const AGENT_SELECTOR_PAGE_SIZE = 8
 
 function AgentSelectorContent({
+  open,
+  onOpenChange,
   onSelect,
 }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onSelect: () => void
 }) {
   const { t } = useTranslation(['agentV2', 'common'])
@@ -61,6 +65,10 @@ function AgentSelectorContent({
 
     onSelect()
   }
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen)
+      onOpenChange(false)
+  }
 
   return (
     <div className="w-90 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
@@ -70,9 +78,10 @@ function AgentSelectorContent({
         items={agents}
         itemToStringLabel={getAgentLabel}
         itemToStringValue={getAgentValue}
-        open
+        open={open}
         value={null}
         onInputValueChange={handleInputValueChange}
+        onOpenChange={handleOpenChange}
         onValueChange={handleValueChange}
       >
         <div className="bg-components-panel-bg-blur p-2 pb-1">
@@ -200,7 +209,7 @@ export function AgentBlockItem({
             <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">
               {block.metaData.title}
             </span>
-            <span aria-hidden className="i-ri-arrow-down-s-fill size-4 shrink-0 -rotate-90 text-text-tertiary" />
+            <span aria-hidden className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-tertiary" />
           </button>
         )}
       />
@@ -212,7 +221,7 @@ export function AgentBlockItem({
         <PopoverTitle className="sr-only">
           {t('roster.nodeSelector.dialogLabel')}
         </PopoverTitle>
-        <AgentSelectorContent onSelect={handleSelect} />
+        <AgentSelectorContent open={open} onOpenChange={setOpen} onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
   )

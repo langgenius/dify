@@ -1,6 +1,6 @@
 import type { NodeDefault } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FlowType } from '@/types/common'
 import { HooksStoreContext } from '../../hooks-store/provider'
@@ -235,6 +235,55 @@ describe('Blocks', () => {
           page: 1,
         },
       },
+    })
+  })
+
+  it('closes the agent selector when Escape closes the combobox', async () => {
+    const user = userEvent.setup()
+    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
+      data: [],
+      has_more: false,
+      limit: 8,
+      page: 1,
+      total: 0,
+    })
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+    const hooksStore = createHooksStore({
+      configsMap: {
+        flowId: 'app-1',
+        flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+      },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HooksStoreContext value={hooksStore}>
+          <Blocks
+            searchText=""
+            onSelect={vi.fn()}
+            availableBlocksTypes={[BlockEnum.Agent]}
+            blocks={[createBlock(BlockEnum.Agent, 'Agent')]}
+          />
+        </HooksStoreContext>
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
+
+    expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).not.toBeInTheDocument()
     })
   })
 })
