@@ -121,6 +121,30 @@ export const zDevicePollRequest = z.object({
 })
 
 /**
+ * ErrorDetail
+ */
+export const zErrorDetail = z.object({
+  loc: z.array(z.unknown()).optional().default([]),
+  msg: z.string(),
+  type: z.string(),
+})
+
+/**
+ * ErrorBody
+ *
+ * Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
+ * generated client schema stays an open enum — old CLIs keep parsing when a
+ * future server adds a code. Formatter tests pin emitted values to the enum.
+ */
+export const zErrorBody = z.object({
+  code: z.string(),
+  details: z.array(zErrorDetail).nullish(),
+  hint: z.string().nullish(),
+  message: z.string(),
+  status: z.int(),
+})
+
+/**
  * FileResponse
  */
 export const zFileResponse = z.object({

@@ -143,6 +143,20 @@ export type DevicePollRequest = {
   device_code: string
 }
 
+export type ErrorBody = {
+  code: string
+  details?: Array<ErrorDetail> | null
+  hint?: string | null
+  message: string
+  status: number
+}
+
+export type ErrorDetail = {
+  loc?: Array<unknown>
+  msg: string
+  type: string
+}
+
 export type FileResponse = {
   conversation_id?: string | null
   created_at?: number | null
@@ -339,6 +353,12 @@ export type GetHealthData = {
   url: '/_health'
 }
 
+export type GetHealthErrors = {
+  default: ErrorBody
+}
+
+export type GetHealthError = GetHealthErrors[keyof GetHealthErrors]
+
 export type GetHealthResponses = {
   200: HealthResponse
 }
@@ -352,6 +372,12 @@ export type GetVersionData = {
   url: '/_version'
 }
 
+export type GetVersionErrors = {
+  default: ErrorBody
+}
+
+export type GetVersionError = GetVersionErrors[keyof GetVersionErrors]
+
 export type GetVersionResponses = {
   200: ServerVersionResponse
 }
@@ -364,6 +390,12 @@ export type GetAccountData = {
   query?: never
   url: '/account'
 }
+
+export type GetAccountErrors = {
+  default: ErrorBody
+}
+
+export type GetAccountError = GetAccountErrors[keyof GetAccountErrors]
 
 export type GetAccountResponses = {
   200: AccountResponse
@@ -381,6 +413,13 @@ export type GetAccountSessionsData = {
   url: '/account/sessions'
 }
 
+export type GetAccountSessionsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAccountSessionsError = GetAccountSessionsErrors[keyof GetAccountSessionsErrors]
+
 export type GetAccountSessionsResponses = {
   200: SessionListResponse
 }
@@ -394,6 +433,13 @@ export type DeleteAccountSessionsSelfData = {
   query?: never
   url: '/account/sessions/self'
 }
+
+export type DeleteAccountSessionsSelfErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAccountSessionsSelfError
+  = DeleteAccountSessionsSelfErrors[keyof DeleteAccountSessionsSelfErrors]
 
 export type DeleteAccountSessionsSelfResponses = {
   200: RevokeResponse
@@ -410,6 +456,13 @@ export type DeleteAccountSessionsBySessionIdData = {
   query?: never
   url: '/account/sessions/{session_id}'
 }
+
+export type DeleteAccountSessionsBySessionIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAccountSessionsBySessionIdError
+  = DeleteAccountSessionsBySessionIdErrors[keyof DeleteAccountSessionsBySessionIdErrors]
 
 export type DeleteAccountSessionsBySessionIdResponses = {
   200: RevokeResponse
@@ -432,6 +485,13 @@ export type GetAppsData = {
   url: '/apps'
 }
 
+export type GetAppsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsError = GetAppsErrors[keyof GetAppsErrors]
+
 export type GetAppsResponses = {
   200: AppListResponse
 }
@@ -448,6 +508,14 @@ export type GetAppsByAppIdDescribeData = {
   }
   url: '/apps/{app_id}/describe'
 }
+
+export type GetAppsByAppIdDescribeErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdDescribeError
+  = GetAppsByAppIdDescribeErrors[keyof GetAppsByAppIdDescribeErrors]
 
 export type GetAppsByAppIdDescribeResponses = {
   200: AppDescribeResponse
@@ -478,6 +546,7 @@ export type PostAppsByAppIdFilesUploadErrors = {
   415: {
     [key: string]: unknown
   }
+  default: ErrorBody
 }
 
 export type PostAppsByAppIdFilesUploadError
@@ -519,6 +588,14 @@ export type PostAppsByAppIdFormHumanInputByFormTokenData = {
   url: '/apps/{app_id}/form/human_input/{form_token}'
 }
 
+export type PostAppsByAppIdFormHumanInputByFormTokenErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdFormHumanInputByFormTokenError
+  = PostAppsByAppIdFormHumanInputByFormTokenErrors[keyof PostAppsByAppIdFormHumanInputByFormTokenErrors]
+
 export type PostAppsByAppIdFormHumanInputByFormTokenResponses = {
   200: FormSubmitResponse
 }
@@ -534,6 +611,12 @@ export type PostAppsByAppIdRunData = {
   query?: never
   url: '/apps/{app_id}/run'
 }
+
+export type PostAppsByAppIdRunErrors = {
+  422: ErrorBody
+}
+
+export type PostAppsByAppIdRunError = PostAppsByAppIdRunErrors[keyof PostAppsByAppIdRunErrors]
 
 export type PostAppsByAppIdRunResponses = {
   200: {
@@ -572,6 +655,13 @@ export type PostAppsByAppIdTasksByTaskIdStopData = {
   query?: never
   url: '/apps/{app_id}/tasks/{task_id}/stop'
 }
+
+export type PostAppsByAppIdTasksByTaskIdStopErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdTasksByTaskIdStopError
+  = PostAppsByAppIdTasksByTaskIdStopErrors[keyof PostAppsByAppIdTasksByTaskIdStopErrors]
 
 export type PostAppsByAppIdTasksByTaskIdStopResponses = {
   200: TaskStopResponse
@@ -666,6 +756,14 @@ export type GetPermittedExternalAppsData = {
   url: '/permitted-external-apps'
 }
 
+export type GetPermittedExternalAppsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetPermittedExternalAppsError
+  = GetPermittedExternalAppsErrors[keyof GetPermittedExternalAppsErrors]
+
 export type GetPermittedExternalAppsResponses = {
   200: PermittedExternalAppsListResponse
 }
@@ -679,6 +777,12 @@ export type GetWorkspacesData = {
   query?: never
   url: '/workspaces'
 }
+
+export type GetWorkspacesErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesError = GetWorkspacesErrors[keyof GetWorkspacesErrors]
 
 export type GetWorkspacesResponses = {
   200: WorkspaceListResponse
@@ -694,6 +798,13 @@ export type GetWorkspacesByWorkspaceIdData = {
   query?: never
   url: '/workspaces/{workspace_id}'
 }
+
+export type GetWorkspacesByWorkspaceIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdError
+  = GetWorkspacesByWorkspaceIdErrors[keyof GetWorkspacesByWorkspaceIdErrors]
 
 export type GetWorkspacesByWorkspaceIdResponses = {
   200: WorkspaceDetailResponse
@@ -714,6 +825,14 @@ export type GetWorkspacesByWorkspaceIdMembersData = {
   url: '/workspaces/{workspace_id}/members'
 }
 
+export type GetWorkspacesByWorkspaceIdMembersErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdMembersError
+  = GetWorkspacesByWorkspaceIdMembersErrors[keyof GetWorkspacesByWorkspaceIdMembersErrors]
+
 export type GetWorkspacesByWorkspaceIdMembersResponses = {
   200: MemberListResponse
 }
@@ -729,6 +848,14 @@ export type PostWorkspacesByWorkspaceIdMembersData = {
   query?: never
   url: '/workspaces/{workspace_id}/members'
 }
+
+export type PostWorkspacesByWorkspaceIdMembersErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdMembersError
+  = PostWorkspacesByWorkspaceIdMembersErrors[keyof PostWorkspacesByWorkspaceIdMembersErrors]
 
 export type PostWorkspacesByWorkspaceIdMembersResponses = {
   201: MemberInviteResponse
@@ -747,6 +874,13 @@ export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdData = {
   url: '/workspaces/{workspace_id}/members/{member_id}'
 }
 
+export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdError
+  = DeleteWorkspacesByWorkspaceIdMembersByMemberIdErrors[keyof DeleteWorkspacesByWorkspaceIdMembersByMemberIdErrors]
+
 export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdResponses = {
   200: MemberActionResponse
 }
@@ -764,6 +898,14 @@ export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleData = {
   url: '/workspaces/{workspace_id}/members/{member_id}/role'
 }
 
+export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleError
+  = PutWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors[keyof PutWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors]
+
 export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponses = {
   200: MemberActionResponse
 }
@@ -779,6 +921,13 @@ export type PostWorkspacesByWorkspaceIdSwitchData = {
   query?: never
   url: '/workspaces/{workspace_id}/switch'
 }
+
+export type PostWorkspacesByWorkspaceIdSwitchErrors = {
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdSwitchError
+  = PostWorkspacesByWorkspaceIdSwitchErrors[keyof PostWorkspacesByWorkspaceIdSwitchErrors]
 
 export type PostWorkspacesByWorkspaceIdSwitchResponses = {
   200: WorkspaceDetailResponse
