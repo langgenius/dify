@@ -5,7 +5,6 @@ from typing import Any
 
 import httpx
 
-from configs import dify_config
 from core.helper.trace_id_helper import generate_traceparent_header
 from services.errors.enterprise import (
     EnterpriseAPIBadRequestError,
@@ -195,7 +194,11 @@ class EnterpriseRequest(BaseRequest):
             logger.debug("Failed to generate traceparent header", exc_info=True)
 
         with httpx.Client(mounts=mounts) as client:
-            request_kwargs: dict[str, Any] = {"json": json, "params": params, "headers": {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key, **inner_headers}}
+            request_kwargs: dict[str, Any] = {
+                "json": json,
+                "params": params,
+                "headers": {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key, **inner_headers},
+            }
             if timeout is not None:
                 request_kwargs["timeout"] = timeout
             response = client.request(method, url, **request_kwargs)

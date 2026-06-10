@@ -7,9 +7,9 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
-    rbac_permission_required
 )
 from extensions.ext_database import db
 from libs.helper import uuid_value

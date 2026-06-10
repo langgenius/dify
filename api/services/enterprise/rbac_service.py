@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from flask import has_request_context, request
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
@@ -1420,10 +1420,7 @@ def _parse_resource_permission_keys_batch(data: Any, *, resource_id_key: str) ->
         if items is None:
             items = data.get("apps") if resource_id_key == "app_id" else data.get("datasets")
         if isinstance(items, dict):
-            items = [
-                {"resource_id": key, "permission_keys": value}
-                for key, value in items.items()
-            ]
+            items = [{"resource_id": key, "permission_keys": value} for key, value in items.items()]
     elif isinstance(data, list):
         items = data
     else:

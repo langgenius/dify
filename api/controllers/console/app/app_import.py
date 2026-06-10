@@ -161,7 +161,8 @@ class AppImportConfirmApi(Resource):
         is_created_app = bool(
             pending_data
             and pending_data.app_id is None
-            and result.status in {
+            and result.status
+            in {
                 ImportStatus.COMPLETED,
                 ImportStatus.COMPLETED_WITH_WARNINGS,
             }

@@ -2838,6 +2838,24 @@ export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses = {
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponse
   = PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses[keyof PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses]
 
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}/members'
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponse
+  = GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses]
+
 export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsData = {
   body?: never
   path: {

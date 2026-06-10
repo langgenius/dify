@@ -2082,6 +2082,18 @@ export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath = z.object({
  */
 export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse = z.record(z.string(), z.unknown())
 
+export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath = z.object({
+  role_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
 export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsPath = z.object({
   policy_id: z.string(),
 })

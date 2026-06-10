@@ -238,7 +238,8 @@ class RBACRolesApi(Resource):
             result = _legacy_workspace_roles(options)
         else:
             result = svc.RBACService.Roles.list(
-                tenant_id, account_id, include_owner=query.include_owner, options=options)
+                tenant_id, account_id, include_owner=query.include_owner, options=options
+            )
 
         return _dump(result)
 

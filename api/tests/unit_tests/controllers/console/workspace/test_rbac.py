@@ -63,7 +63,8 @@ class TestAccessMatrixAccountNames:
         ]
 
         with patch(
-            "controllers.console.workspace.rbac._account_names_by_ids", return_value={"acct-2": {"name": "Bob", "avatar": "ava"}}
+            "controllers.console.workspace.rbac._account_names_by_ids",
+            return_value={"acct-2": {"name": "Bob", "avatar": "ava"}},
         ) as mock_names:
             rbac_mod._hydrate_access_matrix_account_names(items)
 
@@ -313,7 +314,9 @@ class TestAccessPolicyBindingLockUnlock:
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicyBindings.lock") as mock_lock,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
         ):
-            inspect.unwrap(rbac_mod.RBACAccessPolicyBindingLockApi.put)(rbac_mod.RBACAccessPolicyBindingLockApi(), "binding-1")
+            inspect.unwrap(rbac_mod.RBACAccessPolicyBindingLockApi.put)(
+                rbac_mod.RBACAccessPolicyBindingLockApi(), "binding-1"
+            )
 
         mock_lock.assert_called_once_with("tenant-1", "acct-1", "binding-1")
 
@@ -325,7 +328,9 @@ class TestAccessPolicyBindingLockUnlock:
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicyBindings.unlock") as mock_unlock,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
         ):
-            inspect.unwrap(rbac_mod.RBACAccessPolicyBindingUnlockApi.put)(rbac_mod.RBACAccessPolicyBindingUnlockApi(), "binding-1")
+            inspect.unwrap(rbac_mod.RBACAccessPolicyBindingUnlockApi.put)(
+                rbac_mod.RBACAccessPolicyBindingUnlockApi(), "binding-1"
+            )
 
         mock_unlock.assert_called_once_with("tenant-1", "acct-1", "binding-1")
 

@@ -110,6 +110,8 @@ import {
   zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse,
   zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse,
   zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse,
+  zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse,
   zGetWorkspacesCurrentRbacRolesByRoleIdPath,
   zGetWorkspacesCurrentRbacRolesByRoleIdResponse,
   zGetWorkspacesCurrentRbacRolesResponse,
@@ -3098,6 +3100,29 @@ export const copy2 = {
  *
  * @deprecated
  */
+export const get45 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentRbacRolesByRoleIdMembers',
+    path: '/workspaces/current/rbac/roles/{role_id}/members',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath }))
+  .output(zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse)
+
+export const members3 = {
+  get: get45,
+}
+
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
 export const delete10 = oc
   .route({
     deprecated: true,
@@ -3117,7 +3142,7 @@ export const delete10 = oc
  *
  * @deprecated
  */
-export const get45 = oc
+export const get46 = oc
   .route({
     deprecated: true,
     description:
@@ -3152,9 +3177,10 @@ export const put10 = oc
 
 export const byRoleId = {
   delete: delete10,
-  get: get45,
+  get: get46,
   put: put10,
   copy: copy2,
+  members: members3,
 }
 
 /**
@@ -3162,7 +3188,7 @@ export const byRoleId = {
  *
  * @deprecated
  */
-export const get46 = oc
+export const get47 = oc
   .route({
     deprecated: true,
     description:
@@ -3194,7 +3220,7 @@ export const post47 = oc
   .output(zPostWorkspacesCurrentRbacRolesResponse)
 
 export const roles = {
-  get: get46,
+  get: get47,
   post: post47,
   byRoleId,
 }
@@ -3231,7 +3257,7 @@ export const bindings3 = {
  *
  * @deprecated
  */
-export const get47 = oc
+export const get48 = oc
   .route({
     deprecated: true,
     description:
@@ -3250,7 +3276,7 @@ export const get47 = oc
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse)
 
 export const memberBindings3 = {
-  get: get47,
+  get: get48,
 }
 
 /**
@@ -3258,7 +3284,7 @@ export const memberBindings3 = {
  *
  * @deprecated
  */
-export const get48 = oc
+export const get49 = oc
   .route({
     deprecated: true,
     description:
@@ -3277,7 +3303,7 @@ export const get48 = oc
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse)
 
 export const roleBindings3 = {
-  get: get48,
+  get: get49,
 }
 
 export const byPolicyId4 = {
@@ -3295,7 +3321,7 @@ export const accessPolicies4 = {
  *
  * @deprecated
  */
-export const get49 = oc
+export const get50 = oc
   .route({
     deprecated: true,
     description:
@@ -3309,7 +3335,7 @@ export const get49 = oc
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse)
 
 export const accessPolicy3 = {
-  get: get49,
+  get: get50,
 }
 
 export const apps2 = {
@@ -3349,7 +3375,7 @@ export const bindings4 = {
  *
  * @deprecated
  */
-export const get50 = oc
+export const get51 = oc
   .route({
     deprecated: true,
     description:
@@ -3368,7 +3394,7 @@ export const get50 = oc
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse)
 
 export const memberBindings4 = {
-  get: get50,
+  get: get51,
 }
 
 /**
@@ -3376,7 +3402,7 @@ export const memberBindings4 = {
  *
  * @deprecated
  */
-export const get51 = oc
+export const get52 = oc
   .route({
     deprecated: true,
     description:
@@ -3395,7 +3421,7 @@ export const get51 = oc
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse)
 
 export const roleBindings4 = {
-  get: get51,
+  get: get52,
 }
 
 export const byPolicyId5 = {
@@ -3413,7 +3439,7 @@ export const accessPolicies5 = {
  *
  * @deprecated
  */
-export const get52 = oc
+export const get53 = oc
   .route({
     deprecated: true,
     description:
@@ -3427,7 +3453,7 @@ export const get52 = oc
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse)
 
 export const accessPolicy4 = {
-  get: get52,
+  get: get53,
 }
 
 export const datasets2 = {
@@ -3457,7 +3483,7 @@ export const rbac = {
  *
  * @deprecated
  */
-export const get53 = oc
+export const get54 = oc
   .route({
     deprecated: true,
     description:
@@ -3471,7 +3497,7 @@ export const get53 = oc
   .output(zGetWorkspacesCurrentToolLabelsResponse)
 
 export const toolLabels = {
-  get: get53,
+  get: get54,
 }
 
 /**
@@ -3525,7 +3551,7 @@ export const delete11 = {
  *
  * @deprecated
  */
-export const get54 = oc
+export const get55 = oc
   .route({
     deprecated: true,
     description:
@@ -3538,8 +3564,8 @@ export const get54 = oc
   })
   .output(zGetWorkspacesCurrentToolProviderApiGetResponse)
 
-export const get55 = {
-  get: get54,
+export const get56 = {
+  get: get55,
 }
 
 /**
@@ -3547,7 +3573,7 @@ export const get55 = {
  *
  * @deprecated
  */
-export const get56 = oc
+export const get57 = oc
   .route({
     deprecated: true,
     description:
@@ -3561,7 +3587,7 @@ export const get56 = oc
   .output(zGetWorkspacesCurrentToolProviderApiRemoteResponse)
 
 export const remote = {
-  get: get56,
+  get: get57,
 }
 
 /**
@@ -3619,7 +3645,7 @@ export const test = {
  *
  * @deprecated
  */
-export const get57 = oc
+export const get58 = oc
   .route({
     deprecated: true,
     description:
@@ -3633,7 +3659,7 @@ export const get57 = oc
   .output(zGetWorkspacesCurrentToolProviderApiToolsResponse)
 
 export const tools = {
-  get: get57,
+  get: get58,
 }
 
 /**
@@ -3662,7 +3688,7 @@ export const update2 = {
 export const api = {
   add,
   delete: delete11,
-  get: get55,
+  get: get56,
   remote,
   schema,
   test,
@@ -3703,7 +3729,7 @@ export const add2 = {
  *
  * @deprecated
  */
-export const get58 = oc
+export const get59 = oc
   .route({
     deprecated: true,
     description:
@@ -3718,7 +3744,7 @@ export const get58 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse)
 
 export const info = {
-  get: get58,
+  get: get59,
 }
 
 /**
@@ -3726,7 +3752,7 @@ export const info = {
  *
  * @deprecated
  */
-export const get59 = oc
+export const get60 = oc
   .route({
     deprecated: true,
     description:
@@ -3749,7 +3775,7 @@ export const get59 = oc
   )
 
 export const byCredentialType = {
-  get: get59,
+  get: get60,
 }
 
 export const schema2 = {
@@ -3766,7 +3792,7 @@ export const credential = {
  *
  * @deprecated
  */
-export const get60 = oc
+export const get61 = oc
   .route({
     deprecated: true,
     description:
@@ -3781,7 +3807,7 @@ export const get60 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse)
 
 export const credentials3 = {
-  get: get60,
+  get: get61,
 }
 
 /**
@@ -3845,7 +3871,7 @@ export const delete12 = {
  *
  * @deprecated
  */
-export const get61 = oc
+export const get62 = oc
   .route({
     deprecated: true,
     description:
@@ -3860,7 +3886,7 @@ export const get61 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse)
 
 export const icon2 = {
-  get: get61,
+  get: get62,
 }
 
 /**
@@ -3868,7 +3894,7 @@ export const icon2 = {
  *
  * @deprecated
  */
-export const get62 = oc
+export const get63 = oc
   .route({
     deprecated: true,
     description:
@@ -3883,7 +3909,7 @@ export const get62 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse)
 
 export const info2 = {
-  get: get62,
+  get: get63,
 }
 
 /**
@@ -3891,7 +3917,7 @@ export const info2 = {
  *
  * @deprecated
  */
-export const get63 = oc
+export const get64 = oc
   .route({
     deprecated: true,
     description:
@@ -3908,7 +3934,7 @@ export const get63 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse)
 
 export const clientSchema = {
-  get: get63,
+  get: get64,
 }
 
 /**
@@ -3939,7 +3965,7 @@ export const delete13 = oc
  *
  * @deprecated
  */
-export const get64 = oc
+export const get65 = oc
   .route({
     deprecated: true,
     description:
@@ -3981,7 +4007,7 @@ export const post56 = oc
 
 export const customClient = {
   delete: delete13,
-  get: get64,
+  get: get65,
   post: post56,
 }
 
@@ -3995,7 +4021,7 @@ export const oauth = {
  *
  * @deprecated
  */
-export const get65 = oc
+export const get66 = oc
   .route({
     deprecated: true,
     description:
@@ -4010,7 +4036,7 @@ export const get65 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse)
 
 export const tools2 = {
-  get: get65,
+  get: get66,
 }
 
 /**
@@ -4086,7 +4112,7 @@ export const auth = {
  *
  * @deprecated
  */
-export const get66 = oc
+export const get67 = oc
   .route({
     deprecated: true,
     description:
@@ -4101,7 +4127,7 @@ export const get66 = oc
   .output(zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse)
 
 export const byProviderId = {
-  get: get66,
+  get: get67,
 }
 
 export const tools3 = {
@@ -4113,7 +4139,7 @@ export const tools3 = {
  *
  * @deprecated
  */
-export const get67 = oc
+export const get68 = oc
   .route({
     deprecated: true,
     description:
@@ -4128,7 +4154,7 @@ export const get67 = oc
   .output(zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse)
 
 export const byProviderId2 = {
-  get: get67,
+  get: get68,
 }
 
 export const update4 = {
@@ -4244,7 +4270,7 @@ export const delete15 = {
  *
  * @deprecated
  */
-export const get68 = oc
+export const get69 = oc
   .route({
     deprecated: true,
     description:
@@ -4257,8 +4283,8 @@ export const get68 = oc
   })
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
 
-export const get69 = {
-  get: get68,
+export const get70 = {
+  get: get69,
 }
 
 /**
@@ -4266,7 +4292,7 @@ export const get69 = {
  *
  * @deprecated
  */
-export const get70 = oc
+export const get71 = oc
   .route({
     deprecated: true,
     description:
@@ -4280,7 +4306,7 @@ export const get70 = oc
   .output(zGetWorkspacesCurrentToolProviderWorkflowToolsResponse)
 
 export const tools4 = {
-  get: get70,
+  get: get71,
 }
 
 /**
@@ -4309,7 +4335,7 @@ export const update5 = {
 export const workflow = {
   create: create2,
   delete: delete15,
-  get: get69,
+  get: get70,
   tools: tools4,
   update: update5,
 }
@@ -4326,7 +4352,7 @@ export const toolProvider = {
  *
  * @deprecated
  */
-export const get71 = oc
+export const get72 = oc
   .route({
     deprecated: true,
     description:
@@ -4340,28 +4366,6 @@ export const get71 = oc
   .output(zGetWorkspacesCurrentToolProvidersResponse)
 
 export const toolProviders = {
-  get: get71,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get72 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesCurrentToolsApi',
-    path: '/workspaces/current/tools/api',
-    tags: ['console'],
-  })
-  .output(zGetWorkspacesCurrentToolsApiResponse)
-
-export const api2 = {
   get: get72,
 }
 
@@ -4377,13 +4381,13 @@ export const get73 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesCurrentToolsBuiltin',
-    path: '/workspaces/current/tools/builtin',
+    operationId: 'getWorkspacesCurrentToolsApi',
+    path: '/workspaces/current/tools/api',
     tags: ['console'],
   })
-  .output(zGetWorkspacesCurrentToolsBuiltinResponse)
+  .output(zGetWorkspacesCurrentToolsApiResponse)
 
-export const builtin2 = {
+export const api2 = {
   get: get73,
 }
 
@@ -4399,13 +4403,13 @@ export const get74 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesCurrentToolsMcp',
-    path: '/workspaces/current/tools/mcp',
+    operationId: 'getWorkspacesCurrentToolsBuiltin',
+    path: '/workspaces/current/tools/builtin',
     tags: ['console'],
   })
-  .output(zGetWorkspacesCurrentToolsMcpResponse)
+  .output(zGetWorkspacesCurrentToolsBuiltinResponse)
 
-export const mcp2 = {
+export const builtin2 = {
   get: get74,
 }
 
@@ -4421,21 +4425,14 @@ export const get75 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesCurrentToolsWorkflow',
-    path: '/workspaces/current/tools/workflow',
+    operationId: 'getWorkspacesCurrentToolsMcp',
+    path: '/workspaces/current/tools/mcp',
     tags: ['console'],
   })
-  .output(zGetWorkspacesCurrentToolsWorkflowResponse)
+  .output(zGetWorkspacesCurrentToolsMcpResponse)
 
-export const workflow2 = {
+export const mcp2 = {
   get: get75,
-}
-
-export const tools5 = {
-  api: api2,
-  builtin: builtin2,
-  mcp: mcp2,
-  workflow: workflow2,
 }
 
 /**
@@ -4450,6 +4447,35 @@ export const get76 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getWorkspacesCurrentToolsWorkflow',
+    path: '/workspaces/current/tools/workflow',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentToolsWorkflowResponse)
+
+export const workflow2 = {
+  get: get76,
+}
+
+export const tools5 = {
+  api: api2,
+  builtin: builtin2,
+  mcp: mcp2,
+  workflow: workflow2,
+}
+
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get77 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getWorkspacesCurrentTriggerProviderByProviderIcon',
     path: '/workspaces/current/trigger-provider/{provider}/icon',
     tags: ['console'],
@@ -4458,7 +4484,7 @@ export const get76 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderIconResponse)
 
 export const icon3 = {
-  get: get76,
+  get: get77,
 }
 
 /**
@@ -4468,7 +4494,7 @@ export const icon3 = {
  *
  * @deprecated
  */
-export const get77 = oc
+export const get78 = oc
   .route({
     deprecated: true,
     description:
@@ -4484,7 +4510,7 @@ export const get77 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderInfoResponse)
 
 export const info3 = {
-  get: get77,
+  get: get78,
 }
 
 /**
@@ -4516,7 +4542,7 @@ export const delete16 = oc
  *
  * @deprecated
  */
-export const get78 = oc
+export const get79 = oc
   .route({
     deprecated: true,
     description:
@@ -4560,7 +4586,7 @@ export const post63 = oc
 
 export const client = {
   delete: delete16,
-  get: get78,
+  get: get79,
   post: post63,
 }
 
@@ -4645,7 +4671,7 @@ export const create3 = {
  *
  * @deprecated
  */
-export const get79 = oc
+export const get80 = oc
   .route({
     deprecated: true,
     description:
@@ -4669,7 +4695,7 @@ export const get79 = oc
   )
 
 export const bySubscriptionBuilderId2 = {
-  get: get79,
+  get: get80,
 }
 
 export const logs = {
@@ -4761,7 +4787,7 @@ export const verifyAndUpdate = {
  *
  * @deprecated
  */
-export const get80 = oc
+export const get81 = oc
   .route({
     deprecated: true,
     description:
@@ -4785,7 +4811,7 @@ export const get80 = oc
   )
 
 export const bySubscriptionBuilderId5 = {
-  get: get80,
+  get: get81,
 }
 
 export const builder = {
@@ -4804,7 +4830,7 @@ export const builder = {
  *
  * @deprecated
  */
-export const get81 = oc
+export const get82 = oc
   .route({
     deprecated: true,
     description:
@@ -4820,7 +4846,7 @@ export const get81 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse)
 
 export const list3 = {
-  get: get81,
+  get: get82,
 }
 
 /**
@@ -4830,7 +4856,7 @@ export const list3 = {
  *
  * @deprecated
  */
-export const get82 = oc
+export const get83 = oc
   .route({
     deprecated: true,
     description:
@@ -4850,7 +4876,7 @@ export const get82 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
 
 export const authorize = {
-  get: get82,
+  get: get83,
 }
 
 export const oauth3 = {
@@ -4985,7 +5011,7 @@ export const triggerProvider = {
  *
  * @deprecated
  */
-export const get83 = oc
+export const get84 = oc
   .route({
     deprecated: true,
     description:
@@ -5000,7 +5026,7 @@ export const get83 = oc
   .output(zGetWorkspacesCurrentTriggersResponse)
 
 export const triggers = {
-  get: get83,
+  get: get84,
 }
 
 export const post71 = oc
@@ -5136,7 +5162,7 @@ export const switch3 = {
  *
  * @deprecated
  */
-export const get84 = oc
+export const get85 = oc
   .route({
     deprecated: true,
     description:
@@ -5151,7 +5177,7 @@ export const get84 = oc
   .output(zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse)
 
 export const byLang = {
-  get: get84,
+  get: get85,
 }
 
 export const byIconType = {
@@ -5175,7 +5201,7 @@ export const byTenantId = {
  *
  * @deprecated
  */
-export const get85 = oc
+export const get86 = oc
   .route({
     deprecated: true,
     description:
@@ -5189,7 +5215,7 @@ export const get85 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get85,
+  get: get86,
   current,
   customConfig,
   info: info4,

@@ -37,7 +37,9 @@ def _resolve_builtin_role_id(tenant_id: str, operator_account_id: str, legacy_ro
     raise ValueError(f"Builtin RBAC role not found for tenant={tenant_id}, legacy_role={legacy_role}")
 
 
-@click.command("rbac-migrate-member-roles", help="Migrate legacy workspace member roles into RBAC member-role bindings.")
+@click.command(
+    "rbac-migrate-member-roles", help="Migrate legacy workspace member roles into RBAC member-role bindings."
+)
 @click.option("--tenant-id", help="Only migrate a single workspace.")
 @click.option("--dry-run", is_flag=True, default=False, help="Preview the migration without writing RBAC bindings.")
 def migrate_member_roles_to_rbac(tenant_id: str | None, dry_run: bool) -> None:

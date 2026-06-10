@@ -37,9 +37,7 @@ class TestConvertToWorkflowApi:
         monkeypatch.setattr(
             workflow_module,
             "WorkflowService",
-            lambda: SimpleNamespace(
-                convert_to_workflow=lambda **_kwargs: SimpleNamespace(id="new-app-1")
-            ),
+            lambda: SimpleNamespace(convert_to_workflow=lambda **_kwargs: SimpleNamespace(id="new-app-1")),
         )
         monkeypatch.setattr(
             workflow_module,

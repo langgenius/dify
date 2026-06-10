@@ -68,7 +68,7 @@ def _validate_doc_form(value: str | None) -> str | None:
 
 def _ensure_permission_keys(dataset: Dataset) -> None:
     if not isinstance(getattr(dataset, "permission_keys", None), list):
-        setattr(dataset, "permission_keys", [])
+        dataset.permission_keys = []
 
 
 class DatasetCreatePayload(BaseModel):
@@ -432,7 +432,7 @@ class DatasetListApi(Resource):
                 dataset_ids,
             )
             for dataset in datasets:
-                setattr(dataset, "permission_keys", permission_keys_map.get(str(dataset.id), []))
+                dataset.permission_keys = permission_keys_map.get(str(dataset.id), [])
 
         # check embedding setting
         provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
@@ -527,7 +527,7 @@ class DatasetListApi(Resource):
             current_user.id,
             [str(dataset.id)],
         )
-        setattr(dataset, "permission_keys", permission_keys_map.get(str(dataset.id), []))
+        dataset.permission_keys = permission_keys_map.get(str(dataset.id), [])
         return dump_response(DatasetDetailResponse, dataset), 201
 
 
@@ -563,7 +563,7 @@ class DatasetApi(Resource):
             current_user.id,
             [dataset_id_str],
         )
-        setattr(dataset, "permission_keys", permission_keys_map.get(dataset_id_str, []))
+        dataset.permission_keys = permission_keys_map.get(dataset_id_str, [])
         data = dump_response(DatasetDetailResponse, dataset)
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
@@ -645,7 +645,7 @@ class DatasetApi(Resource):
             current_user.id,
             [dataset_id_str],
         )
-        setattr(dataset, "permission_keys", permission_keys_map.get(dataset_id_str, []))
+        dataset.permission_keys = permission_keys_map.get(dataset_id_str, [])
         result_data = dump_response(DatasetDetailResponse, dataset)
         tenant_id = current_tenant_id
 

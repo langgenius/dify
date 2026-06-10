@@ -341,7 +341,10 @@ class TestResourceAccess:
 
 class TestWorkspaceAccess:
     def test_app_matrix(self, mock_send: MagicMock):
-        mock_send.return_value = {"items": [], "pagination": {"total_count": 1, "per_page": 20, "current_page": 2, "total_pages": 1}}
+        mock_send.return_value = {
+            "items": [],
+            "pagination": {"total_count": 1, "per_page": 20, "current_page": 2, "total_pages": 1},
+        }
         out = svc.RBACService.WorkspaceAccess.app_matrix(
             "tenant-1",
             options=svc.ListOption(page_number=2, results_per_page=20),
@@ -385,9 +388,7 @@ class TestWorkspaceAccess:
     def test_workspace_app_replace_bindings(self, mock_send: MagicMock):
         mock_send.return_value = {"data": []}
         payload = svc.ReplaceBindings(role_ids=["workspace.editor"], account_ids=["acct-2"])
-        svc.RBACService.WorkspaceAccess.replace_app_bindings(
-            "tenant-1", "acct-1", "policy-1", payload
-        )
+        svc.RBACService.WorkspaceAccess.replace_app_bindings("tenant-1", "acct-1", "policy-1", payload)
         call = _call_args(mock_send)
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/workspace/apps/access-policy/bindings"
@@ -397,9 +398,7 @@ class TestWorkspaceAccess:
     def test_workspace_dataset_replace_bindings(self, mock_send: MagicMock):
         mock_send.return_value = {"data": []}
         payload = svc.ReplaceBindings(role_ids=["workspace.editor"], account_ids=["acct-2"])
-        svc.RBACService.WorkspaceAccess.replace_dataset_bindings(
-            "tenant-1", "acct-1", "policy-1", payload
-        )
+        svc.RBACService.WorkspaceAccess.replace_dataset_bindings("tenant-1", "acct-1", "policy-1", payload)
         call = _call_args(mock_send)
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/workspace/datasets/access-policy/bindings"
@@ -511,7 +510,10 @@ class TestMyPermissions:
     def test_get_with_single_resource_filters(self, mock_send: MagicMock):
         mock_send.return_value = {
             "workspace": {"permission_keys": []},
-            "app": {"default_permission_keys": [], "overrides": [{"resource_id": "app-1", "permission_keys": ["app.acl.edit"]}]},
+            "app": {
+                "default_permission_keys": [],
+                "overrides": [{"resource_id": "app-1", "permission_keys": ["app.acl.edit"]}],
+            },
             "dataset": {"default_permission_keys": [], "overrides": []},
         }
 
@@ -598,9 +600,7 @@ class TestResourcePermissions:
             "app-2": [],
         }
 
-    def test_app_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(
-        self, mock_send: MagicMock
-    ):
+    def test_app_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(self, mock_send: MagicMock):
         mock_session = MagicMock()
         mock_session.__enter__.return_value = mock_session
         mock_session.scalar.return_value = "editor"
@@ -636,9 +636,7 @@ class TestResourcePermissions:
             "ds-2": ["dataset.acl.edit"],
         }
 
-    def test_dataset_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(
-        self, mock_send: MagicMock
-    ):
+    def test_dataset_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(self, mock_send: MagicMock):
         mock_session = MagicMock()
         mock_session.__enter__.return_value = mock_session
         mock_session.scalar.return_value = "dataset_operator"

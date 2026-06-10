@@ -286,7 +286,8 @@ class DatasetService:
                                 sa.or_(
                                     Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
                                     sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                        Dataset.created_by == user.id,
                                     ),
                                     sa.and_(
                                         Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
@@ -299,7 +300,8 @@ class DatasetService:
                                 sa.or_(
                                     Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
                                     sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                        Dataset.created_by == user.id,
                                     ),
                                 )
                             )

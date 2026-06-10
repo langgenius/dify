@@ -1618,8 +1618,10 @@ class TenantService:
             if required_permission_key not in workspace_permission_keys:
                 raise NoPermissionError(f"No permission to {action} member.")
 
-            if action == "remove" and member and AccountService.is_rbac_workspace_owner(
-                str(tenant.id), str(operator.id), str(member.id)
+            if (
+                action == "remove"
+                and member
+                and AccountService.is_rbac_workspace_owner(str(tenant.id), str(operator.id), str(member.id))
             ):
                 raise NoPermissionError(f"No permission to {action} member.")
             return

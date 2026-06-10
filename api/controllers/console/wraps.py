@@ -407,7 +407,9 @@ def rbac_permission_required[**P, R](
                 raise Forbidden()
 
             return view(*args, **kwargs)
+
         return decorated
+
     return decorator
 
 
@@ -434,9 +436,7 @@ def _extract_resource_id(resource_type: str, path_args: dict[str, object] | None
 
         pipeline_id = matched_args.get("pipeline_id")
         if pipeline_id:
-            dataset = db.session.scalar(
-                select(Dataset).where(Dataset.pipeline_id == str(pipeline_id))
-            )
+            dataset = db.session.scalar(select(Dataset).where(Dataset.pipeline_id == str(pipeline_id)))
             if not dataset:
                 raise NotFound("Dataset not found for pipeline")
             return str(dataset.id)
