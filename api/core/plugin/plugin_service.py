@@ -298,13 +298,12 @@ class PluginService:
 
     @staticmethod
     def list_with_total(tenant_id: str, user_id: str, page: int, page_size: int) -> PluginListResponse:
-        """List tenant plugins with endpoint counts reconciled for the current user.
+        """List tenant plugins with endpoint counts reconciled from live records.
 
         The plugin daemon's ``management/list`` payload is tenant-scoped, but
-        endpoint reconciliation must reuse the same current-user context as the
-        detail-panel endpoint APIs. Some daemon builds undercount or stale-cache
-        plugin endpoint aggregates unless the live endpoint query is performed
-        with the same request shape the detail panel uses.
+        some daemon builds undercount or stale-cache plugin endpoint aggregates.
+        The list response therefore refreshes counters from the daemon's
+        tenant-scoped endpoint records before returning workspace plugin metadata.
         """
         manager = PluginInstaller()
         plugins = manager.list_plugins_with_total(tenant_id, page, page_size)
@@ -312,7 +311,7 @@ class PluginService:
         return plugins
 
     @staticmethod
-    def _normalize_endpoint_count(value: int | str | None) -> int:
+    def _normalize_endpoint_count(value: object) -> int:
         """Convert daemon endpoint counters to safe non-negative integers.
 
         Some daemon builds use ``-1`` as an "unknown / not synced yet" sentinel
@@ -323,10 +322,19 @@ class PluginService:
         if value is None:
             return 0
 
-        try:
-            return max(0, int(value))
-        except ValueError:
-            return 0
+        if isinstance(value, bool):
+            return int(value)
+
+        if isinstance(value, int):
+            return max(0, value)
+
+        if isinstance(value, str):
+            try:
+                return max(0, int(value))
+            except ValueError:
+                return 0
+
+        return 0
 
     @classmethod
     def _normalize_plugin_endpoint_counts(cls, plugin: PluginEntity) -> None:
@@ -341,10 +349,9 @@ class PluginService:
         ``management/list`` is the source of truth for plugin installations, but
         some daemon versions lag when populating ``endpoints_setups`` and
         ``endpoints_active``. The plugin-scoped endpoint listing is the same
-        source the console detail panel uses after reinstall flows. The list
-        view therefore recomputes counts per plugin with the caller's
-        ``user_id`` and the same daemon pagination shape instead of trusting
-        stale daemon aggregates.
+        tenant-scoped source the console detail panel uses after reinstall flows,
+        so the list view recomputes counts per plugin instead of trusting stale
+        daemon aggregates.
         """
         endpoint_client = PluginEndpointClient()
 
