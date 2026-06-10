@@ -21,10 +21,13 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from extensions.ext_database import db
 from fields.snippet_fields import snippet_fields, snippet_list_fields, snippet_pagination_fields
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from models.snippet import SnippetType
 from services.app_dsl_service import ImportStatus
 from services.snippet_dsl_service import SnippetDslService
@@ -91,10 +94,9 @@ class CustomizedSnippetsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         """List customized snippets with pagination and search."""
-        _, current_tenant_id = current_account_with_tenant()
-
         query = SnippetListQuery.model_validate(_normalize_snippet_list_query_args(request.args))
 
         snippet_service = _snippet_service()
@@ -124,10 +126,10 @@ class CustomizedSnippetsApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
         """Create a new customized snippet."""
-        current_user, current_tenant_id = current_account_with_tenant()
-
         payload = CreateSnippetPayload.model_validate(console_ns.payload or {})
 
         try:
@@ -163,10 +165,9 @@ class CustomizedSnippetDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, snippet_id: str):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, snippet_id: str):
         """Get customized snippet details."""
-        _, current_tenant_id = current_account_with_tenant()
-
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -187,10 +188,10 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def patch(self, snippet_id: str):
+    @with_current_user
+    @with_current_tenant_id
+    def patch(self, current_tenant_id: str, current_user: Account, snippet_id: str):
         """Update customized snippet."""
-        current_user, current_tenant_id = current_account_with_tenant()
-
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -231,10 +232,9 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, snippet_id: str):
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str, snippet_id: str):
         """Delete customized snippet."""
-        _, current_tenant_id = current_account_with_tenant()
-
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -266,10 +266,9 @@ class CustomizedSnippetExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, snippet_id: str):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, snippet_id: str):
         """Export snippet as DSL."""
-        _, current_tenant_id = current_account_with_tenant()
-
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -312,9 +311,9 @@ class CustomizedSnippetImportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         """Import snippet from DSL."""
-        current_user, _ = current_account_with_tenant()
         payload = SnippetImportPayload.model_validate(console_ns.payload or {})
 
         with Session(db.engine) as session:
@@ -350,10 +349,9 @@ class CustomizedSnippetImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, import_id: str):
+    @with_current_user
+    def post(self, current_user: Account, import_id: str):
         """Confirm a pending snippet import."""
-        current_user, _ = current_account_with_tenant()
-
         with Session(db.engine) as session:
             import_service = SnippetDslService(session)
             result = import_service.confirm_import(import_id=import_id, account=current_user)
@@ -375,10 +373,9 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, snippet_id: str):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, snippet_id: str):
         """Check dependencies for a snippet."""
-        _, current_tenant_id = current_account_with_tenant()
-
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -406,10 +403,9 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, snippet_id: str):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, snippet_id: str):
         """Increment snippet use count when it is inserted into a workflow."""
-        _, current_tenant_id = current_account_with_tenant()
-
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),

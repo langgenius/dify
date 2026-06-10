@@ -749,6 +749,7 @@ class _InsertionDict(TypedDict):
     file_id: str | None
     visible: NotRequired[bool]
     editable: NotRequired[bool]
+    is_default_value: NotRequired[bool]
     created_at: NotRequired[datetime]
     updated_at: NotRequired[datetime]
     description: NotRequired[str]
@@ -778,6 +779,8 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> _InsertionDict:
         d["updated_at"] = model.updated_at
     if model.description is not None:
         d["description"] = model.description
+    if model.is_default_value is not None:
+        d["is_default_value"] = model.is_default_value
     return d
 
 

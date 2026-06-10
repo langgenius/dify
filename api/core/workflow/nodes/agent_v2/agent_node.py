@@ -312,6 +312,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
+                        declared_outputs=effective_outputs,
                     )
                 )
                 return
@@ -342,6 +343,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
+                        declared_outputs=effective_outputs,
                     )
                 )
                 return

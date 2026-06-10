@@ -492,6 +492,57 @@ class TestTagService:
         assert len(result) == 0
         assert isinstance(result, list)
 
+    def test_get_target_ids_by_tag_ids_match_all(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test target ID retrieval when every requested tag must be bound to the same target.
+
+        This test verifies:
+        - Targets with only one requested tag are excluded
+        - Targets with all requested tags are returned once
+        - Missing requested tags make the filter unsatisfiable
+        """
+        # Arrange: Create test data
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        tags = self._create_test_tags(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, "knowledge", 2
+        )
+        dataset_with_all_tags = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id
+        )
+        dataset_with_one_tag = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id
+        )
+        self._create_test_tag_bindings(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            tags,
+            dataset_with_all_tags.id,
+            tenant.id,
+        )
+        self._create_test_tag_bindings(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            tags[:1],
+            dataset_with_one_tag.id,
+            tenant.id,
+        )
+
+        # Act: Execute the method under test
+        tag_ids = [tag.id for tag in tags]
+        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, tag_ids, match_all=True)
+
+        # Assert: Verify the expected outcomes
+        assert result == [dataset_with_all_tags.id]
+
+        missing_tag_result = TagService.get_target_ids_by_tag_ids(
+            "knowledge", tenant.id, [tags[0].id, str(uuid.uuid4())], match_all=True
+        )
+        assert missing_tag_result == []
+
     def test_get_target_ids_by_tag_ids_no_matching_tags(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):

@@ -348,6 +348,101 @@ class TestPluginModelProviderCache:
         assert [provider.provider for provider in result] == ["langgenius/anthropic/anthropic"]
 
 
+class TestPluginListEndpointCounts:
+    def test_list_with_total_reconciles_live_endpoint_counts_for_endpoint_plugins(self) -> None:
+        """Endpoint-enabled plugins use plugin-scoped live endpoint records instead of stale daemon aggregates."""
+        wecom_plugin = SimpleNamespace(
+            plugin_id="langgenius/wecom-bot",
+            endpoints_setups=0,
+            endpoints_active=0,
+            declaration=SimpleNamespace(endpoint=object()),
+        )
+        tool_plugin = SimpleNamespace(
+            plugin_id="langgenius/openai",
+            endpoints_setups=0,
+            endpoints_active=0,
+            declaration=SimpleNamespace(endpoint=None),
+        )
+        paged_plugins = SimpleNamespace(list=[wecom_plugin, tool_plugin], total=2)
+        endpoints = [
+            SimpleNamespace(plugin_id="langgenius/wecom-bot", enabled=True),
+            SimpleNamespace(plugin_id="langgenius/wecom-bot", enabled=True),
+            SimpleNamespace(plugin_id="langgenius/wecom-bot", enabled=True),
+        ]
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginEndpointClient") as endpoint_client_cls,
+        ):
+            installer_cls.return_value.list_plugins_with_total.return_value = paged_plugins
+            endpoint_client_cls.return_value.list_endpoints_for_single_plugin.return_value = endpoints
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_with_total("tenant-1", "user-1", 1, 100)
+
+        assert result is paged_plugins
+        assert wecom_plugin.endpoints_setups == 3
+        assert wecom_plugin.endpoints_active == 3
+        assert tool_plugin.endpoints_setups == 0
+        assert tool_plugin.endpoints_active == 0
+        endpoint_client_cls.return_value.list_endpoints_for_single_plugin.assert_called_once_with(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            plugin_id="langgenius/wecom-bot",
+            page=1,
+            page_size=PluginService.ENDPOINT_RECONCILIATION_PAGE_SIZE,
+        )
+
+    def test_list_with_total_falls_back_to_sanitized_daemon_counts_when_reconciliation_fails(self) -> None:
+        """Best-effort reconciliation still clamps daemon sentinel values before returning the list response."""
+        wecom_plugin = SimpleNamespace(
+            plugin_id="langgenius/wecom-bot",
+            endpoints_setups=-1,
+            endpoints_active=-1,
+            declaration=SimpleNamespace(endpoint=object()),
+        )
+        paged_plugins = SimpleNamespace(list=[wecom_plugin], total=1)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginEndpointClient") as endpoint_client_cls,
+        ):
+            installer_cls.return_value.list_plugins_with_total.return_value = paged_plugins
+            endpoint_client_cls.return_value.list_endpoints_for_single_plugin.side_effect = RuntimeError(
+                "endpoint daemon unavailable"
+            )
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_with_total("tenant-1", "user-1", 1, 100)
+
+        assert result is paged_plugins
+        assert wecom_plugin.endpoints_setups == 0
+        assert wecom_plugin.endpoints_active == 0
+
+    def test_list_with_total_clamps_negative_daemon_counts_for_plugins_without_endpoints(self) -> None:
+        """Plugins that do not expose endpoint setup APIs must still never return negative counters."""
+        tool_plugin = SimpleNamespace(
+            plugin_id="langgenius/openai",
+            endpoints_setups=-1,
+            endpoints_active=-1,
+            declaration=SimpleNamespace(endpoint=None),
+        )
+        paged_plugins = SimpleNamespace(list=[tool_plugin], total=1)
+
+        with patch(f"{MODULE}.PluginInstaller") as installer_cls:
+            installer_cls.return_value.list_plugins_with_total.return_value = paged_plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_with_total("tenant-1", "user-1", 1, 100)
+
+        assert result is paged_plugins
+        assert tool_plugin.endpoints_setups == 0
+        assert tool_plugin.endpoints_active == 0
+
+
 class TestPluginModelProviderCacheInvalidation:
     def test_fetch_install_task_invalidates_model_provider_cache_when_finished(self) -> None:
         """Finished plugin install tasks invalidate tenant provider cache."""

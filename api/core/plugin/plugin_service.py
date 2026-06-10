@@ -5,10 +5,11 @@ and core runtimes. Plugin model provider discovery is cached here, alongside
 plugin install, uninstall, and upgrade invalidation, so all cache mutations for
 plugin-owned provider metadata stay tenant-scoped and in one place.
 
-The provider discovery cache has both a Redis layer and a process-local mirror.
-The local copy avoids repeated payload reads and JSON validation on hot paths,
-while a Redis generation key lets every worker observe invalidation events
-before reusing its in-memory copy.
+The console plugin list also normalizes endpoint setup counters against live
+endpoint records. Some plugin daemon builds return stale ``endpoints_*``
+aggregates in ``management/list`` even while plugin-scoped endpoint queries are
+current, so the API reconciles those counts before serving workspace plugin
+metadata.
 """
 
 import logging
@@ -45,6 +46,7 @@ from core.plugin.entities.plugin_daemon import (
 )
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
+from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
@@ -79,6 +81,9 @@ class PluginService:
     PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX = "plugin_model_providers:tenant_id:"
     PLUGIN_MODEL_PROVIDERS_GENERATION_REDIS_KEY_PREFIX = "plugin_model_providers_generation:tenant_id:"
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
+    # Mirror the detail-panel endpoint query size so list reconciliation and
+    # the visible endpoint drawer exercise the same daemon pagination path.
+    ENDPOINT_RECONCILIATION_PAGE_SIZE = 100
 
     @classmethod
     def _get_plugin_model_providers_cache_key(cls, tenant_id: str, generation: int | None = None) -> str:
@@ -419,13 +424,103 @@ class PluginService:
         return plugins
 
     @staticmethod
-    def list_with_total(tenant_id: str, page: int, page_size: int) -> PluginListResponse:
-        """
-        list all plugins of the tenant
+    def list_with_total(tenant_id: str, user_id: str, page: int, page_size: int) -> PluginListResponse:
+        """List tenant plugins with endpoint counts reconciled from live records.
+
+        The plugin daemon's ``management/list`` payload is tenant-scoped, but
+        some daemon builds undercount or stale-cache plugin endpoint aggregates.
+        The list response therefore refreshes counters from the daemon's
+        tenant-scoped endpoint records before returning workspace plugin metadata.
         """
         manager = PluginInstaller()
         plugins = manager.list_plugins_with_total(tenant_id, page, page_size)
+        PluginService._reconcile_endpoint_counts(tenant_id, user_id, plugins.list)
         return plugins
+
+    @staticmethod
+    def _normalize_endpoint_count(value: object) -> int:
+        """Convert daemon endpoint counters to safe non-negative integers.
+
+        Some daemon builds use ``-1`` as an "unknown / not synced yet" sentinel
+        for endpoint counters. That value is acceptable internally as a daemon
+        transport detail, but it must never leak through the console API because
+        the UI displays these counters directly.
+        """
+        if value is None:
+            return 0
+
+        if isinstance(value, bool):
+            return int(value)
+
+        if isinstance(value, int):
+            return max(0, value)
+
+        if isinstance(value, str):
+            try:
+                return max(0, int(value))
+            except ValueError:
+                return 0
+
+        return 0
+
+    @classmethod
+    def _normalize_plugin_endpoint_counts(cls, plugin: PluginEntity) -> None:
+        """Clamp endpoint counters on plugin entities before returning them."""
+        plugin.endpoints_setups = cls._normalize_endpoint_count(plugin.endpoints_setups)
+        plugin.endpoints_active = cls._normalize_endpoint_count(plugin.endpoints_active)
+
+    @classmethod
+    def _reconcile_endpoint_counts(cls, tenant_id: str, user_id: str, plugins: Sequence[PluginEntity]) -> None:
+        """Refresh endpoint counters from live plugin endpoint records.
+
+        ``management/list`` is the source of truth for plugin installations, but
+        some daemon versions lag when populating ``endpoints_setups`` and
+        ``endpoints_active``. The plugin-scoped endpoint listing is the same
+        tenant-scoped source the console detail panel uses after reinstall flows,
+        so the list view recomputes counts per plugin instead of trusting stale
+        daemon aggregates.
+        """
+        endpoint_client = PluginEndpointClient()
+
+        for plugin in plugins:
+            cls._normalize_plugin_endpoint_counts(plugin)
+
+            if plugin.declaration.endpoint is None:
+                continue
+
+            page = 1
+            endpoints_setups = 0
+            endpoints_active = 0
+
+            try:
+                while True:
+                    endpoints = endpoint_client.list_endpoints_for_single_plugin(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        plugin_id=plugin.plugin_id,
+                        page=page,
+                        page_size=cls.ENDPOINT_RECONCILIATION_PAGE_SIZE,
+                    )
+                    endpoints_setups += len(endpoints)
+                    endpoints_active += sum(int(endpoint.enabled) for endpoint in endpoints)
+
+                    if len(endpoints) < cls.ENDPOINT_RECONCILIATION_PAGE_SIZE:
+                        break
+                    page += 1
+            except Exception:
+                logger.warning(
+                    (
+                        "Failed to reconcile live endpoint counters for tenant %s plugin %s; "
+                        "falling back to daemon plugin stats."
+                    ),
+                    tenant_id,
+                    plugin.plugin_id,
+                    exc_info=True,
+                )
+                continue
+
+            plugin.endpoints_setups = cls._normalize_endpoint_count(endpoints_setups)
+            plugin.endpoints_active = cls._normalize_endpoint_count(endpoints_active)
 
     @staticmethod
     def list_installations_from_ids(tenant_id: str, ids: Sequence[str]) -> Sequence[PluginInstallation]:

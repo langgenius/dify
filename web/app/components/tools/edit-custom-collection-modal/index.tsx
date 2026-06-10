@@ -33,7 +33,7 @@ import ConfigCredentials from './config-credentials'
 import GetSchema from './get-schema'
 import TestApi from './test-api'
 
-type Props = {
+type Props = Readonly<{
   positionLeft?: boolean
   dialogClassName?: string
   payload: any
@@ -41,7 +41,7 @@ type Props = {
   onAdd?: (payload: CustomCollectionBackend) => void
   onRemove?: () => void
   onEdit?: (payload: CustomCollectionBackend) => void
-}
+}>
 // Add and Edit
 const EditCustomCollectionModal: FC<Props> = ({
   positionLeft,

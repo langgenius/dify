@@ -8,6 +8,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import BadRequest, Forbidden
 
+from controllers.common.errors import NotFoundError
 from controllers.console.workspace.trigger_providers import (
     TriggerOAuthAuthorizeApi,
     TriggerOAuthCallbackApi,
@@ -26,7 +27,6 @@ from controllers.console.workspace.trigger_providers import (
     TriggerSubscriptionUpdateApi,
     TriggerSubscriptionVerifyApi,
 )
-from controllers.web.error import NotFoundError
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.account import Account
 

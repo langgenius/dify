@@ -49,7 +49,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_successful_token_refresh(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
+    def test_successful_token_refresh(self, mock_refresh_token, mock_extract_token, app: Flask, mock_token_pair):
         """
         Test successful token refresh flow.
 
@@ -170,7 +170,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_updates_all_tokens(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
+    def test_refresh_updates_all_tokens(self, mock_refresh_token, mock_extract_token, app: Flask, mock_token_pair):
         """
         Test that token refresh updates all three tokens.
 
