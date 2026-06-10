@@ -4,6 +4,7 @@ from libs.exception import BaseHTTPException
 
 
 class FilenameNotExistsError(HTTPException):
+    error_code = "filename_not_exists"
     code = 400
     description = "The specified filename does not exist."
 

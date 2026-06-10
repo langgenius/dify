@@ -3,8 +3,25 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
+from werkzeug.exceptions import (
+    BadGateway,
+    BadRequest,
+    Conflict,
+    Forbidden,
+    InternalServerError,
+    NotFound,
+    Unauthorized,
+    UnprocessableEntity,
+)
 
+from controllers.common.errors import (
+    BlockedFileExtensionError,
+    FilenameNotExistsError,
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
 from controllers.openapi._errors import (
     ErrorBody,
     ErrorDetail,
@@ -14,7 +31,15 @@ from controllers.openapi._errors import (
     OpenApiErrorCode,
     OpenApiErrorFormatter,
 )
-from controllers.web.error import ProviderQuotaExceededError
+from controllers.service_api.app.error import (
+    AppUnavailableError,
+    CompletionRequestError,
+    ConversationCompletedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 
 
 class TestErrorBodyModel:
@@ -258,3 +283,48 @@ class TestWireContract:
         assert resp.status_code == 400
         wire = resp.get_json()
         assert wire == {"error": "expired_token"}
+
+
+ERROR_MATRIX = [
+    (BadRequest("x"), 400, "bad_request"),
+    (Unauthorized("x"), 401, "unauthorized"),
+    (Forbidden("x"), 403, "forbidden"),
+    (NotFound("x"), 404, "not_found"),
+    (Conflict("x"), 409, "conflict"),
+    (UnprocessableEntity("x"), 422, "invalid_param"),
+    (InternalServerError(), 500, "internal_server_error"),
+    (BadGateway("x"), 502, "bad_gateway"),
+    (AppUnavailableError(), 400, "app_unavailable"),
+    (ConversationCompletedError(), 400, "conversation_completed"),
+    (ProviderNotInitializeError(), 400, "provider_not_initialize"),
+    (ProviderQuotaExceededError(), 400, "provider_quota_exceeded"),
+    (ProviderModelCurrentlyNotSupportError(), 400, "model_currently_not_support"),
+    (CompletionRequestError(), 400, "completion_request_error"),
+    (InvokeRateLimitHttpError(), 429, "rate_limit_error"),
+    (FileTooLargeError(), 413, "file_too_large"),
+    (UnsupportedFileTypeError(), 415, "unsupported_file_type"),
+    (NoFileUploadedError(), 400, "no_file_uploaded"),
+    (TooManyFilesError(), 400, "too_many_files"),
+    (FilenameNotExistsError(), 400, "filename_not_exists"),
+    (BlockedFileExtensionError(), 400, "file_extension_blocked"),
+    (MemberLimitExceeded(), 403, "member_limit_exceeded"),
+    (MemberLicenseExceeded(), 403, "member_license_exceeded"),
+]
+
+
+class TestErrorMatrix:
+    @pytest.mark.parametrize(
+        ("exc", "status", "expected_code"),
+        ERROR_MATRIX,
+        ids=lambda v: type(v).__name__ if isinstance(v, Exception) else str(v),
+    )
+    def test_every_known_error_path_yields_canonical_code(self, exc, status, expected_code):
+        fmt = OpenApiErrorFormatter()
+        data = dict(getattr(exc, "data", None) or {"message": str(exc), "status": status})
+
+        wire = fmt.finalize(exc, data, status)
+
+        assert wire["code"] == expected_code
+        assert wire["status"] == status
+        assert wire["code"] in {c.value for c in OpenApiErrorCode}
+        ErrorBody.model_validate(wire)
