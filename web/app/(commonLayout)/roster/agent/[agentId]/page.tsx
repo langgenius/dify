@@ -9,5 +9,5 @@ export default async function Page({
 }: PageProps) {
   const { agentId } = await params
 
-  redirect(`/roster/${agentId}/configure`)
+  redirect(`/roster/agent/${agentId}/configure`)
 }

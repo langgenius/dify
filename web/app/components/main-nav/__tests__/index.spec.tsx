@@ -582,7 +582,7 @@ describe('MainNav', () => {
   })
 
   it('replaces global navigation with agent detail navigation on roster detail routes', () => {
-    mockPathname = '/roster/agent-1/configure'
+    mockPathname = '/roster/agent/agent-1/configure'
 
     renderMainNav()
 
@@ -598,7 +598,7 @@ describe('MainNav', () => {
   })
 
   it('collapses agent detail navigation from the top-right toggle', () => {
-    mockPathname = '/roster/agent-1/configure'
+    mockPathname = '/roster/agent/agent-1/configure'
 
     renderMainNav()
     fireEvent.click(screen.getByTestId('agent-detail-toggle'))
@@ -611,7 +611,7 @@ describe('MainNav', () => {
   })
 
   it('shows agent detail navigation as a floating preview when hovering the collapsed top toggle', () => {
-    mockPathname = '/roster/agent-1/configure'
+    mockPathname = '/roster/agent/agent-1/configure'
 
     renderMainNav()
     fireEvent.click(screen.getByTestId('agent-detail-toggle'))

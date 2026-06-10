@@ -103,7 +103,7 @@ function AgentRosterItem({
   return (
     <article className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out hover:shadow-lg">
       <Link
-        href={`/roster/${agent.id}/configure`}
+        href={`/roster/agent/${agent.id}/configure`}
         aria-labelledby={nameId}
         aria-describedby={agent.description ? descriptionId : undefined}
         className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"

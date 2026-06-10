@@ -62,9 +62,9 @@ const isDatasetDetailPathname = (pathname: string) => {
 }
 
 const isAgentDetailPathname = (pathname: string) => {
-  const [section, agentId] = pathname.split('/').filter(Boolean)
+  const [section, type, agentId] = pathname.split('/').filter(Boolean)
 
-  return section === 'roster' && !!agentId
+  return section === 'roster' && type === 'agent' && !!agentId
 }
 
 const MainNav = ({

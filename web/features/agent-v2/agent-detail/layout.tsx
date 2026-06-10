@@ -65,7 +65,7 @@ export function AgentDetailLayout({
   })
   const agent = agentQuery.data
   const isAgentPending = agentQuery.isPending
-  const isConfigureSection = pathname.split('/').filter(Boolean).at(2) === 'configure'
+  const isConfigureSection = pathname.split('/').filter(Boolean).at(3) === 'configure'
 
   useDocumentTitle(agent?.name ?? t('agentDetail.documentTitle'))
 
