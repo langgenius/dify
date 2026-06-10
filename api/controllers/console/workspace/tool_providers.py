@@ -18,6 +18,8 @@ from controllers.console.wraps import (
     enterprise_license_required,
     is_admin_or_owner_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from core.db.session_factory import session_factory
 from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration
@@ -30,7 +32,8 @@ from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToo
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import alphanumeric, uuid_value
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from models.provider_ids import ToolProviderID
 
 # from models.provider_ids import ToolProviderID
@@ -286,15 +289,13 @@ class ToolProviderListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account):
         raw_args = request.args.to_dict()
         query = ToolProviderListQuery.model_validate(raw_args)
 
-        return ToolCommonService.list_tool_providers(user_id, tenant_id, query.type)  # type: ignore
+        return ToolCommonService.list_tool_providers(user.id, tenant_id, query.type)  # type: ignore
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/tools")
@@ -302,9 +303,8 @@ class ToolBuiltinProviderListToolsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider: str):
         return jsonable_encoder(
             BuiltinToolManageService.list_builtin_tool_provider_tools(
                 tenant_id,
@@ -318,9 +318,8 @@ class ToolBuiltinProviderInfoApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider: str):
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))
 
 
@@ -331,9 +330,8 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str, provider: str):
         payload = BuiltinToolCredentialDeletePayload.model_validate(console_ns.payload or {})
 
         return BuiltinToolManageService.delete_builtin_tool_provider(
@@ -349,15 +347,13 @@ class ToolBuiltinProviderAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider: str):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account, provider: str):
         payload = BuiltinToolAddPayload.model_validate(console_ns.payload or {})
 
         return BuiltinToolManageService.add_builtin_tool_provider(
-            user_id=user_id,
+            user_id=user.id,
             tenant_id=tenant_id,
             provider=provider,
             credentials=payload.credentials,
@@ -374,14 +370,13 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
-        user, tenant_id = current_account_with_tenant()
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account, provider: str):
         payload = BuiltinToolUpdatePayload.model_validate(console_ns.payload or {})
 
         result = BuiltinToolManageService.update_builtin_tool_provider(
-            user_id=user_id,
+            user_id=user.id,
             tenant_id=tenant_id,
             provider=provider,
             credential_id=payload.credential_id,
@@ -396,8 +391,9 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        user, tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str):
         # Optional list of credential IDs to include even if visibility would hide them
         # (used when a workflow/agent node still references another member's only_me credential).
         include_credential_ids = request.args.getlist("include_credential_ids") or [
@@ -430,15 +426,13 @@ class ToolApiProviderAddApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         payload = ApiToolProviderAddPayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.create_api_tool_provider(
-            user_id,
+            user.id,
             tenant_id,
             payload.provider,
             payload.icon,
@@ -456,16 +450,14 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account):
         raw_args = request.args.to_dict()
         query = UrlQuery.model_validate(raw_args)
 
         return ApiToolManageService.get_api_tool_provider_remote_schema(
-            user_id,
+            user.id,
             tenant_id,
             str(query.url),
         )
@@ -476,17 +468,15 @@ class ToolApiProviderListToolsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account):
         raw_args = request.args.to_dict()
         query = ProviderQuery.model_validate(raw_args)
 
         return jsonable_encoder(
             ApiToolManageService.list_api_tool_provider_tools(
-                user_id,
+                user.id,
                 tenant_id,
                 query.provider,
             )
@@ -500,15 +490,13 @@ class ToolApiProviderUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         payload = ApiToolProviderUpdatePayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.update_api_tool_provider(
-            user_id,
+            user.id,
             tenant_id,
             payload.provider,
             payload.original_provider,
@@ -529,15 +517,13 @@ class ToolApiProviderDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         payload = ApiToolProviderDeletePayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.delete_api_tool_provider(
-            user_id,
+            user.id,
             tenant_id,
             payload.provider,
         )
@@ -548,16 +534,14 @@ class ToolApiProviderGetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account):
         raw_args = request.args.to_dict()
         query = ProviderQuery.model_validate(raw_args)
 
         return ApiToolManageService.get_api_tool_provider(
-            user_id,
+            user.id,
             tenant_id,
             query.provider,
         )
@@ -568,9 +552,8 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider, credential_type):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider, credential_type):
         return jsonable_encoder(
             BuiltinToolManageService.list_builtin_provider_credentials_schema(
                 provider, CredentialType.of(credential_type), tenant_id
@@ -598,9 +581,9 @@ class ToolApiProviderPreviousTestApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         payload = ApiToolTestPayload.model_validate(console_ns.payload or {})
-        _, current_tenant_id = current_account_with_tenant()
         return ApiToolManageService.test_api_tool_preview(
             current_tenant_id,
             payload.provider_name or "",
@@ -619,15 +602,13 @@ class ToolWorkflowProviderCreateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         payload = WorkflowToolCreatePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.create_workflow_tool(
-            user_id=user_id,
+            user_id=user.id,
             tenant_id=tenant_id,
             workflow_app_id=payload.workflow_app_id,
             name=payload.name,
@@ -647,14 +628,13 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         payload = WorkflowToolUpdatePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.update_workflow_tool(
-            user_id,
+            user.id,
             tenant_id,
             payload.workflow_tool_id,
             payload.name,
@@ -674,15 +654,13 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         payload = WorkflowToolDeletePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.delete_workflow_tool(
-            user_id,
+            user.id,
             tenant_id,
             payload.workflow_tool_id,
         )
@@ -693,23 +671,21 @@ class ToolWorkflowProviderGetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account):
         raw_args = request.args.to_dict()
         query = WorkflowToolGetQuery.model_validate(raw_args)
 
         if query.workflow_tool_id:
             tool = WorkflowToolManageService.get_workflow_tool_by_tool_id(
-                user_id,
+                user.id,
                 tenant_id,
                 query.workflow_tool_id,
             )
         elif query.workflow_app_id:
             tool = WorkflowToolManageService.get_workflow_tool_by_app_id(
-                user_id,
+                user.id,
                 tenant_id,
                 query.workflow_app_id,
             )
@@ -724,17 +700,15 @@ class ToolWorkflowProviderListToolApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account):
         raw_args = request.args.to_dict()
         query = WorkflowToolListQuery.model_validate(raw_args)
 
         return jsonable_encoder(
             WorkflowToolManageService.list_single_workflow_tools(
-                user_id,
+                user.id,
                 tenant_id,
                 query.workflow_tool_id,
             )
@@ -746,16 +720,14 @@ class ToolBuiltinListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account):
         return jsonable_encoder(
             [
                 provider.to_dict()
                 for provider in BuiltinToolManageService.list_builtin_tools(
-                    user_id,
+                    user.id,
                     tenant_id,
                 )
             ]
@@ -767,9 +739,8 @@ class ToolApiListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         return jsonable_encoder(
             [
                 provider.to_dict()
@@ -785,16 +756,14 @@ class ToolWorkflowListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account):
         return jsonable_encoder(
             [
                 provider.to_dict()
                 for provider in WorkflowToolManageService.list_tenant_workflow_tools(
-                    user_id,
+                    user.id,
                     tenant_id,
                 )
             ]
@@ -817,12 +786,12 @@ class ToolPluginOAuthApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def get(self, provider: str):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str):
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
-
-        user, tenant_id = current_account_with_tenant()
 
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id=tenant_id, provider=provider)
         if oauth_client_params is None:
@@ -912,8 +881,8 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, provider: str):
         payload = BuiltinProviderDefaultCredentialPayload.model_validate(console_ns.payload or {})
         return BuiltinToolManageService.set_default_provider(
             tenant_id=current_tenant_id, provider=provider, id=payload.id
@@ -927,10 +896,9 @@ class ToolOAuthCustomClient(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider: str):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, provider: str):
         payload = ToolOAuthCustomClientPayload.model_validate(console_ns.payload or {})
-
-        _, tenant_id = current_account_with_tenant()
 
         return BuiltinToolManageService.save_custom_oauth_client_params(
             tenant_id=tenant_id,
@@ -944,8 +912,8 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, provider: str):
         return jsonable_encoder(
             BuiltinToolManageService.get_custom_oauth_client_params(tenant_id=current_tenant_id, provider=provider)
         )
@@ -953,8 +921,8 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, provider: str):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str, provider: str):
         return jsonable_encoder(
             BuiltinToolManageService.delete_custom_oauth_client_params(tenant_id=current_tenant_id, provider=provider)
         )
@@ -965,8 +933,8 @@ class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, provider: str):
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_oauth_client_schema(
                 tenant_id=current_tenant_id, provider_name=provider
@@ -979,8 +947,9 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        user, tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str):
         include_credential_ids = request.args.getlist("include_credential_ids") or [
             s for s in (request.args.get("include_credential_ids") or "").split(",") if s
         ]
@@ -1001,9 +970,10 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         payload = MCPProviderCreatePayload.model_validate(console_ns.payload or {})
-        user, tenant_id = current_account_with_tenant()
 
         # Parse and validate models
         configuration = MCPConfiguration.model_validate(payload.configuration or {})
@@ -1054,11 +1024,11 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def put(self):
+    @with_current_tenant_id
+    def put(self, current_tenant_id: str):
         payload = MCPProviderUpdatePayload.model_validate(console_ns.payload or {})
         configuration = MCPConfiguration.model_validate(payload.configuration or {})
         authentication = MCPAuthentication.model_validate(payload.authentication) if payload.authentication else None
-        _, current_tenant_id = current_account_with_tenant()
 
         # Step 1: Get provider data for URL validation (short-lived session, no network I/O)
         validation_data = None
@@ -1107,9 +1077,9 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self):
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str):
         payload = MCPProviderDeletePayload.model_validate(console_ns.payload or {})
-        _, current_tenant_id = current_account_with_tenant()
 
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
@@ -1124,10 +1094,10 @@ class ToolMCPAuthApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         payload = MCPAuthPayload.model_validate(console_ns.payload or {})
         provider_id = payload.provider_id
-        _, tenant_id = current_account_with_tenant()
 
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
@@ -1197,8 +1167,8 @@ class ToolMCPDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider_id: str):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider_id: str):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
@@ -1210,9 +1180,8 @@ class ToolMCPListAllApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             # Skip sensitive data decryption for list view to improve performance
@@ -1226,8 +1195,8 @@ class ToolMCPUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider_id: str):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider_id: str):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             tools = service.list_provider_tools(

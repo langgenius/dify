@@ -63,11 +63,11 @@ import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
 
-type Props = {
+type Props = Readonly<{
   collection: Collection
   onHide: () => void
   onRefreshData: () => void
-}
+}>
 
 const ProviderDetail = ({
   collection,

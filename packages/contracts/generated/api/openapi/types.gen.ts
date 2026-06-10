@@ -154,6 +154,7 @@ export type FileResponse = {
   name: string
   original_url?: string | null
   preview_url?: string | null
+  reference?: string | null
   size: number
   source_url?: string | null
   tenant_id?: string | null
@@ -656,7 +657,12 @@ export type PostOauthDeviceTokenResponse
 export type GetPermittedExternalAppsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    limit?: number
+    mode?: string
+    name?: string
+    page?: number
+  }
   url: '/permitted-external-apps'
 }
 

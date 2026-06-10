@@ -61,6 +61,10 @@
       "types": "./src/fieldset/index.tsx",
       "import": "./src/fieldset/index.tsx"
     },
+    "./file-tree": {
+      "types": "./src/file-tree/index.tsx",
+      "import": "./src/file-tree/index.tsx"
+    },
     "./form": {
       "types": "./src/form/index.tsx",
       "import": "./src/form/index.tsx"

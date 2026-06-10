@@ -29,6 +29,8 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -46,7 +48,7 @@ from fields.workflow_run_fields import (
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
-from libs.login import current_account_with_tenant, current_user, login_required
+from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
@@ -187,16 +189,14 @@ class DraftRagPipelineApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_rag_pipeline
     @edit_permission_required
     @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
-    def post(self, pipeline: Pipeline):
+    def post(self, current_user: Account, pipeline: Pipeline):
         """
         Sync draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         content_type = request.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
@@ -247,15 +247,13 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_rag_pipeline
     @edit_permission_required
-    def post(self, pipeline: Pipeline, node_id: str):
+    def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow iteration node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         payload = NodeRunPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
@@ -283,14 +281,12 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
+    def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow loop node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         payload = NodeRunPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
@@ -318,14 +314,12 @@ class DraftRagPipelineRunApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline):
+    def post(self, current_user: Account, pipeline: Pipeline):
         """
         Run draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         payload = DraftWorkflowRunPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump()
 
@@ -350,14 +344,12 @@ class PublishedRagPipelineRunApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline):
+    def post(self, current_user: Account, pipeline: Pipeline):
         """
         Run published workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         payload = PublishedWorkflowRunPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
         streaming = payload.response_mode == "streaming"
@@ -383,14 +375,12 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
+    def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
         """
         Run rag pipeline datasource
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         payload = DatasourceNodeRunPayload.model_validate(console_ns.payload or {})
 
         rag_pipeline_service = RagPipelineService()
@@ -416,14 +406,12 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
+    def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
         """
         Run rag pipeline datasource
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         payload = DatasourceNodeRunPayload.model_validate(console_ns.payload or {})
 
         rag_pipeline_service = RagPipelineService()
@@ -454,14 +442,12 @@ class RagPipelineDraftNodeRunApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
+    def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         payload = NodeRunRequiredPayload.model_validate(console_ns.payload or {})
         inputs = payload.inputs
 
@@ -485,14 +471,12 @@ class RagPipelineTaskStopApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, task_id: str):
+    def post(self, current_user: Account, pipeline: Pipeline, task_id: str):
         """
         Stop workflow task
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
         return {"result": "success"}
@@ -532,13 +516,12 @@ class PublishedRagPipelineApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline):
+    def post(self, current_user: Account, pipeline: Pipeline):
         """
         Publish workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
         rag_pipeline_service = RagPipelineService()
         workflow = rag_pipeline_service.publish_workflow(
             session=db.session,  # type: ignore[reportArgumentType,arg-type]
@@ -609,13 +592,12 @@ class PublishedAllRagPipelineApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline):
+    def get(self, current_user: Account, pipeline: Pipeline):
         """
         Get published workflows
         """
-        current_user, _ = current_account_with_tenant()
-
         query = WorkflowListQuery.model_validate(request.args.to_dict())
 
         page = query.page
@@ -655,9 +637,9 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @get_rag_pipeline
-    def post(self, pipeline: Pipeline, workflow_id: str):
-        current_user, _ = current_account_with_tenant()
+    def post(self, current_user: Account, pipeline: Pipeline, workflow_id: str):
         rag_pipeline_service = RagPipelineService()
 
         try:
@@ -689,14 +671,12 @@ class RagPipelineByIdApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @get_rag_pipeline
-    def patch(self, pipeline: Pipeline, workflow_id: str):
+    def patch(self, current_user: Account, pipeline: Pipeline, workflow_id: str):
         """
         Update workflow attributes
         """
-        # Check permission
-        current_user, _ = current_account_with_tenant()
-
         payload = WorkflowUpdatePayload.model_validate(console_ns.payload or {})
         update_data = payload.model_dump(exclude_unset=True)
 
@@ -925,8 +905,8 @@ class DatasourceListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(current_tenant_id))
 
 
@@ -961,9 +941,8 @@ class RagPipelineTransformApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
-
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID):
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
@@ -984,13 +963,13 @@ class RagPipelineDatasourceVariableApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_rag_pipeline
     @edit_permission_required
-    def post(self, pipeline: Pipeline):
+    def post(self, current_user: Account, pipeline: Pipeline):
         """
         Set datasource variables
         """
-        current_user, _ = current_account_with_tenant()
         args = DatasourceVariablesPayload.model_validate(console_ns.payload or {}).model_dump()
 
         rag_pipeline_service = RagPipelineService()
