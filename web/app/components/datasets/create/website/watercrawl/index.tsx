@@ -19,14 +19,14 @@ import Options from './options'
 
 const ERROR_I18N_PREFIX = 'errorMsg'
 const I18N_PREFIX = 'stepOne.website'
-type Props = {
+type Props = Readonly<{
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
-}
+}>
 const Step = {
   init: 'init',
   running: 'running',
