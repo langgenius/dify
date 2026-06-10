@@ -128,6 +128,10 @@ class _RolesListQuery(_PaginationQuery):
     include_owner: int = Field(default=0, ge=0, le=1)
 
 
+class CopyRoleParam(BaseModel):
+    copy_member: bool = True
+
+
 def _pagination_options() -> svc.ListOption:
     return _PaginationQuery.model_validate(request.args.to_dict(flat=True)).to_inner_options()
 
@@ -282,7 +286,8 @@ class RBACRoleCopyApi(Resource):
     @login_required
     def post(self, role_id):
         tenant_id, account_id = _current_ids()
-        role = svc.RBACService.Roles.copy(tenant_id, account_id, str(role_id))
+        request = _payload(CopyRoleParam)
+        role = svc.RBACService.Roles.copy(tenant_id, account_id, str(role_id), copy_member=request.copy_member)
         return _dump(role), 201
 
 
@@ -665,3 +670,12 @@ class RBACMemberRolesApi(Resource):
                 role_ids=list(request.role_ids),
             )
         )
+
+
+
+@console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/members")
+class ListMembersByRole(Resource):
+    @login_required
+    def get(self, role_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.Roles.list_members_by_role(tenant_id, role_id=role_id, options=_pagination_options()))

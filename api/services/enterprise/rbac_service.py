@@ -32,6 +32,11 @@ class Paginated[T](_RBACModel):
     pagination: Pagination | None = None
 
 
+class MembersInRole(_RBACModel):
+    account_id: str = ""
+    account_name: str = ""
+
+
 class RBACResourceType(StrEnum):
     """Resource types understood by access policies."""
 
@@ -647,6 +652,26 @@ class RBACService:
             )
 
         @staticmethod
+        def list_members_by_role(
+            tenant_id: str,
+            role_id: str | None = None,
+            *,
+            options: ListOption | None = None,
+        ) -> Paginated[MembersInRole]:
+            params = (options or ListOption()).to_params({"role_id": role_id})
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/roles/members",
+                tenant_id=tenant_id,
+                params=params or None,
+            )
+            data = data or {}
+            return Paginated[MembersInRole](
+                data=[MembersInRole.model_validate(item) for item in data.get("data") or []],
+                pagination=Pagination.model_validate(data["pagination"]) if data.get("pagination") else None,
+            )
+
+        @staticmethod
         def get(tenant_id: str, account_id: str | None, role_id: str) -> RBACRole:
             data = _inner_call(
                 "GET",
@@ -691,13 +716,13 @@ class RBACService:
             )
 
         @staticmethod
-        def copy(tenant_id: str, account_id: str | None, role_id: str) -> RBACRole:
+        def copy(tenant_id: str, account_id: str | None, role_id: str, copy_member: bool = True) -> RBACRole:
             data = _inner_call(
                 "POST",
                 f"{_INNER_PREFIX}/roles/copy",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                params={"id": role_id},
+                params={"id": role_id, "copy_member": copy_member},
             )
             return RBACRole.model_validate(data or {})
 
