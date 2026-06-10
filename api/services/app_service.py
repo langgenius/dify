@@ -403,7 +403,7 @@ class AppService:
         # Sync icon to sites table so the embedded iframe shows the updated icon.
         site = db.session.query(Site).where(Site.app_id == app.id).first()
         if site:
-            site.icon_type = app.icon_type
+            site.icon_type = resolved_icon_type
             site.icon = app.icon
             site.icon_background = app.icon_background
         db.session.commit()
@@ -450,7 +450,7 @@ class AppService:
         # Sync icon to sites table so the embedded iframe shows the updated icon.
         site = db.session.query(Site).where(Site.app_id == app.id).first()
         if site:
-            site.icon_type = app.icon_type
+            site.icon_type = cast(IconType | None, app.icon_type)
             site.icon = app.icon
             site.icon_background = app.icon_background
         db.session.commit()
