@@ -4,7 +4,6 @@ import type { TryAppSelection } from '@/types/try-app'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiInformation2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
@@ -76,23 +75,17 @@ const AppCard = ({
           {app.description}
         </div>
       </div>
-      {isExplore && (canCreate || canViewApp) && (
+      {isExplore && (
         <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canCreate && canViewApp && 'grid-cols-2')}>
-            {
-              canCreate && (
-                <Button variant="primary" className="h-7" onClick={() => onCreate()}>
-                  <PlusIcon className="mr-1 size-4" />
-                  <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
-                </Button>
-              )
-            }
-            {canViewApp && (
-              <Button className="h-7" onClick={handleTryApp}>
-                <RiInformation2Line className="mr-1 size-4" />
-                <span>{t('appCard.try', { ns: 'explore' })}</span>
-              </Button>
-            )}
+          <div className="grid h-8 w-full grid-cols-2 space-x-2">
+            <Button disabled={!canCreate} variant="primary" className="h-7" onClick={() => onCreate()}>
+              <PlusIcon className="mr-1 size-4" />
+              <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
+            </Button>
+            <Button disabled={!canViewApp} className="h-7" onClick={handleTryApp}>
+              <span className="mr-1 i-ri-information-2-line size-4" />
+              <span>{t('appCard.try', { ns: 'explore' })}</span>
+            </Button>
           </div>
         </div>
       )}

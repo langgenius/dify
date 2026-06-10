@@ -286,10 +286,12 @@ describe('Explore App List Flow', () => {
   })
 
   describe('Permission-Based Behavior', () => {
-    it('should hide add-to-workspace button when user lacks app creation permission', () => {
+    it('should keep add-to-workspace buttons visible but disabled when user lacks app creation permission', () => {
       renderAppList(false)
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+      const addButtons = screen.getAllByRole('button', { name: 'explore.appCard.addToWorkspace' })
+      expect(addButtons.length).toBeGreaterThan(0)
+      addButtons.forEach(button => expect(button).toBeDisabled())
     })
 
     it('should show add-to-workspace button when user has app creation permission', () => {

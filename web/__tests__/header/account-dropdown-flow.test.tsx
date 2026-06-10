@@ -128,7 +128,7 @@ describe('Header Account Dropdown Flow', () => {
     fireEvent.click(screen.getByText('common.userProfile.settings'))
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.PROVIDER,
+      payload: ACCOUNT_SETTING_TAB.MEMBERS,
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
