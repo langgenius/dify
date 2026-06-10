@@ -30,9 +30,7 @@ def _node_job_payload(workflow_prompt: str) -> ComposerSavePayload:
 
 
 def test_soul_prompt_accepts_soul_kinds():
-    payload = _soul_payload(
-        "Use [§skill:s1§] [§file:f1§] [§tool:p/t§] [§cli_tool:c§] [§knowledge:k1§] [§human:h1§]"
-    )
+    payload = _soul_payload("Use [§skill:s1§] [§file:f1§] [§tool:p/t§] [§cli_tool:c§] [§knowledge:k1§] [§human:h1§]")
     ComposerConfigValidator.validate_save_payload(payload)
 
 
@@ -47,9 +45,7 @@ def test_soul_prompt_rejects_declared_output_mention():
 
 
 def test_node_job_prompt_accepts_job_kinds():
-    payload = _node_job_payload(
-        "Read [§node_output:n1.text:START/text§], produce [§output:report§], ask [§human:h1§]"
-    )
+    payload = _node_job_payload("Read [§node_output:n1.text:START/text§], produce [§output:report§], ask [§human:h1§]")
     ComposerConfigValidator.validate_save_payload(payload)
 
 
