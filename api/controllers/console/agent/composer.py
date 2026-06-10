@@ -90,10 +90,12 @@ class WorkflowAgentComposerValidateApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App, node_id: str):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, app_model: App, node_id: str):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": []})
+        findings = AgentComposerService.collect_validation_findings(tenant_id=tenant_id, payload=payload)
+        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/candidates")
@@ -214,10 +216,12 @@ class AgentAppComposerValidateApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
-    def post(self, app_model: App):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, app_model: App):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": []})
+        findings = AgentComposerService.collect_validation_findings(tenant_id=tenant_id, payload=payload)
+        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent-composer/candidates")

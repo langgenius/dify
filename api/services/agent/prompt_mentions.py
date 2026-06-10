@@ -137,6 +137,16 @@ def expand_prompt_mentions(prompt: str, resolver: MentionResolver) -> str:
     return scrub_mention_markers(MENTION_PATTERN.sub(_replace, prompt))
 
 
+def find_malformed_mention_markers(prompt: str) -> list[str]:
+    """Mention-shaped markers the strict grammar does not accept (unknown kind,
+    oversized id/label, broken body). Soft-flagged at validate; the runtime
+    scrub still degrades them safely."""
+    if not prompt:
+        return []
+    parsed_spans = {(mention.start, mention.end) for mention in parse_prompt_mentions(prompt)}
+    return [match.group(0) for match in _RESIDUAL_MENTION_PATTERN.finditer(prompt) if match.span() not in parsed_spans]
+
+
 def scrub_mention_markers(text: str) -> str:
     """Degrade any residual mention-shaped ``{{#kind:…#}}`` marker to readable text."""
 
@@ -246,6 +256,7 @@ __all__ = [
     "build_node_job_mention_resolver",
     "build_soul_mention_resolver",
     "expand_prompt_mentions",
+    "find_malformed_mention_markers",
     "parse_prompt_mentions",
     "scrub_mention_markers",
 ]

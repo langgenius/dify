@@ -111,7 +111,9 @@ class AgentComposerService:
             agent_id=agent.id if agent else None,
             version_id=binding.current_snapshot_id,
         )
-        return cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
+        state = cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
+        state["validation"] = cls.collect_validation_findings(tenant_id=tenant_id, payload=payload)
+        return state
 
     @classmethod
     def load_agent_app_composer(cls, *, tenant_id: str, app_id: str) -> dict[str, Any]:
@@ -208,7 +210,26 @@ class AgentComposerService:
             agent.updated_by = account_id
 
         db.session.commit()
-        return cls.load_agent_app_composer(tenant_id=tenant_id, app_id=app_id)
+        state = cls.load_agent_app_composer(tenant_id=tenant_id, app_id=app_id)
+        state["validation"] = cls.collect_validation_findings(tenant_id=tenant_id, payload=payload)
+        return state
+
+    @classmethod
+    def collect_validation_findings(cls, *, tenant_id: str, payload: ComposerSavePayload) -> dict[str, Any]:
+        """ENG-617 soft findings, with DB-backed dataset existence for placeholders."""
+        from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
+
+        mentioned_ids: set[str] = set()
+        if payload.agent_soul is not None:
+            mentioned_ids |= {
+                mention.ref_id
+                for mention in parse_prompt_mentions(payload.agent_soul.prompt.system_prompt)
+                if mention.kind == MentionKind.KNOWLEDGE
+            }
+        existing_dataset_ids: set[str] | None = None
+        if mentioned_ids:
+            existing_dataset_ids = set(cls._dataset_rows(tenant_id=tenant_id, dataset_ids=sorted(mentioned_ids)))
+        return ComposerConfigValidator.collect_soft_findings(payload, existing_dataset_ids=existing_dataset_ids)
 
     @classmethod
     def get_workflow_candidates(cls, *, tenant_id: str, app_id: str, node_id: str, user_id: str) -> dict[str, Any]:

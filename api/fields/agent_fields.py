@@ -154,6 +154,7 @@ class WorkflowAgentComposerResponse(ResponseModel):
     effective_declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
     save_options: list[ComposerSaveStrategy]
     impact_summary: AgentComposerImpactResponse | None = None
+    validation: "ComposerValidationFindingsResponse | None" = None
     app_id: str | None = None
     workflow_id: str | None = None
     node_id: str | None = None
@@ -165,11 +166,32 @@ class AgentAppComposerResponse(ResponseModel):
     active_config_snapshot: AgentConfigSnapshotSummaryResponse
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]
+    validation: "ComposerValidationFindingsResponse | None" = None
+
+
+class ComposerValidationWarningResponse(ResponseModel):
+    code: str
+    surface: str | None = None
+    kind: str | None = None
+    id: str | None = None
+    message: str | None = None
+
+
+class ComposerKnowledgePlaceholderResponse(ResponseModel):
+    id: str
+    placeholder_name: str
+
+
+class ComposerValidationFindingsResponse(ResponseModel):
+    warnings: list[ComposerValidationWarningResponse] = Field(default_factory=list)
+    knowledge_retrieval_placeholder: list[ComposerKnowledgePlaceholderResponse] = Field(default_factory=list)
 
 
 class AgentComposerValidateResponse(ResponseModel):
     result: Literal["success"]
     errors: list[str] = Field(default_factory=list)
+    warnings: list[ComposerValidationWarningResponse] = Field(default_factory=list)
+    knowledge_retrieval_placeholder: list[ComposerKnowledgePlaceholderResponse] = Field(default_factory=list)
 
 
 class AgentComposerDifyToolCandidateResponse(ResponseModel):

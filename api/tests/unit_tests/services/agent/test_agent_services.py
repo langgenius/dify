@@ -148,6 +148,7 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
         tenant_id="tenant-1", app_id="app-1", node_id="node-1", account_id="account-1", payload=payload
     )
 
+    assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"state": "ok"}
     assert calls
     assert fake_session.commits == 1
@@ -189,6 +190,7 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch):
         tenant_id="tenant-1", app_id="app-1", account_id="account-1", payload=payload
     )
 
+    assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"loaded": True}
     assert fake_session.added[0].name == "Analyst"
     assert fake_session.added[0].active_config_snapshot_id == "version-1"
@@ -222,6 +224,7 @@ def test_save_agent_app_composer_updates_current_version(monkeypatch):
         tenant_id="tenant-1", app_id="app-1", account_id="account-1", payload=payload
     )
 
+    assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"loaded": True}
     assert updated["operation"].value == "save_current_version"
     assert fake_session._scalar == []
