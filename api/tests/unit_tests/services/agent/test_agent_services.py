@@ -235,12 +235,28 @@ def test_agent_app_composer_candidates_and_impact(monkeypatch):
     ]
     monkeypatch.setattr(composer_service.db, "session", FakeSession(scalars=[bindings]))
 
-    workflow_candidates = AgentComposerService.get_workflow_candidates(app_id="app-1")
-    agent_app_candidates = AgentComposerService.get_agent_app_candidates(app_id="app-1")
+    # Candidates assembly is covered in test_composer_candidates.py; here we stub
+    # the IO loaders and assert the response envelope per variant (ENG-615).
+    def _no_draft_workflow(**kwargs):
+        raise ValueError("draft workflow not found")
+
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", _no_draft_workflow)
+    monkeypatch.setattr(AgentComposerService, "_load_agent_app_soul", lambda **kwargs: None)
+    monkeypatch.setattr(AgentComposerService, "_workspace_dify_tools", lambda **kwargs: [])
+
+    workflow_candidates = AgentComposerService.get_workflow_candidates(
+        tenant_id="tenant-1", app_id="app-1", node_id="node-1", user_id="account-1"
+    )
+    agent_app_candidates = AgentComposerService.get_agent_app_candidates(
+        tenant_id="tenant-1", app_id="app-1", user_id="account-1"
+    )
     impact = AgentComposerService.calculate_impact(tenant_id="tenant-1", current_snapshot_id="version-1")
 
     assert workflow_candidates["variant"] == "workflow"
+    assert workflow_candidates["allowed_node_job_candidates"]["previous_node_outputs"] == []
+    assert workflow_candidates["truncated"] is False
     assert agent_app_candidates["variant"] == "agent_app"
+    assert agent_app_candidates["allowed_soul_candidates"]["dify_tools"] == []
     assert impact["workflow_node_count"] == 2
     assert impact["bindings"][1]["node_id"] == "node-2"
 

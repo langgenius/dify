@@ -105,10 +105,17 @@ class WorkflowAgentComposerCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App, node_id: str):
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user_id: str, app_model: App, node_id: str):
         return dump_response(
             AgentComposerCandidatesResponse,
-            AgentComposerService.get_workflow_candidates(app_id=app_model.id),
+            AgentComposerService.get_workflow_candidates(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                node_id=node_id,
+                user_id=current_user_id,
+            ),
         )
 
 
@@ -222,8 +229,14 @@ class AgentAppComposerCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
-    def get(self, app_model: App):
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user_id: str, app_model: App):
         return dump_response(
             AgentComposerCandidatesResponse,
-            AgentComposerService.get_agent_app_candidates(app_id=app_model.id),
+            AgentComposerService.get_agent_app_candidates(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                user_id=current_user_id,
+            ),
         )

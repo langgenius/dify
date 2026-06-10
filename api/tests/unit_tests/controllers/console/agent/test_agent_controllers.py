@@ -292,7 +292,9 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
             WorkflowAgentComposerValidateApi(), app_model, "node-1"
         ) == {"result": "success", "errors": []}
     assert (
-        unwrap(WorkflowAgentComposerCandidatesApi.get)(WorkflowAgentComposerCandidatesApi(), app_model, "node-1")[
+        unwrap(WorkflowAgentComposerCandidatesApi.get)(
+            WorkflowAgentComposerCandidatesApi(), "tenant-1", account_id, app_model, "node-1"
+        )[
             "variant"
         ]
         == "workflow"
@@ -353,5 +355,7 @@ def test_agent_app_composer_get_put_validate_and_candidates(
             "result": "success",
             "errors": [],
         }
-    agent_app_candidates = unwrap(AgentAppComposerCandidatesApi.get)(AgentAppComposerCandidatesApi(), app_model)
+    agent_app_candidates = unwrap(AgentAppComposerCandidatesApi.get)(
+        AgentAppComposerCandidatesApi(), "tenant-1", account_id, app_model
+    )
     assert agent_app_candidates["variant"] == "agent_app"

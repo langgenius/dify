@@ -204,3 +204,4 @@ class AgentComposerCandidatesResponse(ResponseModel):
         default_factory=AgentComposerSoulCandidatesResponse
     )
     capabilities: ComposerCandidateCapabilities = Field(default_factory=ComposerCandidateCapabilities)
+    truncated: bool = False
