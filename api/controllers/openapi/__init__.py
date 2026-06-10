@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restx import Namespace
 
-from controllers.openapi._errors import OpenApiErrorFormatter
+from controllers.openapi._errors import ErrorBody, OpenApiErrorFormatter
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ExternalApi
 
@@ -84,6 +84,7 @@ register_schema_models(
 )
 register_response_schema_models(
     openapi_ns,
+    ErrorBody,
     TagItem,
     UsageInfo,
     MessageMetadata,
