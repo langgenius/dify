@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol, cast
 from uuid import UUID
 
 from flask import request
@@ -64,11 +64,6 @@ def _validate_doc_form(value: str | None) -> str | None:
     if value not in Dataset.DOC_FORM_LIST:
         raise ValueError("Invalid doc_form.")
     return value
-
-
-def _ensure_permission_keys(dataset: Dataset) -> None:
-    if not isinstance(getattr(dataset, "permission_keys", None), list):
-        dataset.permission_keys = []
 
 
 class DatasetCreatePayload(BaseModel):
@@ -421,9 +416,8 @@ class DatasetListApi(Resource):
                 query.include_all,
             )
 
-        for dataset in datasets:
-            _ensure_permission_keys(dataset)
 
+        permission_keys_map = {}
         if datasets:
             dataset_ids = [str(dataset.id) for dataset in datasets]
             permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
@@ -431,8 +425,6 @@ class DatasetListApi(Resource):
                 current_user.id,
                 dataset_ids,
             )
-            for dataset in datasets:
-                dataset.permission_keys = permission_keys_map.get(str(dataset.id), [])
 
         # check embedding setting
         provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
@@ -473,6 +465,7 @@ class DatasetListApi(Resource):
                 item.update({"partial_member_list": partial_members_map.get(item["id"], [])})
             else:
                 item.update({"partial_member_list": []})
+            item["permission_keys"] = permission_keys_map.get(str(item["id"]), [])
 
         response = {
             "data": data,
@@ -521,14 +514,16 @@ class DatasetListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        _ensure_permission_keys(dataset)
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
             [str(dataset.id)],
         )
-        dataset.permission_keys = permission_keys_map.get(str(dataset.id), [])
-        return dump_response(DatasetDetailResponse, dataset), 201
+
+        item = DatasetDetailWithPartialMembersResponse.model_validate(
+            dataset, from_attributes=True).model_dump(mode="json")
+        item["permission_keys"] = permission_keys_map.get(str(dataset.id), [])
+        return item, 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
@@ -557,14 +552,13 @@ class DatasetApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        _ensure_permission_keys(dataset)
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
             [dataset_id_str],
         )
-        dataset.permission_keys = permission_keys_map.get(dataset_id_str, [])
         data = dump_response(DatasetDetailResponse, dataset)
+        data["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
                 provider_id = ModelProviderID(dataset.embedding_model_provider)
@@ -639,14 +633,13 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        _ensure_permission_keys(dataset)
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
             [dataset_id_str],
         )
-        dataset.permission_keys = permission_keys_map.get(dataset_id_str, [])
         result_data = dump_response(DatasetDetailResponse, dataset)
+        result_data["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
         tenant_id = current_tenant_id
 
         if payload.partial_member_list is not None and payload.permission == DatasetPermissionEnum.PARTIAL_TEAM:
