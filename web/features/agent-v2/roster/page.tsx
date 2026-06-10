@@ -19,6 +19,7 @@ import { RosterToolbar } from './components/roster-toolbar'
 
 const ROSTER_PAGE_SIZE = 30
 const isAgentInUse = (agent: { app_id?: string | null, workflow_id?: string | null }) => Boolean(agent.app_id || agent.workflow_id)
+const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-util-colors-blue-brand-blue-brand-500 data-disabled:opacity-100'
 
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
@@ -66,19 +67,12 @@ export default function RosterPage() {
     <main className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <Tabs defaultValue="agent" className="flex min-h-0 flex-1 flex-col">
         <div className="h-25.5 shrink-0 bg-background-body px-8 pt-4 pb-4">
-          <div className="flex h-6 min-w-0 items-center justify-between gap-4">
-            <TabsList aria-label={t('roster.tabsLabel')} className="h-6 items-start gap-4">
-              <TabsTab
-                value="agent"
-                className="relative h-6 border-b-0 px-0 py-0 text-base/6 font-semibold text-text-tertiary data-active:text-text-primary data-active:after:absolute data-active:after:right-0 data-active:after:-bottom-1 data-active:after:left-0 data-active:after:h-0.5 data-active:after:bg-state-accent-solid"
-              >
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            <TabsList aria-label={t('roster.tabsLabel')}>
+              <TabsTab value="agent" className={rosterTabClassName}>
                 {t('roster.tabs.agent')}
               </TabsTab>
-              <TabsTab
-                value="human"
-                disabled
-                className="relative h-6 border-b-0 px-0 py-0 text-base/6 font-semibold text-text-tertiary data-disabled:text-text-tertiary"
-              >
+              <TabsTab value="human" disabled className={rosterTabClassName}>
                 {t('roster.tabs.human')}
               </TabsTab>
             </TabsList>
