@@ -8,9 +8,9 @@ import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import UsageInfo from '../usage-info'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-}
+}>
 
 const AppsInfo: FC<Props> = ({
   className,

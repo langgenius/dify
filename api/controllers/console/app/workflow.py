@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import NewAppResponse, SimpleResultResponse
 from controllers.common.schema import (
     register_response_schema_model,
@@ -19,7 +20,11 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import (
+    ConversationCompletedError,
+    DraftWorkflowNotExist,
+    DraftWorkflowNotSync,
+)
 from controllers.console.app.permission_keys import get_app_permission_keys
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -27,6 +32,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     rbac_permission_required,
     setup_required,
+    with_current_tenant_id,
     with_current_user,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -57,10 +63,11 @@ from graphon.file import helpers as file_helpers
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
+from graphon.variables.exc import VariableError
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow
@@ -454,6 +461,8 @@ class DraftWorkflowApi(Resource):
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
+        except VariableError as e:
+            raise InvalidArgumentError(description=str(e))
 
         return {
             "result": "success",
@@ -1590,7 +1599,8 @@ class WorkflowOnlineUsersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
 
         app_ids = args.app_ids
@@ -1600,7 +1610,6 @@ class WorkflowOnlineUsersApi(Resource):
         if not app_ids:
             return {"data": []}
 
-        _, current_tenant_id = current_account_with_tenant()
         workflow_service = WorkflowService()
         accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id)
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]

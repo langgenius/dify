@@ -321,6 +321,7 @@ class DatasetService:
                     "knowledge",
                     tenant_id,
                     tag_ids,
+                    match_all=True,
                 )
             else:
                 target_ids = []

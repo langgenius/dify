@@ -24,9 +24,9 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
+from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required, with_current_tenant_id
 from fields.base import ResponseModel
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models.model import App, AppMode
 from services.agent_app_workspace_service import (
     AgentAppWorkspaceService,
@@ -143,8 +143,8 @@ class AgentAppWorkspaceListResource(Resource):
     @account_initialization_required
     @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.AGENT])
-    def get(self, app_model: App):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, app_model: App):
         query = query_params_from_request(AgentWorkspaceListQuery)
         try:
             result = AgentAppWorkspaceService().list_files(
@@ -169,8 +169,8 @@ class AgentAppWorkspacePreviewResource(Resource):
     @account_initialization_required
     @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.AGENT])
-    def get(self, app_model: App):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, app_model: App):
         query = query_params_from_request(AgentWorkspaceFileQuery)
         try:
             result = AgentAppWorkspaceService().preview(
@@ -197,8 +197,8 @@ class AgentAppWorkspaceDownloadResource(Resource):
     @account_initialization_required
     @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.AGENT])
-    def get(self, app_model: App):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, app_model: App):
         query = query_params_from_request(AgentWorkspaceFileQuery)
         try:
             result = AgentAppWorkspaceService().download(
@@ -232,8 +232,8 @@ class WorkflowAgentWorkspaceListResource(Resource):
     @account_initialization_required
     @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
         query = query_params_from_request(WorkflowAgentWorkspaceListQuery)
         try:
             result = WorkflowAgentWorkspaceService().list_files(
@@ -269,8 +269,8 @@ class WorkflowAgentWorkspacePreviewResource(Resource):
     @account_initialization_required
     @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
         query = query_params_from_request(WorkflowAgentWorkspaceFileQuery)
         try:
             result = WorkflowAgentWorkspaceService().preview(
@@ -308,8 +308,8 @@ class WorkflowAgentWorkspaceDownloadResource(Resource):
     @account_initialization_required
     @rbac_permission_required("app", "app_create_and_management")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
         query = query_params_from_request(WorkflowAgentWorkspaceFileQuery)
         try:
             result = WorkflowAgentWorkspaceService().download(

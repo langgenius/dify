@@ -520,6 +520,7 @@
   "operation.duplicate": "复制",
   "operation.edit": "编辑",
   "operation.exporting": "导出中",
+  "operation.fill": "一键填入",
   "operation.format": "格式化",
   "operation.getForFree": "免费获取",
   "operation.imageCopied": "图片已复制",

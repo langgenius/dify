@@ -22,13 +22,13 @@ import { hasPermission } from '@/utils/permission'
 import OperationDropdown from './detail/operation-dropdown'
 import MCPModal from './modal'
 
-type Props = {
+type Props = Readonly<{
   currentProvider?: ToolWithProvider
   data: ToolWithProvider
   handleSelect: (providerID: string) => void
   onUpdate: (providerID: string) => void
   onDeleted: () => void
-}
+}>
 
 type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
 type MutationResult = {

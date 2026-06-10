@@ -15239,6 +15239,7 @@ Request payload for bulk downloading documents as a zip archive.
 | name | string |  | Yes |
 | original_url | string |  | No |
 | preview_url | string |  | No |
+| reference | string |  | No |
 | size | integer |  | Yes |
 | source_url | string |  | No |
 | tenant_id | string |  | No |

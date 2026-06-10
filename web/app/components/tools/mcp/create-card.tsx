@@ -9,9 +9,9 @@ import { useCreateMCP } from '@/service/use-tools'
 import { hasPermission } from '@/utils/permission'
 import MCPModal from './modal'
 
-type Props = {
+type Props = Readonly<{
   handleCreate: (provider: ToolWithProvider) => void
-}
+}>
 
 type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
 

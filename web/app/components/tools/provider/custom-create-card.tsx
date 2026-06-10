@@ -8,9 +8,9 @@ import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { createCustomCollection } from '@/service/tools'
 import { hasPermission } from '@/utils/permission'
 
-type Props = {
+type Props = Readonly<{
   onRefreshData: () => void
-}
+}>
 
 const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()

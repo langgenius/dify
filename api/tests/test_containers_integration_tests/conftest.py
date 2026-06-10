@@ -424,6 +424,7 @@ def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> 
     Returns:
         Flask: Configured Flask application
     """
+    assert set_up_containers_and_env is _container_manager
     logger.info("=== Creating session-scoped Flask application ===")
     app = _create_app_with_containers()
     logger.info("Session-scoped Flask application created successfully")

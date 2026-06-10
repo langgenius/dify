@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import * as React from 'react'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, use, useEffect, useState } from 'react'
 import { usePathname } from '@/next/navigation'
 import { isInWorkflowPage } from '../workflow/constants'
 
@@ -29,7 +29,7 @@ const GotoAnythingContext = createContext<GotoAnythingContextType>({
 /**
  * Hook to use the GotoAnything context
  */
-export const useGotoAnythingContext = () => useContext(GotoAnythingContext)
+export const useGotoAnythingContext = () => use(GotoAnythingContext)
 
 type GotoAnythingProviderProps = {
   children: ReactNode

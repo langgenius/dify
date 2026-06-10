@@ -7,7 +7,7 @@ import Loading from '@/app/components/base/loading'
 import { useRouter } from '@/next/navigation'
 import Divider from '../../base/divider'
 
-type Props = {
+type Props = Readonly<{
   disabled: boolean
   published: boolean
   isLoading: boolean
@@ -15,7 +15,7 @@ type Props = {
   canManageWorkflowTool: boolean
   onConfigure: () => void
   disabledReason?: string
-}
+}>
 
 const WorkflowToolConfigureButton = ({
   disabled,

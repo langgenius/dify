@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from controllers.common.errors import NotFoundError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -19,7 +20,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from controllers.web.error import NotFoundError
 from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
 from extensions.ext_database import db
 from fields.base import ResponseModel
