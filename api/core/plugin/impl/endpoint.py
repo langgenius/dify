@@ -48,9 +48,7 @@ class PluginEndpointClient(BasePluginClient):
             params={"page": page, "page_size": page_size},
         )
 
-    def list_endpoints_for_single_plugin(
-        self, tenant_id: str, user_id: str, plugin_id: str, page: int, page_size: int
-    ):
+    def list_endpoints_for_single_plugin(self, tenant_id: str, user_id: str, plugin_id: str, page: int, page_size: int):
         """
         List all endpoints for the given tenant and plugin.
 
