@@ -37,9 +37,7 @@ def test_parse_extracts_kind_id_and_optional_label():
 
 
 def test_parse_supports_ids_with_slash_and_dot():
-    mentions = parse_prompt_mentions(
-        "[§tool:langgenius/tavily/tavily_search:tavily§] [§node_output:node-1.tenders§]"
-    )
+    mentions = parse_prompt_mentions("[§tool:langgenius/tavily/tavily_search:tavily§] [§node_output:node-1.tenders§]")
     assert mentions[0].ref_id == "langgenius/tavily/tavily_search"
     assert mentions[1].ref_id == "node-1.tenders"
 
@@ -150,10 +148,7 @@ def node_job() -> WorkflowNodeJobConfig:
 
 def test_node_job_resolver_resolves_each_kind(node_job: WorkflowNodeJobConfig):
     resolver = build_node_job_mention_resolver(node_job)
-    prompt = (
-        "Read [§node_output:start-1.tenders§] and produce [§output:qna_report§]; "
-        "if unsure contact [§human:c-1§]."
-    )
+    prompt = "Read [§node_output:start-1.tenders§] and produce [§output:qna_report§]; if unsure contact [§human:c-1§]."
 
     expanded = expand_prompt_mentions(prompt, resolver)
 
