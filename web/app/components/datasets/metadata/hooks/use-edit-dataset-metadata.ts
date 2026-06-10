@@ -51,9 +51,13 @@ const useEditDatasetMetadata = ({ datasetId,
     onUpdateDocList()
   }, [doDeleteMetaData, onUpdateDocList])
   const [builtInEnabled, setBuiltInEnabled] = useState(datasetMetaData?.built_in_field_enabled)
-  useEffect(() => {
+  // Sync built-in field status with server data during render instead of in an effect.
+  // Tracking the previous server value keeps the optimistic toggle below from being reverted.
+  const [prevBuiltInFieldEnabled, setPrevBuiltInFieldEnabled] = useState(datasetMetaData?.built_in_field_enabled)
+  if (datasetMetaData?.built_in_field_enabled !== prevBuiltInFieldEnabled) {
+    setPrevBuiltInFieldEnabled(datasetMetaData?.built_in_field_enabled)
     setBuiltInEnabled(datasetMetaData?.built_in_field_enabled)
-  }, [datasetMetaData])
+  }
   const { mutateAsync: toggleBuiltInStatus } = useUpdateBuiltInStatus(datasetId)
   const { data: builtInMetaData } = useBuiltInMetaDataFields()
   return {
