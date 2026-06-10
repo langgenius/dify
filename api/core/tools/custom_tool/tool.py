@@ -97,11 +97,10 @@ class ApiTool(Tool):
             if "api_key_header" in credentials:
                 api_key_header = credentials["api_key_header"]
 
-            match credentials["api_key_value"]:
-                case _ if "api_key_value" not in credentials:
-                    raise ToolProviderCredentialValidationError("Missing api_key_value")
-                case _ if not isinstance(credentials["api_key_value"], str):
-                    raise ToolProviderCredentialValidationError("api_key_value must be a string")
+            if "api_key_value" not in credentials:
+                raise ToolProviderCredentialValidationError("Missing api_key_value")
+            elif not isinstance(credentials["api_key_value"], str):
+                raise ToolProviderCredentialValidationError("api_key_value must be a string")
 
             if "api_key_header_prefix" in credentials:
                 api_key_header_prefix = credentials["api_key_header_prefix"]
@@ -311,32 +310,31 @@ class ApiTool(Tool):
             raise Exception("Max recursion depth reached")
         for option in any_of or []:
             try:
-                match option["anyOf"]:
-                    case _ if "type" in option:
-                        # Attempt to convert the value based on the type.
-                        if option["type"] == "integer" or option["type"] == "int":
-                            return int(value)
-                        elif option["type"] == "number":
-                            if "." in str(value):
-                                return float(value)
-                            else:
-                                return int(value)
-                        elif option["type"] == "string":
-                            return str(value)
-                        elif option["type"] == "boolean":
-                            if str(value).lower() in {"true", "1"}:
-                                return True
-                            elif str(value).lower() in {"false", "0"}:
-                                return False
-                            else:
-                                continue  # Not a boolean, try next option
-                        elif option["type"] == "null" and not value:
-                            return None
+                if "type" in option:
+                    # Attempt to convert the value based on the type.
+                    if option["type"] == "integer" or option["type"] == "int":
+                        return int(value)
+                    elif option["type"] == "number":
+                        if "." in str(value):
+                            return float(value)
                         else:
-                            continue  # Unsupported type, try next option
-                    case list() if "anyOf" in option:
-                        # Recursive call to handle nested anyOf
-                        return self._convert_body_property_any_of(property, value, option["anyOf"], max_recursive - 1)
+                            return int(value)
+                    elif option["type"] == "string":
+                        return str(value)
+                    elif option["type"] == "boolean":
+                        if str(value).lower() in {"true", "1"}:
+                            return True
+                        elif str(value).lower() in {"false", "0"}:
+                            return False
+                        else:
+                            continue  # Not a boolean, try next option
+                    elif option["type"] == "null" and not value:
+                        return None
+                    else:
+                        continue  # Unsupported type, try next option
+                elif "anyOf" in option and isinstance(option["anyOf"], list):
+                    # Recursive call to handle nested anyOf
+                    return self._convert_body_property_any_of(property, value, option["anyOf"], max_recursive - 1)
             except ValueError:
                 continue  # Conversion failed, try next option
         # If no option succeeded, you might want to return the value as is or raise an error
@@ -344,38 +342,36 @@ class ApiTool(Tool):
 
     def _convert_body_property_type(self, property: dict[str, Any], value: Any):
         try:
-            match property["anyOf"]:
-                case _ if "type" in property:
-                    if property["type"] == "integer" or property["type"] == "int":
-                        return int(value)
-                    elif property["type"] == "number":
-                        # check if it is a float
-                        if "." in str(value):
-                            return float(value)
-                        else:
-                            return int(value)
-                    elif property["type"] == "string":
-                        return str(value)
-                    elif property["type"] == "boolean":
-                        return bool(value)
-                    elif property["type"] == "null":
-                        if value is None:
-                            return None
-                    elif property["type"] == "object" or property["type"] == "array":
-                        match value:
-                            case str():
-                                try:
-                                    return json.loads(value)
-                                except ValueError:
-                                    return value
-                            case dict():
-                                return value
-                            case _:
-                                return value
+            if "type" in property:
+                if property["type"] == "integer" or property["type"] == "int":
+                    return int(value)
+                elif property["type"] == "number":
+                    # check if it is a float
+                    if "." in str(value):
+                        return float(value)
                     else:
-                        raise ValueError(f"Invalid type {property['type']} for property {property}")
-                case list() if "anyOf" in property:
-                    return self._convert_body_property_any_of(property, value, property["anyOf"])
+                        return int(value)
+                elif property["type"] == "string":
+                    return str(value)
+                elif property["type"] == "boolean":
+                    return bool(value)
+                elif property["type"] == "null":
+                    if value is None:
+                        return None
+                elif property["type"] == "object" or property["type"] == "array":
+                    if isinstance(value, str):
+                        try:
+                            return json.loads(value)
+                        except ValueError:
+                            return value
+                    elif isinstance(value, dict):
+                        return value
+                    else:
+                        return value
+                else:
+                    raise ValueError(f"Invalid type {property['type']} for property {property}")
+            elif "anyOf" in property and isinstance(property["anyOf"], list):
+                return self._convert_body_property_any_of(property, value, property["anyOf"])
         except ValueError:
             return value
 
