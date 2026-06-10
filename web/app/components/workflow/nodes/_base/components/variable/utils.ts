@@ -13,6 +13,7 @@ import type { ParameterExtractorNodeType } from '../../../parameter-extractor/ty
 import type { QuestionClassifierNodeType } from '../../../question-classifier/types'
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
 import type { ToolNodeType } from '../../../tool/types'
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
@@ -1433,6 +1434,11 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [...(mixVars as ValueSelector[]), ...(vars as any)]
       break
     }
+    case BlockEnum.Agent: {
+      const payload = data as AgentNodeType
+      res = matchNotSystemVars([payload.agent_task || ''])
+      break
+    }
     case BlockEnum.DataSource: {
       const payload = data as DataSourceNodeType
       const mixVars = matchNotSystemVars(
@@ -1850,6 +1856,15 @@ export const updateNodeVars = (
             }
           })
         }
+        break
+      }
+      case BlockEnum.Agent: {
+        const payload = data as AgentNodeType
+        payload.agent_task = replaceOldVarInText(
+          payload.agent_task || '',
+          oldVarSelector,
+          newVarSelector,
+        )
         break
       }
       case BlockEnum.DataSource: {

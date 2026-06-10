@@ -1,3 +1,4 @@
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
@@ -108,6 +109,17 @@ describe('variable utils', () => {
         ]),
       )
     })
+
+    it('should read variables from agent task', () => {
+      const node = createNode<AgentNodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_task: 'Clarify {{#start.tender#}}',
+      })
+
+      expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
+    })
   })
 
   describe('updateNodeVars', () => {
@@ -142,6 +154,19 @@ describe('variable utils', () => {
         text: '{{#env.RENAMED_KEY#}}',
         jinja2_text: 'Hello {{#env.RENAMED_KEY#}}',
       })
+    })
+
+    it('should replace agent task references', () => {
+      const node = createNode<AgentNodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_task: 'Clarify {{#start.tender#}}',
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'tender'], ['start', 'question'])
+
+      expect((updatedNode.data as AgentNodeType).agent_task).toBe('Clarify {{#start.question#}}')
     })
 
     it('should replace human input email template references', () => {

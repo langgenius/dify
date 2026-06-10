@@ -3,4 +3,5 @@ import type { CommonNodeType } from '@/app/components/workflow/types'
 
 export type AgentNodeType = CommonNodeType & {
   agent_roster?: AgentRosterNodeData
+  agent_task?: string
 }

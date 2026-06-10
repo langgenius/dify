@@ -108,6 +108,7 @@ const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
 
 export type PromptEditorProps = {
   instanceId?: string
+  children?: React.ReactNode
   compact?: boolean
   wrapperClassName?: string
   className?: string
@@ -140,6 +141,7 @@ export type PromptEditorProps = {
 
 const PromptEditor: FC<PromptEditorProps> = ({
   instanceId,
+  children,
   compact,
   wrapperClassName,
   className,
@@ -257,6 +259,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         />
         <ValueSyncPlugin value={value} />
         <EditableSyncPlugin editable={editable} />
+        {children}
       </div>
     </LexicalComposer>
   )

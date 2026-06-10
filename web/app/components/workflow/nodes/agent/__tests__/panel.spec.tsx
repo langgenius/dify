@@ -1,9 +1,26 @@
 import type { ReactNode } from 'react'
 import type { AgentNodeType } from '../types'
+import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentPanel } from '../panel'
+
+const {
+  mockEditorFocus,
+  mockEditorUpdate,
+  mockInsertNodes,
+  mockPromptEditorProps,
+  mockSetInputs,
+  mockUseNodeCrud,
+} = vi.hoisted(() => ({
+  mockEditorFocus: vi.fn(),
+  mockEditorUpdate: vi.fn((callback: () => void) => callback()),
+  mockInsertNodes: vi.fn(),
+  mockPromptEditorProps: [] as PromptEditorProps[],
+  mockSetInputs: vi.fn(),
+  mockUseNodeCrud: vi.fn(),
+}))
 
 vi.mock('../../_base/components/output-vars', () => ({
   __esModule: true,
@@ -11,6 +28,72 @@ vi.mock('../../_base/components/output-vars', () => ({
   VarItem: ({ name, type, description }: { name: string, type: string, description?: string }) => (
     <div>{`${name}:${type}:${description || ''}`}</div>
   ),
+}))
+
+vi.mock('@/app/components/base/prompt-editor', () => ({
+  default: (props: PromptEditorProps) => {
+    mockPromptEditorProps.push(props)
+
+    return (
+      <>
+        <textarea
+          aria-label="workflow.nodes.agent.task.label"
+          placeholder={typeof props.placeholder === 'string' ? props.placeholder : undefined}
+          value={props.value}
+          onChange={event => props.onChange?.(event.currentTarget.value)}
+        />
+        {props.children}
+      </>
+    )
+  },
+}))
+
+vi.mock('@lexical/react/LexicalComposerContext', () => ({
+  useLexicalComposerContext: () => [{
+    focus: mockEditorFocus,
+    update: mockEditorUpdate,
+  }],
+}))
+
+vi.mock('lexical', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('lexical')>()
+
+  return {
+    ...actual,
+    $insertNodes: mockInsertNodes,
+  }
+})
+
+vi.mock('@/app/components/base/prompt-editor/plugins/custom-text/node', () => ({
+  $createCustomTextNode: (text: string) => ({
+    getTextContent: () => text,
+  }),
+}))
+
+vi.mock('../../_base/hooks/use-node-crud', () => ({
+  default: (id: string, data: AgentNodeType) => mockUseNodeCrud(id, data),
+}))
+
+vi.mock('../../_base/hooks/use-available-var-list', () => ({
+  default: () => ({
+    availableVars: [{
+      nodeId: 'start',
+      title: 'START',
+      vars: [{ variable: 'question', type: 'string' }],
+    }],
+    availableNodesWithParent: [{
+      id: 'start',
+      data: {
+        title: 'START',
+        type: BlockEnum.Start,
+      },
+      position: { x: 0, y: 0 },
+    }],
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useWorkflowVariableType: () => vi.fn(),
 }))
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
@@ -31,6 +114,15 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
 const panelProps = {} as NodePanelProps<AgentNodeType>['panelProps']
 
 describe('agent/panel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockPromptEditorProps.length = 0
+    mockUseNodeCrud.mockImplementation((_id: string, data: AgentNodeType) => ({
+      inputs: data,
+      setInputs: mockSetInputs,
+    }))
+  })
+
   it('renders selected roster agent trigger and fixed output vars', () => {
     render(
       <AgentPanel
@@ -42,6 +134,9 @@ describe('agent/panel', () => {
 
     expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
     expect(screen.getByText('Nadia')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage')).toBeInTheDocument()
     expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
@@ -80,6 +175,35 @@ describe('agent/panel', () => {
     )
 
     expect(screen.queryByText('workflow.nodes.agent.roster.label')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+  })
+
+  it('updates agent task and opens prompt insertion shortcuts', () => {
+    render(
+      <AgentPanel
+        id="agent-node"
+        data={createData({ agent_task: 'Clarify tender' })}
+        panelProps={panelProps}
+      />,
+    )
+
+    const editor = screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })
+    fireEvent.change(editor, { target: { value: 'Clarify {{#start.question#}}' } })
+
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      agent_task: 'Clarify {{#start.question#}}',
+    }))
+    expect(mockPromptEditorProps[0]?.workflowVariableBlock).toMatchObject({
+      show: true,
+    })
+    expect(mockPromptEditorProps[0]?.contextBlock).toBeUndefined()
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
+    expect(mockEditorFocus).toHaveBeenCalled()
+    expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.mention' }))
+    expect(mockInsertNodes.mock.calls[1]?.[0]?.[0]?.getTextContent()).toBe('{')
   })
 })
