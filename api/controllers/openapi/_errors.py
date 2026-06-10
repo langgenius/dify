@@ -29,13 +29,13 @@ class OpenApiErrorCode(StrEnum):
     INTERNAL_ERROR = "internal_server_error"
     BAD_GATEWAY = "bad_gateway"
     UNKNOWN = "unknown"
-    # domain codes (carried by BaseHTTPException.error_code, values preserved
-    # from the existing wire contract)
+    # domain codes (must match the error_code attribute of the exception
+    # classes raised on the openapi surface)
     APP_UNAVAILABLE = "app_unavailable"
     CONVERSATION_COMPLETED = "conversation_completed"
     PROVIDER_NOT_INITIALIZE = "provider_not_initialize"
     PROVIDER_QUOTA_EXCEEDED = "provider_quota_exceeded"
-    MODEL_NOT_SUPPORTED = "model_currently_not_support"  # legacy wire value — do not rename
+    MODEL_NOT_SUPPORTED = "model_currently_not_support"
     COMPLETION_REQUEST_ERROR = "completion_request_error"
     RATE_LIMIT_ERROR = "rate_limit_error"
     FILE_TOO_LARGE = "file_too_large"
