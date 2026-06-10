@@ -317,43 +317,45 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
       expect(screen.getAllByText('common.settings.provider').length).toBeGreaterThan(0)
-      expect(screen.queryByText('common.settings.members')).not.toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('common.settings.billing').length).toBeGreaterThan(0)
       expect(screen.queryByText('common.settings.dataSource')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.apiBasedExtension')).not.toBeInTheDocument()
-      expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.apiBasedExtension').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('custom.custom').length).toBeGreaterThan(0)
       expect(screen.getByText('common.settings.language'))!.toBeInTheDocument()
+    })
+
+    it('should show api extension tab when api extension permission is missing', () => {
+      // Arrange
+      const contextWithoutApiExtensionPermission = {
+        ...baseAppContextValue,
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'api_extension.manage'),
+      }
+      vi.mocked(useAppContext).mockReturnValue(contextWithoutApiExtensionPermission)
+      mockAppContextState.current = contextWithoutApiExtensionPermission
+
+      // Act
+      renderAccountSetting()
+
+      // Assert
+      expect(screen.getAllByText('common.settings.apiBasedExtension').length).toBeGreaterThan(0)
+    })
+
+    it('should show custom tab when customization permission is missing', () => {
+      // Arrange
+      const contextWithoutCustomizationPermission = {
+        ...baseAppContextValue,
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'customization.manage'),
+      }
+      vi.mocked(useAppContext).mockReturnValue(contextWithoutCustomizationPermission)
+      mockAppContextState.current = contextWithoutCustomizationPermission
+
+      // Act
+      renderAccountSetting()
+
+      // Assert
+      expect(screen.getAllByText('custom.custom').length).toBeGreaterThan(0)
     })
 
     it('should hide billing and custom tabs when disabled', () => {

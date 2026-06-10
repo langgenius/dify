@@ -67,14 +67,13 @@ export default function AccountSetting({
         icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
         activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
       },
+      {
+        key: ACCOUNT_SETTING_TAB.MEMBERS,
+        name: t('settings.members', { ns: 'common' }),
+        icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+      },
     ]
-
-    items.push({
-      key: ACCOUNT_SETTING_TAB.MEMBERS,
-      name: t('settings.members', { ns: 'common' }),
-      icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
-    })
 
     if (systemFeatures.rbac_enabled) {
       items.push(
@@ -114,18 +113,16 @@ export default function AccountSetting({
       )
     }
 
-    if (hasPermission(workspacePermissionKeys, 'api_extension.manage')) {
-      items.push(
-        {
-          key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-          name: t('settings.apiBasedExtension', { ns: 'common' }),
-          icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
-          activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
-        },
-      )
-    }
+    items.push(
+      {
+        key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
+        name: t('settings.apiBasedExtension', { ns: 'common' }),
+        icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
+      },
+    )
 
-    if ((enableReplaceWebAppLogo || enableBilling) && hasPermission(workspacePermissionKeys, 'customization.manage')) {
+    if (enableReplaceWebAppLogo || enableBilling) {
       items.push({
         key: ACCOUNT_SETTING_TAB.CUSTOM,
         name: t('custom', { ns: 'custom' }),
