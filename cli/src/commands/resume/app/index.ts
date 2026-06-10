@@ -1,5 +1,6 @@
 import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { OutputFormat } from '@/framework/output'
 import { agentGuide } from './guide'
@@ -30,12 +31,13 @@ export default class ResumeApp extends DifyCommand {
     'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive. Default: collect and print at end.', default: false }),
     'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
     'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
+    'http-retry': httpRetryFlag,
   }
 
   async run(argv: string[]): Promise<void> {
     const { args, flags } = this.parse(ResumeApp, argv)
     const format = flags.output
-    const ctx = await this.authedCtx({ withCache: true, format })
+    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], withCache: true, format })
 
     await resumeApp(
       {

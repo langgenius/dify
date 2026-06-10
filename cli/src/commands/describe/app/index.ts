@@ -1,4 +1,5 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { Args, Flags } from '@/framework/flags'
@@ -21,9 +22,10 @@ export default class DescribeApp extends DifyCommand {
   }
 
   static override flags = {
-    workspace: Flags.string({ description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
-    output: Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
-    refresh: Flags.boolean({ description: 'bypass app-info cache and fetch fresh', default: false }),
+    'workspace': Flags.string({ description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
+    'http-retry': httpRetryFlag,
+    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
+    'refresh': Flags.boolean({ description: 'bypass app-info cache and fetch fresh', default: false }),
   }
 
   async run(argv: string[]) {
@@ -31,7 +33,7 @@ export default class DescribeApp extends DifyCommand {
     if (!isValidUuid(args.id))
       throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: `${JSON.stringify(args.id)} is not a valid app UUID` })
     const format = flags.output
-    const ctx = await this.authedCtx({ withCache: true, format })
+    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], withCache: true, format })
     return formatted({
       format,
       data: await runDescribeApp(

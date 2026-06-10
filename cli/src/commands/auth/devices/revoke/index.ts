@@ -1,5 +1,6 @@
 import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { runDevicesRevoke } from '@/commands/auth/devices/_shared/devices'
 import { Args, Flags } from '@/framework/flags'
 
@@ -18,13 +19,14 @@ export default class DevicesRevoke extends DifyCommand {
   }
 
   static override flags = {
-    all: Flags.boolean({ description: 'revoke every session except the current one', default: false }),
-    yes: Flags.boolean({ description: 'skip confirmation prompt', default: false }),
+    'all': Flags.boolean({ description: 'revoke every session except the current one', default: false }),
+    'http-retry': httpRetryFlag,
+    'yes': Flags.boolean({ description: 'skip confirmation prompt', default: false }),
   }
 
   async run(argv: string[]): Promise<void> {
     const { args, flags } = this.parse(DevicesRevoke, argv)
-    const ctx = await this.authedCtx({})
+    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     await runDevicesRevoke({
       io: ctx.io,
       reg: ctx.reg,

@@ -1,4 +1,5 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Flags } from '@/framework/flags'
 import { pluginDependencyLabel, runImportApp } from './run'
 
@@ -22,6 +23,7 @@ export default class ImportApp extends DifyCommand {
     'icon-type': Flags.string({ description: 'override icon type' }),
     'icon': Flags.string({ description: 'override icon' }),
     'icon-background': Flags.string({ description: 'override icon background colour' }),
+    'http-retry': httpRetryFlag,
   }
 
   async run(argv: string[]) {
@@ -30,7 +32,7 @@ export default class ImportApp extends DifyCommand {
       this.error('one of --from-file or --from-url is required', { exit: 1 })
     if (flags['from-file'] !== undefined && flags['from-url'] !== undefined)
       this.error('--from-file and --from-url are mutually exclusive', { exit: 1 })
-    const ctx = await this.authedCtx({})
+    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     const { result, leakedDependencies } = await runImportApp({
       fromFile: flags['from-file'],
       fromUrl: flags['from-url'],

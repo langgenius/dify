@@ -10,7 +10,6 @@ import { loadAppInfoCache } from '@/cache/app-info'
 import { loadNudgeStore } from '@/cache/nudge-store'
 import { getEnv } from '@/env/registry'
 import { formatErrorForCli } from '@/errors/format'
-import { getHttpRetry } from '@/framework/context'
 import { createHttpClient } from '@/http/client'
 import { getTokenStore, tokenKey } from '@/store/manager'
 import { realStreams } from '@/sys/io/streams'
@@ -30,6 +29,7 @@ export type AuthedContext = {
 }
 
 export type AuthedContextOptions = {
+  readonly retryFlag: number | undefined
   readonly withCache?: boolean
   readonly format?: string
 }
@@ -50,7 +50,7 @@ export async function buildAuthedContext(
     fail(cmd, opts, io)
 
   const host = hostWithScheme(active.host, active.scheme)
-  const retryAttempts = resolveRetryAttempts({ flag: getHttpRetry(), env: getEnv })
+  const retryAttempts = resolveRetryAttempts({ flag: opts.retryFlag, env: getEnv })
   const http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts })
 
   const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
