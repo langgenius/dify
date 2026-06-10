@@ -41,3 +41,8 @@ class NoFileUploadedError(BaseHTTPException):
     error_code = "no_file_uploaded"
     description = "Please upload your file."
     code = 400
+
+
+class InvalidArgumentError(BaseHTTPException):
+    error_code = "invalid_param"
+    code = 400

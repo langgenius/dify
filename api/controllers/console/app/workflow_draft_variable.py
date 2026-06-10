@@ -9,6 +9,7 @@ from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -21,7 +22,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
-from controllers.web.error import InvalidArgumentError, NotFoundError
+from controllers.web.error import NotFoundError
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db

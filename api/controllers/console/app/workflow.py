@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import NewAppResponse, SimpleResultResponse
 from controllers.common.schema import (
     register_response_schema_model,
@@ -23,7 +24,6 @@ from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
-    VariableValidationError,
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -458,7 +458,7 @@ class DraftWorkflowApi(Resource):
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
         except VariableError as e:
-            raise VariableValidationError(description=str(e))
+            raise InvalidArgumentError(description=str(e))
 
         return {
             "result": "success",

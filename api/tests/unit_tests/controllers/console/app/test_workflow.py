@@ -12,8 +12,9 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException, NotFound
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
-from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync, VariableValidationError
+from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
@@ -197,7 +198,7 @@ def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: 
         method="POST",
         json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
     ):
-        with pytest.raises(VariableValidationError) as exc:
+        with pytest.raises(InvalidArgumentError) as exc:
             handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert exc.value.description == "description too long"
