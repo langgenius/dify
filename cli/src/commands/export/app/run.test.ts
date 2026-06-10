@@ -1,5 +1,7 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
+import os from 'node:os'
+import { join } from 'node:path'
 import { DSL_YAML } from '@test/fixtures/dify-mock/scenarios'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
@@ -41,7 +43,7 @@ describe('runExportApp', () => {
   })
 
   it('writes to file when --output is given', async () => {
-    const tmpFile = `/tmp/difyctl-test-export-${Date.now()}.yaml`
+    const tmpFile = join(os.tmpdir(), `difyctl-test-export-${Date.now()}.yaml`)
 
     const result = await runExportApp(
       { appId: 'app-1', output: tmpFile },
@@ -54,7 +56,7 @@ describe('runExportApp', () => {
   })
 
   it('err stream receives written-to path when --output is given', async () => {
-    const tmpFile = `/tmp/difyctl-test-export-${Date.now()}.yaml`
+    const tmpFile = join(os.tmpdir(), `difyctl-test-export-${Date.now()}.yaml`)
     const io = bufferStreams()
 
     await runExportApp(

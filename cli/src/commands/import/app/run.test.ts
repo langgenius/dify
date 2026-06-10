@@ -2,6 +2,8 @@ import type { Import } from '@dify/contracts/api/openapi/types.gen'
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
 import { writeFileSync } from 'node:fs'
+import os from 'node:os'
+import { join } from 'node:path'
 import { DSL_YAML } from '@test/fixtures/dify-mock/scenarios'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
@@ -38,9 +40,9 @@ describe('runImportApp', () => {
   }
 
   function tmpDslFile(): string {
-    const path = `/tmp/difyctl-import-test-${Date.now()}.yaml`
-    writeFileSync(path, DSL_YAML, 'utf8')
-    return path
+    const filePath = join(os.tmpdir(), `difyctl-import-test-${Date.now()}.yaml`)
+    writeFileSync(filePath, DSL_YAML, 'utf8')
+    return filePath
   }
 
   it('completes import from a local file path', async () => {
