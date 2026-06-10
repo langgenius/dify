@@ -16,7 +16,7 @@ import { resolveEnv } from '../../setup/env.js'
 const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
 const E = resolveEnv(caps)
 
-// 测试用第二工作区 — 注入 available_workspaces 里的备用 workspace
+// Secondary workspace used in tests — injected into available_workspaces
 const WS2_ID = '00000000-e2e2-0000-0001-000000000002'
 const WS2_NAME = 'Secondary Workspace'
 
