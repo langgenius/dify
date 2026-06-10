@@ -155,7 +155,7 @@ describe('E2E / difyctl use workspace', () => {
     // Spec: current_workspace_id is unchanged when workspace switch fails
     await withTwoWorkspaces()
     await r(['auth', 'use', 'ffffffff-dead-0000-0000-000000000000'])
-    // 直接读 hosts.yml，原 workspace id 应仍存在
+    // Read hosts.yml directly; the original workspace id should still be present
     const { readFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
     const hostsContent = await readFile(join(configDir, 'hosts.yml'), 'utf8')
