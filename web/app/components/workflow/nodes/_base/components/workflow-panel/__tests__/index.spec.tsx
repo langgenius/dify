@@ -276,18 +276,6 @@ vi.mock('../last-run', () => ({
   ),
 }))
 
-vi.mock('../tab', () => ({
-  __esModule: true,
-  TabType: { settings: 'settings', lastRun: 'lastRun' },
-  default: ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
-    <div>
-      <button onClick={() => onChange('settings')}>settings-tab</button>
-      <button onClick={() => onChange('lastRun')}>last-run-tab</button>
-      <span>{value}</span>
-    </div>
-  ),
-}))
-
 vi.mock('../trigger-subscription', () => ({
   TriggerSubscription: ({ children, onSubscriptionChange }: PropsWithChildren<{ onSubscriptionChange?: (value: { id: string }, callback?: () => void) => void }>) => (
     <div>
@@ -324,7 +312,7 @@ describe('workflow-panel index', () => {
   })
 
   it('should render the settings panel and wire title, description, run, and close actions', async () => {
-    const { container } = renderWorkflowComponent(
+    renderWorkflowComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -354,8 +342,7 @@ describe('workflow-panel index', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
 
-    const clickableItems = container.querySelectorAll('.cursor-pointer')
-    fireEvent.click(clickableItems[clickableItems.length - 1] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1', true)
@@ -398,6 +385,7 @@ describe('workflow-panel index', () => {
     )
 
     expect(screen.getByText('last-run-panel')).toBeInTheDocument()
+    expect(screen.getByRole('tabpanel')).toHaveClass('flex', 'flex-1', 'flex-col')
   })
 
   it('should render the plain tab layout and allow last-run status updates', async () => {

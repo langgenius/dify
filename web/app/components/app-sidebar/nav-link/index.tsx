@@ -37,7 +37,12 @@ const NavLink = ({
   onClick,
 }: NavLinkProps) => {
   const segment = useSelectedLayoutSegment()
-  const formattedSegment = pathname ? pathname.toLowerCase().split('/').filter(Boolean).pop() : segment?.toLowerCase()
+  const formatSegment = (value?: string) => {
+    const res = value?.toLowerCase()
+
+    return !pathname && res === 'annotations' ? 'logs' : res
+  }
+  const formattedSegment = formatSegment(pathname ? pathname.split('/').filter(Boolean).pop() : segment)
   const isActive = active ?? (href ? href.toLowerCase().split('/')?.pop() === formattedSegment : false)
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
 
@@ -92,7 +97,7 @@ const NavLink = ({
       >
         {renderIcon()}
         <span
-          className={cn('overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out', mode === 'expand'
+          className={cn('overflow-hidden whitespace-nowrap transition-[margin-left,max-width,opacity] duration-200 ease-in-out', mode === 'expand'
             ? 'ml-2 max-w-none opacity-100'
             : 'ml-0 max-w-0 opacity-0')}
         >

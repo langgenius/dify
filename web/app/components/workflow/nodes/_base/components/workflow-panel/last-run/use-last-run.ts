@@ -37,7 +37,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import { useInvalidLastRun } from '@/service/use-workflow'
-import { TabType } from '../tab'
+import { TabType } from '../types'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
