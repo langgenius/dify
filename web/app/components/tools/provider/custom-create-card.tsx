@@ -11,9 +11,9 @@ import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
 
-type Props = {
+type Props = Readonly<{
   onRefreshData: () => void
-}
+}>
 
 function useCustomToolCreateAction({ onRefreshData }: Props) {
   const { t } = useTranslation()

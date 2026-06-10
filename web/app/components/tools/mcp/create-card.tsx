@@ -9,9 +9,9 @@ import { useCreateMCP } from '@/service/use-tools'
 import CreateEntryCard from '../provider/create-entry-card'
 import MCPModal from './modal'
 
-type Props = {
+type Props = Readonly<{
   handleCreate: (provider: ToolWithProvider) => Promise<void> | void
-}
+}>
 
 function useMCPCreateAction({ handleCreate }: Props) {
   const { isCurrentWorkspaceManager } = useAppContext()

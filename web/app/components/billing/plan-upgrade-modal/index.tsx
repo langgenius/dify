@@ -8,7 +8,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useModalContext } from '@/context/modal-context'
 import { SquareChecklist } from '../../base/icons/src/vender/other'
 
-type Props = {
+type Props = Readonly<{
   Icon?: ComponentType<{ className?: string }>
   title: string
   description: string
@@ -16,7 +16,7 @@ type Props = {
   show: boolean
   onClose: () => void
   onUpgrade?: () => void
-}
+}>
 
 export function PlanUpgradeModal({
   Icon = SquareChecklist,

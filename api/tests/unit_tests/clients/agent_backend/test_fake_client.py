@@ -17,7 +17,12 @@ def _request():
                 model_provider="openai",
                 model="gpt-test",
             ),
-            execution_context=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+            execution_context=DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="debugger",
+            ),
             workflow_node_job_prompt="Do the task.",
             user_prompt="hello",
         )

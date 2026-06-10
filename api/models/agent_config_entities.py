@@ -6,6 +6,9 @@ from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.workflow.file_reference import is_canonical_file_reference
+from graphon.file import FileTransferMethod
+
 
 class AgentKnowledgeQueryMode(StrEnum):
     USER_QUERY = "user_query"
@@ -615,14 +618,42 @@ class DeclaredOutputConfig(BaseModel):
             ok = isinstance(value, dict)
         elif type_ == DeclaredOutputType.ARRAY:
             ok = isinstance(value, list)
+            if ok and self.array_item is not None and self.array_item.type == DeclaredOutputType.FILE:
+                ok = all(self._is_valid_file_default_value(item) for item in value)
         elif type_ == DeclaredOutputType.FILE:
-            ok = isinstance(value, dict) and "file_id" in value
+            ok = self._is_valid_file_default_value(value)
         else:
             ok = False
         if not ok:
             raise ValueError(
                 f"default_value shape does not match output type {type_.value!r}: got {type(value).__name__}"
             )
+
+    @staticmethod
+    def _is_valid_file_default_value(value: Any) -> bool:
+        if not isinstance(value, dict):
+            return False
+        transfer_method_raw = value.get("transfer_method")
+        if not isinstance(transfer_method_raw, str):
+            return False
+        try:
+            transfer_method = FileTransferMethod.value_of(transfer_method_raw)
+        except ValueError:
+            return False
+
+        if transfer_method == FileTransferMethod.REMOTE_URL:
+            return (
+                set(value) == {"transfer_method", "url"}
+                and isinstance(value.get("url"), str)
+                and bool(value.get("url"))
+            )
+
+        reference = value.get("reference")
+        return (
+            set(value) == {"transfer_method", "reference"}
+            and isinstance(reference, str)
+            and is_canonical_file_reference(reference)
+        )
 
 
 # PRD §OUTPUT 配置框 0522 共识: "Output 如果没有配置，则 text, files, json"

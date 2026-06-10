@@ -32,9 +32,9 @@ import AppsInfo from '../usage-info/apps-info'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import { Enterprise, Professional, Sandbox, Team } from './assets'
 
-type Props = {
+type Props = Readonly<{
   loc: string
-}
+}>
 
 const PlanComp: FC<Props> = ({
   loc,

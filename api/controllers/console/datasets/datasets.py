@@ -22,6 +22,8 @@ from controllers.console.wraps import (
     enterprise_license_required,
     is_admin_or_owner_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
@@ -36,9 +38,9 @@ from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import build_icon_url, dump_response, to_timestamp
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from libs.url_utils import normalize_api_base_url
-from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
+from models import Account, ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
@@ -389,8 +391,9 @@ class DatasetListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
         # Convert query parameters to dict, handling list parameters correctly
         query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
         # Handle ids and tag_ids as lists (Flask request.args.getlist returns list even for single value)
@@ -471,9 +474,10 @@ class DatasetListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
         payload = DatasetCreatePayload.model_validate(console_ns.payload or {})
-        current_user, current_tenant_id = current_account_with_tenant()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
@@ -512,8 +516,9 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -566,14 +571,15 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def patch(self, dataset_id: UUID):
+    @with_current_user
+    @with_current_tenant_id
+    def patch(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
         payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
-        current_user, current_tenant_id = current_account_with_tenant()
         # check embedding model setting
         if (
             payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY
@@ -614,9 +620,9 @@ class DatasetApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
-    def delete(self, dataset_id: UUID):
+    @with_current_user
+    def delete(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
-        current_user, _ = current_account_with_tenant()
 
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
@@ -664,8 +670,8 @@ class DatasetQueryApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -704,10 +710,10 @@ class DatasetIndexingEstimateApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__])
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         payload = IndexingEstimatePayload.model_validate(console_ns.payload or {})
         args = payload.model_dump()
-        _, current_tenant_id = current_account_with_tenant()
         # validate args
         DocumentService.estimate_args_validate(args)
         extract_settings = []
@@ -804,8 +810,8 @@ class DatasetRelatedAppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -840,8 +846,8 @@ class DatasetIndexingStatusApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id: UUID):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         documents = db.session.scalars(
             select(Document).where(Document.dataset_id == dataset_id_str, Document.tenant_id == current_tenant_id)
@@ -898,8 +904,8 @@ class DatasetApiKeyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         keys = db.session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
@@ -911,9 +917,8 @@ class DatasetApiKeyApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        _, current_tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         current_key_count = (
             db.session.scalar(
                 select(func.count(ApiToken.id)).where(
@@ -952,8 +957,8 @@ class DatasetApiDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def delete(self, api_key_id: UUID):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str, api_key_id: UUID):
         api_key_id_str = str(api_key_id)
         key = db.session.scalar(
             select(ApiToken)
@@ -1079,8 +1084,8 @@ class DatasetPermissionUserListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
