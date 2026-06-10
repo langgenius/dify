@@ -1,6 +1,6 @@
 import re
 from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Any, Protocol, override
 
 from flask import Blueprint, Flask, current_app, got_request_exception, request
 from flask_restx import Api
@@ -154,6 +154,7 @@ class ExternalApi(Api):
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
 
+    @override
     def _should_use_fr_error_handler(self):
         # catch_all_404s makes flask-restx claim NotFound for ANY app path
         # (it wraps the app-level handle_exception), so scope the claim to
@@ -168,6 +169,7 @@ class ExternalApi(Api):
             return True
         return request.path == prefix or request.path.startswith(prefix.rstrip("/") + "/")
 
+    @override
     def _help_on_404(self, message: str | None = None) -> str | None:
         # flask-restx appends route suggestions post-handler; with a canonical
         # formatter installed, that would corrupt the contract and enumerate

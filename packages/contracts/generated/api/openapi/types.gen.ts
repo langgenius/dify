@@ -569,6 +569,13 @@ export type GetAppsByAppIdCheckDependenciesData = {
   url: '/apps/{app_id}/check-dependencies'
 }
 
+export type GetAppsByAppIdCheckDependenciesErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdCheckDependenciesError
+  = GetAppsByAppIdCheckDependenciesErrors[keyof GetAppsByAppIdCheckDependenciesErrors]
+
 export type GetAppsByAppIdCheckDependenciesResponses = {
   200: CheckDependenciesResult
 }
@@ -613,6 +620,13 @@ export type GetAppsByAppIdExportData = {
   }
   url: '/apps/{app_id}/export'
 }
+
+export type GetAppsByAppIdExportErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdExportError = GetAppsByAppIdExportErrors[keyof GetAppsByAppIdExportErrors]
 
 export type GetAppsByAppIdExportResponses = {
   200: AppDslExportResponse
@@ -921,6 +935,8 @@ export type PostWorkspacesByWorkspaceIdAppsImportsData = {
 
 export type PostWorkspacesByWorkspaceIdAppsImportsErrors = {
   400: Import
+  422: ErrorBody
+  default: ErrorBody
 }
 
 export type PostWorkspacesByWorkspaceIdAppsImportsError
@@ -946,6 +962,7 @@ export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmData = {
 
 export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors = {
   400: Import
+  default: ErrorBody
 }
 
 export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmError
