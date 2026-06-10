@@ -113,6 +113,7 @@ describe('TextGenerationSidebar', () => {
 
     expect(screen.getByText('Text Generation')).toBeInTheDocument()
     expect(screen.getByText('Share description')).toBeInTheDocument()
+    expect(screen.getByRole('tablist')).toHaveClass('w-full')
     expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()
     expect(runOncePropsSpy).toHaveBeenCalledWith(expect.objectContaining({
       inputs: { name: 'Alice' },
@@ -134,7 +135,7 @@ describe('TextGenerationSidebar', () => {
       vars: promptConfig.prompt_variables,
       isAllFinished: true,
     }))
-    expect(screen.queryByTestId('tab-header-item-saved')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /^share\.generation\.tabs\.saved/ })).not.toBeInTheDocument()
   })
 
   it('should render saved items and allow switching back to create tab', () => {

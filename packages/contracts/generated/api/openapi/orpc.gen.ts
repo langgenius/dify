@@ -12,9 +12,14 @@ import {
   zGetAccountResponse,
   zGetAccountSessionsQuery,
   zGetAccountSessionsResponse,
+  zGetAppsByAppIdCheckDependenciesPath,
+  zGetAppsByAppIdCheckDependenciesResponse,
   zGetAppsByAppIdDescribePath,
   zGetAppsByAppIdDescribeQuery,
   zGetAppsByAppIdDescribeResponse,
+  zGetAppsByAppIdExportPath,
+  zGetAppsByAppIdExportQuery,
+  zGetAppsByAppIdExportResponse,
   zGetAppsByAppIdFormHumanInputByFormTokenPath,
   zGetAppsByAppIdFormHumanInputByFormTokenResponse,
   zGetAppsByAppIdTasksByTaskIdEventsPath,
@@ -51,6 +56,11 @@ import {
   zPostOauthDeviceDenyResponse,
   zPostOauthDeviceTokenBody,
   zPostOauthDeviceTokenResponse,
+  zPostWorkspacesByWorkspaceIdAppsImportsBody,
+  zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath,
+  zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse,
+  zPostWorkspacesByWorkspaceIdAppsImportsPath,
+  zPostWorkspacesByWorkspaceIdAppsImportsResponse,
   zPostWorkspacesByWorkspaceIdMembersBody,
   zPostWorkspacesByWorkspaceIdMembersPath,
   zPostWorkspacesByWorkspaceIdMembersResponse,
@@ -154,6 +164,21 @@ export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getAppsByAppIdCheckDependencies',
+    path: '/apps/{app_id}/check-dependencies',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdCheckDependenciesPath }))
+  .output(zGetAppsByAppIdCheckDependenciesResponse)
+
+export const checkDependencies = {
+  get: get5,
+}
+
+export const get6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getAppsByAppIdDescribe',
     path: '/apps/{app_id}/describe',
     tags: ['openapi'],
@@ -167,7 +192,24 @@ export const get5 = oc
   .output(zGetAppsByAppIdDescribeResponse)
 
 export const describe = {
-  get: get5,
+  get: get6,
+}
+
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdExport',
+    path: '/apps/{app_id}/export',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({ params: zGetAppsByAppIdExportPath, query: zGetAppsByAppIdExportQuery.optional() }),
+  )
+  .output(zGetAppsByAppIdExportResponse)
+
+export const export_ = {
+  get: get7,
 }
 
 /**
@@ -199,7 +241,7 @@ export const files = {
  *
  * @deprecated
  */
-export const get6 = oc
+export const get8 = oc
   .route({
     deprecated: true,
     description:
@@ -230,7 +272,7 @@ export const post2 = oc
   .output(zPostAppsByAppIdFormHumanInputByFormTokenResponse)
 
 export const byFormToken = {
-  get: get6,
+  get: get8,
   post: post2,
 }
 
@@ -270,7 +312,7 @@ export const run = {
  *
  * @deprecated
  */
-export const get7 = oc
+export const get9 = oc
   .route({
     deprecated: true,
     description:
@@ -285,7 +327,7 @@ export const get7 = oc
   .output(zGetAppsByAppIdTasksByTaskIdEventsResponse)
 
 export const events = {
-  get: get7,
+  get: get9,
 }
 
 export const post4 = oc
@@ -313,14 +355,16 @@ export const tasks = {
 }
 
 export const byAppId = {
+  checkDependencies,
   describe,
+  export: export_,
   files,
   form,
   run,
   tasks,
 }
 
-export const get8 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -332,7 +376,7 @@ export const get8 = oc
   .output(zGetAppsResponse)
 
 export const apps = {
-  get: get8,
+  get: get10,
   byAppId,
 }
 
@@ -381,7 +425,7 @@ export const deny = {
   post: post7,
 }
 
-export const get9 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -393,7 +437,7 @@ export const get9 = oc
   .output(zGetOauthDeviceLookupResponse)
 
 export const lookup = {
-  get: get9,
+  get: get11,
 }
 
 /**
@@ -431,7 +475,7 @@ export const oauth = {
   device,
 }
 
-export const get10 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -443,7 +487,51 @@ export const get10 = oc
   .output(zGetPermittedExternalAppsResponse)
 
 export const permittedExternalApps = {
-  get: get10,
+  get: get12,
+}
+
+export const post9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdAppsImportsByImportIdConfirm',
+    path: '/workspaces/{workspace_id}/apps/imports/{import_id}/confirm',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath }))
+  .output(zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse)
+
+export const confirm = {
+  post: post9,
+}
+
+export const byImportId = {
+  confirm,
+}
+
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdAppsImports',
+    path: '/workspaces/{workspace_id}/apps/imports',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdAppsImportsBody,
+      params: zPostWorkspacesByWorkspaceIdAppsImportsPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdAppsImportsResponse)
+
+export const imports = {
+  post: post10,
+  byImportId,
+}
+
+export const apps2 = {
+  imports,
 }
 
 export const put = oc
@@ -482,7 +570,7 @@ export const byMemberId = {
   role,
 }
 
-export const get11 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -498,7 +586,7 @@ export const get11 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post9 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -516,12 +604,12 @@ export const post9 = oc
   .output(zPostWorkspacesByWorkspaceIdMembersResponse)
 
 export const members = {
-  get: get11,
-  post: post9,
+  get: get13,
+  post: post11,
   byMemberId,
 }
 
-export const post10 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -533,10 +621,10 @@ export const post10 = oc
   .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
 
 export const switch_ = {
-  post: post10,
+  post: post12,
 }
 
-export const get12 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -548,12 +636,13 @@ export const get12 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get12,
+  get: get14,
+  apps: apps2,
   members,
   switch: switch_,
 }
 
-export const get13 = oc
+export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -564,7 +653,7 @@ export const get13 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get13,
+  get: get15,
   byWorkspaceId,
 }
 

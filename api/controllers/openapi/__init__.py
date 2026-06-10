@@ -27,6 +27,9 @@ from controllers.openapi._models import (
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
+    AppDslExportQuery,
+    AppDslExportResponse,
+    AppDslImportPayload,
     AppInfoResponse,
     AppListQuery,
     AppListResponse,
@@ -66,10 +69,14 @@ from controllers.openapi._models import (
     WorkspaceSummaryResponse,
 )
 from fields.file_fields import FileResponse
+from services.app_dsl_service import Import
+from services.entities.dsl_entities import CheckDependenciesResult
 
 register_schema_models(
     openapi_ns,
     AppDescribeQuery,
+    AppDslImportPayload,
+    AppDslExportQuery,
     AppListQuery,
     AppRunRequest,
     DeviceCodeRequest,
@@ -93,6 +100,9 @@ register_response_schema_models(
     AppInfoResponse,
     AppDescribeInfo,
     AppDescribeResponse,
+    AppDslExportResponse,
+    Import,
+    CheckDependenciesResult,
     WorkflowRunData,
     AccountPayload,
     WorkspacePayload,
@@ -121,6 +131,7 @@ register_response_schema_models(
 from . import (
     _meta,
     account,
+    app_dsl,
     app_run,
     apps,
     apps_permitted_external,
@@ -138,6 +149,7 @@ from . import (
 __all__ = [
     "_meta",
     "account",
+    "app_dsl",
     "app_run",
     "apps",
     "apps_permitted_external",
