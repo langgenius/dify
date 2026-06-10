@@ -5,7 +5,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
-from controllers.openapi._errors import ErrorBody, ErrorDetail, OpenApiError, OpenApiErrorCode, OpenApiErrorFormatter
+from controllers.openapi._errors import (
+    ErrorBody,
+    ErrorDetail,
+    MemberLicenseExceeded,
+    MemberLimitExceeded,
+    OpenApiError,
+    OpenApiErrorCode,
+    OpenApiErrorFormatter,
+)
 from controllers.web.error import ProviderQuotaExceededError
 
 
@@ -175,6 +183,25 @@ class TestOpenApiErrorFormatter:
         for e, data, status in cases:
             wire = fmt.finalize(e, data, status)
             assert wire["code"] in {c.value for c in OpenApiErrorCode}
+
+
+class TestQuotaExceptions:
+    @pytest.fixture
+    def fmt(self):
+        return OpenApiErrorFormatter()
+
+    @pytest.mark.parametrize("exc_class", [MemberLimitExceeded, MemberLicenseExceeded])
+    def test_quota_exception_carries_declared_code_and_message(self, fmt, exc_class):
+        # Single source: assertions read the class attributes, no re-typed strings.
+        e = exc_class()
+        data = {"code": "forbidden", "message": e.description, "status": 403}
+
+        wire = fmt.finalize(e, data, 403)
+
+        assert wire["code"] == exc_class.error_code
+        assert wire["message"] == exc_class.description
+        assert wire["hint"] == exc_class.hint
+        assert wire["status"] == 403
 
 
 class TestWireContract:

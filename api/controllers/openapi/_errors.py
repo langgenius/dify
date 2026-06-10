@@ -194,3 +194,17 @@ class OpenApiErrorFormatter:
     def _is_loc_part(part: Any) -> bool:
         # bool is an int subclass but is not a valid path segment
         return isinstance(part, (str, int)) and not isinstance(part, bool)
+
+
+class MemberLimitExceeded(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.MEMBER_LIMIT_EXCEEDED
+    description = "Subscription member limit reached."
+    hint = "Upgrade your plan to invite more members or remove an existing member first."
+
+
+class MemberLicenseExceeded(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.MEMBER_LICENSE_EXCEEDED
+    description = "Workspace member license capacity reached."
+    hint = "Contact your workspace administrator to expand the license seat count."
