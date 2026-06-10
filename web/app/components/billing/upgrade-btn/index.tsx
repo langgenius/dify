@@ -8,7 +8,7 @@ import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContext } from '@/context/modal-context'
 import { PremiumBadgeButton } from '../../base/premium-badge'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   style?: CSSProperties
   isFull?: boolean
@@ -18,7 +18,7 @@ type Props = {
   onClick?: () => void
   loc?: string
   labelKey?: Exclude<I18nKeysWithPrefix<'billing'>, 'plans.community.features' | 'plans.enterprise.features' | 'plans.premium.features'>
-}
+}>
 
 type GtagHandler = (command: 'event', action: 'click_upgrade_btn', payload: { loc: string }) => void
 
