@@ -146,6 +146,7 @@ class AccessPolicyRole(BaseModel):
     role_name: str
     binding_id: str
     is_locked: bool = False
+    role_tag: str = ""
 
 
 class AccessPolicyAccount(BaseModel):
