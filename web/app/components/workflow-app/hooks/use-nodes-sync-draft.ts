@@ -52,9 +52,6 @@ export const useNodesSyncDraft = () => {
     if (!appId || !isWorkflowDataLoaded)
       return null
 
-    if (!syncWorkflowDraftHash && nodes.length === 0)
-      return null
-
     const features = featuresStore!.getState().features
     const producedNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {

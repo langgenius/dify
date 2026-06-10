@@ -103,70 +103,32 @@ export const useWorkflowInit = () => {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
             const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
-            if (isAdvancedChat) {
-              workflowStore.setState({
-                notInitialWorkflow: true,
-                showOnboarding: false,
-                shouldAutoOpenStartNodeSelector: false,
-                hasShownOnboarding: false,
-              })
-
-              syncWorkflowDraft({
-                url: `/apps/${appDetail.id}/workflows/draft`,
-                params: {
-                  graph: {
-                    nodes: nodesTemplate,
-                    edges: edgesTemplate,
-                  },
-                  features: {
-                    retriever_resource: { enabled: true },
-                  },
-                  environment_variables: [],
-                  conversation_variables: [],
-                },
-              }).then((res) => {
-                workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-                setSyncWorkflowDraftHash(res.hash)
-                handleGetInitialWorkflowData()
-              })
-
-              return
-            }
-
-            const initialData = {
-              id: '',
-              graph: {
-                nodes: nodesTemplate,
-                edges: edgesTemplate,
-              },
-              hash: '',
-              created_at: 0,
-              created_by: { id: '', name: '', email: '' },
-              updated_at: 0,
-              updated_by: { id: '', name: '', email: '' },
-              tool_published: false,
-              features: {
-                retriever_resource: { enabled: true },
-              },
-              environment_variables: [],
-              conversation_variables: [],
-              version: '',
-              marked_name: '',
-              marked_comment: '',
-            } as FetchWorkflowDraftResponse
-
             workflowStore.setState({
               notInitialWorkflow: true,
               showOnboarding: false,
               shouldAutoOpenStartNodeSelector: false,
               hasSelectedStartNode: false,
-              hasShownOnboarding: true,
-              isWorkflowDataLoaded: true,
+              hasShownOnboarding: !isAdvancedChat,
             })
 
-            setData(initialData)
-            setSyncWorkflowDraftHash('')
-            setIsLoading(false)
+            syncWorkflowDraft({
+              url: `/apps/${appDetail.id}/workflows/draft`,
+              params: {
+                graph: {
+                  nodes: isAdvancedChat ? nodesTemplate : [],
+                  edges: isAdvancedChat ? edgesTemplate : [],
+                },
+                features: {
+                  retriever_resource: { enabled: true },
+                },
+                environment_variables: [],
+                conversation_variables: [],
+              },
+            }).then((res) => {
+              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+              setSyncWorkflowDraftHash(res.hash)
+              handleGetInitialWorkflowData()
+            })
           }
         })
       }

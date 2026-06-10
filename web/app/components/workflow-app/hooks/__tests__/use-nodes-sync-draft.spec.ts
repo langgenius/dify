@@ -321,28 +321,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     }))
   })
 
-  it('should not sync placeholder-only drafts before a backend draft exists', async () => {
-    workflowStoreState = {
-      ...workflowStoreState,
-      syncWorkflowDraftHash: '',
-    }
-    mockGetNodes.mockReturnValue([
-      { id: 'start-placeholder', position: { x: 0, y: 0 }, data: { type: BlockEnum.StartPlaceholder } },
-    ])
-
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false)
-    })
-    act(() => {
-      result.current.syncWorkflowDraftWhenPageClose()
-    })
-
-    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
-  })
-
   it('should emit sync request instead of syncing when current user is collaboration follower', async () => {
     isCollaborationEnabled = true
     mockCollaborationIsConnected.mockReturnValue(true)
