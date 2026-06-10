@@ -12,8 +12,8 @@ _RESERVED_SELECTOR_HEADS: frozenset[str] = frozenset({"sys", "env", "conversatio
 
 _REFERENCE_EXEMPT_NODE_TYPES: frozenset[str] = frozenset(
     {
-        str(BuiltinNodeTypes.VARIABLE_AGGREGATOR),
-        str(BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR),
+        BuiltinNodeTypes.VARIABLE_AGGREGATOR,
+        BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR,
     }
 )
 
