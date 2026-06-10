@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -14,6 +14,7 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentCliToolConfig,
+    AgentFileRefConfig,
     AgentHumanContactConfig,
     AgentKnowledgeDatasetConfig,
     AgentSkillRefConfig,
@@ -154,6 +155,7 @@ class WorkflowAgentComposerResponse(ResponseModel):
     effective_declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
     save_options: list[ComposerSaveStrategy]
     impact_summary: AgentComposerImpactResponse | None = None
+    validation: "ComposerValidationFindingsResponse | None" = None
     app_id: str | None = None
     workflow_id: str | None = None
     node_id: str | None = None
@@ -165,11 +167,32 @@ class AgentAppComposerResponse(ResponseModel):
     active_config_snapshot: AgentConfigSnapshotSummaryResponse
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]
+    validation: "ComposerValidationFindingsResponse | None" = None
+
+
+class ComposerValidationWarningResponse(ResponseModel):
+    code: str
+    surface: str | None = None
+    kind: str | None = None
+    id: str | None = None
+    message: str | None = None
+
+
+class ComposerKnowledgePlaceholderResponse(ResponseModel):
+    id: str
+    placeholder_name: str
+
+
+class ComposerValidationFindingsResponse(ResponseModel):
+    warnings: list[ComposerValidationWarningResponse] = Field(default_factory=list)
+    knowledge_retrieval_placeholder: list[ComposerKnowledgePlaceholderResponse] = Field(default_factory=list)
 
 
 class AgentComposerValidateResponse(ResponseModel):
     result: Literal["success"]
     errors: list[str] = Field(default_factory=list)
+    warnings: list[ComposerValidationWarningResponse] = Field(default_factory=list)
+    knowledge_retrieval_placeholder: list[ComposerKnowledgePlaceholderResponse] = Field(default_factory=list)
 
 
 class AgentComposerDifyToolCandidateResponse(ResponseModel):
@@ -181,6 +204,20 @@ class AgentComposerDifyToolCandidateResponse(ResponseModel):
     plugin_id: str | None = None
 
 
+class AgentComposerSkillCandidateResponse(AgentSkillRefConfig):
+    kind: Literal["skill"] = "skill"
+
+
+class AgentComposerFileCandidateResponse(AgentFileRefConfig):
+    kind: Literal["file"] = "file"
+
+
+AgentComposerSkillFileCandidateResponse = Annotated[
+    AgentComposerSkillCandidateResponse | AgentComposerFileCandidateResponse,
+    Field(discriminator="kind"),
+]
+
+
 class AgentComposerNodeJobCandidatesResponse(ResponseModel):
     previous_node_outputs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declare_output_types: list[DeclaredOutputType] = Field(default_factory=list)
@@ -188,7 +225,7 @@ class AgentComposerNodeJobCandidatesResponse(ResponseModel):
 
 
 class AgentComposerSoulCandidatesResponse(ResponseModel):
-    skills_files: list[AgentSkillRefConfig] = Field(default_factory=list)
+    skills_files: list[AgentComposerSkillFileCandidateResponse] = Field(default_factory=list)
     dify_tools: list[AgentComposerDifyToolCandidateResponse] = Field(default_factory=list)
     cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
     knowledge_datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
@@ -204,3 +241,4 @@ class AgentComposerCandidatesResponse(ResponseModel):
         default_factory=AgentComposerSoulCandidatesResponse
     )
     capabilities: ComposerCandidateCapabilities = Field(default_factory=ComposerCandidateCapabilities)
+    truncated: bool = False
