@@ -2,10 +2,18 @@
 
 ``ErrorBody`` is the only wire shape an /openapi/v1 endpoint may emit for a
 non-2xx response (RFC 8628 device-flow responses excepted — that shape is
-mandated by the OAuth spec). ``OpenApiErrorFormatter`` is injected into
-``ExternalApi`` so every error-handler path funnels through one builder, and
-it also rewrites ``e.data`` because flask-restx ``Api.handle_error`` lets a
-pre-existing ``e.data`` override the registered handler's return value.
+mandated by the OAuth spec)::
+
+    code     str                 semantic error code (OpenApiErrorCode member)
+    message  str                 human-readable summary
+    status   int                 HTTP status, duplicated in the body
+    hint     str | None          actionable next step for the caller
+    details  list[ErrorDetail]   per-field validation breakdown {type, loc, msg}
+
+``OpenApiErrorFormatter`` is injected into ``ExternalApi`` so every
+error-handler path funnels through one builder, and it also rewrites
+``e.data`` because flask-restx ``Api.handle_error`` lets a pre-existing
+``e.data`` override the registered handler's return value.
 """
 
 from enum import StrEnum
