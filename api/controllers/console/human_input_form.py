@@ -11,6 +11,7 @@ from flask_restx import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -21,7 +22,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
