@@ -1,6 +1,8 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { NodeDefault } from '../types'
+import type { AgentRosterNodeData } from './types'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import {
   Combobox,
   ComboboxEmpty,
@@ -21,7 +23,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -36,7 +37,7 @@ function AgentSelectorContent({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: () => void
+  onSelect: (agent: AgentRosterNodeData) => void
 }) {
   const { t } = useTranslation(['agentV2', 'common'])
   const appId = useHooksStore(s => s.configsMap?.flowId)
@@ -63,7 +64,7 @@ function AgentSelectorContent({
     if (!agent)
       return
 
-    onSelect()
+    onSelect(toAgentRosterNodeData(agent))
   }
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen)
@@ -142,14 +143,48 @@ function getAgentValue(agent: AgentInviteOptionResponse) {
   return agent.id
 }
 
-function AgentSelectorItem({
+function toAgentRosterNodeData(agent: AgentInviteOptionResponse): AgentRosterNodeData {
+  return {
+    description: agent.description,
+    icon: agent.icon,
+    icon_background: agent.icon_background,
+    icon_type: agent.icon_type,
+    id: agent.id,
+    name: agent.name,
+  }
+}
+
+function AgentSelectorAvatar({
   agent,
 }: {
   agent: AgentInviteOptionResponse
 }) {
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
-  const iconType = imageUrl ? 'image' : agent.icon_type
 
+  return (
+    <AvatarRoot
+      size="md"
+      className="border-[0.5px] border-divider-regular text-lg"
+      style={{ background: imageUrl ? undefined : (agent.icon_background || '#FFEAD5') }}
+    >
+      {imageUrl && (
+        <AvatarImage
+          src={imageUrl}
+          alt={agent.name}
+        />
+      )}
+      <AvatarFallback size="md" className="text-lg text-text-primary-on-surface">
+        {agent.icon_type === 'emoji' && agent.icon ? agent.icon : agent.name[0]?.toLocaleUpperCase()}
+      </AvatarFallback>
+    </AvatarRoot>
+  )
+}
+
+function AgentSelectorItem({
+  agent,
+}: {
+  agent: AgentInviteOptionResponse
+}) {
   return (
     <ComboboxItem
       value={agent}
@@ -157,14 +192,7 @@ function AgentSelectorItem({
     >
       <ComboboxItemText className="flex items-center gap-2 px-0">
         <span aria-hidden className="shrink-0">
-          <AppIcon
-            size="small"
-            rounded
-            iconType={iconType}
-            icon={agent.icon ?? undefined}
-            background={agent.icon_background}
-            imageUrl={imageUrl}
-          />
+          <AgentSelectorAvatar agent={agent} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate system-sm-medium text-text-secondary">
@@ -184,13 +212,13 @@ export function AgentBlockItem({
   onSelect,
 }: {
   block: NodeDefault
-  onSelect: () => void
+  onSelect: (agent: AgentRosterNodeData) => void
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
-  const handleSelect = () => {
+  const handleSelect = (agent: AgentRosterNodeData) => {
     setOpen(false)
-    onSelect()
+    onSelect(agent)
   }
 
   return (

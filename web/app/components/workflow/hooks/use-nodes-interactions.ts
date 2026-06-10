@@ -7,7 +7,7 @@ import type {
   OnConnectStart,
   ResizeParamsWithDirection,
 } from 'reactflow'
-import type { PluginDefaultValue } from '../block-selector/types'
+import type { BlockDefaultValue } from '../block-selector/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
@@ -1439,7 +1439,7 @@ export const useNodesInteractions = () => {
       currentNodeId: string,
       nodeType: BlockEnum,
       sourceHandle: string,
-      pluginDefaultValue?: PluginDefaultValue,
+      pluginDefaultValue?: BlockDefaultValue,
     ) => {
       if (getNodesReadOnly())
         return

@@ -410,6 +410,7 @@
   "nodes.agent.pluginNotFoundDesc": "此集成安装自 GitHub。请前往集成重新安装",
   "nodes.agent.pluginNotInstalled": "此集成未安装",
   "nodes.agent.pluginNotInstalledDesc": "此集成安装自 GitHub。请前往集成重新安装",
+  "nodes.agent.roster.label": "Agent",
   "nodes.agent.strategy.configureTip": "请配置 Agent 策略。",
   "nodes.agent.strategy.configureTipDesc": "配置完成后，此节点将自动加载剩余配置。策略将影响多步工具推理的机制。",
   "nodes.agent.strategy.label": "Agent 策略",

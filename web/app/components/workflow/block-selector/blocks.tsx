@@ -1,4 +1,4 @@
-import type { NodeDefault } from '../types'
+import type { NodeDefault, OnSelectBlock } from '../types'
 import type { BlockClassificationEnum } from './types'
 import {
   createPreviewCardHandle,
@@ -23,7 +23,7 @@ import { useBlocks } from './hooks'
 
 type BlocksProps = {
   searchText: string
-  onSelect: (type: BlockEnum) => void
+  onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
   blocks?: NodeDefault[]
 }
@@ -115,7 +115,7 @@ const Blocks = ({
                 <AgentBlockItem
                   key={block.metaData.type}
                   block={block}
-                  onSelect={() => onSelect(BlockEnum.Agent)}
+                  onSelect={agent => onSelect(BlockEnum.Agent, { agent_roster: agent })}
                 />
               )
             }

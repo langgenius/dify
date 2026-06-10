@@ -226,7 +226,16 @@ describe('Blocks', () => {
 
     await user.click(screen.getByRole('option', { name: 'Nadia Clarification Drafter' }))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.Agent)
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.Agent, {
+      agent_roster: {
+        description: 'Clarification Drafter',
+        icon: 'A',
+        icon_background: '#E9D7FE',
+        icon_type: 'emoji',
+        id: 'agent-1',
+        name: 'Nadia',
+      },
+    })
     expect(queryMocks.inviteOptionsQueryFn).toHaveBeenCalledWith({
       input: {
         query: {

@@ -1,3 +1,4 @@
+import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -75,7 +76,18 @@ export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id
   plugin_unique_identifier?: string
 }
 
+export type AgentRosterNodeData = Pick<
+  AgentInviteOptionResponse,
+  'description' | 'icon' | 'icon_background' | 'icon_type' | 'id' | 'name'
+>
+
+export type AgentDefaultValue = {
+  agent_roster: AgentRosterNodeData
+}
+
 export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | TriggerDefaultValue
+
+export type BlockDefaultValue = PluginDefaultValue | AgentDefaultValue
 
 export type ToolValue = {
   provider_name: string

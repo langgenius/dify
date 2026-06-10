@@ -274,6 +274,33 @@ describe('agent/panel', () => {
     expect(mockResetEditor).toHaveBeenCalledTimes(1)
   })
 
+  it('renders selected roster agent information', () => {
+    mockUseConfig.mockReturnValue(createConfigResult({
+      inputs: createData({
+        agent_roster: {
+          id: 'agent-1',
+          name: 'Nadia',
+          description: 'Clarification Drafter',
+          icon: '🧑‍🚀',
+          icon_background: '#E9D7FE',
+          icon_type: 'emoji',
+        },
+      }),
+    }))
+
+    render(
+      <Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
+    expect(screen.getByText('Nadia')).toBeInTheDocument()
+    expect(screen.getByText('Clarification Drafter')).toBeInTheDocument()
+  })
+
   it('hides memory config when chat mode support is unavailable', () => {
     mockUseConfig.mockReturnValue(createConfigResult({
       isChatMode: false,

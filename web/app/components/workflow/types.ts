@@ -6,7 +6,7 @@ import type {
 } from 'reactflow'
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import type { BlockClassificationEnum, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { BlockClassificationEnum, BlockDefaultValue, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type {
   DefaultValueForm,
   ErrorHandleTypeEnum,
@@ -343,7 +343,7 @@ export type NodeDefault<T = {}> = {
   }) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, defaultValue?: BlockDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -377,7 +377,7 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    pluginDefaultValue?: PluginDefaultValue
+    pluginDefaultValue?: BlockDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string
