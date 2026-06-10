@@ -1,7 +1,12 @@
 'use client'
 
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/client'
 
 type AgentConfigurePageProps = {
@@ -12,6 +17,7 @@ export function AgentConfigurePage({
   agentId,
 }: AgentConfigurePageProps) {
   const { t } = useTranslation('agentV2')
+  const [selectedModel, setSelectedModel] = useState<DefaultModel>()
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
       params: {
@@ -19,6 +25,18 @@ export function AgentConfigurePage({
       },
     },
   }))
+  const {
+    data: defaultTextGenerationModel,
+  } = useDefaultModel(ModelTypeEnum.textGeneration)
+  const currentModel = selectedModel ?? (defaultTextGenerationModel
+    ? {
+        provider: defaultTextGenerationModel.provider.provider,
+        model: defaultTextGenerationModel.model,
+      }
+    : undefined)
+  const {
+    textGenerationModelList,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
 
   return (
     <section
@@ -29,9 +47,22 @@ export function AgentConfigurePage({
       {/* Orchestrate configuration panel */}
       <div className="flex min-w-[360px] flex-[0_0_42%] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg">
         {/* Orchestrate header */}
-        <div className="flex h-14 shrink-0 items-center gap-3 border-b border-divider-subtle px-4">
-          <div className="h-5 w-30 rounded-md bg-state-base-hover" />
-          <div className="ml-auto h-8 w-31 rounded-lg bg-state-base-hover" />
+        <div className="flex shrink-0 items-center gap-1 px-4 py-2">
+          <div className="flex min-w-0 flex-1 flex-col justify-center">
+            <h2 className="truncate title-xl-semi-bold text-text-primary">
+              {t('agentDetail.configure.orchestrate')}
+            </h2>
+          </div>
+          <div className="shrink-0">
+            <ModelSelector
+              defaultModel={currentModel}
+              modelList={textGenerationModelList}
+              triggerClassName="h-8! max-w-48 rounded-lg!"
+              popupClassName="w-[432px] max-w-[min(432px,calc(100vw-32px))]"
+              showModelMeta={false}
+              onSelect={setSelectedModel}
+            />
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
