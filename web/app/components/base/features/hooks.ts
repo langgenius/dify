@@ -1,16 +1,12 @@
+import type { StoreApi } from 'zustand'
 import type { FeatureStoreState } from './store'
-import { useContext } from 'react'
-import { useStore } from 'zustand'
+import { useContextStore, useContextStoreApi } from '@/stores/create-context-store'
 import { FeaturesContext } from './context'
 
 export function useFeatures<T>(selector: (state: FeatureStoreState) => T): T {
-  const store = useContext(FeaturesContext)
-  if (!store)
-    throw new Error('Missing FeaturesContext.Provider in the tree')
-
-  return useStore(store, selector)
+  return useContextStore(FeaturesContext, selector)
 }
 
-export function useFeaturesStore() {
-  return useContext(FeaturesContext)
+export function useFeaturesStore(): StoreApi<FeatureStoreState> {
+  return useContextStoreApi(FeaturesContext)
 }
