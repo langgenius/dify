@@ -135,7 +135,7 @@ export function FieldCollapse({
             <CollapseTitle>{title}</CollapseTitle>
             <CollapseIndicator />
           </CollapseTrigger>
-          {actions && (
+          {actions != null && (
             <CollapseActions>
               {actions}
             </CollapseActions>
