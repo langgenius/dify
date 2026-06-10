@@ -343,11 +343,7 @@ class RunCancelledEvent(BaseRunEvent):
 
 
 RunEvent: TypeAlias = Annotated[
-    RunStartedEvent
-    | PydanticAIStreamRunEvent
-    | RunSucceededEvent
-    | RunFailedEvent
-    | RunCancelledEvent,
+    RunStartedEvent | PydanticAIStreamRunEvent | RunSucceededEvent | RunFailedEvent | RunCancelledEvent,
     Field(discriminator="type"),
 ]
 RUN_EVENT_ADAPTER: TypeAdapter[RunEvent] = TypeAdapter(RunEvent)

@@ -37,7 +37,9 @@ def test_ask_human_layer_exposes_one_external_tool_and_prompt_hint() -> None:
     assert prepare is not None
     prepared_or_awaitable = prepare(
         cast(Any, None),
-        ToolDefinition(name=tool.name, description=tool.description, parameters_json_schema=tool.function_schema.json_schema),
+        ToolDefinition(
+            name=tool.name, description=tool.description, parameters_json_schema=tool.function_schema.json_schema
+        ),
     )
     prepared = (
         asyncio.run(_await_tool_definition(cast(Awaitable[ToolDefinition | None], prepared_or_awaitable)))
@@ -86,7 +88,16 @@ def test_ask_human_layer_normalizes_default_action_in_deferred_payload() -> None
         "title": None,
         "question": "Need a human answer",
         "markdown": None,
-        "fields": [{"type": "paragraph", "name": "comment", "label": "Comment", "required": False, "placeholder": None, "default": None}],
+        "fields": [
+            {
+                "type": "paragraph",
+                "name": "comment",
+                "label": "Comment",
+                "required": False,
+                "placeholder": None,
+                "default": None,
+            }
+        ],
         "actions": [{"id": "submit", "label": "Submit", "style": "primary"}],
         "urgency": "normal",
     }

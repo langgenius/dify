@@ -110,9 +110,7 @@ class DifyAskHumanLayer(PydanticAILayer[NoLayerDeps, object, DifyAskHumanLayerCo
 
         call = requests.calls[0]
         if call.tool_name != self.config.tool_name:
-            raise ValueError(
-                f"ask_human deferred tool name must be '{self.config.tool_name}', got '{call.tool_name}'."
-            )
+            raise ValueError(f"ask_human deferred tool name must be '{self.config.tool_name}', got '{call.tool_name}'.")
 
         args = self._validate_and_normalize_tool_args(
             title=None,

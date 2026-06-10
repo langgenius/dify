@@ -297,7 +297,11 @@ def _history_session_snapshot(
             lifecycle_state=LifecycleState.SUSPENDED,
             runtime_state=PydanticAIHistoryRuntimeState(messages=messages).model_dump(mode="json"),
         ),
-        *( [LayerSessionSnapshot(name="ask_human", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})] if include_ask_human else [] ),
+        *(
+            [LayerSessionSnapshot(name="ask_human", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})]
+            if include_ask_human
+            else []
+        ),
         LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
         LayerSessionSnapshot(
             name=DIFY_AGENT_MODEL_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
@@ -709,7 +713,9 @@ def test_runner_rejects_deferred_tool_call_without_history_layer(monkeypatch: py
         async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
             return FakeAgentRunResult(
                 DeferredToolRequests(
-                    calls=[ToolCallPart(tool_name="ask_human", args={"question": "Need owner"}, tool_call_id="tool-call-1")]
+                    calls=[
+                        ToolCallPart(tool_name="ask_human", args={"question": "Need owner"}, tool_call_id="tool-call-1")
+                    ]
                 ),
                 [],
             )
@@ -737,7 +743,9 @@ def test_runner_rejects_deferred_tool_call_without_history_layer(monkeypatch: py
     assert [event.type for event in sink.events["run-ask-human-no-history"]] == ["run_started", "run_failed"]
 
 
-def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     agent_run_called = False
 
     def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
@@ -832,7 +840,9 @@ def test_runner_rejects_deferred_approval_requests(monkeypatch: pytest.MonkeyPat
             return FakeAgentRunResult(
                 DeferredToolRequests(
                     approvals=[
-                        ToolCallPart(tool_name="ask_human", args={"question": "Need approval"}, tool_call_id="tool-call-1")
+                        ToolCallPart(
+                            tool_name="ask_human", args={"question": "Need approval"}, tool_call_id="tool-call-1"
+                        )
                     ]
                 ),
                 [],
