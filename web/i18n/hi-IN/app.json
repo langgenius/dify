@@ -178,6 +178,7 @@
   "newApp.showTemplates": "मैं टेम्पलेट से चुनना चाहता हूँ",
   "newApp.startFromBlank": "रिक्त से बनाएँ",
   "newApp.startFromTemplate": "टेम्पलेट से बनाएँ",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "इस टेम्पलेट का उपयोग करें",
   "newApp.workflowShortDescription": "बुद्धिमान स्वचालन के लिए एजेंटिक प्रवाह",
   "newApp.workflowUserDescription": "ड्रैग-एंड-ड्रॉप सरलता के साथ स्वायत्त AI वर्कफ़्लो का दृश्य निर्माण करें।",

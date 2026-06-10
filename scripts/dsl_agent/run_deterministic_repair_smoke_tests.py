@@ -4,7 +4,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import yaml
+
 from deterministic_repair import repair_yaml_text
+from run_validator_smoke_tests import human_input_workflow_doc
 from validator import validate_yaml_text
 
 
@@ -82,8 +85,37 @@ def assert_suspicious_model_repair() -> dict[str, object]:
     return {"name": "suspicious_model_repair", "valid": True, "fixes": fixes}
 
 
+def assert_human_input_handle_repair() -> dict[str, object]:
+    doc = human_input_workflow_doc()
+    doc["workflow"]["graph"]["edges"][1]["sourceHandle"] = "Approve"
+    doc["workflow"]["graph"]["edges"][1]["id"] = "review-Approve-end_approved-target"
+    yaml_text = yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
+    validation = validate_yaml_text(yaml_text).to_dict()
+    if validation.get("valid"):
+        raise AssertionError("broken human-input handle fixture should start invalid")
+
+    repaired, report = repair_yaml_text(yaml_text, validation=validation)
+    final_validation = validate_yaml_text(repaired).to_dict()
+    fixes = report.get("fixes")
+    if not report.get("changed") or not final_validation.get("valid"):
+        raise AssertionError(f"human-input handle repair failed: {report}")
+    if "sourceHandle: Approve" in repaired:
+        raise AssertionError("human-input handle repair left the button title as sourceHandle")
+    if "sourceHandle: approve" not in repaired:
+        raise AssertionError("human-input handle repair did not apply the expected action id")
+    if not isinstance(fixes, list) or not any(fix.get("type") == "human_input_handle_unknown" for fix in fixes):
+        raise AssertionError(f"human-input handle repair did not report expected fix: {report}")
+
+    return {"name": "human_input_handle_repair", "valid": True, "fixes": fixes}
+
+
 def main() -> int:
-    cases = [assert_selector_repair(), assert_code_runtime_repair(), assert_suspicious_model_repair()]
+    cases = [
+        assert_selector_repair(),
+        assert_code_runtime_repair(),
+        assert_suspicious_model_repair(),
+        assert_human_input_handle_repair(),
+    ]
     print(json.dumps({"valid": True, "cases": cases}, ensure_ascii=False, indent=2))
     return 0
 

@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Voglio scegliere da un modello",
   "newApp.startFromBlank": "Crea da zero",
   "newApp.startFromTemplate": "Crea da modello",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Usa questo modello",
   "newApp.workflowShortDescription": "Flusso agentico per automazioni intelligenti",
   "newApp.workflowUserDescription": "Crea flussi di lavoro AI autonomi visivamente con la semplicità del drag-and-drop.",

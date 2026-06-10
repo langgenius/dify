@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Я хочу выбрать из шаблона",
   "newApp.startFromBlank": "Создать с нуля",
   "newApp.startFromTemplate": "Создать из шаблона",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Использовать этот шаблон",
   "newApp.workflowShortDescription": "Агентный поток для интеллектуальных автоматизаций",
   "newApp.workflowUserDescription": "Визуально создавайте автономные ИИ-процессы простым перетаскиванием.",

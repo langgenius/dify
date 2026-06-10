@@ -178,6 +178,7 @@
   "newApp.showTemplates": "ฉันต้องการเลือกจากเทมเพลต",
   "newApp.startFromBlank": "สร้างโปรเจกต์ปล่าว",
   "newApp.startFromTemplate": "สร้างจากเทมเพลต",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "ใช้เทมเพลตนี้",
   "newApp.workflowShortDescription": "โฟลว์อัตโนมัติสำหรับระบบอัจฉริยะ",
   "newApp.workflowUserDescription": "สร้างโฟลว์ AI อัตโนมัติด้วยระบบลากและวางอย่างง่าย",

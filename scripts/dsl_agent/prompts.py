@@ -16,6 +16,7 @@ Hard rules:
 - Every edge should include data.sourceType and data.targetType.
 - if-else edge sourceHandle values must match case_id values or false.
 - question-classifier edge sourceHandle values must match class ids.
+- human-input edge sourceHandle values must match user_actions id values, not button titles.
 - Variable interpolation uses {{#node_id.field#}} or {{#sys.query#}}.
 - Selector arrays use [node_id, field].
 - Workflow user inputs belong in the start node data.variables, not workflow.conversation_variables.

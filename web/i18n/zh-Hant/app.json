@@ -178,6 +178,7 @@
   "newApp.showTemplates": "我想從範例模板中選擇",
   "newApp.startFromBlank": "建立空白應用",
   "newApp.startFromTemplate": "從應用模版建立",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "使用該模板",
   "newApp.workflowShortDescription": "用於單輪自動化任務的編排",
   "newApp.workflowUserDescription": "用於自動化和批處理等單輪任務的工作流編排。",

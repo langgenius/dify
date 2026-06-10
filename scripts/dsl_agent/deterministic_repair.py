@@ -36,6 +36,17 @@ def graph_nodes(data: dict[str, Any]) -> list[dict[str, Any]]:
     return [node for node in nodes if isinstance(node, dict)] if isinstance(nodes, list) else []
 
 
+def graph_edges(data: dict[str, Any]) -> list[dict[str, Any]]:
+    workflow = data.get("workflow") if isinstance(data.get("workflow"), dict) else {}
+    graph = workflow.get("graph") if isinstance(workflow.get("graph"), dict) else {}
+    edges = graph.get("edges")
+    return [edge for edge in edges if isinstance(edge, dict)] if isinstance(edges, list) else []
+
+
+def normalized_token(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").lower())
+
+
 def first_start_selector(nodes: list[dict[str, Any]]) -> list[str] | None:
     for node in nodes:
         if node_type(node) != "start":
@@ -209,6 +220,62 @@ def repair_suspicious_llm_models(data: dict[str, Any], fixes: list[dict[str, Any
         )
 
 
+def repair_unknown_human_input_handles(data: dict[str, Any], fixes: list[dict[str, Any]]) -> None:
+    actions_by_node: dict[str, dict[str, str]] = {}
+    single_action_by_node: dict[str, str] = {}
+    for node in graph_nodes(data):
+        node_id = node.get("id")
+        if not isinstance(node_id, str) or node_type(node) != "human-input":
+            continue
+        node_data = node.get("data") if isinstance(node.get("data"), dict) else {}
+        user_actions = node_data.get("user_actions")
+        if not isinstance(user_actions, list):
+            continue
+        allowed_ids: list[str] = []
+        aliases: dict[str, str] = {}
+        for action in user_actions:
+            if not isinstance(action, dict) or not action.get("id"):
+                continue
+            action_id = str(action["id"])
+            allowed_ids.append(action_id)
+            aliases[normalized_token(action_id)] = action_id
+            if action.get("title"):
+                aliases[normalized_token(action["title"])] = action_id
+        if aliases:
+            actions_by_node[node_id] = aliases
+        if len(allowed_ids) == 1:
+            single_action_by_node[node_id] = allowed_ids[0]
+
+    if not actions_by_node:
+        return
+
+    for edge in graph_edges(data):
+        source = edge.get("source")
+        if not isinstance(source, str) or source not in actions_by_node:
+            continue
+        old_handle = str(edge.get("sourceHandle", "source"))
+        replacement = actions_by_node[source].get(normalized_token(old_handle))
+        if not replacement and source in single_action_by_node:
+            replacement = single_action_by_node[source]
+        if not replacement or replacement == old_handle:
+            continue
+
+        edge["sourceHandle"] = replacement
+        target = edge.get("target")
+        target_handle = edge.get("targetHandle", "target")
+        if isinstance(target, str):
+            edge["id"] = f"{source}-{replacement}-{target}-{target_handle}"
+        fixes.append(
+            {
+                "type": "human_input_handle_unknown",
+                "edge_id": edge.get("id"),
+                "source": source,
+                "old_handle": old_handle,
+                "new_handle": replacement,
+            }
+        )
+
+
 def repair_yaml_text(
     yaml_text: str,
     *,
@@ -227,6 +294,7 @@ def repair_yaml_text(
     errors: list[dict[str, Any]] = []
     repair_unknown_selectors(data, fixes)
     repair_suspicious_llm_models(data, fixes)
+    repair_unknown_human_input_handles(data, fixes)
     if runtime_evidence:
         repair_failed_code_nodes(data, runtime_evidence, fixes)
         repair_failed_llm_models(data, runtime_evidence, fixes)

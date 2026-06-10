@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Quiero elegir una plantilla",
   "newApp.startFromBlank": "Crear desde cero",
   "newApp.startFromTemplate": "Crear desde plantilla",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Usar esta plantilla",
   "newApp.workflowShortDescription": "Flujo agéntico para automatizaciones inteligentes",
   "newApp.workflowUserDescription": "Construya flujos de trabajo autónomos de IA con la simplicidad de arrastrar y soltar.",

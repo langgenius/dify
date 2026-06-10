@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Bir şablondan seçmek istiyorum",
   "newApp.startFromBlank": "Boş Oluştur",
   "newApp.startFromTemplate": "Şablondan Oluştur",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Bu şablonu kullan",
   "newApp.workflowShortDescription": "Akıllı otomasyonlar için ajantik akış",
   "newApp.workflowUserDescription": "Sürükle-bırak kolaylığıyla görsel olarak otonom yapay zeka iş akışları oluşturun.",

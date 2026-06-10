@@ -79,9 +79,10 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel, onSelect }: { defaultModel?: { provider: string, model: string }, onSelect: (model: { provider: string, model: string }) => void }) => (
+  default: ({ defaultModel, onSelect, popupClassName }: { defaultModel?: { provider: string, model: string }, onSelect: (model: { provider: string, model: string }) => void, popupClassName?: string }) => (
     <div>
       <div data-testid="selected-model">{defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'none'}</div>
+      <div data-testid="model-selector-popup-class">{popupClassName}</div>
       <button
         type="button"
         onClick={() => onSelect({ provider: 'langgenius/openai/openai', model: 'gpt-4o' })}
@@ -216,6 +217,7 @@ describe('CreateFromAIModal', () => {
     )
 
     expect(screen.getByTestId('selected-model')).toHaveTextContent('langgenius/openai/openai/gpt-5.5')
+    expect(screen.getByTestId('model-selector-popup-class')).toHaveTextContent('z-10000')
 
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
       target: { value: 'Summarize customer support tickets.' },

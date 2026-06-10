@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Ich möchte aus einer Vorlage wählen",
   "newApp.startFromBlank": "Aus Leer erstellen",
   "newApp.startFromTemplate": "Aus Vorlage erstellen",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Diese Vorlage verwenden",
   "newApp.workflowShortDescription": "Agentischer Ablauf für intelligente Automatisierungen",
   "newApp.workflowUserDescription": "Autonome KI-Arbeitsabläufe visuell per Drag-and-Drop erstellen.",

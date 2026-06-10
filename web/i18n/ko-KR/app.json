@@ -178,6 +178,7 @@
   "newApp.showTemplates": "템플릿 선택",
   "newApp.startFromBlank": "빈 상태로 시작",
   "newApp.startFromTemplate": "템플릿에서 시작",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "이 템플릿 사용",
   "newApp.workflowShortDescription": "지능형 자동화를 위한 에이전트 플로우",
   "newApp.workflowUserDescription": "드래그 앤 드롭으로 자율 AI 워크플로우를 시각적으로 구축",

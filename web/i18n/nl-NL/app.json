@@ -178,6 +178,7 @@
   "newApp.showTemplates": "I want to choose from a template",
   "newApp.startFromBlank": "Create from Blank",
   "newApp.startFromTemplate": "Create from Template",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Use this template",
   "newApp.workflowShortDescription": "Agentic flow for intelligent automations",
   "newApp.workflowUserDescription": "Visually build autonomous AI workflows with drag-and-drop simplicity.",

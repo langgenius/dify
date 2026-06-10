@@ -178,6 +178,7 @@
   "newApp.showTemplates": "أريد الاختيار من قالب",
   "newApp.startFromBlank": "إنشاء من البداية",
   "newApp.startFromTemplate": "إنشاء من قالب",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "استخدم هذا القالب",
   "newApp.workflowShortDescription": "تدفق وكيل للأتمتة الذكية",
   "newApp.workflowUserDescription": "قم ببناء تدفقات عمل AI مستقلة بشكل مرئي مع بساطة السحب والإفلات.",

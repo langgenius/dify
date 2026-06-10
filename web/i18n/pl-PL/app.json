@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Chcę wybrać z szablonu",
   "newApp.startFromBlank": "Utwórz od podstaw",
   "newApp.startFromTemplate": "Utwórz z szablonu",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Użyj tego szablonu",
   "newApp.workflowShortDescription": "Agentowy przepływ dla inteligentnych automatyzacji",
   "newApp.workflowUserDescription": "Twórz autonomiczne przepływy AI wizualnie, z prostotą przeciągnij i upuść.",

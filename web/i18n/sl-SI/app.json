@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Želim izbrati iz predloge",
   "newApp.startFromBlank": "Ustvari iz nič",
   "newApp.startFromTemplate": "Ustvari iz predloge",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Uporabi to predlogo",
   "newApp.workflowShortDescription": "Agentni tok za inteligentne avtomatizacije",
   "newApp.workflowUserDescription": "Vizualno ustvarjajte avtonomne AI poteke s preprostim vlečenjem in spuščanjem.",

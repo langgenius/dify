@@ -752,6 +752,21 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
                     if handle not in allowed:
                         report.add("error", "classifier_handle_unknown", f"$.workflow.graph.edges[source={node_id}]", f"edge sourceHandle `{handle}` does not match classifier class ids")
 
+        if typ == "human-input":
+            user_actions = data_block.get("user_actions")
+            if not isinstance(user_actions, list) or not user_actions:
+                report.add("error", "human_input_actions_missing", f"{path}.data.user_actions", "human-input requires non-empty user_actions")
+            else:
+                allowed = set()
+                for action_index, action in enumerate(user_actions):
+                    if not isinstance(action, dict) or not action.get("id"):
+                        report.add("error", "human_input_action_id_missing", f"{path}.data.user_actions[{action_index}]", "each human-input action needs id")
+                        continue
+                    allowed.add(str(action["id"]))
+                for handle in sorted(outgoing_handles.get(str(node_id), set())):
+                    if handle not in allowed:
+                        report.add("error", "human_input_handle_unknown", f"$.workflow.graph.edges[source={node_id}]", f"edge sourceHandle `{handle}` does not match human-input user_actions")
+
         if typ == "code":
             validate_code_node(report, data_block, path, node_ids)
 

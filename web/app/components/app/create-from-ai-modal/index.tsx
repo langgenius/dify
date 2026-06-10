@@ -355,6 +355,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
         className="w-[560px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
         isShow={show}
         onClose={noop}
+        overflowVisible
       >
         <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
           {t('newApp.startFromAI', { ns: 'app' })}
@@ -390,7 +391,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                 defaultModel={activeModel}
                 modelList={modelList}
                 triggerClassName="h-10"
-                popupClassName="z-50"
+                popupClassName="z-10000"
                 onSelect={setSelectedModel}
               />
             </div>

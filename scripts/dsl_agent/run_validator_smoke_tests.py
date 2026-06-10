@@ -206,6 +206,88 @@ def agent_workflow_doc() -> dict[str, Any]:
     return doc
 
 
+def human_input_workflow_doc() -> dict[str, Any]:
+    doc = base_workflow_doc()
+    doc["dependencies"] = []
+    graph = doc["workflow"]["graph"]
+    graph["edges"] = [
+        {
+            "id": "start-source-review-target",
+            "source": "start",
+            "sourceHandle": "source",
+            "target": "review",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "start", "targetType": "human-input", "isInLoop": False},
+        },
+        {
+            "id": "review-approve-end_approved-target",
+            "source": "review",
+            "sourceHandle": "approve",
+            "target": "end_approved",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "human-input", "targetType": "end", "isInLoop": False},
+        },
+        {
+            "id": "review-reject-end_rejected-target",
+            "source": "review",
+            "sourceHandle": "reject",
+            "target": "end_rejected",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "human-input", "targetType": "end", "isInLoop": False},
+        },
+    ]
+    graph["nodes"] = [
+        {
+            "id": "start",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 0, "y": 0},
+            "data": {"title": "Start", "type": "start", "variables": []},
+        },
+        {
+            "id": "review",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 300, "y": 0},
+            "data": {
+                "title": "Human Review",
+                "type": "human-input",
+                "delivery_methods": [],
+                "form_content": "Please review the generated draft.",
+                "inputs": [],
+                "timeout": 3,
+                "timeout_unit": "day",
+                "user_actions": [
+                    {"id": "approve", "title": "Approve", "button_style": "default"},
+                    {"id": "reject", "title": "Reject", "button_style": "default"},
+                ],
+            },
+        },
+        {
+            "id": "end_approved",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 600, "y": -100},
+            "data": {"title": "Approved", "type": "end", "outputs": []},
+        },
+        {
+            "id": "end_rejected",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 600, "y": 100},
+            "data": {"title": "Rejected", "type": "end", "outputs": []},
+        },
+    ]
+    return doc
+
+
 def malformed_native_shape_doc() -> dict[str, Any]:
     return {
         "version": "0.6.0",
@@ -337,6 +419,7 @@ def main() -> int:
     valid_doc = base_workflow_doc()
     valid_llm_doc = llm_workflow_doc()
     valid_agent_doc = agent_workflow_doc()
+    valid_human_input_doc = human_input_workflow_doc()
 
     missing_dependency_doc = deepcopy(valid_doc)
     missing_dependency_doc["dependencies"] = []
@@ -362,13 +445,24 @@ def main() -> int:
     malformed_native_doc = malformed_native_shape_doc()
     malformed_code_doc = malformed_code_node_doc()
 
+    invalid_human_input_handle_doc = deepcopy(valid_human_input_doc)
+    invalid_human_input_handle_doc["workflow"]["graph"]["edges"][1]["sourceHandle"] = "send"
+    invalid_human_input_handle_doc["workflow"]["graph"]["edges"][1]["id"] = "review-send-end_approved-target"
+
     cases = [
         assert_case("valid_plugin_dependency", valid_doc, set(), True),
         assert_case("valid_model_dependency", valid_llm_doc, set(), True),
         assert_case("valid_agent_dependency", valid_agent_doc, set(), True),
+        assert_case("valid_human_input_actions", valid_human_input_doc, set(), True),
         assert_case("missing_plugin_dependency", missing_dependency_doc, {"plugin_dependency_missing"}, False),
         assert_case("missing_model_dependency", missing_model_dependency_doc, {"model_dependency_missing"}, False),
         assert_case("missing_agent_dependency", missing_agent_dependency_doc, {"plugin_dependency_missing"}, False),
+        assert_case(
+            "human_input_handle_unknown",
+            invalid_human_input_handle_doc,
+            {"human_input_handle_unknown"},
+            False,
+        ),
         assert_case(
             "plugin_dependency_identifier_mismatch",
             mismatch_doc,

@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Saya ingin memilih dari templat",
   "newApp.startFromBlank": "Buat dari Kosong",
   "newApp.startFromTemplate": "Buat dari Template",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Gunakan template ini",
   "newApp.workflowShortDescription": "Aliran agen untuk otomatisasi cerdas",
   "newApp.workflowUserDescription": "Bangun alur kerja AI otonom secara visual dengan kesederhanaan seret dan lepas.",

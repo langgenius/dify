@@ -178,6 +178,7 @@
   "newApp.showTemplates": "テンプレートから選択したい",
   "newApp.startFromBlank": "最初から作成",
   "newApp.startFromTemplate": "テンプレートから作成",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "このテンプレートを使用する",
   "newApp.workflowShortDescription": "インテリジェントな自動化のためのエージェントフロー",
   "newApp.workflowUserDescription": "ドラッグ＆ドロップの簡易性で自律型 AI ワークフローを視覚的に構築",

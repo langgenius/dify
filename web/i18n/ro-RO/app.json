@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Vreau să aleg dintr-un șablon",
   "newApp.startFromBlank": "Creează din Nou",
   "newApp.startFromTemplate": "Creează din Șablon",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Folosește acest șablon",
   "newApp.workflowShortDescription": "Flux agentic pentru automatizări inteligente",
   "newApp.workflowUserDescription": "Construiește vizual fluxuri AI autonome cu simplitatea drag-and-drop.",

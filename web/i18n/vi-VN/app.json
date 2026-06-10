@@ -178,6 +178,7 @@
   "newApp.showTemplates": "Tôi muốn chọn từ mẫu",
   "newApp.startFromBlank": "Tạo mới",
   "newApp.startFromTemplate": "Tạo từ mẫu",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "Sử dụng mẫu này",
   "newApp.workflowShortDescription": "Luồng tác nhân cho tự động hóa thông minh",
   "newApp.workflowUserDescription": "Xây dựng trực quan quy trình AI tự động bằng kéo thả đơn giản.",

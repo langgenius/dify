@@ -178,6 +178,7 @@
   "newApp.showTemplates": "می‌خواهم از یک قالب انتخاب کنم",
   "newApp.startFromBlank": "ایجاد از خالی",
   "newApp.startFromTemplate": "ایجاد از قالب",
+  "newApp.startFromAI": "Create with AI",
   "newApp.useTemplate": "استفاده از این قالب",
   "newApp.workflowShortDescription": "جریان عاملی برای اتوماسیون‌های هوشمند",
   "newApp.workflowUserDescription": "ساخت بصری گردش‌کارهای خودکار هوش مصنوعی با سادگی کشیدن و رها کردن",
