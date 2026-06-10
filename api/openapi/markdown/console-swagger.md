@@ -11829,6 +11829,7 @@ Get banner list
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
+| validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 
 #### AgentAppFeaturesPayload
@@ -11924,6 +11925,7 @@ Risk marker for CLI tool bootstrap commands.
 | allowed_node_job_candidates | [AgentComposerNodeJobCandidatesResponse](#agentcomposernodejobcandidatesresponse) |  | No |
 | allowed_soul_candidates | [AgentComposerSoulCandidatesResponse](#agentcomposersoulcandidatesresponse) |  | No |
 | capabilities | [ComposerCandidateCapabilities](#composercandidatecapabilities) |  | No |
+| truncated | boolean |  | No |
 | variant | [ComposerVariant](#composervariant) |  | Yes |
 
 #### AgentComposerDifyToolCandidateResponse
@@ -11936,6 +11938,22 @@ Risk marker for CLI tool bootstrap commands.
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
+
+#### AgentComposerFileCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_id | string |  | No |
+| id | string |  | No |
+| kind | string |  | No |
+| name | string |  | No |
+| reference | string |  | No |
+| remote_url | string |  | No |
+| tenant_id | string |  | No |
+| transfer_method | string |  | No |
+| type | string |  | No |
+| upload_file_id | string |  | No |
+| url | string |  | No |
 
 #### AgentComposerImpactBindingResponse
 
@@ -11961,6 +11979,17 @@ Risk marker for CLI tool bootstrap commands.
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | previous_node_outputs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 
+#### AgentComposerSkillCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| file_id | string |  | No |
+| id | string |  | No |
+| kind | string |  | No |
+| name | string |  | No |
+| path | string |  | No |
+
 #### AgentComposerSoulCandidatesResponse
 
 | Name | Type | Description | Required |
@@ -11969,7 +11998,7 @@ Risk marker for CLI tool bootstrap commands.
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
-| skills_files | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
+| skills_files | [  ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -11984,7 +12013,9 @@ Risk marker for CLI tool bootstrap commands.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | errors | [ string ] |  | No |
+| knowledge_retrieval_placeholder | [ [ComposerKnowledgePlaceholderResponse](#composerknowledgeplaceholderresponse) ] |  | No |
 | result | string |  | Yes |
+| warnings | [ [ComposerValidationWarningResponse](#composervalidationwarningresponse) ] |  | No |
 
 #### AgentConfigRevisionOperation
 
@@ -13307,6 +13338,13 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | human_roster_available | boolean |  | No |
 
+#### ComposerKnowledgePlaceholderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| placeholder_name | string |  | Yes |
+
 #### ComposerSavePayload
 
 | Name | Type | Description | Required |
@@ -13334,6 +13372,23 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | locked | boolean |  | No |
 | unlocked_from_version_id | string |  | No |
+
+#### ComposerValidationFindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| knowledge_retrieval_placeholder | [ [ComposerKnowledgePlaceholderResponse](#composerknowledgeplaceholderresponse) ] |  | No |
+| warnings | [ [ComposerValidationWarningResponse](#composervalidationwarningresponse) ] |  | No |
+
+#### ComposerValidationWarningResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| id | string |  | No |
+| kind | string |  | No |
+| message | string |  | No |
+| surface | string |  | No |
 
 #### ComposerVariant
 
@@ -17611,6 +17666,7 @@ How a workflow node is bound to an Agent.
 | node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | Yes |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | soul_lock | [AgentComposerSoulLockResponse](#agentcomposersoullockresponse) |  | Yes |
+| validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 | workflow_id | string |  | No |
 
