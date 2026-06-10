@@ -63,6 +63,9 @@ describe('useInspectVarsCrud', () => {
 
   it('should pass the flow id to shared variable queries for app flows', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
+      initialStoreState: {
+        syncWorkflowDraftHash: 'hash-1',
+      },
       hooksStoreProps: {
         configsMap: {
           flowId: 'app-1',
@@ -76,6 +79,24 @@ describe('useInspectVarsCrud', () => {
     expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.appFlow, 'app-1')
   })
 
+  it('should use an empty flow id for app flow shared variable queries before draft exists', () => {
+    renderWorkflowHook(() => useInspectVarsCrud(), {
+      initialStoreState: {
+        syncWorkflowDraftHash: '',
+      },
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.appFlow, '')
+    expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.appFlow, '')
+  })
+
   it('should append query and files vars to the start node and keep other system vars separate', () => {
     const hasNodeInspectVars = vi.fn(() => true)
     const deleteAllInspectorVars = vi.fn()
@@ -83,6 +104,7 @@ describe('useInspectVarsCrud', () => {
 
     const { result } = renderWorkflowHook(() => useInspectVarsCrud(), {
       initialStoreState: {
+        syncWorkflowDraftHash: 'hash-1',
         nodesWithInspectVars: [{
           nodeId: 'start-node',
           nodePayload: {

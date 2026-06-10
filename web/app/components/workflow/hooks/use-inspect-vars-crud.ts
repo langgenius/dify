@@ -11,8 +11,12 @@ import { BlockEnum } from '../types'
 const varsAppendStartNodeKeys = ['query', 'files']
 const useInspectVarsCrud = () => {
   const partOfNodesWithInspectVars = useStore(s => s.nodesWithInspectVars)
+  const syncWorkflowDraftHash = useStore(s => s.syncWorkflowDraftHash)
   const configsMap = useHooksStore(s => s.configsMap)
-  const shouldSkipSharedVariableQueries = configsMap?.flowType === FlowType.ragPipeline || configsMap?.flowType === FlowType.snippet
+  const isAppFlow = !configsMap?.flowType || configsMap.flowType === FlowType.appFlow
+  const shouldSkipSharedVariableQueries = configsMap?.flowType === FlowType.ragPipeline
+    || configsMap?.flowType === FlowType.snippet
+    || (isAppFlow && !syncWorkflowDraftHash)
   const variableFlowId = shouldSkipSharedVariableQueries ? '' : configsMap?.flowId
   const { data: conversationVars } = useConversationVarValues(configsMap?.flowType, variableFlowId)
   const { data: allSystemVars } = useSysVarValues(configsMap?.flowType, variableFlowId)
