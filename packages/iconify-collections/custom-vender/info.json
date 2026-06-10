@@ -1,7 +1,7 @@
 {
   "prefix": "custom-vender",
   "name": "Dify Custom Vender",
-  "total": 318,
+  "total": 319,
   "version": "0.0.0-private",
   "author": {
     "name": "LangGenius, Inc.",
@@ -13,12 +13,12 @@
     "url": "https://github.com/langgenius/dify/blob/main/LICENSE"
   },
   "samples": [
+    "agent-v2-prompt-insert",
     "features-citations",
     "features-content-moderation",
     "features-document",
     "features-folder-upload",
-    "features-love-message",
-    "features-message-fast"
+    "features-love-message"
   ],
   "palette": false
 }

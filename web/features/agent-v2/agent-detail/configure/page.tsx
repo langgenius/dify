@@ -8,6 +8,8 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/client'
+import { AgentPromptEditor } from './components/agent-prompt-editor'
+import { AgentSkills } from './components/agent-skills'
 
 type AgentConfigurePageProps = {
   agentId: string
@@ -18,6 +20,7 @@ export function AgentConfigurePage({
 }: AgentConfigurePageProps) {
   const { t } = useTranslation('agentV2')
   const [selectedModel, setSelectedModel] = useState<DefaultModel>()
+  const [prompt, setPrompt] = useState('')
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
       params: {
@@ -45,7 +48,7 @@ export function AgentConfigurePage({
       className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden bg-background-default p-1"
     >
       {/* Orchestrate configuration panel */}
-      <div className="flex min-w-[360px] flex-[0_0_42%] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg">
+      <div className="flex max-w-[560px] min-w-[360px] flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg">
         {/* Orchestrate header */}
         <div className="flex shrink-0 items-center gap-1 px-4 py-2">
           <div className="flex min-w-0 flex-1 flex-col justify-center">
@@ -67,17 +70,10 @@ export function AgentConfigurePage({
 
         <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
           {/* Prompt editor */}
-          <div className="mb-4 h-52 rounded-lg border border-state-accent-solid bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3" />
+          <AgentPromptEditor value={prompt} onChange={setPrompt} />
 
-          {/* Skills and files */}
-          <div className="mb-4 space-y-2">
-            <div className="h-4 w-34 rounded bg-state-base-hover" />
-            <div className="space-y-1">
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-            </div>
-          </div>
+          {/* Skills */}
+          <AgentSkills />
 
           {/* Tools */}
           <div className="mb-4 space-y-2">
