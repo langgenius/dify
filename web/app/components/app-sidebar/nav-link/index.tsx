@@ -37,7 +37,7 @@ const NavLink = ({
   onClick,
 }: NavLinkProps) => {
   const segment = useSelectedLayoutSegment()
-  const formatSegment = (value?: string) => {
+  const formatSegment = (value?: string | null) => {
     const res = value?.toLowerCase()
 
     return !pathname && res === 'annotations' ? 'logs' : res
