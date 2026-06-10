@@ -21,8 +21,8 @@ import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
-import { isWorkflowApp } from '../app-mode'
-import { TitleTooltip } from './title-tooltip'
+import { isWorkflowApp } from '../../app-mode'
+import { TitleTooltip } from '../title-tooltip'
 
 const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']

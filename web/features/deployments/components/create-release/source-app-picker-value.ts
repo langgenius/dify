@@ -1,5 +1,5 @@
 import type { App } from '@/types/app'
-import { isWorkflowAppMode } from '../app-mode'
+import { isWorkflowAppMode } from '../../app-mode'
 
 export type SourceAppPickerValue = Pick<App, 'id' | 'name'> & Partial<Pick<App, 'icon_type' | 'icon' | 'icon_background' | 'icon_url' | 'mode'>>
 
