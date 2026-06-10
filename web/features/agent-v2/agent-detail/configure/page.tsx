@@ -8,6 +8,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/client'
+import { AgentAdvancedSettings } from './components/advanced-settings'
 import { AgentFiles } from './components/agent-files'
 import { AgentKnowledgeRetrieval } from './components/agent-knowledge-retrieval'
 import { AgentPreviewHeader } from './components/agent-preview-header'
@@ -89,6 +90,9 @@ export function AgentConfigurePage({
 
           {/* Knowledge retrieval */}
           <AgentKnowledgeRetrieval />
+
+          {/* Advanced settings */}
+          <AgentAdvancedSettings />
         </div>
 
         {/* Save and publish actions */}
