@@ -10,7 +10,7 @@ type Item = {
   value: string
   label: string
 }
-type Props = {
+type Props = Readonly<{
   className?: string
   trigger?: React.JSX.Element
   DropDownIcon?: any
@@ -26,7 +26,7 @@ type Props = {
   itemClassName?: string
   readonly?: boolean
   showChecked?: boolean
-}
+}>
 
 const TypeSelector: FC<Props> = ({
   className,

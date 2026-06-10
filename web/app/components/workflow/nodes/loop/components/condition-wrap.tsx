@@ -17,7 +17,7 @@ import { SUB_VARIABLES } from './../default'
 import ConditionAdd from './condition-add'
 import ConditionList from './condition-list'
 
-type Props = {
+type Props = Readonly<{
   isSubVariable?: boolean
   conditionId?: string
   conditions: Condition[]
@@ -34,7 +34,7 @@ type Props = {
   nodeId: string
   availableNodes: Node[]
   availableVars: NodeOutPutVar[]
-}
+}>
 
 const ConditionWrap: FC<Props> = ({
   isSubVariable,
