@@ -79,10 +79,24 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel, onSelect, popupClassName }: { defaultModel?: { provider: string, model: string }, onSelect: (model: { provider: string, model: string }) => void, popupClassName?: string }) => (
+  default: ({
+    defaultModel,
+    onSelect,
+    popupClassName,
+    popupPlacement,
+    positionerProps,
+  }: {
+    defaultModel?: { provider: string, model: string }
+    onSelect: (model: { provider: string, model: string }) => void
+    popupClassName?: string
+    popupPlacement?: string
+    positionerProps?: { collisionAvoidance?: { fallbackAxisSide?: string } }
+  }) => (
     <div>
       <div data-testid="selected-model">{defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'none'}</div>
       <div data-testid="model-selector-popup-class">{popupClassName}</div>
+      <div data-testid="model-selector-popup-placement">{popupPlacement}</div>
+      <div data-testid="model-selector-fallback-axis-side">{positionerProps?.collisionAvoidance?.fallbackAxisSide}</div>
       <button
         type="button"
         onClick={() => onSelect({ provider: 'langgenius/openai/openai', model: 'gpt-4o' })}
@@ -217,7 +231,9 @@ describe('CreateFromAIModal', () => {
     )
 
     expect(screen.getByTestId('selected-model')).toHaveTextContent('langgenius/openai/openai/gpt-5.5')
-    expect(screen.getByTestId('model-selector-popup-class')).toHaveTextContent('z-10000')
+    expect(screen.getByTestId('model-selector-popup-class')).toHaveTextContent('z-[10000]')
+    expect(screen.getByTestId('model-selector-popup-placement')).toHaveTextContent('top-start')
+    expect(screen.getByTestId('model-selector-fallback-axis-side')).toHaveTextContent('none')
 
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
       target: { value: 'Summarize customer support tickets.' },

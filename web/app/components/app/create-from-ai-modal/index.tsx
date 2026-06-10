@@ -352,7 +352,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   return (
     <>
       <Modal
-        className="w-[560px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
+        className="max-w-[560px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
         isShow={show}
         onClose={noop}
         overflowVisible
@@ -391,7 +391,15 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                 defaultModel={activeModel}
                 modelList={modelList}
                 triggerClassName="h-10"
-                popupClassName="z-10000"
+                popupClassName="z-[10000]"
+                popupPlacement="top-start"
+                positionerProps={{
+                  collisionAvoidance: {
+                    side: 'shift',
+                    align: 'shift',
+                    fallbackAxisSide: 'none',
+                  },
+                }}
                 onSelect={setSelectedModel}
               />
             </div>

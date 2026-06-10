@@ -3,6 +3,7 @@ import type {
   Model,
   ModelProvider,
 } from '../declarations'
+import { useState } from 'react'
 import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import useTheme from '@/hooks/use-theme'
@@ -27,21 +28,28 @@ const ModelIcon: FC<ModelIconProps> = ({
 }) => {
   const { theme } = useTheme()
   const language = useLanguage()
+  const [failedIconSrc, setFailedIconSrc] = useState<string>()
+  const iconSrc = provider?.icon_small
+    ? renderI18nObject(
+        theme === Theme.dark && provider.icon_small_dark
+          ? provider.icon_small_dark
+          : provider.icon_small,
+        language,
+      )
+    : ''
+  const shouldShowImageIcon = !!iconSrc && failedIconSrc !== iconSrc
+
   if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('o'))
     return <div className="flex items-center justify-center"><OpenaiYellow className={cn('h-5 w-5', className)} /></div>
 
-  if (provider?.icon_small) {
+  if (shouldShowImageIcon) {
     return (
       <div className={cn('flex h-5 w-5 items-center justify-center', isDeprecated && 'opacity-50', className)}>
         <img
-          alt="model-icon"
-          src={renderI18nObject(
-            theme === Theme.dark && provider.icon_small_dark
-              ? provider.icon_small_dark
-              : provider.icon_small,
-            language,
-          )}
-          className={iconClassName}
+          alt=""
+          src={iconSrc}
+          className={cn('h-full w-full object-contain', iconClassName)}
+          onError={() => setFailedIconSrc(iconSrc)}
         />
       </div>
     )

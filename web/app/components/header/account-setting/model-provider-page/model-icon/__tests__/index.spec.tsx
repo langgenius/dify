@@ -1,5 +1,5 @@
 import type { Model } from '../../declarations'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 import { Theme } from '@/types/app'
 import {
   ConfigurationMethodEnum,
@@ -65,7 +65,7 @@ describe('ModelIcon', () => {
 
     render(<ModelIcon provider={provider} />)
 
-    expect(screen.getByRole('img', { name: /model-icon/i })).toHaveAttribute('src', 'light-only.png')
+    expect(document.querySelector('img')).toHaveAttribute('src', 'light-only.png')
   })
 
   // Theme selection
@@ -78,7 +78,7 @@ describe('ModelIcon', () => {
 
     render(<ModelIcon provider={provider} />)
 
-    expect(screen.getByRole('img', { name: /model-icon/i })).toHaveAttribute('src', 'dark.png')
+    expect(document.querySelector('img')).toHaveAttribute('src', 'dark.png')
   })
 
   // Provider override
@@ -90,7 +90,7 @@ describe('ModelIcon', () => {
 
     const { container } = render(<ModelIcon provider={provider} modelName="o1" />)
 
-    expect(screen.queryByRole('img', { name: /model-icon/i })).not.toBeInTheDocument()
+    expect(document.querySelector('img')).not.toBeInTheDocument()
     expect(container.querySelector('svg')).toBeInTheDocument()
   })
 
@@ -98,7 +98,7 @@ describe('ModelIcon', () => {
   it('should render without an icon when provider is undefined', () => {
     const { container } = render(<ModelIcon />)
 
-    expect(screen.queryByRole('img', { name: /model-icon/i })).not.toBeInTheDocument()
+    expect(document.querySelector('img')).not.toBeInTheDocument()
     expect(container.firstChild).not.toBeNull()
   })
 
@@ -110,7 +110,7 @@ describe('ModelIcon', () => {
 
     const { container } = render(<ModelIcon provider={provider} modelName="o3" />)
 
-    expect(screen.queryByRole('img', { name: /model-icon/i })).not.toBeInTheDocument()
+    expect(document.querySelector('img')).not.toBeInTheDocument()
     expect(container.querySelector('svg')).toBeInTheDocument()
   })
 
@@ -121,5 +121,20 @@ describe('ModelIcon', () => {
 
     const wrapper = container.querySelector('.opacity-50')
     expect(wrapper).toBeInTheDocument()
+  })
+
+  it('should fall back when the image icon fails to load', () => {
+    const provider = createModel({
+      icon_small: createI18nText('broken.png'),
+    })
+
+    const { container } = render(<ModelIcon provider={provider} />)
+    const image = document.querySelector('img')
+    expect(image).toBeInTheDocument()
+
+    fireEvent.error(image!)
+
+    expect(document.querySelector('img')).not.toBeInTheDocument()
+    expect(container.querySelector('svg')).toBeInTheDocument()
   })
 })

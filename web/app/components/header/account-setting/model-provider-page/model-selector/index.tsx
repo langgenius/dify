@@ -1,10 +1,11 @@
-import type { FC } from 'react'
+import type { ComponentProps, FC } from 'react'
 import type {
   DefaultModel,
   Model,
   ModelFeatureEnum,
   ModelItem,
 } from '../declarations'
+import type { Placement } from '@/app/components/base/ui/placement'
 import { useState } from 'react'
 import {
   Popover,
@@ -20,6 +21,8 @@ type ModelSelectorProps = {
   modelList: Model[]
   triggerClassName?: string
   popupClassName?: string
+  popupPlacement?: Placement
+  positionerProps?: ComponentProps<typeof PopoverContent>['positionerProps']
   onSelect?: (model: DefaultModel) => void
   onHide?: () => void
   readonly?: boolean
@@ -32,6 +35,8 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   modelList,
   triggerClassName,
   popupClassName,
+  popupPlacement = 'bottom-start',
+  positionerProps,
   onSelect,
   onHide,
   readonly,
@@ -85,8 +90,9 @@ const ModelSelector: FC<ModelSelectorProps> = ({
         )}
       />
       <PopoverContent
-        placement="bottom-start"
+        placement={popupPlacement}
         sideOffset={4}
+        positionerProps={positionerProps}
         className={popupClassName}
         popupClassName="overflow-hidden rounded-lg"
         popupProps={{ style: { minWidth: '320px', width: 'var(--anchor-width, auto)' } }}
