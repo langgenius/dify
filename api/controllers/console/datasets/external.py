@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from configs import dify_config
 from controllers.common.fields import UsageCountResponse
 from controllers.common.schema import get_or_create_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -286,7 +285,6 @@ class ExternalDatasetCreateApi(Resource):
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
-
 
         item = marshal(dataset, dataset_detail_fields)
         dataset_id_str = item["id"]
