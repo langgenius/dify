@@ -468,7 +468,7 @@ describe('AppList', () => {
   })
 
   describe('Permission-Based Behavior', () => {
-    it('should hide add-to-workspace button when user lacks app creation permission', () => {
+    it('should keep add-to-workspace button visible but disabled when user lacks app creation permission', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -478,7 +478,10 @@ describe('AppList', () => {
         workspacePermissionKeys: ['app_library.access'],
       })
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+      const addToWorkspaceButton = screen.getByRole('button', { name: 'explore.appCard.addToWorkspace' })
+      expect(addToWorkspaceButton).toBeDisabled()
+      fireEvent.click(addToWorkspaceButton)
+      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
     })
 
     it('should show add-to-workspace button when user has app creation permission', () => {

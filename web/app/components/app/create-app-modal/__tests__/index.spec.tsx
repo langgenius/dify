@@ -1,6 +1,5 @@
 import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -209,18 +208,17 @@ describe('CreateAppModal', () => {
   })
 
   it('creates a beginner chat app with the keyboard shortcut and selected icon style', async () => {
-    const user = userEvent.setup()
     mockCreateApp.mockResolvedValue({ id: 'chat-app', mode: AppModeEnum.CHAT } as App)
     renderModal()
 
     fireEvent.click(screen.getByText('app.newApp.forBeginners'))
     fireEvent.click(screen.getByText('app.types.chatbot'))
-    await user.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByText('open-icon-picker'))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
-    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
@@ -255,7 +253,6 @@ describe('CreateAppModal', () => {
   })
 
   it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', async () => {
-    const user = userEvent.setup()
     mockUseProviderContext.mockReturnValue({
       plan: {
         type: AppModeEnum.ADVANCED_CHAT,
@@ -268,11 +265,11 @@ describe('CreateAppModal', () => {
 
     renderModal()
 
-    await user.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByText('open-icon-picker'))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
