@@ -65,9 +65,9 @@ from controllers.openapi._models import (
     WorkspacePayload,
     WorkspaceSummaryResponse,
 )
+from fields.file_fields import FileResponse
 from services.app_dsl_service import Import
 from services.entities.dsl_entities import CheckDependenciesResult
-from fields.file_fields import FileResponse
 
 register_schema_models(
     openapi_ns,

@@ -43,7 +43,7 @@ export const zAppDslImportPayload = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
-  mode: z.string(),
+  mode: z.enum(['yaml-content', 'yaml-url']),
   name: z.string().nullish(),
   yaml_content: z.string().nullish(),
   yaml_url: z.string().nullish(),

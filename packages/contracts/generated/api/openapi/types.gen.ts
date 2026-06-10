@@ -56,7 +56,7 @@ export type AppDslImportPayload = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
-  mode: string
+  mode: 'yaml-content' | 'yaml-url'
   name?: string | null
   yaml_content?: string | null
   yaml_url?: string | null
