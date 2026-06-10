@@ -161,6 +161,25 @@ describe('E2E / difyctl export app', () => {
     expect(result.stderr).toMatch(/missing required argument|required|app id/i)
   })
 
+  it('[P1] malformed --workflow-id returns a 4xx, not a 5xx', async () => {
+    const result = await fx.r(['export', 'app', E.workflowAppId, '--workflow-id', 'not-a-uuid'])
+    expect(result.exitCode).not.toBe(0)
+    expect(result.stderr).toMatch(/http_status:\s*4\d\d/)
+    expect(result.stderr).not.toMatch(/http_status:\s*5\d\d/)
+  })
+
+  it('[P1] non-existent --workflow-id returns 404, not a 5xx', async () => {
+    const result = await fx.r([
+      'export',
+      'app',
+      E.workflowAppId,
+      '--workflow-id',
+      '00000000-0000-0000-0000-000000000000',
+    ])
+    expect(result.exitCode).not.toBe(0)
+    expect(result.stderr).toMatch(/http_status:\s*404/)
+  })
+
   it('[P1] non-existent app in --output mode leaves no file behind', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'difyctl-e2e-export-nofile-'))
     const outPath = join(dir, 'should-not-exist.yaml')

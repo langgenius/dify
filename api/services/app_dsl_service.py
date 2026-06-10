@@ -7,6 +7,8 @@ from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
+from services.errors.app import WorkflowNotFoundError
+
 import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
@@ -557,7 +559,7 @@ class AppDslService:
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
         if not workflow:
-            raise ValueError("Missing draft workflow configuration, please check.")
+            raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         # TODO: refactor: we need a better way to filter workspace related data from nodes

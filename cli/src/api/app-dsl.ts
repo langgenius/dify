@@ -38,6 +38,7 @@ export class AppDslClient {
       query: query !== undefined
         ? {
             include_secret: query.includeSecret,
+            workflow_id: query.workflowId,
           }
         : undefined,
     })

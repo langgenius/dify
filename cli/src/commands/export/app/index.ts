@@ -10,6 +10,7 @@ export default class ExportApp extends DifyCommand {
     '<%= config.bin %> export app <app-id>',
     '<%= config.bin %> export app <app-id> --output ./my-app.yaml',
     '<%= config.bin %> export app <app-id> --include-secret',
+    '<%= config.bin %> export app <app-id> --workflow-id <workflow-id>',
   ]
 
   static override args = {
@@ -20,6 +21,7 @@ export default class ExportApp extends DifyCommand {
     'workspace': Flags.string({ description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
     'output': Flags.string({ description: 'write DSL YAML to this file path (prints to stdout if omitted)', char: 'o' }),
     'include-secret': Flags.boolean({ description: 'include encrypted secret values in the exported DSL', default: false }),
+    'workflow-id': Flags.string({ description: 'export a specific workflow by ID (workflow apps only)' }),
     'http-retry': httpRetryFlag,
   }
 
@@ -31,6 +33,7 @@ export default class ExportApp extends DifyCommand {
       workspace: flags.workspace,
       output: flags.output,
       includeSecret: flags['include-secret'],
+      workflowId: flags['workflow-id'],
     }, { active: ctx.active, http: ctx.http, io: ctx.io })
 
     if (result.writtenTo === undefined) {

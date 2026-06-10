@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
-from controllers.openapi._models import AppDslExportQuery, AppDslImportPayload
+from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
@@ -15,6 +15,7 @@ from libs.oauth_bearer import Scope, TokenType
 from models import Account, App
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
+from services.errors.app import WorkflowNotFoundError
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")
@@ -116,21 +117,23 @@ class AppDslExportApi(Resource):
     routes in the openapi group.  Apps with the service API disabled will
     receive a 403; enable the API in the console first if needed.
     """
-
-    @openapi_ns.response(200, "Export successful")
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
     )
     @accepts(query=AppDslExportQuery)
+    @returns(200, AppDslExportResponse, "Export successful")
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDslExportQuery):
         app = cast(App, auth_data.app)
-        data = AppDslService.export_dsl(
-            app_model=app,
-            include_secret=query.include_secret,
-            workflow_id=query.workflow_id,
-        )
-        return {"data": data}, 200
+        try:
+            data = AppDslService.export_dsl(
+                app_model=app,
+                include_secret=query.include_secret,
+                workflow_id=query.workflow_id,
+            )
+        except WorkflowNotFoundError as exc:
+            return str(exc), 404
+        return AppDslExportResponse(data=data), 200
 
 
 @openapi_ns.route("/apps/<string:app_id>/check-dependencies")

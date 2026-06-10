@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite-plus'
 import { resolveBuildInfo } from './scripts/lib/resolve-buildinfo.js'
 
@@ -36,6 +37,12 @@ catch {
  * Run: bun vitest --config vitest.e2e.config.ts
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@test': fileURLToPath(new URL('./test', import.meta.url)),
+    },
+  },
   pack: {
     entry: ['src/index.ts'],
     format: ['esm'],

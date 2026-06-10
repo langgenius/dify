@@ -46,6 +46,7 @@ export async function runExportApp(opts: ExportAppOptions, deps: ExportAppDeps):
     { io, label: `Exporting DSL for app ${opts.appId}` },
     () => client.exportDsl(opts.appId, {
       includeSecret: opts.includeSecret,
+      workflowId: opts.workflowId,
     }),
   )
 
