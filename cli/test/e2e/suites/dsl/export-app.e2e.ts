@@ -13,7 +13,6 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertExitCode,
-  assertNoAnsi,
 } from '../../helpers/assert.js'
 import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -63,7 +62,6 @@ describe('E2E / difyctl export app', () => {
     assertExitCode(result, 0)
     expect(result.stdout.endsWith('\n')).toBe(true)
   })
-
 
   it('[P1] chat app export also succeeds and includes mode', async () => {
     const result = await fx.r(['export', 'app', E.chatAppId])
@@ -143,7 +141,6 @@ describe('E2E / difyctl export app', () => {
     expect(result.exitCode).toBe(1)
     expect(result.stderr.length).toBeGreaterThan(0)
   })
-
 
   it('[P0] unauthenticated export returns auth error (exit code 4)', async () => {
     const unauthTmp = await withTempConfig()
