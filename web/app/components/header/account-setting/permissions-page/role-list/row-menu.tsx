@@ -43,44 +43,56 @@ const RowMenu = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
+  const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
 
   const handleView = useCallback(() => onView?.(role), [onView, role])
 
-  const handleEdit = useCallback(() => onEdit?.(role), [onEdit, role])
+  const handleEdit = useCallback(() => {
+    if (!canManageRoles)
+      return
+
+    onEdit?.(role)
+  }, [canManageRoles, onEdit, role])
 
   const { mutateAsync: copyRole } = useCopyWorkspaceRole()
 
   const handleDuplicate = useCallback(() => {
+    if (!canManageRoles)
+      return
+
     copyRole(role.id, {
       onSuccess: () => {
         toast.success(t('role.duplicated', { ns: 'permission' }))
         setOpen(false)
       },
     })
-  }, [copyRole, role.id, t])
+  }, [canManageRoles, copyRole, role.id, t])
 
   const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteWorkspaceRole()
 
   const openDeleteConfirm = useCallback(() => {
+    if (!canManageRoles)
+      return
+
     setShowDeleteConfirm(true)
     setOpen(false)
-  }, [])
+  }, [canManageRoles])
 
   const handleDelete = useCallback(() => {
+    if (!canManageRoles)
+      return
+
     deleteRole(role.id, {
       onSuccess: () => {
         toast.success(t('role.deleted', { ns: 'permission' }))
         setShowDeleteConfirm(false)
       },
     })
-  }, [deleteRole, role.id, t])
-
-  const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+  }, [canManageRoles, deleteRole, role.id, t])
 
   const hasViewAction = roleCategory === 'global_system_default'
-  const hasEditAction = roleCategory === 'global_custom' && canManageRoles
-  const hasDuplicateAction = canManageRoles
-  const hasDeleteAction = roleCategory === 'global_custom' && canManageRoles
+  const hasEditAction = roleCategory === 'global_custom'
+  const hasDeleteAction = roleCategory === 'global_custom'
 
   return (
     <>
@@ -98,23 +110,32 @@ const RowMenu = ({
           }
           {
             hasEditAction && (
-              <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleEdit}>
+              <DropdownMenuItem
+                disabled={!canManageRoles}
+                className="system-sm-semibold text-text-secondary"
+                onClick={handleEdit}
+              >
                 {t('operation.edit', { ns: 'common' })}
               </DropdownMenuItem>
             )
           }
-          {
-            hasDuplicateAction && (
-              <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleDuplicate}>
-                {t('common.duplicateAction', { ns: 'permission' })}
-              </DropdownMenuItem>
-            )
-          }
+          <DropdownMenuItem
+            disabled={!canManageRoles}
+            className="system-sm-semibold text-text-secondary"
+            onClick={handleDuplicate}
+          >
+            {t('common.duplicateAction', { ns: 'permission' })}
+          </DropdownMenuItem>
           {
             hasDeleteAction && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" className="system-sm-semibold" onClick={openDeleteConfirm}>
+                <DropdownMenuItem
+                  disabled={!canManageRoles}
+                  variant="destructive"
+                  className="system-sm-semibold"
+                  onClick={openDeleteConfirm}
+                >
                   {t('operation.delete', { ns: 'common' })}
                 </DropdownMenuItem>
               </>

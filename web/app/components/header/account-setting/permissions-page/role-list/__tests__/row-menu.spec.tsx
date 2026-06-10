@@ -1,5 +1,5 @@
 import type { Role } from '@/models/access-control'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RowMenu from '../row-menu'
 
@@ -117,6 +117,28 @@ describe('RowMenu', () => {
       expect(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toBeInTheDocument()
       expect(within(menu).getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
     })
+
+    it('should keep custom role management actions visible without manage permission', async () => {
+      mockWorkspacePermissionKeys.value = []
+
+      render(
+        <RowMenu
+          roleCategory="global_custom"
+          role={createRole({
+            id: 'role-custom',
+            category: 'global_custom',
+            name: 'Custom role',
+            is_builtin: false,
+          })}
+        />,
+      )
+
+      const { menu } = await openMenu()
+
+      expect(within(menu).getByRole('menuitem', { name: 'common.operation.edit' })).toHaveAttribute('aria-disabled', 'true')
+      expect(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toHaveAttribute('aria-disabled', 'true')
+      expect(within(menu).getByRole('menuitem', { name: 'common.operation.delete' })).toHaveAttribute('aria-disabled', 'true')
+    })
   })
 
   describe('User Interactions', () => {
@@ -154,6 +176,34 @@ describe('RowMenu', () => {
       expect(mockCopyRole).toHaveBeenCalledWith(role.id, expect.objectContaining({
         onSuccess: expect.any(Function),
       }))
+    })
+
+    it('should ignore role management actions without manage permission', async () => {
+      mockWorkspacePermissionKeys.value = []
+      const onEdit = vi.fn()
+      const role = createRole({
+        id: 'role-custom',
+        category: 'global_custom',
+        name: 'Custom role',
+        is_builtin: false,
+      })
+      render(
+        <RowMenu
+          roleCategory="global_custom"
+          role={role}
+          onEdit={onEdit}
+        />,
+      )
+
+      const { menu } = await openMenu()
+
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'common.operation.edit' }))
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }))
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'common.operation.delete' }))
+
+      expect(onEdit).not.toHaveBeenCalled()
+      expect(mockCopyRole).not.toHaveBeenCalled()
+      expect(mockDeleteRole).not.toHaveBeenCalled()
     })
   })
 })

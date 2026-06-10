@@ -1,8 +1,35 @@
 import type { InfiniteData } from '@tanstack/react-query'
 import type { AccessPolicyWithBindings } from '@/models/access-control'
 
+const FULL_ACCESS_POLICY_KEYS = new Set(['app.full_access', 'dataset.full_access'])
+
 type AccessRulesResponse = {
   items: AccessPolicyWithBindings[]
+}
+
+export const isFullAccessPolicy = (policyKey: string) => {
+  return FULL_ACCESS_POLICY_KEYS.has(policyKey)
+}
+
+export const isProtectedFullAccessOwnerRole = (
+  policyKey: string,
+  role: AccessPolicyWithBindings['roles'][number],
+) => {
+  return isFullAccessPolicy(policyKey) && role.role_tag === 'owner'
+}
+
+export const getProtectedFullAccessOwnerRoleIds = (rule: AccessPolicyWithBindings) => {
+  const { policy, roles } = rule
+  return roles
+    .filter(role => isProtectedFullAccessOwnerRole(policy.policy_key, role))
+    .map(role => role.role_id)
+}
+
+export const mergeProtectedRoleIds = (roleIds: string[], protectedRoleIds: string[]) => {
+  if (protectedRoleIds.length === 0)
+    return roleIds
+
+  return [...new Set([...roleIds, ...protectedRoleIds])]
 }
 
 export const updateAccessRulesBindingLockStatus = <TResponse extends AccessRulesResponse>(

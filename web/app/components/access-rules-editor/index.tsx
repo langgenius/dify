@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import AccessRuleRow from '@/app/components/header/account-setting/access-rules-page/access-rule-row'
 import AddRuleTargetsModal from '@/app/components/header/account-setting/access-rules-page/add-rule-targets-modal'
+import { getProtectedFullAccessOwnerRoleIds, mergeProtectedRoleIds } from '@/app/components/header/account-setting/access-rules-page/utils'
 import { useUpdateAppAccessRuleBindings } from '@/service/access-control/use-app-access-config'
 import { useUpdateDatasetAccessRuleBindings } from '@/service/access-control/use-dataset-access-config'
 
@@ -52,12 +53,17 @@ const AccessRulesEditor = ({
         initialMemberIds: [] as string[],
         lockedRoleIds: [] as string[],
         lockedMemberIds: [] as string[],
+        protectedRoleIds: [] as string[],
       }
     }
 
     const initialRoleIds = currentRule.roles.map(role => role.role_id)
     const initialMemberIds = currentRule.accounts.map(account => account.account_id)
-    const lockedRoleIds = currentRule.roles.filter(role => role.is_locked).map(role => role.role_id)
+    const protectedRoleIds = getProtectedFullAccessOwnerRoleIds(currentRule)
+    const lockedRoleIds = mergeProtectedRoleIds(
+      currentRule.roles.filter(role => role.is_locked).map(role => role.role_id),
+      protectedRoleIds,
+    )
     const lockedMemberIds = currentRule.accounts.filter(account => account.is_locked).map(account => account.account_id)
 
     return {
@@ -65,6 +71,7 @@ const AccessRulesEditor = ({
       initialMemberIds,
       lockedRoleIds,
       lockedMemberIds,
+      protectedRoleIds,
     }
   }, [currentRule])
 
@@ -87,7 +94,7 @@ const AccessRulesEditor = ({
         updateAppAccessRuleBindings({
           appId: resourceId,
           policyId: policyId || '',
-          role_ids: selection.roleIds,
+          role_ids: mergeProtectedRoleIds(selection.roleIds, currentRuleBindingIds.protectedRoleIds),
           account_ids: selection.memberIds,
         }, {
           onSuccess: () => {
@@ -99,7 +106,7 @@ const AccessRulesEditor = ({
         updateDatasetAccessRuleBindings({
           datasetId: resourceId,
           policyId: policyId || '',
-          role_ids: selection.roleIds,
+          role_ids: mergeProtectedRoleIds(selection.roleIds, currentRuleBindingIds.protectedRoleIds),
           account_ids: selection.memberIds,
         }, {
           onSuccess: () => {
@@ -108,7 +115,7 @@ const AccessRulesEditor = ({
         })
       }
     },
-    [currentRule, resourceId, t, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
+    [currentRule, currentRuleBindingIds.protectedRoleIds, resourceId, t, updateAppAccessRuleBindings, updateDatasetAccessRuleBindings],
   )
 
   const handleRemoveRole = useCallback(

@@ -198,6 +198,7 @@ const appRule: AccessPolicyWithBindings = {
     role_name: 'Role 1',
     binding_id: 'role-binding-1',
     is_locked: false,
+    role_tag: '',
   }],
   accounts: [{
     account_id: 'member-1',
@@ -221,6 +222,7 @@ const datasetRule: AccessPolicyWithBindings = {
     role_name: 'Dataset Role 1',
     binding_id: 'dataset-role-binding-1',
     is_locked: false,
+    role_tag: '',
   }],
   accounts: [{
     account_id: 'dataset-member-1',
@@ -332,6 +334,76 @@ describe('AccessRulesPage', () => {
     expect(mocks.updateAppAccessRuleBindings).toHaveBeenCalledWith({
       id: 'app-rule-1',
       role_ids: ['role-2'],
+      account_ids: ['member-2'],
+    }, expect.any(Object))
+  })
+
+  it('preserves the full-access app owner role when updating binding targets', async () => {
+    const protectedAppRule: AccessPolicyWithBindings = {
+      ...appRule,
+      policy: {
+        ...appRule.policy,
+        policy_key: 'app.full_access',
+      },
+      roles: [{
+        ...appRule.roles[0]!,
+        role_id: 'owner-role',
+        role_name: 'Owner',
+        role_tag: 'owner',
+      }],
+    }
+    vi.mocked(useInfiniteWorkspaceAppAccessRules).mockReturnValue({
+      data: { pages: [{ items: [protectedAppRule], pagination }], pageParams: [1] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      error: null,
+    } as unknown as ReturnType<typeof useInfiniteWorkspaceAppAccessRules>)
+
+    render(<AccessRulesPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'add targets permission.accessRule.appTitle' }))
+    await userEvent.click(screen.getByRole('button', { name: 'submit targets' }))
+
+    expect(mocks.updateAppAccessRuleBindings).toHaveBeenCalledWith({
+      id: 'app-rule-1',
+      role_ids: ['role-2', 'owner-role'],
+      account_ids: ['member-2'],
+    }, expect.any(Object))
+  })
+
+  it('preserves the full-access dataset owner role when updating binding targets', async () => {
+    const protectedDatasetRule: AccessPolicyWithBindings = {
+      ...datasetRule,
+      policy: {
+        ...datasetRule.policy,
+        policy_key: 'dataset.full_access',
+      },
+      roles: [{
+        ...datasetRule.roles[0]!,
+        role_id: 'dataset-owner-role',
+        role_name: 'Owner',
+        role_tag: 'owner',
+      }],
+    }
+    vi.mocked(useInfiniteWorkspaceDatasetAccessRules).mockReturnValue({
+      data: { pages: [{ items: [protectedDatasetRule], pagination }], pageParams: [1] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      error: null,
+    } as unknown as ReturnType<typeof useInfiniteWorkspaceDatasetAccessRules>)
+
+    render(<AccessRulesPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'add targets permission.accessRule.datasetTitle' }))
+    await userEvent.click(screen.getByRole('button', { name: 'submit targets' }))
+
+    expect(mocks.updateDatasetAccessRuleBindings).toHaveBeenCalledWith({
+      id: 'dataset-rule-1',
+      role_ids: ['role-2', 'dataset-owner-role'],
       account_ids: ['member-2'],
     }, expect.any(Object))
   })

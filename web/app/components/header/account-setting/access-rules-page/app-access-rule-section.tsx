@@ -19,7 +19,7 @@ import {
 import AccessRuleSection from './access-rule-section'
 import AddRuleTargetsModal from './add-rule-targets-modal'
 import PermissionSetModal from './permission-set-modal'
-import { updateAccessRulesBindingLockStatus } from './utils'
+import { getProtectedFullAccessOwnerRoleIds, mergeProtectedRoleIds, updateAccessRulesBindingLockStatus } from './utils'
 
 type AppAccessRuleSectionProps = {
   className?: string
@@ -70,14 +70,20 @@ const AppAccessRuleSection = ({
         initialMemberIds: [],
         lockedRoleIds: [],
         lockedMemberIds: [],
+        protectedRoleIds: [],
       }
     }
 
+    const protectedRoleIds = getProtectedFullAccessOwnerRoleIds(addingRule)
     return {
       initialRoleIds: addingRule.roles.map(role => role.role_id),
       initialMemberIds: addingRule.accounts.map(account => account.account_id),
-      lockedRoleIds: addingRule.roles.filter(role => role.is_locked).map(role => role.role_id),
+      lockedRoleIds: mergeProtectedRoleIds(
+        addingRule.roles.filter(role => role.is_locked).map(role => role.role_id),
+        protectedRoleIds,
+      ),
       lockedMemberIds: addingRule.accounts.filter(account => account.is_locked).map(account => account.account_id),
+      protectedRoleIds,
     }
   }, [addingRule])
 
@@ -128,7 +134,7 @@ const AppAccessRuleSection = ({
 
     updateAppAccessRuleBindings({
       id: addingRule.policy.id,
-      role_ids: selection.roleIds,
+      role_ids: mergeProtectedRoleIds(selection.roleIds, addingRuleTargetIds.protectedRoleIds),
       account_ids: selection.memberIds,
     }, {
       onSuccess: () => {
@@ -136,7 +142,7 @@ const AppAccessRuleSection = ({
         closeAddModal()
       },
     })
-  }, [addingRule, closeAddModal, t, updateAppAccessRuleBindings])
+  }, [addingRule, addingRuleTargetIds.protectedRoleIds, closeAddModal, t, updateAppAccessRuleBindings])
 
   const handleRemoveBinding = useCallback((payload: RemoveBindingPayload) => {
     updateAppAccessRuleBindings({

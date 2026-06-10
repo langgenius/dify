@@ -139,6 +139,7 @@ describe('AccessRulesEditor resource bindings', () => {
       role_name: 'App Editor',
       binding_id: 'role-binding-1',
       is_locked: true,
+      role_tag: '',
     }]
     rule.accounts = [{
       account_id: 'member-1',
@@ -186,11 +187,13 @@ describe('AccessRulesEditor resource bindings', () => {
       role_name: 'Locked Role',
       binding_id: 'role-binding-locked',
       is_locked: true,
+      role_tag: '',
     }, {
       role_id: 'role-open',
       role_name: 'Open Role',
       binding_id: 'role-binding-open',
       is_locked: false,
+      role_tag: '',
     }]
     rule.accounts = [{
       account_id: 'member-locked',
@@ -213,6 +216,42 @@ describe('AccessRulesEditor resource bindings', () => {
     expect(mockAddRuleTargetsModal.props?.lockedRoleIds).toEqual(['role-locked'])
     expect(mockAddRuleTargetsModal.props?.initialMemberIds).toEqual(['member-locked'])
     expect(mockAddRuleTargetsModal.props?.lockedMemberIds).toEqual(['member-locked'])
+  })
+
+  it('should keep full-access owner roles locked and preserve them when updating targets', async () => {
+    const rule = createRule('app')
+    rule.policy.policy_key = 'app.full_access'
+    rule.roles = [{
+      role_id: 'owner-role',
+      role_name: 'Owner',
+      binding_id: 'owner-binding',
+      is_locked: false,
+      role_tag: 'owner',
+    }]
+
+    renderWithQueryClient(
+      <AccessRulesEditor
+        resourceId="app-resource-id"
+        rules={[rule]}
+        canManage
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add target' }))
+
+    expect(mockAddRuleTargetsModal.props?.initialRoleIds).toEqual(['owner-role'])
+    expect(mockAddRuleTargetsModal.props?.lockedRoleIds).toEqual(['owner-role'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm add target' }))
+
+    await waitFor(() => {
+      expect(mockServiceBase.put).toHaveBeenCalledWith('/workspaces/current/rbac/apps/app-resource-id/access-policies/app-policy-id/bindings', {
+        body: {
+          role_ids: ['role-new', 'owner-role'],
+          account_ids: ['member-new'],
+        },
+      })
+    })
   })
 
   it('should update dataset bindings with the provided resource id', async () => {

@@ -34,6 +34,7 @@ const rule: AccessPolicyWithBindings = {
     role_name: 'Admin',
     binding_id: 'role-binding-1',
     is_locked: true,
+    role_tag: '',
   }],
   accounts: [{
     account_id: 'account-1',
@@ -180,5 +181,36 @@ describe('AccessRuleSection', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: /permission\.accessRule\.lockBinding/ }))
 
     expect(onToggleLockStatus).toHaveBeenCalledWith('role-binding-1', true)
+  })
+
+  it('should not expose binding actions for full-access owner roles', () => {
+    mocks.workspacePermissionKeys = ['workspace.role.manage']
+
+    renderWithQueryClient(
+      <AccessRuleSection
+        title="App Access Rules"
+        rules={[{
+          ...rule,
+          policy: {
+            ...rule.policy,
+            policy_key: 'app.full_access',
+          },
+          roles: [{
+            ...rule.roles[0]!,
+            role_name: 'Owner',
+            is_locked: false,
+            role_tag: 'owner',
+          }],
+        }]}
+        totalCount={1}
+        isLoadingRules={false}
+        defaultExpanded
+        onRemoveBinding={vi.fn()}
+        onToggleLockStatus={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Owner')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /permission\.accessRule\.bindingActionsAria.*Owner/ })).not.toBeInTheDocument()
   })
 })

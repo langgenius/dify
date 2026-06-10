@@ -148,6 +148,7 @@ type Bindings = {
     role_name: string
     binding_id: string
     is_locked: boolean
+    role_tag: 'owner' | '' // Used for identifying the unique owner role, which has some special handlings
   }>
   accounts: Array<{
     account_id: string

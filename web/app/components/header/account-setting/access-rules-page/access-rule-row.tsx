@@ -6,6 +6,7 @@ import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRuleRowMenu from './access-rule-row-menu'
 import RoleTag from './role-tag'
+import { isProtectedFullAccessOwnerRole } from './utils'
 
 export type AccessRuleRowProps = {
   rule: AccessPolicyWithBindings
@@ -73,20 +74,23 @@ const AccessRuleRow = ({
           {policy.description}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {roles.map(role => (
-            <RoleTag
-              key={role.role_id}
-              id={role.role_id}
-              bindingId={role.binding_id}
-              label={role.role_name}
-              type="role"
-              isLocked={role.is_locked}
-              canChangeLockStatus={isWorkspaceBinding && canManage && !!onToggleLockStatus}
-              onToggleLockStatus={handleToggleLockStatus}
-              showRemove={canManage}
-              onRemove={handleRemove}
-            />
-          ))}
+          {roles.map((role) => {
+            const isLockedOwner = isProtectedFullAccessOwnerRole(policy.policy_key, role)
+            return (
+              <RoleTag
+                key={role.role_id}
+                id={role.role_id}
+                bindingId={role.binding_id}
+                label={role.role_name}
+                type="role"
+                isLocked={role.is_locked}
+                canChangeLockStatus={isWorkspaceBinding && canManage && !!onToggleLockStatus && !isLockedOwner}
+                onToggleLockStatus={handleToggleLockStatus}
+                showRemove={canManage && !isLockedOwner}
+                onRemove={handleRemove}
+              />
+            )
+          })}
           {accounts.map(account => (
             <RoleTag
               key={account.account_id}
