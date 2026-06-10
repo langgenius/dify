@@ -49,7 +49,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
             raise ToolProviderCredentialValidationError("Invalid credentials")
 
     @override
-    def get_tool(self, tool_name: str) -> PluginTool:  # pyrefly: ignore[bad-override]
+    def get_tool(self, tool_name: str) -> PluginTool:  # type: ignore[override]  # pyrefly: ignore[bad-override]
         """
         return tool with given name
         """
@@ -69,7 +69,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
         )
 
     @override
-    def get_tools(self) -> list[PluginTool]:  # pyrefly: ignore[bad-override]
+    def get_tools(self) -> list[PluginTool]:  # type: ignore[override]  # pyrefly: ignore[bad-override]
         """
         get all tools
         """
