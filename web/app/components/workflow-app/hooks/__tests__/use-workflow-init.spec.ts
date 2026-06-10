@@ -115,10 +115,16 @@ describe('useWorkflowInit', () => {
     mockSyncWorkflowDraft.mockReset()
   })
 
-  it('should initialize a local start placeholder when the workflow draft does not exist', async () => {
+  it('should create an empty backend draft and restore a local start placeholder when the workflow draft does not exist', async () => {
     mockFetchWorkflowDraft
       .mockReset()
       .mockRejectedValueOnce(notExistError())
+      .mockResolvedValueOnce({
+        ...draftResponse,
+        graph: { nodes: [], edges: [] },
+        hash: 'new-workflow-hash',
+      })
+    mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new-hash', updated_at: 1 })
 
     const { result } = renderHook(() => useWorkflowInit())
 
@@ -133,10 +139,17 @@ describe('useWorkflowInit', () => {
       shouldAutoOpenStartNodeSelector: false,
       hasSelectedStartNode: false,
       hasShownOnboarding: true,
-      isWorkflowDataLoaded: true,
     }))
-    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('')
-    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
+      params: expect.objectContaining({
+        graph: {
+          nodes: [],
+          edges: [],
+        },
+      }),
+    }))
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-workflow-hash')
   })
 
   it('should keep creating the first backend draft for advanced chat apps', async () => {
