@@ -9,10 +9,10 @@ import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid
 
 const i18nPrefix = 'generate'
 
-type Props = {
+type Props = Readonly<{
   value: string
   onChange: (value: string) => void
-}
+}>
 
 const IdeaOutput: FC<Props> = ({
   value,

@@ -14,14 +14,14 @@ import { useTranslation } from 'react-i18next'
 import IconTypeIcon from '@/app/components/app/configuration/config-var/input-type-icon'
 
 type Option = { name: string, value: string, type: string }
-export type Props = {
+export type Props = Readonly<{
   triggerClassName?: string
   className?: string
   value: string | undefined
   options: Option[]
   onChange: (value: string) => void
   notSelectedVarTip?: string | null
-}
+}>
 
 const VarItem: FC<{ item: Option }> = ({ item }) => (
   <div className="flex h-[18px] items-center space-x-1 rounded-sm bg-[#EFF8FF] px-1">
