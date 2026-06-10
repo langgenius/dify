@@ -1,70 +1,70 @@
+import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
+import { zErrorBody } from '@dify/contracts/api/openapi/zod.gen'
 import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { redactBearer } from './sanitize'
 
-type WireFields = {
-  code?: string
-  message?: string
-  hint?: string
-}
+const AUTH_EXPIRED_MESSAGE = 'session expired or revoked'
+const AUTH_LOGIN_HINT = 'run \'difyctl auth login\' to sign in again'
 
-type WireEnvelope = WireFields & {
-  error?: WireFields
-}
-
-async function readBody(response: Response): Promise<{ raw: string, parsed?: WireEnvelope }> {
-  let raw = ''
-  try {
-    raw = await response.text()
-  }
-  catch {
-    return { raw: '' }
-  }
+function parseServerError(raw: string): ErrorBody | undefined {
   if (raw === '')
-    return { raw }
+    return undefined
+  let parsed: unknown
   try {
-    return { raw, parsed: JSON.parse(raw) as WireEnvelope }
+    parsed = JSON.parse(raw)
   }
   catch {
-    return { raw }
+    return undefined
   }
+  const result = zErrorBody.safeParse(parsed)
+  return result.success ? result.data : undefined
 }
 
 export async function classifyResponse(request: Request, response: Response): Promise<BaseError> {
-  const { parsed, raw } = await readBody(response.clone())
-  const wire: WireFields = parsed?.error ?? parsed ?? {}
+  let raw = ''
+  try {
+    raw = await response.clone().text()
+  }
+  catch {
+    // ignore read errors; raw stays ''
+  }
+
+  const serverError = parseServerError(raw)
   const status = response.status
   const url = redactBearer(response.url || request.url)
   const method = request.method
 
   if (status === 401) {
-    return HttpClientError.from(newError(
+    const base = HttpClientError.from(newError(
       ErrorCode.AuthExpired,
-      wire.message ?? 'session expired or revoked',
+      serverError?.message ?? AUTH_EXPIRED_MESSAGE,
     ))
-      .withHint(wire.hint ?? 'run \'difyctl auth login\' to sign in again')
+      .withHint(AUTH_LOGIN_HINT)
       .withHttpStatus(status)
       .withRequest(method, url)
+    return serverError !== undefined ? base.withServerError(serverError) : base
   }
 
   if (status >= 500) {
-    return HttpClientError.from(newError(
+    const base = HttpClientError.from(newError(
       ErrorCode.Server5xx,
-      wire.message ?? `server error (HTTP ${status})`,
+      serverError?.message ?? `server error (HTTP ${status})`,
     ))
       .withHttpStatus(status)
       .withRequest(method, url)
       .withRawResponse(raw)
+    return serverError !== undefined ? base.withServerError(serverError) : base
   }
 
-  const err = HttpClientError.from(newError(
+  const base = HttpClientError.from(newError(
     ErrorCode.Server4xxOther,
-    wire.message ?? `request failed (HTTP ${status})`,
+    serverError?.message ?? `request failed (HTTP ${status})`,
   ))
     .withHttpStatus(status)
     .withRequest(method, url)
     .withRawResponse(raw)
-  return wire.hint !== undefined ? err.withHint(wire.hint) : err
+  return serverError !== undefined ? base.withServerError(serverError) : base
 }
 
 export function classifyTransportError(err: unknown): BaseError {

@@ -33,8 +33,8 @@ describe('createOpenApiClient error mapping', () => {
     await stub?.stop()
   })
 
-  it('recovers Dify message + hint from a top-level 4xx envelope', async () => {
-    stub = await startStubServer(cap => jsonResponder(403, { message: 'no access', hint: 'ask an admin' }, cap))
+  it('recovers Dify message from a canonical ErrorBody 4xx response', async () => {
+    stub = await startStubServer(cap => jsonResponder(403, { code: 'access_denied', message: 'no access', status: 403 }, cap))
     const orpc = orpcClient(stub.url)
 
     const caught = await catchErr(() => orpc.account.get())
@@ -44,7 +44,6 @@ describe('createOpenApiClient error mapping', () => {
       expect(caught.code).toBe(ErrorCode.Server4xxOther)
       expect(caught.httpStatus).toBe(403)
       expect(caught.message).toBe('no access')
-      expect(caught.hint).toBe('ask an admin')
       // Parity with the transport path: the migrated endpoint's error keeps the request
       // method/url and the raw body, so formatted errors still print the `request:` line
       // and the raw-response dump (not just message/hint).
@@ -54,8 +53,8 @@ describe('createOpenApiClient error mapping', () => {
     }
   })
 
-  it('recovers from a nested { error: { message, hint } } envelope and keeps the auth code on 401', async () => {
-    stub = await startStubServer(cap => jsonResponder(401, { error: { message: 'expired', hint: 'relogin' } }, cap))
+  it('reads server message from canonical ErrorBody on 401 and keeps the auth code', async () => {
+    stub = await startStubServer(cap => jsonResponder(401, { code: 'unauthorized', message: 'expired', status: 401 }, cap))
     const orpc = orpcClient(stub.url)
 
     const caught = await catchErr(() => orpc.account.get())
@@ -65,11 +64,10 @@ describe('createOpenApiClient error mapping', () => {
       expect(caught.code).toBe(ErrorCode.AuthExpired)
       expect(caught.httpStatus).toBe(401)
       expect(caught.message).toBe('expired')
-      expect(caught.hint).toBe('relogin')
     }
   })
 
-  it('falls back to the default auth-login hint when the body carries none', async () => {
+  it('uses CLI default auth-login hint for non-conforming 401 body', async () => {
     stub = await startStubServer(cap => jsonResponder(401, { error: 'expired' }, cap))
     const orpc = orpcClient(stub.url)
 
@@ -82,8 +80,8 @@ describe('createOpenApiClient error mapping', () => {
     }
   })
 
-  it('maps 5xx to Server5xx', async () => {
-    stub = await startStubServer(cap => jsonResponder(503, { message: 'down for maintenance' }, cap))
+  it('maps 5xx to Server5xx with message from canonical ErrorBody', async () => {
+    stub = await startStubServer(cap => jsonResponder(503, { code: 'service_unavailable', message: 'down for maintenance', status: 503 }, cap))
     const orpc = orpcClient(stub.url)
 
     const caught = await catchErr(() => orpc.account.get())

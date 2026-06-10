@@ -1,3 +1,4 @@
+import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
 import { isVerbose } from '@/framework/context'
 import { redactBearer } from '@/http/sanitize'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
@@ -16,6 +17,7 @@ export type ErrorEnvelope = {
     method?: string
     url?: string
     raw_response?: string
+    server?: ErrorBody
   }
 }
 
