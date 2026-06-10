@@ -1,6 +1,6 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { Flags } from '@/framework/flags'
-import { runImportApp } from './run'
+import { pluginDependencyLabel, runImportApp } from './run'
 
 export default class ImportApp extends DifyCommand {
   static override description = 'Import an app from a DSL YAML file or URL'
@@ -31,7 +31,7 @@ export default class ImportApp extends DifyCommand {
     if (flags['from-file'] !== undefined && flags['from-url'] !== undefined)
       this.error('--from-file and --from-url are mutually exclusive', { exit: 1 })
     const ctx = await this.authedCtx({})
-    const { result } = await runImportApp({
+    const { result, leakedDependencies } = await runImportApp({
       fromFile: flags['from-file'],
       fromUrl: flags['from-url'],
       workspace: flags.workspace,
@@ -48,5 +48,11 @@ export default class ImportApp extends DifyCommand {
     if (result.app_id !== undefined && result.app_id !== null)
       ctx.io.err.write(`: app ${result.app_id}`)
     ctx.io.err.write('\n')
+
+    if (leakedDependencies.length > 0) {
+      ctx.io.err.write(`\nMissing plugin dependencies (${leakedDependencies.length}); install them before using the app:\n`)
+      for (const dep of leakedDependencies)
+        ctx.io.err.write(`  - ${pluginDependencyLabel(dep)}\n`)
+    }
   }
 }

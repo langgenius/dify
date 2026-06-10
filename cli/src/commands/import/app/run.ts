@@ -1,4 +1,4 @@
-import type { Import } from '@dify/contracts/api/openapi/types.gen'
+import type { Import, PluginDependency } from '@dify/contracts/api/openapi/types.gen'
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
@@ -33,6 +33,7 @@ export type ImportAppDeps = {
 
 export type ImportAppResult = {
   readonly result: Import
+  readonly leakedDependencies: readonly PluginDependency[]
 }
 
 export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps): Promise<ImportAppResult> {
@@ -109,5 +110,29 @@ export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps):
     )
   }
 
-  return { result }
+  const appId = result.app_id
+  if (appId === undefined || appId === null)
+    return { result, leakedDependencies: [] }
+
+  const { leaked_dependencies } = await runWithSpinner(
+    { io, label: 'Checking plugin dependencies' },
+    () => client.checkDependencies(appId),
+  )
+
+  return { result, leakedDependencies: leaked_dependencies ?? [] }
+}
+
+// `value` is a loosely-typed wire object (Github | Marketplace | Package); narrow it here to
+// surface a human-readable identifier without depending on which variant the server returned.
+export function pluginDependencyLabel(dep: PluginDependency): string {
+  const value = dep.value
+  if (typeof value === 'object' && value !== null) {
+    const fields = value as Record<string, unknown>
+    const id = fields.marketplace_plugin_unique_identifier
+      ?? fields.github_plugin_unique_identifier
+      ?? fields.plugin_unique_identifier
+    if (typeof id === 'string' && id !== '')
+      return id
+  }
+  return dep.current_identifier ?? '<unknown>'
 }

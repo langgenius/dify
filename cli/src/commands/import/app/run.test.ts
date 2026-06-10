@@ -1,3 +1,4 @@
+import type { Import } from '@dify/contracts/api/openapi/types.gen'
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
 import { writeFileSync } from 'node:fs'
@@ -5,9 +6,10 @@ import { DSL_YAML } from '@test/fixtures/dify-mock/scenarios'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { AppDslClient } from '@/api/app-dsl'
 import { bufferStreams } from '@/sys/io/streams'
 import { ZERO } from '@/util/uuid.js'
-import { runImportApp } from './run.js'
+import { pluginDependencyLabel, runImportApp } from './run.js'
 
 const baseActive: ActiveContext = {
   host: '127.0.0.1',
@@ -128,5 +130,57 @@ describe('runImportApp', () => {
     await expect(
       runImportApp({}, { active: baseActive, http: http() }),
     ).rejects.toThrow('required')
+  })
+
+  it('returns empty leakedDependencies when the app has no missing plugins', async () => {
+    const dslFile = tmpDslFile()
+    const { leakedDependencies } = await runImportApp({ fromFile: dslFile }, { active: baseActive, http: http() })
+
+    expect(leakedDependencies).toEqual([])
+  })
+
+  it('surfaces leaked dependencies reported by check-dependencies', async () => {
+    const dslFile = tmpDslFile()
+    const completed: Import = { id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' }
+    const stub = Object.assign(Object.create(AppDslClient.prototype), {
+      importApp: async () => completed,
+      confirmImport: async () => completed,
+      checkDependencies: async () => ({
+        leaked_dependencies: [
+          { type: 'marketplace', value: { marketplace_plugin_unique_identifier: 'langgenius/openai:0.0.1' } },
+        ],
+      }),
+    }) as AppDslClient
+
+    const { leakedDependencies } = await runImportApp(
+      { fromFile: dslFile },
+      { active: baseActive, http: http(), dslFactory: () => stub },
+    )
+
+    expect(leakedDependencies).toHaveLength(1)
+    const [dep] = leakedDependencies
+    if (dep === undefined)
+      throw new Error('expected one leaked dependency')
+    expect(pluginDependencyLabel(dep)).toBe('langgenius/openai:0.0.1')
+  })
+})
+
+describe('pluginDependencyLabel', () => {
+  it('reads the github plugin identifier', () => {
+    const label = pluginDependencyLabel({
+      type: 'github',
+      value: { github_plugin_unique_identifier: 'owner/repo:1.0.0' },
+    })
+    expect(label).toBe('owner/repo:1.0.0')
+  })
+
+  it('reads the package plugin identifier', () => {
+    const label = pluginDependencyLabel({ type: 'package', value: { plugin_unique_identifier: 'pkg:2.0.0' } })
+    expect(label).toBe('pkg:2.0.0')
+  })
+
+  it('falls back to current_identifier then a placeholder', () => {
+    expect(pluginDependencyLabel({ type: 'package', value: {}, current_identifier: 'fallback' })).toBe('fallback')
+    expect(pluginDependencyLabel({ type: 'package', value: null })).toBe('<unknown>')
   })
 })

@@ -1,29 +1,3 @@
-"""DSL import/export for apps under /openapi/v1.
-
-Endpoints
----------
-POST /workspaces/<workspace_id>/apps/imports
-    Import a DSL YAML string or URL into the specified workspace.
-
-POST /workspaces/<workspace_id>/apps/imports/<import_id>/confirm
-    Confirm a pending import after a DSL version mismatch acknowledgement.
-
-GET /apps/<app_id>/export
-    Export the current draft DSL of an app as a YAML string.
-
-GET /apps/<app_id>/check-dependencies
-    Return plugin dependencies referenced in the DSL that are not yet installed.
-
-Auth notes
-----------
-Write endpoints use ``guard_workspace`` (workspace_id in path) so the auth
-pipeline resolves the tenant and sets ``account.current_tenant`` before the
-handler runs.  Read endpoints use ``guard`` with ``PATH_HAS_APP_ID``; the
-pipeline loads the app and its tenant automatically.
-
-Key collaborators: ``services.app_dsl_service.AppDslService``.
-"""
-
 from __future__ import annotations
 
 from typing import cast
