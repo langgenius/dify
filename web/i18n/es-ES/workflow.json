@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Ícono segmentado",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Metadatos adicionales",
   "nodes.knowledgeRetrieval.outputVars.output": "Datos segmentados de recuperación",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Resumen del contenido",
   "nodes.knowledgeRetrieval.outputVars.title": "Título segmentado",
   "nodes.knowledgeRetrieval.outputVars.url": "URL segmentada",
   "nodes.knowledgeRetrieval.queryAttachment": "Consultar imágenes",

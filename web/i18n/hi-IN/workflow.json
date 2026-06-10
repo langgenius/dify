@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "विभाजित आइकन",
   "nodes.knowledgeRetrieval.outputVars.metadata": "अन्य मेटाडेटा",
   "nodes.knowledgeRetrieval.outputVars.output": "प्राप्त विभाजित डेटा",
+  "nodes.knowledgeRetrieval.outputVars.summary": "सामग्री सारांश",
   "nodes.knowledgeRetrieval.outputVars.title": "विभाजित शीर्षक",
   "nodes.knowledgeRetrieval.outputVars.url": "विभाजित URL",
   "nodes.knowledgeRetrieval.queryAttachment": "क्वेरी इमेजेस",

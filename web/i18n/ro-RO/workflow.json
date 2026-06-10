@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Pictogramă segmentată",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Alte metadate",
   "nodes.knowledgeRetrieval.outputVars.output": "Date segmentate recuperate",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Rezumat conținut",
   "nodes.knowledgeRetrieval.outputVars.title": "Titlu segmentat",
   "nodes.knowledgeRetrieval.outputVars.url": "URL segmentat",
   "nodes.knowledgeRetrieval.queryAttachment": "Imagini interogate",

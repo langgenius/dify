@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Сегментированный значок",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Другие метаданные",
   "nodes.knowledgeRetrieval.outputVars.output": "Извлеченные сегментированные данные",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Сводка контента",
   "nodes.knowledgeRetrieval.outputVars.title": "Сегментированный заголовок",
   "nodes.knowledgeRetrieval.outputVars.url": "Сегментированный URL",
   "nodes.knowledgeRetrieval.queryAttachment": "Запрос изображений",

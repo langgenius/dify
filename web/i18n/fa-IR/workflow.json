@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "آیکون بخش",
   "nodes.knowledgeRetrieval.outputVars.metadata": "سایر متادیتا",
   "nodes.knowledgeRetrieval.outputVars.output": "داده‌های بازیابی‌شده",
+  "nodes.knowledgeRetrieval.outputVars.summary": "خلاصه محتوا",
   "nodes.knowledgeRetrieval.outputVars.title": "عنوان بخش",
   "nodes.knowledgeRetrieval.outputVars.url": "URL بخش",
   "nodes.knowledgeRetrieval.queryAttachment": "پیوست‌های پرس‌وجو",

@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Segmentirana ikona",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Drug metapodatki",
   "nodes.knowledgeRetrieval.outputVars.output": "Podatki o segmentaciji iskanja",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Povzetek vsebine",
   "nodes.knowledgeRetrieval.outputVars.title": "Segmentirana naslov",
   "nodes.knowledgeRetrieval.outputVars.url": "Segmentirana URL",
   "nodes.knowledgeRetrieval.queryAttachment": "Poizvedbe slik",

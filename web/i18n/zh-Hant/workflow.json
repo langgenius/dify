@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "分段圖標",
   "nodes.knowledgeRetrieval.outputVars.metadata": "其他元資料",
   "nodes.knowledgeRetrieval.outputVars.output": "檢索的分段",
+  "nodes.knowledgeRetrieval.outputVars.summary": "內容摘要",
   "nodes.knowledgeRetrieval.outputVars.title": "分段標題",
   "nodes.knowledgeRetrieval.outputVars.url": "分段鏈接",
   "nodes.knowledgeRetrieval.queryAttachment": "查詢圖片",

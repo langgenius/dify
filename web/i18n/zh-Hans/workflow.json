@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "分段图标",
   "nodes.knowledgeRetrieval.outputVars.metadata": "其他元数据",
   "nodes.knowledgeRetrieval.outputVars.output": "召回的分段",
+  "nodes.knowledgeRetrieval.outputVars.summary": "内容摘要",
   "nodes.knowledgeRetrieval.outputVars.title": "分段标题",
   "nodes.knowledgeRetrieval.outputVars.url": "分段链接",
   "nodes.knowledgeRetrieval.queryAttachment": "查询图片",

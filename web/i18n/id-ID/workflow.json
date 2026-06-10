@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Ikon tersegmentasi",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Metadata lainnya",
   "nodes.knowledgeRetrieval.outputVars.output": "Mengambil data tersegmentasi",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Ringkasan konten",
   "nodes.knowledgeRetrieval.outputVars.title": "Judul tersegmentasi",
   "nodes.knowledgeRetrieval.outputVars.url": "URL tersegmentasi",
   "nodes.knowledgeRetrieval.queryAttachment": "Cari Gambar",

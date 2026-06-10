@@ -773,6 +773,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Segmentiertes Symbol",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Weitere Metadaten",
   "nodes.knowledgeRetrieval.outputVars.output": "Abgerufene segmentierte Daten",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Inhaltszusammenfassung",
   "nodes.knowledgeRetrieval.outputVars.title": "Segmentierter Titel",
   "nodes.knowledgeRetrieval.outputVars.url": "Segmentierte URL",
   "nodes.knowledgeRetrieval.queryAttachment": "Abfragebilder",
