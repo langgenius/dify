@@ -32,7 +32,9 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
     def handle_http_exception(e: HTTPException):
         got_request_exception.send(current_app, exception=e)
 
-        # If Werkzeug already prepared a Response, just use it.
+        # If Werkzeug already prepared a Response, just use it. This bypasses
+        # body_formatter entirely — surfaces with a formatter must not raise
+        # exceptions carrying a pre-built response.
         if e.response is not None:
             return e.response
 

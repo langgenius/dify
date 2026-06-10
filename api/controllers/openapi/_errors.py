@@ -14,8 +14,13 @@ mandated by the OAuth spec)::
 error-handler path funnels through one builder, and it also rewrites
 ``e.data`` because flask-restx ``Api.handle_error`` lets a pre-existing
 ``e.data`` override the registered handler's return value.
+
+The transport-generic enum members, ``_CODE_BY_STATUS`` and the
+``OpenApiError``/``OpenApiErrorFormatter`` bases are openapi-only today;
+promote them to ``libs`` if a second surface adopts ``ErrorBody``.
 """
 
+import logging
 from enum import StrEnum
 from typing import Any
 
@@ -96,6 +101,8 @@ _CODE_BY_STATUS: dict[int, OpenApiErrorCode] = {
 
 _GENERIC_500_MESSAGE = "Internal Server Error"
 
+logger = logging.getLogger(__name__)
+
 
 class OpenApiError(HTTPException):
     """Dedicated throwable for the /openapi/v1 surface.
@@ -136,14 +143,24 @@ class OpenApiErrorFormatter:
         exc_data = getattr(e, "data", None)
         merged: dict[str, Any] = {**data, **exc_data} if isinstance(exc_data, dict) else dict(data)
 
-        body = ErrorBody(
-            code=self._resolve_code(e, status_code),
-            message=self._resolve_message(merged, status_code),
-            status=status_code,
-            hint=self._resolve_hint(e),
-            details=self._extract_details(e, merged),
-        )
-        wire = body.model_dump(mode="json", exclude_none=True)
+        # finalize runs inside the framework error handler: raising here would
+        # replace the response with an unformatted 500, so fall back instead
+        try:
+            body = ErrorBody(
+                code=self._resolve_code(e, status_code),
+                message=self._resolve_message(merged, status_code),
+                status=status_code,
+                hint=self._resolve_hint(e),
+                details=self._extract_details(e, merged),
+            )
+            wire = body.model_dump(mode="json", exclude_none=True)
+        except Exception:
+            logger.exception("error-body build failed; emitting fallback body")
+            wire = {
+                "code": str(_CODE_BY_STATUS.get(status_code, OpenApiErrorCode.UNKNOWN)),
+                "message": http_status_message(status_code) or "request failed",
+                "status": status_code,
+            }
 
         # flask-restx Api.handle_error does `data = getattr(e, "data", default_data)`
         # AFTER our handler returns, so a pre-existing e.data (flask_restx.abort,

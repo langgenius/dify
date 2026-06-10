@@ -67,6 +67,25 @@ describe('formatErrorForCli — human', () => {
     expect(formatErrorForCli(noServerHint, { isErrTTY: false })).toContain('run difyctl auth login')
   })
 
+  it('omits the loc prefix when a detail has no loc', () => {
+    const err = new HttpClientError({
+      code: ErrorCode.Server4xxOther,
+      message: 'Request validation failed',
+      httpStatus: 422,
+      serverError: {
+        code: 'invalid_param',
+        message: 'Request validation failed',
+        status: 422,
+        details: [{ type: 'invalid', loc: [], msg: 'body required' }],
+      },
+    })
+
+    const out = formatErrorForCli(err, { isErrTTY: false })
+
+    expect(out).toContain('- body required (invalid)')
+    expect(out).not.toContain('- : body required')
+  })
+
   it('renders request and http_status lines', () => {
     const err = new HttpClientError({
       code: ErrorCode.Server5xx,

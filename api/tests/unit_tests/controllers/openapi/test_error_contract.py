@@ -126,6 +126,17 @@ class TestOpenApiErrorFormatter:
 
         assert second == first
 
+    def test_malformed_canonical_details_falls_back_instead_of_raising(self, fmt):
+        # finalize runs inside the framework error handler; a ValidationError
+        # escaping it would replace the response with an unformatted 500
+        e = UnprocessableEntity()
+        e.data = {"message": "broken", "details": [{"bad": "shape"}]}
+        data = {"code": "unprocessable_entity", "message": "broken", "status": 422}
+
+        wire = fmt.finalize(e, data, 422)
+
+        assert wire == {"code": "invalid_param", "message": "Unprocessable Entity", "status": 422}
+
     def test_base_http_exception_error_code_wins_over_status_map(self, fmt):
         e = ProviderQuotaExceededError()
         data = dict(e.data)
