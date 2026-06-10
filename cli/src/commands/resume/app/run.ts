@@ -8,10 +8,9 @@ import { AppRunClient } from '@/api/app-run'
 import { AppsClient } from '@/api/apps'
 import { pickStrategy } from '@/commands/run/app/_strategies/index'
 import { RUN_MODES } from '@/commands/run/app/handlers'
-import { getEnv, processExit } from '@/sys/index'
+import { processExit } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { FieldInfo } from '@/types/app-meta'
-import { resolveWorkspaceId } from '@/workspace/resolver'
 
 export type ResumeAppOptions = {
   readonly appId: string
@@ -76,12 +75,9 @@ async function resolveInputs(
 }
 
 export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Promise<void> {
-  const env = deps.envLookup ?? getEnv
-  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
-
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
-  const m = await meta.get(opts.appId, wsId, [FieldInfo])
+  const m = await meta.get(opts.appId, [FieldInfo])
   const mode = m.info?.mode ?? RUN_MODES.Workflow
 
   const runClient = new AppRunClient(deps.http)

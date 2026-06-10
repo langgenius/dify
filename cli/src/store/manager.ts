@@ -53,6 +53,10 @@ export type GetTokenStoreOptions = {
 export function getTokenStore(opts: GetTokenStoreOptions = {}): { store: Store, mode: StorageMode } {
   const fileFactory = opts.factory?.file ?? (() => getStore(join(resolveConfigDir(), TOKENS_FILE)))
   const keyringFactory = opts.factory?.keyring ?? (() => new KeyringBasedStore(KEYRING_SERVICE))
+  // DIFY_E2E_NO_KEYRING=1 forces file-based storage in E2E tests to avoid
+  // macOS keychain UI prompts blocking child processes spawned by vitest.
+  if (process.env.DIFY_E2E_NO_KEYRING === '1')
+    return { store: fileFactory(), mode: 'file' }
   try {
     const k = keyringFactory()
     k.set(PROBE_KEY, PROBE_VALUE)

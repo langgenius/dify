@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from libs.helper import EmailStr, UUIDStrOrEmpty, uuid_value
+from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
@@ -262,22 +262,6 @@ class AppDescribeQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fields: set[str] | None = Field(default=None, json_schema_extra=_csv_string_query_schema)
-    workspace_id: str | None = None
-
-    @field_validator("workspace_id", mode="before")
-    @classmethod
-    def _validate_workspace_id(cls, v: object) -> str | None:
-        if v is None or v == "":
-            return None
-        if not isinstance(v, str):
-            raise ValueError("workspace_id must be a string")
-        try:
-            import uuid as _uuid
-
-            _uuid.UUID(v)
-        except ValueError:
-            raise ValueError("workspace_id must be a valid UUID")
-        return v
 
     @field_validator("fields", mode="before")
     @classmethod
@@ -297,7 +281,7 @@ class AppDescribeQuery(BaseModel):
 class AppListQuery(BaseModel):
     """mode is a closed enum."""
 
-    workspace_id: str
+    workspace_id: UUIDStr
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
     mode: AppMode | None = None
