@@ -12,6 +12,7 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException, NotFound
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from graphon.file import File, FileTransferMethod, FileType
@@ -178,6 +179,29 @@ def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.Monke
     ):
         with pytest.raises(DraftWorkflowNotSync):
             handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+
+def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _raise(*_args, **_kwargs):
+        raise workflow_module.VariableError("description too long")
+
+    monkeypatch.setattr(workflow_module.variable_factory, "build_conversation_variable_from_mapping", _raise)
+    monkeypatch.setattr(
+        workflow_module, "WorkflowService", lambda: SimpleNamespace(sync_draft_workflow=lambda **_kwargs: None)
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+    ):
+        with pytest.raises(InvalidArgumentError) as exc:
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+    assert exc.value.description == "description too long"
 
 
 def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

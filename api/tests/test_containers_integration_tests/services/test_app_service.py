@@ -638,7 +638,7 @@ class TestAppService:
             paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
 
             # Verify tag service was called
-            mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"])
+            mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"], match_all=True)
 
             # Verify results
             assert paginated_apps is not None

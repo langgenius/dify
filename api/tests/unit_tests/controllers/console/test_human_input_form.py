@@ -9,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask, Response
 
+from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.console.human_input_form import (
     ConsoleHumanInputFormApi,
@@ -17,7 +18,6 @@ from controllers.console.human_input_form import (
     WorkflowResponseConverter,
     _jsonify_form_definition,
 )
-from controllers.web.error import NotFoundError
 from models.account import AccountStatus
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType
