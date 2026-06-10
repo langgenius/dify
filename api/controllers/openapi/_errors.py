@@ -221,6 +221,12 @@ class OpenApiErrorFormatter:
         return isinstance(part, (str, int)) and not isinstance(part, bool)
 
 
+class FilenameNotExists(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.FILENAME_NOT_EXISTS
+    description = "The specified filename does not exist."
+
+
 class MemberLimitExceeded(OpenApiError):  # noqa: N818
     code = 403
     error_code = OpenApiErrorCode.MEMBER_LIMIT_EXCEEDED

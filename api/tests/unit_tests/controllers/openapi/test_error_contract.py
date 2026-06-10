@@ -16,7 +16,6 @@ from werkzeug.exceptions import (
 
 from controllers.common.errors import (
     BlockedFileExtensionError,
-    FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
@@ -25,6 +24,7 @@ from controllers.common.errors import (
 from controllers.openapi._errors import (
     ErrorBody,
     ErrorDetail,
+    FilenameNotExists,
     MemberLicenseExceeded,
     MemberLimitExceeded,
     OpenApiError,
@@ -316,7 +316,7 @@ ERROR_MATRIX = [
     (UnsupportedFileTypeError(), 415, "unsupported_file_type"),
     (NoFileUploadedError(), 400, "no_file_uploaded"),
     (TooManyFilesError(), 400, "too_many_files"),
-    (FilenameNotExistsError(), 400, "filename_not_exists"),
+    (FilenameNotExists(), 400, "filename_not_exists"),
     (BlockedFileExtensionError(), 400, "file_extension_blocked"),
     (MemberLimitExceeded(), 403, "member_limit_exceeded"),
     (MemberLicenseExceeded(), 403, "member_license_exceeded"),
