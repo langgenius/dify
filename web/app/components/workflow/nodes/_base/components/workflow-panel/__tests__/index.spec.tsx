@@ -325,7 +325,6 @@ describe('workflow-panel index', () => {
       },
     )
 
-    expect(screen.getByRole('tablist')).toHaveClass('w-auto', 'shrink-0')
     expect(screen.getByText('panel-child')).toBeInTheDocument()
     expect(screen.getByText('authorized-in-node')).toBeInTheDocument()
 

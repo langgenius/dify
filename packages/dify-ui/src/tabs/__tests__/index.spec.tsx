@@ -39,7 +39,6 @@ describe('Tabs wrappers', () => {
 
     await expect.element(screen.getByRole('tablist')).toHaveClass(
       'flex',
-      'w-full',
       'gap-4',
     )
     await expect.element(screen.getByRole('tab', { name: 'First' })).toHaveClass(

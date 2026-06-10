@@ -482,7 +482,7 @@ const BasePanel: FC<BasePanelProps> = ({
     : runThisStepLabel
 
   const panelTabs = (
-    <TabsList className="w-auto shrink-0">
+    <TabsList>
       <TabsTab value={TabType.settings}>
         {t('debug.settingsTab', { ns: 'workflow' }).toLocaleUpperCase()}
       </TabsTab>

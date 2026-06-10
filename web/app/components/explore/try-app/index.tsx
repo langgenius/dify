@@ -71,7 +71,7 @@ const TryApp: FC<Props> = ({
             className="flex h-full flex-col"
           >
             <div className="flex shrink-0 justify-between pl-4">
-              <TabsList className="w-auto shrink-0">
+              <TabsList>
                 {IS_CLOUD_EDITION && (
                   <TabsTab
                     value={TypeEnum.TRY}

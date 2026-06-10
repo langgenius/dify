@@ -172,7 +172,6 @@ describe('TryApp (main index.tsx)', () => {
         expect(screen.getByText('explore.tryApp.tabHeader.try')).toBeInTheDocument()
         expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
       })
-      expect(screen.getByRole('tablist')).toHaveClass('w-auto', 'shrink-0')
     })
 
     it('renders App component by default (TRY mode)', async () => {

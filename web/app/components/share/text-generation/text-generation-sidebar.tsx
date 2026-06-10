@@ -95,7 +95,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         {siteInfo.description && (
           <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
         )}
-        <TabsList>
+        <TabsList className="w-full">
           <TabsTab value="create">
             <span className="ml-2">{t('generation.tabs.create', { ns: 'share' })}</span>
           </TabsTab>

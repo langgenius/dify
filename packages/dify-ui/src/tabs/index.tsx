@@ -18,7 +18,7 @@ export function TabsList({
 }: TabsListProps) {
   return (
     <BaseTabs.List
-      className={cn('flex w-full gap-4', className)}
+      className={cn('flex gap-4', className)}
       {...props}
     />
   )

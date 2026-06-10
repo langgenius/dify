@@ -113,6 +113,7 @@ describe('TextGenerationSidebar', () => {
 
     expect(screen.getByText('Text Generation')).toBeInTheDocument()
     expect(screen.getByText('Share description')).toBeInTheDocument()
+    expect(screen.getByRole('tablist')).toHaveClass('w-full')
     expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()
     expect(runOncePropsSpy).toHaveBeenCalledWith(expect.objectContaining({
       inputs: { name: 'Alice' },
