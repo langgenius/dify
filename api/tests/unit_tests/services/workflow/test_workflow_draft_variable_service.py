@@ -682,3 +682,15 @@ class TestModelToInsertionDict:
         )
         d = _model_to_insertion_dict(conv_var)
         assert d["description"] == desc
+
+    def test_is_default_value_omitted_when_none(self):
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
+        )
+        conv_var.is_default_value = None
+
+        d = _model_to_insertion_dict(conv_var)
+
+        assert "is_default_value" not in d
