@@ -70,14 +70,14 @@ export default function RosterPage() {
             <TabsList aria-label={t('roster.tabsLabel')} className="h-6 items-start gap-4">
               <TabsTab
                 value="agent"
-                className="relative h-6 px-0 text-base/6 font-semibold text-text-tertiary data-active:text-text-primary data-active:after:absolute data-active:after:right-0 data-active:after:-bottom-1 data-active:after:left-0 data-active:after:h-0.5 data-active:after:bg-state-accent-solid"
+                className="relative h-6 border-b-0 px-0 py-0 text-base/6 font-semibold text-text-tertiary data-active:text-text-primary data-active:after:absolute data-active:after:right-0 data-active:after:-bottom-1 data-active:after:left-0 data-active:after:h-0.5 data-active:after:bg-state-accent-solid"
               >
                 {t('roster.tabs.agent')}
               </TabsTab>
               <TabsTab
                 value="human"
                 disabled
-                className="relative h-6 px-0 text-base/6 font-semibold text-text-tertiary data-disabled:text-text-tertiary"
+                className="relative h-6 border-b-0 px-0 py-0 text-base/6 font-semibold text-text-tertiary data-disabled:text-text-tertiary"
               >
                 {t('roster.tabs.human')}
               </TabsTab>
