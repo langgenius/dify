@@ -255,11 +255,6 @@
       "count": 1
     }
   },
-  "web/app/components/app-sidebar/nav-link/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
