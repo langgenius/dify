@@ -656,7 +656,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                   <button
                     type="button"
                     onClick={() => setConfirmDeleteInput(app.name)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/[0.06] px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/[0.1]"
+                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/[0.06] px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/[0.1]"
                   >
                     {t('operation.fill', { ns: 'common' })}
                   </button>
