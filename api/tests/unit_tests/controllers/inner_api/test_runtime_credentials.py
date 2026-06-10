@@ -1,8 +1,6 @@
 """Unit tests for runtime credential inner API."""
 
 import inspect
-from collections.abc import Callable
-from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
@@ -11,12 +9,6 @@ from controllers.inner_api.runtime_credentials import (
     EnterpriseRuntimeCredentialsResolve,
     InnerRuntimeCredentialsResolvePayload,
 )
-
-ControllerMethod = Callable[..., tuple[dict[str, Any], int]]
-
-
-def unwrap_post(handler: EnterpriseRuntimeCredentialsResolve) -> ControllerMethod:
-    return cast(ControllerMethod, inspect.unwrap(cast(Callable[..., object], handler.post)))
 
 
 def test_runtime_credentials_payload_accepts_items():
@@ -71,7 +63,7 @@ def test_runtime_model_credentials_resolve_returns_decrypted_values(
     mock_decrypt_token.return_value = "sk-test"
 
     handler = EnterpriseRuntimeCredentialsResolve()
-    unwrapped = unwrap_post(handler)
+    unwrapped = inspect.unwrap(handler.post)
     with app.test_request_context():
         with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
             mock_ns.payload = {
@@ -102,7 +94,7 @@ def test_runtime_model_credentials_resolve_rejects_unknown_provider(mock_provide
     mock_provider_manager_factory.return_value = provider_manager
 
     handler = EnterpriseRuntimeCredentialsResolve()
-    unwrapped = unwrap_post(handler)
+    unwrapped = inspect.unwrap(handler.post)
     with app.test_request_context():
         with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
             mock_ns.payload = {
@@ -146,7 +138,7 @@ def test_runtime_tool_credentials_resolve_returns_decrypted_values(
     mock_create_encrypter.return_value = (provider_encrypter, MagicMock())
 
     handler = EnterpriseRuntimeCredentialsResolve()
-    unwrapped = unwrap_post(handler)
+    unwrapped = inspect.unwrap(handler.post)
     with app.test_request_context():
         with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
             mock_ns.payload = {
@@ -186,7 +178,7 @@ def test_runtime_tool_credentials_resolve_rejects_unknown_credential(
     mock_db.engine = MagicMock()
 
     handler = EnterpriseRuntimeCredentialsResolve()
-    unwrapped = unwrap_post(handler)
+    unwrapped = inspect.unwrap(handler.post)
     with app.test_request_context():
         with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
             mock_ns.payload = {
@@ -201,7 +193,7 @@ def test_runtime_tool_credentials_resolve_rejects_unknown_credential(
 
 def test_runtime_credentials_resolve_rejects_unknown_kind(app: Flask):
     handler = EnterpriseRuntimeCredentialsResolve()
-    unwrapped = unwrap_post(handler)
+    unwrapped = inspect.unwrap(handler.post)
     with app.test_request_context():
         with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
             mock_ns.payload = {
