@@ -1,0 +1,63 @@
+name: langgenius_perplexity_search
+dependency:
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/perplexity:1.0.1@32531e4a1ec68754e139f29f04eaa7f51130318a908d11382a27dc05ec8d91e3
+node:
+  width: 244
+  height: 376
+  data:
+    title: Perplexity Search
+    desc: Search information using Perplexity AI's language models.
+    type: tool
+    selected: false
+    provider_id: langgenius/perplexity/perplexity
+    provider_type: builtin
+    provider_name: langgenius/perplexity/perplexity
+    tool_name: perplexity
+    tool_label: Perplexity Search
+    tool_description: Search information using Perplexity AI's language models.
+    tool_node_version: '2'
+    output_schema:
+      type: string
+    tool_configurations:
+      frequency_penalty:
+        type: constant
+        value: 1
+      max_tokens:
+        type: constant
+        value: 4096
+      model:
+        type: constant
+        value: sonar
+      presence_penalty:
+        type: constant
+        value: 0
+      return_images:
+        type: constant
+        value: false
+      return_related_questions:
+        type: constant
+        value: false
+      search_context_size:
+        type: constant
+        value: low
+      search_domain_filter:
+        type: mixed
+        value: ''
+      search_recency_filter:
+        type: constant
+        value: month
+      temperature:
+        type: constant
+        value: 0.7
+      top_k:
+        type: constant
+        value: 5
+      top_p:
+        type: constant
+        value: 1
+    tool_parameters:
+      query:
+        type: mixed
+        value: ''

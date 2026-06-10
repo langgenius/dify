@@ -1,0 +1,16 @@
+app:
+  name: llm_openai_demo
+  mode: advanced-chat
+workflow:
+  sequence:
+    - id: start
+      type: start
+    - id: llm_main
+      type: llm
+      provider: langgenius/openai/openai
+      model: gpt-4o-mini
+      system_prompt: You are a helpful assistant.
+      user_prompt: "{{#sys.query#}}"
+    - id: answer
+      type: answer
+      answer: "{{#llm_main.text#}}"

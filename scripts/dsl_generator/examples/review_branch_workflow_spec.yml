@@ -1,0 +1,117 @@
+app:
+  name: review_branch_workflow_demo
+  mode: workflow
+workflow:
+  nodes:
+    - id: trigger
+      type: trigger-plugin
+      template: triggers/typeform_form_response_received
+      title: 收到表单响应
+      position:
+        x: 30
+        y: 227
+    - id: extractor
+      type: parameter-extractor
+      template: extractors/recommended_action_extractor
+      title: 参数提取器
+      query:
+        - trigger
+        - output
+      position:
+        x: 334
+        y: 227
+    - id: decision
+      type: if-else
+      template: logic/recommended_action_if_else
+      title: 条件分支
+      position:
+        x: 638
+        y: 227
+    - id: send_now
+      type: tool
+      template: tools/gmail_send_message
+      title: Send Gmail Message
+      tool_parameters:
+        to:
+          type: mixed
+          value: ""
+        subject:
+          type: mixed
+          value: ""
+        body:
+          type: mixed
+          value: ""
+      position:
+        x: 942
+        y: 120
+    - id: llm_draft
+      type: llm
+      provider: langgenius/openai/openai
+      model: gpt-4o-mini
+      system_prompt: Draft a short follow-up email based on the extracted partner information.
+      user_prompt: "{{#trigger.output#}}"
+      position:
+        x: 942
+        y: 334
+    - id: review
+      type: human-input
+      template: human/email_review
+      title: 人工介入
+      position:
+        x: 1246
+        y: 334
+    - id: create_draft
+      type: tool
+      template: extracted/tools/langgenius_dify_gmail__draft_message.yml
+      title: Create Gmail Draft
+      position:
+        x: 1550
+        y: 440
+    - id: finish_send
+      type: end
+      outputs:
+        - variable: message_id
+          value_selector:
+            - send_now
+            - message_id
+          value_type: string
+      position:
+        x: 1246
+        y: 120
+    - id: finish_draft
+      type: end
+      outputs:
+        - variable: draft_id
+          value_selector:
+            - create_draft
+            - draft_id
+          value_type: string
+      position:
+        x: 1854
+        y: 440
+  edges:
+    - source: trigger
+      target: extractor
+    - source: extractor
+      target: decision
+    - source: decision
+      source_handle: "true"
+      target: send_now
+    - source: decision
+      source_handle: needs_draft
+      target: llm_draft
+    - source: decision
+      source_handle: fallback
+      target: create_draft
+    - source: llm_draft
+      target: review
+    - source: review
+      source_handle: confirm_send
+      target: send_now
+    - source: review
+      source_handle: do_not_send
+      target: create_draft
+    - source: send_now
+      target: finish_send
+    - source: create_draft
+      target: finish_draft

@@ -1,0 +1,117 @@
+app:
+  name: question_classifier_branch_demo
+  mode: workflow
+workflow:
+  nodes:
+    - id: start
+      type: start
+      position:
+        x: 30
+        y: 227
+      variables:
+        - variable: query
+          label: query
+          type: paragraph
+          required: true
+          max_length: 2000
+          options: []
+    - id: classify
+      type: question-classifier
+      title: Route Question
+      query_variable_selector:
+        - start
+        - query
+      provider: langgenius/openai/openai
+      model: gpt-4o-mini
+      instruction: Route the incoming question to the best support queue.
+      classes:
+        - id: billing
+          name: Billing
+        - id: refund
+          name: Refund
+        - id: general
+          name: General
+      position:
+        x: 334
+        y: 227
+    - id: billing_reply
+      type: llm
+      title: Billing Reply
+      provider: langgenius/openai/openai
+      model: gpt-4o-mini
+      system_prompt: Answer the billing question in a concise and helpful way.
+      user_prompt: "{{#start.query#}}"
+      position:
+        x: 638
+        y: 90
+    - id: refund_reply
+      type: llm
+      title: Refund Reply
+      provider: langgenius/openai/openai
+      model: gpt-4o-mini
+      system_prompt: Answer the refund question in a concise and helpful way.
+      user_prompt: "{{#start.query#}}"
+      position:
+        x: 638
+        y: 227
+    - id: general_reply
+      type: llm
+      title: General Reply
+      provider: langgenius/openai/openai
+      model: gpt-4o-mini
+      system_prompt: Answer the general support question in a concise and helpful way.
+      user_prompt: "{{#start.query#}}"
+      position:
+        x: 638
+        y: 364
+    - id: finish_billing
+      type: end
+      position:
+        x: 942
+        y: 90
+      outputs:
+        - variable: answer
+          value_selector:
+            - billing_reply
+            - text
+          value_type: string
+    - id: finish_refund
+      type: end
+      position:
+        x: 942
+        y: 227
+      outputs:
+        - variable: answer
+          value_selector:
+            - refund_reply
+            - text
+          value_type: string
+    - id: finish_general
+      type: end
+      position:
+        x: 942
+        y: 364
+      outputs:
+        - variable: answer
+          value_selector:
+            - general_reply
+            - text
+          value_type: string
+  edges:
+    - source: start
+      target: classify
+    - source: classify
+      source_handle: billing
+      target: billing_reply
+    - source: classify
+      source_handle: refund
+      target: refund_reply
+    - source: classify
+      source_handle: general
+      target: general_reply
+    - source: billing_reply
+      target: finish_billing
+    - source: refund_reply
+      target: finish_refund
+    - source: general_reply
+      target: finish_general

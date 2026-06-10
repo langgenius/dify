@@ -1,0 +1,32 @@
+name: google_drive_change_detected
+dependency:
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/google_drive_trigger:1.3.0@a6f2bed0be0d0cdbe96c3fb716af0457af8b73d5f805105f265261f805f71d04
+node:
+  width: 242
+  height: 135
+  data:
+    title: Google Drive Change Detected
+    desc: Fetches Drive change feed entries when Google Drive sends a webhook notification.
+    type: trigger-plugin
+    selected: false
+    plugin_id: langgenius/google_drive_trigger
+    plugin_unique_identifier: langgenius/google_drive_trigger:1.3.0@a6f2bed0be0d0cdbe96c3fb716af0457af8b73d5f805105f265261f805f71d04
+    provider_id: langgenius/google_drive_trigger/google_drive_trigger
+    provider_name: langgenius/google_drive_trigger/google_drive_trigger
+    provider_type: trigger
+    subscription_id: ''
+    is_team_authorization: false
+    event_name: drive_change_detected
+    event_label: Google Drive Change Detected
+    event_description: Fetches Drive change feed entries when Google Drive sends a webhook notification.
+    event_parameters:
+      change_types:
+        type: constant
+        value:
+        - file
+        - drive
+      file_name_pattern:
+        type: constant
+        value: '*.pdf'

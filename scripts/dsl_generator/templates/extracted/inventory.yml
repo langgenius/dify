@@ -1,0 +1,60 @@
+source_dirs:
+- /Users/scarlettmao/Desktop/dify-workflows/workflows
+templates_count: 8
+templates:
+- template: /Users/scarlettmao/Desktop/test/dify/scripts/dsl_generator/templates/extracted/triggers/langgenius_google_drive_trigger__drive_change_detected.yml
+  type: trigger-plugin
+  title: Google Drive Change Detected
+  source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Qdrant Upsert
+    Using Google Drive Trigger.yml
+  source_node_id: '1764728094780'
+  dependencies_count: 1
+- template: /Users/scarlettmao/Desktop/test/dify/scripts/dsl_generator/templates/extracted/tools/yoshiki_0428_google_drive__google_drive_file_download.yml
+  type: tool
+  title: Download Google Drive file
+  source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Qdrant Upsert
+    Using Google Drive Trigger.yml
+  source_node_id: '1764883551015'
+  dependencies_count: 1
+- template: /Users/scarlettmao/Desktop/test/dify/scripts/dsl_generator/templates/extracted/tools/inlei_mistral_ocr__mistral_ocr_tool.yml
+  type: tool
+  title: Mistral OCR
+  source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Qdrant Upsert
+    Using Google Drive Trigger.yml
+  source_node_id: '1764904624163'
+  dependencies_count: 1
+- template: /Users/scarlettmao/Desktop/test/dify/scripts/dsl_generator/templates/extracted/tools/yaxuanm_qdrant__qdrant_upsert_text.yml
+  type: tool
+  title: Qdrant · Upsert Text
+  source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Qdrant Upsert
+    Using Google Drive Trigger.yml
+  source_node_id: '1764906283895'
+  dependencies_count: 1
+- template: /Users/scarlettmao/Desktop/test/dify/scripts/dsl_generator/templates/extracted/triggers/langgenius_typeform_trigger__form_response_received.yml
+  type: trigger-plugin
+  title: 收到表单响应
+  source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Typeform Automation
+    FLow (2).yml
+  source_node_id: '1769321649760'
+  dependencies_count: 1
+- template: /Users/scarlettmao/Desktop/test/dify/scripts/dsl_generator/templates/extracted/tools/langgenius_dify_gmail__send_message.yml
+  type: tool
+  title: 发送Gmail邮件
+  source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Typeform Automation
+    FLow (2).yml
+  source_node_id: '1770061195757'
+  dependencies_count: 1
+- template: /Users/scarlettmao/Desktop/test/dify/scripts/dsl_generator/templates/extracted/tools/langgenius_dify_gmail__send_message__1770072303321.yml
+  type: tool
+  title: Send Gmail Message
+  source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Typeform Automation
+    FLow (2).yml
+  source_node_id: '1770072303321'
+  dependencies_count: 1
+- template: /Users/scarlettmao/Desktop/test/dify/scripts/dsl_generator/templates/extracted/tools/langgenius_dify_gmail__draft_message.yml
+  type: tool
+  title: Create Gmail Draft
+  source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Typeform Automation
+    FLow (2).yml
+  source_node_id: '1770072382941'
+  dependencies_count: 1

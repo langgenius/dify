@@ -1,0 +1,74 @@
+app:
+  name: webhook_http_demo
+  mode: workflow
+workflow:
+  sequence:
+    - id: webhook_trigger
+      type: trigger-webhook
+      title: Webhook Trigger
+      webhook_url: https://example.invalid/hooks/customer-events
+      method: POST
+      content_type: application/json
+      headers:
+        - name: x-request-id
+          type: string
+          required: false
+      params:
+        - name: tenant_id
+          type: string
+          required: false
+      body:
+        - name: customer_id
+          type: string
+          required: true
+        - name: score
+          type: number
+          required: false
+      response_body: '{"accepted": true}'
+      variables:
+        - variable: customer_id
+          label: customer_id
+          value_type: string
+          value_selector: []
+          required: true
+        - variable: score
+          label: score
+          value_type: number
+          value_selector: []
+          required: false
+        - variable: _webhook_raw
+          label: raw
+          value_type: object
+          value_selector: []
+          required: true
+    - id: enrich_customer
+      type: http-request
+      title: Enrich Customer
+      method: GET
+      url: https://api.example.invalid/customers/{{#webhook_trigger.customer_id#}}
+      headers: |-
+        Accept: application/json
+        X-Request-Id: {{#webhook_trigger.x_request_id#}}
+      params: |-
+        tenant_id: {{#webhook_trigger.tenant_id#}}
+      timeout:
+        connect: 10
+        read: 30
+        write: 30
+      retry_config:
+        retry_enabled: true
+        max_retries: 2
+        retry_interval: 200
+    - id: finish
+      type: end
+      outputs:
+        - variable: status_code
+          value_selector:
+            - enrich_customer
+            - status_code
+          value_type: number
+        - variable: response_body
+          value_selector:
+            - enrich_customer
+            - body
+          value_type: string

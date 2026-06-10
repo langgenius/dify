@@ -1,5 +1,5 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { AppDetailResponse, AppListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, WebhookTriggerResponse } from '@/models/app'
+import type { AppDetailResponse, AppListResponse, CreateApiKeyResponse, DSLAgentDebugRunRequest, DSLAgentDebugRunResponse, DSLAgentDraftRepairRequest, DSLAgentDraftRepairResponse, DSLAgentRunResponse, DSLAgentRuntimeRepairRequest, DSLAgentRuntimeRepairResponse, DSLGenerateRequest, DSLGenerateResponse, DSLImportMode, DSLImportResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, WebhookTriggerResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppIconType, AppModeEnum, ModelConfig } from '@/types/app'
 import { del, get, patch, post, put } from './base'
@@ -94,6 +94,30 @@ export const importDSL = ({ mode, yaml_content, yaml_url, app_id, name, descript
 
 export const importDSLConfirm = ({ import_id }: { import_id: string }): Promise<DSLImportResponse> => {
   return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
+}
+
+export const generateDSL = (body: DSLGenerateRequest): Promise<DSLGenerateResponse> => {
+  return post<DSLGenerateResponse>('apps/dsl-agent/generate', { body })
+}
+
+export const createDSLRun = (body: DSLGenerateRequest): Promise<DSLAgentRunResponse> => {
+  return post<DSLAgentRunResponse>('apps/dsl-agent/runs', { body })
+}
+
+export const getDSLRun = (runID: string): Promise<DSLAgentRunResponse> => {
+  return get<DSLAgentRunResponse>(`apps/dsl-agent/runs/${runID}`)
+}
+
+export const debugDSLAgentDraftRun = (appID: string, body: DSLAgentDebugRunRequest): Promise<DSLAgentDebugRunResponse> => {
+  return post<DSLAgentDebugRunResponse>(`apps/${appID}/dsl-agent/debug/draft-run`, { body })
+}
+
+export const repairDSLAgentRuntimeError = (body: DSLAgentRuntimeRepairRequest): Promise<DSLAgentRuntimeRepairResponse> => {
+  return post<DSLAgentRuntimeRepairResponse>('apps/dsl-agent/debug/repair', { body })
+}
+
+export const debugAndRepairDSLAgentDraftRun = (appID: string, body: DSLAgentDraftRepairRequest): Promise<DSLAgentDraftRepairResponse> => {
+  return post<DSLAgentDraftRepairResponse>(`apps/${appID}/dsl-agent/debug/repair-draft`, { body })
 }
 
 export const switchApp = ({ appID, name, icon_type, icon, icon_background }: { appID: string, name: string, icon_type: AppIconType, icon: string, icon_background?: string | null }): Promise<{ new_app_id: string }> => {

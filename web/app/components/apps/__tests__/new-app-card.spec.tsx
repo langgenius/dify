@@ -22,6 +22,13 @@ vi.mock('@/next/dynamic', () => ({
   default: (importFn: () => Promise<{ default: React.ComponentType }>) => {
     const fnString = importFn.toString()
 
+    if (fnString.includes('create-from-ai-modal')) {
+      return function MockCreateFromAIModal({ show, onClose, onSuccess }: Record<string, unknown>) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'create-ai-modal' }, React.createElement('button', { 'onClick': onClose as () => void, 'data-testid': 'close-ai-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess as () => void, 'data-testid': 'success-ai-modal' }, 'Success'))
+      }
+    }
     if (fnString.includes('create-app-modal') && !fnString.includes('create-from-dsl-modal')) {
       return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: Record<string, unknown>) {
         if (!show)
@@ -66,11 +73,12 @@ describe('CreateAppCard', () => {
       expect(screen.getByText('app.createApp')).toBeInTheDocument()
     })
 
-    it('should render three create buttons', () => {
+    it('should render four create buttons', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
       expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
       expect(screen.getByText('app.newApp.startFromTemplate')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromAI')).toBeInTheDocument()
       expect(screen.getByText('app.importDSL')).toBeInTheDocument()
     })
 
@@ -78,7 +86,7 @@ describe('CreateAppCard', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
       const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(3)
+      expect(buttons).toHaveLength(4)
       buttons.forEach((button) => {
         expect(button).not.toBeDisabled()
       })
@@ -186,6 +194,37 @@ describe('CreateAppCard', () => {
     })
   })
 
+  describe('User Interactions - AI Modal', () => {
+    it('should open AI modal when clicking Create with AI', () => {
+      render(<CreateAppCard ref={defaultRef} />)
+
+      fireEvent.click(screen.getByText('app.newApp.startFromAI'))
+
+      expect(screen.getByTestId('create-ai-modal')).toBeInTheDocument()
+    })
+
+    it('should close AI modal when clicking close button', () => {
+      render(<CreateAppCard ref={defaultRef} />)
+
+      fireEvent.click(screen.getByText('app.newApp.startFromAI'))
+      expect(screen.getByTestId('create-ai-modal')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('close-ai-modal'))
+      expect(screen.queryByTestId('create-ai-modal')).not.toBeInTheDocument()
+    })
+
+    it('should call onSuccess and onPlanInfoChanged on AI create success', () => {
+      const mockOnSuccess = vi.fn()
+      render(<CreateAppCard ref={defaultRef} onSuccess={mockOnSuccess} />)
+
+      fireEvent.click(screen.getByText('app.newApp.startFromAI'))
+      fireEvent.click(screen.getByTestId('success-ai-modal'))
+
+      expect(mockOnPlanInfoChanged).toHaveBeenCalled()
+      expect(mockOnSuccess).toHaveBeenCalled()
+    })
+  })
+
   describe('User Interactions - DSL Import Modal', () => {
     it('should open DSL modal when clicking Import DSL', () => {
       render(<CreateAppCard ref={defaultRef} />)
@@ -222,7 +261,7 @@ describe('CreateAppCard', () => {
       const { container } = render(<CreateAppCard ref={defaultRef} />)
       const card = container.firstChild as HTMLElement
 
-      expect(card).toHaveClass('h-[160px]', 'rounded-xl')
+      expect(card).toHaveClass('h-[192px]', 'rounded-xl')
     })
 
     it('should have proper button styling', () => {
@@ -245,11 +284,15 @@ describe('CreateAppCard', () => {
       fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
       fireEvent.click(screen.getByTestId('close-template-dialog'))
 
+      fireEvent.click(screen.getByText('app.newApp.startFromAI'))
+      fireEvent.click(screen.getByTestId('close-ai-modal'))
+
       fireEvent.click(screen.getByText('app.importDSL'))
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
 
       expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
       expect(screen.queryByTestId('create-template-dialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('create-ai-modal')).not.toBeInTheDocument()
       expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
     })
 

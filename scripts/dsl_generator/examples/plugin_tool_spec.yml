@@ -1,0 +1,25 @@
+app:
+  name: plugin_tool_demo
+  mode: advanced-chat
+workflow:
+  sequence:
+    - id: start
+      type: start
+      variables:
+        - variable: topic
+          label: topic
+          type: text-input
+          required: true
+          max_length: 256
+          options: []
+    - id: search
+      type: tool
+      template: tools/langgenius_perplexity_search
+      title: Perplexity Search
+      tool_parameters:
+        query:
+          type: mixed
+          value: "Latest news about {{#start.topic#}}"
+    - id: answer
+      type: answer
+      answer: "{{#search.text#}}"

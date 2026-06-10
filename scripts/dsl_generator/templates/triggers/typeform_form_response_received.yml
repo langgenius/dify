@@ -1,0 +1,26 @@
+name: typeform_form_response_received
+dependency:
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/typeform_trigger:0.1.1@ff9d7c53f4738c1ae99add784395eb67d23713547e9c87613a8804382701081e
+node:
+  width: 242
+  height: 153
+  data:
+    title: Received Typeform Response
+    desc: Triggered when Typeform sends a form_response webhook.
+    type: trigger-plugin
+    selected: false
+    plugin_id: langgenius/typeform_trigger
+    plugin_unique_identifier: langgenius/typeform_trigger:0.1.1@ff9d7c53f4738c1ae99add784395eb67d23713547e9c87613a8804382701081e
+    provider_id: langgenius/typeform_trigger/typeform_trigger
+    provider_type: trigger
+    subscription_id: ''
+    event_name: form_response_received
+    event_parameters:
+      hidden_field_filter:
+        type: constant
+        value: ''
+      variable_filter:
+        type: constant
+        value: ''

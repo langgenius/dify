@@ -1,0 +1,104 @@
+version: "0.6.0"
+kind: app
+app:
+  name: batch_openai_llm_success
+  mode: workflow
+  description: "Batch eval case with an official OpenAI LLM node."
+dependencies:
+  - current_identifier: null
+    type: package
+    value:
+      plugin_unique_identifier: langgenius/openai:0.0.19@ee25cddb7264169044e305955abbf97eff0876a151ced2bf20c5907430ad5727
+workflow:
+  environment_variables: []
+  conversation_variables: []
+  features:
+    source: dsl-agent-batch-eval
+    needs_plugins:
+      - langgenius/openai
+  graph:
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
+    nodes:
+      - id: start
+        type: start
+        position:
+          x: 100
+          y: 100
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: start
+          title: Start
+          variables:
+            - variable: text
+              label: Text
+              type: paragraph
+              required: true
+      - id: llm
+        type: llm
+        position:
+          x: 420
+          y: 100
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: llm
+          title: Summarize With OpenAI
+          model:
+            provider: langgenius/openai/openai
+            name: gpt-4o-mini
+            mode: chat
+            completion_params:
+              temperature: 0
+              max_tokens: 80
+          prompt_template:
+            - role: system
+              text: "Summarize the user text in one short sentence. Return only the summary."
+            - role: user
+              text: "{{#start.text#}}"
+          context:
+            enabled: false
+            variable_selector: []
+          vision:
+            enabled: false
+          variables: []
+      - id: end
+        type: end
+        position:
+          x: 760
+          y: 100
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: end
+          title: End
+          outputs:
+            - variable: summary
+              value_type: string
+              value_selector:
+                - llm
+                - text
+    edges:
+      - id: start-source-llm-target
+        source: start
+        sourceHandle: source
+        target: llm
+        targetHandle: target
+        type: custom
+        data:
+          sourceType: start
+          targetType: llm
+          isInLoop: false
+      - id: llm-source-end-target
+        source: llm
+        sourceHandle: source
+        target: end
+        targetHandle: target
+        type: custom
+        data:
+          sourceType: llm
+          targetType: end
+          isInLoop: false

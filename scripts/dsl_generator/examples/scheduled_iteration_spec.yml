@@ -1,0 +1,106 @@
+app:
+  name: scheduled_iteration_demo
+  mode: workflow
+workflow:
+  environment_variables:
+    - name: brands
+      value: YTTV,Fubo,Sling
+      value_type: string
+      selector:
+        - env
+        - brands
+      id: env-brands
+      description: ""
+    - name: platforms
+      value: deal_sites,official_blog
+      value_type: string
+      selector:
+        - env
+        - platforms
+      id: env-platforms
+      description: ""
+  sequence:
+    - id: schedule
+      type: trigger-schedule
+      title: Schedule Trigger
+      mode: visual
+      frequency: weekly
+      timezone: UTC
+      visual_config:
+        time: 9:00 AM
+        weekdays:
+          - mon
+          - wed
+          - fri
+    - id: build_tasks
+      type: code
+      title: Build Tasks
+      code_language: python3
+      code: |
+        def main(brands: str, platforms: str):
+            brand_list = [brand.strip() for brand in brands.split(",") if brand.strip()]
+            platform_list = [platform.strip() for platform in platforms.split(",") if platform.strip()]
+
+            tasks = []
+            for brand in brand_list:
+                for platform in platform_list:
+                    tasks.append({
+                        "brand": brand,
+                        "platform": platform,
+                        "query": f"{brand} {platform} campaign update"
+                    })
+
+            return {
+                "tasks": tasks,
+                "task_count": len(tasks),
+            }
+      variables:
+        - variable: brands
+          value_selector:
+            - env
+            - brands
+          value_type: string
+        - variable: platforms
+          value_selector:
+            - env
+            - platforms
+          value_type: string
+      outputs:
+        tasks:
+          type: array[object]
+          children: null
+        task_count:
+          type: number
+          children: null
+    - id: iterate_tasks
+      type: iteration
+      title: Iterate Tasks
+      iterator_selector:
+        - build_tasks
+        - tasks
+      iterator_input_type: array[object]
+      output_selector:
+        - summarize_task
+        - text
+      output_type: array[string]
+      sequence:
+        - id: summarize_task
+          type: llm
+          title: Summarize Task
+          provider: langgenius/openai/openai
+          model: gpt-4o-mini
+          system_prompt: Summarize the monitoring task into one concise sentence.
+          user_prompt: "{{#iterate_tasks.item.brand#}} on {{#iterate_tasks.item.platform#}} with query {{#iterate_tasks.item.query#}}"
+    - id: finish
+      type: end
+      outputs:
+        - variable: summaries
+          value_selector:
+            - iterate_tasks
+            - output
+          value_type: array[string]
+        - variable: task_count
+          value_selector:
+            - build_tasks
+            - task_count
+          value_type: number

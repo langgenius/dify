@@ -1,0 +1,139 @@
+app:
+  name: drive_to_qdrant_auto_demo
+  mode: workflow
+workflow:
+  sequence:
+    - id: drive_trigger
+      type: trigger-plugin
+      provider_id: langgenius/google_drive_trigger/google_drive_trigger
+      event_name: drive_change_detected
+      title: Google Drive Change Detected
+    - id: extract_file
+      type: code
+      title: Data Processing
+      code_language: javascript
+      code: |
+        function main({ changes }) {
+          if (!changes || changes.length === 0) {
+            return { fileId: null, fileName: null };
+          }
+
+          const first = changes[0];
+
+          return {
+            fileId: first.file_id || null,
+            fileName: first.file?.name || null
+          };
+        }
+      variables:
+        - variable: changes
+          value_selector:
+            - drive_trigger
+            - changes
+          value_type: array[object]
+      outputs:
+        fileId:
+          type: string
+          children: null
+        fileName:
+          type: string
+          children: null
+    - id: download_file
+      type: tool
+      provider_id: yoshiki-0428/google_drive/google_drive
+      tool_name: google-drive-file-download
+      tool_parameters:
+        file_id:
+          type: mixed
+          value: "{{#extract_file.fileId#}}"
+    - id: ocr_file
+      type: tool
+      provider_id: inlei/mistral_ocr/mistral_ocr
+      tool_name: mistral_ocr_tool
+      tool_parameters:
+        file_path:
+          type: variable
+          value:
+            - download_file
+            - files
+        image_limit:
+          type: constant
+          value: null
+        image_min_size:
+          type: constant
+          value: 100
+        pages:
+          type: mixed
+          value: ""
+    - id: chunk_text
+      type: code
+      title: General Chunker
+      code_language: python3
+      code: |
+        def main(json_input):
+            if not json_input or "pages" not in json_input[0]:
+                return {"chunks": [], "chunk_count": 0}
+
+            pages = json_input[0]["pages"]
+            text_parts = []
+
+            for page in pages:
+                markdown = page.get("markdown", "")
+                if markdown:
+                    text_parts.append(markdown.strip())
+
+            if not text_parts:
+                return {"chunks": [], "chunk_count": 0}
+
+            full_text = " ".join(text_parts)
+            chunk_size = 400
+            overlap = 100
+            chunks = []
+            start = 0
+
+            while start < len(full_text):
+                end = start + chunk_size
+                chunks.append({"text": full_text[start:end]})
+                start += chunk_size - overlap
+
+            return {"chunks": chunks, "chunk_count": len(chunks)}
+      variables:
+        - variable: json_input
+          value_selector:
+            - ocr_file
+            - json
+          value_type: array[object]
+      outputs:
+        chunks:
+          type: array[object]
+          children: null
+        chunk_count:
+          type: number
+          children: null
+    - id: upsert_qdrant
+      type: tool
+      provider_id: yaxuanm/qdrant/qdrant
+      tool_name: qdrant-upsert-text
+      tool_parameters:
+        collection:
+          type: mixed
+          value: drive_ingestion
+        point_ids:
+          type: mixed
+          value: ""
+        texts:
+          type: variable
+          value:
+            - chunk_text
+            - chunks
+        wait:
+          type: constant
+          value: true
+    - id: finish
+      type: end
+      outputs:
+        - variable: chunk_count
+          value_selector:
+            - chunk_text
+            - chunk_count
+          value_type: number

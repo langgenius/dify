@@ -1,0 +1,44 @@
+app:
+  name: list_and_assigner_demo
+  mode: workflow
+workflow:
+  sequence:
+    - id: start
+      type: start
+      variables:
+        - variable: tasks
+          label: tasks
+          type: json
+          required: true
+          options: []
+          max_length: null
+    - id: filter_tasks
+      type: list-operator
+      title: Filter Tasks
+      variable:
+        - start
+        - tasks
+      var_type: array[object]
+      item_var_type: object
+      limit:
+        enabled: true
+        size: 3
+    - id: shape_result
+      type: variable-assigner
+      title: Shape Result
+      output_type: object
+      variables:
+        - - filter_tasks
+          - result
+        - - filter_tasks
+          - first_record
+        - - filter_tasks
+          - last_record
+    - id: finish
+      type: end
+      outputs:
+        - variable: output
+          value_selector:
+            - shape_result
+            - output
+          value_type: object

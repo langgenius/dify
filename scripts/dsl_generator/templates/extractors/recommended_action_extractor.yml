@@ -1,0 +1,36 @@
+name: recommended_action_extractor
+dependencies:
+  - type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/openai:0.2.8@aae2be0913b8c6f0b80cff58e08d7a8b4c214569b41778413fcaea204561ff16
+node:
+  width: 242
+  height: 88
+  data:
+    title: Parameter Extractor
+    desc: Extract routing fields from upstream JSON text.
+    type: parameter-extractor
+    selected: false
+    instruction: |
+      Extract the required fields from the upstream JSON and return valid JSON only.
+    model:
+      completion_params:
+        temperature: 0.7
+      mode: chat
+      name: gpt-4o-mini
+      provider: langgenius/openai/openai
+    parameters:
+      - name: recommended_next_action
+        description: recommended_next_action
+        required: true
+        type: string
+      - name: partner_email
+        description: partner_email
+        required: false
+        type: string
+    query:
+      - agent
+      - text
+    reasoning_mode: prompt
+    vision:
+      enabled: false

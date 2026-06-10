@@ -1,0 +1,174 @@
+name: yaxuanm_qdrant__qdrant_upsert_text
+source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Qdrant Upsert
+  Using Google Drive Trigger.yml
+source_node_id: '1764906283895'
+node:
+  width: 242
+  height: 88
+  data:
+    is_team_authorization: true
+    paramSchemas:
+    - auto_generate: null
+      default: null
+      form: llm
+      human_description:
+        en_US: Name of the Qdrant collection that will hold the points.
+        ja_JP: Name of the Qdrant collection that will hold the points.
+        pt_BR: Name of the Qdrant collection that will hold the points.
+        zh_Hans: 目标 Qdrant 集合的名称。
+      label:
+        en_US: Collection Name
+        ja_JP: Collection Name
+        pt_BR: Collection Name
+        zh_Hans: 集合名称
+      llm_description: ''
+      max: null
+      min: null
+      name: collection
+      options: []
+      placeholder: null
+      precision: null
+      required: true
+      scope: null
+      template: null
+      type: string
+    - auto_generate: null
+      default: null
+      form: llm
+      human_description:
+        en_US: Array of chunk objects. Each chunk must provide a `text` field.
+        ja_JP: Array of chunk objects. Each chunk must provide a `text` field.
+        pt_BR: Array of chunk objects. Each chunk must provide a `text` field.
+        zh_Hans: 分片对象数组。每个分片都需要包含 `text` 字段。
+      label:
+        en_US: Texts
+        ja_JP: Texts
+        pt_BR: Texts
+        zh_Hans: 文本分片
+      llm_description: ''
+      max: null
+      min: null
+      name: texts
+      options: []
+      placeholder: null
+      precision: null
+      required: true
+      scope: null
+      template: null
+      type: array
+    - auto_generate: null
+      default: null
+      form: form
+      human_description:
+        en_US: Model used to convert each chunk into a dense vector.
+        ja_JP: Model used to convert each chunk into a dense vector.
+        pt_BR: Model used to convert each chunk into a dense vector.
+        zh_Hans: 用于将分片转换成稠密向量的模型。
+      label:
+        en_US: Embedding Model
+        ja_JP: Embedding Model
+        pt_BR: Embedding Model
+        zh_Hans: 向量化模型
+      llm_description: ''
+      max: null
+      min: null
+      name: embedding_model_config
+      options: []
+      placeholder: null
+      precision: null
+      required: true
+      scope: text-embedding
+      template: null
+      type: model-selector
+    - auto_generate: null
+      default: null
+      form: llm
+      human_description:
+        en_US: Override automatically generated IDs.
+        ja_JP: Override automatically generated IDs.
+        pt_BR: Override automatically generated IDs.
+        zh_Hans: 覆盖自动生成的 UUID，自定义点 ID。
+      label:
+        en_US: Point IDs (Optional)
+        ja_JP: Point IDs (Optional)
+        pt_BR: Point IDs (Optional)
+        zh_Hans: 点 ID（可选）
+      llm_description: ''
+      max: null
+      min: null
+      name: point_ids
+      options: []
+      placeholder: null
+      precision: null
+      required: false
+      scope: null
+      template: null
+      type: string
+    - auto_generate: null
+      default: true
+      form: llm
+      human_description:
+        en_US: 'Block until Qdrant confirms the write (default: true).'
+        ja_JP: 'Block until Qdrant confirms the write (default: true).'
+        pt_BR: 'Block until Qdrant confirms the write (default: true).'
+        zh_Hans: 等待 Qdrant 确认写入（默认 true）。
+      label:
+        en_US: Wait for Completion
+        ja_JP: Wait for Completion
+        pt_BR: Wait for Completion
+        zh_Hans: 等待完成
+      llm_description: ''
+      max: null
+      min: null
+      name: wait
+      options: []
+      placeholder: null
+      precision: null
+      required: false
+      scope: null
+      template: null
+      type: boolean
+    params:
+      collection: ''
+      embedding_model_config: ''
+      point_ids: ''
+      texts: ''
+      wait: ''
+    plugin_id: yaxuanm/qdrant
+    plugin_unique_identifier: yaxuanm/qdrant:0.0.1@4a38a912286fd3e224f89e8d00345ce8565a9843ef5ebf8b8dd07623a65ff271
+    provider_id: yaxuanm/qdrant/qdrant
+    provider_name: yaxuanm/qdrant/qdrant
+    provider_type: builtin
+    title: Qdrant · Upsert Text
+    tool_configurations:
+      embedding_model_config:
+        type: constant
+        value:
+          model: text-embedding-3-small
+          model_type: text-embedding
+          provider: langgenius/openai/openai
+    tool_description: Insert or update text chunks. Each chunk is embedded automatically
+      and stored as its own point (auto-creates the collection if needed).
+    tool_label: Qdrant · Upsert Text
+    tool_name: qdrant-upsert-text
+    tool_node_version: '2'
+    tool_parameters:
+      collection:
+        type: mixed
+        value: ''
+      point_ids:
+        type: mixed
+        value: ''
+      texts:
+        type: variable
+        value: ''
+      wait:
+        type: constant
+        value: true
+    type: tool
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: yaxuanm/qdrant:0.0.1@4a38a912286fd3e224f89e8d00345ce8565a9843ef5ebf8b8dd07623a65ff271
+    version: null

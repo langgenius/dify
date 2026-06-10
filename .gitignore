@@ -242,3 +242,6 @@ scripts/stress-test/reports/
 
 # Code Agent Folder
 .qoder/*
+
+# Dify DSL agent local run artifacts
+scripts/dsl_agent/outputs/

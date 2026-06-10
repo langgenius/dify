@@ -1,0 +1,59 @@
+name: yoshiki_0428_google_drive__google_drive_file_download
+source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Qdrant Upsert
+  Using Google Drive Trigger.yml
+source_node_id: '1764883551015'
+node:
+  width: 242
+  height: 52
+  data:
+    is_team_authorization: false
+    paramSchemas:
+    - auto_generate: null
+      default: null
+      form: llm
+      human_description:
+        en_US: The Google Drive file ID to download
+        ja_JP: The Google Drive file ID to download
+        pt_BR: O ID do arquivo do Google Drive para baixar
+        zh_Hans: 要下载的 Google Drive 文件ID
+      label:
+        en_US: File ID
+        ja_JP: File ID
+        pt_BR: ID do arquivo
+        zh_Hans: 文件ID
+      llm_description: The Google Drive file ID to download. This is the unique identifier
+        for the file in Google Drive.
+      max: null
+      min: null
+      name: file_id
+      options: []
+      placeholder: null
+      precision: null
+      required: true
+      scope: null
+      template: null
+      type: string
+    params:
+      file_id: ''
+    plugin_id: yoshiki-0428/google_drive
+    plugin_unique_identifier: yoshiki-0428/google_drive:0.1.0@3be894ee7a15878c2c00c3728f901d8d63c56b901b7494c5a2a8fc0649566d52
+    provider_id: yoshiki-0428/google_drive/google_drive
+    provider_name: yoshiki-0428/google_drive/google_drive
+    provider_type: builtin
+    title: Download Google Drive file
+    tool_configurations: {}
+    tool_description: Download a file from Google Drive by file ID
+    tool_label: Download Google Drive file
+    tool_name: google-drive-file-download
+    tool_node_version: '2'
+    tool_parameters:
+      file_id:
+        type: mixed
+        value: ''
+    type: tool
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: yoshiki-0428/google_drive:0.1.0@3be894ee7a15878c2c00c3728f901d8d63c56b901b7494c5a2a8fc0649566d52
+    version: null

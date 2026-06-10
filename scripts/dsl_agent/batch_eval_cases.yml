@@ -1,0 +1,70 @@
+cases:
+  - id: passthrough_success
+    title: Start input passes directly to End
+    mode: workflow
+    yaml_file: batch_cases/passthrough_success.yml
+    inputs:
+      text: "hello from batch eval"
+    expect:
+      status: succeeded
+      output_contains:
+        result: "hello from batch eval"
+
+  - id: openai_llm_success
+    title: Official OpenAI LLM node summarizes text
+    mode: workflow
+    yaml_file: batch_cases/openai_llm_success.yml
+    inputs:
+      text: "Dify lets teams build and operate visual AI workflows with APIs."
+    requires:
+      model_provider: langgenius/openai/openai
+    expect:
+      status: succeeded
+      output_keys:
+        - summary
+
+  - id: broken_selector_repair
+    title: Broken End selector is detected and repaired
+    mode: workflow
+    yaml_file: batch_cases/broken_selector_repair.yml
+    inputs:
+      text: "repair me"
+    expect:
+      initial_status: validation_failed
+      final_status: succeeded
+      repair_applied: true
+      output_contains:
+        result: "repair me"
+
+  - id: broken_openai_model_repair
+    title: Broken OpenAI model is detected before import and repaired
+    mode: workflow
+    yaml_file: batch_cases/broken_openai_model_repair.yml
+    inputs:
+      text: "Dify lets teams build and operate visual AI workflows with APIs."
+    requires:
+      model_provider: langgenius/openai/openai
+    repair:
+      fallback_model_provider: langgenius/openai/openai
+      fallback_model: gpt-4o-mini
+    expect:
+      initial_status: validation_failed
+      final_status: succeeded
+      repair_applied: true
+      output_keys:
+        - summary
+    optional: true
+    timeout_seconds: 90
+
+  - id: broken_code_repair
+    title: Broken code node is detected from draft runtime evidence and repaired
+    mode: workflow
+    yaml_file: batch_cases/broken_code_repair.yml
+    inputs:
+      text: "repair code"
+    expect:
+      initial_status: draft_failed
+      final_status: succeeded
+      repair_applied: true
+      output_contains:
+        result: "repair code"

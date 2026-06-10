@@ -1,0 +1,93 @@
+version: "0.6.0"
+kind: app
+app:
+  name: batch_broken_code_repair
+  mode: workflow
+  description: "Batch eval case that imports but fails draft run before code repair."
+dependencies: []
+workflow:
+  environment_variables: []
+  conversation_variables: []
+  features:
+    source: dsl-agent-batch-eval
+  graph:
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
+    nodes:
+      - id: start
+        type: start
+        position:
+          x: 100
+          y: 100
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: start
+          title: Start
+          variables:
+            - variable: text
+              label: Text
+              type: paragraph
+              required: true
+      - id: code
+        type: code
+        position:
+          x: 420
+          y: 100
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: code
+          title: Broken Code
+          variables:
+            - variable: text
+              value_selector:
+                - start
+                - text
+          code_language: python3
+          code: |
+            def main(text: str):
+                raise Exception("intentional batch eval failure")
+          outputs:
+            result:
+              type: string
+              children: null
+      - id: end
+        type: end
+        position:
+          x: 760
+          y: 100
+        sourcePosition: right
+        targetPosition: left
+        data:
+          type: end
+          title: End
+          outputs:
+            - variable: result
+              value_type: string
+              value_selector:
+                - code
+                - result
+    edges:
+      - id: start-source-code-target
+        source: start
+        sourceHandle: source
+        target: code
+        targetHandle: target
+        type: custom
+        data:
+          sourceType: start
+          targetType: code
+          isInLoop: false
+      - id: code-source-end-target
+        source: code
+        sourceHandle: source
+        target: end
+        targetHandle: target
+        type: custom
+        data:
+          sourceType: code
+          targetType: end
+          isInLoop: false

@@ -1,0 +1,344 @@
+name: langgenius_google_drive_trigger__drive_change_detected
+source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Qdrant Upsert
+  Using Google Drive Trigger.yml
+source_node_id: '1764728094780'
+node:
+  width: 242
+  height: 135
+  data:
+    config:
+      change_types:
+        type: constant
+        value:
+        - file
+        - drive
+      file_name_pattern:
+        type: constant
+        value: '*.pdf'
+    event_description: Fetches Drive change feed entries when Google Drive sends a
+      webhook notification.
+    event_label: Google Drive Change Detected
+    event_name: drive_change_detected
+    event_parameters:
+      change_types:
+        type: constant
+        value:
+        - file
+        - drive
+      file_name_pattern:
+        type: constant
+        value: '*.pdf'
+    is_team_authorization: false
+    meta:
+      version: '1.0'
+    output_schema:
+      properties:
+        body:
+          description: Raw webhook payload body (if provided by Google Drive).
+          type: object
+        changes:
+          description: List of Drive change entries returned by the API.
+          items:
+            properties:
+              change_type:
+                description: Type of change (e.g., "file", "drive").
+                type: string
+              file:
+                description: The latest metadata for the changed file.
+                properties:
+                  capabilities:
+                    description: Capabilities the current user has on the file.
+                    properties:
+                      canAcceptOwnership:
+                        type: boolean
+                      canAddChildren:
+                        type: boolean
+                      canAddMyDriveParent:
+                        type: boolean
+                      canChangeCopyRequiresWriterPermission:
+                        type: boolean
+                      canChangeItemDownloadRestriction:
+                        type: boolean
+                      canChangeSecurityUpdateEnabled:
+                        type: boolean
+                      canChangeViewersCanCopyContent:
+                        type: boolean
+                      canComment:
+                        type: boolean
+                      canCopy:
+                        type: boolean
+                      canDelete:
+                        type: boolean
+                      canDisableInheritedPermissions:
+                        type: boolean
+                      canDownload:
+                        type: boolean
+                      canEdit:
+                        type: boolean
+                      canEnableInheritedPermissions:
+                        type: boolean
+                      canListChildren:
+                        type: boolean
+                      canModifyContent:
+                        type: boolean
+                      canModifyContentRestriction:
+                        type: boolean
+                      canModifyEditorContentRestriction:
+                        type: boolean
+                      canModifyLabels:
+                        type: boolean
+                      canModifyOwnerContentRestriction:
+                        type: boolean
+                      canMoveChildrenWithinDrive:
+                        type: boolean
+                      canMoveItemIntoTeamDrive:
+                        type: boolean
+                      canMoveItemOutOfDrive:
+                        type: boolean
+                      canMoveItemWithinDrive:
+                        type: boolean
+                      canReadLabels:
+                        type: boolean
+                      canReadRevisions:
+                        type: boolean
+                      canRemoveChildren:
+                        type: boolean
+                      canRemoveContentRestriction:
+                        type: boolean
+                      canRemoveMyDriveParent:
+                        type: boolean
+                      canRename:
+                        type: boolean
+                      canShare:
+                        type: boolean
+                      canTrash:
+                        type: boolean
+                      canUntrash:
+                        type: boolean
+                    type: object
+                  createdTime:
+                    description: The time at which the file was created (RFC 3339
+                      date-time).
+                    type: string
+                  iconLink:
+                    description: A static, unauthenticated link to the file's icon.
+                    type: string
+                  id:
+                    description: The ID of the file.
+                    type: string
+                  lastModifyingUser:
+                    description: The last user to modify the file.
+                    properties:
+                      displayName:
+                        description: A plain text displayable name for this user.
+                        type: string
+                      emailAddress:
+                        description: The email address of the user.
+                        type: string
+                      kind:
+                        description: Identifies what kind of resource this is (e.g.,
+                          "drive#user").
+                        type: string
+                      me:
+                        description: Whether this user is the same as the authenticated
+                          user.
+                        type: boolean
+                      permissionId:
+                        description: The user's ID as visible in Permission resources.
+                        type: string
+                      photoLink:
+                        description: A link to the user's profile photo.
+                        type: string
+                    type: object
+                  mimeType:
+                    description: The MIME type of the file.
+                    type: string
+                  modifiedTime:
+                    description: The last time the file was modified (RFC 3339 date-time).
+                    type: string
+                  name:
+                    description: The name of the file.
+                    type: string
+                  ownedByMe:
+                    description: Whether the user owns the file.
+                    type: boolean
+                  owners:
+                    description: The owners of the file.
+                    items:
+                      properties:
+                        displayName:
+                          description: A plain text displayable name for this user.
+                          type: string
+                        emailAddress:
+                          description: The email address of the user.
+                          type: string
+                        kind:
+                          description: Identifies what kind of resource this is (e.g.,
+                            "drive#user").
+                          type: string
+                        me:
+                          description: Whether this user is the same as the authenticated
+                            user.
+                          type: boolean
+                        permissionId:
+                          description: The user's ID as visible in Permission resources.
+                          type: string
+                        photoLink:
+                          description: A link to the user's profile photo.
+                          type: string
+                      type: object
+                    type: array
+                  parents:
+                    description: The IDs of the parent folders.
+                    items:
+                      type: string
+                    type: array
+                  trashed:
+                    description: Whether the file has been trashed.
+                    type: boolean
+                  webViewLink:
+                    description: A link for opening the file in a web app.
+                    type: string
+                type: object
+              file_id:
+                description: The ID of the file associated with this change.
+                type: string
+              removed:
+                description: Whether the file or shared drive was removed.
+                type: boolean
+            type: object
+          type: array
+        current_page_token:
+          description: The page token that was used for the API request.
+          type: string
+        headers:
+          description: Google-signed webhook headers forwarded from the trigger.
+          type: object
+        new_start_page_token:
+          description: Token that should be used for future incremental syncs.
+          type: string
+        next_page_token:
+          description: If present, indicates additional changes available with another
+            request.
+          type: string
+        spaces:
+          description: Drive spaces that were queried for changes.
+          items:
+            type: string
+          type: array
+        subscription:
+          description: Metadata captured when the watch channel was created.
+          properties:
+            channel_id:
+              description: UUID of the notification channel.
+              type: string
+            resource_id:
+              description: An opaque ID that identifies the watched resource.
+              type: string
+            user:
+              description: Information about the authenticated user.
+              properties:
+                displayName:
+                  description: A plain text displayable name for this user.
+                  type: string
+                emailAddress:
+                  description: The email address of the user.
+                  type: string
+                kind:
+                  description: Identifies what kind of resource this is (e.g., "drive#user").
+                  type: string
+                me:
+                  description: Whether this user is the same as the authenticated
+                    user.
+                  type: boolean
+                permissionId:
+                  description: The user's ID as visible in Permission resources.
+                  type: string
+                photoLink:
+                  description: A link to the user's profile photo.
+                  type: string
+              type: object
+            watch_expiration:
+              description: Expiration time of the watch channel in milliseconds since
+                epoch.
+              type: string
+          type: object
+      type: object
+    paramSchemas:
+    - default:
+      - file
+      - drive
+      form: checkbox
+      human_description:
+        en_US: Only include Drive changes whose type matches the selected values.
+        ja_JP: 選択した種類に一致する Drive の変更のみを含めます。
+        pt_BR: Only include Drive changes whose type matches the selected values.
+        zh_Hans: 仅包含类型与所选值匹配的云端硬盘更改。
+      label:
+        en_US: Change types
+        ja_JP: 変更タイプ
+        pt_BR: Change types
+        zh_Hans: 更改类型
+      llm_description: '{"en_US":"Only include Drive changes whose type matches the
+        selected values.","zh_Hans":"仅包含类型与所选值匹配的云端硬盘更改。","pt_BR":"Only include Drive
+        changes whose type matches the selected values.","ja_JP":"選択した種類に一致する Drive
+        の変更のみを含めます。"}'
+      multiple: true
+      name: change_types
+      options:
+      - label:
+          en_US: File change
+          ja_JP: ファイルの変更
+          pt_BR: File change
+          zh_Hans: 文件更改
+        value: file
+      - label:
+          en_US: Drive change
+          ja_JP: ドライブの変更
+          pt_BR: Drive change
+          zh_Hans: 云端硬盘更改
+        value: drive
+      required: false
+      type: checkbox
+    - default: ''
+      form: string
+      human_description:
+        en_US: Filter results to file names matching the pattern. Supports * and ?
+          wildcards and multiple patterns separated by commas or new lines.
+        ja_JP: パターンに一致するファイル名のみを含めます。*, ? のワイルドカードやカンマ・改行区切りの複数指定をサポートします。
+        pt_BR: Filter results to file names matching the pattern. Supports * and ?
+          wildcards and multiple patterns separated by commas or new lines.
+        zh_Hans: 仅保留匹配该模式的文件名。支持 * 和 ? 通配符，可使用 "," 或换行分隔多个模式。
+      label:
+        en_US: File name pattern
+        ja_JP: ファイル名パターン
+        pt_BR: File name pattern
+        zh_Hans: 文件名模式
+      llm_description: '{"en_US":"Filter results to file names matching the pattern.
+        Supports * and ? wildcards and multiple patterns separated by commas or new
+        lines.","zh_Hans":"仅保留匹配该模式的文件名。支持 * 和 ? 通配符，可使用 \",\" 或换行分隔多个模式。","pt_BR":"Filter
+        results to file names matching the pattern. Supports * and ? wildcards and
+        multiple patterns separated by commas or new lines.","ja_JP":"パターンに一致するファイル名のみを含めます。*,
+        ? のワイルドカードやカンマ・改行区切りの複数指定をサポートします。"}'
+      multiple: false
+      name: file_name_pattern
+      options: []
+      required: false
+      type: string
+    params:
+      change_types: ''
+      file_name_pattern: ''
+    plugin_id: langgenius/google_drive_trigger
+    plugin_unique_identifier: langgenius/google_drive_trigger:1.3.0@a6f2bed0be0d0cdbe96c3fb716af0457af8b73d5f805105f265261f805f71d04
+    provider_id: langgenius/google_drive_trigger/google_drive_trigger
+    provider_name: langgenius/google_drive_trigger/google_drive_trigger
+    provider_type: trigger
+    subscription_id: ''
+    title: Google Drive Change Detected
+    type: trigger-plugin
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/google_drive_trigger:1.3.0@a6f2bed0be0d0cdbe96c3fb716af0457af8b73d5f805105f265261f805f71d04
+    version: null

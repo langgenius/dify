@@ -1,0 +1,49 @@
+name: ecosystem_research_agent
+dependencies:
+  - type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/agent:0.0.31@faea70b63e46a8d42f060bd005cfbc8af8e229b3b7f2b8ed253669efef42846a
+  - type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/openai:0.2.8@aae2be0913b8c6f0b80cff58e08d7a8b4c214569b41778413fcaea204561ff16
+node:
+  width: 242
+  height: 188
+  data:
+    title: Agent
+    desc: Research and assess the incoming partner application.
+    type: agent
+    selected: false
+    plugin_unique_identifier: langgenius/agent:0.0.31@faea70b63e46a8d42f060bd005cfbc8af8e229b3b7f2b8ed253669efef42846a
+    tool_node_version: "2"
+    agent_strategy_label: FunctionCalling
+    agent_strategy_name: function_calling
+    agent_strategy_provider_name: langgenius/agent/agent
+    output_schema: {}
+    meta:
+      minimum_dify_version: 1.7.0
+      version: 0.0.2
+    agent_parameters:
+      instruction:
+        type: constant
+        value: |
+          You are an ecosystem research agent for Dify.
+          Review the incoming application, assess the company and product, and produce a structured recommendation.
+      maximum_iterations:
+        type: constant
+        value: 2
+      model:
+        type: constant
+        value:
+          completion_params: {}
+          mode: chat
+          model: gpt-4o-mini
+          model_type: llm
+          provider: langgenius/openai/openai
+          type: model-selector
+      query:
+        type: constant
+        value: "{{#sys.query#}}"
+      tools:
+        type: constant
+        value: []

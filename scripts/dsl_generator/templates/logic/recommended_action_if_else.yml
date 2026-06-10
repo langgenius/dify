@@ -1,0 +1,43 @@
+name: recommended_action_if_else
+node:
+  width: 242
+  height: 220
+  data:
+    title: Recommended Action
+    desc: Branch on extracted recommendation.
+    type: if-else
+    selected: false
+    cases:
+      - case_id: "true"
+        id: "true"
+        logical_operator: or
+        conditions:
+          - id: proceed-condition
+            comparison_operator: is
+            value: Proceed
+            varType: string
+            variable_selector:
+              - extractor
+              - recommended_next_action
+      - case_id: needs_draft
+        id: needs_draft
+        logical_operator: and
+        conditions:
+          - id: draft-condition
+            comparison_operator: contains
+            value: Ask_to_publish_plugin_first
+            varType: string
+            variable_selector:
+              - extractor
+              - recommended_next_action
+      - case_id: fallback
+        id: fallback
+        logical_operator: and
+        conditions:
+          - id: fallback-condition
+            comparison_operator: contains
+            value: Low_priority_observe
+            varType: string
+            variable_selector:
+              - extractor
+              - recommended_next_action

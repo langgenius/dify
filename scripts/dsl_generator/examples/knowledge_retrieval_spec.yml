@@ -1,0 +1,51 @@
+app:
+  name: knowledge_retrieval_demo
+  mode: workflow
+workflow:
+  sequence:
+    - id: start
+      type: start
+      variables:
+        - variable: query
+          label: query
+          type: paragraph
+          required: true
+          max_length: 2000
+          options: []
+    - id: retrieve_knowledge
+      type: knowledge-retrieval
+      title: Retrieve Knowledge
+      query_variable_selector:
+        - start
+        - query
+      dataset_ids:
+        - dataset-placeholder-1
+      retrieval_mode: multiple
+      multiple_retrieval_config:
+        top_k: 3
+        score_threshold: null
+        reranking_enable: false
+    - id: answer
+      type: llm
+      title: Answer With Context
+      provider: langgenius/openai/openai
+      model: gpt-4o-mini
+      system_prompt: Answer the question using the retrieved knowledge snippets.
+      user_prompt: |
+        Question: {{#start.query#}}
+
+        Retrieved Context:
+        {{#retrieve_knowledge.result#}}
+    - id: finish
+      type: end
+      outputs:
+        - variable: retrieval_result
+          value_selector:
+            - retrieve_knowledge
+            - result
+          value_type: array[object]
+        - variable: answer
+          value_selector:
+            - answer
+            - text
+          value_type: string

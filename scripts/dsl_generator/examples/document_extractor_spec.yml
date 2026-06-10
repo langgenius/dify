@@ -1,0 +1,41 @@
+app:
+  name: document_extractor_demo
+  mode: workflow
+workflow:
+  sequence:
+    - id: start
+      type: start
+      variables:
+        - variable: file
+          label: file
+          type: file
+          required: true
+          options: []
+          max_length: null
+    - id: extract_text
+      type: document-extractor
+      title: Extract Document Text
+      variable_selector:
+        - start
+        - file
+      is_array_file: false
+    - id: summarize
+      type: llm
+      title: Summarize Document
+      provider: langgenius/openai/openai
+      model: gpt-4o-mini
+      system_prompt: Summarize the uploaded document in 3 bullet points.
+      user_prompt: "{{#extract_text.text#}}"
+    - id: finish
+      type: end
+      outputs:
+        - variable: extracted_text
+          value_selector:
+            - extract_text
+            - text
+          value_type: string
+        - variable: summary
+          value_selector:
+            - summarize
+            - text
+          value_type: string

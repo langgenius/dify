@@ -1,0 +1,52 @@
+app:
+  name: typeform_gmail_branch_demo
+  mode: workflow
+workflow:
+  nodes:
+    - id: typeform_trigger
+      type: trigger-plugin
+      template: triggers/typeform_form_response_received
+      title: 收到表单响应
+    - id: send_now
+      type: tool
+      template: tools/gmail_send_message
+      title: Send Gmail Message
+      tool_parameters:
+        to:
+          type: mixed
+          value: ""
+        subject:
+          type: mixed
+          value: ""
+        body:
+          type: mixed
+          value: ""
+    - id: create_draft
+      type: tool
+      template: extracted/tools/langgenius_dify_gmail__draft_message.yml
+      title: Create Gmail Draft
+    - id: finish_send
+      type: end
+      outputs:
+        - variable: message_id
+          value_selector:
+            - send_now
+            - message_id
+          value_type: string
+    - id: finish_draft
+      type: end
+      outputs:
+        - variable: draft_id
+          value_selector:
+            - create_draft
+            - draft_id
+          value_type: string
+  edges:
+    - source: typeform_trigger
+      target: send_now
+    - source: typeform_trigger
+      target: create_draft
+    - source: send_now
+      target: finish_send
+    - source: create_draft
+      target: finish_draft

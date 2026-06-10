@@ -1,0 +1,11 @@
+providers:
+  openai:
+    dependency:
+      type: marketplace
+      value:
+        marketplace_plugin_unique_identifier: langgenius/openai:0.2.8@aae2be0913b8c6f0b80cff58e08d7a8b4c214569b41778413fcaea204561ff16
+  langgenius/openai/openai:
+    dependency:
+      type: marketplace
+      value:
+        marketplace_plugin_unique_identifier: langgenius/openai:0.2.8@aae2be0913b8c6f0b80cff58e08d7a8b4c214569b41778413fcaea204561ff16

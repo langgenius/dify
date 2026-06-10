@@ -58,7 +58,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
       {({ open }) => (
         <>
           <MenuButton className={cn(
-            'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 w-full items-center justify-center radius-lg pl-2 pr-2.5 text-[14px] font-semibold text-components-main-nav-nav-button-text-active',
+            'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 w-full items-center justify-center radius-lg pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active',
             open && 'bg-components-main-nav-nav-button-bg-active',
           )}
           >
@@ -70,7 +70,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
           </MenuButton>
           <MenuItems
             className="
-              absolute -left-11 right-0 mt-1.5 w-60 max-w-80
+              absolute right-0 -left-11 mt-1.5 w-60 max-w-80
               origin-top-right divide-y divide-divider-regular rounded-lg bg-components-panel-bg-blur
               shadow-lg
             "
@@ -156,7 +156,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                       leaveTo="transform opacity-0 scale-95"
                     >
                       <MenuItems className={cn(
-                        'absolute right-[-198px] top-[3px] z-10 min-w-[200px] rounded-lg bg-components-panel-bg-blur shadow-lg',
+                        'absolute top-[3px] right-[-198px] z-10 min-w-[200px] rounded-lg bg-components-panel-bg-blur shadow-lg',
                       )}
                       >
                         <div className="p-1">
@@ -167,6 +167,10 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                           <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('template')}>
                             <FilePlus02 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
                             {t('newApp.startFromTemplate', { ns: 'app' })}
+                          </div>
+                          <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('ai')}>
+                            <span className="mr-2 i-ri-sparkling-2-line h-4 w-4 shrink-0 text-text-secondary" />
+                            {t('newApp.startFromAI', { ns: 'app' })}
                           </div>
                         </div>
                         <div className="border-t border-divider-regular p-1">

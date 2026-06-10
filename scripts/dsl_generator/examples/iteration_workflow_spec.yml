@@ -1,0 +1,37 @@
+app:
+  name: generated_iteration_workflow
+  mode: workflow
+  description: Workflow example with an iteration container.
+workflow:
+  sequence:
+    - id: start
+      type: start
+    - id: build_numbers
+      type: code
+      code: |
+        def main() -> dict:
+            return {"result": [1, 2, 3]}
+      outputs:
+        result:
+          type: array[number]
+          children: null
+    - id: iter_numbers
+      type: iteration
+      iterator_selector: [build_numbers, result]
+      iterator_input_type: array[number]
+      output_selector: [format_item, output]
+      output_type: array[string]
+      sequence:
+        - id: format_item
+          type: template-transform
+          template: "output: {{ arg1 }}"
+          variables:
+            - variable: arg1
+              value_selector: [iter_numbers, item]
+              value_type: string
+    - id: end
+      type: end
+      outputs:
+        - variable: output
+          value_selector: [iter_numbers, output]
+          value_type: array[string]

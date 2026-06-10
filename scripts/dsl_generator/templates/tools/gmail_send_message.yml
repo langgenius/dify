@@ -1,0 +1,43 @@
+name: gmail_send_message
+dependency:
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/dify-gmail:0.2.1@181057c375f10ac3cdd0067aca5866f1a3eea0088d51a48185ef1d314d7838a7
+node:
+  width: 242
+  height: 52
+  data:
+    title: Send Gmail Message
+    desc: ''
+    type: tool
+    selected: false
+    is_team_authorization: true
+    plugin_id: langgenius/dify-gmail
+    plugin_unique_identifier: langgenius/dify-gmail:0.2.1@181057c375f10ac3cdd0067aca5866f1a3eea0088d51a48185ef1d314d7838a7
+    provider_id: langgenius/dify-gmail/dify-gmail
+    provider_name: langgenius/dify-gmail/dify-gmail
+    provider_type: builtin
+    tool_description: Send an email message via Gmail with recipients, subject, and body content
+    tool_label: Send Gmail Message
+    tool_name: send_message
+    tool_node_version: '2'
+    tool_configurations: {}
+    tool_parameters:
+      to:
+        type: mixed
+        value: ''
+      subject:
+        type: mixed
+        value: ''
+      body:
+        type: mixed
+        value: ''
+      cc:
+        type: mixed
+        value: ''
+      bcc:
+        type: mixed
+        value: ''
+      reply_to:
+        type: mixed
+        value: ''

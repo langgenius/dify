@@ -21,6 +21,9 @@ const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-mod
 const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), {
   ssr: false,
 })
+const CreateFromAIModal = dynamic(() => import('@/app/components/app/create-from-ai-modal'), {
+  ssr: false,
+})
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
   ssr: false,
 })
@@ -48,6 +51,7 @@ const CreateAppCard = ({
 
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
+  const [showCreateFromAIModal, setShowCreateFromAIModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(!!dslUrl)
 
   const activeTab = useMemo(() => {
@@ -68,25 +72,33 @@ const CreateAppCard = ({
     <div
       ref={ref}
       className={cn(
-        'relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
+        'relative col-span-1 inline-flex h-[192px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
         isLoading && 'pointer-events-none opacity-50',
         className,
       )}
     >
       <div className="grow rounded-t-xl p-2">
-        <div className="px-6 pb-1 pt-2 text-xs font-medium leading-[18px] text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
-        <button type="button" className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppModal(true)}>
+        <div className="px-6 pt-2 pb-1 text-xs leading-[18px] font-medium text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
+        <button type="button" className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppModal(true)}>
           <FilePlus01 className="mr-2 h-4 w-4 shrink-0" />
           {t('newApp.startFromBlank', { ns: 'app' })}
         </button>
-        <button type="button" className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppTemplateDialog(true)}>
+        <button type="button" className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppTemplateDialog(true)}>
           <FilePlus02 className="mr-2 h-4 w-4 shrink-0" />
           {t('newApp.startFromTemplate', { ns: 'app' })}
         </button>
         <button
           type="button"
+          onClick={() => setShowCreateFromAIModal(true)}
+          className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+        >
+          <span className="mr-2 i-ri-sparkling-2-line h-4 w-4 shrink-0" />
+          {t('newApp.startFromAI', { ns: 'app' })}
+        </button>
+        <button
+          type="button"
           onClick={() => setShowCreateFromDSLModal(true)}
-          className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+          className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] leading-[18px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
         >
           <FileArrow01 className="mr-2 h-4 w-4 shrink-0" />
           {t('importDSL', { ns: 'app' })}
@@ -107,6 +119,17 @@ const CreateAppCard = ({
             setShowNewAppModal(false)
           }}
           defaultAppMode={selectedAppType !== 'all' ? selectedAppType as any : undefined}
+        />
+      )}
+      {showCreateFromAIModal && (
+        <CreateFromAIModal
+          show={showCreateFromAIModal}
+          onClose={() => setShowCreateFromAIModal(false)}
+          onSuccess={() => {
+            onPlanInfoChanged()
+            if (onSuccess)
+              onSuccess()
+          }}
         />
       )}
       {showNewAppTemplateDialog && (

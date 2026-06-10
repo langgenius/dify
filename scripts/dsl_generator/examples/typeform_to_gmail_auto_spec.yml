@@ -1,0 +1,33 @@
+app:
+  name: typeform_to_gmail_auto_demo
+  mode: workflow
+workflow:
+  sequence:
+    - id: typeform_trigger
+      type: trigger-plugin
+      provider_id: langgenius/typeform_trigger/typeform_trigger
+      event_name: form_response_received
+      title: 收到表单响应
+    - id: send_gmail
+      type: tool
+      provider_id: langgenius/dify-gmail/dify-gmail
+      tool_name: send_message
+      title: Send Gmail Message
+      tool_parameters:
+        to:
+          type: mixed
+          value: ops@example.com
+        subject:
+          type: mixed
+          value: New form response
+        body:
+          type: mixed
+          value: "A new Typeform response arrived."
+    - id: finish
+      type: end
+      outputs:
+        - variable: message_id
+          value_selector:
+            - send_gmail
+            - message_id
+          value_type: string

@@ -5,6 +5,8 @@ import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'
 
 const mockPush = vi.fn()
+const mockCreateDSLRun = vi.fn()
+const mockGetDSLRun = vi.fn()
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 const mockTrackEvent = vi.fn()
@@ -48,6 +50,8 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 vi.mock('@/service/apps', () => ({
+  createDSLRun: (...args: unknown[]) => mockCreateDSLRun(...args),
+  getDSLRun: (...args: unknown[]) => mockGetDSLRun(...args),
   importDSL: (...args: unknown[]) => mockImportDSL(...args),
   importDSLConfirm: (...args: unknown[]) => mockImportDSLConfirm(...args),
 }))
@@ -126,6 +130,31 @@ describe('CreateFromDSLModal', () => {
   })
 
   const getCreateButton = () => screen.getByRole('button', { name: /newApp\.Create/i })
+  const buildDslRun = (overrides: Record<string, any> = {}) => ({
+    id: 'run-1',
+    status: 'succeeded',
+    created_at: '2026-06-10T00:00:00Z',
+    updated_at: '2026-06-10T00:00:01Z',
+    current_stage: null,
+    request: {
+      prompt: 'Summarize customer support tickets.',
+    },
+    result: {
+      yaml_content: 'app: generated',
+      name: 'Generated App',
+      description: 'Generated description',
+      warnings: [],
+      metadata: {},
+    },
+    error: null,
+    events: [
+      { sequence: 1, stage: 'plan', status: 'completed', message: 'planned', created_at: '2026-06-10T00:00:00Z' },
+      { sequence: 2, stage: 'generate', status: 'completed', message: 'generated', created_at: '2026-06-10T00:00:01Z' },
+      { sequence: 3, stage: 'validate', status: 'completed', message: 'validated', created_at: '2026-06-10T00:00:01Z' },
+      { sequence: 4, stage: 'repair', status: 'skipped', message: 'no repair needed', created_at: '2026-06-10T00:00:01Z' },
+    ],
+    ...overrides,
+  })
 
   it('should render the file tab and show the dropped file', async () => {
     render(
@@ -141,6 +170,19 @@ describe('CreateFromDSLModal', () => {
     await waitFor(() => {
       expect(screen.getByText('demo.yml')).toBeInTheDocument()
     })
+  })
+
+  it('should not show the AI generation tab inside the DSL import modal', () => {
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('importFromDSLFile')).toBeInTheDocument()
+    expect(screen.getByText('importFromDSLUrl')).toBeInTheDocument()
+    expect(screen.queryByText('importFromDSLAI')).not.toBeInTheDocument()
   })
 
   it('should switch tabs, close from the header icon, and ignore shortcuts without valid input', async () => {
@@ -234,6 +276,212 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSL).toHaveBeenCalledWith({
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: 'app: demo',
+    })
+  })
+
+  it('should generate DSL with the AI tab and import the generated YAML', async () => {
+    const handleClose = vi.fn()
+    const handleSuccess = vi.fn()
+    mockCreateDSLRun.mockResolvedValue(buildDslRun())
+    mockImportDSL.mockResolvedValue({
+      id: 'import-ai',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-ai',
+      app_mode: 'workflow',
+    })
+
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={handleClose}
+        onSuccess={handleSuccess}
+        activeTab={CreateFromDSLModalTab.FROM_AI}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
+      target: { value: 'Summarize customer support tickets.' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('newApp.appNamePlaceholder'), {
+      target: { value: 'Support Summarizer' },
+    })
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    expect(mockCreateDSLRun).toHaveBeenCalledWith({
+      prompt: 'Summarize customer support tickets.',
+      app_name: 'Support Summarizer',
+      provider: 'langgenius/openai/openai',
+      model: 'gpt-4o-mini',
+      input_variable: 'input',
+      resolve_dependencies: true,
+    })
+    expect(mockImportDSL).toHaveBeenCalledWith({
+      mode: DSLImportMode.YAML_CONTENT,
+      yaml_content: 'app: generated',
+      name: 'Generated App',
+      description: 'Generated description',
+    })
+    expect(mockTrackEvent).toHaveBeenCalledWith('create_app_with_dsl', expect.objectContaining({
+      creation_method: 'dsl_agent',
+    }))
+    expect(handleSuccess).toHaveBeenCalledTimes(1)
+    expect(handleClose).toHaveBeenCalledTimes(1)
+    expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-ai')
+  })
+
+  it('should show staged progress while AI generation, import, and dependency checks are running', async () => {
+    let resolveRun!: (value: ReturnType<typeof buildDslRun>) => void
+    let resolveImport!: (value: { id: string, status: DSLImportStatus, app_id: string, app_mode: string }) => void
+    let resolveDependencies!: () => void
+
+    mockCreateDSLRun.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveRun = resolve as typeof resolveRun
+    }))
+    mockImportDSL.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveImport = resolve as typeof resolveImport
+    }))
+    mockHandleCheckPluginDependencies.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      resolveDependencies = resolve
+    }))
+
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        activeTab={CreateFromDSLModalTab.FROM_AI}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
+      target: { value: 'Build a slow workflow.' },
+    })
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    expect(screen.getByText('newApp.dslAgentProgressTitle')).toBeInTheDocument()
+    expect(screen.getByText('newApp.dslAgentStage.plan')).toBeInTheDocument()
+    expect(screen.getByText('newApp.dslAgentStage.plan.desc')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /newApp\.dslAgentWorking/i })).toBeDisabled()
+
+    await act(async () => {
+      resolveRun(buildDslRun())
+    })
+
+    await waitFor(() => {
+      expect(mockImportDSL).toHaveBeenCalled()
+      expect(screen.getByText('newApp.dslAgentStage.import.desc')).toBeInTheDocument()
+    })
+
+    await act(async () => {
+      resolveImport({
+        id: 'import-ai',
+        status: DSLImportStatus.COMPLETED,
+        app_id: 'app-ai',
+        app_mode: 'workflow',
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-ai')
+      expect(screen.getByText('newApp.dslAgentStage.dependencies.desc')).toBeInTheDocument()
+    })
+
+    await act(async () => {
+      resolveDependencies()
+    })
+  })
+
+  it('should poll a running AI generation run until it succeeds', async () => {
+    mockCreateDSLRun.mockResolvedValue(buildDslRun({
+      status: 'running',
+      current_stage: 'plan',
+      result: null,
+      events: [
+        { sequence: 1, stage: 'plan', status: 'running', message: 'planning', created_at: '2026-06-10T00:00:00Z' },
+      ],
+    }))
+    mockGetDSLRun.mockResolvedValue(buildDslRun({
+      id: 'run-1',
+      status: 'succeeded',
+    }))
+    mockImportDSL.mockResolvedValue({
+      id: 'import-ai',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-ai',
+      app_mode: 'workflow',
+    })
+
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        activeTab={CreateFromDSLModalTab.FROM_AI}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
+      target: { value: 'Build a polling workflow.' },
+    })
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    await waitFor(() => {
+      expect(mockCreateDSLRun).toHaveBeenCalled()
+      expect(screen.getByText('planning')).toBeInTheDocument()
+    })
+
+    await waitFor(() => {
+      expect(mockGetDSLRun).toHaveBeenCalledWith('run-1')
+      expect(mockImportDSL).toHaveBeenCalledWith(expect.objectContaining({
+        yaml_content: 'app: generated',
+      }))
+    }, { timeout: 2500 })
+  })
+
+  it('should show backend stage messages while a repair run is active', async () => {
+    mockCreateDSLRun.mockResolvedValue(buildDslRun({
+      status: 'running',
+      current_stage: 'repair',
+      result: null,
+      events: [
+        { sequence: 1, stage: 'plan', status: 'completed', message: 'planned', created_at: '2026-06-10T00:00:00Z' },
+        { sequence: 2, stage: 'validate', status: 'completed', message: 'Generated YAML needs deterministic repair.', created_at: '2026-06-10T00:00:01Z' },
+        { sequence: 3, stage: 'repair', status: 'running', message: 'Repairing generated YAML.', created_at: '2026-06-10T00:00:02Z' },
+      ],
+    }))
+    mockGetDSLRun.mockResolvedValue(buildDslRun({ id: 'run-1', status: 'succeeded' }))
+    mockImportDSL.mockResolvedValue({
+      id: 'import-ai',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-ai',
+      app_mode: 'workflow',
+    })
+
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        activeTab={CreateFromDSLModalTab.FROM_AI}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
+      target: { value: 'Build a workflow that needs repair.' },
+    })
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Repairing generated YAML.')).toBeInTheDocument()
     })
   })
 

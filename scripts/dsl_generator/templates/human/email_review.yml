@@ -1,0 +1,24 @@
+name: email_review
+node:
+  width: 242
+  height: 190
+  data:
+    title: Human Review
+    desc: Review draft content before sending.
+    type: human-input
+    selected: false
+    delivery_methods: []
+    form_content: |
+      Please review the draft below before deciding whether to send it.
+
+      {{#llm_draft.text#}}
+    inputs: []
+    timeout: 3
+    timeout_unit: day
+    user_actions:
+      - id: confirm_send
+        title: Confirm and Send
+        button_style: default
+      - id: do_not_send
+        title: Keep as Draft
+        button_style: default

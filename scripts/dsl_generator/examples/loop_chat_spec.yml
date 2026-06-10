@@ -1,0 +1,39 @@
+app:
+  name: generated_loop_chat
+  mode: advanced-chat
+  description: Advanced-chat example with a loop container.
+workflow:
+  sequence:
+    - id: start
+      type: start
+    - id: loop_counter
+      type: loop
+      loop_count: 10
+      logical_operator: and
+      loop_variables:
+        - id: loop_i
+          label: i
+          value: "0"
+          value_type: constant
+          var_type: number
+      break_conditions:
+        - id: stop_when_gte_2
+          variable_selector: [loop_counter, i]
+          comparison_operator: ">="
+          value: "2"
+          varType: number
+      sequence:
+        - id: increment_i
+          type: assigner
+          items:
+            - input_type: constant
+              operation: +=
+              value: 1
+              variable_selector: [loop_counter, i]
+              write_mode: over-write
+        - id: loop_answer
+          type: answer
+          answer: "{{#loop_counter.i#}}"
+    - id: final_answer
+      type: answer
+      answer: "{{#sys.query#}} + {{#loop_counter.i#}}"

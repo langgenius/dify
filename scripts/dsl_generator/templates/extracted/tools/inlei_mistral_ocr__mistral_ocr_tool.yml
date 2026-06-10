@@ -1,0 +1,152 @@
+name: inlei_mistral_ocr__mistral_ocr_tool
+source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Qdrant Upsert
+  Using Google Drive Trigger.yml
+source_node_id: '1764904624163'
+node:
+  width: 242
+  height: 52
+  data:
+    is_team_authorization: true
+    paramSchemas:
+    - auto_generate: null
+      default: null
+      form: llm
+      human_description:
+        en_US: Upload a single file for OCR processing. Only one document can be processed
+          at a time. Supports PDF documents and common image formats.
+        ja_JP: Upload a single file for OCR processing. Only one document can be processed
+          at a time. Supports PDF documents and common image formats.
+        pt_BR: Upload a single file for OCR processing. Only one document can be processed
+          at a time. Supports PDF documents and common image formats.
+        zh_Hans: 上传单个文件进行 OCR 处理。每次只能处理一个文档。支持 PDF 文档和常见图像格式。
+      label:
+        en_US: Upload File
+        ja_JP: Upload File
+        pt_BR: Upload File
+        zh_Hans: 上传文件
+      llm_description: ''
+      max: null
+      min: null
+      name: file_path
+      options: []
+      placeholder: null
+      precision: null
+      required: false
+      scope: null
+      template: null
+      type: file
+    - auto_generate: null
+      default: '0'
+      form: llm
+      human_description:
+        en_US: Specific pages to process (e.g., "0,2,4-7"). For PDF documents only.
+        ja_JP: Specific pages to process (e.g., "0,2,4-7"). For PDF documents only.
+        pt_BR: Specific pages to process (e.g., "0,2,4-7"). For PDF documents only.
+        zh_Hans: 要处理的特定页面（例如："0,2,4-7"）。仅适用于 PDF 文档。
+      label:
+        en_US: Pages
+        ja_JP: Pages
+        pt_BR: Pages
+        zh_Hans: 页面
+      llm_description: ''
+      max: null
+      min: null
+      name: pages
+      options: []
+      placeholder: null
+      precision: null
+      required: false
+      scope: null
+      template: null
+      type: string
+    - auto_generate: null
+      default: null
+      form: llm
+      human_description:
+        en_US: Maximum number of images to extract from the document.
+        ja_JP: Maximum number of images to extract from the document.
+        pt_BR: Maximum number of images to extract from the document.
+        zh_Hans: 从文档中提取的最大图像数量。
+      label:
+        en_US: Image Limit
+        ja_JP: Image Limit
+        pt_BR: Image Limit
+        zh_Hans: 图像限制
+      llm_description: ''
+      max: null
+      min: null
+      name: image_limit
+      options: []
+      placeholder: null
+      precision: null
+      required: false
+      scope: null
+      template: null
+      type: number
+    - auto_generate: null
+      default: 100
+      form: llm
+      human_description:
+        en_US: Minimum size threshold for extracting images (default 100px). Smaller
+          images are ignored.
+        ja_JP: Minimum size threshold for extracting images (default 100px). Smaller
+          images are ignored.
+        pt_BR: Minimum size threshold for extracting images (default 100px). Smaller
+          images are ignored.
+        zh_Hans: 提取图像的最小尺寸阈值（默认 100px），小于该尺寸的将被忽略。
+      label:
+        en_US: Image Minimum Size
+        ja_JP: Image Minimum Size
+        pt_BR: Image Minimum Size
+        zh_Hans: 图像最小尺寸
+      llm_description: ''
+      max: null
+      min: null
+      name: image_min_size
+      options: []
+      placeholder: null
+      precision: null
+      required: false
+      scope: null
+      template: null
+      type: number
+    params:
+      file_path: ''
+      image_limit: ''
+      image_min_size: ''
+      pages: ''
+    plugin_id: inlei/mistral_ocr
+    plugin_unique_identifier: inlei/mistral_ocr:0.0.1@6d51d18e999e6609b26202a409108834c89d5f33475ff1261cd1b9ccb36ab265
+    provider_id: inlei/mistral_ocr/mistral_ocr
+    provider_name: inlei/mistral_ocr/mistral_ocr
+    provider_type: builtin
+    title: Mistral OCR
+    tool_configurations: {}
+    tool_description: Mistral OCR is a powerful document OCR processor that extracts
+      text and structured content from PDF documents and images while maintaining
+      document structure and hierarchy. It preserves formatting like headers, paragraphs,
+      lists and tables, and returns results in markdown format for easy parsing and
+      rendering.
+    tool_label: Mistral OCR
+    tool_name: mistral_ocr_tool
+    tool_node_version: '2'
+    tool_parameters:
+      file_path:
+        type: variable
+        value: ''
+      image_limit:
+        type: constant
+        value: null
+      image_min_size:
+        type: constant
+        value: 100
+      pages:
+        type: mixed
+        value: ''
+    type: tool
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: inlei/mistral_ocr:0.0.1@6d51d18e999e6609b26202a409108834c89d5f33475ff1261cd1b9ccb36ab265
+    version: null

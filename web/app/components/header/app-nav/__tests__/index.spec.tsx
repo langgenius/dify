@@ -83,6 +83,24 @@ vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
       : null,
 }))
 
+vi.mock('@/app/components/app/create-from-ai-modal', () => ({
+  default: ({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) =>
+    show
+      ? (
+          <button
+            type="button"
+            data-testid="create-from-ai-modal"
+            onClick={() => {
+              onClose()
+              onSuccess()
+            }}
+          >
+            Create from AI
+          </button>
+        )
+      : null,
+}))
+
 vi.mock('../../nav', () => ({
   default: ({
     onCreate,
@@ -104,6 +122,9 @@ vi.mock('../../nav', () => ({
       </button>
       <button type="button" onClick={() => onCreate('template')} data-testid="create-template">
         Create Template
+      </button>
+      <button type="button" onClick={() => onCreate('ai')} data-testid="create-ai">
+        Create AI
       </button>
       <button type="button" onClick={() => onCreate('dsl')} data-testid="create-dsl">
         Create DSL
@@ -228,6 +249,21 @@ describe('AppNav', () => {
     await user.click(screen.getByTestId('create-app-template-dialog'))
     await waitFor(() => {
       expect(screen.queryByTestId('create-app-template-dialog')).not.toBeInTheDocument()
+      expect(refetch).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('should open and close AI modal, then refetch', async () => {
+    const user = userEvent.setup()
+    const { refetch } = setupDefaultMocks()
+    render(<AppNav />)
+
+    await user.click(screen.getByTestId('create-ai'))
+    expect(screen.getByTestId('create-from-ai-modal')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('create-from-ai-modal'))
+    await waitFor(() => {
+      expect(screen.queryByTestId('create-from-ai-modal')).not.toBeInTheDocument()
       expect(refetch).toHaveBeenCalledTimes(1)
     })
   })

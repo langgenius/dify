@@ -19,6 +19,7 @@ import Nav from '../nav'
 
 const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), { ssr: false })
 const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), { ssr: false })
+const CreateFromAIModal = dynamic(() => import('@/app/components/app/create-from-ai-modal'), { ssr: false })
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), { ssr: false })
 
 const AppNav = () => {
@@ -28,6 +29,7 @@ const AppNav = () => {
   const appDetail = useAppStore(state => state.appDetail)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
+  const [showCreateFromAIModal, setShowCreateFromAIModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [navItems, setNavItems] = useState<NavItem[]>([])
 
@@ -53,6 +55,8 @@ const AppNav = () => {
       setShowNewAppDialog(true)
     if (state === 'template')
       setShowNewAppTemplateDialog(true)
+    if (state === 'ai')
+      setShowCreateFromAIModal(true)
     if (state === 'dsl')
       setShowCreateFromDSLModal(true)
   }
@@ -124,6 +128,11 @@ const AppNav = () => {
       <CreateAppTemplateDialog
         show={showNewAppTemplateDialog}
         onClose={() => setShowNewAppTemplateDialog(false)}
+        onSuccess={() => refetch()}
+      />
+      <CreateFromAIModal
+        show={showCreateFromAIModal}
+        onClose={() => setShowCreateFromAIModal(false)}
         onSuccess={() => refetch()}
       />
       <CreateFromDSLModal

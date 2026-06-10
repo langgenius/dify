@@ -1,0 +1,52 @@
+cases:
+  - id: typeform_gmail_followup
+    title: Typeform response to Gmail follow-up
+    mode: workflow
+    request: >
+      Create a Typeform-triggered workflow that reviews each form response,
+      drafts a personalized Gmail follow-up, and ends with a summary output.
+    inputs: {}
+    expected:
+      official_plugin_ids:
+        - langgenius/typeform_trigger
+        - langgenius/dify-gmail
+      exact_dependency_plugin_ids:
+        - langgenius/typeform_trigger
+        - langgenius/dify-gmail
+      extracted_template_refs:
+        - extracted/triggers/langgenius_typeform_trigger__form_response_received.yml
+        - extracted/tools/langgenius_dify_gmail__draft_message.yml
+      official_template_plugins:
+        - langgenius/typeform_trigger
+        - langgenius/dify-gmail
+      credential_fields:
+        langgenius/typeform_trigger:
+          - form_id
+          - access_token
+        langgenius/dify-gmail:
+          - client_id
+          - client_secret
+
+  - id: drive_qdrant_indexing
+    title: Google Drive change to Qdrant indexing
+    mode: workflow
+    request: >
+      Create a workflow triggered by Google Drive file changes, download the
+      changed file, extract text, and upsert the content into Qdrant.
+    inputs: {}
+    expected:
+      official_plugin_ids:
+        - langgenius/google_drive_trigger
+      exact_dependency_plugin_ids:
+        - langgenius/google_drive_trigger
+      extracted_template_refs:
+        - extracted/triggers/langgenius_google_drive_trigger__drive_change_detected.yml
+        - extracted/tools/yaxuanm_qdrant__qdrant_upsert_text.yml
+      official_template_plugins:
+        - langgenius/google_drive_trigger
+      third_party_template_plugin_ids:
+        - yaxuanm/qdrant
+      credential_fields:
+        langgenius/google_drive_trigger:
+          - client_id
+          - spaces

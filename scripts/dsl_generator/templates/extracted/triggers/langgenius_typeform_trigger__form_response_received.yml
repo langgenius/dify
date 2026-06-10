@@ -1,0 +1,29 @@
+name: langgenius_typeform_trigger__form_response_received
+source_workflow: /Users/scarlettmao/Desktop/dify-workflows/workflows/Typeform Automation
+  FLow (2).yml
+source_node_id: '1769321649760'
+node:
+  width: 242
+  height: 153
+  data:
+    desc: 当 Typeform 发送 form_response Webhook 时触发。
+    event_name: form_response_received
+    event_parameters:
+      hidden_field_filter:
+        type: constant
+        value: ''
+      variable_filter:
+        type: constant
+        value: ''
+    plugin_id: langgenius/typeform_trigger
+    plugin_unique_identifier: langgenius/typeform_trigger:0.1.1@ff9d7c53f4738c1ae99add784395eb67d23713547e9c87613a8804382701081e
+    provider_id: langgenius/typeform_trigger/typeform_trigger
+    subscription_id: ''
+    title: 收到表单响应
+    type: trigger-plugin
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/typeform_trigger:0.1.1@ff9d7c53f4738c1ae99add784395eb67d23713547e9c87613a8804382701081e
+    version: null

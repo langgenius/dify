@@ -1,0 +1,90 @@
+app:
+  name: if_else_native_demo
+  mode: workflow
+workflow:
+  nodes:
+    - id: start
+      type: start
+      position:
+        x: 30
+        y: 227
+      variables:
+        - variable: query
+          label: query
+          type: paragraph
+          required: true
+          max_length: 1000
+          options: []
+    - id: branch
+      type: if-else
+      title: IF/ELSE
+      position:
+        x: 334
+        y: 227
+      cases:
+        - case_id: "true"
+          logical_operator: and
+          conditions:
+            - id: cond-1
+              varType: string
+              variable_selector:
+                - start
+                - query
+              comparison_operator: contains
+              value: hello
+      _targetBranches:
+        - id: "true"
+          name: IF
+        - id: "false"
+          name: ELSE
+    - id: hello_answer
+      type: template-transform
+      title: Hello Path
+      position:
+        x: 638
+        y: 150
+      template: hello branch
+      variables: []
+    - id: fallback_answer
+      type: template-transform
+      title: Else Path
+      position:
+        x: 638
+        y: 310
+      template: else branch
+      variables: []
+    - id: finish_true
+      type: end
+      position:
+        x: 942
+        y: 150
+      outputs:
+        - variable: result
+          value_selector:
+            - hello_answer
+            - output
+          value_type: string
+    - id: finish_false
+      type: end
+      position:
+        x: 942
+        y: 310
+      outputs:
+        - variable: result
+          value_selector:
+            - fallback_answer
+            - output
+          value_type: string
+  edges:
+    - source: start
+      target: branch
+    - source: branch
+      source_handle: "true"
+      target: hello_answer
+    - source: branch
+      source_handle: "false"
+      target: fallback_answer
+    - source: hello_answer
+      target: finish_true
+    - source: fallback_answer
+      target: finish_false

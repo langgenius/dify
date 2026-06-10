@@ -47,6 +47,100 @@ export type DSLImportResponse = {
   leaked_dependencies: Dependency[]
 }
 
+export type DSLGenerateRequest = {
+  prompt: string
+  app_name?: string
+  app_description?: string
+  provider?: string
+  model?: string
+  generation_backend?: string
+  generation_model?: string
+  input_variable?: string
+  marketplace_plugin_id?: string
+  resolve_dependencies?: boolean
+}
+
+export type DSLGenerateResponse = {
+  yaml_content: string
+  name: string
+  description: string
+  warnings: string[]
+  metadata: Record<string, unknown>
+}
+
+export type DSLAgentRunStatus = 'queued' | 'running' | 'succeeded' | 'failed'
+
+export type DSLAgentRunEvent = {
+  sequence: number
+  stage: string
+  status: string
+  message: string
+  created_at: string
+}
+
+export type DSLAgentRunResponse = {
+  id: string
+  status: DSLAgentRunStatus
+  created_at: string
+  updated_at: string
+  current_stage?: string | null
+  request: DSLGenerateRequest
+  result?: DSLGenerateResponse | null
+  error?: string | null
+  events: DSLAgentRunEvent[]
+}
+
+export type DSLAgentDebugRunRequest = {
+  inputs?: Record<string, unknown>
+  query?: string
+  files?: Array<Record<string, unknown>>
+  include_events?: boolean
+}
+
+export type DSLAgentDebugRunSummary = {
+  event_count: number
+  task_id?: string | null
+  workflow_run_id?: string | null
+  status?: string | null
+  succeeded?: boolean | null
+  outputs?: Record<string, unknown> | null
+  node_statuses: Array<Record<string, unknown>>
+  failed_nodes: Array<Record<string, unknown>>
+  errors: Array<Record<string, unknown>>
+}
+
+export type DSLAgentDebugRunResponse = {
+  mode: string
+  event_count: number
+  summary: DSLAgentDebugRunSummary
+  events?: Array<Record<string, unknown>>
+}
+
+export type DSLAgentRuntimeRepairRequest = {
+  yaml_content: string
+  runtime_evidence?: Record<string, unknown>
+  validation?: Record<string, unknown>
+}
+
+export type DSLAgentRuntimeRepairResponse = {
+  yaml_content: string
+  changed: boolean
+  input_validation: Record<string, unknown>
+  validation: Record<string, unknown>
+  repair: Record<string, unknown>
+}
+
+export type DSLAgentDraftRepairRequest = DSLAgentDebugRunRequest & {
+  yaml_content: string
+  validation?: Record<string, unknown>
+}
+
+export type DSLAgentDraftRepairResponse = {
+  draft_run: DSLAgentDebugRunResponse
+  needs_repair: boolean
+  repair: DSLAgentRuntimeRepairResponse
+}
+
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 
 export type AppDailyMessagesResponse = {

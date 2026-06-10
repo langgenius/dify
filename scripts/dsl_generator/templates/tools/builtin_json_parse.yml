@@ -1,0 +1,18 @@
+name: builtin_json_parse
+dependencies: []
+node:
+  width: 244
+  height: 90
+  data:
+    title: Tool
+    desc: JSON Parse tool
+    type: tool
+    selected: false
+    provider_id: builtin
+    provider_type: builtin
+    provider_name: Builtin Tools
+    tool_name: json_parse
+    tool_label: JSON Parse
+    tool_description: Parse a JSON string into a structured object.
+    tool_configurations: {}
+    tool_parameters: {}

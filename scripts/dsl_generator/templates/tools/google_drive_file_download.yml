@@ -1,0 +1,28 @@
+name: google_drive_file_download
+dependency:
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: yoshiki-0428/google_drive:0.1.0@3be894ee7a15878c2c00c3728f901d8d63c56b901b7494c5a2a8fc0649566d52
+node:
+  width: 242
+  height: 52
+  data:
+    title: Download Google Drive file
+    desc: ''
+    type: tool
+    selected: false
+    is_team_authorization: false
+    plugin_id: yoshiki-0428/google_drive
+    plugin_unique_identifier: yoshiki-0428/google_drive:0.1.0@3be894ee7a15878c2c00c3728f901d8d63c56b901b7494c5a2a8fc0649566d52
+    provider_id: yoshiki-0428/google_drive/google_drive
+    provider_name: yoshiki-0428/google_drive/google_drive
+    provider_type: builtin
+    tool_description: Download a file from Google Drive by file ID
+    tool_label: Download Google Drive file
+    tool_name: google-drive-file-download
+    tool_node_version: '2'
+    tool_configurations: {}
+    tool_parameters:
+      file_id:
+        type: mixed
+        value: ''

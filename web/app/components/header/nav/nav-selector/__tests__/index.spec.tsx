@@ -220,6 +220,12 @@ describe('NavSelector Component', () => {
       })
       expect(mockOnCreate).toHaveBeenCalledWith('template')
 
+      const ai = await screen.findByText(/app\.newApp\.startFromAI/i)
+      await act(async () => {
+        fireEvent.click(ai)
+      })
+      expect(mockOnCreate).toHaveBeenCalledWith('ai')
+
       const dsl = await screen.findByText(/app\.importDSL/i)
       await act(async () => {
         fireEvent.click(dsl)
