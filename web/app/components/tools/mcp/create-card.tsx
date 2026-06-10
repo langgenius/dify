@@ -12,9 +12,9 @@ import { useDocLink } from '@/context/i18n'
 import { useCreateMCP } from '@/service/use-tools'
 import MCPModal from './modal'
 
-type Props = {
+type Props = Readonly<{
   handleCreate: (provider: ToolWithProvider) => void
-}
+}>
 
 const NewMCPCard = ({ handleCreate }: Props) => {
   const { t } = useTranslation()
