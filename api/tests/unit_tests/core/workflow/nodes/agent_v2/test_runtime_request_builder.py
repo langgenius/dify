@@ -629,9 +629,7 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     dumped = result.request.model_dump(mode="json")
-    assert dumped["composition"]["layers"][0]["config"]["prefix"] == (
-        "Careful. Ask EMAIL · David Hayes when unsure."
-    )
+    assert dumped["composition"]["layers"][0]["config"]["prefix"] == ("Careful. Ask EMAIL · David Hayes when unsure.")
     assert dumped["composition"]["layers"][1]["config"]["prefix"] == (
         "Read PREV/text and produce summary (string). Unknown 旧手册 degrades."
     )

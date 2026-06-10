@@ -11808,6 +11808,7 @@ Get banner list
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
+| validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 
 #### AgentAppFeaturesPayload
@@ -11903,6 +11904,7 @@ Risk marker for CLI tool bootstrap commands.
 | allowed_node_job_candidates | [AgentComposerNodeJobCandidatesResponse](#agentcomposernodejobcandidatesresponse) |  | No |
 | allowed_soul_candidates | [AgentComposerSoulCandidatesResponse](#agentcomposersoulcandidatesresponse) |  | No |
 | capabilities | [ComposerCandidateCapabilities](#composercandidatecapabilities) |  | No |
+| truncated | boolean |  | No |
 | variant | [ComposerVariant](#composervariant) |  | Yes |
 
 #### AgentComposerDifyToolCandidateResponse
@@ -11963,7 +11965,9 @@ Risk marker for CLI tool bootstrap commands.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | errors | [ string ] |  | No |
+| knowledge_retrieval_placeholder | [ [ComposerKnowledgePlaceholderResponse](#composerknowledgeplaceholderresponse) ] |  | No |
 | result | string |  | Yes |
+| warnings | [ [ComposerValidationWarningResponse](#composervalidationwarningresponse) ] |  | No |
 
 #### AgentConfigRevisionOperation
 
@@ -13286,6 +13290,13 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | human_roster_available | boolean |  | No |
 
+#### ComposerKnowledgePlaceholderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| placeholder_name | string |  | Yes |
+
 #### ComposerSavePayload
 
 | Name | Type | Description | Required |
@@ -13313,6 +13324,23 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | locked | boolean |  | No |
 | unlocked_from_version_id | string |  | No |
+
+#### ComposerValidationFindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| knowledge_retrieval_placeholder | [ [ComposerKnowledgePlaceholderResponse](#composerknowledgeplaceholderresponse) ] |  | No |
+| warnings | [ [ComposerValidationWarningResponse](#composervalidationwarningresponse) ] |  | No |
+
+#### ComposerValidationWarningResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| id | string |  | No |
+| kind | string |  | No |
+| message | string |  | No |
+| surface | string |  | No |
 
 #### ComposerVariant
 
@@ -17571,6 +17599,7 @@ How a workflow node is bound to an Agent.
 | node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | Yes |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | soul_lock | [AgentComposerSoulLockResponse](#agentcomposersoullockresponse) |  | Yes |
+| validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 | workflow_id | string |  | No |
 

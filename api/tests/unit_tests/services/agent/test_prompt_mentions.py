@@ -151,8 +151,7 @@ def node_job() -> WorkflowNodeJobConfig:
 def test_node_job_resolver_resolves_each_kind(node_job: WorkflowNodeJobConfig):
     resolver = build_node_job_mention_resolver(node_job)
     prompt = (
-        "Read {{#node_output:start-1.tenders#}} and produce {{#output:qna_report#}}; "
-        "if unsure contact {{#human:c-1#}}."
+        "Read {{#node_output:start-1.tenders#}} and produce {{#output:qna_report#}}; if unsure contact {{#human:c-1#}}."
     )
 
     expanded = expand_prompt_mentions(prompt, resolver)

@@ -78,14 +78,6 @@ export const zAdvancedChatWorkflowRunPayload = z.object({
 })
 
 /**
- * AgentComposerValidateResponse
- */
-export const zAgentComposerValidateResponse = z.object({
-  errors: z.array(z.string()).optional(),
-  result: z.string(),
-})
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -800,6 +792,43 @@ export const zComposerVariant = z.enum(['agent_app', 'workflow'])
  */
 export const zComposerCandidateCapabilities = z.object({
   human_roster_available: z.boolean().optional().default(false),
+})
+
+/**
+ * ComposerKnowledgePlaceholderResponse
+ */
+export const zComposerKnowledgePlaceholderResponse = z.object({
+  id: z.string(),
+  placeholder_name: z.string(),
+})
+
+/**
+ * ComposerValidationWarningResponse
+ */
+export const zComposerValidationWarningResponse = z.object({
+  code: z.string(),
+  id: z.string().nullish(),
+  kind: z.string().nullish(),
+  message: z.string().nullish(),
+  surface: z.string().nullish(),
+})
+
+/**
+ * AgentComposerValidateResponse
+ */
+export const zAgentComposerValidateResponse = z.object({
+  errors: z.array(z.string()).optional(),
+  knowledge_retrieval_placeholder: z.array(zComposerKnowledgePlaceholderResponse).optional(),
+  result: z.string(),
+  warnings: z.array(zComposerValidationWarningResponse).optional(),
+})
+
+/**
+ * ComposerValidationFindingsResponse
+ */
+export const zComposerValidationFindingsResponse = z.object({
+  knowledge_retrieval_placeholder: z.array(zComposerKnowledgePlaceholderResponse).optional(),
+  warnings: z.array(zComposerValidationWarningResponse).optional(),
 })
 
 /**
@@ -2280,6 +2309,7 @@ export const zAgentComposerCandidatesResponse = z.object({
   allowed_node_job_candidates: zAgentComposerNodeJobCandidatesResponse.optional(),
   allowed_soul_candidates: zAgentComposerSoulCandidatesResponse.optional(),
   capabilities: zComposerCandidateCapabilities.optional(),
+  truncated: z.boolean().optional().default(false),
   variant: zComposerVariant,
 })
 
@@ -2557,6 +2587,7 @@ export const zAgentAppComposerResponse = z.object({
   agent: zAgentComposerAgentResponse,
   agent_soul: zAgentSoulConfig,
   save_options: z.array(zComposerSaveStrategy),
+  validation: zComposerValidationFindingsResponse.optional(),
   variant: z.string(),
 })
 
@@ -2591,6 +2622,7 @@ export const zWorkflowAgentComposerResponse = z.object({
   node_job: zWorkflowNodeJobConfig,
   save_options: z.array(zComposerSaveStrategy),
   soul_lock: zAgentComposerSoulLockResponse,
+  validation: zComposerValidationFindingsResponse.optional(),
   variant: z.string(),
   workflow_id: z.string().nullish(),
 })
