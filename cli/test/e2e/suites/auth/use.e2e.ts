@@ -7,16 +7,14 @@
 import type { RunResult } from '../../helpers/cli.js'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
-import { assertErrorEnvelope, assertExitCode } from '../../helpers/assert.js'
+import { assertExitCode } from '../../helpers/assert.js'
 import { injectAuth, injectSsoAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
-import { enterpriseOnlyIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
 
 // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
 const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
 const E = resolveEnv(caps)
-const eeIt = enterpriseOnlyIt(caps)
 
 // 测试用第二工作区 — 注入 available_workspaces 里的备用 workspace
 const WS2_ID = '00000000-e2e2-0000-0001-000000000002'
@@ -198,5 +196,4 @@ describe('E2E / difyctl use workspace', () => {
   })
 
   // ── Post-switch get app ──────────────────────────────────────────────────────
-
 })
