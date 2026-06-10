@@ -395,9 +395,26 @@ class AgentComposerService:
 
     @staticmethod
     def _dataset_rows(*, tenant_id: str, dataset_ids: list[str]) -> dict[str, Any]:
+        """Tenant-scoped dataset lookup tolerating malformed ids.
+
+        Mention ids come from user-editable prompt text; a non-UUID id can never
+        match a dataset row, so it is simply absent from the result (-> missing/
+        placeholder semantics) instead of breaking the UUID-typed query.
+        """
+        from uuid import UUID
+
         from services.dataset_service import DatasetService
 
-        rows, _ = DatasetService.get_datasets_by_ids(dataset_ids, tenant_id)
+        valid_ids: list[str] = []
+        for dataset_id in dataset_ids:
+            try:
+                UUID(dataset_id)
+            except (ValueError, TypeError):
+                continue
+            valid_ids.append(dataset_id)
+        if not valid_ids:
+            return {}
+        rows, _ = DatasetService.get_datasets_by_ids(valid_ids, tenant_id)
         return {str(row.id): row for row in rows}
 
     @staticmethod

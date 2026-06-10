@@ -894,3 +894,27 @@ class TestListWorkflowsReferencingAppAgent:
         service = AgentRosterService(session)
 
         assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
+
+
+def test_dataset_rows_filters_malformed_ids(monkeypatch):
+    """Mention ids are user-editable text: a non-UUID id must read as missing
+    (placeholder semantics), never reach the UUID-typed dataset query (E2E 500)."""
+    captured = {}
+
+    def fake_get_datasets_by_ids(ids, tenant_id):
+        captured["ids"] = ids
+        return [], 0
+
+    import services.dataset_service as dataset_service_module
+
+    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+
+    valid = "550e8400-e29b-41d4-a716-446655440000"
+    rows = AgentComposerService._dataset_rows(tenant_id="tenant-1", dataset_ids=["9999dead-beef", valid])
+    assert rows == {}
+    assert captured["ids"] == [valid]
+
+    # all-malformed input never touches the DB
+    captured.clear()
+    assert AgentComposerService._dataset_rows(tenant_id="tenant-1", dataset_ids=["nope"]) == {}
+    assert captured == {}
