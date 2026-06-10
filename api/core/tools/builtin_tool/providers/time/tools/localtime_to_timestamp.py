@@ -40,11 +40,12 @@ class LocaltimeToTimestampTool(BuiltinTool):
     def localtime_to_timestamp(localtime: str, time_format: str, local_tz=None) -> int | None:
         try:
             local_time = datetime.strptime(localtime, time_format)
-            if local_tz is None:
-                localtime = local_time.astimezone()  # type: ignore
-            elif isinstance(local_tz, str):
-                local_tz = pytz.timezone(local_tz)
-                localtime = local_tz.localize(local_time)  # type: ignore
+            match local_tz:
+                case None:
+                    localtime = local_time.astimezone()  # type: ignore
+                case str():
+                    local_tz = pytz.timezone(local_tz)
+                    localtime = local_tz.localize(local_time)  # type: ignore
             timestamp = int(localtime.timestamp())  # type: ignore
             return timestamp
         except Exception as e:

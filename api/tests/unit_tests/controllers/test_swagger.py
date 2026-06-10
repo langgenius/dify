@@ -6,15 +6,16 @@ from flask import Flask
 
 def _definition_refs(value: object) -> set[str]:
     refs: set[str] = set()
-    if isinstance(value, dict):
-        ref = value.get("$ref")
-        if isinstance(ref, str) and ref.startswith("#/definitions/"):
-            refs.add(ref.removeprefix("#/definitions/"))
-        for item in value.values():
-            refs.update(_definition_refs(item))
-    elif isinstance(value, list):
-        for item in value:
-            refs.update(_definition_refs(item))
+    match value:
+        case dict():
+            ref = value.get("$ref")
+            if isinstance(ref, str) and ref.startswith("#/definitions/"):
+                refs.add(ref.removeprefix("#/definitions/"))
+            for item in value.values():
+                refs.update(_definition_refs(item))
+        case list():
+            for item in value:
+                refs.update(_definition_refs(item))
     return refs
 
 

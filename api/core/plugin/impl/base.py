@@ -45,12 +45,13 @@ _plugin_daemon_timeout_config = cast(
     getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 600.0),
 )
 plugin_daemon_request_timeout: httpx.Timeout | None
-if _plugin_daemon_timeout_config is None:
-    plugin_daemon_request_timeout = None
-elif isinstance(_plugin_daemon_timeout_config, httpx.Timeout):
-    plugin_daemon_request_timeout = _plugin_daemon_timeout_config
-else:
-    plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
+match _plugin_daemon_timeout_config:
+    case None:
+        plugin_daemon_request_timeout = None
+    case httpx.Timeout():
+        plugin_daemon_request_timeout = _plugin_daemon_timeout_config
+    case _:
+        plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
 
 logger = logging.getLogger(__name__)
 
