@@ -2,6 +2,7 @@
 
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,21 +38,42 @@ const scopeLabelKeys: Record<EnvScope, I18nKeysWithPrefix<'agentV2', 'agentDetai
   secret: 'agentDetail.configure.advancedSettings.envEditor.scopeSecret',
 }
 
+const envScopeOptions: EnvScope[] = ['secret', 'plain']
+
 function EnvEditorScope({
   scope,
+  onChange,
 }: {
   scope: EnvScope
+  onChange?: (scope: EnvScope) => void
 }) {
   const { t } = useTranslation('agentV2')
 
   return (
-    <button
-      type="button"
-      className="flex h-full min-w-0 items-center justify-between gap-1 px-3 text-left system-xs-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+    <Select
+      value={scope}
+      onValueChange={(nextValue) => {
+        if (!nextValue)
+          return
+
+        onChange?.(nextValue as EnvScope)
+      }}
     >
-      <span className="min-w-0 truncate">{t(scopeLabelKeys[scope])}</span>
-      <span aria-hidden className="i-custom-vender-solid-arrows-arrow-down-round-fill size-3.5 shrink-0 text-text-tertiary" />
-    </button>
+      <SelectTrigger
+        aria-label={t('agentDetail.configure.advancedSettings.envEditor.scopeSelector')}
+        className="h-full w-full max-w-none rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover [&>*:last-child]:size-3.5"
+      >
+        {t(scopeLabelKeys[scope])}
+      </SelectTrigger>
+      <SelectContent placement="bottom-start" popupClassName="min-w-24">
+        {envScopeOptions.map(option => (
+          <SelectItem key={option} value={option} className="h-7 system-xs-regular">
+            <SelectItemText>{t(scopeLabelKeys[option])}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -72,9 +94,13 @@ function EnvEditorCell({
 function EnvEditorRow({
   variable,
   isHighlighted,
+  onDelete,
+  onScopeChange,
 }: {
   variable: EnvVariable
   isHighlighted?: boolean
+  onDelete: () => void
+  onScopeChange: (scope: EnvScope) => void
 }) {
   const { t } = useTranslation('agentV2')
 
@@ -100,12 +126,13 @@ function EnvEditorRow({
         )}
       </EnvEditorCell>
       <EnvEditorCell>
-        <EnvEditorScope scope={variable.scope} />
+        <EnvEditorScope scope={variable.scope} onChange={onScopeChange} />
       </EnvEditorCell>
       <EnvEditorCell className="justify-center">
         <button
           type="button"
           aria-label={t('agentDetail.configure.advancedSettings.envEditor.deleteVariable', { key: variable.key })}
+          onClick={onDelete}
           className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
@@ -145,8 +172,17 @@ export function AgentEnvEditor({
 }) {
   const { t } = useTranslation('agentV2')
   const [isExpanded, setIsExpanded] = useState(true)
+  const [envVariables, setEnvVariables] = useState<EnvVariable[]>(() => variables)
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
   const envEditorTableId = 'agent-configure-env-editor-table'
+  const updateVariableScope = (id: string, scope: EnvScope) => {
+    setEnvVariables(currentVariables => currentVariables.map(variable => (
+      variable.id === id ? { ...variable, scope } : variable
+    )))
+  }
+  const deleteVariable = (id: string) => {
+    setEnvVariables(currentVariables => currentVariables.filter(variable => variable.id !== id))
+  }
 
   return (
     <section className={cn('flex flex-col gap-1 py-3', !isExpanded && 'pb-0')} aria-labelledby="agent-configure-env-editor-label">
@@ -227,8 +263,14 @@ export function AgentEnvEditor({
               </EnvEditorCell>
               <EnvEditorCell />
             </div>
-            {variables.map((variable, index) => (
-              <EnvEditorRow key={variable.id} variable={variable} isHighlighted={index === 1} />
+            {envVariables.map((variable, index) => (
+              <EnvEditorRow
+                key={variable.id}
+                variable={variable}
+                isHighlighted={index === 1}
+                onDelete={() => deleteVariable(variable.id)}
+                onScopeChange={scope => updateVariableScope(variable.id, scope)}
+              />
             ))}
             <EnvEditorDraftRow />
           </div>

@@ -28,6 +28,7 @@
   "agentDetail.configure.advancedSettings.envEditor.scopeColumn": "Scope",
   "agentDetail.configure.advancedSettings.envEditor.scopePlain": "Plain",
   "agentDetail.configure.advancedSettings.envEditor.scopeSecret": "Secret",
+  "agentDetail.configure.advancedSettings.envEditor.scopeSelector": "选择环境变量作用域",
   "agentDetail.configure.advancedSettings.envEditor.tip": "此智能体运行时可使用的环境变量。",
   "agentDetail.configure.advancedSettings.envEditor.toggle": "展开或收起 Env Editor",
   "agentDetail.configure.advancedSettings.envEditor.valueColumn": "Value",
