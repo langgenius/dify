@@ -14,10 +14,10 @@ import ActionButton from '@/app/components/base/action-button'
 import { DeleteConfirm } from './delete-confirm'
 import { EditModal } from './edit'
 
-type Props = {
+type Props = Readonly<{
   data: TriggerSubscription
   pluginDetail?: PluginDetail
-}
+}>
 
 const SubscriptionCard = ({ data, pluginDetail }: Props) => {
   const { t } = useTranslation()
