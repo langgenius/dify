@@ -1195,7 +1195,7 @@
   "tabs.pluginByAuthor": "By {{author}}",
   "tabs.question-understand": "Question Understand",
   "tabs.requestToCommunity": "Requests to the community",
-  "tabs.searchBlock": "Search node",
+  "tabs.searchBlock": "Search nodes, agent, human, Knowledge",
   "tabs.searchDataSource": "Search Data Source",
   "tabs.searchSnippets": "Search snippets...",
   "tabs.searchTool": "Search integration",

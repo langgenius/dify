@@ -1195,7 +1195,7 @@
   "tabs.pluginByAuthor": "来自 {{author}}",
   "tabs.question-understand": "问题理解",
   "tabs.requestToCommunity": "向社区反馈",
-  "tabs.searchBlock": "搜索节点",
+  "tabs.searchBlock": "搜索节点、Agent、人工、知识库",
   "tabs.searchDataSource": "搜索数据源",
   "tabs.searchSnippets": "搜索 snippets...",
   "tabs.searchTool": "搜索集成",

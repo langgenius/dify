@@ -63,6 +63,11 @@ export const ENTRY_NODE_TYPES = [
 export const BLOCKS = [
   {
     classification: BlockClassificationEnum.Default,
+    type: BlockEnum.Agent,
+    title: 'Agent',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.LLM,
     title: 'LLM',
   },
@@ -146,10 +151,5 @@ export const BLOCKS = [
     classification: BlockClassificationEnum.Utilities,
     type: BlockEnum.ListFilter,
     title: 'List Filter',
-  },
-  {
-    classification: BlockClassificationEnum.Default,
-    type: BlockEnum.Agent,
-    title: 'Agent',
   },
 ] as const satisfies readonly Block[]
