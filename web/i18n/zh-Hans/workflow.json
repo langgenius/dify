@@ -375,6 +375,7 @@
   "globalVar.fieldsDescription.workflowId": "工作流 ID",
   "globalVar.fieldsDescription.workflowRunId": "工作流运行 ID",
   "globalVar.title": "系统变量",
+  "nodes.agent.advancedSetting": "高级设置",
   "nodes.agent.clickToViewParameterSchema": "点击查看参数 schema",
   "nodes.agent.configureModel": "配置模型",
   "nodes.agent.installPlugin.cancel": "取消",

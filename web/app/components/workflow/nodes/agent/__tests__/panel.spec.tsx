@@ -137,6 +137,7 @@ describe('agent/panel', () => {
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.advancedSetting' })).toBeInTheDocument()
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage')).toBeInTheDocument()
     expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()

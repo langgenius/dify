@@ -375,6 +375,7 @@
   "globalVar.fieldsDescription.workflowId": "Workflow ID",
   "globalVar.fieldsDescription.workflowRunId": "Workflow run ID",
   "globalVar.title": "System Variables",
+  "nodes.agent.advancedSetting": "Advanced Settings",
   "nodes.agent.clickToViewParameterSchema": "Click to view parameter schema",
   "nodes.agent.configureModel": "Configure Model",
   "nodes.agent.installPlugin.cancel": "Cancel",

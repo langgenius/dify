@@ -5,6 +5,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import useNodeCrud from '../_base/hooks/use-node-crud'
+import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
 
@@ -25,13 +26,20 @@ export function AgentPanel({
   }, [inputs, setInputs])
 
   return (
-    <div className="my-2">
-      <AgentRosterField agent={inputs.agent_roster} />
-      <AgentTaskField
-        id={id}
-        data={inputs}
-        onChange={handleTaskChange}
-      />
+    <div className="pt-2">
+      {inputs.agent_roster && (
+        <div className="border-b border-divider-subtle">
+          <AgentRosterField agent={inputs.agent_roster} />
+        </div>
+      )}
+      <div className="border-b border-divider-subtle">
+        <AgentTaskField
+          id={id}
+          data={inputs}
+          onChange={handleTaskChange}
+        />
+      </div>
+      <AgentAdvancedSettings />
       <div>
         <OutputVars>
           <VarItem
