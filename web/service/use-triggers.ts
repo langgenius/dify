@@ -8,7 +8,7 @@ import type {
   TriggerSubscriptionBuilder,
   TriggerWithProvider,
 } from '@/app/components/workflow/block-selector/types'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { get, post } from './base'
@@ -75,17 +75,6 @@ export const useAllTriggerPlugins = (enabled = true) => {
   })
 }
 
-export const useTriggerPluginsByType = (triggerType: string, enabled = true) => {
-  return useQuery<TriggerWithProvider[]>({
-    queryKey: consoleQuery.triggers.list.queryKey({ input: { query: { type: triggerType } } }),
-    queryFn: async () => {
-      const response = await consoleClient.triggers.list({ query: { type: triggerType } })
-      return response.map(convertToTriggerWithProvider)
-    },
-    enabled: enabled && !!triggerType,
-  })
-}
-
 export const useInvalidateAllTriggerPlugins = () => {
   return useInvalid(consoleQuery.triggers.list.queryKey({ input: {} }))
 }
@@ -106,15 +95,6 @@ export const useTriggerSubscriptions = (provider: string, enabled = true) => {
     queryFn: () => consoleClient.triggers.subscriptions({ params: { provider } }),
     enabled: enabled && !!provider,
   })
-}
-
-export const useInvalidateTriggerSubscriptions = () => {
-  const queryClient = useQueryClient()
-  return (provider: string) => {
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.triggers.subscriptions.queryKey({ input: { params: { provider } } }),
-    })
-  }
 }
 
 export const useCreateTriggerSubscriptionBuilder = () => {
@@ -220,7 +200,7 @@ export const useDeleteTriggerSubscription = () => {
   })
 }
 
-export type UpdateTriggerSubscriptionPayload = {
+type UpdateTriggerSubscriptionPayload = {
   subscriptionId: string
   name?: string
   properties?: Record<string, unknown>
@@ -362,12 +342,3 @@ export const useTriggerPluginDynamicOptions = (payload: {
 }
 
 // ===== Cache Invalidation Helpers =====
-
-export const useInvalidateTriggerOAuthConfig = () => {
-  const queryClient = useQueryClient()
-  return (provider: string) => {
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.triggers.oauthConfig.queryKey({ input: { params: { provider } } }),
-    })
-  }
-}

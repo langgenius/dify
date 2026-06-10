@@ -59,7 +59,7 @@ const groupByCategory = (entries: IconEntry[]) => entries.reduce((acc, entry) =>
   if (!acc[entry.category])
     acc[entry.category] = []
 
-  acc[entry.category].push(entry)
+  acc[entry.category]!.push(entry)
   return acc
 }, {} as Record<string, IconEntry[]>)
 
@@ -221,7 +221,7 @@ const IconGalleryStory = () => {
         <section key={category} style={sectionStyle}>
           <h2 style={{ margin: 0, fontSize: 18 }}>{category}</h2>
           <div style={gridStyle}>
-            {grouped[category].map(entry => (
+            {grouped[category]!.map(entry => (
               <div key={entry.path} style={cardStyle}>
                 <div
                   style={{

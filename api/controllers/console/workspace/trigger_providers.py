@@ -4,18 +4,19 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, model_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web.error import NotFoundError
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.entities import SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_user, login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID
@@ -68,6 +69,7 @@ register_schema_models(
     TriggerSubscriptionBuilderUpdatePayload,
     TriggerOAuthClientPayload,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/icon")
@@ -75,7 +77,7 @@ class TriggerProviderIconApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         user = current_user
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
@@ -101,7 +103,7 @@ class TriggerProviderInfoApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Get info for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -117,15 +119,18 @@ class TriggerSubscriptionListApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         """List all trigger subscriptions for the current tenant's provider"""
         user = current_user
+        assert isinstance(user, Account)
         assert user.current_tenant_id is not None
 
         try:
             return jsonable_encoder(
                 TriggerProviderService.list_trigger_provider_subscriptions(
-                    tenant_id=user.current_tenant_id, provider_id=TriggerProviderID(provider)
+                    tenant_id=user.current_tenant_id,
+                    provider_id=TriggerProviderID(provider),
+                    user=user,
                 )
             )
         except ValueError as e:
@@ -144,7 +149,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         """Add a new subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -173,7 +178,7 @@ class TriggerSubscriptionBuilderGetApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def get(self, provider, subscription_builder_id):
+    def get(self, provider: str, subscription_builder_id: str):
         """Get a subscription instance for a trigger provider"""
         return jsonable_encoder(
             TriggerSubscriptionBuilderService.get_subscription_builder_by_id(subscription_builder_id)
@@ -189,7 +194,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    def post(self, provider: str, subscription_builder_id: str):
         """Verify and update a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -221,7 +226,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    def post(self, provider: str, subscription_builder_id: str):
         """Update a subscription instance for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -255,7 +260,7 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def get(self, provider, subscription_builder_id):
+    def get(self, provider: str, subscription_builder_id: str):
         """Get the request logs for a subscription instance for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -278,7 +283,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    def post(self, provider: str, subscription_builder_id: str):
         """Build a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -365,6 +370,7 @@ class TriggerSubscriptionUpdateApi(Resource):
     "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
 )
 class TriggerSubscriptionDeleteApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -375,7 +381,7 @@ class TriggerSubscriptionDeleteApi(Resource):
         assert user.current_tenant_id is not None
 
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 # Delete trigger provider subscription
                 TriggerProviderService.delete_trigger_provider(
                     session=session,
@@ -388,7 +394,6 @@ class TriggerSubscriptionDeleteApi(Resource):
                     tenant_id=user.current_tenant_id,
                     subscription_id=subscription_id,
                 )
-                session.commit()
             return {"result": "success"}
         except ValueError as e:
             raise BadRequest(str(e))
@@ -402,7 +407,7 @@ class TriggerOAuthAuthorizeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Initiate OAuth authorization flow for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -484,7 +489,7 @@ class TriggerOAuthAuthorizeApi(Resource):
 @console_ns.route("/oauth/plugin/<path:provider>/trigger/callback")
 class TriggerOAuthCallbackApi(Resource):
     @setup_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Handle OAuth callback for trigger provider"""
         context_id = request.cookies.get("context_id")
         if not context_id:
@@ -499,9 +504,9 @@ class TriggerOAuthCallbackApi(Resource):
         provider_id = TriggerProviderID(provider)
         plugin_id = provider_id.plugin_id
         provider_name = provider_id.provider_name
-        user_id = context.get("user_id")
-        tenant_id = context.get("tenant_id")
-        subscription_builder_id = context.get("subscription_builder_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
+        subscription_builder_id: str = context["subscription_builder_id"]
 
         # Get OAuth client configuration
         oauth_client_params = TriggerProviderService.get_oauth_client(
@@ -552,7 +557,7 @@ class TriggerOAuthClientManageApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Get OAuth client configuration for a provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -598,7 +603,7 @@ class TriggerOAuthClientManageApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         """Configure custom OAuth client for a provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -624,7 +629,7 @@ class TriggerOAuthClientManageApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def delete(self, provider):
+    def delete(self, provider: str):
         """Remove custom OAuth client configuration"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -652,7 +657,7 @@ class TriggerSubscriptionVerifyApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_id):
+    def post(self, provider: str, subscription_id: str):
         """Verify credentials for an existing subscription (edit mode only)"""
         user = current_user
         assert user.current_tenant_id is not None

@@ -49,7 +49,7 @@ const parseAsDocSort = createParser<SortType>({
 
 const parseAsKeyword = parseAsString.withDefault('')
 
-export const documentListParsers = {
+const documentListParsers = {
   page: parseAsPage,
   limit: parseAsLimit,
   keyword: parseAsKeyword,

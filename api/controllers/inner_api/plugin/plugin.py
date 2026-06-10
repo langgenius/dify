@@ -25,14 +25,16 @@ from core.plugin.entities.request import (
     RequestInvokeTextEmbedding,
     RequestInvokeTool,
     RequestInvokeTTS,
+    RequestRequestDownloadFile,
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
-from dify_graph.file.helpers import get_signed_file_url_for_plugin
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.signature import get_signed_file_url_for_plugin
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
+from services.agent_file_request_service import AgentFileDownloadRequestService, FileDownloadRequestError
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -427,6 +429,36 @@ class PluginUploadFileRequestApi(Resource):
             user_id=user_model.id,
         )
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
+
+
+@inner_api_ns.route("/download/file/request")
+class PluginDownloadFileRequestApi(Resource):
+    @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
+    @plugin_data(payload_type=RequestRequestDownloadFile)
+    @inner_api_ns.doc("plugin_download_file_request")
+    @inner_api_ns.doc(description="Request a signed download URL for a workflow file ref")
+    @inner_api_ns.doc(
+        responses={
+            200: "Signed download URL generated successfully",
+            400: "Invalid access context or file mapping",
+            401: "Unauthorized - invalid API key",
+            404: "File not accessible to the tenant/user",
+        }
+    )
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestDownloadFile):
+        try:
+            data = AgentFileDownloadRequestService.resolve(
+                tenant_id=tenant_model.id,
+                user_id=user_model.id,
+                user_from=payload.user_from,
+                invoke_from=payload.invoke_from,
+                file_mapping=payload.file,
+            )
+        except FileDownloadRequestError as exc:
+            return BaseBackwardsInvocationResponse(error=exc.message).model_dump(), exc.status_code
+        return BaseBackwardsInvocationResponse(data=data).model_dump()
 
 
 @inner_api_ns.route("/fetch/app/info")

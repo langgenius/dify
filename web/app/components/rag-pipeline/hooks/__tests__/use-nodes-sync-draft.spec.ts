@@ -198,7 +198,7 @@ describe('useNodesSyncDraft', () => {
       })
 
       expect(mockPostWithKeepalive).toHaveBeenCalled()
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.graph.nodes[0].data._privateData).toBeUndefined()
     })
   })
@@ -229,6 +229,25 @@ describe('useNodesSyncDraft', () => {
       })
 
       expect(mockSyncWorkflowDraft).toHaveBeenCalled()
+    })
+
+    it('should not include source_workflow_id in sync payloads', async () => {
+      mockGetNodesReadOnly.mockReturnValue(false)
+      mockGetNodes.mockReturnValue([
+        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
+      ])
+
+      const { result } = renderHook(() => useNodesSyncDraft())
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
+        params: expect.not.objectContaining({
+          source_workflow_id: expect.anything(),
+        }),
+      }))
     })
 
     it('should call onSuccess callback when sync succeeds', async () => {
@@ -371,7 +390,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.graph.viewport).toEqual({ x: 100, y: 200, zoom: 1.5 })
     })
 
@@ -394,7 +413,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.environment_variables).toEqual([{ key: 'API_KEY', value: 'secret' }])
     })
 
@@ -417,8 +436,23 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
+    })
+
+    it('should not include source_workflow_id when syncing on page close', () => {
+      mockGetNodes.mockReturnValue([
+        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
+      ])
+
+      const { result } = renderHook(() => useNodesSyncDraft())
+
+      act(() => {
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
+      expect(sentParams.source_workflow_id).toBeUndefined()
     })
 
     it('should remove underscore-prefixed keys from edges', () => {
@@ -437,7 +471,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
       expect(sentParams.graph.edges[0].data._hidden).toBeUndefined()
       expect(sentParams.graph.edges[0].data.visible).toBe(false)
     })

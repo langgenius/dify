@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from dify_graph.variables.variables import VariableBase
+from graphon.variables.variables import VariableBase
 from models import ConversationVariable
 
 

@@ -22,8 +22,8 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText(/used/i)).toBeInTheDocument()
-      expect(screen.getByText('test-tool')).toBeInTheDocument()
+      expect(screen.getByText(/used/i))!.toBeInTheDocument()
+      expect(screen.getByText('test-tool'))!.toBeInTheDocument()
     })
 
     it('should render multiple tool thoughts from JSON array', () => {
@@ -36,8 +36,8 @@ describe('Thought', () => {
       render(<Thought thought={thought} isFinished={false} />)
 
       expect(screen.getAllByText(/using/i)).toHaveLength(2)
-      expect(screen.getByText('tool1')).toBeInTheDocument()
-      expect(screen.getByText('tool2')).toBeInTheDocument()
+      expect(screen.getByText('tool1'))!.toBeInTheDocument()
+      expect(screen.getByText('tool2'))!.toBeInTheDocument()
     })
 
     it('should show input and output when expanded', async () => {
@@ -54,8 +54,8 @@ describe('Thought', () => {
 
       await user.click(screen.getByText(/used/i))
 
-      expect(screen.getByText('test input data')).toBeInTheDocument()
-      expect(screen.getByText('test output data')).toBeInTheDocument()
+      expect(screen.getByText('test input data'))!.toBeInTheDocument()
+      expect(screen.getByText('test output data'))!.toBeInTheDocument()
     })
   })
 
@@ -65,7 +65,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText(/used/i)).toBeInTheDocument()
+      expect(screen.getByText(/used/i))!.toBeInTheDocument()
     })
 
     it('should show in-progress state with correct text', () => {
@@ -73,7 +73,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={false} />)
 
-      expect(screen.getByText(/using/i)).toBeInTheDocument()
+      expect(screen.getByText(/using/i))!.toBeInTheDocument()
     })
   })
 
@@ -85,7 +85,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText('custom-tool')).toBeInTheDocument()
+      expect(screen.getByText('custom-tool'))!.toBeInTheDocument()
     })
 
     it('should fallback to tool name when tool_labels is undefined', () => {
@@ -96,7 +96,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText('fallback-tool')).toBeInTheDocument()
+      expect(screen.getByText('fallback-tool'))!.toBeInTheDocument()
     })
 
     it('should fallback to tool name when toolName property is missing', () => {
@@ -107,7 +107,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText('another-tool')).toBeInTheDocument()
+      expect(screen.getByText('another-tool'))!.toBeInTheDocument()
     })
 
     it('should fallback to tool name when language property is missing', () => {
@@ -123,7 +123,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText('test-tool')).toBeInTheDocument()
+      expect(screen.getByText('test-tool'))!.toBeInTheDocument()
     })
 
     it('should show knowledge label for dataset tools', () => {
@@ -133,7 +133,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText(/knowledge/i)).toBeInTheDocument()
+      expect(screen.getByText(/knowledge/i))!.toBeInTheDocument()
     })
   })
 
@@ -145,7 +145,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText('invalid-json-{')).toBeInTheDocument()
+      expect(screen.getByText('invalid-json-{'))!.toBeInTheDocument()
     })
 
     it('should handle non-array JSON in tool field', () => {
@@ -155,7 +155,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText('{"name":"object-tool"}')).toBeInTheDocument()
+      expect(screen.getByText('{"name":"object-tool"}'))!.toBeInTheDocument()
     })
 
     it('should handle invalid JSON in tool_input when parsing array', async () => {
@@ -169,7 +169,7 @@ describe('Thought', () => {
 
       await user.click(screen.getByText(/used/i))
 
-      expect(screen.getByText('invalid-json-{')).toBeInTheDocument()
+      expect(screen.getByText('invalid-json-{'))!.toBeInTheDocument()
     })
 
     it('should handle invalid JSON in observation when parsing array', async () => {
@@ -183,7 +183,7 @@ describe('Thought', () => {
 
       await user.click(screen.getByText(/used/i))
 
-      expect(screen.getByText('invalid-json-[')).toBeInTheDocument()
+      expect(screen.getByText('invalid-json-['))!.toBeInTheDocument()
     })
 
     it('should extract correct values from JSON arrays by index', async () => {
@@ -199,17 +199,17 @@ describe('Thought', () => {
       const toolSections = screen.getAllByText(/used/i)
       expect(toolSections).toHaveLength(3)
 
-      await user.click(toolSections[0])
-      expect(screen.getByText('input1')).toBeInTheDocument()
-      expect(screen.getByText('output1')).toBeInTheDocument()
+      await user.click(toolSections[0]!)
+      expect(screen.getByText('input1'))!.toBeInTheDocument()
+      expect(screen.getByText('output1'))!.toBeInTheDocument()
 
-      await user.click(toolSections[1])
-      expect(screen.getByText('input2')).toBeInTheDocument()
-      expect(screen.getByText('output2')).toBeInTheDocument()
+      await user.click(toolSections[1]!)
+      expect(screen.getByText('input2'))!.toBeInTheDocument()
+      expect(screen.getByText('output2'))!.toBeInTheDocument()
 
-      await user.click(toolSections[2])
-      expect(screen.getByText('input3')).toBeInTheDocument()
-      expect(screen.getByText('output3')).toBeInTheDocument()
+      await user.click(toolSections[2]!)
+      expect(screen.getByText('input3'))!.toBeInTheDocument()
+      expect(screen.getByText('output3'))!.toBeInTheDocument()
     })
 
     it('should use original value when isValueArray is false', async () => {
@@ -224,8 +224,8 @@ describe('Thought', () => {
 
       await user.click(screen.getByText(/used/i))
 
-      expect(screen.getByText('regular input')).toBeInTheDocument()
-      expect(screen.getByText('regular output')).toBeInTheDocument()
+      expect(screen.getByText('regular input'))!.toBeInTheDocument()
+      expect(screen.getByText('regular output'))!.toBeInTheDocument()
     })
   })
 
@@ -242,7 +242,7 @@ describe('Thought', () => {
       expect(screen.queryByText('test input')).not.toBeInTheDocument()
 
       await user.click(screen.getByText(/used/i))
-      expect(screen.getByText('test input')).toBeInTheDocument()
+      expect(screen.getByText('test input'))!.toBeInTheDocument()
 
       await user.click(screen.getByText(/used/i))
       expect(screen.queryByText('test input')).not.toBeInTheDocument()
@@ -260,13 +260,13 @@ describe('Thought', () => {
 
       const toolHeaders = screen.getAllByText(/used/i)
 
-      await user.click(toolHeaders[0])
-      expect(screen.getByText('input1')).toBeInTheDocument()
+      await user.click(toolHeaders[0]!)
+      expect(screen.getByText('input1'))!.toBeInTheDocument()
       expect(screen.queryByText('input2')).not.toBeInTheDocument()
 
-      await user.click(toolHeaders[1])
-      expect(screen.getByText('input1')).toBeInTheDocument()
-      expect(screen.getByText('input2')).toBeInTheDocument()
+      await user.click(toolHeaders[1]!)
+      expect(screen.getByText('input1'))!.toBeInTheDocument()
+      expect(screen.getByText('input2'))!.toBeInTheDocument()
     })
   })
 
@@ -292,8 +292,8 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      expect(screen.getByText(/knowledge/i)).toBeInTheDocument()
-      expect(screen.getByText('regular-tool')).toBeInTheDocument()
+      expect(screen.getByText(/knowledge/i))!.toBeInTheDocument()
+      expect(screen.getByText('regular-tool'))!.toBeInTheDocument()
     })
   })
 
@@ -309,7 +309,7 @@ describe('Thought', () => {
 
       await user.click(screen.getByText(/used/i))
 
-      expect(screen.getByText(/requestTitle/i)).toBeInTheDocument()
+      expect(screen.getByText(/requestTitle/i))!.toBeInTheDocument()
     })
 
     it('should handle empty observation', async () => {
@@ -323,7 +323,7 @@ describe('Thought', () => {
 
       await user.click(screen.getByText(/used/i))
 
-      expect(screen.getByText(/responseTitle/i)).toBeInTheDocument()
+      expect(screen.getByText(/responseTitle/i))!.toBeInTheDocument()
     })
 
     it('should handle JSON array with undefined elements', async () => {
@@ -337,9 +337,9 @@ describe('Thought', () => {
       render(<Thought thought={thought} isFinished={true} />)
 
       const toolHeaders = screen.getAllByText(/used/i)
-      await user.click(toolHeaders[1])
+      await user.click(toolHeaders[1]!)
 
-      expect(screen.getByText('tool2')).toBeInTheDocument()
+      expect(screen.getByText('tool2'))!.toBeInTheDocument()
     })
   })
 })

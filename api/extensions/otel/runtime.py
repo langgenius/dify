@@ -5,9 +5,9 @@ from typing import Union
 
 from celery.signals import worker_init
 from flask_login import user_loaded_from_request, user_logged_in
-from opentelemetry import trace
+from opentelemetry import metrics, trace
 from opentelemetry.propagate import set_global_textmap
-from opentelemetry.propagators.b3 import B3Format
+from opentelemetry.propagators.b3 import B3MultiFormat
 from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
@@ -24,16 +24,36 @@ def setup_context_propagation() -> None:
         CompositePropagator(
             [
                 TraceContextTextMapPropagator(),
-                B3Format(),
+                B3MultiFormat(),
             ]
         )
     )
 
 
 def shutdown_tracer() -> None:
+    flush_telemetry()
+
+
+def flush_telemetry() -> None:
+    """
+    Best-effort flush for telemetry providers.
+
+    This is mainly used by short-lived command processes (e.g. Kubernetes CronJob)
+    so counters/histograms are exported before the process exits.
+    """
     provider = trace.get_tracer_provider()
     if hasattr(provider, "force_flush"):
-        provider.force_flush()
+        try:
+            provider.force_flush()
+        except Exception:
+            logger.exception("otel: failed to flush trace provider")
+
+    metric_provider = metrics.get_meter_provider()
+    if hasattr(metric_provider, "force_flush"):
+        try:
+            metric_provider.force_flush()
+        except Exception:
+            logger.exception("otel: failed to flush metric provider")
 
 
 def is_celery_worker():
@@ -67,11 +87,14 @@ def init_celery_worker(*args, **kwargs):
         from opentelemetry.metrics import get_meter_provider
         from opentelemetry.trace import get_tracer_provider
 
+        from extensions.otel.celery_sqlcommenter import setup_celery_sqlcommenter
+
         tracer_provider = get_tracer_provider()
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
             logger.info("Initializing OpenTelemetry for Celery worker")
         CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
+        setup_celery_sqlcommenter()
 
 
 def is_instrument_flag_enabled() -> bool:

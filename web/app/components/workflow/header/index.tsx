@@ -1,8 +1,8 @@
 import type { HeaderInNormalProps } from './header-in-normal'
 import type { HeaderInRestoringProps } from './header-in-restoring'
 import type { HeaderInHistoryProps } from './header-in-view-history'
-import dynamic from 'next/dynamic'
-import { usePathname } from 'next/navigation'
+import dynamic from '@/next/dynamic'
+import { usePathname } from '@/next/navigation'
 import {
   useWorkflowMode,
 } from '../hooks'
@@ -38,7 +38,7 @@ const Header = ({
 
   return (
     <div
-      className="absolute left-0 top-7 z-10 flex h-0 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3"
+      className="absolute top-7 left-0 z-10 flex h-0 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3"
     >
       {(inWorkflowCanvas || isPipelineCanvas) && maximizeCanvas && <div className="h-14 w-[52px]" />}
       {

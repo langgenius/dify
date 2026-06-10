@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import dayjs from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import MarkdownForm from '../form'
 
+const UNSUPPORTED_TAG_ARTICLE_RE = /Unsupported tag:\s*article/
+const UNSUPPORTED_TAG_RE = /Unsupported tag/
+
 type TextNode = {
   type: 'text'
   value: string
@@ -16,6 +19,8 @@ type ElementNode = {
 }
 
 type RootNode = {
+  type: 'element'
+  tagName: 'form'
   properties: Record<string, unknown>
   children: Array<ElementNode | TextNode>
 }
@@ -63,6 +68,8 @@ const createRootNode = (
   children: Array<ElementNode | TextNode>,
   properties: Record<string, unknown> = {},
 ): RootNode => ({
+  type: 'element',
+  tagName: 'form',
   properties,
   children,
 })
@@ -85,11 +92,11 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByText('Name')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Enter name')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Enter bio')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
-      expect(screen.getByText(/Unsupported tag:\s*article/)).toBeInTheDocument()
+      expect(screen.getByText('Name'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter name'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter bio'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Submit' }))!.toBeInTheDocument()
+      expect(screen.getByText(UNSUPPORTED_TAG_ARTICLE_RE))!.toBeInTheDocument()
     })
   })
 
@@ -214,7 +221,7 @@ describe('MarkdownForm', () => {
       try {
         render(<MarkdownForm node={node} />)
 
-        expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Submit' }))!.toBeInTheDocument()
         expect(consoleErrorSpy).toHaveBeenCalled()
       }
       finally {
@@ -236,7 +243,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      const triggerText = await screen.findByTitle('Paris')
+      const triggerText = await screen.findByText('Paris')
       await user.click(triggerText)
       await user.click(await screen.findByText('Tokyo'))
       await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -284,7 +291,25 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await user.click(screen.getByTestId('checkbox-acceptTerms'))
+      await user.click(screen.getByRole('checkbox', { name: 'Accept terms' }))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('acceptTerms: true')
+      })
+    })
+
+    it('should toggle checkbox when external label is clicked', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('label', { htmlFor: 'acceptTerms' }, [createTextNode('Accept terms')]),
+        createElementNode('input', { type: 'checkbox', name: 'acceptTerms', value: false }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByText('Accept terms'))
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
@@ -362,8 +387,8 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      const clearIcon = screen.getByTestId('date-picker-clear-button')
-      await user.click(clearIcon)
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      await user.click(clearButton)
 
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
@@ -406,7 +431,7 @@ describe('MarkdownForm', () => {
 
       // Click the "Now" button in the footer to select current time (calls onChange)
       const nowButtons = await screen.findAllByText('time.operation.now')
-      await user.click(nowButtons[0])
+      await user.click(nowButtons[0]!)
 
       // Submit the form
       await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -441,6 +466,226 @@ describe('MarkdownForm', () => {
     })
   })
 
+  // Inputs and textareas with unsafe names should be silently dropped.
+  describe('Unsafe name rejection', () => {
+    it('should not render input with prototype-poisoning name', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: '__proto__', placeholder: 'poison' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('poison')).not.toBeInTheDocument()
+    })
+
+    it('should not render textarea with prototype-poisoning name', () => {
+      const node = createRootNode([
+        createElementNode('textarea', { name: 'constructor', placeholder: 'poison' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('poison')).not.toBeInTheDocument()
+    })
+
+    it('should not render input when name exceeds 128 characters', () => {
+      const longName = 'a'.repeat(129)
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: longName, placeholder: 'long-name' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('long-name')).not.toBeInTheDocument()
+    })
+
+    it('should not render input when name starts with a digit', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: '1invalid', placeholder: 'bad-name' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('bad-name')).not.toBeInTheDocument()
+    })
+
+    it('should not include unsafe-named fields in submission output', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'text', name: 'valid', value: 'ok' }),
+          createElementNode('input', { type: 'text', name: 'prototype', value: 'bad' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"valid":"ok"}')
+      })
+    })
+  })
+
+  // Double-click protection: button disables after the first submit.
+  describe('Double submit prevention', () => {
+    it('should disable submit button after first click', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Submit' })
+      await user.click(button)
+
+      await waitFor(() => {
+        expect(button)!.toBeDisabled()
+      })
+    })
+
+    it('should call onSend only once on rapid double click', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Submit' })
+      await user.click(button)
+      await user.click(button)
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledTimes(1)
+      })
+    })
+  })
+
+  // onSend errors should reset submitting state so the user can retry.
+  describe('Submit error handling', () => {
+    it('should reset isSubmitting when onSend throws', async () => {
+      const user = userEvent.setup()
+      mockOnSend.mockImplementation(() => {
+        throw new Error('send failed')
+      })
+
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Submit' })
+      await user.click(button)
+
+      await waitFor(() => {
+        expect(button).not.toBeDisabled()
+      })
+    })
+  })
+
+  // Button variant and size props should only apply whitelisted values.
+  describe('Button variant and size', () => {
+    it('should render button with valid variant and size', () => {
+      const node = createRootNode([
+        createElementNode('button', { dataVariant: 'primary', dataSize: 'large' }, [createTextNode('Go')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Go' })
+      expect(button)!.toBeInTheDocument()
+    })
+
+    it('should ignore invalid variant and size values', () => {
+      const node = createRootNode([
+        createElementNode('button', { dataVariant: 'danger', dataSize: 'xl' }, [createTextNode('Go')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByRole('button', { name: 'Go' }))!.toBeInTheDocument()
+    })
+  })
+
+  // Standard input types (password, email, number) use the generic Input branch.
+  describe('Standard input types', () => {
+    it('should render password input with masked value', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'password', name: 'secret', placeholder: 'Password' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const input = screen.getByPlaceholderText('Password')
+      expect(input)!.toHaveAttribute('type', 'password')
+    })
+
+    it('should render email input', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'email', name: 'email', placeholder: 'Email' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByPlaceholderText('Email'))!.toHaveAttribute('type', 'email')
+    })
+
+    it('should render number input', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'number', name: 'age', placeholder: 'Age' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByPlaceholderText('Age'))!.toHaveAttribute('type', 'number')
+    })
+
+    it('should submit typed value from password input', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'password', name: 'secret', placeholder: 'Password' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.type(screen.getByPlaceholderText('Password'), 'mypass')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"secret":"mypass"}')
+      })
+    })
+  })
+
+  // Inputs whose type is not in SUPPORTED_TYPES_SET should not render.
+  describe('Unsupported input type', () => {
+    it('should not render input with unsupported type like range', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'range', name: 'slider' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+      expect(screen.getByText(UNSUPPORTED_TAG_RE))!.toBeInTheDocument()
+    })
+  })
+
   // Fallback branches for edge cases in tag rendering.
   describe('Fallback branches', () => {
     it('should render label with empty text when children array is empty', () => {
@@ -462,7 +707,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByTestId('checkbox-agree')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'agree' }))!.toBeInTheDocument()
     })
 
     it('should render select with no options when dataOptions is missing', () => {
@@ -473,7 +718,8 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       // Select renders with empty items list
-      expect(screen.getByTestId('markdown-form')).toBeInTheDocument()
+      // Select renders with empty items list
+      expect(screen.getByTestId('markdown-form'))!.toBeInTheDocument()
     })
 
     it('should render button with empty text when children array is empty', () => {

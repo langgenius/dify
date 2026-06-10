@@ -33,10 +33,10 @@ const FileUploadSetting: FC<Props> = ({
   const { t } = useTranslation()
 
   const {
-    allowed_file_upload_methods,
+    allowed_file_upload_methods = [],
     max_length,
-    allowed_file_types,
-    allowed_file_extensions,
+    allowed_file_types = [],
+    allowed_file_extensions = [],
   } = payload
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const {
@@ -150,7 +150,7 @@ const FileUploadSetting: FC<Props> = ({
           title={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
         >
           <div>
-            <div className="body-xs-regular mb-1.5 text-text-tertiary">
+            <div className="mb-1.5 body-xs-regular text-text-tertiary">
               {t('variableConfig.maxNumberTip', {
                 ns: 'appDebug',
                 imgLimit: formatFileSize(imgSizeLimit),
@@ -161,6 +161,7 @@ const FileUploadSetting: FC<Props> = ({
             </div>
 
             <InputNumberWithSlider
+              label={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
               value={max_length}
               min={1}
               max={maxFileUploadLimit}

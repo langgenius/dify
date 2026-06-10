@@ -1,8 +1,10 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
-import type { SystemFeatures } from '@/types/feature'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defaultSystemFeatures, InstallationScope } from '@/types/feature'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { InstallationScope } from '@/features/system-features/constants'
 
 // ==================== Imports (after mocks) ====================
 
@@ -10,7 +12,9 @@ import Empty from '../index'
 
 // ==================== Mock Setup ====================
 
-// Use vi.hoisted to define ALL mock state and functions
+// Use vi.hoisted to define ALL mock state and functions so the local render
+// helper below (and downstream `vi.mock` factories) can read from the same
+// shared object regardless of declaration order.
 const {
   mockSetActiveTab,
   mockUseInstalledPluginList,
@@ -28,7 +32,7 @@ const {
         plugin_installation_scope: 'all' as const,
         restrict_to_marketplace_only: false,
       },
-    } as Partial<SystemFeatures>,
+    } as Partial<GetSystemFeaturesResponse>,
     pluginList: { plugins: [] as Array<{ id: string }> } as { plugins: Array<{ id: string }> } | undefined,
   }
   return {
@@ -38,6 +42,9 @@ const {
   }
 })
 
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, { systemFeatures: mockState.systemFeatures })
+
 // Mock plugin page context
 vi.mock('../../context', () => ({
   usePluginPageContext: (selector: (value: Record<string, unknown>) => unknown) => {
@@ -46,18 +53,6 @@ vi.mock('../../context', () => ({
       setActiveTab: mockSetActiveTab,
     }
     return selector(contextValue)
-  },
-}))
-
-// Mock global public store (Zustand store)
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({
-      systemFeatures: {
-        ...defaultSystemFeatures,
-        ...mockState.systemFeatures,
-      },
-    })
   },
 }))
 
@@ -110,7 +105,7 @@ const setMockFilters = (filters: Partial<FilterState>) => {
   mockState.filters = { ...mockState.filters, ...filters }
 }
 
-const setMockSystemFeatures = (features: Partial<SystemFeatures>) => {
+const setMockSystemFeatures = (features: Partial<GetSystemFeaturesResponse>) => {
   mockState.systemFeatures = { ...mockState.systemFeatures, ...features }
 }
 

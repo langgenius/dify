@@ -4,8 +4,8 @@ import pytest
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.graph_events.graph import GraphRunPausedEvent
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.graph_events import GraphRunPausedEvent
 
 
 class _DummyQueueManager:

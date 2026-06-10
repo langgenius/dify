@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Union
+from typing import Any, Union, override
 from urllib.parse import urlencode
 
 import httpx
@@ -13,7 +13,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
-from dify_graph.file.file_manager import download
+from graphon.file.file_manager import download
 
 API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),
@@ -45,6 +45,7 @@ class ApiTool(Tool):
         self.api_bundle = api_bundle
         self.provider_id = provider_id
 
+    @override
     def fork_tool_runtime(self, runtime: ToolRuntime):
         """
         fork a new tool with metadata
@@ -77,6 +78,7 @@ class ApiTool(Tool):
         # For credential validation, always return as string
         return parsed_response.to_string()
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.API
 
@@ -373,6 +375,7 @@ class ApiTool(Tool):
         except ValueError:
             return value
 
+    @override
     def _invoke(
         self,
         user_id: str,

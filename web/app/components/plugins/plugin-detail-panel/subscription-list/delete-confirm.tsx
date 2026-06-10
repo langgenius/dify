@@ -1,8 +1,16 @@
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import { useSubscriptionList } from './use-subscription-list'
 
@@ -23,58 +31,65 @@ export const DeleteConfirm = (props: Props) => {
   const { t } = useTranslation()
   const [inputName, setInputName] = useState('')
 
+  const handleOpenChange = (open: boolean) => {
+    if (isDeleting)
+      return
+
+    if (!open)
+      onClose(false)
+  }
+
   const onConfirm = () => {
     if (workflowsInUse > 0 && inputName !== currentName) {
-      Toast.notify({
-        type: 'error',
-        message: t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }),
-        // temporarily
-        className: 'z-[10000001]',
-      })
+      toast.error(t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }))
       return
     }
     deleteSubscription(currentId, {
       onSuccess: () => {
-        Toast.notify({
-          type: 'success',
-          message: t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }),
-          className: 'z-[10000001]',
-        })
+        toast.success(t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }))
         refetch?.()
         onClose(true)
       },
-      onError: (error: any) => {
-        Toast.notify({
-          type: 'error',
-          message: error?.message || t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }),
-          className: 'z-[10000001]',
-        })
+      onError: (error: unknown) => {
+        toast.error(error instanceof Error ? error.message : t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }))
       },
     })
   }
+
   return (
-    <Confirm
-      title={t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })}
-      confirmText={t(`${tPrefix}.confirm`, { ns: 'pluginTrigger' })}
-      content={workflowsInUse > 0
-        ? (
-            <>
-              {t(`${tPrefix}.contentWithApps`, { ns: 'pluginTrigger', count: workflowsInUse })}
-              <div className="system-sm-medium mb-2 mt-6 text-text-secondary">{t(`${tPrefix}.confirmInputTip`, { ns: 'pluginTrigger', name: currentName })}</div>
+    <AlertDialog open={isShow} onOpenChange={handleOpenChange}>
+      <AlertDialogContent backdropProps={{ forceRender: true }}>
+        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            {t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            {workflowsInUse > 0
+              ? t(`${tPrefix}.contentWithApps`, { ns: 'pluginTrigger', count: workflowsInUse })
+              : t(`${tPrefix}.content`, { ns: 'pluginTrigger' })}
+          </AlertDialogDescription>
+          {workflowsInUse > 0 && (
+            <div className="mt-6">
+              <div className="mb-2 system-sm-medium text-text-secondary">
+                {t(`${tPrefix}.confirmInputTip`, { ns: 'pluginTrigger', name: currentName })}
+              </div>
               <Input
                 value={inputName}
                 onChange={e => setInputName(e.target.value)}
                 placeholder={t(`${tPrefix}.confirmInputPlaceholder`, { ns: 'pluginTrigger', name: currentName })}
               />
-            </>
-          )
-        : t(`${tPrefix}.content`, { ns: 'pluginTrigger' })}
-      isShow={isShow}
-      isLoading={isDeleting}
-      isDisabled={isDeleting}
-      onConfirm={onConfirm}
-      onCancel={() => onClose(false)}
-      maskClosable={false}
-    />
+            </div>
+          )}
+        </div>
+        <AlertDialogActions>
+          <AlertDialogCancelButton disabled={isDeleting}>
+            {t('operation.cancel', { ns: 'common' })}
+          </AlertDialogCancelButton>
+          <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={onConfirm}>
+            {t(`${tPrefix}.confirm`, { ns: 'pluginTrigger' })}
+          </AlertDialogConfirmButton>
+        </AlertDialogActions>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

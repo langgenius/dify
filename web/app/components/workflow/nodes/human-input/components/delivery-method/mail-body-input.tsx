@@ -2,11 +2,11 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import Placeholder from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type MailBodyInputProps = {
   readOnly?: boolean

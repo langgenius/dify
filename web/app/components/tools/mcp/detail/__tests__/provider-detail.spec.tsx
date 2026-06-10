@@ -6,15 +6,6 @@ import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import MCPDetailPanel from '../provider-detail'
 
-// Mock the drawer component
-vi.mock('@/app/components/base/drawer', () => ({
-  default: ({ children, isOpen }: { children: ReactNode, isOpen: boolean }) => {
-    if (!isOpen)
-      return null
-    return <div data-testid="drawer">{children}</div>
-  },
-}))
-
 // Mock the content component to expose onUpdate callback
 vi.mock('../content', () => ({
   default: ({ detail, onUpdate }: { detail: ToolWithProvider, onUpdate: (isDelete?: boolean) => void }) => (
@@ -71,7 +62,7 @@ describe('MCPDetailPanel', () => {
         <MCPDetailPanel {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByTestId('drawer')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should render content when detail is provided', () => {

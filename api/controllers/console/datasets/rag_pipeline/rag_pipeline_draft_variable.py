@@ -1,10 +1,13 @@
 import logging
-from typing import Any, NoReturn
+from collections.abc import Callable
+from functools import wraps
+from typing import Any, Concatenate, NoReturn
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_schema_models
@@ -19,20 +22,22 @@ from controllers.console.app.workflow_draft_variable import (
     workflow_draft_variable_model,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.variables.types import SegmentType
+from core.app.file_access import DatabaseFileAccessController
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
-from libs.login import current_user, login_required
+from graphon.variables.types import SegmentType
+from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 def _create_pagination_parser():
@@ -53,7 +58,9 @@ class WorkflowDraftVariablePatchPayload(BaseModel):
 register_schema_models(console_ns, WorkflowDraftVariablePatchPayload)
 
 
-def _api_prerequisite(f):
+def _api_prerequisite[T, **P, R](
+    f: Callable[Concatenate[T, Account, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -68,10 +75,12 @@ def _api_prerequisite(f):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def wrapper(*args, **kwargs):
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+    @with_current_user
+    @wraps(f)
+    def wrapper(self: T, current_user: Account, *args: P.args, **kwargs: P.kwargs) -> R | Response:
+        if not current_user.has_edit_permission:
             raise Forbidden()
-        return f(*args, **kwargs)
+        return f(self, current_user, *args, **kwargs)
 
     return wrapper
 
@@ -80,7 +89,7 @@ def _api_prerequisite(f):
 class RagPipelineVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
-    def get(self, pipeline: Pipeline):
+    def get(self, current_user: Account, pipeline: Pipeline):
         """
         Get draft workflow
         """
@@ -94,7 +103,7 @@ class RagPipelineVariableCollectionApi(Resource):
             raise DraftWorkflowNotExist()
 
         # fetch draft workflow by app_model
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -102,16 +111,17 @@ class RagPipelineVariableCollectionApi(Resource):
             app_id=pipeline.id,
             page=query.page,
             limit=query.limit,
+            user_id=current_user.id,
         )
 
         return workflow_vars
 
     @_api_prerequisite
-    def delete(self, pipeline: Pipeline):
+    def delete(self, current_user: Account, pipeline: Pipeline):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        draft_var_srv.delete_workflow_variables(pipeline.id)
+        draft_var_srv.delete_user_workflow_variables(pipeline.id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -138,21 +148,21 @@ def validate_node_id(node_id: str) -> NoReturn | None:
 class RagPipelineNodeVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    def get(self, pipeline: Pipeline, node_id: str):
+    def get(self, current_user: Account, pipeline: Pipeline, node_id: str):
         validate_node_id(node_id)
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-            node_vars = draft_var_srv.list_node_variables(pipeline.id, node_id)
+            node_vars = draft_var_srv.list_node_variables(pipeline.id, node_id, user_id=current_user.id)
 
         return node_vars
 
     @_api_prerequisite
-    def delete(self, pipeline: Pipeline, node_id: str):
+    def delete(self, current_user: Account, pipeline: Pipeline, node_id: str):
         validate_node_id(node_id)
         srv = WorkflowDraftVariableService(db.session())
-        srv.delete_node_variables(pipeline.id, node_id)
+        srv.delete_node_variables(pipeline.id, node_id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -164,21 +174,22 @@ class RagPipelineVariableApi(Resource):
 
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def get(self, pipeline: Pipeline, variable_id: str):
+    def get(self, _current_user: Account, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        variable_id_str = str(variable_id)
+        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
         if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         return variable
 
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
     @console_ns.expect(console_ns.models[WorkflowDraftVariablePatchPayload.__name__])
-    def patch(self, pipeline: Pipeline, variable_id: str):
+    def patch(self, _current_user: Account, pipeline: Pipeline, variable_id: UUID):
         # Request payload for file types:
         #
         # Local File:
@@ -206,11 +217,12 @@ class RagPipelineVariableApi(Resource):
         payload = WorkflowDraftVariablePatchPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        variable_id_str = str(variable_id)
+        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
         if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
 
         new_name = args.get(self._PATCH_NAME_FIELD, None)
         raw_value = args.get(self._PATCH_VALUE_FIELD, None)
@@ -219,31 +231,43 @@ class RagPipelineVariableApi(Resource):
 
         new_value = None
         if raw_value is not None:
-            if variable.value_type == SegmentType.FILE:
-                if not isinstance(raw_value, dict):
-                    raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
-                raw_value = build_from_mapping(mapping=raw_value, tenant_id=pipeline.tenant_id)
-            elif variable.value_type == SegmentType.ARRAY_FILE:
-                if not isinstance(raw_value, list):
-                    raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
-                if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
-                    raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
-                raw_value = build_from_mappings(mappings=raw_value, tenant_id=pipeline.tenant_id)
+            match variable.value_type:
+                case SegmentType.FILE:
+                    if not isinstance(raw_value, dict):
+                        raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
+                    raw_value = build_from_mapping(
+                        mapping=raw_value,
+                        tenant_id=pipeline.tenant_id,
+                        access_controller=_file_access_controller,
+                    )
+                case SegmentType.ARRAY_FILE:
+                    if not isinstance(raw_value, list):
+                        raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
+                    if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
+                        raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
+                    raw_value = build_from_mappings(
+                        mappings=raw_value,
+                        tenant_id=pipeline.tenant_id,
+                        access_controller=_file_access_controller,
+                    )
+                case _:
+                    pass
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
         return variable
 
     @_api_prerequisite
-    def delete(self, pipeline: Pipeline, variable_id: str):
+    def delete(self, _current_user: Account, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        variable_id_str = str(variable_id)
+        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
         if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         draft_var_srv.delete_variable(variable)
         db.session.commit()
         return Response("", 204)
@@ -252,7 +276,7 @@ class RagPipelineVariableApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class RagPipelineVariableResetApi(Resource):
     @_api_prerequisite
-    def put(self, pipeline: Pipeline, variable_id: str):
+    def put(self, _current_user: Account, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -263,11 +287,12 @@ class RagPipelineVariableResetApi(Resource):
             raise NotFoundError(
                 f"Draft workflow not found, pipeline_id={pipeline.id}",
             )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        variable_id_str = str(variable_id)
+        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
         if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
         db.session.commit()
@@ -277,17 +302,17 @@ class RagPipelineVariableResetApi(Resource):
             return marshal(resetted, _WORKFLOW_DRAFT_VARIABLE_FIELDS)
 
 
-def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+def _get_variable_list(pipeline: Pipeline, node_id: str, current_user_id: str) -> WorkflowDraftVariableList:
+    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
         draft_var_srv = WorkflowDraftVariableService(
             session=session,
         )
         if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(pipeline.id)
+            draft_vars = draft_var_srv.list_conversation_variables(pipeline.id, user_id=current_user_id)
         elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(pipeline.id)
+            draft_vars = draft_var_srv.list_system_variables(pipeline.id, user_id=current_user_id)
         else:
-            draft_vars = draft_var_srv.list_node_variables(app_id=pipeline.id, node_id=node_id)
+            draft_vars = draft_var_srv.list_node_variables(app_id=pipeline.id, node_id=node_id, user_id=current_user_id)
     return draft_vars
 
 
@@ -295,14 +320,14 @@ def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList
 class RagPipelineSystemVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    def get(self, pipeline: Pipeline):
-        return _get_variable_list(pipeline, SYSTEM_VARIABLE_NODE_ID)
+    def get(self, current_user: Account, pipeline: Pipeline):
+        return _get_variable_list(pipeline, SYSTEM_VARIABLE_NODE_ID, current_user.id)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables")
 class RagPipelineEnvironmentVariableCollectionApi(Resource):
     @_api_prerequisite
-    def get(self, pipeline: Pipeline):
+    def get(self, _current_user: Account, pipeline: Pipeline):
         """
         Get draft workflow
         """

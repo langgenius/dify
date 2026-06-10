@@ -15,10 +15,12 @@ Focus on:
 """
 
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.service_api.app.error import NotChatAppError
@@ -31,6 +33,7 @@ from controllers.service_api.app.message import (
     MessageListQuery,
     MessageSuggestedApi,
 )
+from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
@@ -39,12 +42,6 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestMessageListQuery:
@@ -192,18 +189,18 @@ class TestMessageAppModeValidation:
 
     def test_chat_modes_are_valid_for_message_endpoints(self):
         """Test that all chat modes are valid."""
-        valid_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        valid_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         for mode in valid_modes:
             assert mode in valid_modes
 
     def test_completion_mode_is_invalid_for_message_endpoints(self):
         """Test that COMPLETION mode is invalid."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         assert AppMode.COMPLETION not in chat_modes
 
     def test_workflow_mode_is_invalid_for_message_endpoints(self):
         """Test that WORKFLOW mode is invalid."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
+        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
         assert AppMode.WORKFLOW not in chat_modes
 
     def test_not_chat_app_error_can_be_raised(self):
@@ -310,7 +307,7 @@ class TestMessageService:
             app_model=Mock(spec=App),
             message_id=str(uuid.uuid4()),
             user=Mock(spec=EndUser),
-            rating="like",
+            rating=FeedbackRating.LIKE,
             content="Great response!",
         )
 
@@ -326,7 +323,7 @@ class TestMessageService:
                 app_model=Mock(spec=App),
                 message_id="invalid_message_id",
                 user=Mock(spec=EndUser),
-                rating="like",
+                rating=FeedbackRating.LIKE,
                 content=None,
             )
 
@@ -379,9 +376,9 @@ class TestMessageService:
 
 
 class TestMessageListApi:
-    def test_not_chat_app(self, app) -> None:
+    def test_not_chat_app(self, app: Flask) -> None:
         api = MessageListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
@@ -389,7 +386,7 @@ class TestMessageListApi:
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_conversation_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             MessageService,
             "pagination_by_first_id",
@@ -397,7 +394,7 @@ class TestMessageListApi:
         )
 
         api = MessageListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -408,7 +405,7 @@ class TestMessageListApi:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_first_message_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_first_message_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             MessageService,
             "pagination_by_first_id",
@@ -416,7 +413,7 @@ class TestMessageListApi:
         )
 
         api = MessageListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -429,7 +426,7 @@ class TestMessageListApi:
 
 
 class TestMessageFeedbackApi:
-    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             MessageService,
             "create_feedback",
@@ -437,7 +434,7 @@ class TestMessageFeedbackApi:
         )
 
         api = MessageFeedbackApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace()
         end_user = SimpleNamespace()
 
@@ -451,11 +448,11 @@ class TestMessageFeedbackApi:
 
 
 class TestAppGetFeedbacksApi:
-    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(MessageService, "get_all_messages_feedbacks", lambda *_args, **_kwargs: ["f1"])
 
         api = AppGetFeedbacksApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace()
 
         with app.test_request_context("/app/feedbacks?page=1&limit=20", method="GET"):
@@ -465,9 +462,9 @@ class TestAppGetFeedbacksApi:
 
 
 class TestMessageSuggestedApi:
-    def test_not_chat(self, app) -> None:
+    def test_not_chat(self, app: Flask) -> None:
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
@@ -475,7 +472,7 @@ class TestMessageSuggestedApi:
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
-    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             MessageService,
             "get_suggested_questions_after_answer",
@@ -483,7 +480,7 @@ class TestMessageSuggestedApi:
         )
 
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -491,7 +488,7 @@ class TestMessageSuggestedApi:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
-    def test_disabled(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_disabled(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             MessageService,
             "get_suggested_questions_after_answer",
@@ -499,7 +496,7 @@ class TestMessageSuggestedApi:
         )
 
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -507,7 +504,7 @@ class TestMessageSuggestedApi:
             with pytest.raises(BadRequest):
                 handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
-    def test_internal_error(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_internal_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             MessageService,
             "get_suggested_questions_after_answer",
@@ -515,7 +512,7 @@ class TestMessageSuggestedApi:
         )
 
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -523,7 +520,7 @@ class TestMessageSuggestedApi:
             with pytest.raises(InternalServerError):
                 handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
-    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             MessageService,
             "get_suggested_questions_after_answer",
@@ -531,7 +528,7 @@ class TestMessageSuggestedApi:
         )
 
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 

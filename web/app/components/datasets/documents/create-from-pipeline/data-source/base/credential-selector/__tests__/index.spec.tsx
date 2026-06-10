@@ -18,43 +18,7 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   },
 }))
 
-// Mock portal-to-follow-elem - use React state to properly handle open/close
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
-  const MockPortalToFollowElem = ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-    return (
-      <div data-testid="portal-root" data-open={open}>
-        {React.Children.map(children, (child) => {
-          if (!React.isValidElement(child))
-            return null
-          return React.cloneElement(child as React.ReactElement<{ __portalOpen?: boolean }>, { __portalOpen: open })
-        })}
-      </div>
-    )
-  }
-
-  const MockPortalToFollowElemTrigger = ({ children, onClick, className, __portalOpen }: { children: React.ReactNode, onClick?: React.MouseEventHandler, className?: string, __portalOpen?: boolean }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className} data-open={__portalOpen}>
-      {children}
-    </div>
-  )
-
-  const MockPortalToFollowElemContent = ({ children, className, __portalOpen }: { children: React.ReactNode, className?: string, __portalOpen?: boolean }) => {
-    // Match actual behavior: returns null when not open
-    if (!__portalOpen)
-      return null
-    return (
-      <div data-testid="portal-content" className={className}>
-        {children}
-      </div>
-    )
-  }
-
-  return {
-    PortalToFollowElem: MockPortalToFollowElem,
-    PortalToFollowElemTrigger: MockPortalToFollowElemTrigger,
-    PortalToFollowElemContent: MockPortalToFollowElemContent,
-  }
-})
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 // CredentialIcon - imported directly (not mocked)
 // This is a simple UI component with no external dependencies
@@ -97,8 +61,8 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      expect(screen.getByTestId('portal-root')).toBeInTheDocument()
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
 
     it('should render current credential name in trigger', () => {
@@ -106,7 +70,7 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      expect(screen.getByText('Credential 1')).toBeInTheDocument()
+      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
     })
 
     it('should render credential icon with correct props', () => {
@@ -116,8 +80,8 @@ describe('CredentialSelector', () => {
 
       // Assert - CredentialIcon renders an img when avatarUrl is provided
       const iconImg = container.querySelector('img')
-      expect(iconImg).toBeInTheDocument()
-      expect(iconImg).toHaveAttribute('src', 'https://example.com/avatar-1.png')
+      expect(iconImg)!.toBeInTheDocument()
+      expect(iconImg)!.toHaveAttribute('src', 'https://example.com/avatar-1.png')
     })
 
     it('should render dropdown arrow icon', () => {
@@ -126,7 +90,7 @@ describe('CredentialSelector', () => {
       const { container } = render(<CredentialSelector {...props} />)
 
       const svgIcon = container.querySelector('svg')
-      expect(svgIcon).toBeInTheDocument()
+      expect(svgIcon)!.toBeInTheDocument()
     })
 
     it('should not render dropdown content initially', () => {
@@ -134,7 +98,7 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
 
     it('should render all credentials in dropdown when opened', () => {
@@ -142,11 +106,12 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Act - Click trigger to open dropdown
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Assert - All credentials should be visible (current credential appears in both trigger and list)
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      // Assert - All credentials should be visible (current credential appears in both trigger and list)
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
       // 3 in dropdown list + 1 in trigger (current) = 4 total
       expect(screen.getAllByText(/Credential \d/)).toHaveLength(4)
     })
@@ -160,7 +125,7 @@ describe('CredentialSelector', () => {
 
         render(<CredentialSelector {...props} />)
 
-        expect(screen.getByText('Credential 1')).toBeInTheDocument()
+        expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
       })
 
       it('should display second credential when currentCredentialId matches second', () => {
@@ -168,7 +133,7 @@ describe('CredentialSelector', () => {
 
         render(<CredentialSelector {...props} />)
 
-        expect(screen.getByText('Credential 2')).toBeInTheDocument()
+        expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
       })
 
       it('should display third credential when currentCredentialId matches third', () => {
@@ -176,7 +141,7 @@ describe('CredentialSelector', () => {
 
         render(<CredentialSelector {...props} />)
 
-        expect(screen.getByText('Credential 3')).toBeInTheDocument()
+        expect(screen.getByText('Credential 3'))!.toBeInTheDocument()
       })
 
       it.each([
@@ -188,7 +153,7 @@ describe('CredentialSelector', () => {
 
         render(<CredentialSelector {...props} />)
 
-        expect(screen.getByText(expectedName)).toBeInTheDocument()
+        expect(screen.getByText(expectedName))!.toBeInTheDocument()
       })
     })
 
@@ -201,7 +166,7 @@ describe('CredentialSelector', () => {
 
         render(<CredentialSelector {...props} />)
 
-        expect(screen.getByText('Test Credential')).toBeInTheDocument()
+        expect(screen.getByText('Test Credential'))!.toBeInTheDocument()
       })
 
       it('should render multiple credentials in dropdown', () => {
@@ -211,7 +176,7 @@ describe('CredentialSelector', () => {
         })
         render(<CredentialSelector {...props} />)
 
-        const trigger = screen.getByTestId('portal-trigger')
+        const trigger = screen.getByTestId('popover-trigger')
         fireEvent.click(trigger)
 
         // Assert - 5 in dropdown + 1 in trigger (current credential appears twice)
@@ -226,7 +191,7 @@ describe('CredentialSelector', () => {
 
         render(<CredentialSelector {...props} />)
 
-        expect(screen.getByText('Test & Credential <special>')).toBeInTheDocument()
+        expect(screen.getByText('Test & Credential <special>'))!.toBeInTheDocument()
       })
     })
 
@@ -237,7 +202,7 @@ describe('CredentialSelector', () => {
         render(<CredentialSelector {...props} />)
 
         // Act - Open dropdown
-        const trigger = screen.getByTestId('portal-trigger')
+        const trigger = screen.getByTestId('popover-trigger')
         fireEvent.click(trigger)
 
         const credential2 = screen.getByText('Credential 2')
@@ -255,11 +220,11 @@ describe('CredentialSelector', () => {
         render(<CredentialSelector {...props} />)
 
         // Act - Open dropdown and select credential
-        const trigger = screen.getByTestId('portal-trigger')
+        const trigger = screen.getByTestId('popover-trigger')
         fireEvent.click(trigger)
 
         // Get the dropdown item using within() to scope query to portal content
-        const portalContent = screen.getByTestId('portal-content')
+        const portalContent = screen.getByTestId('popover-content')
         const credentialOption = within(portalContent).getByText(credentialName)
         fireEvent.click(credentialOption)
 
@@ -276,7 +241,7 @@ describe('CredentialSelector', () => {
         render(<CredentialSelector {...props} />)
 
         // Act - Open dropdown and select Credential 1
-        const trigger = screen.getByTestId('portal-trigger')
+        const trigger = screen.getByTestId('popover-trigger')
         fireEvent.click(trigger)
 
         const credential1 = screen.getByText('Credential 1')
@@ -294,14 +259,46 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Assert - Initially closed
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      // Assert - Initially closed
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
 
       // Act - Click trigger
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Assert - Now open
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      // Assert - Now open
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should call onCredentialChange when clicking a credential item', () => {
@@ -309,7 +306,7 @@ describe('CredentialSelector', () => {
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       render(<CredentialSelector {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
       const credential2 = screen.getByText('Credential 2')
       fireEvent.click(credential2)
@@ -324,10 +321,10 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Act - Open and select
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       const credential2 = screen.getByText('Credential 2')
       fireEvent.click(credential2)
@@ -341,13 +338,14 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Act - Rapid clicks
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
       fireEvent.click(trigger)
       fireEvent.click(trigger)
 
       // Assert - Should not crash
-      expect(trigger).toBeInTheDocument()
+      // Assert - Should not crash
+      expect(trigger)!.toBeInTheDocument()
     })
 
     it('should allow selecting credentials multiple times', () => {
@@ -361,7 +359,7 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Act & Assert - Select Credential 1 (different from current)
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       const credential1 = screen.getByText('Credential 1')
@@ -465,7 +463,7 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Act - Open dropdown and select
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
       const credential = screen.getByText('Credential 2')
       fireEvent.click(credential)
@@ -485,7 +483,7 @@ describe('CredentialSelector', () => {
       rerender(<CredentialSelector {...props} onCredentialChange={mockOnChange2} />)
 
       // Open and select
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
       const credential = screen.getByText('Credential 2')
       fireEvent.click(credential)
@@ -504,7 +502,8 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Assert - Should display credential 2
-      expect(screen.getByText('Credential 2')).toBeInTheDocument()
+      // Assert - Should display credential 2
+      expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
     })
 
     it('should update currentCredential when currentCredentialId changes', () => {
@@ -512,13 +511,15 @@ describe('CredentialSelector', () => {
       const { rerender } = render(<CredentialSelector {...props} />)
 
       // Assert initial
-      expect(screen.getByText('Credential 1')).toBeInTheDocument()
+      // Assert initial
+      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       // Act - Change currentCredentialId
       rerender(<CredentialSelector {...props} currentCredentialId="cred-3" />)
 
       // Assert - Should now display credential 3
-      expect(screen.getByText('Credential 3')).toBeInTheDocument()
+      // Assert - Should now display credential 3
+      expect(screen.getByText('Credential 3'))!.toBeInTheDocument()
     })
 
     it('should update currentCredential when credentials array changes', () => {
@@ -526,7 +527,8 @@ describe('CredentialSelector', () => {
       const { rerender } = render(<CredentialSelector {...props} />)
 
       // Assert initial
-      expect(screen.getByText('Credential 1')).toBeInTheDocument()
+      // Assert initial
+      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       // Act - Change credentials
       const newCredentials = [
@@ -535,7 +537,8 @@ describe('CredentialSelector', () => {
       rerender(<CredentialSelector {...props} credentials={newCredentials} />)
 
       // Assert - Should display updated name
-      expect(screen.getByText('Updated Credential 1')).toBeInTheDocument()
+      // Assert - Should display updated name
+      expect(screen.getByText('Updated Credential 1'))!.toBeInTheDocument()
     })
 
     it('should return undefined currentCredential when id not found', () => {
@@ -581,11 +584,12 @@ describe('CredentialSelector', () => {
       const { rerender } = render(<CredentialSelector {...props} />)
 
       // Assert initial
-      expect(screen.getByText('Credential 1')).toBeInTheDocument()
+      // Assert initial
+      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       rerender(<CredentialSelector {...props} currentCredentialId="cred-2" />)
 
-      expect(screen.getByText('Credential 2')).toBeInTheDocument()
+      expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
     })
 
     it('should re-render when credentials array reference changes', () => {
@@ -598,7 +602,7 @@ describe('CredentialSelector', () => {
       ]
       rerender(<CredentialSelector {...props} credentials={newCredentials} />)
 
-      expect(screen.getByText('New Name 1')).toBeInTheDocument()
+      expect(screen.getByText('New Name 1'))!.toBeInTheDocument()
     })
 
     it('should re-render when onCredentialChange reference changes', () => {
@@ -611,7 +615,7 @@ describe('CredentialSelector', () => {
       rerender(<CredentialSelector {...props} onCredentialChange={mockOnChange2} />)
 
       // Open and select
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
       const credential = screen.getByText('Credential 2')
       fireEvent.click(credential)
@@ -631,7 +635,8 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Assert - Should render without crashing
-      expect(screen.getByTestId('portal-root')).toBeInTheDocument()
+      // Assert - Should render without crashing
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle undefined avatar_url in credential', () => {
@@ -648,12 +653,14 @@ describe('CredentialSelector', () => {
       const { container } = render(<CredentialSelector {...props} />)
 
       // Assert - Should render without crashing and show first letter fallback
-      expect(screen.getByText('No Avatar Credential')).toBeInTheDocument()
+      // Assert - Should render without crashing and show first letter fallback
+      expect(screen.getByText('No Avatar Credential'))!.toBeInTheDocument()
       // When avatar_url is undefined, CredentialIcon shows first letter instead of img
       const iconImg = container.querySelector('img')
       expect(iconImg).not.toBeInTheDocument()
       // First letter 'N' should be displayed
-      expect(screen.getByText('N')).toBeInTheDocument()
+      // First letter 'N' should be displayed
+      expect(screen.getByText('N'))!.toBeInTheDocument()
     })
 
     it('should handle empty string name in credential', () => {
@@ -669,7 +676,8 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Assert - Should render without crashing
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      // Assert - Should render without crashing
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
 
     it('should handle very long credential name', () => {
@@ -685,7 +693,7 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      expect(screen.getByText(longName)).toBeInTheDocument()
+      expect(screen.getByText(longName))!.toBeInTheDocument()
     })
 
     it('should handle special characters in credential name', () => {
@@ -701,7 +709,7 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      expect(screen.getByText(specialName)).toBeInTheDocument()
+      expect(screen.getByText(specialName))!.toBeInTheDocument()
     })
 
     it('should handle numeric id as string', () => {
@@ -716,7 +724,7 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      expect(screen.getByText('Numeric ID Credential')).toBeInTheDocument()
+      expect(screen.getByText('Numeric ID Credential'))!.toBeInTheDocument()
     })
 
     it('should handle large number of credentials', () => {
@@ -728,7 +736,7 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      expect(screen.getByText('Credential 50')).toBeInTheDocument()
+      expect(screen.getByText('Credential 50'))!.toBeInTheDocument()
     })
 
     it('should handle credential selection with duplicate names', () => {
@@ -744,7 +752,7 @@ describe('CredentialSelector', () => {
       })
 
       render(<CredentialSelector {...props} />)
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Get all "Same Name" elements
@@ -752,7 +760,7 @@ describe('CredentialSelector', () => {
       const sameNameElements = screen.getAllByText('Same Name')
       expect(sameNameElements.length).toBe(3)
 
-      fireEvent.click(sameNameElements[2])
+      fireEvent.click(sameNameElements[2]!)
 
       // Assert - Should call with the correct id even with duplicate names
       expect(mockOnChange).toHaveBeenCalledWith('cred-2')
@@ -763,7 +771,7 @@ describe('CredentialSelector', () => {
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       const { unmount } = render(<CredentialSelector {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       unmount()
@@ -787,7 +795,8 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Assert - Should render without crashing
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      // Assert - Should render without crashing
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -798,8 +807,8 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
-      expect(trigger).toHaveClass('overflow-hidden')
+      const trigger = screen.getByTestId('popover-trigger')
+      expect(trigger)!.toHaveClass('overflow-hidden')
     })
 
     it('should apply grow class to trigger', () => {
@@ -807,19 +816,21 @@ describe('CredentialSelector', () => {
 
       render(<CredentialSelector {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
-      expect(trigger).toHaveClass('grow')
+      const trigger = screen.getByTestId('popover-trigger')
+      expect(trigger)!.toHaveClass('grow')
     })
 
-    it('should apply z-10 class to dropdown content', () => {
+    it('should configure dropdown placement through popover props', () => {
       const props = createDefaultProps()
       render(<CredentialSelector {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
-      const content = screen.getByTestId('portal-content')
-      expect(content).toHaveClass('z-10')
+      const content = screen.getByTestId('popover-content')
+      expect(content)!.toHaveAttribute('data-placement', 'bottom-start')
+      expect(content)!.toHaveAttribute('data-side-offset', '4')
+      expect(content)!.not.toHaveClass('z-10')
     })
   })
 
@@ -831,7 +842,8 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Assert - Trigger should display the correct credential
-      expect(screen.getByText('Credential 2')).toBeInTheDocument()
+      // Assert - Trigger should display the correct credential
+      expect(screen.getByText('Credential 2'))!.toBeInTheDocument()
     })
 
     it('should pass isOpen state to Trigger component', () => {
@@ -839,22 +851,23 @@ describe('CredentialSelector', () => {
       render(<CredentialSelector {...props} />)
 
       // Assert - Initially closed
-      const portalRoot = screen.getByTestId('portal-root')
-      expect(portalRoot).toHaveAttribute('data-open', 'false')
+      const portalRoot = screen.getByTestId('popover')
+      expect(portalRoot)!.toHaveAttribute('data-open', 'false')
 
       // Act - Open
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Assert - Now open
-      expect(portalRoot).toHaveAttribute('data-open', 'true')
+      // Assert - Now open
+      expect(portalRoot)!.toHaveAttribute('data-open', 'true')
     })
 
     it('should pass credentials to List component', () => {
       const props = createDefaultProps()
       render(<CredentialSelector {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Assert - All credentials should be rendered in list
@@ -867,7 +880,7 @@ describe('CredentialSelector', () => {
       const props = createDefaultProps({ currentCredentialId: 'cred-2' })
       render(<CredentialSelector {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Assert - Current credential (Credential 2) appears twice:
@@ -881,7 +894,7 @@ describe('CredentialSelector', () => {
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       render(<CredentialSelector {...props} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
       const credential3 = screen.getByText('Credential 3')
       fireEvent.click(credential3)
@@ -891,23 +904,23 @@ describe('CredentialSelector', () => {
     })
   })
 
-  // Portal Configuration
-  describe('Portal Configuration', () => {
-    it('should configure PortalToFollowElem with placement bottom-start', () => {
+  // Popover Configuration
+  describe('Popover Configuration', () => {
+    it('should configure Popover with placement bottom-start', () => {
       // This test verifies the portal is configured correctly
       // The actual placement is handled by the mock, but we verify the component renders
       const props = createDefaultProps()
       render(<CredentialSelector {...props} />)
 
-      expect(screen.getByTestId('portal-root')).toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
-    it('should configure PortalToFollowElem with offset mainAxis 4', () => {
+    it('should configure Popover with offset mainAxis 4', () => {
       // This test verifies the offset configuration doesn't break rendering
       const props = createDefaultProps()
       render(<CredentialSelector {...props} />)
 
-      expect(screen.getByTestId('portal-root')).toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 })

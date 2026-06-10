@@ -1,16 +1,15 @@
-import type { Mock } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useDSLDragDrop } from '../use-dsl-drag-drop'
 
 describe('useDSLDragDrop', () => {
   let container: HTMLDivElement
-  let mockOnDSLFileDropped: Mock
+  let mockOnDSLFileDropped = vi.fn<(file: File) => void>()
 
   beforeEach(() => {
     vi.clearAllMocks()
     container = document.createElement('div')
     document.body.appendChild(container)
-    mockOnDSLFileDropped = vi.fn()
+    mockOnDSLFileDropped = vi.fn<(file: File) => void>()
   })
 
   afterEach(() => {

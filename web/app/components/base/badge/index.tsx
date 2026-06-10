@@ -1,8 +1,8 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 enum BadgeState {
   Warning = 'warning',
@@ -26,14 +26,14 @@ const BadgeVariants = cva(
   },
 )
 
-type BadgeProps = {
+type BadgeProps = Readonly<{
   size?: 's' | 'm' | 'l'
   iconOnly?: boolean
   uppercase?: boolean
   state?: BadgeState
   styleCss?: CSSProperties
   children?: ReactNode
-} & React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof BadgeVariants>
+}> & React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof BadgeVariants>
 
 function getBadgeState(state: BadgeState) {
   switch (state) {

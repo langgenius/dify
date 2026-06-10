@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
 // Import after mocks
@@ -10,15 +9,12 @@ import { useFileUpload } from '../use-file-upload'
 
 // Mock notify function
 const mockNotify = vi.fn()
-const mockClose = vi.fn()
 
-vi.mock('use-context-selector', async () => {
-  const actual = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: vi.fn(() => ({ notify: mockNotify, close: mockClose })),
-  }
-})
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
+}))
 
 // Mock upload service
 const mockUpload = vi.fn()
@@ -63,9 +59,9 @@ vi.mock('@/app/components/base/file-uploader/utils', () => ({
 
 const createWrapper = () => {
   return ({ children }: { children: ReactNode }) => (
-    <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+    <>
       {children}
-    </ToastContext.Provider>
+    </>
   )
 }
 
@@ -298,7 +294,7 @@ describe('useFileUpload', () => {
 
       // Should be called with at most batch_count_limit files
       if (prepareFileList.mock.calls.length > 0) {
-        const calledFiles = prepareFileList.mock.calls[0][0]
+        const calledFiles = prepareFileList.mock.calls[0]![0]
         expect(calledFiles.length).toBeLessThanOrEqual(mockFileUploadConfig.batch_count_limit)
       }
     })
@@ -385,9 +381,9 @@ describe('useFileUpload', () => {
     it('should set dragging true on dragenter', async () => {
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={defaultOptions} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -404,9 +400,9 @@ describe('useFileUpload', () => {
     it('should handle dragover event', async () => {
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={defaultOptions} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -417,15 +413,15 @@ describe('useFileUpload', () => {
         dropzone.dispatchEvent(dragOverEvent)
       })
 
-      expect(dropzone).toBeInTheDocument()
+      expect(dropzone)!.toBeInTheDocument()
     })
 
     it('should set dragging false on dragleave from drag overlay', async () => {
       const { getByTestId, queryByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={defaultOptions} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -454,9 +450,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -486,9 +482,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -509,9 +505,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={{ ...defaultOptions, supportBatchUpload: false, prepareFileList }} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -536,7 +532,7 @@ describe('useFileUpload', () => {
 
       await waitFor(() => {
         if (prepareFileList.mock.calls.length > 0) {
-          const calledFiles = prepareFileList.mock.calls[0][0]
+          const calledFiles = prepareFileList.mock.calls[0]![0]
           expect(calledFiles.length).toBe(1)
         }
       })
@@ -549,9 +545,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -586,9 +582,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -639,9 +635,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -678,9 +674,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+          <>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </ToastContext.Provider>,
+          </>,
         ),
       )
 
@@ -904,7 +900,7 @@ describe('useFileUpload', () => {
 
       await waitFor(() => {
         if (prepareFileList.mock.calls.length > 0) {
-          const files = prepareFileList.mock.calls[0][0]
+          const files = prepareFileList.mock.calls[0]![0]
           expect(files[0].progress).toBe(PROGRESS_NOT_STARTED)
         }
       })

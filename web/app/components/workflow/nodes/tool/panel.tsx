@@ -12,7 +12,7 @@ import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
 import Split from '../_base/components/split'
 import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 import ToolForm from './components/tool-form'
-import useConfig from './use-config'
+import useConfig from './hooks/use-config'
 
 const i18nPrefix = 'nodes.tool'
 

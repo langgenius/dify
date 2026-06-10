@@ -1,3 +1,4 @@
+import io
 import types
 from unittest.mock import patch
 
@@ -30,9 +31,10 @@ class DummyFile:
         self.filename = filename
         self.mimetype = mimetype
         self._content = content
+        self.stream = io.BytesIO(content)
 
     def read(self):
-        return self._content
+        return self.stream.read()
 
 
 class DummyToolFile:

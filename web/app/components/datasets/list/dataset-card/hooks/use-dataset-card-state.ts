@@ -1,8 +1,7 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { DataSet } from '@/models/datasets'
-import { useCallback, useEffect, useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import { useCheckDatasetUsage, useDeleteDataset } from '@/service/use-dataset-card'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
@@ -20,11 +19,6 @@ type UseDatasetCardStateOptions = {
 
 export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateOptions) => {
   const { t } = useTranslation()
-  const [tags, setTags] = useState<Tag[]>(dataset.tags)
-
-  useEffect(() => {
-    setTags(dataset.tags)
-  }, [dataset.tags])
 
   // Modal state
   const [modalState, setModalState] = useState<ModalState>({
@@ -70,7 +64,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
       downloadBlob({ data: file, fileName: `${name}.pipeline` })
     }
     catch {
-      Toast.notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
     finally {
       setExporting(false)
@@ -93,10 +87,10 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
     catch (e: unknown) {
       if (e instanceof Response) {
         const res = await e.json()
-        Toast.notify({ type: 'error', message: res?.message || 'Unknown error' })
+        toast.error(res?.message || t('unknownError', { ns: 'dataset' }))
       }
       else {
-        Toast.notify({ type: 'error', message: (e as Error)?.message || 'Unknown error' })
+        toast.error((e as Error)?.message || t('unknownError', { ns: 'dataset' }))
       }
     }
   }, [dataset.id, checkUsage, t])
@@ -104,7 +98,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDatasetMutation(dataset.id)
-      Toast.notify({ type: 'success', message: t('datasetDeleted', { ns: 'dataset' }) })
+      toast.success(t('datasetDeleted', { ns: 'dataset' }))
       onSuccess?.()
     }
     finally {
@@ -113,10 +107,6 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   }, [dataset.id, deleteDatasetMutation, onSuccess, t, closeConfirmDelete])
 
   return {
-    // Tag state
-    tags,
-    setTags,
-
     // Modal state
     modalState,
     openRenameModal,
