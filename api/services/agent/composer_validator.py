@@ -4,6 +4,13 @@ from typing import Any
 from pydantic import ValidationError
 
 from services.agent.errors import AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError
+from services.agent.prompt_mentions import (
+    MAX_MENTIONS_PER_PROMPT,
+    NODE_JOB_PROMPT_ALLOWED_KINDS,
+    SOUL_PROMPT_ALLOWED_KINDS,
+    MentionKind,
+    parse_prompt_mentions,
+)
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
@@ -46,6 +53,42 @@ class ComposerConfigValidator:
             cls.validate_agent_soul(payload.agent_soul)
         if payload.node_job is not None:
             cls.validate_node_job(payload.node_job)
+        cls._validate_prompt_mentions(payload)
+
+    @classmethod
+    def _validate_prompt_mentions(cls, payload: ComposerSavePayload) -> None:
+        """ENG-616 §2.4: per-surface mention allowlists, enforced at save/validate.
+
+        Error messages start with a stable code token (``mention_kind_not_allowed``
+        / ``mention_limit_exceeded``) so the frontend can switch on it.
+        """
+        if payload.agent_soul is not None:
+            cls._validate_surface_mentions(
+                prompt=payload.agent_soul.prompt.system_prompt,
+                allowed=SOUL_PROMPT_ALLOWED_KINDS,
+                surface="agent soul prompt",
+            )
+        if payload.node_job is not None:
+            cls._validate_surface_mentions(
+                prompt=payload.node_job.workflow_prompt,
+                allowed=NODE_JOB_PROMPT_ALLOWED_KINDS,
+                surface="workflow job prompt",
+            )
+
+    @classmethod
+    def _validate_surface_mentions(cls, *, prompt: str, allowed: frozenset[MentionKind], surface: str) -> None:
+        mentions = parse_prompt_mentions(prompt)
+        if len(mentions) > MAX_MENTIONS_PER_PROMPT:
+            raise InvalidComposerConfigError(
+                f"mention_limit_exceeded: {surface} has {len(mentions)} mentions, "
+                f"exceeding the limit of {MAX_MENTIONS_PER_PROMPT}."
+            )
+        for mention in mentions:
+            if mention.kind not in allowed:
+                raise InvalidComposerConfigError(
+                    f"mention_kind_not_allowed: {surface} cannot reference "
+                    f"{mention.kind.value} (id={mention.ref_id})."
+                )
 
     @classmethod
     def validate_agent_soul(cls, agent_soul: AgentSoulConfig) -> None:
