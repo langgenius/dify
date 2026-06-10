@@ -134,6 +134,7 @@ export const zFileResponse = z.object({
   name: z.string(),
   original_url: z.string().nullish(),
   preview_url: z.string().nullish(),
+  reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
   tenant_id: z.string().nullish(),
@@ -637,6 +638,13 @@ export const zPostOauthDeviceTokenBody = zDevicePollRequest
  * Success
  */
 export const zPostOauthDeviceTokenResponse = z.record(z.string(), z.unknown())
+
+export const zGetPermittedExternalAppsQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  mode: z.string().optional(),
+  name: z.string().max(200).optional(),
+  page: z.int().gte(1).optional().default(1),
+})
 
 /**
  * Permitted external apps list

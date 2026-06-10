@@ -109,6 +109,12 @@ class TracingConfigCheckError(BaseHTTPException):
     code = 400
 
 
+class VariableValidationError(BaseHTTPException):
+    error_code = "variable_validation_error"
+    description = "Variable validation failed."
+    code = 400
+
+
 class InvokeRateLimitError(BaseHTTPException):
     """Raised when the Invoke returns rate limit error."""
 
@@ -120,10 +126,4 @@ class InvokeRateLimitError(BaseHTTPException):
 class NeedAddIdsError(BaseHTTPException):
     error_code = "need_add_ids"
     description = "Need to add ids."
-    code = 400
-
-
-class VariableValidationError(BaseHTTPException):
-    error_code = "variable_validation_error"
-    description = "Variable validation failed."
     code = 400
