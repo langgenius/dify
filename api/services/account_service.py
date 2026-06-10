@@ -266,9 +266,13 @@ class AccountService:
             db.session.commit()
 
         AccountService._refresh_account_last_active(account)
-        # NOTE: make sure account is accessible outside of a db session
-        # This ensures that it will work correctly after upgrading to Flask version 3.1.2
-        db.session.refresh(account)
+        # NOTE: make sure account is accessible outside of a db session.
+        # Use expunge instead of refresh: refresh issues a DB reload on an
+        # already-expired object (expired by the preceding commit) which risks
+        # PendingRollbackError under gevent concurrency. expunge detaches the
+        # account with its current in-memory state intact — safe because
+        # _current_tenant is loaded via its own expire_on_commit=False session.
+        db.session.expunge(account)
         db.session.close()
         return account
 
