@@ -1,6 +1,13 @@
 'use client'
 
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { debounce, parseAsString, useQueryState } from 'nuqs'
@@ -8,10 +15,10 @@ import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { AgentRosterList } from './components/agent-roster-list'
-import { RosterSidebar } from './components/roster-sidebar'
 import { RosterToolbar } from './components/roster-toolbar'
 
 const ROSTER_PAGE_SIZE = 30
+const isAgentInUse = (agent: { app_id?: string | null, workflow_id?: string | null }) => Boolean(agent.app_id || agent.workflow_id)
 
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
@@ -50,44 +57,45 @@ export default function RosterPage() {
 
   const rosterItems = rosterPages?.pages.flatMap(page => page.data) ?? []
   const totalAgents = rosterPages?.pages[0]?.total ?? 0
+  const inUseAgents = rosterItems.filter(isAgentInUse).length
+  const draftAgents = Math.max(rosterItems.length - inUseAgents, 0)
 
   useDocumentTitle(tCommon('menus.roster'))
 
   return (
-    <main className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
-      <RosterSidebar totalAgents={totalAgents} />
-      <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
-        <ScrollArea
-          className="min-h-0 flex-1 overflow-hidden"
-          label={t('roster.listLabel')}
-          slotClassNames={{
-            viewport: 'overscroll-contain',
-            content: 'min-h-full',
-            scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
-          }}
-        >
-          <div className="sticky top-0 z-10 bg-background-body px-8 pt-4 pb-3">
-            <header className="flex min-w-0 flex-col gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <h1 className="truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-                  {t('roster.title')}
-                </h1>
-                <a
-                  href="https://docs.dify.ai/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md system-xs-semibold text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  {t('roster.learnMore')}
-                  <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
-                </a>
-              </div>
-              <p className="max-w-3xl system-sm-regular text-text-tertiary">
-                {t('roster.description')}
-              </p>
-            </header>
-
+    <main className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
+      <Tabs defaultValue="agent" className="flex min-h-0 flex-1 flex-col">
+        <div className="h-25.5 shrink-0 bg-background-body px-8 pt-4 pb-4">
+          <div className="flex h-6 min-w-0 items-center justify-between gap-4">
+            <TabsList aria-label={t('roster.tabsLabel')} className="h-6 items-start gap-4">
+              <TabsTab
+                value="agent"
+                className="relative h-6 px-0 text-base/6 font-semibold text-text-tertiary data-active:text-text-primary data-active:after:absolute data-active:after:right-0 data-active:after:-bottom-1 data-active:after:left-0 data-active:after:h-0.5 data-active:after:bg-state-accent-solid"
+              >
+                {t('roster.tabs.agent')}
+              </TabsTab>
+              <TabsTab
+                value="human"
+                disabled
+                className="relative h-6 px-0 text-base/6 font-semibold text-text-tertiary data-disabled:text-text-tertiary"
+              >
+                {t('roster.tabs.human')}
+              </TabsTab>
+            </TabsList>
+            <a
+              href="https://docs.dify.ai/"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
+            >
+              {t('roster.learnMore')}
+              <span aria-hidden className="i-ri-external-link-line size-3" />
+            </a>
+          </div>
+          <div className="mt-3.5">
             <RosterToolbar
+              draftAgents={draftAgents}
+              inUseAgents={inUseAgents}
               keyword={keyword}
               totalAgents={totalAgents}
               onKeywordChange={(value) => {
@@ -95,21 +103,31 @@ export default function RosterPage() {
               }}
             />
           </div>
+        </div>
 
-          <div className="px-8 pb-8">
-            <AgentRosterList
-              agents={rosterItems}
-              hasMore={!!hasNextPage}
-              isEmptySearch={!!debouncedKeyword}
-              isError={!!error}
-              isFetching={isFetching}
-              isFetchingNextPage={isFetchingNextPage}
-              isPending={isPending}
-              onLoadMore={() => fetchNextPage()}
-            />
-          </div>
-        </ScrollArea>
-      </section>
+        <TabsPanel value="agent" tabIndex={-1} className="min-h-0 flex-1">
+          <ScrollAreaRoot className="relative h-full min-h-0 min-w-0 overflow-hidden">
+            <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
+              <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
+                <AgentRosterList
+                  agents={rosterItems}
+                  hasMore={!!hasNextPage}
+                  isEmptySearch={!!debouncedKeyword}
+                  isError={!!error}
+                  isFetching={isFetching}
+                  isFetchingNextPage={isFetchingNextPage}
+                  isPending={isPending}
+                  label={t('roster.listLabel')}
+                  onLoadMore={() => fetchNextPage()}
+                />
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollAreaRoot>
+        </TabsPanel>
+      </Tabs>
     </main>
   )
 }

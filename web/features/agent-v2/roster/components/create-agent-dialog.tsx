@@ -7,6 +7,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
@@ -45,10 +46,29 @@ export function CreateAgentDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="primary" className="min-w-40 gap-1.5" />}>
-        <span aria-hidden className="i-ri-add-line size-4" />
-        {t('roster.createAgent')}
-      </DialogTrigger>
+      <div className="isolate flex h-8 items-center rounded-lg bg-components-button-primary-bg shadow-xs shadow-shadow-shadow-3">
+        <DialogTrigger
+          render={(
+            <Button
+              variant="primary"
+              className="relative h-8 gap-0.5 rounded-l-lg rounded-r-none px-3 focus-visible:z-10"
+            />
+          )}
+        >
+          <span aria-hidden className="i-ri-add-line size-4" />
+          <span className="px-0.5 system-sm-medium">{t('roster.createAgent')}</span>
+        </DialogTrigger>
+        <span aria-hidden className="h-4 w-px bg-text-primary-on-surface opacity-15" />
+        <Button
+          type="button"
+          variant="primary"
+          aria-label={t('roster.createAgentOptions')}
+          className="relative size-8 rounded-l-none rounded-r-lg px-0 focus-visible:z-10"
+          onClick={noop}
+        >
+          <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+        </Button>
+      </div>
       <DialogContent>
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">

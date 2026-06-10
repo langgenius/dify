@@ -2,7 +2,7 @@
 
 import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -14,6 +14,8 @@ import { consoleQuery } from '@/service/client'
 
 type EditAgentDialogProps = {
   agent: AgentRosterResponse
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 type AgentFormValues = {
@@ -23,10 +25,11 @@ type AgentFormValues = {
 
 export function EditAgentDialog({
   agent,
+  open,
+  onOpenChange,
 }: EditAgentDialogProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [open, setOpen] = useState(false)
   const [name, setName] = useState(agent.name)
   const [description, setDescription] = useState(agent.description ?? '')
   const updateAgentMutation = useMutation(consoleQuery.agents.byAgentId.patch.mutationOptions())
@@ -51,7 +54,7 @@ export function EditAgentDialog({
     }, {
       onSuccess: () => {
         toast.success(t('roster.updateSuccess'))
-        setOpen(false)
+        onOpenChange(false)
       },
       onError: () => {
         toast.error(t('roster.updateFailed'))
@@ -64,7 +67,7 @@ export function EditAgentDialog({
       setName(agent.name)
       setDescription(agent.description ?? '')
     }
-    setOpen(nextOpen)
+    onOpenChange(nextOpen)
   }
 
   const trimmedName = name.trim()
@@ -74,18 +77,6 @@ export function EditAgentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger
-        render={(
-          <Button
-            size="small"
-            className="gap-1"
-            aria-label={t('roster.editAgent', { name: agent.name })}
-          />
-        )}
-      >
-        <span aria-hidden className="i-ri-edit-line size-3.5" />
-        {tCommon('operation.edit')}
-      </DialogTrigger>
       <DialogContent>
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
@@ -127,7 +118,7 @@ export function EditAgentDialog({
             />
           </FieldRoot>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" onClick={() => setOpen(false)} disabled={updateAgentMutation.isPending}>
+            <Button type="button" onClick={() => onOpenChange(false)} disabled={updateAgentMutation.isPending}>
               {tCommon('operation.cancel')}
             </Button>
             <Button
