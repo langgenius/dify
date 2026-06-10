@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from 'react'
+import type { CSSProperties, FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -486,6 +486,9 @@ const BasePanel: FC<BasePanelProps> = ({
   const singleRunActionLabel = isSingleRunning
     ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
     : runThisStepLabel
+  const nodePanelRightOffset = !showMessageLogModal
+    ? '4px'
+    : `${otherPanelWidth + 8}px`
 
   return (
     <div
@@ -494,8 +497,9 @@ const BasePanel: FC<BasePanelProps> = ({
         showMessageLogModal && 'absolute z-0 mr-2 w-[400px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={{
-        right: !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
-      }}
+        'right': !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
+        '--workflow-node-panel-right': nodePanelRightOffset,
+      } as CSSProperties}
     >
       <div
         ref={triggerRef}
@@ -507,8 +511,9 @@ const BasePanel: FC<BasePanelProps> = ({
         ref={containerRef}
         className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
-          width: `${nodePanelWidth}px`,
-        }}
+          'width': `${nodePanelWidth}px`,
+          '--workflow-node-panel-width': `${nodePanelWidth}px`,
+        } as CSSProperties}
       >
         <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">

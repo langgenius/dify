@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { AgentNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentPanel } from '../panel'
 
@@ -31,7 +31,7 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
 const panelProps = {} as NodePanelProps<AgentNodeType>['panelProps']
 
 describe('agent/panel', () => {
-  it('renders selected roster agent information and fixed output vars', () => {
+  it('renders selected roster agent trigger and fixed output vars', () => {
     render(
       <AgentPanel
         id="agent-node"
@@ -42,11 +42,32 @@ describe('agent/panel', () => {
 
     expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
     expect(screen.getByText('Nadia')).toBeInTheDocument()
-    expect(screen.getByText('Clarification Drafter')).toBeInTheDocument()
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage')).toBeInTheDocument()
     expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
     expect(screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
+  })
+
+  it('opens and closes the roster agent layered panel', () => {
+    render(
+      <AgentPanel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
+
+    const panel = screen.getByRole('dialog', { name: 'Nadia' })
+    expect(panel).toBeInTheDocument()
+    expect(within(panel).getByText('Clarification Drafter')).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })).toHaveAttribute('href', '/roster/agent/agent-1/configure')
+    expect(within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' })).toBeInTheDocument()
+
+    fireEvent.keyDown(panel, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog', { name: 'Nadia' })).not.toBeInTheDocument()
   })
 
   it('does not render roster metadata when no roster agent is selected', () => {
