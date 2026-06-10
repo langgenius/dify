@@ -1,11 +1,9 @@
 import type {
-  CredentialSlot,
   EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
 import type { GuideMethod } from '../../types'
 import type { EnvVarBindingSlot } from '@/features/deployments/components/env-var-bindings'
 import type { DslEnvVarSlot } from '@/features/deployments/dsl'
-import { runtimeCredentialSlotKey } from '@/features/deployments/components/runtime-credential-bindings-utils'
 import { dslEnvVarSlots } from '@/features/deployments/dsl'
 
 type EnvVarSlotMetadata = {
@@ -88,12 +86,6 @@ function createDslEnvVarMetadataSlots(dslContent: string, method: GuideMethod) {
         const metadata = normalizeDslEnvVarSlotMetadata(slot)
         return metadata ? [metadata] : []
       })
-    : []
-}
-
-export function createBindingSlots(shouldLoadDeploymentTarget: boolean, slots: CredentialSlot[] | undefined) {
-  return shouldLoadDeploymentTarget
-    ? slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
     : []
 }
 

@@ -3,7 +3,7 @@
 import { useAtomValue } from 'jotai'
 import {
   createDslState,
-} from '../models/selectors'
+} from '../models/dsl'
 import {
   dslContentAtom,
   dslReadErrorAtom,

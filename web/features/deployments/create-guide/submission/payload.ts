@@ -1,6 +1,6 @@
 import type { DeployReq } from '@dify/contracts/enterprise/types.gen'
-import type { DeploymentTargetSubmissionState } from '../queries/target'
 import type { GuideMethod } from '../types'
+import type { DeploymentTargetSubmissionState } from './types'
 import type { App } from '@/types/app'
 import {
   selectedDeploymentRuntimeCredentials,
@@ -8,7 +8,7 @@ import {
 import { createDeploymentIdempotencyKey } from '@/features/deployments/idempotency'
 import {
   createDeploymentEnvVarInputs,
-} from '../models/selectors'
+} from '../models/deployment-target/env-vars'
 
 export function createInitialDeploymentRequest({
   effectiveSelectedApp,

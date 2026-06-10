@@ -1,15 +1,13 @@
 'use client'
 
+import { useAtomValue } from 'jotai'
 import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
-import { useTargetUnsupportedDslSectionData } from './section-data'
+import { unsupportedDslNodesAtom } from '../../../state/unsupported-dsl-atoms'
 
 export function TargetUnsupportedDslNodesSection() {
-  const {
-    hasUnsupportedDslNodes,
-    unsupportedDslNodes,
-  } = useTargetUnsupportedDslSectionData()
+  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
 
-  if (!hasUnsupportedDslNodes)
+  if (unsupportedDslNodes.length === 0)
     return null
 
   return <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />

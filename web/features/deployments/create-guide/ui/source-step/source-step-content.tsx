@@ -1,13 +1,11 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import {
-  methodAtom,
-} from '../../state/workflow-atoms'
-import { DslUploadSection } from './dsl-upload-section'
-import { SourceAppSelectionSection } from './source-app-selection-section'
+import { methodAtom } from '../../state/workflow-atoms'
+import { DslUploadSection } from './dsl/upload-section'
+import { SourceAppSelectionSection } from './source-app/selection-section'
 import { SourceMethodSection } from './source-method-section'
-import { SourceUnsupportedDslNodesSection } from './unsupported-dsl-nodes-section'
+import { SourceUnsupportedDslNodesSection } from './unsupported-dsl/section'
 
 export function SourceStepContent() {
   const method = useAtomValue(methodAtom)

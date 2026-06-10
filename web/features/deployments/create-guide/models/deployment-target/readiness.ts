@@ -1,18 +1,14 @@
-import type { GuideStep } from '../types'
-
-export function canContinueGuideStep({
+export function canDeployToTarget({
   hasUnsupportedDslNodes,
   isBindingError,
   isBindingLoading,
   isEnvironmentError,
   isEnvironmentLoading,
   isInitialReleaseReady,
-  isSourceReady,
   requiredBindingsReady,
   requiredEnvVarsReady,
   selectedEnvironmentId,
   shouldLoadDeploymentTarget,
-  step,
 }: {
   hasUnsupportedDslNodes: boolean
   isBindingError: boolean
@@ -20,20 +16,11 @@ export function canContinueGuideStep({
   isEnvironmentError: boolean
   isEnvironmentLoading: boolean
   isInitialReleaseReady: boolean
-  isSourceReady: boolean
   requiredBindingsReady: boolean
   requiredEnvVarsReady: boolean
   selectedEnvironmentId?: string
   shouldLoadDeploymentTarget: boolean
-  step: GuideStep
 }) {
-  if (step === 'source')
-    return isSourceReady && !hasUnsupportedDslNodes
-  if (step === 'release')
-    return isInitialReleaseReady && !hasUnsupportedDslNodes
-  if (step !== 'target')
-    return false
-
   const deploymentTargetReady = shouldLoadDeploymentTarget
     && !isEnvironmentLoading
     && !isEnvironmentError
@@ -50,20 +37,17 @@ export function canContinueGuideStep({
   )
 }
 
-export function canSkipDeploymentGuideStep({
+export function canSkipDeployment({
   hasUnsupportedDslNodes,
   isBindingError,
   isInitialReleaseReady,
-  step,
 }: {
   hasUnsupportedDslNodes: boolean
   isBindingError: boolean
   isInitialReleaseReady: boolean
-  step: GuideStep
 }) {
   return Boolean(
-    step === 'target'
-    && isInitialReleaseReady
+    isInitialReleaseReady
     && !isBindingError
     && !hasUnsupportedDslNodes,
   )

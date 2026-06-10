@@ -1,11 +1,60 @@
 'use client'
 
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   RuntimeCredentialBindingsPanel,
 } from '@/features/deployments/components/runtime-credential-bindings'
-import { useTargetBindingSectionData } from './section-data'
-import { TargetBindingSkeleton } from './skeletons'
+import {
+  createDeploymentTargetBindings,
+} from '../../../models/deployment-target/bindings'
+import {
+  manualBindingSelectionsAtom,
+  selectBindingAtom,
+} from '../../../state/target-atoms'
+import {
+  unsupportedDslNodesAtom,
+} from '../../../state/unsupported-dsl-atoms'
+import {
+  useDeploymentOptionsQueryResult,
+  useTargetStepDeploymentQueryModel,
+} from '../deployment-options-query'
+import { TargetBindingSkeleton } from '../skeletons'
+
+function useTargetBindingSectionData() {
+  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
+  const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
+  const selectBinding = useSetAtom(selectBindingAtom)
+  const {
+    dslState,
+    effectiveSelectedApp,
+    method,
+    queryGate,
+  } = useTargetStepDeploymentQueryModel()
+  const deploymentOptionsResult = useDeploymentOptionsQueryResult({
+    dslState,
+    effectiveSelectedApp,
+    method,
+    queryGate,
+  })
+  const targetBindings = createDeploymentTargetBindings({
+    credentialSlots: deploymentOptionsResult.deploymentOptions?.credentialSlots,
+    manualBindingSelections,
+    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
+  })
+  const isBindingLoading = queryGate.shouldLoadDeploymentTarget
+    && (deploymentOptionsResult.deploymentOptionsQuery.isLoading || (deploymentOptionsResult.deploymentOptionsQuery.isFetching && !deploymentOptionsResult.deploymentOptionsQuery.data))
+  const isBindingError = deploymentOptionsResult.deploymentOptionsQuery.isError
+
+  return {
+    bindingSelections: targetBindings.bindingSelections,
+    bindingSlots: targetBindings.bindingSlots,
+    isBindingError,
+    isBindingLoading,
+    onSelectBinding: (slot: string, value: string) => selectBinding({ slot, value }),
+    shouldRender: !(isBindingError && unsupportedDslNodes.length > 0),
+  }
+}
 
 export function TargetBindingSection() {
   const { t } = useTranslation('deployments')

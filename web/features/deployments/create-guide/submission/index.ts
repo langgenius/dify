@@ -1,6 +1,6 @@
 'use client'
 
-import type { DeploymentTargetSubmissionState } from '../queries/target'
+import type { DeploymentTargetSubmissionState } from './types'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'

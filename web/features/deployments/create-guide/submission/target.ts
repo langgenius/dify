@@ -1,4 +1,4 @@
-import type { DeploymentTargetSubmissionState } from '../queries/target'
+import type { DeploymentTargetSubmissionState } from './types'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,

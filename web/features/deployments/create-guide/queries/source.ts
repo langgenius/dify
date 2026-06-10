@@ -1,18 +1,18 @@
 'use client'
 
-import type { App } from '@/types/app'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { isWorkflowApp } from '@/features/deployments/app-mode'
 import { DEPLOYMENT_PAGE_SIZE, getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '@/features/deployments/data'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
-import {
-  selectedAppAtom,
-  sourceSearchTextAtom,
-} from '../state/source-atoms'
 
-export function useSourceAppsQuery(sourceSearchText: string, enabled = true) {
+export function useSourceAppsQuery({
+  enabled = true,
+  sourceSearchText,
+}: {
+  enabled?: boolean
+  sourceSearchText: string
+}) {
   return useInfiniteQuery({
     ...consoleQuery.apps.list.infiniteOptions({
       input: pageParam => ({
@@ -47,58 +47,14 @@ export function useExistingInstanceNamesQuery() {
   })
 }
 
-export function createEffectiveSelectedApp(selectedApp: App | undefined, sourceApps: App[]) {
-  return isWorkflowApp(selectedApp) ? selectedApp : sourceApps[0]
-}
-
-export function useCreateGuideSourceApps({
-  enabled = true,
-}: {
-  enabled?: boolean
-} = {}) {
-  const sourceSearchText = useAtomValue(sourceSearchTextAtom)
-  const selectedApp = useAtomValue(selectedAppAtom)
-  const sourceAppsQuery = useSourceAppsQuery(sourceSearchText, enabled)
-  const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
-  const effectiveSelectedApp = createEffectiveSelectedApp(selectedApp, sourceApps)
-  const sourceAppsLoading = sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)
-
-  return {
-    effectiveSelectedApp,
-    selectedApp,
-    sourceApps,
-    sourceAppsLoading,
-    sourceAppsQuery,
-    sourceSearchText,
-  }
-}
-
-export function useCreateGuideExistingInstanceNames() {
-  const appInstancesQuery = useExistingInstanceNamesQuery()
-  const existingInstanceNames = appInstancesQuery.data?.pages.flatMap(page =>
-    page.data.flatMap((appInstance) => {
-      const name = appInstance.name.trim()
-      return name ? [name] : []
-    }),
-  ) ?? []
-
-  return {
-    appInstancesQuery,
-    existingInstanceNames,
-  }
-}
-
-export function useInstanceNameConflict({
-  existingInstanceNames,
-  shouldCheck,
+export function useInstanceNameConflictQuery({
+  enabled,
   submittedInstanceName,
 }: {
-  existingInstanceNames: readonly string[]
-  shouldCheck: boolean
+  enabled: boolean
   submittedInstanceName: string
 }) {
-  const shouldCheckInstanceNameConflict = shouldCheck && Boolean(submittedInstanceName)
-  const instanceNameConflictQuery = useQuery(consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
+  return useQuery(consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
     input: {
       query: {
         pageNumber: 1,
@@ -106,23 +62,32 @@ export function useInstanceNameConflict({
         name: submittedInstanceName,
       },
     },
-    enabled: shouldCheckInstanceNameConflict,
+    enabled: enabled && Boolean(submittedInstanceName),
   }))
-  const remoteInstanceNameConflict = instanceNameConflictQuery.data?.data.some(appInstance =>
-    appInstance.name.trim() === submittedInstanceName,
-  )
-  const isCheckingInstanceNameConflict = shouldCheckInstanceNameConflict && instanceNameConflictQuery.isLoading
-  const hasInstanceNameConflict = Boolean(
-    submittedInstanceName
-    && (
-      existingInstanceNames.includes(submittedInstanceName)
-      || remoteInstanceNameConflict
-    ),
-  )
+}
 
-  return {
-    hasInstanceNameConflict,
-    instanceNameConflictQuery,
-    isCheckingInstanceNameConflict,
-  }
+type SourceAppsQueryData = ReturnType<typeof useSourceAppsQuery>['data']
+type ExistingInstanceNamesQueryData = ReturnType<typeof useExistingInstanceNamesQuery>['data']
+type InstanceNameConflictQueryData = ReturnType<typeof useInstanceNameConflictQuery>['data']
+
+export function sourceAppsFromQueryData(data: SourceAppsQueryData) {
+  return data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
+}
+
+export function existingInstanceNamesFromQueryData(data: ExistingInstanceNamesQueryData) {
+  return data?.pages.flatMap(page =>
+    page.data.flatMap((appInstance) => {
+      const name = appInstance.name.trim()
+      return name ? [name] : []
+    }),
+  ) ?? []
+}
+
+export function instanceNameConflictFromQueryData(data: InstanceNameConflictQueryData, submittedInstanceName: string) {
+  const instanceName = submittedInstanceName.trim()
+
+  if (!instanceName)
+    return false
+
+  return data?.data.some(appInstance => appInstance.name.trim() === instanceName) ?? false
 }

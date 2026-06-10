@@ -2,10 +2,10 @@
 
 import { useTranslation } from 'react-i18next'
 import { StepShell } from '../shell/layout'
-import { TargetBindingSection } from './binding-section'
-import { TargetEnvVarSection } from './env-var-section'
-import { TargetEnvironmentSection } from './environment-section'
-import { TargetUnsupportedDslNodesSection } from './unsupported-dsl-nodes-section'
+import { TargetBindingSection } from './bindings/section'
+import { TargetEnvVarSection } from './env-vars/section'
+import { TargetEnvironmentSection } from './environment/section'
+import { TargetUnsupportedDslNodesSection } from './unsupported-dsl/section'
 
 export function TargetStepContent() {
   const { t } = useTranslation('deployments')

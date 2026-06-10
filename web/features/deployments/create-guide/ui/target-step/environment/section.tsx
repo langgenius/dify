@@ -4,11 +4,47 @@ import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
 import { environmentMatchesIdentifier } from '@/features/deployments/environment'
-import { useTargetEnvironmentSectionData } from './section-data'
-import { TargetEnvironmentSkeleton } from './skeletons'
+import {
+  createDeploymentTargetEnvironment,
+} from '../../../models/deployment-target/environment'
+import { useDeployableEnvironmentsQuery } from '../../../queries/target-environments'
+import {
+  selectedEnvironmentIdAtom,
+  selectEnvironmentAtom,
+} from '../../../state/target-atoms'
+import { useTargetStepDeploymentQueryModel } from '../deployment-options-query'
+import { TargetEnvironmentSkeleton } from '../skeletons'
+
+function useTargetEnvironmentSectionData() {
+  const { queryGate } = useTargetStepDeploymentQueryModel()
+  const shouldLoadDeploymentTarget = queryGate.shouldLoadDeploymentTarget
+  const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
+  const selectEnvironment = useSetAtom(selectEnvironmentAtom)
+  const deployableEnvironmentsQuery = useDeployableEnvironmentsQuery(shouldLoadDeploymentTarget)
+  const environments = shouldLoadDeploymentTarget
+    ? deployableEnvironmentsQuery.data?.data ?? []
+    : []
+  const {
+    effectiveSelectedEnvironmentId,
+  } = createDeploymentTargetEnvironment({
+    environments,
+    selectedEnvironmentId,
+  })
+  const isEnvironmentLoading = shouldLoadDeploymentTarget
+    && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
+
+  return {
+    effectiveSelectedEnvironmentId,
+    environments,
+    isEnvironmentError: deployableEnvironmentsQuery.isError,
+    isEnvironmentLoading,
+    onSelectEnvironment: selectEnvironment,
+  }
+}
 
 function EnvironmentOptionRow({ environment, selected }: {
   environment: Environment
@@ -44,9 +80,9 @@ function EnvironmentOptionRow({ environment, selected }: {
 export function TargetEnvironmentSection() {
   const { t } = useTranslation('deployments')
   const {
-    deployableEnvironmentsQuery,
     effectiveSelectedEnvironmentId,
     environments,
+    isEnvironmentError,
     isEnvironmentLoading,
     onSelectEnvironment,
   } = useTargetEnvironmentSectionData()
@@ -75,7 +111,7 @@ export function TargetEnvironmentSection() {
           ? <TargetEnvironmentSkeleton />
           : (
               <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                {deployableEnvironmentsQuery.isError
+                {isEnvironmentError
                   ? t('createGuide.target.loadEnvironmentsFailed')
                   : t('createGuide.target.noEnvironmentOptions')}
               </div>
