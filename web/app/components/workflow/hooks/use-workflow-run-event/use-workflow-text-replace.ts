@@ -1,6 +1,6 @@
-import { useCallback } from 'react'
-import produce from 'immer'
 import type { TextReplaceResponse } from '@/types/workflow'
+import { produce } from 'immer'
+import { useCallback } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 export const useWorkflowTextReplace = () => {
@@ -14,6 +14,7 @@ export const useWorkflowTextReplace = () => {
     } = workflowStore.getState()
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.resultText = text
+      draft.resultTextSelectorKey = undefined
     }))
   }, [workflowStore])
 

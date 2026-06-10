@@ -1,0 +1,6 @@
+[run]
+omit =
+    api/conftest.py
+    api/tests/*
+    api/migrations/*
+    api/core/rag/datasource/vdb/*

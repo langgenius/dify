@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import create_engine
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -26,16 +27,27 @@ redis_mock.hgetall = MagicMock(return_value={})
 redis_mock.hdel = MagicMock()
 redis_mock.incr = MagicMock(return_value=1)
 
-# Add the API directory to Python path to ensure proper imports
-import sys
+# Ensure OpenDAL fs writes to tmp to avoid polluting workspace
+os.environ.setdefault("OPENDAL_SCHEME", "fs")
+os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
+os.environ.setdefault("STORAGE_TYPE", "opendal")
 
-sys.path.insert(0, PROJECT_DIR)
-
-# apply the mock to the Redis client in the Flask app
+from core.db.session_factory import configure_session_factory, session_factory
 from extensions import ext_redis
 
-redis_patcher = patch.object(ext_redis, "redis_client", redis_mock)
-redis_patcher.start()
+
+def _patch_redis_clients_on_loaded_modules():
+    """Ensure any module-level redis_client references point to the shared redis_mock."""
+
+    import sys
+
+    for module in list(sys.modules.values()):
+        if module is None:
+            continue
+        if hasattr(module, "redis_client"):
+            module.redis_client = redis_mock
+        if hasattr(module, "_pubsub_redis_client"):
+            module.pubsub_redis_client = redis_mock
 
 
 @pytest.fixture
@@ -46,6 +58,18 @@ def app() -> Flask:
 @pytest.fixture(autouse=True)
 def _provide_app_context(app: Flask):
     with app.app_context():
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _patch_redis_clients():
+    """Patch redis_client to MagicMock only for unit test executions."""
+
+    with (
+        patch.object(ext_redis, "redis_client", redis_mock),
+        patch.object(ext_redis, "_pubsub_redis_client", redis_mock),
+    ):
+        _patch_redis_clients_on_loaded_modules()
         yield
 
 
@@ -63,3 +87,66 @@ def reset_redis_mock():
     redis_mock.hgetall.return_value = {}
     redis_mock.hdel.return_value = None
     redis_mock.incr.return_value = 1
+
+    # Keep any imported modules pointing at the mock between tests
+    _patch_redis_clients_on_loaded_modules()
+
+
+@pytest.fixture(autouse=True)
+def reset_secret_key():
+    """Ensure SECRET_KEY-dependent logic sees an empty config value by default."""
+
+    from configs import dify_config
+
+    original = dify_config.SECRET_KEY
+    dify_config.SECRET_KEY = ""
+    try:
+        yield
+    finally:
+        dify_config.SECRET_KEY = original
+
+
+@pytest.fixture(scope="session")
+def _unit_test_engine():
+    engine = create_engine("sqlite:///:memory:")
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def _configure_session_factory(_unit_test_engine):
+    try:
+        session_factory.get_session_maker()
+    except RuntimeError:
+        configure_session_factory(_unit_test_engine, expire_on_commit=False)
+
+
+def setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_owner):
+    """
+    Helper to stub the tenant-owner execute result for service API app authentication.
+
+    The validate_app_token decorator currently resolves the active tenant owner
+    via db.session.execute(select(Tenant, Account)...).one_or_none().
+
+    Args:
+        mock_db: The mocked db object
+        mock_tenant: Mock tenant object to return
+        mock_owner: Mock owner object to return from the execute result
+    """
+    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
+
+
+def setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_tenant_account_join):
+    """
+    Helper to stub the tenant-owner execute result for dataset token authentication.
+
+    The validate_dataset_token decorator currently resolves the owner mapping via
+    db.session.execute(select(Tenant, TenantAccountJoin)...).one_or_none(), and
+    then loads the Account separately via db.session.get(...).
+
+    Args:
+        mock_db: The mocked db object
+        mock_tenant: Mock tenant object to return
+        mock_tenant_account_join: Mock tenant-account join object to return
+    """
+    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_tenant_account_join)

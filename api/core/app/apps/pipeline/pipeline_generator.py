@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, cast, overload
+from typing import Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -18,6 +18,7 @@ import contexts
 from configs import dify_config
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
@@ -26,33 +27,34 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.repositories.factory import DifyCoreRepositoryFactory
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.datasource_provider_service import DatasourceProviderService
-from services.feature_service import FeatureService
-from services.file_service import FileService
+from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
-from tasks.rag_pipeline.priority_rag_pipeline_run_task import priority_rag_pipeline_run_task
-from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,7 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -79,7 +81,7 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -94,28 +96,28 @@ class PipelineGenerator(BaseAppGenerator):
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]: ...
 
     def generate(
         self,
         *,
         pipeline: Pipeline,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -124,7 +126,7 @@ class PipelineGenerator(BaseAppGenerator):
                 raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
-        datasource_type: str = args["datasource_type"]
+        datasource_type = DatasourceProviderType(args["datasource_type"])
         datasource_info_list: list[Mapping[str, Any]] = self._format_datasource_info_list(
             datasource_type, args["datasource_info_list"], pipeline, workflow, start_node_id, user
         )
@@ -134,7 +136,7 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=start_node_id
         )
         documents: list[Document] = []
-        if invoke_from == InvokeFrom.PUBLISHED and not is_retry and not args.get("original_document_id"):
+        if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
             from services.dataset_service import DocumentService
 
             for datasource_info in datasource_info_list:
@@ -160,14 +162,14 @@ class PipelineGenerator(BaseAppGenerator):
         for i, datasource_info in enumerate(datasource_info_list):
             workflow_run_id = str(uuid.uuid4())
             document_id = args.get("original_document_id") or None
-            if invoke_from == InvokeFrom.PUBLISHED and not is_retry:
+            if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry:
                 document_id = document_id or documents[i].id
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document_id,
                     datasource_type=datasource_type,
                     datasource_info=json.dumps(datasource_info),
                     datasource_node_id=start_node_id,
-                    input_data=inputs,
+                    input_data=dict(inputs),
                     pipeline_id=pipeline.id,
                     created_by=user.id,
                 )
@@ -248,34 +250,7 @@ class PipelineGenerator(BaseAppGenerator):
                 )
 
         if rag_pipeline_invoke_entities:
-            # store the rag_pipeline_invoke_entities to object storage
-            text = [item.model_dump() for item in rag_pipeline_invoke_entities]
-            name = "rag_pipeline_invoke_entities.json"
-            # Convert list to proper JSON string
-            json_text = json.dumps(text)
-            upload_file = FileService(db.engine).upload_text(json_text, name, user.id, dataset.tenant_id)
-            features = FeatureService.get_features(dataset.tenant_id)
-            if features.billing.subscription.plan == "sandbox":
-                tenant_pipeline_task_key = f"tenant_pipeline_task:{dataset.tenant_id}"
-                tenant_self_pipeline_task_queue = f"tenant_self_pipeline_task_queue:{dataset.tenant_id}"
-
-                if redis_client.get(tenant_pipeline_task_key):
-                    # Add to waiting queue using List operations (lpush)
-                    redis_client.lpush(tenant_self_pipeline_task_queue, upload_file.id)
-                else:
-                    # Set flag and execute task
-                    redis_client.set(tenant_pipeline_task_key, 1, ex=60 * 60)
-                    rag_pipeline_run_task.delay(  # type: ignore
-                        rag_pipeline_invoke_entities_file_id=upload_file.id,
-                        tenant_id=dataset.tenant_id,
-                    )
-
-            else:
-                priority_rag_pipeline_run_task.delay(  # type: ignore
-                    rag_pipeline_invoke_entities_file_id=upload_file.id,
-                    tenant_id=dataset.tenant_id,
-                )
-
+            RagPipelineTaskProxy(dataset.tenant_id, user.id, rag_pipeline_invoke_entities).delay()
         # return batch, dataset, documents
         return {
             "batch": batch,
@@ -307,7 +282,7 @@ class PipelineGenerator(BaseAppGenerator):
         context: contextvars.Context,
         pipeline: Pipeline,
         workflow_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         application_generate_entity: RagPipelineGenerateEntity,
         invoke_from: InvokeFrom,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -315,7 +290,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -331,7 +306,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
             # init queue manager
-            workflow = db.session.query(Workflow).where(Workflow.id == workflow_id).first()
+            workflow = db.session.get(Workflow, workflow_id)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             queue_manager = PipelineQueueManager(
@@ -352,6 +327,8 @@ class PipelineGenerator(BaseAppGenerator):
                     "application_generate_entity": application_generate_entity,
                     "workflow_thread_pool_id": workflow_thread_pool_id,
                     "variable_loader": variable_loader,
+                    "workflow_execution_repository": workflow_execution_repository,
+                    "workflow_node_execution_repository": workflow_node_execution_repository,
                 },
             )
 
@@ -367,8 +344,6 @@ class PipelineGenerator(BaseAppGenerator):
                 workflow=workflow,
                 queue_manager=queue_manager,
                 user=user,
-                workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
                 stream=streaming,
                 draft_var_saver_factory=draft_var_saver_factory,
             )
@@ -450,11 +425,12 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
 
         return self._generate(
@@ -545,11 +521,12 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
 
         return self._generate(
@@ -573,6 +550,8 @@ class PipelineGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         context: contextvars.Context,
         variable_loader: VariableLoader,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
@@ -620,6 +599,8 @@ class PipelineGenerator(BaseAppGenerator):
                         variable_loader=variable_loader,
                         workflow=workflow,
                         system_user_id=system_user_id,
+                        workflow_execution_repository=workflow_execution_repository,
+                        workflow_node_execution_repository=workflow_node_execution_repository,
                     )
 
                     runner.run()
@@ -647,12 +628,14 @@ class PipelineGenerator(BaseAppGenerator):
         application_generate_entity: RagPipelineGenerateEntity,
         workflow: Workflow,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -660,7 +643,6 @@ class PipelineGenerator(BaseAppGenerator):
         :param queue_manager: queue manager
         :param user: account or end user
         :param stream: is stream
-        :param workflow_node_execution_repository: optional repository for workflow node execution
         :return:
         """
         # init generate task pipeline
@@ -670,8 +652,6 @@ class PipelineGenerator(BaseAppGenerator):
             queue_manager=queue_manager,
             user=user,
             stream=stream,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-            workflow_execution_repository=workflow_execution_repository,
             draft_var_saver_factory=draft_var_saver_factory,
         )
 
@@ -692,25 +672,25 @@ class PipelineGenerator(BaseAppGenerator):
         tenant_id: str,
         dataset_id: str,
         built_in_field_enabled: bool,
-        datasource_type: str,
+        datasource_type: DatasourceProviderType,
         datasource_info: Mapping[str, Any],
         created_from: str,
         position: int,
-        account: Union[Account, EndUser],
+        account: Account | EndUser,
         batch: str,
         document_form: str,
     ):
-        if datasource_type == "local_file":
-            name = datasource_info.get("name", "untitled")
-        elif datasource_type == "online_document":
-            name = datasource_info.get("page", {}).get("page_name", "untitled")
-        elif datasource_type == "website_crawl":
-            name = datasource_info.get("title", "untitled")
-        elif datasource_type == "online_drive":
-            name = datasource_info.get("name", "untitled")
-        else:
-            raise ValueError(f"Unsupported datasource type: {datasource_type}")
-
+        match datasource_type:
+            case DatasourceProviderType.LOCAL_FILE:
+                name = datasource_info.get("name", "untitled")
+            case DatasourceProviderType.ONLINE_DOCUMENT:
+                name = datasource_info.get("page", {}).get("page_name", "untitled")
+            case DatasourceProviderType.WEBSITE_CRAWL:
+                name = datasource_info.get("title", "untitled")
+            case DatasourceProviderType.ONLINE_DRIVE:
+                name = datasource_info.get("name", "untitled")
+            case _:
+                raise ValueError(f"Unsupported datasource type: {datasource_type}")
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
@@ -738,17 +718,17 @@ class PipelineGenerator(BaseAppGenerator):
 
     def _format_datasource_info_list(
         self,
-        datasource_type: str,
+        datasource_type: DatasourceProviderType,
         datasource_info_list: list[Mapping[str, Any]],
         pipeline: Pipeline,
         workflow: Workflow,
         start_node_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
     ) -> list[Mapping[str, Any]]:
         """
         Format datasource info list.
         """
-        if datasource_type == "online_drive":
+        if datasource_type == DatasourceProviderType.ONLINE_DRIVE:
             all_files: list[Mapping[str, Any]] = []
             datasource_node_data = None
             datasource_nodes = workflow.graph_dict.get("nodes", [])
@@ -810,11 +790,26 @@ class PipelineGenerator(BaseAppGenerator):
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: dict | None = None,
+        next_page_parameters: dict[str, Any] | None = None,
+        _visited_folder_ids: set[str] | None = None,
     ):
         """
         Get files in a folder.
+
+        Recursively lists all files inside the given folder prefix.
+        ``_visited_folder_ids`` tracks folders already expanded so that a
+        self-referencing folder (where the API returns the folder as its own
+        child) cannot cause infinite recursion.
         """
+        if _visited_folder_ids is None:
+            _visited_folder_ids = set()
+
+        # Guard: skip folders we have already expanded to prevent infinite
+        # recursion from self-referencing folder entries in the API response.
+        if prefix in _visited_folder_ids:
+            return
+        _visited_folder_ids.add(prefix)
+
         result_generator = datasource_runtime.online_drive_browse_files(
             user_id=user_id,
             request=OnlineDriveBrowseFilesRequest(
@@ -826,10 +821,14 @@ class PipelineGenerator(BaseAppGenerator):
             provider_type=datasource_runtime.datasource_provider_type(),
         )
         is_truncated = False
+        has_files = False
         for result in result_generator:
             for files in result.result:
                 for file in files.files:
+                    has_files = True
                     if file.type == "folder":
+                        if file.id in _visited_folder_ids:
+                            continue
                         self._get_files_in_folder(
                             datasource_runtime,
                             file.id,
@@ -838,6 +837,7 @@ class PipelineGenerator(BaseAppGenerator):
                             all_files,
                             datasource_info,
                             None,
+                            _visited_folder_ids,
                         )
                     else:
                         all_files.append(
@@ -850,7 +850,17 @@ class PipelineGenerator(BaseAppGenerator):
                 is_truncated = files.is_truncated
                 next_page_parameters = files.next_page_parameters
 
-        if is_truncated:
+        # Guard: only follow pagination when the API actually returned files.
+        # An empty folder that incorrectly reports ``is_truncated=True`` would
+        # otherwise recurse forever on the same empty page.
+        if is_truncated and has_files:
             self._get_files_in_folder(
-                datasource_runtime, prefix, bucket, user_id, all_files, datasource_info, next_page_parameters
+                datasource_runtime,
+                prefix,
+                bucket,
+                user_id,
+                all_files,
+                datasource_info,
+                next_page_parameters,
+                _visited_folder_ids,
             )

@@ -2,12 +2,12 @@ import enum
 import uuid
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.account import Account
+from models import Account
 from models.model import OAuthProviderApp
 from services.account_service import AccountService
 
@@ -29,7 +29,7 @@ class OAuthServerService:
     def get_oauth_provider_app(client_id: str) -> OAuthProviderApp | None:
         query = select(OAuthProviderApp).where(OAuthProviderApp.client_id == client_id)
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             return session.execute(query).scalar_one_or_none()
 
     @staticmethod

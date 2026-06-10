@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 
-const useCheckVerticalScrollbar = (ref: React.RefObject<HTMLElement>) => {
+const useCheckVerticalScrollbar = (ref: React.RefObject<HTMLElement | null>) => {
   const [hasVerticalScrollbar, setHasVerticalScrollbar] = useState(false)
 
   useEffect(() => {
     const elem = ref.current
-    if (!elem) return
+    if (!elem)
+      return
 
     const checkScrollbar = () => {
       setHasVerticalScrollbar(elem.scrollHeight > elem.clientHeight)

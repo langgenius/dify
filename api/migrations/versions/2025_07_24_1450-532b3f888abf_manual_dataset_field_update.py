@@ -7,6 +7,10 @@ Create Date: 2025-07-24 14:50:48.779833
 """
 from alembic import op
 import models as models
+
+
+def _is_pg(conn):
+    return conn.dialect.name == "postgresql"
 import sqlalchemy as sa
 
 
@@ -18,8 +22,18 @@ depends_on = None
 
 
 def upgrade():
-    op.execute("ALTER TABLE tidb_auth_bindings ALTER COLUMN status SET DEFAULT 'CREATING'::character varying")
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        op.execute("ALTER TABLE tidb_auth_bindings ALTER COLUMN status SET DEFAULT 'CREATING'::character varying")
+    else:
+        op.execute("ALTER TABLE tidb_auth_bindings ALTER COLUMN status SET DEFAULT 'CREATING'")
 
 
 def downgrade():
-    op.execute("ALTER TABLE tidb_auth_bindings ALTER COLUMN status SET DEFAULT 'CREATING'")
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        op.execute("ALTER TABLE tidb_auth_bindings ALTER COLUMN status SET DEFAULT 'CREATING'::character varying")
+    else:
+        op.execute("ALTER TABLE tidb_auth_bindings ALTER COLUMN status SET DEFAULT 'CREATING'")

@@ -1,8 +1,8 @@
-import { memo } from 'react'
 import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiAddLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type PluginAuthInDataSourceNodeProps = {
   children?: ReactNode
@@ -19,14 +19,14 @@ const PluginAuthInDataSourceNode = ({
     <>
       {
         !isAuthorized && (
-          <div className='px-4 pb-2'>
+          <div className="px-4 pb-2">
             <Button
-              className='w-full'
-              variant='primary'
+              className="w-full"
+              variant="primary"
               onClick={onJumpToDataSourcePage}
             >
-              <RiAddLine className='mr-1 h-4 w-4' />
-              {t('common.integrations.connect')}
+              <RiAddLine className="mr-1 size-4" />
+              {t('integrations.connect', { ns: 'common' })}
             </Button>
           </div>
         )

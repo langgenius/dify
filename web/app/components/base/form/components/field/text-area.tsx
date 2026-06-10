@@ -1,16 +1,16 @@
-import React from 'react'
-import { useFieldContext } from '../..'
+import type { TextareaProps } from '@langgenius/dify-ui/textarea'
 import type { LabelProps } from '../label'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import * as React from 'react'
+import { useFieldContext } from '../..'
 import Label from '../label'
-import cn from '@/utils/classnames'
-import type { TextareaProps } from '../../../textarea'
-import Textarea from '../../../textarea'
 
 type TextAreaFieldProps = {
   label: string
   labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
   className?: string
-} & Omit<TextareaProps, 'className' | 'onChange' | 'onBlur' | 'value' | 'id'>
+} & Omit<TextareaProps, 'className' | 'defaultValue' | 'onBlur' | 'onValueChange' | 'value' | 'id'>
 
 const TextAreaField = ({
   label,
@@ -28,11 +28,11 @@ const TextAreaField = ({
         {...(labelOptions ?? {})}
       />
       <Textarea
+        {...inputProps}
         id={field.name}
         value={field.state.value}
-        onChange={e => field.handleChange(e.target.value)}
+        onValueChange={value => field.handleChange(value)}
         onBlur={field.handleBlur}
-        {...inputProps}
       />
     </div>
   )

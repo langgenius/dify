@@ -3,12 +3,13 @@ import time
 from typing import TypedDict
 
 import click
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 import app
 from configs import dify_config
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DatasetAutoDisableLog, DatasetQuery, Document
@@ -35,7 +36,7 @@ def clean_unused_datasets_task():
         },
         {
             "clean_day": datetime.datetime.now() - datetime.timedelta(days=dify_config.PLAN_PRO_CLEAN_DAY_SETTING),
-            "plan_filter": "sandbox",
+            "plan_filter": CloudPlan.SANDBOX,
             "add_logs": False,
         },
     ]
@@ -50,7 +51,7 @@ def clean_unused_datasets_task():
             try:
                 # Subquery for counting new documents
                 document_subquery_new = (
-                    db.session.query(Document.dataset_id, func.count(Document.id).label("document_count"))
+                    select(Document.dataset_id, func.count(Document.id).label("document_count"))
                     .where(
                         Document.indexing_status == "completed",
                         Document.enabled == True,
@@ -63,7 +64,7 @@ def clean_unused_datasets_task():
 
                 # Subquery for counting old documents
                 document_subquery_old = (
-                    db.session.query(Document.dataset_id, func.count(Document.id).label("document_count"))
+                    select(Document.dataset_id, func.count(Document.id).label("document_count"))
                     .where(
                         Document.indexing_status == "completed",
                         Document.enabled == True,
@@ -111,7 +112,7 @@ def clean_unused_datasets_task():
                             features_cache_key = f"features:{dataset.tenant_id}"
                             plan_cache = redis_client.get(features_cache_key)
                             if plan_cache is None:
-                                features = FeatureService.get_features(dataset.tenant_id)
+                                features = FeatureService.get_features(dataset.tenant_id, exclude_vector_space=True)
                                 redis_client.setex(features_cache_key, 600, features.billing.subscription.plan)
                                 plan = features.billing.subscription.plan
                             else:
@@ -141,8 +142,8 @@ def clean_unused_datasets_task():
                             index_processor.clean(dataset, None)
 
                             # Update document
-                            db.session.query(Document).filter_by(dataset_id=dataset.id).update(
-                                {Document.enabled: False}
+                            db.session.execute(
+                                update(Document).where(Document.dataset_id == dataset.id).values(enabled=False)
                             )
                             db.session.commit()
                             click.echo(click.style(f"Cleaned unused dataset {dataset.id} from db success!", fg="green"))

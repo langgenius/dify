@@ -1,8 +1,7 @@
-import React from 'react'
 import type { BasicPlan } from '../../../type'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import { Plan } from '../../../type'
-import cn from '@/utils/classnames'
-import { RiArrowRightLine } from '@remixicon/react'
 
 const BUTTON_CLASSNAME = {
   [Plan.sandbox]: {
@@ -24,6 +23,7 @@ type ButtonProps = {
   isPlanDisabled: boolean
   btnText: string
   handleGetPayUrl: () => void
+  warningText?: string
 }
 
 const Button = ({
@@ -31,22 +31,30 @@ const Button = ({
   isPlanDisabled,
   btnText,
   handleGetPayUrl,
+  warningText,
 }: ButtonProps) => {
   return (
-    <button
-      type='button'
-      disabled={isPlanDisabled}
-      className={cn(
-        'system-xl-semibold flex items-center gap-x-2 py-3 pl-5 pr-4',
-        BUTTON_CLASSNAME[plan].btnClassname,
-        isPlanDisabled && BUTTON_CLASSNAME[plan].btnDisabledClassname,
-        isPlanDisabled && 'cursor-not-allowed',
+    <div className="relative">
+      <button
+        type="button"
+        disabled={isPlanDisabled}
+        className={cn(
+          'flex w-full items-center gap-x-2 py-3 pr-4 pl-5 system-xl-semibold',
+          BUTTON_CLASSNAME[plan].btnClassname,
+          isPlanDisabled && BUTTON_CLASSNAME[plan].btnDisabledClassname,
+          isPlanDisabled && 'cursor-not-allowed',
+        )}
+        onClick={handleGetPayUrl}
+      >
+        <span className="grow text-start">{btnText}</span>
+        {!isPlanDisabled && <span className="i-ri-arrow-right-line size-5 shrink-0" />}
+      </button>
+      {warningText && (
+        <div className="absolute inset-x-0 top-full mt-1.5 text-left system-2xs-medium text-text-tertiary">
+          {warningText}
+        </div>
       )}
-      onClick={handleGetPayUrl}
-    >
-      <span className='grow text-start'>{btnText}</span>
-      {!isPlanDisabled && <RiArrowRightLine className='size-5 shrink-0' />}
-    </button>
+    </div>
   )
 }
 

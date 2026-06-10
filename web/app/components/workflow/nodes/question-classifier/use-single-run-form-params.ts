@@ -1,21 +1,21 @@
 import type { RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { QuestionClassifierNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
-import type { QuestionClassifierNodeType } from './types'
-import useNodeCrud from '../_base/hooks/use-node-crud'
+import { noop } from 'es-toolkit/function'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
 import useConfigVision from '../../hooks/use-config-vision'
-import { noop } from 'lodash-es'
-import { findVariableWhenOnLLMVision } from '../utils'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import useNodeCrud from '../_base/hooks/use-node-crud'
+import { findVariableWhenOnLLMVision } from '../utils'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 type Params = {
-  id: string,
-  payload: QuestionClassifierNodeType,
+  id: string
+  payload: QuestionClassifierNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -85,9 +85,9 @@ const useSingleRunFormParams = ({
 
     forms.push(
       {
-        label: t('workflow.nodes.llm.singleRun.variable')!,
+        label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
         inputs: [{
-          label: t(`${i18nPrefix}.inputVars`)!,
+          label: t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })!,
           variable: 'query',
           type: InputVarType.paragraph,
           required: true,
@@ -102,7 +102,7 @@ const useSingleRunFormParams = ({
 
       forms.push(
         {
-          label: t('workflow.nodes.llm.vision')!,
+          label: t('nodes.llm.vision', { ns: 'workflow' })!,
           inputs: [{
             label: currentVariable?.variable as any,
             variable: '#files#',
@@ -134,9 +134,9 @@ const useSingleRunFormParams = ({
   }
 
   const getDependentVar = (variable: string) => {
-    if(variable === 'query')
+    if (variable === 'query')
       return payload.query_variable_selector
-    if(variable === '#files#')
+    if (variable === '#files#')
       return payload.vision.configs?.variable_selector
 
     return false

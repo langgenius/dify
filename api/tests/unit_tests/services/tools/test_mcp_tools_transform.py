@@ -7,7 +7,7 @@ import pytest
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from models.tools import MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -175,10 +175,160 @@ class TestMCPToolTransform:
         # The actual parameter conversion is handled by convert_mcp_schema_to_parameter
         # which should be tested separately
 
+    def test_convert_mcp_schema_to_parameter_preserves_anyof_object_type(self):
+        """Nullable object schemas should keep the object parameter type."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "retrieval_model": {
+                    "anyOf": [{"type": "object"}, {"type": "null"}],
+                    "description": "检索模型配置",
+                }
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(result) == 1
+        assert result[0].name == "retrieval_model"
+        assert result[0].type == ToolParameter.ToolParameterType.OBJECT
+        assert result[0].input_schema == schema["properties"]["retrieval_model"]
+
+    def test_convert_mcp_schema_to_parameter_preserves_oneof_object_type(self):
+        """Nullable oneOf object schemas should keep the object parameter type."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "retrieval_model": {
+                    "oneOf": [{"type": "object"}, {"type": "null"}],
+                    "description": "检索模型配置",
+                }
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(result) == 1
+        assert result[0].name == "retrieval_model"
+        assert result[0].type == ToolParameter.ToolParameterType.OBJECT
+        assert result[0].input_schema == schema["properties"]["retrieval_model"]
+
+    def test_convert_mcp_schema_to_parameter_handles_null_type(self):
+        """Schemas with only a null type should fall back to string."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "null_prop_str": {"type": "null"},
+                "null_prop_list": {"type": ["null"]},
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(result) == 2
+        param_map = {parameter.name: parameter for parameter in result}
+        assert "null_prop_str" in param_map
+        assert param_map["null_prop_str"].type == ToolParameter.ToolParameterType.STRING
+        assert "null_prop_list" in param_map
+        assert param_map["null_prop_list"].type == ToolParameter.ToolParameterType.STRING
+
+    def test_convert_mcp_schema_to_parameter_preserves_allof_object_type_with_multiple_object_items(self):
+        """Property-level allOf with multiple object items should still resolve to object."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "allOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {"type": "boolean"},
+                            },
+                            "required": ["enabled"],
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "priority": {"type": "integer", "minimum": 1, "maximum": 10},
+                            },
+                            "required": ["priority"],
+                        },
+                    ],
+                    "description": "Config must match all schemas (allOf)",
+                }
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(result) == 1
+        assert result[0].name == "config"
+        assert result[0].type == ToolParameter.ToolParameterType.OBJECT
+        assert result[0].input_schema == schema["properties"]["config"]
+
+    def test_convert_mcp_schema_to_parameter_preserves_allof_object_type(self):
+        """Composed property schemas should keep the object parameter type."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "retrieval_model": {
+                    "allOf": [
+                        {"type": "object"},
+                        {"properties": {"top_k": {"type": "integer"}}},
+                    ],
+                    "description": "检索模型配置",
+                }
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(result) == 1
+        assert result[0].name == "retrieval_model"
+        assert result[0].type == ToolParameter.ToolParameterType.OBJECT
+        assert result[0].input_schema == schema["properties"]["retrieval_model"]
+
+    def test_convert_mcp_schema_to_parameter_limits_recursive_schema_depth(self):
+        """Self-referential composed schemas should stop resolving after the configured max depth."""
+        recursive_property: dict[str, object] = {"description": "Recursive schema"}
+        recursive_property["anyOf"] = [recursive_property]
+        schema = {
+            "type": "object",
+            "properties": {
+                "recursive_config": recursive_property,
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(result) == 1
+        assert result[0].name == "recursive_config"
+        assert result[0].type == ToolParameter.ToolParameterType.STRING
+        assert result[0].input_schema is None
+
     def test_mcp_provider_to_user_provider_for_list(self, mock_provider_full):
         """Test mcp_provider_to_user_provider with for_list=True."""
         # Set tools data with null description
         mock_provider_full.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
+
+        # Mock the to_entity and to_api_response methods
+        mock_entity = Mock()
+        mock_entity.to_api_response.return_value = {
+            "name": "Test MCP Provider",
+            "type": ToolProviderType.MCP,
+            "is_team_authorization": True,
+            "server_url": "https://*****.com/mcp",
+            "provider_icon": "icon.png",
+            "masked_headers": {"Authorization": "Bearer *****"},
+            "updated_at": 1234567890,
+            "labels": [],
+            "author": "Test User",
+            "description": I18nObject(en_US="Test MCP Provider Description", zh_Hans="Test MCP Provider Description"),
+            "icon": "icon.png",
+            "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
+            "masked_credentials": {},
+        }
+        mock_provider_full.to_entity.return_value = mock_entity
 
         # Call the method with for_list=True
         result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=True)
@@ -198,6 +348,27 @@ class TestMCPToolTransform:
         # Set tools data with description
         mock_provider_full.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
 
+        # Mock the to_entity and to_api_response methods
+        mock_entity = Mock()
+        mock_entity.to_api_response.return_value = {
+            "name": "Test MCP Provider",
+            "type": ToolProviderType.MCP,
+            "is_team_authorization": True,
+            "server_url": "https://*****.com/mcp",
+            "provider_icon": "icon.png",
+            "masked_headers": {"Authorization": "Bearer *****"},
+            "updated_at": 1234567890,
+            "labels": [],
+            "configuration": {"timeout": "30", "sse_read_timeout": "300"},
+            "original_headers": {"Authorization": "Bearer secret-token"},
+            "author": "Test User",
+            "description": I18nObject(en_US="Test MCP Provider Description", zh_Hans="Test MCP Provider Description"),
+            "icon": "icon.png",
+            "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
+            "masked_credentials": {},
+        }
+        mock_provider_full.to_entity.return_value = mock_entity
+
         # Call the method with for_list=False
         result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=False)
 
@@ -205,8 +376,9 @@ class TestMCPToolTransform:
         assert isinstance(result, ToolProviderApiEntity)
         assert result.id == "server-identifier-456"  # Should use server_identifier when for_list=False
         assert result.server_identifier == "server-identifier-456"
-        assert result.timeout == 30
-        assert result.sse_read_timeout == 300
+        assert result.configuration is not None
+        assert result.configuration.timeout == 30
+        assert result.configuration.sse_read_timeout == 300
         assert result.original_headers == {"Authorization": "Bearer secret-token"}
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == "Tool description"

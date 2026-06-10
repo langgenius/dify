@@ -1,0 +1,64 @@
+#!/bin/sh
+# get the list of modified files
+files=$(git diff --cached --name-only)
+
+# check if api or web directory is modified
+
+api_modified=false
+web_modified=false
+skip_web_checks=false
+
+git_path() {
+    git rev-parse --git-path "$1"
+}
+
+if [ -f "$(git_path MERGE_HEAD)" ] || \
+   [ -f "$(git_path CHERRY_PICK_HEAD)" ] || \
+   [ -f "$(git_path REVERT_HEAD)" ] || \
+   [ -f "$(git_path SQUASH_MSG)" ] || \
+   [ -d "$(git_path rebase-merge)" ] || \
+   [ -d "$(git_path rebase-apply)" ]; then
+    skip_web_checks=true
+fi
+
+for file in $files
+do
+    # Use POSIX compliant pattern matching
+    case "$file" in
+        api/*.py)
+            # set api_modified flag to true
+            api_modified=true
+            ;;
+        web/*)
+            # set web_modified flag to true
+            web_modified=true
+            ;;
+    esac
+done
+
+# run linters based on the modified modules
+
+if $api_modified; then
+    echo "Running Ruff linter on api module"
+
+    # run Ruff linter auto-fixing
+    uv run --project api --dev ruff check --fix ./api
+
+    # run Ruff linter checks
+    uv run --project api --dev ruff check  ./api || status=$?
+
+    status=${status:-0}
+
+    if [ $status -ne 0 ]; then
+      echo "Ruff linter on api module error, exit code: $status"
+      echo "Please run 'dev/reformat' to fix the fixable linting errors."
+      exit 1
+    fi
+fi
+
+if $skip_web_checks; then
+    echo "Git operation in progress, skipping web checks"
+    exit 0
+fi
+
+vp staged

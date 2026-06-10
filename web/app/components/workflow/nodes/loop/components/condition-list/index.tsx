@@ -1,22 +1,17 @@
-import { RiLoopLeftLine } from '@remixicon/react'
-import { useCallback, useMemo } from 'react'
-import {
-  type Condition,
-  type HandleAddSubVariableCondition,
-  type HandleRemoveCondition,
-  type HandleToggleConditionLogicalOperator,
-  type HandleToggleSubVariableConditionLogicalOperator,
-  type HandleUpdateCondition,
-  type HandleUpdateSubVariableCondition,
-  LogicalOperator,
-  type handleRemoveSubVariableCondition,
-} from '../../types'
-import ConditionItem from './condition-item'
+import type { Condition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '../../types'
 import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiLoopLeftLine } from '@remixicon/react'
+import { useCallback, useMemo } from 'react'
+import {
+
+  LogicalOperator,
+
+} from '../../types'
+import ConditionItem from './condition-item'
 
 type ConditionListProps = {
   isSubVariable?: boolean
@@ -80,18 +75,19 @@ const ConditionList = ({
       {
         conditions.length > 1 && (
           <div className={cn(
-            'absolute bottom-0 left-0 top-0 w-[60px]',
+            'absolute top-0 bottom-0 left-0 w-[60px]',
             isSubVariable && logicalOperator === LogicalOperator.and && 'left-[-10px]',
             isSubVariable && logicalOperator === LogicalOperator.or && 'left-[-18px]',
-          )}>
-            <div className='absolute bottom-4 left-[46px] top-4 w-2.5 rounded-l-[8px] border border-r-0 border-divider-deep'></div>
-            <div className='absolute right-0 top-1/2 h-[29px] w-4 -translate-y-1/2 bg-components-panel-bg'></div>
+          )}
+          >
+            <div className="absolute top-4 bottom-4 left-[46px] w-2.5 rounded-l-[8px] border border-r-0 border-divider-deep"></div>
+            <div className="absolute top-1/2 right-0 h-[29px] w-4 -translate-y-1/2 bg-components-panel-bg"></div>
             <div
-              className='absolute right-1 top-1/2 flex h-[21px] -translate-y-1/2 cursor-pointer select-none items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1 text-[10px] font-semibold text-text-accent-secondary shadow-xs'
+              className="absolute top-1/2 right-1 flex h-[21px] -translate-y-1/2 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1 text-[10px] font-semibold text-text-accent-secondary shadow-xs select-none"
               onClick={() => doToggleConditionLogicalOperator(conditionId)}
             >
-              {logicalOperator && logicalOperator.toUpperCase()}
-              <RiLoopLeftLine className='ml-0.5 h-3 w-3' />
+              {!!logicalOperator && logicalOperator.toUpperCase()}
+              <RiLoopLeftLine className="ml-0.5 size-3" />
             </div>
           </div>
         )

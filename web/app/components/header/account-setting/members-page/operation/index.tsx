@@ -1,60 +1,68 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { Fragment, useMemo } from 'react'
-import { useContext } from 'use-context-selector'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
-import { useProviderContext } from '@/context/provider-context'
-import cn from '@/utils/classnames'
 import type { Member } from '@/models/common'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useProviderContext } from '@/context/provider-context'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
-import { ToastContext } from '@/app/components/base/toast'
 
 type IOperationProps = {
   member: Member
   operatorRole: string
   onOperate: () => void
 }
+const roleI18nKeyMap = {
+  admin: { label: 'members.admin', tip: 'members.adminTip' },
+  editor: { label: 'members.editor', tip: 'members.editorTip' },
+  normal: { label: 'members.normal', tip: 'members.normalTip' },
+  dataset_operator: { label: 'members.datasetOperator', tip: 'members.datasetOperatorTip' },
+} as const
+type OperationRoleKey = keyof typeof roleI18nKeyMap
+const nonOwnerRoles = ['admin', 'editor', 'normal'] as const
+const isNonOwnerRole = (role: Member['role']) => role !== 'owner'
 
-const Operation = ({
-  member,
-  operatorRole,
-  onOperate,
-}: IOperationProps) => {
+const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
   const { t } = useTranslation()
   const { datasetOperatorEnabled } = useProviderContext()
   const RoleMap = {
-    owner: t('common.members.owner'),
-    admin: t('common.members.admin'),
-    editor: t('common.members.editor'),
-    normal: t('common.members.normal'),
-    dataset_operator: t('common.members.datasetOperator'),
+    owner: t('members.owner', { ns: 'common' }),
+    admin: t('members.admin', { ns: 'common' }),
+    editor: t('members.editor', { ns: 'common' }),
+    normal: t('members.normal', { ns: 'common' }),
+    dataset_operator: t('members.datasetOperator', { ns: 'common' }),
   }
-  const roleList = useMemo(() => {
+  const roleList = useMemo((): OperationRoleKey[] => {
     if (operatorRole === 'owner') {
       return [
-        'admin', 'editor', 'normal',
-        ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+        'admin',
+        'editor',
+        'normal',
+        ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     if (operatorRole === 'admin') {
       return [
-        'editor', 'normal',
-        ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+        ...nonOwnerRoles,
+        ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
-  const { notify } = useContext(ToastContext)
-  const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
+  const canRemoveMember = operatorRole === 'owner' || (operatorRole === 'admin' && isNonOwnerRole(member.role))
   const handleDeleteMemberOrCancelInvitation = async () => {
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
     }
     catch {
-
     }
   }
   const handleUpdateMemberRole = async (role: string) => {
@@ -64,71 +72,60 @@ const Operation = ({
         body: { role },
       })
       onOperate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
     }
     catch {
-
     }
   }
-
   return (
-    <Menu as="div" className="relative h-full w-full">
-      {
-        ({ open }) => (
-          <>
-            <MenuButton className={cn('system-sm-regular group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-              {RoleMap[member.role] || RoleMap.normal}
-              <ChevronDownIcon className={cn('h-4 w-4 group-hover:block', open ? 'block' : 'hidden')} />
-            </MenuButton>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="group flex size-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
+      >
+        {RoleMap[member.role] || RoleMap.normal}
+        <span aria-hidden className="i-ri-arrow-down-s-line hidden size-4 shrink-0 group-hover:block group-data-popup-open:block" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="inline-flex flex-col rounded-xl p-0"
+      >
+        <div className="p-1">
+          {roleList.map(role => (
+            <DropdownMenuItem
+              key={role}
+              className="h-auto items-start gap-2 rounded-lg px-3 py-2"
+              onClick={() => handleUpdateMemberRole(role)}
             >
-              <MenuItems
-                className={cn('absolute right-0 top-[52px] z-10 origin-top-right rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm')}
+              {role === member.role
+                ? <span aria-hidden className="mt-[2px] i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />
+                : <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />}
+              <div>
+                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
+                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
+              </div>
+            </DropdownMenuItem>
+          ))}
+        </div>
+        {canRemoveMember && (
+          <>
+            <DropdownMenuSeparator className="my-0" />
+            <div className="p-1">
+              <DropdownMenuItem
+                className="h-auto items-start gap-2 rounded-lg px-3 py-2"
+                onClick={handleDeleteMemberOrCancelInvitation}
               >
-                <div className="p-1">
-                  {
-                    roleList.map(role => (
-                      <MenuItem key={role}>
-                        <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={() => handleUpdateMemberRole(role)}>
-                          {
-                            role === member.role
-                              ? <CheckIcon className='mr-1 mt-[2px] h-4 w-4 text-text-accent' />
-                              : <div className='mr-1 mt-[2px] h-4 w-4 text-text-accent' />
-                          }
-                          <div>
-                            <div className='system-sm-semibold whitespace-nowrap text-text-secondary'>{t(`common.members.${toHump(role)}`)}</div>
-                            <div className='system-xs-regular whitespace-nowrap text-text-tertiary'>{t(`common.members.${toHump(role)}Tip`)}</div>
-                          </div>
-                        </div>
-                      </MenuItem>
-                    ))
-                  }
+                <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />
+                <div>
+                  <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
+                  <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
                 </div>
-                <MenuItem>
-                  <div className='border-t border-divider-subtle p-1'>
-                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={handleDeleteMemberOrCancelInvitation}>
-                      <div className='mr-1 mt-[2px] h-4 w-4 text-text-accent' />
-                      <div>
-                        <div className='system-sm-semibold whitespace-nowrap text-text-secondary'>{t('common.members.removeFromTeam')}</div>
-                        <div className='system-xs-regular whitespace-nowrap text-text-tertiary'>{t('common.members.removeFromTeamTip')}</div>
-                      </div>
-                    </div>
-                  </div>
-                </MenuItem>
-              </MenuItems>
-            </Transition>
+              </DropdownMenuItem>
+            </div>
           </>
-        )
-      }
-    </Menu>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
-
-export default Operation
+export default memo(Operation)

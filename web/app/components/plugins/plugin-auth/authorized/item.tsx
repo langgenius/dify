@@ -1,30 +1,32 @@
+import type { Credential } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import {
+  RiCheckLine,
+  RiDeleteBinLine,
+  RiEditLine,
+  RiEqualizer2Line,
+  RiInformationLine,
+} from '@remixicon/react'
 import {
   memo,
   useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiCheckLine,
-  RiDeleteBinLine,
-  RiEditLine,
-  RiEqualizer2Line,
-} from '@remixicon/react'
-import Indicator from '@/app/components/header/indicator'
-import Badge from '@/app/components/base/badge'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
-import Button from '@/app/components/base/button'
+import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
-import cn from '@/utils/classnames'
-import type { Credential } from '../types'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { CredentialTypeEnum } from '../types'
 
 type ItemProps = {
   credential: Credential
   disabled?: boolean
   onDelete?: (id: string) => void
-  onEdit?: (id: string, values: Record<string, any>) => void
+  onEdit?: (id: string, values: Record<string, unknown>) => void
   onSetDefault?: (id: string) => void
   onRename?: (payload: {
     credential_id: string
@@ -57,6 +59,18 @@ const Item = ({
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credential.name)
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
+  const isPersonal = credential.visibility === 'only_me'
+  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  // Borrowed-from-teammate: the backend explicitly flagged this row as another member's
+  // only_me credential, returned only because the current node still references it.
+  // Fallback heuristic (created_by mismatch on a selected row) is kept for backends
+  // that don't yet emit the flag.
+  const isSelected = showSelectedIcon && selectedCredentialId === credential.id
+  const isConfiguredByOther
+    = !!credential.created_by && !!userProfile?.id && credential.created_by !== userProfile.id
+  const isBorrowed
+    = !!credential.from_other_member || (isSelected && isConfiguredByOther && isPersonal)
+  const showSwitchAwayHint = isBorrowed
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete && disableSetDefault)
   }, [disableRename, disableEdit, disableDelete, disableSetDefault])
@@ -77,18 +91,18 @@ const Item = ({
     >
       {
         renaming && (
-          <div className='flex w-full items-center space-x-1'>
+          <div className="flex w-full items-center space-x-1">
             <Input
-              wrapperClassName='grow rounded-[6px]'
-              className='h-6'
+              wrapperClassName="grow rounded-md"
+              className="h-6"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
-              placeholder={t('common.placeholder.input')}
+              placeholder={t('placeholder.input', { ns: 'common' })}
               onClick={e => e.stopPropagation()}
             />
             <Button
-              size='small'
-              variant='primary'
+              size="small"
+              variant="primary"
               onClick={(e) => {
                 e.stopPropagation()
                 onRename?.({
@@ -98,48 +112,48 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('common.operation.save')}
+              {t('operation.save', { ns: 'common' })}
             </Button>
             <Button
-              size='small'
+              size="small"
               onClick={(e) => {
                 e.stopPropagation()
                 setRenaming(false)
               }}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
         )
       }
       {
         !renaming && (
-          <div className='flex w-0 grow items-center space-x-1.5'>
+          <div className="flex w-0 grow items-center space-x-1.5">
             {
               showSelectedIcon && (
-                <div className='h-4 w-4'>
+                <div className="size-4">
                   {
                     selectedCredentialId === credential.id && (
-                      <RiCheckLine className='h-4 w-4 text-text-accent' />
+                      <RiCheckLine className="size-4 text-text-accent" />
                     )
                   }
                 </div>
               )
             }
-            <Indicator
-              className='ml-2 mr-1.5 shrink-0'
-              color={credential.not_allowed_to_use ? 'gray' : 'green'}
+            <StatusDot
+              className="mr-1.5 ml-2 shrink-0"
+              status={credential.not_allowed_to_use ? 'disabled' : 'success'}
             />
             <div
-              className='system-md-regular truncate text-text-secondary'
+              className="truncate system-md-regular text-text-secondary"
               title={credential.name}
             >
               {credential.name}
             </div>
             {
               credential.is_default && (
-                <Badge className='shrink-0'>
-                  {t('plugin.auth.default')}
+                <Badge className="shrink-0">
+                  {t('auth.default', { ns: 'plugin' })}
                 </Badge>
               )
             }
@@ -147,80 +161,117 @@ const Item = ({
         )
       }
       {
-        credential.from_enterprise && (
-          <Badge className='shrink-0'>
-            Enterprise
+        showSwitchAwayHint && (
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <div className="ml-2 flex shrink-0 cursor-help items-center text-text-tertiary">
+                  <RiInformationLine className="size-4" />
+                </div>
+              )}
+            />
+            <TooltipContent>
+              {t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}
+            </TooltipContent>
+          </Tooltip>
+        )
+      }
+      {
+        !showSwitchAwayHint && credential.from_enterprise && (
+          <Badge className="shrink-0">
+            {t('auth.enterprise', { ns: 'plugin' })}
           </Badge>
         )
       }
       {
         showAction && !renaming && (
-          <div className='ml-2 hidden shrink-0 items-center group-hover:flex'>
+          <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
             {
-              !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && (
+              !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && !isBorrowed && (
                 <Button
-                  size='small'
+                  size="small"
                   disabled={disabled}
                   onClick={(e) => {
                     e.stopPropagation()
                     onSetDefault?.(credential.id)
                   }}
                 >
-                  {t('plugin.auth.setDefault')}
+                  {t('auth.setDefault', { ns: 'plugin' })}
                 </Button>
               )
             }
             {
-              !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && (
-                <Tooltip popupContent={t('common.operation.rename')}>
-                  <ActionButton
-                    disabled={disabled}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setRenaming(true)
-                      setRenameValue(credential.name)
-                    }}
-                  >
-                    <RiEditLine className='h-4 w-4 text-text-tertiary' />
-                  </ActionButton>
+              !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && !isBorrowed && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton
+                        disabled={disabled}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setRenaming(true)
+                          setRenameValue(credential.name)
+                        }}
+                      >
+                        <RiEditLine className="size-4 text-text-tertiary" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('operation.rename', { ns: 'common' })}
+                  </TooltipContent>
                 </Tooltip>
               )
             }
             {
-              !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && (
-                <Tooltip popupContent={t('common.operation.edit')}>
-                  <ActionButton
-                    disabled={disabled}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEdit?.(
-                        credential.id,
-                        {
-                          ...credential.credentials,
-                          __name__: credential.name,
-                          __credential_id__: credential.id,
-                        },
-                      )
-                    }}
-                  >
-                    <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
-                  </ActionButton>
+              !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && !isBorrowed && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton
+                        disabled={disabled}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEdit?.(
+                            credential.id,
+                            {
+                              ...credential.credentials,
+                              __name__: credential.name,
+                              __credential_id__: credential.id,
+                            },
+                          )
+                        }}
+                      >
+                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('operation.edit', { ns: 'common' })}
+                  </TooltipContent>
                 </Tooltip>
               )
             }
             {
-              !disableDelete && !credential.from_enterprise && (
-                <Tooltip popupContent={t('common.operation.delete')}>
-                  <ActionButton
-                    className='hover:bg-transparent'
-                    disabled={disabled}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete?.(credential.id)
-                    }}
-                  >
-                    <RiDeleteBinLine className='h-4 w-4 text-text-tertiary hover:text-text-destructive' />
-                  </ActionButton>
+              !disableDelete && !credential.from_enterprise && !isBorrowed && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton
+                        className="hover:bg-transparent"
+                        disabled={disabled}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete?.(credential.id)
+                        }}
+                      >
+                        <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('operation.delete', { ns: 'common' })}
+                  </TooltipContent>
                 </Tooltip>
               )
             }
@@ -232,8 +283,11 @@ const Item = ({
 
   if (credential.not_allowed_to_use) {
     return (
-      <Tooltip popupContent={t('plugin.auth.customCredentialUnavailable')}>
-        {CredentialItem}
+      <Tooltip>
+        <TooltipTrigger render={CredentialItem} />
+        <TooltipContent>
+          {t('auth.customCredentialUnavailable', { ns: 'plugin' })}
+        </TooltipContent>
       </Tooltip>
     )
   }

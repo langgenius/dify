@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import Iteration from './iteration'
 import type { AgentIteration } from '@/models/log'
+import Iteration from './iteration'
 
-type TracingPanelProps = {
+type TracingPanelProps = Readonly<{
   list: AgentIteration[]
-}
+}>
 
 const TracingPanel: FC<TracingPanelProps> = ({ list }) => {
   return (
-    <div className='bg-background-section'>
+    <div className="bg-background-section">
       {list.map((iteration, index) => (
         <Iteration
           key={index}

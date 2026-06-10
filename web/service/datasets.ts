@@ -1,44 +1,43 @@
-import type { Fetcher } from 'swr'
-import qs from 'qs'
-import { del, get, patch, post, put } from './base'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
+import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
+import type {
+  CreateApiKeyResponse,
+} from '@/models/app'
+import type { CommonResponse } from '@/models/common'
 import type {
   CreateDocumentReq,
+  createDocumentResponse,
   DataSet,
   DataSetListResponse,
-  ErrorDocsResponse,
   ExternalAPIDeleteResponse,
   ExternalAPIItem,
-  ExternalAPIListResponse,
   ExternalAPIUsage,
-  ExternalKnowledgeBaseHitTestingResponse,
   ExternalKnowledgeItem,
   FetchDatasetsParams,
   FileIndexingEstimateResponse,
-  HitTestingRecordsResponse,
-  HitTestingResponse,
   IndexingEstimateParams,
-  IndexingEstimateResponse,
   IndexingStatusBatchResponse,
   IndexingStatusResponse,
   ProcessRuleResponse,
-  RelatedAppResponse,
-  createDocumentResponse,
 } from '@/models/datasets'
-import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
-import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
+import qs from 'qs'
 import { DataSourceProvider } from '@/models/common'
-import type {
-  ApiKeysListResponse,
-  CreateApiKeyResponse,
-} from '@/models/app'
-import type { RetrievalConfig } from '@/types/app'
+import { del, get, patch, post, put } from './base'
 
 // apis for documents in a dataset
 
 type CommonDocReq = {
   datasetId: string
   documentId: string
+}
+
+export type DocumentDownloadResponse = {
+  url: string
+}
+
+export type DocumentDownloadZipRequest = {
+  datasetId: string
+  documentIds: string[]
 }
 
 type BatchReq = {
@@ -50,172 +49,131 @@ export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
 export type MetadataType = 'all' | 'only' | 'without'
 
-export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) => {
-  return get<DataSet>(`/datasets/${datasetId}`)
-}
-
-export const updateDatasetSetting: Fetcher<DataSet, {
+export const updateDatasetSetting = ({
+  datasetId,
+  body,
+}: {
   datasetId: string
-  body: Partial<Pick<DataSet,
-    'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider' | 'icon_info' | 'doc_form'
-  >>
-}> = ({ datasetId, body }) => {
+  body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider' | 'icon_info' | 'doc_form'>>
+}): Promise<DataSet> => {
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
 }
 
-export const fetchDatasetRelatedApps: Fetcher<RelatedAppResponse, string> = (datasetId: string) => {
-  return get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`)
-}
-
-export const fetchDatasets: Fetcher<DataSetListResponse, FetchDatasetsParams> = ({ url, params }) => {
+export const fetchDatasets = ({ url, params }: FetchDatasetsParams): Promise<DataSetListResponse> => {
   const urlParams = qs.stringify(params, { indices: false })
   return get<DataSetListResponse>(`${url}?${urlParams}`)
 }
 
-export const createEmptyDataset: Fetcher<DataSet, { name: string }> = ({ name }) => {
+export const createEmptyDataset = ({ name }: { name: string }): Promise<DataSet> => {
   return post<DataSet>('/datasets', { body: { name } })
 }
 
-export const checkIsUsedInApp: Fetcher<{ is_using: boolean }, string> = (id) => {
+export const checkIsUsedInApp = (id: string): Promise<{ is_using: boolean }> => {
   return get<{ is_using: boolean }>(`/datasets/${id}/use-check`, {}, {
     silent: true,
   })
 }
 
-export const deleteDataset: Fetcher<DataSet, string> = (datasetID) => {
+export const deleteDataset = (datasetID: string): Promise<DataSet> => {
   return del<DataSet>(`/datasets/${datasetID}`)
 }
 
-export const fetchExternalAPIList: Fetcher<ExternalAPIListResponse, { url: string }> = ({ url }) => {
-  return get<ExternalAPIListResponse>(url)
-}
-
-export const fetchExternalAPI: Fetcher<ExternalAPIItem, { apiTemplateId: string }> = ({ apiTemplateId }) => {
+export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }): Promise<ExternalAPIItem> => {
   return get<ExternalAPIItem>(`/datasets/external-knowledge-api/${apiTemplateId}`)
 }
 
-export const updateExternalAPI: Fetcher<ExternalAPIItem, { apiTemplateId: string; body: ExternalAPIItem }> = ({ apiTemplateId, body }) => {
+export const updateExternalAPI = ({ apiTemplateId, body }: { apiTemplateId: string, body: ExternalAPIItem }): Promise<ExternalAPIItem> => {
   return patch<ExternalAPIItem>(`/datasets/external-knowledge-api/${apiTemplateId}`, { body })
 }
 
-export const deleteExternalAPI: Fetcher<ExternalAPIDeleteResponse, { apiTemplateId: string }> = ({ apiTemplateId }) => {
+export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }): Promise<ExternalAPIDeleteResponse> => {
   return del<ExternalAPIDeleteResponse>(`/datasets/external-knowledge-api/${apiTemplateId}`)
 }
 
-export const checkUsageExternalAPI: Fetcher<ExternalAPIUsage, { apiTemplateId: string }> = ({ apiTemplateId }) => {
+export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }): Promise<ExternalAPIUsage> => {
   return get<ExternalAPIUsage>(`/datasets/external-knowledge-api/${apiTemplateId}/use-check`)
 }
 
-export const createExternalAPI: Fetcher<ExternalAPIItem, { body: CreateExternalAPIReq }> = ({ body }) => {
+export const createExternalAPI = ({ body }: { body: CreateExternalAPIReq }): Promise<ExternalAPIItem> => {
   return post<ExternalAPIItem>('/datasets/external-knowledge-api', { body })
 }
 
-export const createExternalKnowledgeBase: Fetcher<ExternalKnowledgeItem, { body: CreateKnowledgeBaseReq }> = ({ body }) => {
+export const createExternalKnowledgeBase = ({ body }: { body: CreateKnowledgeBaseReq }): Promise<ExternalKnowledgeItem> => {
   return post<ExternalKnowledgeItem>('/datasets/external', { body })
 }
 
-export const fetchDefaultProcessRule: Fetcher<ProcessRuleResponse, { url: string }> = ({ url }) => {
+export const fetchDefaultProcessRule = ({ url }: { url: string }): Promise<ProcessRuleResponse> => {
   return get<ProcessRuleResponse>(url)
 }
-export const fetchProcessRule: Fetcher<ProcessRuleResponse, { params: { documentId: string } }> = ({ params: { documentId } }) => {
-  return get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } })
-}
 
-export const createFirstDocument: Fetcher<createDocumentResponse, { body: CreateDocumentReq }> = ({ body }) => {
+export const createFirstDocument = ({ body }: { body: CreateDocumentReq }): Promise<createDocumentResponse> => {
   return post<createDocumentResponse>('/datasets/init', { body })
 }
 
-export const createDocument: Fetcher<createDocumentResponse, { datasetId: string; body: CreateDocumentReq }> = ({ datasetId, body }) => {
+export const createDocument = ({ datasetId, body }: { datasetId: string, body: CreateDocumentReq }): Promise<createDocumentResponse> => {
   return post<createDocumentResponse>(`/datasets/${datasetId}/documents`, { body })
 }
 
-export const fetchIndexingEstimate: Fetcher<IndexingEstimateResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return get<IndexingEstimateResponse>(`/datasets/${datasetId}/documents/${documentId}/indexing-estimate`, {})
-}
-export const fetchIndexingEstimateBatch: Fetcher<IndexingEstimateResponse, BatchReq> = ({ datasetId, batchId }) => {
-  return get<IndexingEstimateResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-estimate`, {})
-}
-
-export const fetchIndexingStatus: Fetcher<IndexingStatusResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+export const fetchIndexingStatus = ({ datasetId, documentId }: CommonDocReq): Promise<IndexingStatusResponse> => {
   return get<IndexingStatusResponse>(`/datasets/${datasetId}/documents/${documentId}/indexing-status`, {})
 }
 
-export const fetchIndexingStatusBatch: Fetcher<IndexingStatusBatchResponse, BatchReq> = ({ datasetId, batchId }) => {
+export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq): Promise<IndexingStatusBatchResponse> => {
   return get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`, {})
 }
 
-export const renameDocumentName: Fetcher<CommonResponse, CommonDocReq & { name: string }> = ({ datasetId, documentId, name }) => {
+export const renameDocumentName = ({ datasetId, documentId, name }: CommonDocReq & { name: string }): Promise<CommonResponse> => {
   return post<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/rename`, {
     body: { name },
   })
 }
 
-export const pauseDocIndexing: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+export const pauseDocIndexing = ({ datasetId, documentId }: CommonDocReq): Promise<CommonResponse> => {
   return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/pause`)
 }
 
-export const resumeDocIndexing: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+export const resumeDocIndexing = ({ datasetId, documentId }: CommonDocReq): Promise<CommonResponse> => {
   return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/resume`)
 }
 
-export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
-  return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
+export const fetchDocumentDownloadUrl = ({ datasetId, documentId }: CommonDocReq): Promise<DocumentDownloadResponse> => {
+  return get<DocumentDownloadResponse>(`/datasets/${datasetId}/documents/${documentId}/download`, {})
 }
 
-export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: { doc_type: string; doc_metadata: Record<string, any> } }> = ({ datasetId, documentId, body }) => {
+export const downloadDocumentsZip = ({ datasetId, documentIds }: DocumentDownloadZipRequest): Promise<Blob> => {
+  return post<Blob>(`/datasets/${datasetId}/documents/download-zip`, {
+    body: {
+      document_ids: documentIds,
+    },
+  })
+}
+
+export const modifyDocMetadata = ({ datasetId, documentId, body }: CommonDocReq & { body: { doc_type: string, doc_metadata: Record<string, any> } }): Promise<CommonResponse> => {
   return put<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/metadata`, { body })
 }
 
 // hit testing
-export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string; retrieval_model: RetrievalConfig }> = ({ datasetId, queryText, retrieval_model }) => {
-  return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText, retrieval_model } })
-}
-
-export const externalKnowledgeBaseHitTesting: Fetcher<ExternalKnowledgeBaseHitTestingResponse, { datasetId: string; query: string; external_retrieval_model: { top_k: number; score_threshold: number; score_threshold_enabled: boolean } }> = ({ datasetId, query, external_retrieval_model }) => {
-  return post<ExternalKnowledgeBaseHitTestingResponse>(`/datasets/${datasetId}/external-hit-testing`, { body: { query, external_retrieval_model } })
-}
-
-export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId: string; params: { page: number; limit: number } }> = ({ datasetId, params }) => {
-  return get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params })
-}
-
-export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, IndexingEstimateParams> = (body: IndexingEstimateParams) => {
+export const fetchFileIndexingEstimate = (body: IndexingEstimateParams): Promise<FileIndexingEstimateResponse> => {
   return post<FileIndexingEstimateResponse>('/datasets/indexing-estimate', { body })
 }
 
-export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string; credentialID: string; }> = ({ workspaceID, pageID, pageType, credentialID }) => {
-  return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`, {
+export const fetchNotionPagePreview = ({ pageID, pageType, credentialID }: { pageID: string, pageType: string, credentialID: string }): Promise<{ content: string }> => {
+  return get<{ content: string }>(`notion/pages/${pageID}/${pageType}/preview`, {
     params: {
       credential_id: credentialID,
     },
   })
 }
 
-export const fetchApiKeysList: Fetcher<ApiKeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<ApiKeysListResponse>(url, params)
-}
-
-export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+export const delApikey = ({ url, params }: { url: string, params: Record<string, any> }): Promise<CommonResponse> => {
   return del<CommonResponse>(url, params)
 }
 
-export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+export const createApikey = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CreateApiKeyResponse> => {
   return post<CreateApiKeyResponse>(url, body)
 }
 
-export const fetchDataSources = () => {
-  return get<CommonResponse>('api-key-auth/data-source')
-}
-
-export const createDataSourceApiKeyBinding: Fetcher<CommonResponse, Record<string, any>> = (body) => {
-  return post<CommonResponse>('api-key-auth/data-source/binding', { body })
-}
-
-export const removeDataSourceApiKeyBinding: Fetcher<CommonResponse, string> = (id: string) => {
-  return del<CommonResponse>(`api-key-auth/data-source/${id}`)
-}
-
-export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+export const createFirecrawlTask = (body: Record<string, any>): Promise<CommonResponse> => {
   return post<CommonResponse>('website/crawl', {
     body: {
       ...body,
@@ -224,7 +182,7 @@ export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> =
   })
 }
 
-export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+export const checkFirecrawlTaskStatus = (jobId: string): Promise<CommonResponse> => {
   return get<CommonResponse>(`website/crawl/status/${jobId}`, {
     params: {
       provider: DataSourceProvider.fireCrawl,
@@ -234,7 +192,7 @@ export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId:
   })
 }
 
-export const createJinaReaderTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+export const createJinaReaderTask = (body: Record<string, any>): Promise<CommonResponse> => {
   return post<CommonResponse>('website/crawl', {
     body: {
       ...body,
@@ -243,7 +201,7 @@ export const createJinaReaderTask: Fetcher<CommonResponse, Record<string, any>> 
   })
 }
 
-export const checkJinaReaderTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+export const checkJinaReaderTaskStatus = (jobId: string): Promise<CommonResponse> => {
   return get<CommonResponse>(`website/crawl/status/${jobId}`, {
     params: {
       provider: 'jinareader',
@@ -253,7 +211,7 @@ export const checkJinaReaderTaskStatus: Fetcher<CommonResponse, string> = (jobId
   })
 }
 
-export const createWatercrawlTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+export const createWatercrawlTask = (body: Record<string, any>): Promise<CommonResponse> => {
   return post<CommonResponse>('website/crawl', {
     body: {
       ...body,
@@ -262,7 +220,7 @@ export const createWatercrawlTask: Fetcher<CommonResponse, Record<string, any>> 
   })
 }
 
-export const checkWatercrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+export const checkWatercrawlTaskStatus = (jobId: string): Promise<CommonResponse> => {
   return get<CommonResponse>(`website/crawl/status/${jobId}`, {
     params: {
       provider: DataSourceProvider.waterCrawl,
@@ -276,14 +234,6 @@ export type FileTypesRes = {
   allowed_extensions: string[]
 }
 
-export const fetchSupportFileTypes: Fetcher<FileTypesRes, { url: string }> = ({ url }) => {
-  return get<FileTypesRes>(url)
-}
-
-export const getErrorDocs: Fetcher<ErrorDocsResponse, { datasetId: string }> = ({ datasetId }) => {
-  return get<ErrorDocsResponse>(`/datasets/${datasetId}/error-docs`)
-}
-
-export const retryErrorDocs: Fetcher<CommonResponse, { datasetId: string; document_ids: string[] }> = ({ datasetId, document_ids }) => {
+export const retryErrorDocs = ({ datasetId, document_ids }: { datasetId: string, document_ids: string[] }): Promise<CommonResponse> => {
   return post<CommonResponse>(`/datasets/${datasetId}/retry`, { body: { document_ids } })
 }

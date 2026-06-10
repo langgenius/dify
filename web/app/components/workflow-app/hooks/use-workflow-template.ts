@@ -1,14 +1,14 @@
+import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import { useTranslation } from 'react-i18next'
-import { generateNewNode } from '@/app/components/workflow/utils'
 import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '@/app/components/workflow/constants'
-import { useIsChatMode } from './use-is-chat-mode'
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import startDefault from '@/app/components/workflow/nodes/start/default'
-import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import answerDefault from '@/app/components/workflow/nodes/answer/default'
+import llmDefault from '@/app/components/workflow/nodes/llm/default'
+import startDefault from '@/app/components/workflow/nodes/start/default'
+import { generateNewNode } from '@/app/components/workflow/utils'
+import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
@@ -18,7 +18,7 @@ export const useWorkflowTemplate = () => {
     data: {
       ...startDefault.defaultValue as StartNodeType,
       type: startDefault.metaData.type,
-      title: t(`workflow.blocks.${startDefault.metaData.type}`),
+      title: t(`blocks.${startDefault.metaData.type}`, { ns: 'workflow' }),
     },
     position: START_INITIAL_POSITION,
   })
@@ -34,7 +34,7 @@ export const useWorkflowTemplate = () => {
         },
         selected: true,
         type: llmDefault.metaData.type,
-        title: t(`workflow.blocks.${llmDefault.metaData.type}`),
+        title: t(`blocks.${llmDefault.metaData.type}`, { ns: 'workflow' }),
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
@@ -48,7 +48,7 @@ export const useWorkflowTemplate = () => {
         ...answerDefault.defaultValue,
         answer: `{{#${llmNode.id}.text#}}`,
         type: answerDefault.metaData.type,
-        title: t(`workflow.blocks.${answerDefault.metaData.type}`),
+        title: t(`blocks.${answerDefault.metaData.type}`, { ns: 'workflow' }),
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET * 2,

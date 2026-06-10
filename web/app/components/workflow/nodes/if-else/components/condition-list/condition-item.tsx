@@ -1,48 +1,55 @@
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine } from '@remixicon/react'
-import produce from 'immer'
 import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
   HandleAddSubVariableCondition,
   HandleRemoveCondition,
+  handleRemoveSubVariableCondition,
   HandleToggleSubVariableConditionLogicalOperator,
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
-  handleRemoveSubVariableCondition,
 } from '../../types'
-import {
-  ComparisonOperator,
-} from '../../types'
-import { comparisonOperatorNotRequireValue, getOperators } from '../../utils'
-import ConditionNumberInput from '../condition-number-input'
-import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../constants'
-import ConditionWrap from '../condition-wrap'
-import ConditionOperator from './condition-operator'
-import ConditionInput from './condition-input'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-
-import ConditionVarSelector from './condition-var-selector'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
-import { SimpleSelect as Select } from '@/app/components/base/select'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { RiDeleteBinLine } from '@remixicon/react'
+import { produce } from 'immer'
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
-import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+
+import { VarType } from '@/app/components/workflow/types'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
-const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
+import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../constants'
+import {
+  ComparisonOperator,
+} from '../../types'
+import { comparisonOperatorNotRequireValue, getOperators } from '../../utils'
+import ConditionNumberInput from '../condition-number-input'
+import ConditionWrap from '../condition-wrap'
+import ConditionInput from './condition-input'
+import ConditionOperator from './condition-operator'
+import ConditionVarSelector from './condition-var-selector'
+
+const optionNameI18NPrefix = 'nodes.ifElse.optionName' as const
 
 type ConditionItemProps = {
   className?: string
@@ -91,15 +98,12 @@ const ConditionItem = ({
   const [isHovered, setIsHovered] = useState(false)
   const [open, setOpen] = useState(false)
 
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+
   const workflowStore = useWorkflowStore()
-  const {
-    setControlPromptEditorRerenderKey,
-    buildInTools,
-    customTools,
-    mcpTools,
-    workflowTools,
-    dataSourceList,
-  } = workflowStore.getState()
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
     if (isSubVariableKey)
@@ -160,17 +164,17 @@ const ConditionItem = ({
   }, [condition, doUpdateCondition, isArrayValue])
 
   const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
-  const selectOptions = useMemo(() => {
+  const selectOptions = useMemo<Array<{ name: string, value: string }>>(() => {
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
       if (fileAttr?.key === 'transfer_method') {
         return TRANSFER_METHOD.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
@@ -186,6 +190,7 @@ const ConditionItem = ({
     name: item,
     value: item,
   }))
+  const selectedSubVarOption = subVarOptions.find(item => item.value === condition.key) ?? null
 
   const handleSubVarKeyChange = useCallback((key: string) => {
     const newCondition = produce(condition, (draft) => {
@@ -209,10 +214,12 @@ const ConditionItem = ({
       onRemoveCondition?.(caseId, condition.id)
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
-  const { getMatchedSchemaType } = useMatchSchemaType()
+  const { schemaTypeDefinitions } = useMatchSchemaType()
   const handleVarChange = useCallback((valueSelector: ValueSelector, _varItem: Var) => {
     const {
       conversationVariables,
+      setControlPromptEditorRerenderKey,
+      dataSourceList,
     } = workflowStore.getState()
     const resolvedVarType = getVarType({
       valueSelector,
@@ -220,13 +227,13 @@ const ConditionItem = ({
       availableNodes,
       isChatMode,
       allPluginInfoList: {
-        buildInTools,
-        customTools,
-        mcpTools,
-        workflowTools,
-        dataSourceList: dataSourceList ?? [],
+        buildInTools: buildInTools || [],
+        customTools: customTools || [],
+        mcpTools: mcpTools || [],
+        workflowTools: workflowTools || [],
+        dataSourceList: dataSourceList || [],
       },
-      getMatchedSchemaType,
+      schemaTypeDefinitions,
     })
 
     const newCondition = produce(condition, (draft) => {
@@ -234,64 +241,85 @@ const ConditionItem = ({
       draft.varType = resolvedVarType
       draft.value = resolvedVarType === VarType.boolean ? false : ''
       draft.comparison_operator = getOperators(resolvedVarType)[0]
+      delete draft.key
+      delete draft.sub_variable_condition
+      delete draft.numberVarType
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
     doUpdateCondition(newCondition)
     setOpen(false)
-  }, [condition, doUpdateCondition, availableNodes, isChatMode, setControlPromptEditorRerenderKey])
+  }, [condition, doUpdateCondition, availableNodes, isChatMode, schemaTypeDefinitions, buildInTools, customTools, mcpTools, workflowTools])
 
   const showBooleanInput = useMemo(() => {
-    if(condition.varType === VarType.boolean)
+    if (condition.varType === VarType.boolean)
       return true
-    // eslint-disable-next-line sonarjs/prefer-single-boolean-return
-    if(condition.varType === VarType.arrayBoolean && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!))
+
+    if (condition.varType === VarType.arrayBoolean && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!))
       return true
     return false
   }, [condition])
+  const selectedSelectValue = isArrayValue ? (condition.value as string[])?.[0] : (condition.value as string)
+  const selectedSelectOption = selectOptions.find(item => item.value === selectedSelectValue) ?? null
+
   return (
     <div className={cn('mb-1 flex last-of-type:mb-0', className)}>
       <div className={cn(
         'grow rounded-lg bg-components-input-bg-normal',
         isHovered && 'bg-state-destructive-hover',
-      )}>
-        <div className='flex items-center p-1'>
-          <div className='w-0 grow'>
+      )}
+      >
+        <div className="flex items-center p-1">
+          <div className="w-0 grow">
             {isSubVarSelect
               ? (
-                <Select
-                  wrapperClassName='h-6'
-                  className='pl-0 text-xs'
-                  optionWrapClassName='w-[165px] max-h-none'
-                  defaultValue={condition.key}
-                  items={subVarOptions}
-                  onSelect={item => handleSubVarKeyChange(item.value as string)}
-                  renderTrigger={item => (
-                    item
-                      ? <div className='flex cursor-pointer justify-start'>
-                        <div className='inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs'>
-                          <Variable02 className='h-3.5 w-3.5 shrink-0 text-text-accent' />
-                          <div className='system-xs-medium ml-0.5 truncate'>{item?.name}</div>
-                        </div>
-                      </div>
-                      : <div className='system-sm-regular text-left text-components-input-text-placeholder'>{t('common.placeholder.select')}</div>
-                  )}
-                  hideChecked
-                />
-              )
+                  <Select
+                    value={selectedSubVarOption?.value ?? null}
+                    onValueChange={value => value && handleSubVarKeyChange(value)}
+                  >
+                    <SelectTrigger
+                      render={<div />}
+                      nativeButton={false}
+                      className="h-6 border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
+                    >
+                      {selectedSubVarOption
+                        ? (
+                            <div className="flex cursor-pointer justify-start">
+                              <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
+                                <Variable02 className="size-3.5 shrink-0 text-text-accent" />
+                                <div className="ml-0.5 truncate system-xs-medium">{selectedSubVarOption.name}</div>
+                              </div>
+                            </div>
+                          )
+                        : <div className="text-left system-sm-regular text-components-input-text-placeholder">{t('placeholder.select', { ns: 'common' })}</div>}
+                    </SelectTrigger>
+                    <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">
+                      {subVarOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value} className="h-8 py-0 pr-5 pl-1">
+                          <div className="flex h-6 items-center justify-between">
+                            <div className="flex h-full items-center">
+                              <Variable02 className="mr-[5px] h-3.5 w-3.5 text-text-accent" />
+                              <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">{option.name}</SelectItemText>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
               : (
-                <ConditionVarSelector
-                  open={open}
-                  onOpenChange={setOpen}
-                  valueSelector={condition.variable_selector || []}
-                  varType={condition.varType}
-                  availableNodes={availableNodes}
-                  nodesOutputVars={nodesOutputVars}
-                  onChange={handleVarChange}
-                />
-              )}
+                  <ConditionVarSelector
+                    open={open}
+                    onOpenChange={setOpen}
+                    valueSelector={condition.variable_selector || []}
+                    varType={condition.varType}
+                    availableNodes={availableNodes}
+                    nodesOutputVars={nodesOutputVars}
+                    onChange={handleVarChange}
+                  />
+                )}
 
           </div>
-          <div className='mx-1 h-3 w-[1px] bg-divider-regular'></div>
+          <div className="mx-1 h-3 w-px bg-divider-regular"></div>
           <ConditionOperator
             disabled={!canChooseOperator}
             varType={condition.varType}
@@ -302,7 +330,7 @@ const ConditionItem = ({
         </div>
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType !== VarType.number && !showBooleanInput && (
-            <div className='max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1'>
+            <div className="max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
               <ConditionInput
                 disabled={disabled}
                 value={condition.value as string}
@@ -315,7 +343,7 @@ const ConditionItem = ({
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && showBooleanInput && (
-            <div className='p-1'>
+            <div className="p-1">
               <BoolValue
                 value={condition.value as boolean}
                 onChange={handleUpdateConditionValue}
@@ -325,7 +353,7 @@ const ConditionItem = ({
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType === VarType.number && (
-            <div className='border-t border-t-divider-subtle px-2 py-1 pt-[3px]'>
+            <div className="border-t border-t-divider-subtle px-2 py-1 pt-[3px]">
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
                 onNumberVarTypeChange={handleUpdateConditionNumberVarType}
@@ -340,22 +368,25 @@ const ConditionItem = ({
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && isSelect && (
-            <div className='border-t border-t-divider-subtle'>
-              <Select
-                wrapperClassName='h-8'
-                className='rounded-t-none px-2 text-xs'
-                defaultValue={isArrayValue ? (condition.value as string[])?.[0] : (condition.value as string)}
-                items={selectOptions}
-                onSelect={item => handleUpdateConditionValue(item.value as string)}
-                hideChecked
-                notClearable
-              />
+            <div className="border-t border-t-divider-subtle">
+              <Select value={selectedSelectOption?.value ?? null} onValueChange={value => value && handleUpdateConditionValue(value)}>
+                <SelectTrigger className="h-8 rounded-t-none border-0 px-2 text-xs hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
+                  {selectedSelectOption?.name ?? t('placeholder.select', { ns: 'common' })}
+                </SelectTrigger>
+                <SelectContent>
+                  {selectOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      <SelectItemText>{option.name}</SelectItemText>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && isSubVariable && (
-            <div className='p-1'>
+            <div className="p-1">
               <ConditionWrap
                 isSubVariable
                 caseId={caseId}
@@ -376,12 +407,12 @@ const ConditionItem = ({
         }
       </div>
       <div
-        className='ml-1 mt-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+        className="mt-1 ml-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className='h-4 w-4' />
+        <RiDeleteBinLine className="size-4" />
       </div>
     </div>
   )

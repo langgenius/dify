@@ -1,5 +1,5 @@
-import type { UserInputFormItem } from '@/types/app'
 import type { PromptVariable } from '@/models/debug'
+import type { UserInputFormItem } from '@/types/app'
 
 export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] | null, dataset_query_variable?: string) => {
   if (!useInputs)
@@ -56,6 +56,17 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         name: content.label,
         required: content.required,
         type,
+        options: [],
+        hide: content.hide,
+        default: content.default,
+      })
+    }
+    else if (type === 'boolean') {
+      promptVariables.push({
+        key: content.variable,
+        name: content.label,
+        required: content.required,
+        type: 'checkbox',
         options: [],
         hide: content.hide,
         default: content.default,
@@ -185,11 +196,11 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
 }
 
 export const formatBooleanInputs = (useInputs?: PromptVariable[] | null, inputs?: Record<string, string | number | object | boolean> | null) => {
-  if(!useInputs)
+  if (!useInputs)
     return inputs
   const res = { ...inputs }
   useInputs.forEach((item) => {
-    const isBooleanInput = item.type === 'boolean'
+    const isBooleanInput = item.type === 'checkbox'
     if (isBooleanInput) {
       // Convert boolean inputs to boolean type
       res[item.key] = !!res[item.key]

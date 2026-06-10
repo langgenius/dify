@@ -1,22 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import produce from 'immer'
 import type { Memory, MoreInfo, ValueSelector, Var } from '../../types'
-import { ChangeType, VarType } from '../../types'
-import { useStore } from '../../store'
+import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
+import { produce } from 'immer'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { AppModeEnum } from '@/types/app'
+import { supportFunctionCall } from '@/utils/tool-call'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { supportFunctionCall } from '@/utils/tool-call'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useStore } from '../../store'
+import { ChangeType, VarType } from '../../types'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const {
@@ -27,9 +28,9 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const { handleOutVarRenameChange } = useWorkflow()
   const isChatMode = useIsChatMode()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
 
-  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
+  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
   const inputRef = useRef(inputs)
 
@@ -86,13 +87,13 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const model = inputs.model || {
     provider: '',
     name: '',
-    mode: 'chat',
+    mode: AppModeEnum.CHAT,
     completion_params: {
       temperature: 0.7,
     },
   }
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
+  const isChatModel = modelMode === AppModeEnum.CHAT
   const isCompletionModel = !isChatModel
 
   const {
@@ -126,14 +127,14 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     currentModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
       draft.model.mode = model.mode!
       const isModeChange = model.mode !== inputRef.current.model?.mode
       if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
+        appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
     })
     setInputs(newInputs)
     setModelChanged(true)

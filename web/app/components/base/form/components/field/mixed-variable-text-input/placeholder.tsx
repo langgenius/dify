@@ -1,9 +1,9 @@
-import { useCallback } from 'react'
+import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { FOCUS_COMMAND } from 'lexical'
-import { $insertNodes } from 'lexical'
-import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
+import { $insertNodes, FOCUS_COMMAND } from 'lexical'
+import { useCallback } from 'react'
 import Badge from '@/app/components/base/badge'
+import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 
 const Placeholder = () => {
   const [editor] = useLexicalComposerContext()
@@ -18,17 +18,17 @@ const Placeholder = () => {
 
   return (
     <div
-      className='pointer-events-auto flex h-full w-full cursor-text items-center px-2'
+      className="pointer-events-auto flex size-full cursor-text items-center px-2"
       onClick={(e) => {
         e.stopPropagation()
         handleInsert('')
       }}
     >
-      <div className='flex grow items-center'>
+      <div className="flex grow items-center">
         Type or press
-        <div className='system-kbd mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder'>/</div>
+        <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>
         <div
-          className='system-sm-regular cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary'
+          className="cursor-pointer system-sm-regular text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
           onClick={((e) => {
             e.stopPropagation()
             handleInsert('/')
@@ -38,8 +38,8 @@ const Placeholder = () => {
         </div>
       </div>
       <Badge
-        className='shrink-0'
-        text='String'
+        className="shrink-0"
+        text="String"
         uppercase={false}
       />
     </div>

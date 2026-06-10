@@ -1,15 +1,15 @@
 import type { RefObject } from 'react'
+import type { DocExtractorNodeType } from './types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
-import type { DocExtractorNodeType } from './types'
 import { useTranslation } from 'react-i18next'
 import { InputVarType } from '@/app/components/workflow/types'
 
-const i18nPrefix = 'workflow.nodes.docExtractor'
+const i18nPrefix = 'nodes.docExtractor'
 
 type Params = {
-  id: string,
-  payload: DocExtractorNodeType,
+  id: string
+  payload: DocExtractorNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -34,7 +34,7 @@ const useSingleRunFormParams = ({
     return [
       {
         inputs: [{
-          label: t(`${i18nPrefix}.inputVar`)!,
+          label: t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })!,
           variable: 'files',
           type: InputVarType.multiFiles,
           required: true,
@@ -50,7 +50,7 @@ const useSingleRunFormParams = ({
   }
 
   const getDependentVar = (variable: string) => {
-    if(variable === 'files')
+    if (variable === 'files')
       return payload.variable_selector
   }
 

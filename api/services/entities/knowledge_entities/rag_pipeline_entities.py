@@ -2,6 +2,27 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
+from core.rag.entities import KeywordSetting, VectorSetting
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
+
+
+class RerankingModelConfig(BaseModel):
+    """
+    Reranking Model Config.
+    """
+
+    reranking_provider_name: str | None = ""
+    reranking_model_name: str | None = ""
+
+
+class WeightedScoreConfig(BaseModel):
+    """
+    Weighted score Config.
+    """
+
+    vector_setting: VectorSetting | None
+    keyword_setting: KeywordSetting | None
+
 
 class IconInfo(BaseModel):
     icon: str
@@ -21,61 +42,8 @@ class RagPipelineDatasetCreateEntity(BaseModel):
     description: str
     icon_info: IconInfo
     permission: str
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[dict[str, str]] | None = None
     yaml_content: str | None = None
-
-
-class RerankingModelConfig(BaseModel):
-    """
-    Reranking Model Config.
-    """
-
-    reranking_provider_name: str | None = ""
-    reranking_model_name: str | None = ""
-
-
-class VectorSetting(BaseModel):
-    """
-    Vector Setting.
-    """
-
-    vector_weight: float
-    embedding_provider_name: str
-    embedding_model_name: str
-
-
-class KeywordSetting(BaseModel):
-    """
-    Keyword Setting.
-    """
-
-    keyword_weight: float
-
-
-class WeightedScoreConfig(BaseModel):
-    """
-    Weighted score Config.
-    """
-
-    vector_setting: VectorSetting | None
-    keyword_setting: KeywordSetting | None
-
-
-class EmbeddingSetting(BaseModel):
-    """
-    Embedding Setting.
-    """
-
-    embedding_provider_name: str
-    embedding_model_name: str
-
-
-class EconomySetting(BaseModel):
-    """
-    Economy Setting.
-    """
-
-    keyword_number: int
 
 
 class RetrievalSetting(BaseModel):
@@ -83,7 +51,7 @@ class RetrievalSetting(BaseModel):
     Retrieval Setting.
     """
 
-    search_method: Literal["semantic_search", "full_text_search", "keyword_search", "hybrid_search"]
+    search_method: RetrievalMethod
     top_k: int
     score_threshold: float | None = 0.5
     score_threshold_enabled: bool = False
@@ -91,16 +59,6 @@ class RetrievalSetting(BaseModel):
     reranking_enable: bool | None = True
     reranking_model: RerankingModelConfig | None = None
     weights: WeightedScoreConfig | None = None
-
-
-class IndexMethod(BaseModel):
-    """
-    Knowledge Index Setting.
-    """
-
-    indexing_technique: Literal["high_quality", "economy"]
-    embedding_setting: EmbeddingSetting
-    economy_setting: EconomySetting
 
 
 class KnowledgeConfiguration(BaseModel):
@@ -114,17 +72,12 @@ class KnowledgeConfiguration(BaseModel):
     embedding_model: str = ""
     keyword_number: int | None = 10
     retrieval_model: RetrievalSetting
+    # add summary index setting
+    summary_index_setting: dict[str, object] | None = None
 
-    @field_validator("embedding_model_provider", mode="before")
+    @field_validator("embedding_model_provider", "embedding_model", mode="before")
     @classmethod
-    def validate_embedding_model_provider(cls, v):
-        if v is None:
-            return ""
-        return v
-
-    @field_validator("embedding_model", mode="before")
-    @classmethod
-    def validate_embedding_model(cls, v):
+    def validate_embedding_model_fields(cls, v: str | None) -> str:
         if v is None:
             return ""
         return v

@@ -1,12 +1,34 @@
-from flask_restx import Api, Namespace, fields
+from __future__ import annotations
 
-simple_end_user_fields = {
-    "id": fields.String,
-    "type": fields.String,
-    "is_anonymous": fields.Boolean,
-    "session_id": fields.String,
-}
+from datetime import datetime
+
+from pydantic import Field
+
+from fields.base import ResponseModel
 
 
-def build_simple_end_user_model(api_or_ns: Api | Namespace):
-    return api_or_ns.model("SimpleEndUser", simple_end_user_fields)
+class SimpleEndUser(ResponseModel):
+    id: str
+    type: str
+    is_anonymous: bool
+    session_id: str | None = None
+
+
+class EndUserDetail(ResponseModel):
+    """Full EndUser record for API responses.
+
+    Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login semantics
+    (always False). The database column is exposed as `_is_anonymous`, so this DTO maps
+    `is_anonymous` from `_is_anonymous` to return the stored value.
+    """
+
+    id: str
+    tenant_id: str
+    app_id: str | None = None
+    type: str
+    external_user_id: str | None = None
+    name: str | None = None
+    is_anonymous: bool = Field(validation_alias="_is_anonymous")
+    session_id: str
+    created_at: datetime
+    updated_at: datetime

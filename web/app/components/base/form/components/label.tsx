@@ -1,6 +1,6 @@
-import cn from '@/utils/classnames'
-import Tooltip from '../../tooltip'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '../../infotip'
 
 export type LabelProps = {
   htmlFor: string
@@ -22,24 +22,20 @@ const Label = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex h-6 items-center'>
+    <div className="flex h-6 items-center">
       <label
-        data-testid='label'
+        data-testid="label"
         htmlFor={htmlFor}
         className={cn('system-sm-medium text-text-secondary', className)}
       >
         {label}
       </label>
-      {!isRequired && showOptional && <div className='system-xs-regular ml-1 text-text-tertiary'>{t('common.label.optional')}</div>}
-      {isRequired && <div className='system-xs-regular ml-1 text-text-destructive-secondary'>*</div>}
+      {!isRequired && showOptional && <div className="ml-1 system-xs-regular text-text-tertiary">{t('label.optional', { ns: 'common' })}</div>}
+      {isRequired && <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>}
       {tooltip && (
-        <Tooltip
-          popupContent={
-            <div className='w-[200px]'>{tooltip}</div>
-          }
-          triggerClassName='ml-0.5 w-4 h-4'
-          triggerTestId={`${htmlFor}-tooltip`}
-        />
+        <Infotip aria-label={tooltip} className="ml-0.5 size-4" popupClassName="w-[200px]">
+          {tooltip}
+        </Infotip>
       )}
     </div>
   )

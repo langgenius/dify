@@ -1,0 +1,22 @@
+{
+  "app.changeLogoTip": "SVG or PNG format with a minimum size of 80x80px",
+  "app.title": "Customize app header brand",
+  "apply": "Apply",
+  "change": "Change",
+  "custom": "Customization",
+  "customize.contactUs": " contact us ",
+  "customize.prefix": "To customize the brand logo within the app, please",
+  "customize.suffix": "to upgrade to the Enterprise edition.",
+  "restore": "Restore Defaults",
+  "upgradeTip.des": "Upgrade your plan to customize your brand",
+  "upgradeTip.prefix": "Upgrade your plan to",
+  "upgradeTip.suffix": "customize your brand.",
+  "upgradeTip.title": "Upgrade your plan",
+  "upload": "Upload",
+  "uploadedFail": "Image upload failed, please re-upload.",
+  "uploading": "Uploading",
+  "webapp.changeLogo": "Change Powered by Brand Image",
+  "webapp.changeLogoTip": "SVG or PNG format with a minimum size of 40x40px",
+  "webapp.removeBrand": "Remove Powered by Dify",
+  "webapp.title": "Customize web app brand"
+}

@@ -1,5 +1,4 @@
 from flask import request
-from flask_restx import marshal_with
 
 import services
 from controllers.common.errors import (
@@ -9,11 +8,15 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
-from fields.file_fields import build_file_model
+from fields.file_fields import FileResponse
+from models.model import App, EndUser
 from services.file_service import FileService
+
+register_schema_models(web_ns, FileResponse)
 
 
 @web_ns.route("/files/upload")
@@ -28,8 +31,8 @@ class FileApi(WebApiResource):
             415: "Unsupported file type",
         }
     )
-    @marshal_with(build_file_model(web_ns))
-    def post(self, app_model, end_user):
+    @web_ns.response(201, "File uploaded successfully", web_ns.models[FileResponse.__name__])
+    def post(self, app_model: App, end_user: EndUser):
         """Upload a file for use in web applications.
 
         Accepts file uploads for use within web applications, supporting
@@ -71,7 +74,7 @@ class FileApi(WebApiResource):
         try:
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
-                content=file.read(),
+                content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=end_user,
                 source="datasets" if source == "datasets" else None,
@@ -81,4 +84,5 @@ class FileApi(WebApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return upload_file, 201
+        response = FileResponse.model_validate(upload_file, from_attributes=True)
+        return response.model_dump(mode="json"), 201

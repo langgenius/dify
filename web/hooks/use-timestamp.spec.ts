@@ -1,8 +1,9 @@
 import { renderHook } from '@testing-library/react'
+import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import useTimestamp from './use-timestamp'
 
-jest.mock('@/context/app-context', () => ({
-  useAppContext: jest.fn(() => ({
+vi.mock('@/context/app-context', () => ({
+  useAppContext: vi.fn(() => ({
     userProfile: {
       id: '8b18e24b-1ac8-4262-aa5c-e9aa95c76846',
       name: 'test',
@@ -23,7 +24,7 @@ jest.mock('@/context/app-context', () => ({
 describe('useTimestamp', () => {
   describe('formatTime', () => {
     it('should format unix timestamp correctly', () => {
-      const { result } = renderHook(() => useTimestamp())
+      const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
       const timestamp = 1704132000
 
       expect(result.current.formatTime(timestamp, 'YYYY-MM-DD HH:mm:ss'))
@@ -31,7 +32,7 @@ describe('useTimestamp', () => {
     })
 
     it('should format with different patterns', () => {
-      const { result } = renderHook(() => useTimestamp())
+      const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
       const timestamp = 1704132000
 
       expect(result.current.formatTime(timestamp, 'MM/DD/YYYY'))
@@ -44,7 +45,7 @@ describe('useTimestamp', () => {
 
   describe('formatDate', () => {
     it('should format date string correctly', () => {
-      const { result } = renderHook(() => useTimestamp())
+      const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
       const dateString = '2024-01-01T12:00:00Z'
 
       expect(result.current.formatDate(dateString, 'YYYY-MM-DD HH:mm:ss'))
@@ -52,7 +53,7 @@ describe('useTimestamp', () => {
     })
 
     it('should format with different patterns', () => {
-      const { result } = renderHook(() => useTimestamp())
+      const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
       const dateString = '2024-01-01T12:00:00Z'
 
       expect(result.current.formatDate(dateString, 'MM/DD/YYYY'))

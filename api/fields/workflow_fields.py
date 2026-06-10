@@ -1,8 +1,10 @@
+from typing import override
+
 from flask_restx import fields
 
 from core.helper import encrypter
-from core.variables import SecretVariable, SegmentType, Variable
 from fields.member_fields import simple_account_fields
+from graphon.variables import SecretVariable, SegmentType, VariableBase
 from libs.helper import TimestampField
 
 from ._value_type_serializer import serialize_value_type
@@ -11,6 +13,7 @@ ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, 
 
 
 class EnvironmentVariableField(fields.Raw):
+    @override
     def format(self, value):
         # Mask secret variables values in environment_variables
         if isinstance(value, SecretVariable):
@@ -21,12 +24,12 @@ class EnvironmentVariableField(fields.Raw):
                 "value_type": value.value_type.value,
                 "description": value.description,
             }
-        if isinstance(value, Variable):
+        if isinstance(value, VariableBase):
             return {
                 "id": value.id,
                 "name": value.name,
                 "value": value.value,
-                "value_type": value.value_type.exposed_type().value,
+                "value_type": str(value.value_type.exposed_type()),
                 "description": value.description,
             }
         if isinstance(value, dict):

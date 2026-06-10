@@ -11,6 +11,7 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.enums import AppStatus
 from models.model import AppMode
 from services.app_model_config_service import AppModelConfigService
 
@@ -23,26 +24,25 @@ class TestModelConfigResourcePermissions:
         """Create a mock App model for testing."""
         app = App()
         app.id = str(uuid.uuid4())
-        app.mode = AppMode.CHAT.value
+        app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
+        app.status = AppStatus.NORMAL
         app.app_model_config_id = str(uuid.uuid4())
         return app
 
     @pytest.fixture
     def mock_account(self, monkeypatch: pytest.MonkeyPatch):
         """Create a mock Account for testing."""
-        account = Account()
+
+        account = Account(name="Test User", email="test@example.com")
         account.id = str(uuid.uuid4())
-        account.name = "Test User"
-        account.email = "test@example.com"
         account.last_active_at = naive_utc_now()
         account.created_at = naive_utc_now()
         account.updated_at = naive_utc_now()
 
-        tenant = Tenant()
+        # Create mock tenant
+        tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid.uuid4())
-        tenant.name = "Test Tenant"
 
         mock_session_instance = mock.Mock()
 
@@ -74,7 +74,7 @@ class TestModelConfigResourcePermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
@@ -86,7 +86,7 @@ class TestModelConfigResourcePermissions:
 
         # Mock app loading
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
 
         # Mock current user
         monkeypatch.setattr(model_config_api, "current_user", mock_account)

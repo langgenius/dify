@@ -1,4 +1,5 @@
 import type { FlowType } from '@/types/common'
+import { curry } from 'es-toolkit/compat'
 import {
   useDeleteAllInspectorVars as useDeleteAllInspectorVarsInner,
   useDeleteInspectVar as useDeleteInspectVarInner,
@@ -9,7 +10,6 @@ import {
   useResetConversationVar as useResetConversationVarInner,
   useResetToLastRunValue as useResetToLastRunValueInner,
 } from './use-workflow'
-import { curry } from 'lodash-es'
 
 type Params = {
   flowType: FlowType

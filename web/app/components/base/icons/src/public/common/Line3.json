@@ -1,28 +1,28 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "5",
-			"height": "12",
-			"viewBox": "0 0 5 12",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"id": "Line 3",
-					"d": "M1 11.3545L3.94174 0.645781",
-					"stroke": "#D0D5DD",
-					"stroke-linecap": "round"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "Line3"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "5",
+      "height": "12",
+      "viewBox": "0 0 5 12",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "id": "Line 3",
+          "d": "M1 11.3545L3.94174 0.645781",
+          "stroke": "#D0D5DD",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "Line3"
 }

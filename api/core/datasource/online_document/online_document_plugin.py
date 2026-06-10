@@ -1,5 +1,5 @@
-from collections.abc import Generator, Mapping
-from typing import Any
+from collections.abc import Generator
+from typing import Any, override
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
@@ -34,7 +34,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
     def get_online_document_pages(
         self,
         user_id: str,
-        datasource_parameters: Mapping[str, Any],
+        datasource_parameters: dict[str, Any],
         provider_type: str,
     ) -> Generator[OnlineDocumentPagesMessage, None, None]:
         manager = PluginDatasourceManager()
@@ -67,5 +67,6 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
             provider_type=provider_type,
         )
 
+    @override
     def datasource_provider_type(self) -> str:
         return DatasourceProviderType.ONLINE_DOCUMENT

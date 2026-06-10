@@ -1,15 +1,15 @@
+import type {
+  BlockEnum,
+  OnSelectBlock,
+} from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
-import { useNodesInteractions } from '../../hooks'
-import type {
-  BlockEnum,
-  OnSelectBlock,
-} from '../../types'
 import BlockSelector from '../../block-selector'
+import { useNodesInteractions } from '../../hooks'
 
 type InsertBlockProps = {
   startNodeId: string
@@ -25,11 +25,11 @@ const InsertBlock = ({
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
-  const handleInsert = useCallback<OnSelectBlock>((nodeType, toolDefaultValue) => {
+  const handleInsert = useCallback<OnSelectBlock>((nodeType, pluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         nextNodeId: startNodeId,
@@ -42,15 +42,18 @@ const InsertBlock = ({
     <div
       className={cn(
         'nopan nodrag',
-        'absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 group-hover/insert:block',
-        open && '!block',
+        'absolute top-1/2 left-1/2 hidden -translate-1/2 group-hover/insert:block',
+        open && 'block!',
       )}
     >
       <BlockSelector
         open={open}
         onOpenChange={handleOpenChange}
-        asChild
         onSelect={handleInsert}
+        snippetInsertPayload={{
+          nextNodeId: startNodeId,
+          nextNodeTargetHandle: 'target',
+        }}
         availableBlocksTypes={availableBlocksTypes}
         triggerClassName={() => 'hover:scale-125 transition-all'}
       />

@@ -1,24 +1,24 @@
-import {
-  useCallback,
-} from 'react'
+import type { FileEntity } from '../types'
+import type { FileUpload } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiLink,
   RiUploadCloud2Line,
 } from '@remixicon/react'
+import {
+  useCallback,
+} from 'react'
 import { useTranslation } from 'react-i18next'
+import { TransferMethod } from '@/types/app'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
+import FileInput from '../file-input'
+import { useFile } from '../hooks'
 import {
   FileContextProvider,
   useStore,
 } from '../store'
-import type { FileEntity } from '../types'
-import FileInput from '../file-input'
-import { useFile } from '../hooks'
 import FileItem from './file-item'
-import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { TransferMethod } from '@/types/app'
 
 type Option = {
   value: string
@@ -42,26 +42,25 @@ const FileUploaderInAttachment = ({
   const options = [
     {
       value: TransferMethod.local_file,
-      label: t('common.fileUploader.uploadFromComputer'),
-      icon: <RiUploadCloud2Line className='h-4 w-4' />,
+      label: t('fileUploader.uploadFromComputer', { ns: 'common' }),
+      icon: <RiUploadCloud2Line className="size-4" />,
     },
     {
       value: TransferMethod.remote_url,
-      label: t('common.fileUploader.pasteFileLink'),
-      icon: <RiLink className='h-4 w-4' />,
+      label: t('fileUploader.pasteFileLink', { ns: 'common' }),
+      icon: <RiLink className="size-4" />,
     },
   ]
 
   const renderButton = useCallback((option: Option, open?: boolean) => {
     return (
       <Button
-        key={option.value}
-        variant='tertiary'
-        className={cn('relative grow', open && 'bg-components-button-tertiary-bg-hover')}
+        variant="tertiary"
+        className={cn('relative w-full min-w-0', open && 'bg-components-button-tertiary-bg-hover')}
         disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
       >
-        {option.icon}
-        <span className='ml-1'>{option.label}</span>
+        <span className="shrink-0">{option.icon}</span>
+        <span className="ml-1 min-w-0 truncate">{option.label}</span>
         {
           option.value === TransferMethod.local_file && (
             <FileInput fileConfig={fileConfig} />
@@ -74,17 +73,23 @@ const FileUploaderInAttachment = ({
     return (open: boolean) => renderButton(option, open)
   }, [renderButton])
   const renderOption = useCallback((option: Option) => {
-    if (option.value === TransferMethod.local_file && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file))
-      return renderButton(option)
+    if (option.value === TransferMethod.local_file && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file)) {
+      return (
+        <div key={option.value} className="min-w-0 flex-1">
+          {renderButton(option)}
+        </div>
+      )
+    }
 
     if (option.value === TransferMethod.remote_url && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)) {
       return (
-        <FileFromLinkOrLocal
-          key={option.value}
-          showFromLocal={false}
-          trigger={renderTrigger(option)}
-          fileConfig={fileConfig}
-        />
+        <div key={option.value} className="min-w-0 flex-1">
+          <FileFromLinkOrLocal
+            showFromLocal={false}
+            trigger={renderTrigger(option)}
+            fileConfig={fileConfig}
+          />
+        </div>
       )
     }
   }, [renderButton, renderTrigger, fileConfig])
@@ -92,11 +97,11 @@ const FileUploaderInAttachment = ({
   return (
     <div>
       {!isDisabled && (
-        <div className='flex items-center space-x-1'>
+        <div className="flex items-center gap-1">
           {options.map(renderOption)}
         </div>
       )}
-      <div className='mt-1 space-y-1'>
+      <div className="mt-1 space-y-1">
         {
           files.map(file => (
             <FileItem

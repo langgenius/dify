@@ -1,38 +1,39 @@
-import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
-import { produce } from 'immer'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
-import { generateNewNode } from '@/app/components/workflow/utils'
+import { produce } from 'immer'
+import { useCallback } from 'react'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { generateNewNode } from '@/app/components/workflow/utils'
 
 export const useReplaceDataSourceNode = (id: string) => {
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const handleReplaceNode = useCallback<OnSelectBlock>((
     type,
-    toolDefaultValue,
+    pluginDefaultValue,
   ) => {
     const {
-      getNodes,
+      nodes,
       setNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    } = collaborativeWorkflow.getState()
     const emptyNodeIndex = nodes.findIndex(node => node.id === id)
 
-    if (emptyNodeIndex < 0) return
-    const {
-      defaultValue,
-    } = nodesMetaDataMap![type]
+    if (emptyNodeIndex < 0)
+      return
+    const nodeMetaData = nodesMetaDataMap?.[type]
+    if (!nodeMetaData)
+      return
+    const { defaultValue } = nodeMetaData
     const emptyNode = nodes[emptyNodeIndex]
     const { newNode } = generateNewNode({
       data: {
         ...(defaultValue as any),
-        ...toolDefaultValue,
+        ...pluginDefaultValue,
       },
       position: {
-        x: emptyNode.position.x,
-        y: emptyNode.position.y,
+        x: emptyNode!.position.x,
+        y: emptyNode!.position.y,
       },
     })
     const newNodes = produce(nodes, (draft) => {
@@ -42,7 +43,7 @@ export const useReplaceDataSourceNode = (id: string) => {
       return draft.filter(node => !node.data._isTempNode)
     })
     setNodes(newNodesWithoutTempNodes)
-  }, [])
+  }, [collaborativeWorkflow, id, nodesMetaDataMap])
 
   return {
     handleReplaceNode,

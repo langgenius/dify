@@ -1,25 +1,82 @@
-from flask_restx import Resource, reqparse
+import logging
+
+from flask import make_response, request
+from flask_restx import Resource
 from jwt import InvalidTokenError
+from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import Unauthorized
 
 import services
+from configs import dify_config
+from controllers.common.fields import (
+    AccessTokenResultResponse,
+    LoginStatusResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+)
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
     InvalidEmailError,
 )
 from controllers.console.error import AccountBannedError
-from controllers.console.wraps import only_edition_enterprise, setup_required
+from controllers.console.wraps import (
+    decrypt_code_field,
+    decrypt_password_field,
+    only_edition_enterprise,
+    setup_required,
+)
 from controllers.web import web_ns
-from libs.helper import email
+from controllers.web.wraps import decode_jwt_token
+from libs.helper import EmailStr, extract_remote_ip
+from libs.passport import PassportService
 from libs.password import valid_password
+from libs.token import (
+    clear_webapp_access_token_from_cookie,
+    extract_webapp_access_token,
+)
 from services.account_service import AccountService
+from services.app_service import AppService
+from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
 from services.webapp_auth_service import WebAppAuthService
+
+logger = logging.getLogger(__name__)
+
+
+class LoginPayload(LoginPayloadBase):
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return valid_password(value)
+
+
+class EmailCodeLoginSendPayload(BaseModel):
+    email: EmailStr
+    language: str | None = None
+
+
+class EmailCodeLoginVerifyPayload(BaseModel):
+    email: EmailStr
+    code: str
+    token: str = Field(min_length=1)
+
+
+register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload)
+register_response_schema_models(
+    web_ns,
+    AccessTokenResultResponse,
+    LoginStatusResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+)
 
 
 @web_ns.route("/login")
 class LoginApi(Resource):
     """Resource for web app email/password login."""
 
+    @web_ns.expect(web_ns.models[LoginPayload.__name__])
     @setup_required
     @only_edition_enterprise
     @web_ns.doc("web_app_login")
@@ -33,34 +90,98 @@ class LoginApi(Resource):
             404: "Account not found",
         }
     )
+    @web_ns.response(200, "Authentication successful", web_ns.models[AccessTokenResultResponse.__name__])
+    @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("password", type=valid_password, required=True, location="json")
-        args = parser.parse_args()
+        payload = LoginPayload.model_validate(web_ns.payload or {})
+        normalized_email = payload.email.lower()
 
         try:
-            account = WebAppAuthService.authenticate(args["email"], args["password"])
+            account = WebAppAuthService.authenticate(payload.email, payload.password)
         except services.errors.account.AccountLoginError:
+            _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
+            _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError()
         except services.errors.account.AccountNotFoundError:
+            _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_NOT_FOUND)
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        return {"result": "success", "data": {"access_token": token}}
+        response = make_response({"result": "success", "data": {"access_token": token}})
+        # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
+        return response
 
 
-# class LogoutApi(Resource):
-#     @setup_required
-#     def get(self):
-#         account = cast(Account, flask_login.current_user)
-#         if isinstance(account, flask_login.AnonymousUserMixin):
-#             return {"result": "success"}
-#         flask_login.logout_user()
-#         return {"result": "success"}
+# this api helps frontend to check whether user is authenticated
+# TODO: remove in the future. frontend should redirect to login page by catching 401 status
+@web_ns.route("/login/status")
+class LoginStatusApi(Resource):
+    @setup_required
+    @web_ns.doc("web_app_login_status")
+    @web_ns.doc(description="Check login status")
+    @web_ns.doc(
+        responses={
+            200: "Login status",
+            401: "Login status",
+        }
+    )
+    @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
+    def get(self):
+        app_code = request.args.get("app_code")
+        user_id = request.args.get("user_id")
+        token = extract_webapp_access_token(request)
+        if not app_code:
+            return {
+                "logged_in": bool(token),
+                "app_logged_in": False,
+            }
+        app_id = AppService.get_app_id_by_code(app_code)
+        is_public = not dify_config.ENTERPRISE_ENABLED or not WebAppAuthService.is_app_require_permission_check(
+            app_id=app_id
+        )
+        user_logged_in = False
+
+        if is_public:
+            user_logged_in = True
+        else:
+            try:
+                PassportService().verify(token=token)
+                user_logged_in = True
+            except Exception:
+                user_logged_in = False
+
+        try:
+            _ = decode_jwt_token(app_code=app_code, user_id=user_id)
+            app_logged_in = True
+        except Exception:
+            app_logged_in = False
+
+        return {
+            "logged_in": user_logged_in,
+            "app_logged_in": app_logged_in,
+        }
+
+
+@web_ns.route("/logout")
+class LogoutApi(Resource):
+    @setup_required
+    @web_ns.doc("web_app_logout")
+    @web_ns.doc(description="Logout user from web application")
+    @web_ns.doc(
+        responses={
+            200: "Logout successful",
+        }
+    )
+    @web_ns.response(200, "Logout successful", web_ns.models[SimpleResultResponse.__name__])
+    def post(self):
+        response = make_response({"result": "success"})
+        # enterprise SSO sets same site to None in https deployment
+        # so we need to logout by calling api
+        clear_webapp_access_token_from_cookie(response, samesite="None")
+        return response
 
 
 @web_ns.route("/email-code-login")
@@ -69,6 +190,7 @@ class EmailCodeLoginSendEmailApi(Resource):
     @only_edition_enterprise
     @web_ns.doc("send_email_code_login")
     @web_ns.doc(description="Send email verification code for login")
+    @web_ns.expect(web_ns.models[EmailCodeLoginSendPayload.__name__])
     @web_ns.doc(
         responses={
             200: "Email code sent successfully",
@@ -76,23 +198,20 @@ class EmailCodeLoginSendEmailApi(Resource):
             404: "Account not found",
         }
     )
+    @web_ns.response(200, "Email code sent successfully", web_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
-        args = parser.parse_args()
+        payload = EmailCodeLoginSendPayload.model_validate(web_ns.payload or {})
 
-        if args["language"] is not None and args["language"] == "zh-Hans":
+        if payload.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
 
-        account = WebAppAuthService.get_user_through_email(args["email"])
+        account = WebAppAuthService.get_user_through_email(payload.email)
         if account is None:
             raise AuthenticationFailedError()
         else:
             token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
-
         return {"result": "success", "data": token}
 
 
@@ -102,6 +221,7 @@ class EmailCodeLoginApi(Resource):
     @only_edition_enterprise
     @web_ns.doc("verify_email_code_login")
     @web_ns.doc(description="Verify email code and complete login")
+    @web_ns.expect(web_ns.models[EmailCodeLoginVerifyPayload.__name__])
     @web_ns.doc(
         responses={
             200: "Email code verified and login successful",
@@ -110,30 +230,56 @@ class EmailCodeLoginApi(Resource):
             404: "Account not found",
         }
     )
+    @web_ns.response(
+        200,
+        "Email code verified and login successful",
+        web_ns.models[AccessTokenResultResponse.__name__],
+    )
+    @decrypt_code_field
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, location="json")
-        args = parser.parse_args()
+        payload = EmailCodeLoginVerifyPayload.model_validate(web_ns.payload or {})
 
-        user_email = args["email"]
+        user_email = payload.email.lower()
 
-        token_data = WebAppAuthService.get_email_code_login_data(args["token"])
+        token_data = WebAppAuthService.get_email_code_login_data(payload.token)
         if token_data is None:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
             raise InvalidTokenError()
 
-        if token_data["email"] != args["email"]:
+        token_email = token_data.get("email")
+        if not isinstance(token_email, str):
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
+            raise InvalidEmailError()
+        normalized_token_email = token_email.lower()
+        if normalized_token_email != user_email:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
             raise InvalidEmailError()
 
-        if token_data["code"] != args["code"]:
+        if token_data["code"] != payload.code:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
             raise EmailCodeError()
 
-        WebAppAuthService.revoke_email_code_login_token(args["token"])
-        account = WebAppAuthService.get_user_through_email(user_email)
+        WebAppAuthService.revoke_email_code_login_token(payload.token)
+        try:
+            account = WebAppAuthService.get_user_through_email(token_email)
+        except Unauthorized as exc:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
+            raise AccountBannedError() from exc
         if not account:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_NOT_FOUND)
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": {"access_token": token}}
+        AccountService.reset_login_error_rate_limit(user_email)
+        response = make_response({"result": "success", "data": {"access_token": token}})
+        # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
+        return response
+
+
+def _log_web_login_failure(*, email: str, reason: LoginFailureReason) -> None:
+    logger.warning(
+        "Web login failed: email=%s reason=%s ip_address=%s",
+        email,
+        reason,
+        extract_remote_ip(request),
+    )

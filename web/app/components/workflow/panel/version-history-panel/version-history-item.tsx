@@ -1,17 +1,19 @@
-import React, { useEffect, useState } from 'react'
-import dayjs from 'dayjs'
-import { useTranslation } from 'react-i18next'
-import ContextMenu from './context-menu'
-import cn from '@/utils/classnames'
+import type { VersionHistoryContextMenuOptions } from '../../types'
 import type { VersionHistory } from '@/types/workflow'
-import { type VersionHistoryContextMenuOptions, WorkflowVersion } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import dayjs from 'dayjs'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { WorkflowVersion } from '../../types'
+import ActionMenu from './action-menu'
 
 type VersionHistoryItemProps = {
   item: VersionHistory
   currentVersion: VersionHistory | null
   latestVersionId: string
   onClick: (item: VersionHistory) => void
-  handleClickMenuItem: (operation: VersionHistoryContextMenuOptions) => void
+  handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   isLast: boolean
 }
 
@@ -39,7 +41,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   currentVersion,
   latestVersionId,
   onClick,
-  handleClickMenuItem,
+  handleClickActionMenuItem,
   isLast,
 }) => {
   const { t } = useTranslation()
@@ -80,52 +82,55 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         setOpen(true)
       }}
     >
-      {!isLast && <div className='absolute left-4 top-6 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle' />}
-      <div className=' flex h-5 w-[18px] shrink-0 items-center justify-center'>
+      {!isLast && <div className="absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />}
+      <div className="flex h-5 w-[18px] shrink-0 items-center justify-center">
         <div className={cn(
-          'h-2 w-2 rounded-lg border-[2px]',
+          'size-2 rounded-lg border-2',
           isSelected ? 'border-text-accent' : 'border-text-quaternary',
-        )}/>
+        )}
+        />
       </div>
-      <div className='flex grow flex-col gap-y-0.5 overflow-hidden'>
-        <div className='mr-6 flex h-5 items-center gap-x-1'>
+      <div className="flex grow flex-col gap-y-0.5 overflow-hidden">
+        <div className="mr-6 flex h-5 items-center gap-x-1">
           <div className={cn(
-            'system-sm-semibold truncate py-[1px]',
+            'truncate py-px system-sm-semibold',
             isSelected ? 'text-text-accent' : 'text-text-secondary',
-          )}>
-            {isDraft ? t('workflow.versionHistory.currentDraft') : item.marked_name || t('workflow.versionHistory.defaultName')}
+          )}
+          >
+            {isDraft ? t('versionHistory.currentDraft', { ns: 'workflow' }) : item.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}
           </div>
           {isLatest && (
-            <div className='system-2xs-medium-uppercase flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary
-            bg-components-badge-bg-dimm px-[5px] text-text-accent-secondary'>
-              {t('workflow.versionHistory.latest')}
+            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm
+            px-[5px] system-2xs-medium-uppercase text-text-accent-secondary"
+            >
+              {t('versionHistory.latest', { ns: 'workflow' })}
             </div>
           )}
         </div>
         {
           !isDraft && (
-            <div className='system-xs-regular break-words text-text-secondary'>
+            <div className="system-xs-regular wrap-break-word text-text-secondary">
               {item.marked_comment || ''}
             </div>
           )
         }
         {
           !isDraft && (
-            <div className='system-xs-regular truncate text-text-tertiary'>
+            <div className="truncate system-xs-regular text-text-tertiary">
               {`${formatTime(item.created_at)} · ${item.created_by.name}`}
             </div>
           )
         }
       </div>
-      {/* Context Menu */}
+      {/* Action Menu */}
       {!isDraft && isHovering && (
-        <div className='absolute right-1 top-1'>
-          <ContextMenu
+        <div className="absolute top-1 right-1">
+          <ActionMenu
             isShowDelete={!isLatest}
             isNamedVersion={!!item.marked_name}
             open={open}
             setOpen={setOpen}
-            handleClickMenuItem={handleClickMenuItem}
+            handleClickActionMenuItem={handleClickActionMenuItem}
           />
         </div>
       )}

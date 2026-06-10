@@ -17,12 +17,17 @@ class WeaviateConfig(BaseSettings):
         default=None,
     )
 
-    WEAVIATE_GRPC_ENABLED: bool = Field(
-        description="Whether to enable gRPC for Weaviate connection (True for gRPC, False for HTTP)",
-        default=True,
+    WEAVIATE_GRPC_ENDPOINT: str | None = Field(
+        description="URL of the Weaviate gRPC server (e.g., 'grpc://localhost:50051' or 'grpcs://weaviate.example.com:443')",
+        default=None,
     )
 
     WEAVIATE_BATCH_SIZE: PositiveInt = Field(
         description="Number of objects to be processed in a single batch operation (default is 100)",
         default=100,
+    )
+
+    WEAVIATE_TOKENIZATION: str | None = Field(
+        description="Tokenization for Weaviate (default is word)",
+        default="word",
     )

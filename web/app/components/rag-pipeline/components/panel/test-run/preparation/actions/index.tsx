@@ -1,5 +1,5 @@
-import React from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@langgenius/dify-ui/button'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type ActionsProps = {
@@ -14,9 +14,9 @@ const Actions = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex justify-end p-4 pt-2'>
-      <Button disabled={disabled} variant='primary' onClick={handleNextStep}>
-        <span className='px-0.5'>{t('datasetCreation.stepOne.button')}</span>
+    <div className="flex justify-end p-4 pt-2">
+      <Button disabled={disabled} variant="primary" onClick={handleNextStep}>
+        <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
       </Button>
     </div>
   )

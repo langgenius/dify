@@ -1,111 +1,92 @@
-import React, { useCallback, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
-import cn from '@/utils/classnames'
-import { useKeyPress } from 'ahooks'
-import { useSegmentListContext } from '..'
+import type { ComponentProps, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 
-type DrawerProps = {
+type DrawerSide = 'right' | 'left' | 'bottom' | 'top'
+type DrawerSwipeDirection = 'right' | 'left' | 'down' | 'up'
+type DrawerOpenChange = NonNullable<ComponentProps<typeof Drawer>['onOpenChange']>
+
+type CompletedDrawerProps = {
   open: boolean
   onClose: () => void
-  side?: 'right' | 'left' | 'bottom' | 'top'
-  showOverlay?: boolean
-  modal?: boolean // click outside event can pass through if modal is false
-  closeOnOutsideClick?: boolean
+  side?: DrawerSide
   panelClassName?: string
   panelContentClassName?: string
-  needCheckChunks?: boolean
+  modal?: boolean
+  children: ReactNode
 }
 
-const Drawer = ({
+const SIDE_TO_SWIPE_DIRECTION: Record<DrawerSide, DrawerSwipeDirection> = {
+  right: 'right',
+  left: 'left',
+  bottom: 'down',
+  top: 'up',
+}
+
+const DRAWER_POPUP_CLASS_NAME = [
+  'pointer-events-auto overflow-visible border-0 bg-transparent shadow-none',
+  'data-[swipe-direction=right]:h-screen data-[swipe-direction=right]:max-w-none data-[swipe-direction=right]:rounded-none data-[swipe-direction=right]:border-0',
+  'data-[swipe-direction=left]:h-screen data-[swipe-direction=left]:max-w-none data-[swipe-direction=left]:rounded-none data-[swipe-direction=left]:border-0',
+  'data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:rounded-none data-[swipe-direction=down]:border-0',
+  'data-[swipe-direction=up]:max-h-none data-[swipe-direction=up]:rounded-none data-[swipe-direction=up]:border-0',
+].join(' ')
+
+export function CompletedDrawer({
   open,
   onClose,
   side = 'right',
-  showOverlay = true,
-  modal = false,
-  needCheckChunks = false,
   children,
   panelClassName,
   panelContentClassName,
-}: React.PropsWithChildren<DrawerProps>) => {
-  const panelContentRef = useRef<HTMLDivElement>(null)
-  const currSegment = useSegmentListContext(s => s.currSegment)
-  const currChildChunk = useSegmentListContext(s => s.currChildChunk)
+  modal = false,
+}: CompletedDrawerProps) {
+  const handleOpenChange: DrawerOpenChange = (nextOpen, eventDetails) => {
+    if (nextOpen)
+      return
 
-  useKeyPress('esc', (e) => {
-    if (!open) return
-    e.preventDefault()
+    if (eventDetails.reason === 'focus-out' || eventDetails.reason === 'outside-press')
+      return
+
     onClose()
-  }, { exactMatch: true, useCapture: true })
+  }
 
-  const shouldCloseDrawer = useCallback((target: Node | null) => {
-    const panelContent = panelContentRef.current
-    if (!panelContent) return false
-    const chunks = document.querySelectorAll('.chunk-card')
-    const childChunks = document.querySelectorAll('.child-chunk')
-    const isClickOnChunk = Array.from(chunks).some((chunk) => {
-      return chunk && chunk.contains(target)
-    })
-    const isClickOnChildChunk = Array.from(childChunks).some((chunk) => {
-      return chunk && chunk.contains(target)
-    })
-    const reopenChunkDetail = (currSegment.showModal && isClickOnChildChunk)
-      || (currChildChunk.showModal && isClickOnChunk && !isClickOnChildChunk) || (!isClickOnChunk && !isClickOnChildChunk)
-    return target && !panelContent.contains(target) && (!needCheckChunks || reopenChunkDetail)
-  }, [currSegment, currChildChunk, needCheckChunks])
+  if (!open)
+    return null
 
-  const onDownCapture = useCallback((e: PointerEvent) => {
-    if (!open || modal) return
-    const panelContent = panelContentRef.current
-    if (!panelContent) return
-    const target = e.target as Node | null
-    if (shouldCloseDrawer(target))
-      queueMicrotask(onClose)
-  }, [shouldCloseDrawer, onClose, open, modal])
-
-  useEffect(() => {
-    window.addEventListener('pointerdown', onDownCapture, { capture: true })
-    return () =>
-      window.removeEventListener('pointerdown', onDownCapture, { capture: true })
-  }, [onDownCapture])
-
-  const isHorizontal = side === 'left' || side === 'right'
-
-  const content = (
-    <div className='pointer-events-none fixed inset-0 z-[9999]'>
-      {showOverlay ? (
-        <div
-          onClick={modal ? onClose : undefined}
-          aria-hidden='true'
-          className={cn(
-            'fixed inset-0 bg-black/30 opacity-0 transition-opacity duration-200 ease-in',
-            open && 'opacity-100',
-            modal && open ? 'pointer-events-auto' : 'pointer-events-none',
-          )}
-        />
-      ) : null}
-
-      {/* Drawer panel */}
-      <div
-        role='dialog'
-        aria-modal={modal ? 'true' : 'false'}
-        className={cn(
-          'pointer-events-auto fixed flex flex-col',
-          side === 'right' && 'right-0',
-          side === 'left' && 'left-0',
-          side === 'bottom' && 'bottom-0',
-          side === 'top' && 'top-0',
-          isHorizontal ? 'h-screen' : 'w-screen',
-          panelClassName,
+  return (
+    <Drawer
+      open={open}
+      modal={modal}
+      swipeDirection={SIDE_TO_SWIPE_DIRECTION[side]}
+      disablePointerDismissal
+      onOpenChange={handleOpenChange}
+    >
+      <DrawerPortal>
+        {modal && (
+          <DrawerBackdrop
+            onClick={onClose}
+          />
         )}
-      >
-        <div ref={panelContentRef} className={cn('flex grow flex-col', panelContentClassName)}>
-          {children}
-        </div>
-      </div>
-    </div>
+        <DrawerViewport className="pointer-events-none">
+          <DrawerPopup
+            aria-modal={modal ? 'true' : 'false'}
+            className={cn(DRAWER_POPUP_CLASS_NAME, panelClassName)}
+          >
+            <DrawerContent
+              className={cn('flex grow flex-col overflow-visible p-0 pb-0', panelContentClassName)}
+            >
+              {children}
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
+    </Drawer>
   )
-
-  return open && createPortal(content, document.body)
 }
-
-export default Drawer

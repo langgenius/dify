@@ -1,17 +1,18 @@
-import React, { useMemo } from 'react'
-import useSWR from 'swr'
-import { useTranslation } from 'react-i18next'
-import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
-import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
-import Loading from '@/app/components/base/loading'
 import type {
   FormValue,
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
-import { fetchModelParameterRules } from '@/service/common'
-import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
+import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
+import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
+import { getSupportedPresetConfig } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter-utils'
+import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
+import { useModelParameterRules } from '@/service/use-common'
 
 type Props = {
   isAdvancedMode: boolean
@@ -29,24 +30,21 @@ const LLMParamsPanel = ({
   onCompletionParamsChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { data: parameterRulesData, isLoading } = useSWR(
-    (provider && modelId)
-      ? `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
-      : null, fetchModelParameterRules,
-  )
+  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
+  const isRulesLoading = !!provider && !!modelId && isLoading
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
   }, [parameterRulesData])
+  const supportedPresetParameterNames = useMemo(() => {
+    return parameterRules.map(parameterRule => parameterRule.name)
+  }, [parameterRules])
 
   const handleSelectPresetParameter = (toneId: number) => {
-    const tone = TONE_LIST.find(tone => tone.id === toneId)
-    if (tone) {
-      onCompletionParamsChange({
-        ...completionParams,
-        ...tone.config,
-      })
-    }
+    onCompletionParamsChange({
+      ...completionParams,
+      ...getSupportedPresetConfig(toneId, supportedPresetParameterNames),
+    })
   }
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -69,19 +67,22 @@ const LLMParamsPanel = ({
     }
   }
 
-  if (isLoading) {
+  if (isRulesLoading) {
     return (
-      <div className='mt-5'><Loading /></div>
+      <div className="mt-5"><Loading /></div>
     )
   }
 
   return (
     <>
-      <div className='mb-2 flex items-center justify-between'>
-        <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('common.modelProvider.parameters')}</div>
+      <div className="mb-2 flex items-center justify-between">
+        <div className={cn('flex h-6 items-center system-sm-semibold text-text-secondary')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
         {
           PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-            <PresetsParameter onSelect={handleSelectPresetParameter} />
+            <PresetsParameter
+              onSelect={handleSelectPresetParameter}
+              supportedParameterNames={supportedPresetParameterNames}
+            />
           )
         }
       </div>

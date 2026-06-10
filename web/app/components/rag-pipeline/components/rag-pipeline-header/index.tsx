@@ -1,11 +1,9 @@
+import type { HeaderProps } from '@/app/components/workflow/header'
 import {
   memo,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { HeaderProps } from '@/app/components/workflow/header'
 import Header from '@/app/components/workflow/header'
-import { fetchWorkflowRunHistory } from '@/service/workflow'
 import {
   useStore,
 } from '@/app/components/workflow/store'
@@ -14,14 +12,11 @@ import Publisher from './publisher'
 import RunMode from './run-mode'
 
 const RagPipelineHeader = () => {
-  const { t } = useTranslation()
   const pipelineId = useStore(s => s.pipelineId)
-  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
 
   const viewHistoryProps = useMemo(() => {
     return {
       historyUrl: `/rag/pipelines/${pipelineId}/workflow-runs`,
-      historyFetcher: fetchWorkflowRunHistory,
     }
   }, [pipelineId])
 
@@ -44,7 +39,7 @@ const RagPipelineHeader = () => {
         viewHistoryProps,
       },
     }
-  }, [viewHistoryProps, showDebugAndPreviewPanel, t])
+  }, [viewHistoryProps])
 
   return (
     <Header {...headerProps} />

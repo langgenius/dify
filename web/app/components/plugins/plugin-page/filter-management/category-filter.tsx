@@ -1,20 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import {
   RiArrowDownSLine,
   RiCloseCircleFill,
 } from '@remixicon/react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Checkbox from '@/app/components/base/checkbox'
-import cn from '@/utils/classnames'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useCategories } from '../../hooks'
-import { useTranslation } from 'react-i18next'
 
 type CategoriesFilterProps = {
   value: string[]
@@ -29,98 +30,102 @@ const CategoriesFilter = ({
   const [searchText, setSearchText] = useState('')
   const { categories: options, categoriesMap } = useCategories()
   const filteredOptions = options.filter(option => option.name.toLowerCase().includes(searchText.toLowerCase()))
-  const handleCheck = (id: string) => {
-    if (value.includes(id))
-      onChange(value.filter(tag => tag !== id))
-    else
-      onChange([...value, id])
-  }
   const selectedTagsLength = value.length
 
   return (
-    <PortalToFollowElem
-      placement='bottom-start'
-      offset={{
-        mainAxis: 4,
-      }}
+    <Popover
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className={cn(
-          'flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 py-1 text-text-tertiary hover:bg-state-base-hover-alt',
-          selectedTagsLength && 'text-text-secondary',
-          open && 'bg-state-base-hover',
-        )}>
+      <PopoverTrigger
+        nativeButton={false}
+        render={(
           <div className={cn(
-            'system-sm-medium flex items-center p-1',
-          )}>
+            'flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 py-1 text-text-tertiary hover:bg-state-base-hover-alt',
+            selectedTagsLength && 'text-text-secondary',
+            'data-popup-open:bg-state-base-hover',
+          )}
+          >
+            <div className={cn(
+              'flex items-center p-1 system-sm-medium',
+            )}
+            >
+              {
+                !selectedTagsLength && t('allCategories', { ns: 'plugin' })
+              }
+              {
+                !!selectedTagsLength && value.map(val => categoriesMap[val]!.label).slice(0, 2).join(',')
+              }
+              {
+                selectedTagsLength > 2 && (
+                  <div className="ml-1 system-xs-medium text-text-tertiary">
+                    +
+                    {selectedTagsLength - 2}
+                  </div>
+                )
+              }
+            </div>
             {
-              !selectedTagsLength && t('plugin.allCategories')
+              !!selectedTagsLength && (
+                <RiCloseCircleFill
+                  className="size-4 cursor-pointer text-text-quaternary"
+                  onClick={
+                    (e) => {
+                      e.stopPropagation()
+                      onChange([])
+                    }
+                  }
+                />
+              )
             }
             {
-              !!selectedTagsLength && value.map(val => categoriesMap[val].label).slice(0, 2).join(',')
-            }
-            {
-              selectedTagsLength > 2 && (
-                <div className='system-xs-medium ml-1 text-text-tertiary'>
-                  +{selectedTagsLength - 2}
-                </div>
+              !selectedTagsLength && (
+                <RiArrowDownSLine className="size-4" />
               )
             }
           </div>
-          {
-            !!selectedTagsLength && (
-              <RiCloseCircleFill
-                className='h-4 w-4 cursor-pointer text-text-quaternary'
-                onClick={
-                  (e) => {
-                    e.stopPropagation()
-                    onChange([])
-                  }
-                }
-              />
-            )
-          }
-          {
-            !selectedTagsLength && (
-              <RiArrowDownSLine className='h-4 w-4' />
-            )
-          }
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
-          <div className='p-2 pb-1'>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
+        <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+          <div className="p-2 pb-1">
             <Input
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder={t('plugin.searchCategories')}
+              placeholder={t('searchCategories', { ns: 'plugin' })}
             />
           </div>
-          <div className='max-h-[448px] overflow-y-auto p-1'>
+          <CheckboxGroup
+            aria-label={t('allCategories', { ns: 'plugin' })}
+            value={value}
+            onValueChange={nextValue => onChange(nextValue)}
+            className="max-h-[448px] overflow-y-auto p-1"
+          >
             {
               filteredOptions.map(option => (
-                <div
+                <label
                   key={option.name}
-                  className='flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
-                  onClick={() => handleCheck(option.name)}
+                  className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
                 >
                   <Checkbox
-                    className='mr-1'
-                    checked={value.includes(option.name)}
+                    className="mr-1"
+                    value={option.name}
                   />
-                  <div className='system-sm-medium px-1 text-text-secondary'>
+                  <div className="px-1 system-sm-medium text-text-secondary">
                     {option.label}
                   </div>
-                </div>
+                </label>
               ))
             }
-          </div>
+          </CheckboxGroup>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

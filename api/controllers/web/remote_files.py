@@ -1,7 +1,6 @@
-import urllib.parse
-
 import httpx
-from flask_restx import marshal_with, reqparse
+from flask import request
+from pydantic import BaseModel, Field, HttpUrl
 
 import services
 from controllers.common import helpers
@@ -10,13 +9,24 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
-from controllers.web import web_ns
-from controllers.web.wraps import WebApiResource
-from core.file import helpers as file_helpers
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from extensions.ext_database import db
-from fields.file_fields import build_file_with_signed_url_model, build_remote_file_info_model
+from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
+from graphon.file import helpers as file_helpers
+from models.model import App, EndUser
 from services.file_service import FileService
+
+from ..common.schema import register_response_schema_models, register_schema_models
+from . import web_ns
+from .wraps import WebApiResource
+
+
+class RemoteFileUploadPayload(BaseModel):
+    url: HttpUrl = Field(description="Remote file URL")
+
+
+register_schema_models(web_ns, RemoteFileUploadPayload)
+register_response_schema_models(web_ns, RemoteFileInfo, FileWithSignedUrl)
 
 
 @web_ns.route("/remote-files/<path:url>")
@@ -31,8 +41,8 @@ class RemoteFileInfoApi(WebApiResource):
             500: "Failed to fetch remote file",
         }
     )
-    @marshal_with(build_remote_file_info_model(web_ns))
-    def get(self, app_model, end_user, url):
+    @web_ns.response(200, "Remote file info", web_ns.models[RemoteFileInfo.__name__])
+    def get(self, app_model: App, end_user: EndUser, url: str):
         """Get information about a remote file.
 
         Retrieves basic information about a file located at a remote URL,
@@ -49,16 +59,17 @@ class RemoteFileInfoApi(WebApiResource):
         Raises:
             HTTPException: If the remote file cannot be accessed
         """
-        decoded_url = urllib.parse.unquote(url)
-        resp = ssrf_proxy.head(decoded_url)
+        decoded_url = helpers.decode_remote_url(url, request.query_string)
+        resp = remote_fetcher.make_request("HEAD", decoded_url)
         if resp.status_code != httpx.codes.OK:
             # failed back to get method
-            resp = ssrf_proxy.get(decoded_url, timeout=3)
+            resp = remote_fetcher.make_request("GET", decoded_url, timeout=3)
         resp.raise_for_status()
-        return {
-            "file_type": resp.headers.get("Content-Type", "application/octet-stream"),
-            "file_length": int(resp.headers.get("Content-Length", -1)),
-        }
+        info = RemoteFileInfo(
+            file_type=resp.headers.get("Content-Type", "application/octet-stream"),
+            file_length=int(resp.headers.get("Content-Length", -1)),
+        )
+        return info.model_dump(mode="json")
 
 
 @web_ns.route("/remote-files/upload")
@@ -74,8 +85,8 @@ class RemoteFileUploadApi(WebApiResource):
             500: "Failed to fetch remote file",
         }
     )
-    @marshal_with(build_file_with_signed_url_model(web_ns))
-    def post(self, app_model, end_user):
+    @web_ns.response(201, "Remote file uploaded", web_ns.models[FileWithSignedUrl.__name__])
+    def post(self, app_model: App, end_user: EndUser):
         """Upload a file from a remote URL.
 
         Downloads a file from the provided remote URL and uploads it
@@ -97,16 +108,13 @@ class RemoteFileUploadApi(WebApiResource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("url", type=str, required=True, help="URL is required")
-        args = parser.parse_args()
-
-        url = args["url"]
+        payload = RemoteFileUploadPayload.model_validate(web_ns.payload or {})
+        url = str(payload.url)
 
         try:
-            resp = ssrf_proxy.head(url=url)
+            resp = remote_fetcher.make_request("HEAD", url=url)
             if resp.status_code != httpx.codes.OK:
-                resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
+                resp = remote_fetcher.make_request("GET", url=url, timeout=3, follow_redirects=True)
             if resp.status_code != httpx.codes.OK:
                 raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
         except httpx.RequestError as e:
@@ -117,7 +125,7 @@ class RemoteFileUploadApi(WebApiResource):
         if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
             raise FileTooLargeError
 
-        content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
+        content = resp.content if resp.request.method == "GET" else remote_fetcher.make_request("GET", url).content
 
         try:
             upload_file = FileService(db.engine).upload_file(
@@ -132,13 +140,14 @@ class RemoteFileUploadApi(WebApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError
 
-        return {
-            "id": upload_file.id,
-            "name": upload_file.name,
-            "size": upload_file.size,
-            "extension": upload_file.extension,
-            "url": file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
-            "mime_type": upload_file.mime_type,
-            "created_by": upload_file.created_by,
-            "created_at": upload_file.created_at,
-        }, 201
+        payload1 = FileWithSignedUrl(
+            id=upload_file.id,
+            name=upload_file.name,
+            size=upload_file.size,
+            extension=upload_file.extension,
+            url=file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
+            mime_type=upload_file.mime_type,
+            created_by=upload_file.created_by,
+            created_at=int(upload_file.created_at.timestamp()),
+        )
+        return payload1.model_dump(mode="json"), 201

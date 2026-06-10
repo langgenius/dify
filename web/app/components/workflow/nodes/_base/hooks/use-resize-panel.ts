@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 
-export type UseResizePanelParams = {
+type UseResizePanelParams = {
   direction?: 'horizontal' | 'vertical' | 'both'
   triggerDirection?: 'top' | 'right' | 'bottom' | 'left' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
   minWidth?: number
@@ -111,6 +111,7 @@ export const useResizePanel = (params?: UseResizePanelParams) => {
       if (element)
         element.removeEventListener('mousedown', handleStartResize)
       document.removeEventListener('mousemove', handleResize)
+      document.removeEventListener('mouseup', handleStopResize)
     }
   }, [handleStartResize, handleResize, handleStopResize])
 

@@ -1,23 +1,23 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Slider } from '@langgenius/dify-ui/slider'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiQuestionLine } from '@remixicon/react'
 import {
   Economic,
   HighQuality,
 } from '@/app/components/base/icons/src/vender/knowledge'
-import Tooltip from '@/app/components/base/tooltip'
-import Slider from '@/app/components/base/slider'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import OptionCard from './option-card'
-import cn from '@/utils/classnames'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
 } from '../types'
+import OptionCard from './option-card'
 
 type IndexMethodProps = {
   chunkStructure: ChunkStructureEnum
@@ -36,6 +36,7 @@ const IndexMethod = ({
   readonly = false,
 }: IndexMethodProps) => {
   const { t } = useTranslation()
+  const keywordNumberLabel = t('form.numberOfKeywords', { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
   const isEconomy = indexMethod === IndexMethodEnum.ECONOMICAL
 
@@ -52,71 +53,76 @@ const IndexMethod = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('datasetCreation.stepTwo.indexMode'),
+        title: t('stepTwo.indexMode', { ns: 'datasetCreation' }),
       }}
     >
-      <div className='space-y-1'>
+      <div className="space-y-1">
         <OptionCard<IndexMethodEnum>
           id={IndexMethodEnum.QUALIFIED}
           selectedId={indexMethod}
-          icon={
+          icon={(
             <HighQuality
               className={cn(
                 'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-orange-orange-500',
                 isHighQuality && 'text-util-colors-orange-orange-500',
               )}
             />
-          }
-          title={t('datasetCreation.stepTwo.qualified')}
-          description={t('datasetSettings.form.indexMethodHighQualityTip')}
+          )}
+          title={t('stepTwo.qualified', { ns: 'datasetCreation' })}
+          description={t('form.indexMethodHighQualityTip', { ns: 'datasetSettings' })}
           onClick={handleIndexMethodChange}
           isRecommended
-          effectColor='orange'
-        ></OptionCard>
+          effectColor="orange"
+        >
+        </OptionCard>
         {
           chunkStructure === ChunkStructureEnum.general && (
             <OptionCard
               id={IndexMethodEnum.ECONOMICAL}
               selectedId={indexMethod}
-              icon={
+              icon={(
                 <Economic
                   className={cn(
                     'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
                     isEconomy && 'text-util-colors-indigo-indigo-500',
                   )}
                 />
-              }
-              title={t('datasetSettings.form.indexMethodEconomy')}
-              description={t('datasetSettings.form.indexMethodEconomyTip', { count: keywordNumber })}
+              )}
+              title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
+              description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
               onClick={handleIndexMethodChange}
-              effectColor='blue'
+              effectColor="blue"
             >
-              <div className='flex items-center'>
-                <div className='flex grow items-center'>
-                  <div className='system-xs-medium truncate text-text-secondary'>
-                    {t('datasetSettings.form.numberOfKeywords')}
+              <FieldsetRoot className="flex items-center">
+                <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
+                <div className="flex grow items-center">
+                  <div className="truncate system-xs-medium text-text-secondary">
+                    {keywordNumberLabel}
                   </div>
-                  <Tooltip
-                    popupContent='number of keywords'
+                  <Infotip
+                    aria-label={keywordNumberLabel}
+                    className="ml-0.5 size-3.5"
                   >
-                    <RiQuestionLine className='ml-0.5 h-3.5 w-3.5 text-text-quaternary' />
-                  </Tooltip>
+                    {keywordNumberLabel}
+                  </Infotip>
                 </div>
                 <Slider
                   disabled={readonly}
-                  className='mr-3 w-24 shrink-0'
+                  className="mr-3 w-24 shrink-0"
                   value={keywordNumber}
-                  onChange={onKeywordNumberChange}
+                  onValueChange={onKeywordNumberChange}
+                  aria-label={keywordNumberLabel}
                 />
                 <Input
+                  aria-label={keywordNumberLabel}
                   disabled={readonly}
-                  className='shrink-0'
-                  wrapperClassName='shrink-0 w-[72px]'
-                  type='number'
+                  className="shrink-0"
+                  wrapperClassName="shrink-0 w-[72px]"
+                  type="number"
                   value={keywordNumber}
                   onChange={handleInputChange}
                 />
-              </div>
+              </FieldsetRoot>
             </OptionCard>
           )
         }

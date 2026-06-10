@@ -1,17 +1,17 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useState,
 } from 'react'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { Infotip } from '@/app/components/base/infotip'
 
 export type FieldTitleProps = {
   title?: string
   operation?: ReactNode
   subTitle?: string | ReactNode
   tooltip?: string
+  warningDot?: boolean
   showArrow?: boolean
   disabled?: boolean
   collapsed?: boolean
@@ -22,6 +22,7 @@ export const FieldTitle = memo(({
   operation,
   subTitle,
   tooltip,
+  warningDot,
   showArrow,
   disabled,
   collapsed,
@@ -33,7 +34,7 @@ export const FieldTitle = memo(({
   return (
     <div className={cn('mb-0.5', !!subTitle && 'mb-1')}>
       <div
-        className='group/collapse flex items-center justify-between py-1'
+        className="group/collapse flex items-center justify-between py-1"
         onClick={() => {
           if (!disabled) {
             setCollapsedLocal(!collapsedMerged)
@@ -41,24 +42,29 @@ export const FieldTitle = memo(({
           }
         }}
       >
-        <div className='system-sm-semibold-uppercase flex items-center text-text-secondary'>
-          {title}
+        <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
+          <span className="relative">
+            {warningDot && (
+              <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+            )}
+            {title}
+          </span>
           {
             showArrow && (
-              <ArrowDownRoundFill
+              <span
+                aria-hidden
                 className={cn(
-                  'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
-                  collapsedMerged && 'rotate-[270deg]',
+                  'i-custom-vender-solid-general-arrow-down-round-fill size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                  collapsedMerged && 'rotate-270',
                 )}
               />
             )
           }
           {
             tooltip && (
-              <Tooltip
-                popupContent={tooltip}
-                triggerClassName='w-4 h-4 ml-1'
-              />
+              <Infotip aria-label={tooltip} className="ml-1">
+                {tooltip}
+              </Infotip>
             )
           }
         </div>

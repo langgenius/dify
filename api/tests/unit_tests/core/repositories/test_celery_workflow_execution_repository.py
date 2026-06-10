@@ -11,7 +11,8 @@ from uuid import uuid4
 import pytest
 
 from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowType
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowType
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
@@ -140,7 +141,7 @@ class TestCeleryWorkflowExecutionRepository:
         assert call_args["execution_data"] == sample_workflow_execution.model_dump()
         assert call_args["tenant_id"] == mock_account.current_tenant_id
         assert call_args["app_id"] == "test-app"
-        assert call_args["triggered_from"] == WorkflowRunTriggeredFrom.APP_RUN.value
+        assert call_args["triggered_from"] == WorkflowRunTriggeredFrom.APP_RUN
         assert call_args["creator_user_id"] == mock_account.id
 
         # Verify no task tracking occurs (no _pending_saves attribute)

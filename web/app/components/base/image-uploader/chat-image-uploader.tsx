@@ -1,18 +1,16 @@
 import type { FC } from 'react'
+import type { ImageFile, VisionSettings } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Uploader from './uploader'
-import ImageLinkInput from './image-link-input'
-import cn from '@/utils/classnames'
-import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import { TransferMethod } from '@/types/app'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { Upload03 } from '@/app/components/base/icons/src/vender/line/general'
-import type { ImageFile, VisionSettings } from '@/types/app'
+import ImageLinkInput from './image-link-input'
+import Uploader from './uploader'
 
 type UploadOnlyFromLocalProps = {
   onUpload: (imageFile: ImageFile) => void
@@ -29,11 +27,11 @@ const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
       {hovering => (
         <div
           className={`
-            relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg
+            relative flex size-8 cursor-pointer items-center justify-center rounded-lg
             ${hovering && 'bg-gray-100'}
           `}
         >
-          <ImagePlus className="h-4 w-4 text-gray-500" />
+          <span className="i-custom-vender-line-images-image-plus size-4 text-gray-500" />
         </div>
       )}
     </Uploader>
@@ -65,37 +63,39 @@ const UploaderButton: FC<UploaderButtonProps> = ({
 
   const closePopover = () => setOpen(false)
 
-  const handleToggle = () => {
-    if (disabled)
-      return
-
-    setOpen(v => !v)
-  }
-
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement="top-start"
+      onOpenChange={(nextOpen) => {
+        if (disabled)
+          return
+        setOpen(nextOpen)
+      }}
     >
-      <PortalToFollowElemTrigger onClick={handleToggle}>
-        <button
-          type="button"
-          disabled={disabled}
-          className="relative flex h-8 w-8 items-center justify-center rounded-lg enabled:hover:bg-gray-100 disabled:cursor-not-allowed"
-        >
-          <ImagePlus className="h-4 w-4 text-gray-500" />
-        </button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-50">
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            disabled={disabled}
+            className="relative flex size-8 items-center justify-center rounded-lg enabled:hover:bg-gray-100 disabled:cursor-not-allowed"
+          >
+            <span className="i-custom-vender-line-images-image-plus size-4 text-gray-500" />
+          </button>
+        )}
+      />
+      <PopoverContent
+        placement="top-start"
+        sideOffset={0}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="w-[260px] rounded-lg border-[0.5px] border-gray-200 bg-white p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} disabled={disabled} />
-          {hasUploadFromLocal && (
+          {!!hasUploadFromLocal && (
             <>
               <div className="mt-2 flex items-center px-2 text-xs font-medium text-gray-400">
-                <div className="mr-3 h-px w-[93px] bg-gradient-to-l from-[#F3F4F6]" />
+                <div className="mr-3 h-px w-[93px] bg-linear-to-l from-[#F3F4F6]" />
                 OR
-                <div className="ml-3 h-px w-[93px] bg-gradient-to-r from-[#F3F4F6]" />
+                <div className="ml-3 h-px w-[93px] bg-linear-to-r from-[#F3F4F6]" />
               </div>
               <Uploader
                 onUpload={handleUpload}
@@ -109,16 +109,16 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                       hovering && 'bg-primary-50',
                     )}
                   >
-                    <Upload03 className="mr-1 h-4 w-4" />
-                    {t('common.imageUploader.uploadFromComputer')}
+                    <span className="mr-1 i-custom-vender-line-general-upload-03 size-4" />
+                    {t('imageUploader.uploadFromComputer', { ns: 'common' })}
                   </div>
                 )}
               </Uploader>
             </>
           )}
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -134,7 +134,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
 }) => {
   const onlyUploadLocal
     = settings.transfer_methods.length === 1
-    && settings.transfer_methods[0] === TransferMethod.local_file
+      && settings.transfer_methods[0] === TransferMethod.local_file
 
   if (onlyUploadLocal) {
     return (

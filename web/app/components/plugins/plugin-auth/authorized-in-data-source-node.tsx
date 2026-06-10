@@ -1,11 +1,11 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { RiEqualizer2Line } from '@remixicon/react'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiEqualizer2Line } from '@remixicon/react'
-import Button from '@/app/components/base/button'
-import Indicator from '@/app/components/header/indicator'
-import cn from '@/utils/classnames'
 
 type AuthorizedInDataSourceNodeProps = {
   authorizationsNum: number
@@ -19,21 +19,21 @@ const AuthorizedInDataSourceNode = ({
 
   return (
     <Button
-      size='small'
+      size="small"
       onClick={onJumpToDataSourcePage}
     >
-      <Indicator
-        className='mr-1.5'
-        color='green'
+      <StatusDot
+        className="mr-1.5"
+        status="success"
       />
       {
         authorizationsNum > 1
-          ? t('plugin.auth.authorizations')
-          : t('plugin.auth.authorization')
+          ? t('auth.authorizations', { ns: 'plugin' })
+          : t('auth.authorization', { ns: 'plugin' })
       }
       <RiEqualizer2Line
         className={cn(
-          'h-3.5 w-3.5 text-components-button-ghost-text',
+          'size-3.5 text-components-button-ghost-text',
         )}
       />
     </Button>

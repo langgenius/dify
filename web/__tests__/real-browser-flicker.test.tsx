@@ -10,42 +10,207 @@
 
 import { render, screen, waitFor } from '@testing-library/react'
 import { ThemeProvider } from 'next-themes'
-import useTheme from '@/hooks/use-theme'
 import { useEffect, useState } from 'react'
+import useTheme from '@/hooks/use-theme'
+
+const DARK_MODE_MEDIA_QUERY = /prefers-color-scheme:\s*dark/i
 
 // Setup browser environment for testing
 const setupMockEnvironment = (storedTheme: string | null, systemPrefersDark = false) => {
-  // Mock localStorage
-  const mockStorage = {
-    getItem: jest.fn((key: string) => {
-      if (key === 'theme') return storedTheme
-      return null
-    }),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
+  if (typeof window === 'undefined')
+    return
+
+  try {
+    window.localStorage.clear()
+  }
+  catch {
+    // ignore if localStorage has been replaced by a throwing stub
   }
 
-  // Mock system theme preference
-  const mockMatchMedia = jest.fn((query: string) => ({
-    matches: query.includes('dark') && systemPrefersDark,
-    media: query,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-  }))
+  if (storedTheme === null)
+    window.localStorage.removeItem('theme')
+  else
+    window.localStorage.setItem('theme', storedTheme)
 
-  if (typeof window !== 'undefined') {
-    Object.defineProperty(window, 'localStorage', {
-      value: mockStorage,
-      configurable: true,
-    })
+  document.documentElement.removeAttribute('data-theme')
 
-    Object.defineProperty(window, 'matchMedia', {
-      value: mockMatchMedia,
-      configurable: true,
+  const mockMatchMedia: typeof window.matchMedia = (query: string) => {
+    const listeners = new Set<(event: MediaQueryListEvent) => void>()
+    const isDarkQuery = DARK_MODE_MEDIA_QUERY.test(query)
+    const matches = isDarkQuery ? systemPrefersDark : false
+
+    const handleAddListener = (listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener)
+    }
+
+    const handleRemoveListener = (listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener)
+    }
+
+    const handleAddEventListener = (_event: string, listener: EventListener) => {
+      if (typeof listener === 'function')
+        listeners.add(listener as (event: MediaQueryListEvent) => void)
+    }
+
+    const handleRemoveEventListener = (_event: string, listener: EventListener) => {
+      if (typeof listener === 'function')
+        listeners.delete(listener as (event: MediaQueryListEvent) => void)
+    }
+
+    const handleDispatchEvent = (event: Event) => {
+      listeners.forEach(listener => listener(event as MediaQueryListEvent))
+      return true
+    }
+
+    const mediaQueryList: MediaQueryList = {
+      matches,
+      media: query,
+      onchange: null,
+      addListener: handleAddListener,
+      removeListener: handleRemoveListener,
+      addEventListener: handleAddEventListener,
+      removeEventListener: handleRemoveEventListener,
+      dispatchEvent: handleDispatchEvent,
+    }
+
+    return mediaQueryList
+  }
+
+  vi.spyOn(window, 'matchMedia').mockImplementation(mockMatchMedia)
+}
+
+// Helper function to create timing page component
+const createTimingPageComponent = (
+  timingData: Array<{ phase: string, timestamp: number, styles: { backgroundColor: string, color: string } }>,
+) => {
+  const recordTiming = (phase: string, styles: { backgroundColor: string, color: string }) => {
+    timingData.push({
+      phase,
+      timestamp: performance.now(),
+      styles,
     })
   }
 
-  return { mockStorage, mockMatchMedia }
+  const TimingPageComponent = () => {
+    const [mounted, setMounted] = useState(false)
+    const { theme } = useTheme()
+    const isDark = mounted ? theme === 'dark' : false
+
+    const currentStyles = {
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      color: isDark ? '#ffffff' : '#000000',
+    }
+
+    recordTiming(mounted ? 'CSR' : 'Initial', currentStyles)
+
+    useEffect(() => {
+      setMounted(true)
+    }, [])
+
+    return (
+      <div
+        data-testid="timing-page"
+        style={currentStyles}
+      >
+        <div data-testid="timing-status">
+          Phase:
+          {' '}
+          {mounted ? 'CSR' : 'Initial'}
+          {' '}
+          | Theme:
+          {' '}
+          {theme}
+          {' '}
+          | Visual:
+          {' '}
+          {isDark ? 'dark' : 'light'}
+        </div>
+      </div>
+    )
+  }
+
+  return TimingPageComponent
+}
+
+// Helper function to create CSS test component
+const createCSSTestComponent = (
+  cssStates: Array<{ className: string, timestamp: number }>,
+) => {
+  const recordCSSState = (className: string) => {
+    cssStates.push({
+      className,
+      timestamp: performance.now(),
+    })
+  }
+
+  const CSSTestComponent = () => {
+    const [mounted, setMounted] = useState(false)
+    const { theme } = useTheme()
+    const isDark = mounted ? theme === 'dark' : false
+
+    const className = `min-h-screen ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-black'}`
+
+    recordCSSState(className)
+
+    useEffect(() => {
+      setMounted(true)
+    }, [])
+
+    return (
+      <div
+        data-testid="css-component"
+        className={className}
+      >
+        <div data-testid="css-classes">
+          Classes:
+          {className}
+        </div>
+      </div>
+    )
+  }
+
+  return CSSTestComponent
+}
+
+// Helper function to create performance test component
+const createPerformanceTestComponent = (
+  performanceMarks: Array<{ event: string, timestamp: number }>,
+) => {
+  const recordPerformanceMark = (event: string) => {
+    performanceMarks.push({ event, timestamp: performance.now() })
+  }
+
+  const PerformanceTestComponent = () => {
+    const [mounted, setMounted] = useState(false)
+    const { theme } = useTheme()
+
+    recordPerformanceMark('component-render')
+
+    useEffect(() => {
+      recordPerformanceMark('mount-start')
+      setMounted(true)
+      recordPerformanceMark('mount-complete')
+    }, [])
+
+    useEffect(() => {
+      if (theme)
+        recordPerformanceMark('theme-available')
+    }, [theme])
+
+    return (
+      <div data-testid="performance-test">
+        Mounted:
+        {' '}
+        {mounted.toString()}
+        {' '}
+        | Theme:
+        {' '}
+        {theme || 'loading'}
+      </div>
+    )
+  }
+
+  return PerformanceTestComponent
 }
 
 // Simulate real page component based on Dify's actual theme usage
@@ -70,10 +235,14 @@ const PageComponent = () => {
           Dify Application
         </h1>
         <div data-testid="theme-indicator">
-          Current Theme: {mounted ? theme : 'unknown'}
+          Current Theme:
+          {' '}
+          {mounted ? theme : 'unknown'}
         </div>
         <div data-testid="visual-appearance">
-          Appearance: {isDark ? 'dark' : 'light'}
+          Appearance:
+          {' '}
+          {isDark ? 'dark' : 'light'}
         </div>
       </div>
     </div>
@@ -86,7 +255,6 @@ const TestThemeProvider = ({ children }: { children: React.ReactNode }) => (
     defaultTheme="system"
     enableSystem
     disableTransitionOnChange
-    enableColorScheme={false}
   >
     {children}
   </ThemeProvider>
@@ -94,11 +262,21 @@ const TestThemeProvider = ({ children }: { children: React.ReactNode }) => (
 
 describe('Real Browser Environment Dark Mode Flicker Test', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.clear()
+      }
+      catch {
+        // ignore when localStorage is replaced with an error-throwing stub
+      }
+      document.documentElement.removeAttribute('data-theme')
+    }
   })
 
   describe('Page Refresh Scenario Simulation', () => {
-    test('simulates complete page loading process with dark theme', async () => {
+    it('simulates complete page loading process with dark theme', async () => {
       // Setup: User previously selected dark mode
       setupMockEnvironment('dark')
 
@@ -117,7 +295,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
       // Wait for theme system to fully initialize
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: dark')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: dark')
       })
 
       const finalState = {
@@ -130,7 +308,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       console.log('State change detection: Initial -> Final')
     })
 
-    test('handles light theme correctly', async () => {
+    it('handles light theme correctly', async () => {
       setupMockEnvironment('light')
 
       render(
@@ -140,13 +318,13 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: light')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: light')
       })
 
-      expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: light')
+      expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: light')
     })
 
-    test('handles system theme with dark preference', async () => {
+    it('handles system theme with dark preference', async () => {
       setupMockEnvironment('system', true) // system theme, dark preference
 
       render(
@@ -156,13 +334,13 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: dark')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: dark')
       })
 
-      expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: dark')
+      expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: dark')
     })
 
-    test('handles system theme with light preference', async () => {
+    it('handles system theme with light preference', async () => {
       setupMockEnvironment('system', false) // system theme, light preference
 
       render(
@@ -172,13 +350,13 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: light')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: light')
       })
 
-      expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: light')
+      expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: light')
     })
 
-    test('handles no stored theme (defaults to system)', async () => {
+    it('handles no stored theme (defaults to system)', async () => {
       setupMockEnvironment(null, false) // no stored theme, system prefers light
 
       render(
@@ -188,47 +366,15 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: light')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: light')
       })
     })
 
-    test('measures timing window of style changes', async () => {
+    it('measures timing window of style changes', async () => {
       setupMockEnvironment('dark')
 
-      const timingData: Array<{ phase: string; timestamp: number; styles: any }> = []
-
-      const TimingPageComponent = () => {
-        const [mounted, setMounted] = useState(false)
-        const { theme } = useTheme()
-        const isDark = mounted ? theme === 'dark' : false
-
-        // Record timing and styles for each render phase
-        const currentStyles = {
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          color: isDark ? '#ffffff' : '#000000',
-        }
-
-        timingData.push({
-          phase: mounted ? 'CSR' : 'Initial',
-          timestamp: performance.now(),
-          styles: currentStyles,
-        })
-
-        useEffect(() => {
-          setMounted(true)
-        }, [])
-
-        return (
-          <div
-            data-testid="timing-page"
-            style={currentStyles}
-          >
-            <div data-testid="timing-status">
-              Phase: {mounted ? 'CSR' : 'Initial'} | Theme: {theme} | Visual: {isDark ? 'dark' : 'light'}
-            </div>
-          </div>
-        )
-      }
+      const timingData: Array<{ phase: string, timestamp: number, styles: any }> = []
+      const TimingPageComponent = createTimingPageComponent(timingData)
 
       render(
         <TestThemeProvider>
@@ -237,7 +383,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('timing-status')).toHaveTextContent('Phase: CSR')
+        expect(screen.getByTestId('timing-status'))!.toHaveTextContent('Phase: CSR')
       })
 
       // Analyze timing and style changes
@@ -248,7 +394,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
       // Check if there are style changes (this is visible flicker)
       const hasStyleChange = timingData.length > 1
-        && timingData[0].styles.backgroundColor !== timingData[timingData.length - 1].styles.backgroundColor
+        && timingData[0]!.styles.backgroundColor !== timingData[timingData.length - 1]!.styles.backgroundColor
 
       if (hasStyleChange)
         console.log('⚠️  Style changes detected - this causes visible flicker')
@@ -260,37 +406,11 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
   })
 
   describe('CSS Application Timing Tests', () => {
-    test('checks CSS class changes causing flicker', async () => {
+    it('checks CSS class changes causing flicker', async () => {
       setupMockEnvironment('dark')
 
-      const cssStates: Array<{ className: string; timestamp: number }> = []
-
-      const CSSTestComponent = () => {
-        const [mounted, setMounted] = useState(false)
-        const { theme } = useTheme()
-        const isDark = mounted ? theme === 'dark' : false
-
-        // Simulate Tailwind CSS class application
-        const className = `min-h-screen ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-black'}`
-
-        cssStates.push({
-          className,
-          timestamp: performance.now(),
-        })
-
-        useEffect(() => {
-          setMounted(true)
-        }, [])
-
-        return (
-          <div
-            data-testid="css-component"
-            className={className}
-          >
-            <div data-testid="css-classes">Classes: {className}</div>
-          </div>
-        )
-      }
+      const cssStates: Array<{ className: string, timestamp: number }> = []
+      const CSSTestComponent = createCSSTestComponent(cssStates)
 
       render(
         <TestThemeProvider>
@@ -299,7 +419,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('css-classes')).toHaveTextContent('bg-gray-900 text-white')
+        expect(screen.getByTestId('css-classes'))!.toHaveTextContent('bg-gray-900 text-white')
       })
 
       console.log('\n=== CSS Class Change Detection ===')
@@ -309,12 +429,12 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
       // Check if CSS classes have changed
       const hasCSSChange = cssStates.length > 1
-        && cssStates[0].className !== cssStates[cssStates.length - 1].className
+        && cssStates[0]!.className !== cssStates[cssStates.length - 1]!.className
 
       if (hasCSSChange) {
         console.log('⚠️  CSS class changes detected - may cause style flicker')
-        console.log(`From: "${cssStates[0].className}"`)
-        console.log(`To: "${cssStates[cssStates.length - 1].className}"`)
+        console.log(`From: "${cssStates[0]!.className}"`)
+        console.log(`To: "${cssStates[cssStates.length - 1]!.className}"`)
       }
 
       expect(hasCSSChange).toBe(true) // We expect to see this change
@@ -322,39 +442,45 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
   })
 
   describe('Edge Cases and Error Handling', () => {
-    test('handles localStorage access errors gracefully', async () => {
-      // Mock localStorage to throw an error
+    it('handles localStorage access errors gracefully', async () => {
+      setupMockEnvironment(null)
+
       const mockStorage = {
-        getItem: jest.fn(() => {
+        getItem: vi.fn(() => {
           throw new Error('LocalStorage access denied')
         }),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
       }
 
-      if (typeof window !== 'undefined') {
-        Object.defineProperty(window, 'localStorage', {
-          value: mockStorage,
-          configurable: true,
-        })
-      }
-
-      render(
-        <TestThemeProvider>
-          <PageComponent />
-        </TestThemeProvider>,
-      )
-
-      // Should fallback gracefully without crashing
-      await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toBeInTheDocument()
+      Object.defineProperty(window, 'localStorage', {
+        value: mockStorage,
+        configurable: true,
       })
 
-      // Should default to light theme when localStorage fails
-      expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: light')
+      try {
+        render(
+          <TestThemeProvider>
+            <PageComponent />
+          </TestThemeProvider>,
+        )
+
+        // Should fallback gracefully without crashing
+        await waitFor(() => {
+          expect(screen.getByTestId('theme-indicator'))!.toBeInTheDocument()
+        })
+
+        // Should default to light theme when localStorage fails
+        // Should default to light theme when localStorage fails
+        expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: light')
+      }
+      finally {
+        Reflect.deleteProperty(window, 'localStorage')
+      }
     })
 
-    test('handles invalid theme values in localStorage', async () => {
+    it('handles invalid theme values in localStorage', async () => {
       setupMockEnvironment('invalid-theme-value')
 
       render(
@@ -364,44 +490,24 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toBeInTheDocument()
+        expect(screen.getByTestId('theme-indicator'))!.toBeInTheDocument()
       })
 
       // Should handle invalid values gracefully
       const themeIndicator = screen.getByTestId('theme-indicator')
-      expect(themeIndicator).toBeInTheDocument()
+      expect(themeIndicator)!.toBeInTheDocument()
     })
   })
 
   describe('Performance and Regression Tests', () => {
-    test('verifies ThemeProvider position fix reduces initialization delay', async () => {
-      const performanceMarks: Array<{ event: string; timestamp: number }> = []
-
-      const PerformanceTestComponent = () => {
-        const [mounted, setMounted] = useState(false)
-        const { theme } = useTheme()
-
-        performanceMarks.push({ event: 'component-render', timestamp: performance.now() })
-
-        useEffect(() => {
-          performanceMarks.push({ event: 'mount-start', timestamp: performance.now() })
-          setMounted(true)
-          performanceMarks.push({ event: 'mount-complete', timestamp: performance.now() })
-        }, [])
-
-        useEffect(() => {
-          if (theme)
-            performanceMarks.push({ event: 'theme-available', timestamp: performance.now() })
-        }, [theme])
-
-        return (
-          <div data-testid="performance-test">
-            Mounted: {mounted.toString()} | Theme: {theme || 'loading'}
-          </div>
-        )
-      }
+    it('verifies ThemeProvider position fix reduces initialization delay', async () => {
+      const performanceMarks: Array<{ event: string, timestamp: number }> = []
 
       setupMockEnvironment('dark')
+
+      expect(window.localStorage.getItem('theme')).toBe('dark')
+
+      const PerformanceTestComponent = createPerformanceTestComponent(performanceMarks)
 
       render(
         <TestThemeProvider>
@@ -410,7 +516,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('performance-test')).toHaveTextContent('Theme: dark')
+        expect(screen.getByTestId('performance-test'))!.toHaveTextContent('Theme: dark')
       })
 
       // Analyze performance timeline
@@ -424,7 +530,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
   })
 
   describe('Solution Requirements Definition', () => {
-    test('defines technical requirements to eliminate flicker', () => {
+    it('defines technical requirements to eliminate flicker', () => {
       const technicalRequirements = {
         ssrConsistency: 'SSR and CSR must render identical initial styles',
         synchronousDetection: 'Theme detection must complete synchronously before first render',

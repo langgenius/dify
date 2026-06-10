@@ -3,11 +3,12 @@ import type {
   Model,
   ModelProvider,
 } from '../declarations'
-import { useLanguage } from '../hooks'
-import { Group } from '@/app/components/base/icons/src/vender/other'
-import { OpenaiBlue, OpenaiTeal, OpenaiViolet, OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
+import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n-config'
+import { Theme } from '@/types/app'
+import { useLanguage } from '../hooks'
 
 type ModelIconProps = {
   provider?: Model | ModelProvider
@@ -23,20 +24,23 @@ const ModelIcon: FC<ModelIconProps> = ({
   iconClassName,
   isDeprecated = false,
 }) => {
+  const { theme } = useTheme()
   const language = useLanguage()
-  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('o'))
-    return <div className='flex items-center justify-center'><OpenaiYellow className={cn('h-5 w-5', className)} /></div>
-  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.includes('gpt-4.1'))
-    return <div className='flex items-center justify-center'><OpenaiTeal className={cn('h-5 w-5', className)} /></div>
-  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.includes('gpt-4o'))
-    return <div className='flex items-center justify-center'><OpenaiBlue className={cn('h-5 w-5', className)} /></div>
-  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('gpt-4'))
-    return <div className='flex items-center justify-center'><OpenaiViolet className={cn('h-5 w-5', className)} /></div>
+  const lightIconUrl = provider?.icon_small ? renderI18nObject(provider.icon_small, language) : ''
+  const darkIconUrl = provider?.icon_small_dark ? renderI18nObject(provider.icon_small_dark, language) : ''
+  const iconUrl = theme === Theme.dark ? darkIconUrl || lightIconUrl : lightIconUrl
 
-  if (provider?.icon_small) {
+  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('o'))
+    return <div className="flex items-center justify-center"><OpenaiYellow className={cn('size-5', className)} /></div>
+
+  if (iconUrl) {
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center', isDeprecated && 'opacity-50', className)}>
-        <img alt='model-icon' src={renderI18nObject(provider.icon_small, language)} className={iconClassName} />
+      <div className={cn('flex size-5 items-center justify-center', isDeprecated && 'opacity-50', className)}>
+        <img
+          alt="model-icon"
+          src={iconUrl}
+          className={iconClassName}
+        />
       </div>
     )
   }
@@ -45,9 +49,10 @@ const ModelIcon: FC<ModelIconProps> = ({
     <div className={cn(
       'flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
       className,
-    )}>
-      <div className={cn('flex h-5 w-5 items-center justify-center opacity-35', iconClassName)}>
-        <Group className='h-3 w-3 text-text-tertiary' />
+    )}
+    >
+      <div className={cn('flex size-5 items-center justify-center opacity-35', iconClassName)}>
+        <span aria-hidden className="i-custom-vender-other-group size-3 text-text-tertiary" />
       </div>
     </div>
   )

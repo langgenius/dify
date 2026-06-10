@@ -26,7 +26,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             if json_response.get("data"):
                 for provider in json_response.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -46,7 +46,9 @@ class PluginDatasourceManager(BasePluginClient):
             params={"page": 1, "page_size": 256},
             transformer=transformer,
         )
-        local_file_datasource_provider = PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
+        local_file_datasource_provider = PluginDatasourceProviderEntity.model_validate(
+            self._get_local_file_datasource_provider()
+        )
 
         for provider in response:
             ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
@@ -66,7 +68,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             if json_response.get("data"):
                 for provider in json_response.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -104,11 +106,11 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource provider for the given tenant and plugin.
         """
         if provider_id == "langgenius/file/file":
-            return PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
+            return PluginDatasourceProviderEntity.model_validate(self._get_local_file_datasource_provider())
 
         tool_provider_id = DatasourceProviderID(provider_id)
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             data = json_response.get("data")
             if data:
                 for datasource in data.get("declaration", {}).get("datasources", []):

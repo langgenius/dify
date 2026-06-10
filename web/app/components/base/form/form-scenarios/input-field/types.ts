@@ -13,11 +13,11 @@ export enum InputFieldType {
   fileTypes = 'fileTypes',
 }
 
-export type InputTypeSelectConfiguration = {
+type InputTypeSelectConfiguration = {
   supportFile: boolean
 }
 
-export type NumberSliderConfiguration = {
+type NumberSliderConfiguration = {
   description: string
   max?: number
   min?: number
@@ -35,5 +35,5 @@ export type InputFieldConfiguration = {
   tooltip?: string // Tooltip for this field
   listeners?: FieldListeners<Record<string, any>, DeepKeys<Record<string, any>>> // Listener for this field
 } & NumberConfiguration & Partial<InputTypeSelectConfiguration>
-  & Partial<NumberSliderConfiguration>
-  & Partial<SelectConfiguration>
+& Partial<NumberSliderConfiguration>
+& Partial<SelectConfiguration>

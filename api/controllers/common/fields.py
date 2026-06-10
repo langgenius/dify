@@ -1,62 +1,167 @@
-from flask_restx import Api, Namespace, fields
+from __future__ import annotations
 
-from libs.helper import AppIconUrlField
+from typing import Any
 
-parameters__system_parameters = {
-    "image_file_size_limit": fields.Integer,
-    "video_file_size_limit": fields.Integer,
-    "audio_file_size_limit": fields.Integer,
-    "file_size_limit": fields.Integer,
-    "workflow_file_upload_limit": fields.Integer,
-}
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from fields.base import ResponseModel
+from graphon.file import helpers as file_helpers
+from models.model import IconType
 
-def build_system_parameters_model(api_or_ns: Api | Namespace):
-    """Build the system parameters model for the API or Namespace."""
-    return api_or_ns.model("SystemParameters", parameters__system_parameters)
+type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
+type JSONObject = dict[str, Any]
 
 
-parameters_fields = {
-    "opening_statement": fields.String,
-    "suggested_questions": fields.Raw,
-    "suggested_questions_after_answer": fields.Raw,
-    "speech_to_text": fields.Raw,
-    "text_to_speech": fields.Raw,
-    "retriever_resource": fields.Raw,
-    "annotation_reply": fields.Raw,
-    "more_like_this": fields.Raw,
-    "user_input_form": fields.Raw,
-    "sensitive_word_avoidance": fields.Raw,
-    "file_upload": fields.Raw,
-    "system_parameters": fields.Nested(parameters__system_parameters),
-}
+class SystemParameters(BaseModel):
+    image_file_size_limit: int
+    video_file_size_limit: int
+    audio_file_size_limit: int
+    file_size_limit: int
+    workflow_file_upload_limit: int
 
 
-def build_parameters_model(api_or_ns: Api | Namespace):
-    """Build the parameters model for the API or Namespace."""
-    copied_fields = parameters_fields.copy()
-    copied_fields["system_parameters"] = fields.Nested(build_system_parameters_model(api_or_ns))
-    return api_or_ns.model("Parameters", copied_fields)
+class SimpleResultResponse(ResponseModel):
+    result: str
 
 
-site_fields = {
-    "title": fields.String,
-    "chat_color_theme": fields.String,
-    "chat_color_theme_inverted": fields.Boolean,
-    "icon_type": fields.String,
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "icon_url": AppIconUrlField,
-    "description": fields.String,
-    "copyright": fields.String,
-    "privacy_policy": fields.String,
-    "custom_disclaimer": fields.String,
-    "default_language": fields.String,
-    "show_workflow_steps": fields.Boolean,
-    "use_icon_as_answer_icon": fields.Boolean,
-}
+class SimpleResultMessageResponse(ResponseModel):
+    result: str
+    message: str
 
 
-def build_site_model(api_or_ns: Api | Namespace):
-    """Build the site model for the API or Namespace."""
-    return api_or_ns.model("Site", site_fields)
+class SimpleMessageResponse(ResponseModel):
+    message: str
+
+
+class SimpleDataResponse(ResponseModel):
+    data: str
+
+
+class SimpleResultDataResponse(ResponseModel):
+    result: str
+    data: str
+
+
+class SimpleResultStringListResponse(ResponseModel):
+    result: str
+    data: list[str]
+
+
+class SimpleResultOptionalDataResponse(ResponseModel):
+    result: str
+    data: str | None = None
+
+
+class AccessTokenData(ResponseModel):
+    access_token: str
+
+
+class AccessTokenResultResponse(ResponseModel):
+    result: str
+    data: AccessTokenData
+
+
+class VerificationTokenResponse(ResponseModel):
+    is_valid: bool
+    email: str
+    token: str
+
+
+class LoginStatusResponse(ResponseModel):
+    logged_in: bool
+    app_logged_in: bool
+
+
+class AccessModeResponse(ResponseModel):
+    access_mode: str = Field(serialization_alias="accessMode", validation_alias="accessMode")
+
+
+class BooleanResultResponse(ResponseModel):
+    result: bool
+
+
+class SuccessResponse(ResponseModel):
+    success: bool
+
+
+class UsageCheckResponse(ResponseModel):
+    is_using: bool
+
+
+class UsageCountResponse(ResponseModel):
+    is_using: bool
+    count: int
+
+
+class IndexInfoResponse(ResponseModel):
+    welcome: str
+    api_version: str
+    server_version: str
+
+
+class AvatarUrlResponse(ResponseModel):
+    avatar_url: str
+
+
+class TextContentResponse(ResponseModel):
+    content: str
+
+
+class AllowedExtensionsResponse(ResponseModel):
+    allowed_extensions: list[str]
+
+
+class UrlResponse(ResponseModel):
+    url: str
+
+
+class RedirectUrlResponse(ResponseModel):
+    redirect_url: str
+
+
+class ApiBaseUrlResponse(ResponseModel):
+    api_base_url: str
+
+
+class NewAppResponse(ResponseModel):
+    new_app_id: str
+
+
+class Parameters(BaseModel):
+    opening_statement: str | None = None
+    suggested_questions: list[str]
+    suggested_questions_after_answer: JSONObject
+    speech_to_text: JSONObject
+    text_to_speech: JSONObject
+    retriever_resource: JSONObject
+    annotation_reply: JSONObject
+    more_like_this: JSONObject
+    user_input_form: list[JSONObject]
+    sensitive_word_avoidance: JSONObject
+    file_upload: JSONObject
+    system_parameters: SystemParameters
+
+
+class Site(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str
+    chat_color_theme: str | None = None
+    chat_color_theme_inverted: bool
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    description: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+    default_language: str
+    show_workflow_steps: bool
+    use_icon_as_answer_icon: bool
+
+    @computed_field(return_type=str | None)  # type: ignore
+    @property
+    def icon_url(self) -> str | None:
+        if self.icon and self.icon_type == IconType.IMAGE:
+            return file_helpers.get_signed_file_url(self.icon)
+        return None

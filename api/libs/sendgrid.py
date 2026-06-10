@@ -1,8 +1,9 @@
 import logging
+from typing import Any
 
-import sendgrid  # type: ignore
+import sendgrid
 from python_http_client.exceptions import ForbiddenError, UnauthorizedError
-from sendgrid.helpers.mail import Content, Email, Mail, To  # type: ignore
+from sendgrid.helpers.mail import Content, Email, Mail, To
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ class SendGridClient:
         self.sendgrid_api_key = sendgrid_api_key
         self._from = _from
 
-    def send(self, mail: dict):
+    def send(self, mail: dict[str, Any]):
         logger.debug("Sending email with SendGrid")
         _to = ""
         try:

@@ -1,3 +1,5 @@
+import logging
+import os
 import pathlib
 import random
 import secrets
@@ -6,34 +8,57 @@ from collections.abc import Generator
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app_factory import create_app
+from configs.app_config import DifyConfig
 from extensions.ext_database import db
 from models import Account, DifySetup, Tenant, TenantAccountJoin
 from services.account_service import AccountService, RegisterService
+
+_DEFUALT_TEST_ENV = ".env"
+_DEFAULT_VDB_TEST_ENV = "vdb.env"
+
+_logger = logging.getLogger(__name__)
 
 
 # Loading the .env file if it exists
 def _load_env():
     current_file_path = pathlib.Path(__file__).absolute()
-    # Items later in the list have higher precedence.
-    files_to_load = [".env", "vdb.env"]
+    env_file_paths = [
+        pathlib.Path(os.getenv("DIFY_TEST_ENV_FILE", str(current_file_path.parent / _DEFUALT_TEST_ENV))),
+    ]
+    vdb_env_path = pathlib.Path(
+        os.getenv("DIFY_VDB_TEST_ENV_FILE", str(current_file_path.parent / _DEFAULT_VDB_TEST_ENV))
+    )
+    if vdb_env_path.exists() or "DIFY_VDB_TEST_ENV_FILE" in os.environ:
+        env_file_paths.append(vdb_env_path)
 
-    env_file_paths = [current_file_path.parent / i for i in files_to_load]
-    for path in env_file_paths:
-        if not path.exists():
+    for env_path in env_file_paths:
+        if not env_path.exists():
+            _logger.warning("specified configuration file %s not exist", env_path)
             continue
 
         from dotenv import load_dotenv
 
         # Set `override=True` to ensure values from `vdb.env` take priority over values from `.env`
-        load_dotenv(str(path), override=True)
+        load_dotenv(str(env_path), override=True)
 
 
 _load_env()
+# Override storage root to tmp to avoid polluting repo during local runs
+os.environ["OPENDAL_FS_ROOT"] = "/tmp/dify-storage"
+os.environ.setdefault("STORAGE_TYPE", "opendal")
+os.environ.setdefault("OPENDAL_SCHEME", "fs")
 
-_CACHED_APP = create_app()
+_SIO_APP, _CACHED_APP = create_app()
+
+
+@pytest.fixture(scope="session")
+def dify_config() -> DifyConfig:
+    config = DifyConfig()  # type: ignore
+    return config
 
 
 @pytest.fixture
@@ -58,19 +83,20 @@ def setup_account(request) -> Generator[Account, None, None]:
             name=name,
             password=secrets.token_hex(16),
             ip_address="localhost",
+            language="en-US",
         )
 
     with _CACHED_APP.test_request_context():
         with Session(bind=db.engine, expire_on_commit=False) as session:
-            account = session.query(Account).filter_by(email=email).one()
+            account = session.scalars(select(Account).filter_by(email=email)).one()
 
     yield account
 
     with _CACHED_APP.test_request_context():
-        db.session.query(DifySetup).delete()
-        db.session.query(TenantAccountJoin).delete()
-        db.session.query(Account).delete()
-        db.session.query(Tenant).delete()
+        db.session.execute(delete(DifySetup))
+        db.session.execute(delete(TenantAccountJoin))
+        db.session.execute(delete(Account))
+        db.session.execute(delete(Tenant))
         db.session.commit()
 
 

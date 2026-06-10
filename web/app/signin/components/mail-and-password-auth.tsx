@@ -1,28 +1,46 @@
-import Link from 'next/link'
+import { Button } from '@langgenius/dify-ui/button'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useContext } from 'use-context-selector'
-import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { emailRegex } from '@/config'
+import { useLocale } from '@/context/i18n'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { login } from '@/service/common'
-import Input from '@/app/components/base/input'
-import I18NContext from '@/context/i18n'
-import { noop } from 'lodash-es'
+import { setWebAppAccessToken } from '@/service/webapp-auth'
+import { encryptPassword } from '@/utils/encryption'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
-import type { ResponseError } from '@/service/fetch'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
   isEmailSetup: boolean
-  allowRegistration: boolean
 }
 
-export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegistration }: MailAndPasswordAuthProps) {
+type LoginRequestBody = {
+  email: string
+  password: string
+  language: string
+  remember_me: boolean
+  invite_token?: string
+}
+
+function hasErrorCode(error: unknown, code: string) {
+  return typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && error.code === code
+}
+
+export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
@@ -30,28 +48,26 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const [password, setPassword] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
+
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('login.error.emailInValid'),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      Toast.notify({ type: 'error', message: t('login.error.passwordEmpty') })
+      toast.error(t('error.passwordEmpty', { ns: 'login' }))
       return
     }
 
     try {
       setIsLoading(true)
-      const loginData: Record<string, any> = {
+      const loginData: LoginRequestBody = {
         email,
-        password,
+        password: encryptPassword(password),
         language: locale,
         remember_me: true,
       }
@@ -62,29 +78,31 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         body: loginData,
       })
       if (res.result === 'success') {
+        if (res?.data?.access_token) {
+          // Track login success event
+          setWebAppAccessToken(res.data.access_token)
+        }
+        trackEvent('user_login_success', {
+          method: 'email_password',
+          is_invite: isInvite,
+        })
+
         if (isInvite) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          localStorage.setItem('console_token', res.data.access_token)
-          localStorage.setItem('refresh_token', res.data.refresh_token)
+          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           const redirectUrl = resolvePostLoginRedirect(searchParams)
-          router.replace(redirectUrl || '/apps')
+          router.replace(redirectUrl || '/')
         }
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (error) {
-      if ((error as ResponseError).code === 'authentication_failed') {
-        Toast.notify({
-          type: 'error',
-          message: t('login.error.invalidEmailOrPassword'),
-        })
+      if (hasErrorCode(error, 'authentication_failed')) {
+        toast.error(t('error.invalidEmailOrPassword', { ns: 'login' }))
       }
     }
     finally {
@@ -92,71 +110,77 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
     }
   }
 
-  return <form onSubmit={noop}>
-    <div className='mb-3'>
-      <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
-        {t('login.email')}
-      </label>
-      <div className="mt-1">
-        <Input
+  return (
+    <Form
+      onFormSubmit={() => {
+        void handleEmailPasswordLogin()
+      }}
+    >
+      <FieldRoot name="email" disabled={isInvite} className="mb-3">
+        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
+          {t('email', { ns: 'login' })}
+        </FieldLabel>
+        <FieldControl
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onValueChange={setEmail}
           disabled={isInvite}
-          id="email"
           type="email"
           autoComplete="email"
-          placeholder={t('login.emailPlaceholder') || ''}
-          tabIndex={1}
+          spellCheck={false}
+          placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
         />
-      </div>
-    </div>
+      </FieldRoot>
 
-    <div className='mb-3'>
-      <label htmlFor="password" className="my-2 flex items-center justify-between">
-        <span className='system-md-semibold text-text-secondary'>{t('login.password')}</span>
-        <Link
-          href={`/reset-password?${searchParams.toString()}`}
-          className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
-          tabIndex={isEmailSetup ? 0 : -1}
-          aria-disabled={!isEmailSetup}
-        >
-          {t('login.forget')}
-        </Link>
-      </label>
-      <div className="relative mt-1">
-        <Input
-          id="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter')
-              handleEmailPasswordLogin()
-          }}
-          type={showPassword ? 'text' : 'password'}
-          autoComplete="current-password"
-          placeholder={t('login.passwordPlaceholder') || ''}
-          tabIndex={2}
-        />
-        <div className="absolute inset-y-0 right-0 flex items-center">
-          <Button
-            type="button"
-            variant='ghost'
-            onClick={() => setShowPassword(!showPassword)}
+      <FieldRoot name="password" className="mb-3">
+        <div className="my-2 flex items-center justify-between">
+          <FieldLabel className="py-0 system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</FieldLabel>
+          <Link
+            href={`/reset-password?${searchParams.toString()}`}
+            className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
+            tabIndex={isEmailSetup ? 0 : -1}
+            aria-disabled={!isEmailSetup}
           >
-            {showPassword ? '👀' : '😝'}
-          </Button>
+            {t('forget', { ns: 'login' })}
+          </Link>
         </div>
-      </div>
-    </div>
+        <div className="relative mt-1">
+          <FieldControl
+            value={password}
+            onValueChange={setPassword}
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            spellCheck={false}
+            placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
+            className="pr-10"
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={t(showPassword ? 'hidePassword' : 'showPassword', { ns: 'login' })}
+              aria-pressed={showPassword}
+              className="mr-1 size-8 p-0 text-text-tertiary hover:text-text-secondary"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword
+                ? <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
+                : <span className="i-ri-eye-line size-4" aria-hidden="true" />}
+            </Button>
+          </div>
+        </div>
+      </FieldRoot>
 
-    <div className='mb-2'>
-      <Button
-        tabIndex={2}
-        variant='primary'
-        onClick={handleEmailPasswordLogin}
-        disabled={isLoading || !email || !password}
-        className="w-full"
-      >{t('login.signBtn')}</Button>
-    </div>
-  </form>
+      <div className="mb-2">
+        <Button
+          type="submit"
+          loading={isLoading}
+          variant="primary"
+          disabled={isLoading || !email || !password}
+          className="w-full"
+        >
+          {t('signBtn', { ns: 'login' })}
+        </Button>
+      </div>
+    </Form>
+  )
 }

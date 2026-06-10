@@ -1,33 +1,52 @@
 from flask import request
-from flask_login import current_user
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 
 from libs.helper import extract_remote_ip
 from libs.login import login_required
+from models import Account
 from services.billing_service import BillingService
 
 from .. import console_ns
-from ..wraps import account_initialization_required, only_edition_cloud, setup_required
+from ..wraps import (
+    account_initialization_required,
+    only_edition_cloud,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
+
+
+class ComplianceDownloadQuery(BaseModel):
+    doc_name: str = Field(..., description="Compliance document name")
+
+
+console_ns.schema_model(
+    ComplianceDownloadQuery.__name__,
+    ComplianceDownloadQuery.model_json_schema(ref_template="#/definitions/{model}"),
+)
 
 
 @console_ns.route("/compliance/download")
 class ComplianceApi(Resource):
+    @console_ns.expect(console_ns.models[ComplianceDownloadQuery.__name__])
+    @console_ns.doc("download_compliance_document")
+    @console_ns.doc(description="Get compliance document download link")
     @setup_required
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("doc_name", type=str, required=True, location="args")
-        args = parser.parse_args()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
+        args = ComplianceDownloadQuery.model_validate(request.args.to_dict(flat=True))
 
         ip_address = extract_remote_ip(request)
         device_info = request.headers.get("User-Agent", "Unknown device")
-
         return BillingService.get_compliance_download_link(
             doc_name=args.doc_name,
             account_id=current_user.id,
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             ip=ip_address,
             device_info=device_info,
         )

@@ -1,9 +1,9 @@
+import type { TextNode } from 'lexical'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   useCallback,
   useEffect,
 } from 'react'
-import type { TextNode } from 'lexical'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalTextEntity } from '../../hooks'
 import {
   $createVariableValueBlockNode,

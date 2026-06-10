@@ -1,5 +1,5 @@
-import { $isAtNodeEnd } from '@lexical/selection'
 import type { ElementNode, RangeSelection, TextNode } from 'lexical'
+import { $isAtNodeEnd } from '@lexical/selection'
 
 export function getSelectedNode(
   selection: RangeSelection,
@@ -18,5 +18,4 @@ export function getSelectedNode(
     return $isAtNodeEnd(anchor) ? anchorNode : focusNode
 }
 
-// eslint-disable-next-line sonarjs/empty-string-repetition
-export const urlRegExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=+$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=+$,\w]+@)[A-Za-z0-9.-]+)((?:\/[+~%/.\w-_]*)?\??(?:[-+=&;%@.\w_]*)#?(?:[\w]*))?)/
+export const urlRegExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=+$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=+$,\w]+@)[A-Za-z0-9.-]+)((?:\/[+~%/.\w-]*)?\??[-+=&;%@.\w]*#?\w*)?)/

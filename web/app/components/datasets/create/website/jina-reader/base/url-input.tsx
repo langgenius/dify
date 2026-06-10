@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '../../base/input'
-import Button from '@/app/components/base/button'
 import { useDocLink } from '@/context/i18n'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   isRunning: boolean
@@ -20,9 +21,6 @@ const UrlInput: FC<Props> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const [url, setUrl] = useState('')
-  const handleUrlChange = useCallback((url: string | number) => {
-    setUrl(url as string)
-  }, [])
   const handleOnRun = useCallback(() => {
     if (isRunning)
       return
@@ -30,19 +28,21 @@ const UrlInput: FC<Props> = ({
   }, [isRunning, onRun, url])
 
   return (
-    <div className='flex items-center justify-between'>
+    <div className="flex items-center justify-between">
       <Input
         value={url}
-        onChange={handleUrlChange}
+        onValueChange={setUrl}
         placeholder={docLink()}
+        size="small"
       />
       <Button
-        variant='primary'
+        variant="primary"
         onClick={handleOnRun}
-        className='ml-2'
+        className="ml-2"
         loading={isRunning}
+        aria-label={t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' })}
       >
-        {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}
+        {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
       </Button>
     </div>
   )

@@ -1,5 +1,5 @@
 import type { RemixiconComponentType } from '@remixicon/react'
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const InputTypeEnum = z.enum([
   'text-input',

@@ -1,10 +1,17 @@
 'use client'
-import React from 'react'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import s from './index.module.css'
-import cn from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
 
 type IProps = {
   show: boolean
@@ -25,20 +32,29 @@ const StopEmbeddingModal = ({
   }
 
   return (
-    <Modal
-      isShow={show}
-      onClose={onHide}
-      className={cn(s.modal, '!max-w-[480px]', 'px-8')}
+    <AlertDialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open)
+          onHide()
+      }}
     >
-      <div className={s.icon} />
-      <span className={s.close} onClick={onHide} />
-      <div className={s.title}>{t('datasetCreation.stepThree.modelTitle')}</div>
-      <div className={s.content}>{t('datasetCreation.stepThree.modelContent')}</div>
-      <div className='flex flex-row-reverse'>
-        <Button className='ml-2 w-24' variant='primary' onClick={submit}>{t('datasetCreation.stepThree.modelButtonConfirm')}</Button>
-        <Button className='w-24' onClick={onHide}>{t('datasetCreation.stepThree.modelButtonCancel')}</Button>
-      </div>
-    </Modal>
+      <AlertDialogContent className="max-w-[480px]! overflow-hidden! border-none px-8 py-6 text-left align-middle shadow-xl">
+        <div className={s.icon} />
+        <button
+          type="button"
+          className={cn(s.close, 'border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden')}
+          aria-label={t('operation.close', { ns: 'common' })}
+          onClick={onHide}
+        />
+        <AlertDialogTitle className={s.title}>{t('stepThree.modelTitle', { ns: 'datasetCreation' })}</AlertDialogTitle>
+        <AlertDialogDescription className={s.content}>{t('stepThree.modelContent', { ns: 'datasetCreation' })}</AlertDialogDescription>
+        <AlertDialogActions className="flex-row-reverse gap-0 p-0">
+          <AlertDialogConfirmButton className="ml-2 w-24" tone="default" onClick={submit}>{t('stepThree.modelButtonConfirm', { ns: 'datasetCreation' })}</AlertDialogConfirmButton>
+          <AlertDialogCancelButton className="w-24" variant="secondary">{t('stepThree.modelButtonCancel', { ns: 'datasetCreation' })}</AlertDialogCancelButton>
+        </AlertDialogActions>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

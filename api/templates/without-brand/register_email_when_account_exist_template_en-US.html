@@ -111,7 +111,30 @@
             We noticed you tried to sign up, but this email is already registered with an existing account.
 
             Please log in here: </p>
-        <a href="{{ login_url }}" class="button">Log In</a>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <a href="{{ login_url }}"
+             style="background-color:#2563eb;
+                    color:#ffffff !important;
+                    text-decoration:none;
+                    display:inline-block;
+                    font-weight:600;
+                    border-radius:4px;
+                    font-size:14px;
+                    line-height:18px;
+                    font-family: Helvetica, Arial, sans-serif;
+                    text-align:center;
+                    border-top: 10px solid #2563eb;
+                    border-bottom: 10px solid #2563eb;
+                    border-left: 20px solid #2563eb;
+                    border-right: 20px solid #2563eb;
+                    ">Log In</a>
+          <p style="font-size: 12px; color: #666666; margin-top: 20px; margin-bottom: 0;">
+              If the button doesn't work, copy and paste this link into your browser:<br>
+              <a href="{{ login_url }}" style="color: #2563eb; text-decoration: underline; word-break: break-all;">
+                  {{ login_url }}
+              </a>
+          </p>
+        </div>
         <p class="description">
             If you forgot your password, you can reset it here: <a href="{{ reset_password_url }}"
                 class="reset-btn">Reset Password</a>

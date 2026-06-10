@@ -1,8 +1,6 @@
-name: "✨ Refactor"
-description: Refactor existing code for improved readability and maintainability.
-title: "[Chore/Refactor] "
-labels:
-  - refactor
+name: "✨ Refactor or Chore"
+description: Refactor existing code or perform maintenance chores to improve readability and reliability.
+title: "[Refactor/Chore] "
 body:
   - type: checkboxes
     attributes:
@@ -11,7 +9,7 @@ body:
       options:
         - label: I have read the [Contributing Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) and [Language Policy](https://github.com/langgenius/dify/issues/1542).
           required: true
-        - label: This is only for refactoring, if you would like to ask a question, please head to [Discussions](https://github.com/langgenius/dify/discussions/categories/general).
+        - label: This is only for refactors or chores; if you would like to ask a question, please head to [Discussions](https://github.com/langgenius/dify/discussions/categories/general).
           required: true
         - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
           required: true
@@ -25,14 +23,14 @@ body:
     id: description
     attributes:
       label: Description
-      placeholder: "Describe the refactor you are proposing."
+      placeholder: "Describe the refactor or chore you are proposing."
     validations:
       required: true
   - type: textarea
     id: motivation
     attributes:
       label: Motivation
-      placeholder: "Explain why this refactor is necessary."
+      placeholder: "Explain why this refactor or chore is necessary."
     validations:
       required: false
   - type: textarea

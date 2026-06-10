@@ -7,27 +7,19 @@ Dify is an open-source platform for developing LLM applications with an intuitiv
 The codebase is split into:
 
 - **Backend API** (`/api`): Python Flask application organized with Domain-Driven Design
-- **Frontend Web** (`/web`): Next.js 15 application using TypeScript and React 19
+- **Frontend Web** (`/web`): Next.js application using TypeScript and React
 - **Docker deployment** (`/docker`): Containerized deployment configurations
+- **Dify Agent Backend** (`/dify-agent`): Backend services for managing and executing agent
 
 ## Backend Workflow
 
+- Read `api/AGENTS.md` for details
 - Run backend CLI commands through `uv run --project api <command>`.
-
-- Backend QA gate requires passing `make lint`, `make type-check`, and `uv run --project api --dev dev/pytest/pytest_unit_tests.sh` before review.
-
-- Use Makefile targets for linting and formatting; `make lint` and `make type-check` cover the required checks.
-
 - Integration tests are CI-only and are not expected to run in the local environment.
 
 ## Frontend Workflow
 
-```bash
-cd web
-pnpm lint
-pnpm lint:fix
-pnpm test
-```
+- Read `web/AGENTS.md` for details
 
 ## Testing & Quality Practices
 
@@ -38,8 +30,8 @@ pnpm test
 
 ## Language Style
 
-- **Python**: Keep type hints on functions and attributes, and implement relevant special methods (e.g., `__repr__`, `__str__`).
-- **TypeScript**: Use the strict config, lean on ESLint + Prettier workflows, and avoid `any` types.
+- **Python**: Keep type hints on functions and attributes, and implement relevant special methods (e.g., `__repr__`, `__str__`). Prefer `TypedDict` over `dict` or `Mapping` for type safety and better code documentation.
+- **TypeScript**: Use the strict config, rely on ESLint (`pnpm lint:fix` preferred) plus `pnpm type-check`, and avoid `any` types.
 
 ## General Practices
 

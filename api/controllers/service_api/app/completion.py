@@ -1,10 +1,15 @@
 import logging
+from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -17,65 +22,77 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.helper.trace_id_helper import get_external_trace_id
-from core.model_runtime.errors.invoke import InvokeError
+from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import uuid_value
+from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
 
-# Define parser for completion API
-completion_parser = reqparse.RequestParser()
-completion_parser.add_argument(
-    "inputs", type=dict, required=True, location="json", help="Input parameters for completion"
-)
-completion_parser.add_argument("query", type=str, location="json", default="", help="The query string")
-completion_parser.add_argument("files", type=list, required=False, location="json", help="List of file attachments")
-completion_parser.add_argument(
-    "response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode"
-)
-completion_parser.add_argument(
-    "retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source"
-)
+def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None) -> bool:
+    """Agent App runtime is SSE-only until backend blocking runs are supported."""
+    if app_mode != AppMode.AGENT:
+        return response_mode == "streaming"
+    if response_mode == "blocking":
+        raise BadRequest("Agent App only supports streaming response mode.")
+    return True
 
-# Define parser for chat API
-chat_parser = reqparse.RequestParser()
-chat_parser.add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for chat")
-chat_parser.add_argument("query", type=str, required=True, location="json", help="The chat query")
-chat_parser.add_argument("files", type=list, required=False, location="json", help="List of file attachments")
-chat_parser.add_argument(
-    "response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode"
-)
-chat_parser.add_argument("conversation_id", type=uuid_value, location="json", help="Existing conversation ID")
-chat_parser.add_argument(
-    "retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source"
-)
-chat_parser.add_argument(
-    "auto_generate_name",
-    type=bool,
-    required=False,
-    default=True,
-    location="json",
-    help="Auto generate conversation name",
-)
-chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+
+class CompletionRequestPayload(BaseModel):
+    inputs: dict[str, Any]
+    query: str = Field(default="")
+    files: list[dict[str, Any]] | None = None
+    response_mode: Literal["blocking", "streaming"] | None = None
+    retriever_from: str = Field(default="dev")
+    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+
+
+class ChatRequestPayload(BaseModel):
+    inputs: dict[str, Any]
+    query: str
+    files: list[dict[str, Any]] | None = None
+    response_mode: Literal["blocking", "streaming"] | None = None
+    conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Conversation UUID")
+    retriever_from: str = Field(default="dev")
+    auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
+    workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+
+    @field_validator("conversation_id", mode="before")
+    @classmethod
+    def normalize_conversation_id(cls, value: str | UUID | None) -> str | None:
+        """Allow missing or blank conversation IDs; enforce UUID format when provided."""
+        if isinstance(value, str):
+            value = value.strip()
+
+        if not value:
+            return None
+
+        try:
+            return helper.uuid_value(value)
+        except ValueError as exc:
+            raise ValueError("conversation_id must be a valid UUID") from exc
+
+
+register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
+register_response_schema_models(service_api_ns, SimpleResultResponse)
 
 
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
-    @service_api_ns.expect(completion_parser)
+    @service_api_ns.expect(service_api_ns.models[CompletionRequestPayload.__name__])
     @service_api_ns.doc("create_completion")
     @service_api_ns.doc(description="Create a completion for the given prompt")
     @service_api_ns.doc(
@@ -94,15 +111,21 @@ class CompletionApi(Resource):
         This endpoint generates a completion based on the provided inputs and query.
         Supports both blocking and streaming response modes.
         """
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise AppUnavailableError()
 
-        args = completion_parser.parse_args()
+        payload = CompletionRequestPayload.model_validate(
+            omit_trace_session_id_from_payload(service_api_ns.payload) or {}
+        )
         external_trace_id = get_external_trace_id(request)
+        args = payload.model_dump(exclude_none=True)
+        trace_session_id = get_trace_session_id(request)
+        if trace_session_id:
+            args["trace_session_id"] = trace_session_id
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
-        streaming = args["response_mode"] == "streaming"
+        streaming = payload.response_mode == "streaming"
 
         args["auto_generate_name"] = False
 
@@ -150,20 +173,26 @@ class CompletionStopApi(Resource):
             404: "Task not found",
         }
     )
+    @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running completion task."""
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise AppUnavailableError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.SERVICE_API,
+            user_id=end_user.id,
+            app_mode=AppMode.value_of(app_model.mode),
+        )
 
         return {"result": "success"}, 200
 
 
 @service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
-    @service_api_ns.expect(chat_parser)
+    @service_api_ns.expect(service_api_ns.models[ChatRequestPayload.__name__])
     @service_api_ns.doc("create_chat_message")
     @service_api_ns.doc(description="Send a message in a chat conversation")
     @service_api_ns.doc(
@@ -184,16 +213,20 @@ class ChatApi(Resource):
         Supports conversation management and both blocking and streaming response modes.
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        args = chat_parser.parse_args()
+        payload = ChatRequestPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
 
         external_trace_id = get_external_trace_id(request)
+        args = payload.model_dump(exclude_none=True)
+        trace_session_id = get_trace_session_id(request)
+        if trace_session_id:
+            args["trace_session_id"] = trace_session_id
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
-        streaming = args["response_mode"] == "streaming"
+        streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
 
         try:
             response = AppGenerateService.generate(
@@ -243,13 +276,19 @@ class ChatStopApi(Resource):
             404: "Task not found",
         }
     )
+    @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running chat message generation."""
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.SERVICE_API,
+            user_id=end_user.id,
+            app_mode=app_mode,
+        )
 
         return {"result": "success"}, 200

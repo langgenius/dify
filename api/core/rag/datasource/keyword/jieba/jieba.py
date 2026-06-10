@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any
+from typing import Any, TypedDict, override
 
 import orjson
 from pydantic import BaseModel
@@ -15,6 +15,11 @@ from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
 
 
+class PreSegmentData(TypedDict):
+    segment: DocumentSegment
+    keywords: list[str]
+
+
 class KeywordTableConfig(BaseModel):
     max_keywords_per_chunk: int = 10
 
@@ -24,6 +29,7 @@ class Jieba(BaseKeyword):
         super().__init__(dataset)
         self._config = KeywordTableConfig()
 
+    @override
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
@@ -43,6 +49,7 @@ class Jieba(BaseKeyword):
 
             return self
 
+    @override
     def add_texts(self, texts: list[Document], **kwargs):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
@@ -67,12 +74,14 @@ class Jieba(BaseKeyword):
 
             self._save_dataset_keyword_table(keyword_table)
 
+    @override
     def text_exists(self, id: str) -> bool:
         keyword_table = self._get_dataset_keyword_table()
         if keyword_table is None:
             return False
         return id in set.union(*keyword_table.values())
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
@@ -82,6 +91,7 @@ class Jieba(BaseKeyword):
 
             self._save_dataset_keyword_table(keyword_table)
 
+    @override
     def search(self, query: str, **kwargs: Any) -> list[Document]:
         keyword_table = self._get_dataset_keyword_table()
 
@@ -90,13 +100,17 @@ class Jieba(BaseKeyword):
         sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
 
         documents = []
+
+        segment_query_stmt = select(DocumentSegment).where(
+            DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
+        )
+        if document_ids_filter:
+            segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
+
+        segments = db.session.scalars(segment_query_stmt).all()
+        segment_map = {segment.index_node_id: segment for segment in segments}
         for chunk_index in sorted_chunk_indices:
-            segment_query = db.session.query(DocumentSegment).where(
-                DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id == chunk_index
-            )
-            if document_ids_filter:
-                segment_query = segment_query.where(DocumentSegment.document_id.in_(document_ids_filter))
-            segment = segment_query.first()
+            segment = segment_map.get(chunk_index)
 
             if segment:
                 documents.append(
@@ -113,6 +127,7 @@ class Jieba(BaseKeyword):
 
         return documents
 
+    @override
     def delete(self):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
@@ -124,14 +139,16 @@ class Jieba(BaseKeyword):
                     file_key = "keyword_files/" + self.dataset.tenant_id + "/" + self.dataset.id + ".txt"
                     storage.delete(file_key)
 
-    def _save_dataset_keyword_table(self, keyword_table):
+    def _save_dataset_keyword_table(self, keyword_table: dict[str, set[str]] | None):
         keyword_table_dict = {
             "__type__": "keyword_table",
             "__data__": {"index_id": self.dataset.id, "summary": None, "table": keyword_table},
         }
         dataset_keyword_table = self.dataset.dataset_keyword_table
-        keyword_data_source_type = dataset_keyword_table.data_source_type
+        keyword_data_source_type = dataset_keyword_table.data_source_type if dataset_keyword_table else "file"
         if keyword_data_source_type == "database":
+            if dataset_keyword_table is None:
+                return
             dataset_keyword_table.keyword_table = dumps_with_sets(keyword_table_dict)
             db.session.commit()
         else:
@@ -140,12 +157,13 @@ class Jieba(BaseKeyword):
                 storage.delete(file_key)
             storage.save(file_key, dumps_with_sets(keyword_table_dict).encode("utf-8"))
 
-    def _get_dataset_keyword_table(self) -> dict | None:
+    def _get_dataset_keyword_table(self) -> dict[str, set[str]] | None:
         dataset_keyword_table = self.dataset.dataset_keyword_table
         if dataset_keyword_table:
             keyword_table_dict = dataset_keyword_table.keyword_table_dict
             if keyword_table_dict:
-                return dict(keyword_table_dict["__data__"]["table"])
+                data: Any = keyword_table_dict["__data__"]
+                return dict(data["table"])
         else:
             keyword_data_source_type = dify_config.KEYWORD_DATA_SOURCE_TYPE
             dataset_keyword_table = DatasetKeywordTable(
@@ -165,14 +183,16 @@ class Jieba(BaseKeyword):
 
         return {}
 
-    def _add_text_to_keyword_table(self, keyword_table: dict, id: str, keywords: list[str]):
+    def _add_text_to_keyword_table(
+        self, keyword_table: dict[str, set[str]], id: str, keywords: list[str]
+    ) -> dict[str, set[str]]:
         for keyword in keywords:
             if keyword not in keyword_table:
                 keyword_table[keyword] = set()
             keyword_table[keyword].add(id)
         return keyword_table
 
-    def _delete_ids_from_keyword_table(self, keyword_table: dict, ids: list[str]):
+    def _delete_ids_from_keyword_table(self, keyword_table: dict[str, set[str]], ids: list[str]) -> dict[str, set[str]]:
         # get set of ids that correspond to node
         node_idxs_to_delete = set(ids)
 
@@ -189,7 +209,7 @@ class Jieba(BaseKeyword):
 
         return keyword_table
 
-    def _retrieve_ids_by_query(self, keyword_table: dict, query: str, k: int = 4):
+    def _retrieve_ids_by_query(self, keyword_table: dict[str, set[str]], query: str, k: int = 4) -> list[str]:
         keyword_table_handler = JiebaKeywordTableHandler()
         keywords = keyword_table_handler.extract_keywords(query)
 
@@ -224,13 +244,14 @@ class Jieba(BaseKeyword):
         keyword_table = self._add_text_to_keyword_table(keyword_table or {}, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table)
 
-    def multi_create_segment_keywords(self, pre_segment_data_list: list):
+    def multi_create_segment_keywords(self, pre_segment_data_list: list[PreSegmentData]):
         keyword_table_handler = JiebaKeywordTableHandler()
         keyword_table = self._get_dataset_keyword_table()
         for pre_segment_data in pre_segment_data_list:
             segment = pre_segment_data["segment"]
             if pre_segment_data["keywords"]:
                 segment.keywords = pre_segment_data["keywords"]
+                assert segment.index_node_id
                 keyword_table = self._add_text_to_keyword_table(
                     keyword_table or {}, segment.index_node_id, pre_segment_data["keywords"]
                 )
@@ -239,6 +260,7 @@ class Jieba(BaseKeyword):
 
                 keywords = keyword_table_handler.extract_keywords(segment.content, keyword_number)
                 segment.keywords = list(keywords)
+                assert segment.index_node_id
                 keyword_table = self._add_text_to_keyword_table(
                     keyword_table or {}, segment.index_node_id, list(keywords)
                 )

@@ -1,7 +1,11 @@
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import type { Node, NodeOutPutVar, ValueSelector, Var, VarType } from '@/app/components/workflow/types'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import type { Node, NodeOutPutVar, ValueSelector, Var, VarType } from '@/app/components/workflow/types'
 
 type ConditionVarSelectorProps = {
   open: boolean
@@ -23,35 +27,33 @@ const ConditionVarSelector = ({
   onChange,
 }: ConditionVarSelectorProps) => {
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={onOpenChange}
-      placement='bottom-start'
-      offset={{
-        mainAxis: 4,
-        crossAxis: 0,
-      }}
-    >
-      <PortalToFollowElemTrigger asChild onClick={() => onOpenChange(!open)}>
-        <div className="w-full cursor-pointer">
-          <VariableTag
-            valueSelector={valueSelector}
-            varType={varType}
-            availableNodes={availableNodes}
-            isShort
-          />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        <div className='w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger
+        render={(
+          <div className="w-full cursor-pointer">
+            <VariableTag
+              valueSelector={valueSelector}
+              varType={varType}
+              availableNodes={availableNodes}
+              isShort
+            />
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
+        <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars
             vars={nodesOutputVars}
             isSupportFileVar
             onChange={onChange}
           />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

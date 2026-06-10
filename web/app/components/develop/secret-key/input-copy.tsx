@@ -1,9 +1,10 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import copy from 'copy-to-clipboard'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { t } from 'i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import { writeTextToClipboard } from '@/utils/clipboard'
 
 type IInputCopyProps = {
   value?: string
@@ -17,6 +18,12 @@ const InputCopy = ({
   children,
 }: IInputCopyProps) => {
   const [isCopied, setIsCopied] = useState(false)
+  const copyLabel = isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`
+  const handleCopy = () => {
+    writeTextToClipboard(value).then(() => {
+      setIsCopied(true)
+    })
+  }
 
   useEffect(() => {
     if (isCopied) {
@@ -34,21 +41,25 @@ const InputCopy = ({
     <div className={`flex items-center rounded-lg bg-components-input-bg-normal py-2 hover:bg-state-base-hover ${className}`}>
       <div className="flex h-5 grow items-center">
         {children}
-        <div className='relative h-full grow text-[13px]'>
-          <div className='r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2' onClick={() => {
-            copy(value)
-            setIsCopied(true)
-          }}>
-            <Tooltip
-              popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
-              position='bottom'
-            >
-              <span className='text-text-secondary'>{value}</span>
+        <div className="relative h-full grow text-[13px]">
+          <button
+            type="button"
+            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate border-none bg-transparent px-2 py-0 text-left"
+            aria-label={copyLabel}
+            onClick={handleCopy}
+          >
+            <Tooltip>
+              <TooltipTrigger
+                render={<span className="text-text-secondary">{value}</span>}
+              />
+              <TooltipContent placement="bottom">
+                {copyLabel}
+              </TooltipContent>
             </Tooltip>
-          </div>
+          </button>
         </div>
         <div className="h-4 w-px shrink-0 bg-divider-regular" />
-        <div className='mx-1'><CopyFeedback content={value} /></div>
+        <div className="mx-1"><CopyFeedback content={value} /></div>
       </div>
     </div>
   )

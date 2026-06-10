@@ -1,10 +1,11 @@
-import { type FC, useEffect } from 'react'
-import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { useSelectOrDelete } from '../../hooks'
+import { useEffect } from 'react'
+import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { CurrentBlockNode, DELETE_CURRENT_BLOCK_COMMAND } from '.'
-import cn from '@/utils/classnames'
 import { CodeAssistant, MagicEdit } from '../../../icons/src/vender/line/general'
+import { useSelectOrDelete } from '../../hooks'
 
 type CurrentBlockComponentProps = {
   nodeKey: string
@@ -27,16 +28,16 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({
   return (
     <div
       className={cn(
-        'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] text-util-colors-violet-violet-600 hover:border-state-accent-solid hover:bg-state-accent-hover',
-        isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
+        'group/wrap relative mx-0.5 flex h-[18px] items-center rounded-[5px] border pr-[3px] pl-0.5 text-util-colors-violet-violet-600 select-none hover:border-state-accent-solid hover:bg-state-accent-hover',
+        isSelected ? 'border-state-accent-solid bg-state-accent-hover' : 'border-components-panel-border-subtle bg-components-badge-white-to-dark',
       )}
       onClick={(e) => {
         e.stopPropagation()
       }}
       ref={ref}
     >
-      <Icon className='mr-0.5 h-[14px] w-[14px]' />
-      <div className='text-xs font-medium'>{generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}</div>
+      <Icon className="mr-0.5 h-[14px] w-[14px]" />
+      <div className="text-xs font-medium">{generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}</div>
     </div>
   )
 }

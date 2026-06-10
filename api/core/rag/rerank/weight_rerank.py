@@ -1,15 +1,18 @@
 import math
 from collections import Counter
+from typing import override
 
 import numpy as np
 
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.embedding.cached_embedding import CacheEmbedding
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class WeightRerankRunner(BaseRerankRunner):
@@ -17,13 +20,14 @@ class WeightRerankRunner(BaseRerankRunner):
         self.tenant_id = tenant_id
         self.weights = weights
 
+    @override
     def run(
         self,
         query: str,
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
         Run rerank model
@@ -31,7 +35,6 @@ class WeightRerankRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
 
         :return:
         """
@@ -43,8 +46,10 @@ class WeightRerankRunner(BaseRerankRunner):
                 and document.metadata is not None
                 and document.metadata["doc_id"] not in doc_ids
             ):
-                doc_ids.add(document.metadata["doc_id"])
-                unique_documents.append(document)
+                # weight rerank only support text documents
+                if not document.metadata.get("doc_type") or document.metadata.get("doc_type") == DocType.TEXT:
+                    doc_ids.add(document.metadata["doc_id"])
+                    unique_documents.append(document)
             else:
                 if document not in unique_documents:
                     unique_documents.append(document)
@@ -158,7 +163,7 @@ class WeightRerankRunner(BaseRerankRunner):
         """
         query_vector_scores = []
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=tenant_id,

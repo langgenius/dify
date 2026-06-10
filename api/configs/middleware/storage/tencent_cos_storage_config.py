@@ -31,3 +31,8 @@ class TencentCloudCOSStorageConfig(BaseSettings):
         description="Protocol scheme for COS requests: 'https' (recommended) or 'http'",
         default=None,
     )
+
+    TENCENT_COS_CUSTOM_DOMAIN: str | None = Field(
+        description="Tencent Cloud COS custom domain setting",
+        default=None,
+    )

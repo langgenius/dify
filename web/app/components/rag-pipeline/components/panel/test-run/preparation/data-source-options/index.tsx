@@ -1,7 +1,7 @@
+import type { Datasource } from '../../types'
 import { useCallback, useEffect } from 'react'
 import { useDatasourceOptions } from '../hooks'
 import OptionCard from './option-card'
-import type { Datasource } from '../../types'
 
 type DataSourceOptionsProps = {
   dataSourceNodeId: string
@@ -27,11 +27,11 @@ const DataSourceOptions = ({
 
   useEffect(() => {
     if (options.length > 0 && !dataSourceNodeId)
-      handelSelect(options[0].value)
+      handelSelect(options[0]!.value)
   }, [])
 
   return (
-    <div className='grid w-full grid-cols-4 gap-1'>
+    <div className="grid w-full grid-cols-4 gap-1">
       {options.map(option => (
         <OptionCard
           key={option.value}

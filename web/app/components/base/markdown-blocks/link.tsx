@@ -3,13 +3,13 @@
  * Extracted from the main markdown renderer for modularity.
  * Handles special rendering for "abbr:" type links for interactive chat actions.
  */
-import React from 'react'
+import * as React from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { isValidUrl } from './utils'
 
 const Link = ({ node, children, ...props }: any) => {
   const { onSend } = useChatContext()
-  const commonClassName = 'cursor-pointer underline !decoration-primary-700 decoration-dashed'
+  const commonClassName = 'cursor-pointer underline decoration-primary-700! decoration-dashed'
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
@@ -17,7 +17,7 @@ const Link = ({ node, children, ...props }: any) => {
   }
   else {
     const href = props.href || node.properties?.href
-    if (href && /^#[a-zA-Z0-9_-]+$/.test(href.toString())) {
+    if (href && /^#[\w-]+$/.test(href.toString())) {
       const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
         e.preventDefault()
         // scroll to target element if exists within the answer container

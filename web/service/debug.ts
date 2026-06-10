@@ -1,9 +1,11 @@
-import { get, post, ssePost } from './base'
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
+import type { Viewport } from 'reactflow'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
-import type { ModelModeType } from '@/types/app'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-export type BasicAppFirstRes = {
+import type { AppModeEnum, ModelModeType } from '@/types/app'
+import { get, post, ssePost } from './base'
+
+type BasicAppFirstRes = {
   prompt: string
   variables: string[]
   opening_statement: string
@@ -16,30 +18,6 @@ export type GenRes = {
   variables?: string[] // only for basic app first time rule
   opening_statement?: string // only for basic app first time rule
   error?: string
-}
-
-export type CodeGenRes = {
-  code: string
-  language: string[]
-  error?: string
-}
-
-export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
-  onData: IOnData
-  onCompleted: IOnCompleted
-  onFile: IOnFile
-  onThought: IOnThought
-  onMessageEnd: IOnMessageEnd
-  onMessageReplace: IOnMessageReplace
-  onError: IOnError
-  getAbortController?: (abortController: AbortController) => void
-}) => {
-  return ssePost(`apps/${appId}/chat-messages`, {
-    body: {
-      ...body,
-      response_mode: 'streaming',
-    },
-  }, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {
@@ -92,12 +70,101 @@ export const generateRule = (body: Record<string, any>) => {
   })
 }
 
-export const fetchModelParams = (providerName: string, modelId: string) => {
-  return get(`workspaces/current/model-providers/${providerName}/models/parameter-rules`, {
-    params: {
-      model: modelId,
-    },
-  }) as Promise<{ data: ModelParameterRule[] }>
+/**
+ * One structured error from the workflow generator backend. ``code`` is a
+ * stable machine-readable identifier the frontend maps to localised copy
+ * via the ``workflowGenerator.errors.<code>`` i18n keys; ``detail`` is the
+ * raw English diagnostic; ``node_id`` is set when the error is tied to a
+ * specific node (the preview canvas can highlight it).
+ *
+ * Stable codes — adding a new one without updating the i18n map will fall
+ * back to ``detail`` and that's fine, but every value listed here MUST
+ * exist in both en-US and zh-Hans.
+ */
+// Not exported: knip flags unused exports and the modal looks codes up by
+// string interpolation (``workflowGenerator.errors.${code}``) rather than
+// importing the union. Kept here so the ``GenerateWorkflowResponse``
+// definition below documents the contract in one place.
+type GenerateWorkflowErrorCode
+  = | 'INVALID_JSON'
+    | 'INVALID_SCHEMA'
+    | 'EMPTY_INSTRUCTION'
+    | 'EMPTY_PLAN'
+    | 'UNKNOWN_NODE_REFERENCE'
+    | 'INVALID_CONTAINER'
+    | 'UNRESOLVED_REFERENCE'
+    | 'UNKNOWN_TOOL'
+    | 'MISSING_TERMINAL'
+    | 'MISSING_START'
+    | 'DANGLING_EDGE'
+    | 'MODEL_ERROR'
+
+type GenerateWorkflowError = {
+  code: GenerateWorkflowErrorCode | string
+  detail: string
+  node_id?: string
+}
+
+export type GenerateWorkflowResponse = {
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport: Viewport
+  }
+  message?: string
+  /**
+   * Planner-picked product-style name (e.g. "URL Summarizer"). Empty when
+   * the planner omits it; the caller (applyToNewApp) supplies a fallback.
+   */
+  app_name?: string
+  /**
+   * Planner-picked emoji that captures the workflow's purpose. Empty when
+   * the planner omits it; the caller supplies a 🤖 fallback.
+   */
+  icon?: string
+  /** Human-readable concatenation of ``errors[].detail``. "" on success. */
+  error?: string
+  /** Structured errors with stable codes for FE-localised mapping. [] on success. */
+  errors?: GenerateWorkflowError[]
+}
+
+export type GenerateWorkflowBody = {
+  mode: 'workflow' | 'advanced-chat'
+  instruction: string
+  ideal_output?: string
+  model_config: { provider: string, name: string, mode: string, completion_params?: Record<string, unknown> }
+  /**
+   * Existing draft graph for the cmd+k `/refine` flow. When present the
+   * backend refines this graph instead of generating from scratch. Omitted
+   * for `/create`.
+   */
+  current_graph?: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport?: Viewport
+  }
+}
+
+export type GenerateWorkflowOptions = {
+  /**
+   * Callback receiving the ``AbortController`` for the in-flight request.
+   * The caller stores it and aborts on modal close / second submit / hard
+   * timeout. Pattern mirrors ``fetchSuggestedQuestions`` / ``fetchConversationMessages``
+   * which already thread this through ``base.ts``.
+   */
+  getAbortController?: (controller: AbortController) => void
+}
+
+export const generateWorkflow = (body: GenerateWorkflowBody, options?: GenerateWorkflowOptions) => {
+  // Only pass the third argument when the caller actually supplied one —
+  // otherwise the shared ``post()`` wrapper sees ``undefined`` and that
+  // breaks tests asserting the 2-arg call shape, with no behaviour upside.
+  if (options?.getAbortController) {
+    return post<GenerateWorkflowResponse>('/workflow-generate', { body }, {
+      getAbortController: options.getAbortController,
+    })
+  }
+  return post<GenerateWorkflowResponse>('/workflow-generate', { body })
 }
 
 export const fetchPromptTemplate = ({
@@ -105,8 +172,8 @@ export const fetchPromptTemplate = ({
   mode,
   modelName,
   hasSetDataSet,
-}: { appMode: string; mode: ModelModeType; modelName: string; hasSetDataSet: boolean }) => {
-  return get<Promise<{ chat_prompt_config: ChatPromptConfig; completion_prompt_config: CompletionPromptConfig; stop: [] }>>('/app/prompt-templates', {
+}: { appMode: AppModeEnum, mode: ModelModeType, modelName: string, hasSetDataSet: boolean }) => {
+  return get<Promise<{ chat_prompt_config: ChatPromptConfig, completion_prompt_config: CompletionPromptConfig, stop: [] }>>('/app/prompt-templates', {
     params: {
       app_mode: appMode,
       model_mode: mode,
@@ -119,6 +186,6 @@ export const fetchPromptTemplate = ({
 export const fetchTextGenerationMessage = ({
   appId,
   messageId,
-}: { appId: string; messageId: string }) => {
+}: { appId: string, messageId: string }) => {
   return get<Promise<any>>(`/apps/${appId}/messages/${messageId}`)
 }

@@ -1,15 +1,19 @@
 'use client'
-import { useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-import { useAppContext } from '@/context/app-context'
+import utc from 'dayjs/plugin/utc'
+import { useCallback } from 'react'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
 const useTimestamp = () => {
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
 
   const formatTime = useCallback((value: number, format: string) => {
     return dayjs.unix(value).tz(timezone).format(format)

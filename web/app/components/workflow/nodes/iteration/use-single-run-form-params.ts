@@ -1,20 +1,20 @@
 import type { RefObject } from 'react'
-import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
 import type { IterationNodeType } from './types'
+import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
+import type { NodeTracing } from '@/types/workflow'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import formatTracing from '@/app/components/workflow/run/utils/format-log'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import { useIsNodeInIteration, useWorkflow } from '../../hooks'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
-import formatTracing from '@/app/components/workflow/run/utils/format-log'
-import type { NodeTracing } from '@/types/workflow'
-import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 
-const i18nPrefix = 'workflow.nodes.iteration'
+const i18nPrefix = 'nodes.iteration'
 
 type Params = {
-  id: string,
-  payload: IterationNodeType,
+  id: string
+  payload: IterationNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -59,7 +59,7 @@ const useSingleRunFormParams = ({
         if (varSelector[0] === id) { // skip iteration node itself variable: item, index
           return
         }
-        const isInIteration = isNodeInIteration(varSelector[0])
+        const isInIteration = isNodeInIteration(varSelector[0]!)
         if (isInIteration) // not pass iteration inner variable
           return
 
@@ -80,12 +80,12 @@ const useSingleRunFormParams = ({
       })
     })
     const res = toVarInputs(vars.map((item) => {
-      const varInfo = getNodeInfoById(canChooseVarNodes, item[0])
+      const varInfo = getNodeInfoById(canChooseVarNodes, item[0]!)
       return {
         label: {
           nodeType: varInfo?.data.type,
           nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title, // default start node title
-          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1]!,
         },
         variable: `${item.join('.')}`,
         value_selector: item,
@@ -117,7 +117,7 @@ const useSingleRunFormParams = ({
         onChange: setInputVarValues,
       },
       {
-        label: t(`${i18nPrefix}.input`)!,
+        label: t(`${i18nPrefix}.input`, { ns: 'workflow' })!,
         inputs: [{
           label: '',
           variable: iteratorInputKey,
@@ -138,7 +138,7 @@ const useSingleRunFormParams = ({
     return [payload.iterator_selector]
   }
   const getDependentVar = (variable: string) => {
-    if(variable === iteratorInputKey)
+    if (variable === iteratorInputKey)
       return payload.iterator_selector
   }
 

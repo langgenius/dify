@@ -1,10 +1,13 @@
 import copy
-from unittest.mock import patch
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import Mock, patch
 
 import pytest
 
 from core.entities.provider_entities import BasicProviderConfig
-from core.tools.utils.encryption import ProviderConfigEncrypter
+from core.helper.provider_encryption import ProviderConfigEncrypter
+from core.tools.utils.encryption import create_tool_provider_encrypter
 
 
 # ---------------------------
@@ -13,13 +16,13 @@ from core.tools.utils.encryption import ProviderConfigEncrypter
 class NoopCache:
     """Simple cache stub: always returns None, does nothing for set/delete."""
 
-    def get(self):
+    def get(self) -> Any | None:
         return None
 
-    def set(self, config):
+    def set(self, config: Any) -> None:
         pass
 
-    def delete(self):
+    def delete(self) -> None:
         pass
 
 
@@ -70,7 +73,7 @@ def test_encrypt_only_secret_is_encrypted_and_non_secret_unchanged(encrypter_obj
     data_in = {"username": "alice", "password": "plain_pwd"}
     data_copy = copy.deepcopy(data_in)
 
-    with patch("core.tools.utils.encryption.encrypter.encrypt_token", return_value="CIPHERTEXT") as mock_encrypt:
+    with patch("core.helper.provider_encryption.encrypter.encrypt_token", return_value="CIPHERTEXT") as mock_encrypt:
         out = encrypter_obj.encrypt(data_in)
 
     assert out["username"] == "alice"
@@ -81,14 +84,14 @@ def test_encrypt_only_secret_is_encrypted_and_non_secret_unchanged(encrypter_obj
 
 def test_encrypt_missing_secret_key_is_ok(encrypter_obj):
     """If secret field missing in input, no error and no encryption called."""
-    with patch("core.tools.utils.encryption.encrypter.encrypt_token") as mock_encrypt:
+    with patch("core.helper.provider_encryption.encrypter.encrypt_token") as mock_encrypt:
         out = encrypter_obj.encrypt({"username": "alice"})
     assert out["username"] == "alice"
     mock_encrypt.assert_not_called()
 
 
 # ============================================================
-# ProviderConfigEncrypter.mask_tool_credentials()
+# ProviderConfigEncrypter.mask_plugin_credentials()
 # ============================================================
 
 
@@ -107,7 +110,7 @@ def test_mask_tool_credentials_long_secret(encrypter_obj, raw, prefix, suffix):
     data_in = {"username": "alice", "password": raw}
     data_copy = copy.deepcopy(data_in)
 
-    out = encrypter_obj.mask_tool_credentials(data_in)
+    out = encrypter_obj.mask_plugin_credentials(data_in)
     masked = out["password"]
 
     assert masked.startswith(prefix)
@@ -122,7 +125,7 @@ def test_mask_tool_credentials_short_secret(encrypter_obj, raw):
     """
     For length <= 6: fully mask with '*' of same length.
     """
-    out = encrypter_obj.mask_tool_credentials({"password": raw})
+    out = encrypter_obj.mask_plugin_credentials({"password": raw})
     assert out["password"] == ("*" * len(raw))
 
 
@@ -131,7 +134,7 @@ def test_mask_tool_credentials_missing_key_noop(encrypter_obj):
     data_in = {"username": "alice"}
     data_copy = copy.deepcopy(data_in)
 
-    out = encrypter_obj.mask_tool_credentials(data_in)
+    out = encrypter_obj.mask_plugin_credentials(data_in)
     assert out["username"] == "alice"
     assert data_in == data_copy
 
@@ -151,7 +154,7 @@ def test_decrypt_normal_flow(encrypter_obj):
     data_in = {"username": "alice", "password": "ENC"}
     data_copy = copy.deepcopy(data_in)
 
-    with patch("core.tools.utils.encryption.encrypter.decrypt_token", return_value="PLAIN") as mock_decrypt:
+    with patch("core.helper.provider_encryption.encrypter.decrypt_token", return_value="PLAIN") as mock_decrypt:
         out = encrypter_obj.decrypt(data_in)
 
     assert out["username"] == "alice"
@@ -163,7 +166,7 @@ def test_decrypt_normal_flow(encrypter_obj):
 @pytest.mark.parametrize("empty_val", ["", None])
 def test_decrypt_skip_empty_values(encrypter_obj, empty_val):
     """Skip decrypt if value is empty or None, keep original."""
-    with patch("core.tools.utils.encryption.encrypter.decrypt_token") as mock_decrypt:
+    with patch("core.helper.provider_encryption.encrypter.decrypt_token") as mock_decrypt:
         out = encrypter_obj.decrypt({"password": empty_val})
 
     mock_decrypt.assert_not_called()
@@ -175,7 +178,39 @@ def test_decrypt_swallow_exception_and_keep_original(encrypter_obj):
     If decrypt_token raises, exception should be swallowed,
     and original value preserved.
     """
-    with patch("core.tools.utils.encryption.encrypter.decrypt_token", side_effect=Exception("boom")):
+    with patch("core.helper.provider_encryption.encrypter.decrypt_token", side_effect=Exception("boom")):
         out = encrypter_obj.decrypt({"password": "ENC_ERR"})
 
     assert out["password"] == "ENC_ERR"
+
+
+def test_create_tool_provider_encrypter_builds_cache_and_encrypter():
+    basic_config = BasicProviderConfig(name="key", type=BasicProviderConfig.Type.TEXT_INPUT)
+    credential_schema_item = SimpleNamespace(to_basic_provider_config=lambda: basic_config)
+    controller = SimpleNamespace(
+        provider_type=SimpleNamespace(value="builtin"),
+        entity=SimpleNamespace(identity=SimpleNamespace(name="provider-a")),
+        get_credentials_schema=lambda: [credential_schema_item],
+    )
+
+    cache_instance = Mock()
+    encrypter_instance = Mock()
+
+    with patch(
+        "core.tools.utils.encryption.SingletonProviderCredentialsCache", return_value=cache_instance
+    ) as cache_cls:
+        with patch("core.tools.utils.encryption.ProviderConfigEncrypter", return_value=encrypter_instance) as enc_cls:
+            encrypter, cache = create_tool_provider_encrypter("tenant-1", controller)
+
+    assert encrypter is encrypter_instance
+    assert cache is cache_instance
+    cache_cls.assert_called_once_with(
+        tenant_id="tenant-1",
+        provider_type="builtin",
+        provider_identity="provider-a",
+    )
+    enc_cls.assert_called_once_with(
+        tenant_id="tenant-1",
+        config=[basic_config],
+        provider_config_cache=cache_instance,
+    )

@@ -1,25 +1,26 @@
+import type { SearchParams } from './types'
+import { useQuery } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
+import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
 import {
   useCallback,
   useEffect,
   useState,
 } from 'react'
-import { useDebounceFn, useLocalStorageState } from 'ahooks'
-import { useSearchParams } from 'next/navigation'
-import type { SearchParams } from './types'
-import {
-  EDUCATION_PRICING_SHOW_ACTION,
-  EDUCATION_RE_VERIFY_ACTION,
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
-  EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
-} from './constants'
-import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContextSelector } from '@/context/modal-context'
-import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
-import timezone from 'dayjs/plugin/timezone'
-import { useAppContext } from '@/context/app-context'
-import { useRouter } from 'next/navigation'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useLocalStorage } from '@/hooks/use-local-storage'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
+import {
+  EDUCATION_RE_VERIFY_ACTION,
+  EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+} from './constants'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -81,19 +82,16 @@ const isExpired = (expireAt?: number, timezone?: string) => {
 const useEducationReverifyNotice = ({
   onNotice,
 }: useEducationReverifyNoticeParams) => {
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
   // const [educationInfo, setEducationInfo] = useState<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null } | null>(null)
   // const isLoading = !educationInfo
   const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
-  const [prevExpireAt, setPrevExpireAt] = useLocalStorageState<number | undefined>('education-reverify-prev-expire-at', {
-    defaultValue: 0,
-  })
-  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
-    defaultValue: false,
-  })
-  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorageState<boolean | undefined>('education-expired-has-noticed', {
-    defaultValue: false,
-  })
+  const [prevExpireAt, setPrevExpireAt] = useLocalStorage<number>('education-reverify-prev-expire-at', 0)
+  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorage<boolean>('education-reverify-has-noticed', false)
+  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorage<boolean>('education-expired-has-noticed', false)
 
   useEffect(() => {
     if (isLoading || !timezone)
@@ -133,9 +131,8 @@ const useEducationReverifyNotice = ({
 
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
-  const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
-  const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+  const [educationVerifying, setEducationVerifying] = useLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'no', { raw: true })
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
@@ -155,14 +152,12 @@ export const useEducationInit = () => {
 
   useEffect(() => {
     if (educationVerifying === 'yes' || educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION) {
-      setShowAccountSettingModal({ payload: 'billing' })
+      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
 
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
+        setEducationVerifying('yes')
     }
-    if (educationVerifyAction === EDUCATION_PRICING_SHOW_ACTION)
-      setShowPricingModal()
     if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
       handleVerify()
-  }, [setShowAccountSettingModal, educationVerifying, educationVerifyAction])
+  }, [setShowAccountSettingModal, setEducationVerifying, educationVerifying, educationVerifyAction])
 }

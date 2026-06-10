@@ -1,11 +1,12 @@
 import os
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict, cast
 from urllib.parse import parse_qsl, quote_plus
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
+from .cache.redis_pubsub_config import RedisPubSubConfig
 from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
 from .storage.azure_blob_storage_config import AzureBlobStorageConfig
@@ -18,13 +19,16 @@ from .storage.opendal_storage_config import OpenDALStorageConfig
 from .storage.supabase_storage_config import SupabaseStorageConfig
 from .storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from .storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
+from .vdb.alibabacloud_mysql_config import AlibabaCloudMySQLConfig
 from .vdb.analyticdb_config import AnalyticdbConfig
 from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
 from .vdb.clickzetta_config import ClickzettaConfig
 from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
+from .vdb.hologres_config import HologresConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
+from .vdb.iris_config import IrisVectorConfig
 from .vdb.lindorm_config import LindormConfig
 from .vdb.matrixone_config import MatrixoneConfig
 from .vdb.milvus_config import MilvusConfig
@@ -46,28 +50,30 @@ from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
 
+_VALID_STORAGE_TYPE = Literal[
+    "opendal",
+    "s3",
+    "aliyun-oss",
+    "azure-blob",
+    "baidu-obs",
+    "clickzetta-volume",
+    "google-storage",
+    "huawei-obs",
+    "oci-storage",
+    "tencent-cos",
+    "volcengine-tos",
+    "supabase",
+    "local",
+]
+
 
 class StorageConfig(BaseSettings):
-    STORAGE_TYPE: Literal[
-        "opendal",
-        "s3",
-        "aliyun-oss",
-        "azure-blob",
-        "baidu-obs",
-        "clickzetta-volume",
-        "google-storage",
-        "huawei-obs",
-        "oci-storage",
-        "tencent-cos",
-        "volcengine-tos",
-        "supabase",
-        "local",
-    ] = Field(
+    STORAGE_TYPE: _VALID_STORAGE_TYPE = Field(
         description="Type of storage to use."
         " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', "
         "'clickzetta-volume', 'google-storage', 'huawei-obs', 'oci-storage', 'tencent-cos', "
         "'volcengine-tos', 'supabase'. Default is 'opendal'.",
-        default="opendal",
+        default=cast(_VALID_STORAGE_TYPE, "opendal"),
     )
 
     STORAGE_LOCAL_PATH: str = Field(
@@ -103,7 +109,24 @@ class KeywordStoreConfig(BaseSettings):
     )
 
 
+class SQLAlchemyEngineOptionsDict(TypedDict):
+    pool_size: int
+    max_overflow: int
+    pool_recycle: int
+    pool_pre_ping: bool
+    connect_args: dict[str, str]
+    pool_use_lifo: bool
+    pool_reset_on_return: Literal["commit", "rollback", None]
+    pool_timeout: int
+
+
 class DatabaseConfig(BaseSettings):
+    # Database type selector
+    DB_TYPE: Literal["postgresql", "mysql", "oceanbase", "seekdb"] = Field(
+        description="Database type to use. OceanBase is MySQL-compatible.",
+        default="postgresql",
+    )
+
     DB_HOST: str = Field(
         description="Hostname or IP address of the database server.",
         default="localhost",
@@ -139,12 +162,22 @@ class DatabaseConfig(BaseSettings):
         default="",
     )
 
-    SQLALCHEMY_DATABASE_URI_SCHEME: str = Field(
-        description="Database URI scheme for SQLAlchemy connection.",
-        default="postgresql",
+    DB_SESSION_TIMEZONE_OVERRIDE: str = Field(
+        description=(
+            "PostgreSQL session timezone override injected via startup options."
+            " Default is 'UTC' for out-of-the-box consistency."
+            " Set to empty string to disable app-level timezone injection, for example when using RDS Proxy"
+            " together with a database-side default timezone."
+        ),
+        default="UTC",
     )
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def SQLALCHEMY_DATABASE_URI_SCHEME(self) -> str:
+        return "postgresql" if self.DB_TYPE == "postgresql" else "mysql+pymysql"
+
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = (
@@ -192,37 +225,44 @@ class DatabaseConfig(BaseSettings):
         default=30,
     )
 
+    SQLALCHEMY_POOL_RESET_ON_RETURN: Literal["commit", "rollback", None] = Field(
+        description="Connection pool reset behavior on return. Options: 'commit', 'rollback', or None",
+        default="rollback",
+    )
+
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
         default=os.cpu_count() or 1,
     )
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore[prop-decorator]
     @property
-    def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
+    def SQLALCHEMY_ENGINE_OPTIONS(self) -> SQLAlchemyEngineOptionsDict:
         # Parse DB_EXTRAS for 'options'
         db_extras_dict = dict(parse_qsl(self.DB_EXTRAS))
         options = db_extras_dict.get("options", "")
-        # Always include timezone
-        timezone_opt = "-c timezone=UTC"
-        if options:
-            # Merge user options and timezone
-            merged_options = f"{options} {timezone_opt}"
-        else:
-            merged_options = timezone_opt
+        connect_args: dict[str, str] = {}
+        # Use the dynamic SQLALCHEMY_DATABASE_URI_SCHEME property
+        if self.SQLALCHEMY_DATABASE_URI_SCHEME.startswith("postgresql"):
+            merged_options = options.strip()
+            session_timezone_override = self.DB_SESSION_TIMEZONE_OVERRIDE.strip()
+            if session_timezone_override:
+                timezone_opt = f"-c timezone={session_timezone_override}"
+                merged_options = f"{merged_options} {timezone_opt}".strip() if merged_options else timezone_opt
+            if merged_options:
+                connect_args = {"options": merged_options}
 
-        connect_args = {"options": merged_options}
-
-        return {
+        result: SQLAlchemyEngineOptionsDict = {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
             "max_overflow": self.SQLALCHEMY_MAX_OVERFLOW,
             "pool_recycle": self.SQLALCHEMY_POOL_RECYCLE,
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
-            "pool_reset_on_return": None,
+            "pool_reset_on_return": self.SQLALCHEMY_POOL_RESET_ON_RETURN,
             "pool_timeout": self.SQLALCHEMY_POOL_TIMEOUT,
         }
+        return result
 
 
 class CeleryConfig(DatabaseConfig):
@@ -250,9 +290,18 @@ class CeleryConfig(DatabaseConfig):
         description="Password of the Redis Sentinel master.",
         default=None,
     )
+
     CELERY_SENTINEL_SOCKET_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
+    )
+
+    CELERY_TASK_ANNOTATIONS: dict[str, Any] | None = Field(
+        description=(
+            "Annotations for Celery tasks as a JSON mapping of task name -> options "
+            "(for example, rate limits or other task-specific settings)."
+        ),
+        default=None,
     )
 
     @computed_field
@@ -309,6 +358,7 @@ class MiddlewareConfig(
     CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
     KeywordStoreConfig,
     RedisConfig,
+    RedisPubSubConfig,
     # configs of storage and storage providers
     StorageConfig,
     AliyunOSSStorageConfig,
@@ -328,8 +378,11 @@ class MiddlewareConfig(
     AnalyticdbConfig,
     ChromaConfig,
     ClickzettaConfig,
+    HologresConfig,
     HuaweiCloudConfig,
+    IrisVectorConfig,
     MilvusConfig,
+    AlibabaCloudMySQLConfig,
     MyScaleConfig,
     OpenSearchConfig,
     OracleConfig,

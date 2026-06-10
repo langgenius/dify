@@ -22,6 +22,13 @@ export type SlashCommandHandler<TDeps = any> = {
   mode?: 'direct' | 'submenu'
 
   /**
+   * Check if command is available in current context
+   * If not implemented, command is always available
+   * Used to conditionally show/hide commands based on page, user state, etc.
+   */
+  isAvailable?: () => boolean
+
+  /**
    * Direct execution function for 'direct' mode commands
    * Called when the command is selected and should execute immediately
    */

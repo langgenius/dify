@@ -1,8 +1,8 @@
 from collections.abc import Mapping, Sequence
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from core.variables.segments import ArrayFileSegment, FileSegment
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.variables.segments import ArrayFileSegment, FileSegment
 
 
 class TestWorkflowResponseConverterFetchFilesFromVariableValue:
@@ -11,9 +11,8 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
     def create_test_file(self, file_id: str = "test_file_1") -> File:
         """Create a test File object"""
         return File(
-            id=file_id,
-            tenant_id="test_tenant",
-            type=FileType.DOCUMENT,
+            file_id=file_id,
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related_123",
             filename=f"{file_id}.txt",
@@ -43,7 +42,7 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         """Test with None input"""
         # The method signature expects Union[dict, list, Segment], but implementation handles None
         # We'll test the actual behavior by passing an empty dict instead
-        result = WorkflowResponseConverter._fetch_files_from_variable_value(None)  # type: ignore
+        result = WorkflowResponseConverter._fetch_files_from_variable_value(None)
         assert result == []
 
     def test_fetch_files_from_variable_value_with_empty_dict(self):
@@ -223,7 +222,7 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         assert len(result) == 1
         file_dict = result[0]
         assert file_dict["id"] == "property_test"
-        assert file_dict["tenant_id"] == "test_tenant"
+        assert "tenant_id" not in file_dict
         assert file_dict["type"] == "document"
         assert file_dict["transfer_method"] == "local_file"
         assert file_dict["filename"] == "property_test.txt"

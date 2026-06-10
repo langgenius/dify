@@ -1,9 +1,11 @@
 import base64
 import contextlib
 import logging
+from typing import override
 
 from bs4 import BeautifulSoup
 
+from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 
@@ -22,6 +24,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
         self._api_url = api_url
         self._api_key = api_key
 
+    @override
     def extract(self) -> list[Document]:
         if self._api_url:
             from unstructured.partition.api import partition_via_api
@@ -46,7 +49,8 @@ class UnstructuredEmailExtractor(BaseExtractor):
 
         from unstructured.chunking.title import chunk_by_title
 
-        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
+        max_characters = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+        chunks = chunk_by_title(elements, max_characters=max_characters, combine_text_under_n_chars=max_characters)
         documents = []
         for chunk in chunks:
             text = chunk.text.strip()

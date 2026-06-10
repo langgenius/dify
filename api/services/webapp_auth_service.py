@@ -3,6 +3,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
@@ -10,10 +11,11 @@ from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
-from models.account import Account, AccountStatus
+from models import Account, AccountStatus
 from models.model import App, EndUser, Site
+from services.account_service import AccountService
 from services.app_service import AppService
-from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise.enterprise_service import PERMISSION_CHECK_MODES, EnterpriseService, WebAppAccessMode
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
@@ -32,11 +34,11 @@ class WebAppAuthService:
     @staticmethod
     def authenticate(email: str, password: str) -> Account:
         """authenticate account with email and password"""
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = AccountService.get_account_by_email_with_case_fallback(email)
         if not account:
             raise AccountNotFoundError()
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise AccountLoginError("Account is banned.")
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
@@ -52,11 +54,11 @@ class WebAppAuthService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
-        account = db.session.query(Account).where(Account.email == email).first()
+        account = AccountService.get_account_by_email_with_case_fallback(email)
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         return account
@@ -91,10 +93,10 @@ class WebAppAuthService:
 
     @classmethod
     def create_end_user(cls, app_code, email) -> EndUser:
-        site = db.session.query(Site).where(Site.code == app_code).first()
+        site = db.session.scalar(select(Site).where(Site.code == app_code).limit(1))
         if not site:
             raise NotFound("Site not found.")
-        app_model = db.session.query(App).where(App.id == site.app_id).first()
+        app_model = db.session.get(App, site.app_id)
         if not app_model:
             raise NotFound("App not found.")
         end_user = EndUser(
@@ -135,12 +137,8 @@ class WebAppAuthService:
         """
         Check if the app requires permission check based on its access mode.
         """
-        modes_requiring_permission_check = [
-            "private",
-            "private_all",
-        ]
         if access_mode:
-            return access_mode in modes_requiring_permission_check
+            return access_mode in PERMISSION_CHECK_MODES
 
         if not app_code and not app_id:
             raise ValueError("Either app_code or app_id must be provided.")
@@ -151,7 +149,7 @@ class WebAppAuthService:
             raise ValueError("App ID could not be determined from the provided app_code.")
 
         webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-        if webapp_settings and webapp_settings.access_mode in modes_requiring_permission_check:
+        if webapp_settings and webapp_settings.access_mode in PERMISSION_CHECK_MODES:
             return True
         return False
 
@@ -164,15 +162,16 @@ class WebAppAuthService:
             raise ValueError("Either app_code or access_mode must be provided.")
 
         if access_mode:
-            if access_mode == "public":
+            if access_mode == WebAppAccessMode.PUBLIC:
                 return WebAppAuthType.PUBLIC
-            elif access_mode in ["private", "private_all"]:
+            elif access_mode in PERMISSION_CHECK_MODES:
                 return WebAppAuthType.INTERNAL
-            elif access_mode == "sso_verified":
+            elif access_mode == WebAppAccessMode.SSO_VERIFIED:
                 return WebAppAuthType.EXTERNAL
 
         if app_code:
-            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code)
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
             return cls.get_app_auth_type(access_mode=webapp_settings.access_mode)
 
         raise ValueError("Could not determine app authentication type.")

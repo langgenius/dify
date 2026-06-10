@@ -1,21 +1,19 @@
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-  RiEqualizer2Line,
-  RiHome9Line,
-  RiStickyNoteAddLine,
-} from '@remixicon/react'
-import Dropdown from '@/app/components/base/dropdown'
-import type { Item } from '@/app/components/base/dropdown'
 import type {
   DataSourceCredential,
 } from './types'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
+  memo,
+  useCallback,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 type OperatorProps = {
@@ -32,103 +30,61 @@ const Operator = ({
   const {
     type,
   } = credentialItem
-  const items = useMemo(() => {
-    const commonItems = [
-      {
-        value: 'setDefault',
-        text: (
-          <div className='flex items-center'>
-            <RiHome9Line className='mr-2 h-4 w-4 text-text-tertiary' />
-            <div className='system-sm-semibold text-text-secondary'>{t('plugin.auth.setDefault')}</div>
-          </div>
-        ),
-      },
-      ...(
-        type === CredentialTypeEnum.OAUTH2
-          ? [
-            {
-              value: 'rename',
-              text: (
-                <div className='flex items-center'>
-                  <RiEditLine className='mr-2 h-4 w-4 text-text-tertiary' />
-                  <div className='system-sm-semibold text-text-secondary'>{t('common.operation.rename')}</div>
-                </div>
-              ),
-            },
-          ]
-          : []
-      ),
-      ...(
-        type === CredentialTypeEnum.API_KEY
-          ? [
-            {
-              value: 'edit',
-              text: (
-                <div className='flex items-center'>
-                  <RiEqualizer2Line className='mr-2 h-4 w-4 text-text-tertiary' />
-                  <div className='system-sm-semibold text-text-secondary'>{t('common.operation.edit')}</div>
-                </div>
-              ),
-            },
-          ]
-          : []
-      ),
-    ]
-    if (type === CredentialTypeEnum.OAUTH2) {
-      const oAuthItems = [
-        {
-          value: 'change',
-          text: (
-            <div className='flex items-center'>
-              <RiStickyNoteAddLine className='mr-2 h-4 w-4 text-text-tertiary' />
-              <div className='system-sm-semibold mb-1 text-text-secondary'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
-            </div>
-          ),
-        },
-      ]
-      commonItems.push(...oAuthItems)
-    }
-    return commonItems
-  }, [t, type])
-
-  const secondItems = useMemo(() => {
-    return [
-      {
-        value: 'delete',
-        text: (
-          <div className='flex items-center'>
-            <RiDeleteBinLine className='mr-2 h-4 w-4 text-text-tertiary' />
-            <div className='system-sm-semibold text-text-secondary'>
-              {t('common.operation.remove')}
-            </div>
-          </div>
-        ),
-      },
-    ]
-  }, [])
-  const handleSelect = useCallback((item: Item) => {
-    if (item.value === 'rename') {
-      onRename?.()
-      return
-    }
-    onAction(
-      item.value as string,
-      credentialItem,
-    )
-  }, [onAction, credentialItem, onRename])
+  const handleAction = useCallback((action: string) => {
+    queueMicrotask(() => {
+      if (action === 'rename') {
+        onRename?.()
+        return
+      }
+      onAction(action, credentialItem)
+    })
+  }, [credentialItem, onAction, onRename])
 
   return (
-    <Dropdown
-      items={items}
-      secondItems={secondItems}
-      onSelect={handleSelect}
-      popupClassName='z-[61]'
-      triggerProps={{
-        size: 'l',
-      }}
-      itemClassName='py-2 h-auto hover:bg-state-base-hover'
-      secondItemClassName='py-2 h-auto hover:bg-state-base-hover'
-    />
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={(
+          <ActionButton
+            size="l"
+            className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+            aria-label={t('operation.more', { ns: 'common' })}
+          >
+            <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+          </ActionButton>
+        )}
+      />
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[200px]">
+        <DropdownMenuItem className="h-auto gap-2 py-2" onClick={() => handleAction('setDefault')}>
+          <span aria-hidden className="i-ri-home-9-line size-4 text-text-tertiary" />
+          <div className="system-sm-semibold text-text-secondary">{t('auth.setDefault', { ns: 'plugin' })}</div>
+        </DropdownMenuItem>
+        {type === CredentialTypeEnum.OAUTH2 && (
+          <DropdownMenuItem className="h-auto gap-2 py-2" onClick={() => handleAction('rename')}>
+            <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+            <div className="system-sm-semibold text-text-secondary">{t('operation.rename', { ns: 'common' })}</div>
+          </DropdownMenuItem>
+        )}
+        {type === CredentialTypeEnum.API_KEY && (
+          <DropdownMenuItem className="h-auto gap-2 py-2" onClick={() => handleAction('edit')}>
+            <span aria-hidden className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
+            <div className="system-sm-semibold text-text-secondary">{t('operation.edit', { ns: 'common' })}</div>
+          </DropdownMenuItem>
+        )}
+        {type === CredentialTypeEnum.OAUTH2 && (
+          <DropdownMenuItem className="h-auto gap-2 py-2" onClick={() => handleAction('change')}>
+            <span aria-hidden className="i-ri-sticky-note-add-line size-4 text-text-tertiary" />
+            <div className="mb-1 system-sm-semibold text-text-secondary">{t('dataSource.notion.changeAuthorizedPages', { ns: 'common' })}</div>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" className="h-auto gap-2 py-2" onClick={() => handleAction('delete')}>
+          <span aria-hidden className="i-ri-delete-bin-line size-4" />
+          <div className="system-sm-semibold">
+            {t('operation.remove', { ns: 'common' })}
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

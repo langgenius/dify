@@ -1,0 +1,233 @@
+'use client'
+import type {
+  RefObject,
+} from 'react'
+import type { BlockEnum, OnSelectBlock } from '../types'
+import type { ListRef } from './market-place-plugin/list'
+import type { TriggerDefaultValue, TriggerWithProvider } from './types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiArrowRightUpLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import Link from '@/next/link'
+import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
+import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
+import { getMarketplaceUrl } from '@/utils/var'
+import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import { PluginCategoryEnum } from '../../plugins/types'
+import { BlockEnum as BlockEnumValue } from '../types'
+import { ENTRY_NODE_TYPES } from './constants'
+import FeaturedTriggers from './featured-triggers'
+import PluginList from './market-place-plugin/list'
+import StartBlocks from './start-blocks'
+import TriggerPluginList from './trigger-plugin/list'
+
+const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
+
+type AllStartBlocksProps = {
+  className?: string
+  searchText: string
+  onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
+  availableBlocksTypes?: BlockEnum[]
+  tags?: string[]
+  allowUserInputSelection?: boolean // Allow user input option even when trigger node already exists (e.g. when no Start node yet or changing node type).
+}
+
+const AllStartBlocks = ({
+  className,
+  searchText,
+  onSelect,
+  availableBlocksTypes,
+  tags = [],
+  allowUserInputSelection = false,
+}: AllStartBlocksProps) => {
+  const { t } = useTranslation()
+  const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
+  const [hasPluginContent, setHasPluginContent] = useState(false)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
+  const pluginRef = useRef<ListRef>(null)
+  const wrapElemRef = useRef<HTMLDivElement>(null)
+
+  const entryNodeTypes = useMemo(() => {
+    return availableBlocksTypes?.length
+      ? availableBlocksTypes
+      : [...ENTRY_NODE_TYPES]
+  }, [availableBlocksTypes])
+  const enableTriggerPlugin = entryNodeTypes.includes(BlockEnumValue.TriggerPlugin)
+  const { data: triggerProviders = [] } = useAllTriggerPlugins(enableTriggerPlugin)
+  const providerMap = useMemo(() => {
+    const map = new Map<string, TriggerWithProvider>()
+    triggerProviders.forEach((provider) => {
+      const keys = [
+        provider.plugin_id,
+        provider.plugin_unique_identifier,
+        provider.id,
+      ].filter(Boolean) as string[]
+      keys.forEach((key) => {
+        if (!map.has(key))
+          map.set(key, provider)
+      })
+    })
+    return map
+  }, [triggerProviders])
+  const invalidateTriggers = useInvalidateAllTriggerPlugins()
+  const trimmedSearchText = searchText.trim()
+  const hasSearchText = trimmedSearchText.length > 0
+  const hasFilter = hasSearchText || tags.length > 0
+  const {
+    plugins: featuredPlugins = [],
+    isLoading: featuredLoading,
+  } = useFeaturedTriggersRecommendations(enableTriggerPlugin && enable_marketplace && !hasFilter)
+  const {
+    queryPluginsWithDebounced: fetchPlugins,
+    plugins: marketplacePlugins = [],
+  } = useMarketplacePlugins()
+
+  const shouldShowFeatured = enableTriggerPlugin
+    && enable_marketplace
+    && !hasFilter
+  const hasTriggerOptions = entryNodeTypes.some(type => type !== BlockEnumValue.Start)
+  const shouldShowTriggerListTitle = hasTriggerOptions && (hasStartBlocksContent || hasPluginContent)
+  const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
+
+  const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {
+    setHasStartBlocksContent(hasContent)
+  }, [])
+
+  const handlePluginContentChange = useCallback((hasContent: boolean) => {
+    setHasPluginContent(hasContent)
+  }, [])
+
+  const hasMarketplaceContent = enableTriggerPlugin && enable_marketplace && marketplacePlugins.length > 0
+  const hasAnyContent = hasStartBlocksContent || hasPluginContent || shouldShowFeatured || hasMarketplaceContent
+  const shouldShowEmptyState = hasFilter && !hasAnyContent
+
+  useEffect(() => {
+    if (!enableTriggerPlugin && hasPluginContent)
+      setHasPluginContent(false)
+  }, [enableTriggerPlugin, hasPluginContent])
+
+  useEffect(() => {
+    if (!enableTriggerPlugin || !enable_marketplace)
+      return
+    if (hasFilter) {
+      fetchPlugins({
+        query: searchText,
+        tags,
+        category: PluginCategoryEnum.trigger,
+      })
+    }
+  }, [enableTriggerPlugin, enable_marketplace, hasFilter, fetchPlugins, searchText, tags])
+
+  return (
+    <div className={cn('max-w-[500px] min-w-[400px]', className)}>
+      <div className="flex max-h-[640px] flex-col">
+        <div
+          ref={wrapElemRef}
+          className="flex-1 overflow-y-auto"
+          onScroll={() => pluginRef.current?.handleScroll()}
+        >
+          <div className={cn(shouldShowEmptyState && 'hidden')}>
+            {shouldShowFeatured && (
+              <>
+                <FeaturedTriggers
+                  plugins={featuredPlugins}
+                  providerMap={providerMap}
+                  onSelect={onSelect}
+                  isLoading={featuredLoading}
+                  onInstallSuccess={async () => {
+                    invalidateTriggers()
+                  }}
+                />
+                <div className="px-3">
+                  <Divider className="h-px!" />
+                </div>
+              </>
+            )}
+            {shouldShowTriggerListTitle && (
+              <div className="px-3 pt-2 pb-1">
+                <span className="system-xs-medium text-text-primary">{t('tabs.allTriggers', { ns: 'workflow' })}</span>
+              </div>
+            )}
+            <StartBlocks
+              searchText={trimmedSearchText}
+              onSelect={onSelect as OnSelectBlock}
+              availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
+              hideUserInput={!allowUserInputSelection}
+              onContentStateChange={handleStartBlocksContentChange}
+            />
+
+            {enableTriggerPlugin && (
+              <TriggerPluginList
+                onSelect={onSelect}
+                searchText={trimmedSearchText}
+                onContentStateChange={handlePluginContentChange}
+                tags={tags}
+              />
+            )}
+            {enableTriggerPlugin && enable_marketplace && (
+              <PluginList
+                ref={pluginRef}
+                wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
+                list={marketplacePlugins}
+                searchText={trimmedSearchText}
+                category={PluginCategoryEnum.trigger}
+                tags={tags}
+                hideFindMoreFooter
+              />
+            )}
+          </div>
+
+          {shouldShowEmptyState && (
+            <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
+              <SearchMenu className="size-8 text-text-quaternary" />
+              <div className="text-sm font-medium text-text-secondary">
+                {t('tabs.noPluginsFound', { ns: 'workflow' })}
+              </div>
+              <Link
+                href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
+                target="_blank"
+              >
+                <Button
+                  size="small"
+                  variant="secondary-accent"
+                  className="h-6 cursor-pointer px-3 text-xs"
+                >
+                  {t('tabs.requestToCommunity', { ns: 'workflow' })}
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {shouldShowMarketplaceFooter && !shouldShowEmptyState && (
+          // Footer - Same as Tools tab marketplace footer
+          <Link
+            className={marketplaceFooterClassName}
+            href={getMarketplaceUrl('', { category: PluginCategoryEnum.trigger })}
+            target="_blank"
+          >
+            <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
+            <RiArrowRightUpLine className="ml-0.5 size-3" />
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default AllStartBlocks

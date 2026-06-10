@@ -3,8 +3,9 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import delete
 
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models import ConversationVariable
 from models.model import Message, MessageAnnotation, MessageFeedback
 from models.tools import ToolConversationVariables, ToolFile
@@ -27,44 +28,38 @@ def delete_conversation_related_data(conversation_id: str):
     )
     start_at = time.perf_counter()
 
-    try:
-        db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id).delete(
-            synchronize_session=False
-        )
+    with session_factory.create_session() as session:
+        try:
+            session.execute(delete(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id))
 
-        db.session.query(MessageFeedback).where(MessageFeedback.conversation_id == conversation_id).delete(
-            synchronize_session=False
-        )
+            session.execute(delete(MessageFeedback).where(MessageFeedback.conversation_id == conversation_id))
 
-        db.session.query(ToolConversationVariables).where(
-            ToolConversationVariables.conversation_id == conversation_id
-        ).delete(synchronize_session=False)
-
-        db.session.query(ToolFile).where(ToolFile.conversation_id == conversation_id).delete(synchronize_session=False)
-
-        db.session.query(ConversationVariable).where(ConversationVariable.conversation_id == conversation_id).delete(
-            synchronize_session=False
-        )
-
-        db.session.query(Message).where(Message.conversation_id == conversation_id).delete(synchronize_session=False)
-
-        db.session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id).delete(
-            synchronize_session=False
-        )
-
-        db.session.commit()
-
-        end_at = time.perf_counter()
-        logger.info(
-            click.style(
-                f"Succeeded cleaning data from db for conversation_id {conversation_id} latency: {end_at - start_at}",
-                fg="green",
+            session.execute(
+                delete(ToolConversationVariables).where(ToolConversationVariables.conversation_id == conversation_id)
             )
-        )
 
-    except Exception as e:
-        logger.exception("Failed to delete data from db for conversation_id: %s failed", conversation_id)
-        db.session.rollback()
-        raise e
-    finally:
-        db.session.close()
+            session.execute(delete(ToolFile).where(ToolFile.conversation_id == conversation_id))
+
+            session.execute(delete(ConversationVariable).where(ConversationVariable.conversation_id == conversation_id))
+
+            session.execute(delete(Message).where(Message.conversation_id == conversation_id))
+
+            session.execute(delete(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id))
+
+            session.commit()
+
+            end_at = time.perf_counter()
+            logger.info(
+                click.style(
+                    (
+                        f"Succeeded cleaning data from db for conversation_id {conversation_id} "
+                        f"latency: {end_at - start_at}"
+                    ),
+                    fg="green",
+                )
+            )
+
+        except Exception:
+            logger.exception("Failed to delete data from db for conversation_id: %s failed", conversation_id)
+            session.rollback()
+            raise

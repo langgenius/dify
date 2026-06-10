@@ -1,14 +1,14 @@
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import type { FileUploadConfigResponse } from '@/models/common'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useCallback } from 'react'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import { useWorkflowConfig } from '@/service/use-workflow'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useDataSourceList } from '@/service/use-pipeline'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import { useWorkflowConfig } from '@/service/use-workflow'
 import { basePath } from '@/utils/var'
-import type { FileUploadConfigResponse } from '@/models/common'
 
 export const usePipelineConfig = () => {
   const pipelineId = useStore(s => s.pipelineId)
@@ -33,10 +33,10 @@ export const usePipelineConfig = () => {
     handleUpdateNodesDefaultConfigs,
   )
 
-  const handleUpdatePublishedAt = useCallback((publishedWorkflow: FetchWorkflowDraftResponse) => {
+  const handleUpdatePublishedAt = useCallback((publishedWorkflow: FetchWorkflowDraftResponse | null) => {
     const { setPublishedAt } = workflowStore.getState()
 
-    setPublishedAt(publishedWorkflow?.created_at)
+    setPublishedAt(publishedWorkflow?.created_at ?? 0)
   }, [workflowStore])
   useWorkflowConfig(
     pipelineId ? `/rag/pipelines/${pipelineId}/workflows/publish` : '',

@@ -19,8 +19,22 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
-from core.variables import (
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from graphon.entities import GraphInitParams
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
+    GraphEngineEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+)
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -29,18 +43,6 @@ from core.variables import (
     ObjectVariable,
     StringVariable,
 )
-from core.workflow.entities import GraphRuntimeState, VariablePool
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import (
-    GraphEngineEvent,
-    GraphRunStartedEvent,
-    GraphRunSucceededEvent,
-)
-from core.workflow.nodes.node_factory import DifyNodeFactory
-from core.workflow.system_variable import SystemVariable
 
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory
@@ -48,12 +50,59 @@ from .test_mock_factory import MockNodeFactory
 logger = logging.getLogger(__name__)
 
 
+class _TableTestChildEngineBuilder:
+    def __init__(self, *, use_mock_factory: bool, mock_config: MockConfig | None) -> None:
+        self._use_mock_factory = use_mock_factory
+        self._mock_config = mock_config
+
+    def build_child_engine(
+        self,
+        *,
+        workflow_id: str,
+        graph_init_params: GraphInitParams,
+        parent_graph_runtime_state: GraphRuntimeState,
+        root_node_id: str,
+        variable_pool: VariablePool | None = None,
+    ) -> GraphEngine:
+        child_graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
+            start_at=time.perf_counter(),
+            execution_context=parent_graph_runtime_state.execution_context,
+        )
+        if self._use_mock_factory:
+            node_factory = MockNodeFactory(
+                graph_init_params=graph_init_params,
+                graph_runtime_state=child_graph_runtime_state,
+                mock_config=self._mock_config,
+            )
+        else:
+            node_factory = DifyNodeFactory(
+                graph_init_params=graph_init_params,
+                graph_runtime_state=child_graph_runtime_state,
+            )
+
+        graph_config = graph_init_params.graph_config
+        child_graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
+        if not child_graph:
+            raise ValueError("child graph not found")
+
+        child_engine = GraphEngine(
+            workflow_id=workflow_id,
+            graph=child_graph,
+            graph_runtime_state=child_graph_runtime_state,
+            command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
+            child_engine_builder=self,
+        )
+        return child_engine
+
+
 @dataclass
 class WorkflowTestCase:
     """Represents a single test case for table-driven testing."""
 
-    fixture_path: str
-    expected_outputs: dict[str, Any]
+    fixture_path: str = ""
+    expected_outputs: dict[str, Any] = field(default_factory=dict)
     inputs: dict[str, Any] = field(default_factory=dict)
     query: str = ""
     description: str = ""
@@ -61,11 +110,7 @@ class WorkflowTestCase:
     mock_config: MockConfig | None = None
     use_auto_mock: bool = False
     expected_event_sequence: Sequence[type[GraphEngineEvent]] | None = None
-    tags: list[str] = field(default_factory=list)
-    skip: bool = False
-    skip_reason: str = ""
-    retry_count: int = 0
-    custom_validator: Callable[[dict[str, Any]], bool] | None = None
+    graph_factory: Callable[[], tuple[Graph, GraphRuntimeState]] | None = None
 
 
 @dataclass
@@ -80,7 +125,8 @@ class WorkflowTestResult:
     event_sequence_match: bool | None = None
     event_mismatch_details: str | None = None
     events: list[GraphEngineEvent] = field(default_factory=list)
-    retry_attempts: int = 0
+    graph: Graph | None = None
+    graph_runtime_state: GraphRuntimeState | None = None
     validation_details: str | None = None
 
 
@@ -91,7 +137,6 @@ class TestSuiteResult:
     total_tests: int
     passed_tests: int
     failed_tests: int
-    skipped_tests: int
     total_execution_time: float
     results: list[WorkflowTestResult]
 
@@ -105,10 +150,6 @@ class TestSuiteResult:
     def get_failed_results(self) -> list[WorkflowTestResult]:
         """Get all failed test results."""
         return [r for r in self.results if not r.success]
-
-    def get_results_by_tag(self, tag: str) -> list[WorkflowTestResult]:
-        """Get test results filtered by tag."""
-        return [r for r in self.results if tag in r.test_case.tags]
 
 
 class WorkflowRunner:
@@ -157,24 +198,29 @@ class WorkflowRunner:
             raise ValueError("Fixture missing workflow.graph configuration")
 
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config=graph_config,
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",  # Set to debugger to avoid conversation_id requirement
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,  # Set to debugger to avoid conversation_id requirement
+                }
+            },
             call_depth=0,
         )
 
-        system_variables = SystemVariable(
-            user_id=graph_init_params.user_id,
-            app_id=graph_init_params.app_id,
+        system_variables = build_system_variables(
+            user_id="test_user",
+            app_id="test_app",
             workflow_id=graph_init_params.workflow_id,
             files=[],
             query=query,
         )
-        user_inputs = inputs if inputs is not None else {}
+        root_node_inputs = dict(inputs or {})
+        root_node_inputs.setdefault("query", query)
 
         # Extract conversation variables from workflow config
         conversation_variables = []
@@ -203,11 +249,16 @@ class WorkflowRunner:
             )
             conversation_variables.append(var)
 
-        variable_pool = VariablePool(
-            system_variables=system_variables,
-            user_inputs=user_inputs,
-            conversation_variables=conversation_variables,
+        root_node_id = get_default_root_node_id(graph_config)
+        variable_pool = VariablePool()
+        add_variables_to_pool(
+            variable_pool,
+            build_bootstrap_variables(
+                system_variables=system_variables,
+                conversation_variables=conversation_variables,
+            ),
         )
+        add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=root_node_inputs)
 
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
@@ -218,7 +269,11 @@ class WorkflowRunner:
         else:
             node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
 
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=root_node_id,
+        )
 
         return graph, graph_runtime_state
 
@@ -242,7 +297,7 @@ class TableTestRunner:
         max_workers: int = 4,
         enable_logging: bool = False,
         log_level: str = "INFO",
-        graph_engine_min_workers: int = 1,
+        graph_engine_min_workers: int = 3,
         graph_engine_max_workers: int = 1,
         graph_engine_scale_up_threshold: int = 5,
         graph_engine_scale_down_idle_time: float = 30.0,
@@ -255,7 +310,7 @@ class TableTestRunner:
             max_workers: Maximum number of parallel workers for test execution
             enable_logging: Enable detailed logging
             log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
-            graph_engine_min_workers: Minimum workers for GraphEngine (default: 1)
+            graph_engine_min_workers: Minimum workers for GraphEngine (default: 3)
             graph_engine_max_workers: Maximum workers for GraphEngine (default: 1)
             graph_engine_scale_up_threshold: Queue depth to trigger scale up
             graph_engine_scale_down_idle_time: Idle time before scaling down
@@ -286,90 +341,30 @@ class TableTestRunner:
         Returns:
             WorkflowTestResult with execution details
         """
-        if test_case.skip:
-            self.logger.info("Skipping test: %s - %s", test_case.description, test_case.skip_reason)
-            return WorkflowTestResult(
-                test_case=test_case,
-                success=True,
-                execution_time=0.0,
-                validation_details=f"Skipped: {test_case.skip_reason}",
-            )
-
-        retry_attempts = 0
-        last_result = None
-        last_error = None
         start_time = time.perf_counter()
 
-        for attempt in range(test_case.retry_count + 1):
-            start_time = time.perf_counter()
-
-            try:
-                result = self._execute_test_case(test_case)
-                last_result = result  # Save the last result
-
-                if result.success:
-                    result.retry_attempts = retry_attempts
-                    self.logger.info("Test passed: %s", test_case.description)
-                    return result
-
-                last_error = result.error
-                retry_attempts += 1
-
-                if attempt < test_case.retry_count:
-                    self.logger.warning(
-                        "Test failed (attempt %d/%d): %s",
-                        attempt + 1,
-                        test_case.retry_count + 1,
-                        test_case.description,
-                    )
-                    time.sleep(0.5 * (attempt + 1))  # Exponential backoff
-
-            except Exception as e:
-                last_error = e
-                retry_attempts += 1
-
-                if attempt < test_case.retry_count:
-                    self.logger.warning(
-                        "Test error (attempt %d/%d): %s - %s",
-                        attempt + 1,
-                        test_case.retry_count + 1,
-                        test_case.description,
-                        str(e),
-                    )
-                    time.sleep(0.5 * (attempt + 1))
-
-        # All retries failed - return the last result if available
-        if last_result:
-            last_result.retry_attempts = retry_attempts
-            self.logger.error("Test failed after %d attempts: %s", retry_attempts, test_case.description)
-            return last_result
-
-        # If no result available (all attempts threw exceptions), create a failure result
-        self.logger.error("Test failed after %d attempts: %s", retry_attempts, test_case.description)
-        return WorkflowTestResult(
-            test_case=test_case,
-            success=False,
-            error=last_error,
-            execution_time=time.perf_counter() - start_time,
-            retry_attempts=retry_attempts,
-        )
+        try:
+            result = self._execute_test_case(test_case)
+            if result.success:
+                self.logger.info("Test passed: %s", test_case.description)
+            else:
+                self.logger.error("Test failed: %s", test_case.description)
+            return result
+        except Exception as exc:
+            self.logger.exception("Error executing test case: %s", test_case.description)
+            return WorkflowTestResult(
+                test_case=test_case,
+                success=False,
+                error=exc,
+                execution_time=time.perf_counter() - start_time,
+            )
 
     def _execute_test_case(self, test_case: WorkflowTestCase) -> WorkflowTestResult:
         """Internal method to execute a single test case."""
         start_time = time.perf_counter()
 
         try:
-            # Load fixture data
-            fixture_data = self.workflow_runner.load_fixture(test_case.fixture_path)
-
-            # Create graph from fixture
-            graph, graph_runtime_state = self.workflow_runner.create_graph_from_fixture(
-                fixture_data=fixture_data,
-                inputs=test_case.inputs,
-                query=test_case.query,
-                use_mock_factory=test_case.use_auto_mock,
-                mock_config=test_case.mock_config,
-            )
+            graph, graph_runtime_state = self._create_graph_runtime_state(test_case)
 
             # Create and run the engine with configured worker settings
             engine = GraphEngine(
@@ -377,14 +372,20 @@ class TableTestRunner:
                 graph=graph,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=InMemoryChannel(),
-                min_workers=self.graph_engine_min_workers,
-                max_workers=self.graph_engine_max_workers,
-                scale_up_threshold=self.graph_engine_scale_up_threshold,
-                scale_down_idle_time=self.graph_engine_scale_down_idle_time,
+                config=GraphEngineConfig(
+                    min_workers=self.graph_engine_min_workers,
+                    max_workers=self.graph_engine_max_workers,
+                    scale_up_threshold=self.graph_engine_scale_up_threshold,
+                    scale_down_idle_time=self.graph_engine_scale_down_idle_time,
+                ),
+                child_engine_builder=_TableTestChildEngineBuilder(
+                    use_mock_factory=test_case.use_auto_mock,
+                    mock_config=test_case.mock_config,
+                ),
             )
 
             # Execute and collect events
-            events = []
+            events: list[GraphEngineEvent] = []
             for event in engine.run():
                 events.append(event)
 
@@ -416,6 +417,8 @@ class TableTestRunner:
                     events=events,
                     event_sequence_match=event_sequence_match,
                     event_mismatch_details=event_mismatch_details,
+                    graph=graph,
+                    graph_runtime_state=graph_runtime_state,
                 )
 
             # Get actual outputs
@@ -423,9 +426,7 @@ class TableTestRunner:
             actual_outputs = success_event.outputs or {}
 
             # Validate outputs
-            output_success, validation_details = self._validate_outputs(
-                test_case.expected_outputs, actual_outputs, test_case.custom_validator
-            )
+            output_success, validation_details = self._validate_outputs(test_case.expected_outputs, actual_outputs)
 
             # Overall success requires both output and event sequence validation
             success = output_success and (event_sequence_match if event_sequence_match is not None else True)
@@ -440,6 +441,8 @@ class TableTestRunner:
                 events=events,
                 validation_details=validation_details,
                 error=None if success else Exception(validation_details or event_mismatch_details or "Test failed"),
+                graph=graph,
+                graph_runtime_state=graph_runtime_state,
             )
 
         except Exception as e:
@@ -449,13 +452,33 @@ class TableTestRunner:
                 success=False,
                 error=e,
                 execution_time=time.perf_counter() - start_time,
+                graph=graph if "graph" in locals() else None,
+                graph_runtime_state=graph_runtime_state if "graph_runtime_state" in locals() else None,
             )
+
+    def _create_graph_runtime_state(self, test_case: WorkflowTestCase) -> tuple[Graph, GraphRuntimeState]:
+        """Create or retrieve graph/runtime state according to test configuration."""
+
+        if test_case.graph_factory is not None:
+            return test_case.graph_factory()
+
+        if not test_case.fixture_path:
+            raise ValueError("fixture_path must be provided when graph_factory is not specified")
+
+        fixture_data = self.workflow_runner.load_fixture(test_case.fixture_path)
+
+        return self.workflow_runner.create_graph_from_fixture(
+            fixture_data=fixture_data,
+            inputs=test_case.inputs,
+            query=test_case.query,
+            use_mock_factory=test_case.use_auto_mock,
+            mock_config=test_case.mock_config,
+        )
 
     def _validate_outputs(
         self,
         expected_outputs: dict[str, Any],
         actual_outputs: dict[str, Any],
-        custom_validator: Callable[[dict[str, Any]], bool] | None = None,
     ) -> tuple[bool, str | None]:
         """
         Validate actual outputs against expected outputs.
@@ -489,14 +512,6 @@ class TableTestRunner:
                     validation_errors.append(
                         f"Value mismatch for key '{key}':\n  Expected: {expected_value}\n  Actual: {actual_value}"
                     )
-
-        # Apply custom validator if provided
-        if custom_validator:
-            try:
-                if not custom_validator(actual_outputs):
-                    validation_errors.append("Custom validator failed")
-            except Exception as e:
-                validation_errors.append(f"Custom validator error: {str(e)}")
 
         if validation_errors:
             return False, "\n".join(validation_errors)
@@ -537,7 +552,6 @@ class TableTestRunner:
         self,
         test_cases: list[WorkflowTestCase],
         parallel: bool = False,
-        tags_filter: list[str] | None = None,
         fail_fast: bool = False,
     ) -> TestSuiteResult:
         """
@@ -546,22 +560,16 @@ class TableTestRunner:
         Args:
             test_cases: List of test cases to execute
             parallel: Run tests in parallel
-            tags_filter: Only run tests with specified tags
-            fail_fast: Stop execution on first failure
+        fail_fast: Stop execution on first failure
 
         Returns:
             TestSuiteResult with aggregated results
         """
-        # Filter by tags if specified
-        if tags_filter:
-            test_cases = [tc for tc in test_cases if any(tag in tc.tags for tag in tags_filter)]
-
         if not test_cases:
             return TestSuiteResult(
                 total_tests=0,
                 passed_tests=0,
                 failed_tests=0,
-                skipped_tests=0,
                 total_execution_time=0.0,
                 results=[],
             )
@@ -576,16 +584,14 @@ class TableTestRunner:
 
         # Calculate statistics
         total_tests = len(results)
-        passed_tests = sum(1 for r in results if r.success and not r.test_case.skip)
-        failed_tests = sum(1 for r in results if not r.success and not r.test_case.skip)
-        skipped_tests = sum(1 for r in results if r.test_case.skip)
+        passed_tests = sum(1 for r in results if r.success)
+        failed_tests = total_tests - passed_tests
         total_execution_time = time.perf_counter() - start_time
 
         return TestSuiteResult(
             total_tests=total_tests,
             passed_tests=passed_tests,
             failed_tests=failed_tests,
-            skipped_tests=skipped_tests,
             total_execution_time=total_execution_time,
             results=results,
         )
@@ -598,7 +604,7 @@ class TableTestRunner:
             result = self.run_test_case(test_case)
             results.append(result)
 
-            if fail_fast and not result.success and not result.test_case.skip:
+            if fail_fast and not result.success:
                 self.logger.info("Fail-fast enabled: stopping execution")
                 break
 
@@ -608,8 +614,22 @@ class TableTestRunner:
         """Run tests in parallel."""
         results = []
 
+        flask_app: Any = None
+        try:
+            from flask import current_app
+
+            flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
+        except RuntimeError:
+            flask_app = None
+
+        def _run_test_case_with_context(test_case: WorkflowTestCase) -> WorkflowTestResult:
+            if flask_app is None:
+                return self.run_test_case(test_case)
+            with flask_app.app_context():
+                return self.run_test_case(test_case)
+
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_test = {executor.submit(self.run_test_case, tc): tc for tc in test_cases}
+            future_to_test = {executor.submit(_run_test_case_with_context, tc): tc for tc in test_cases}
 
             for future in as_completed(future_to_test):
                 test_case = future_to_test[future]
@@ -618,11 +638,11 @@ class TableTestRunner:
                     result = future.result()
                     results.append(result)
 
-                    if fail_fast and not result.success and not result.test_case.skip:
+                    if fail_fast and not result.success:
                         self.logger.info("Fail-fast enabled: cancelling remaining tests")
-                        # Cancel remaining futures
-                        for f in future_to_test:
-                            f.cancel()
+                        for remaining_future in future_to_test:
+                            if not remaining_future.done():
+                                remaining_future.cancel()
                         break
 
                 except Exception as e:
@@ -636,8 +656,9 @@ class TableTestRunner:
                     )
 
                     if fail_fast:
-                        for f in future_to_test:
-                            f.cancel()
+                        for remaining_future in future_to_test:
+                            if not remaining_future.done():
+                                remaining_future.cancel()
                         break
 
         return results
@@ -663,7 +684,6 @@ class TableTestRunner:
         report.append(f"  Total Tests: {suite_result.total_tests}")
         report.append(f"  Passed: {suite_result.passed_tests}")
         report.append(f"  Failed: {suite_result.failed_tests}")
-        report.append(f"  Skipped: {suite_result.skipped_tests}")
         report.append(f"  Success Rate: {suite_result.success_rate:.1f}%")
         report.append(f"  Total Time: {suite_result.total_execution_time:.2f}s")
         report.append("")

@@ -1,9 +1,9 @@
-import {
-  AuthCategory,
-} from '../types'
 import type {
   CredentialTypeEnum,
   PluginPayload,
+} from '../types'
+import {
+  AuthCategory,
 } from '../types'
 
 export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayload) => {

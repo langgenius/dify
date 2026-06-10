@@ -1,8 +1,8 @@
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
-import { useInputVariables } from './hooks'
-import Actions from './actions'
-import Form from '../../../../create-from-pipeline/process-documents/form'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import Form from '../../../../create-from-pipeline/process-documents/form'
+import Actions from './actions'
+import { useInputVariables } from './hooks'
 
 type ProcessDocumentsProps = {
   datasourceNodeId: string
@@ -29,7 +29,7 @@ const ProcessDocuments = ({
   const schema = generateZodSchema(configurations)
 
   return (
-    <div className='flex flex-col gap-y-4 pt-4'>
+    <div className="flex flex-col gap-y-4 pt-4">
       <Form
         ref={ref}
         initialData={initialData}

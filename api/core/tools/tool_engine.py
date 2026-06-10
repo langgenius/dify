@@ -1,5 +1,6 @@
 import contextlib
 import json
+import logging
 from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
@@ -11,8 +12,6 @@ from yarl import URL
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file import FileType
-from core.file.models import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
@@ -33,8 +32,11 @@ from core.tools.errors import (
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from models.enums import CreatorUserRole
+from graphon.file import FileTransferMethod, FileType
+from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
+
+logger = logging.getLogger(__name__)
 
 
 class ToolEngine:
@@ -45,7 +47,7 @@ class ToolEngine:
     @staticmethod
     def agent_invoke(
         tool: Tool,
-        tool_parameters: Union[str, dict],
+        tool_parameters: Union[str, dict[str, Any]],
         user_id: str,
         tenant_id: str,
         message: Message,
@@ -83,7 +85,8 @@ class ToolEngine:
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
-                invocation_meta_dict: dict, messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]
+                invocation_meta_dict: dict[str, ToolInvokeMeta],
+                messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
             ):
                 for message in messages:
                     if isinstance(message, ToolInvokeMeta):
@@ -123,25 +126,31 @@ class ToolEngine:
             # transform tool invoke message to get LLM friendly message
             return plain_text, message_files, meta
         except ToolProviderCredentialValidationError as e:
+            logger.error(e, exc_info=True)
             error_response = "Please check your tool provider credentials"
             agent_tool_callback.on_tool_error(e)
         except (ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError) as e:
             error_response = f"there is not a tool named {tool.entity.identity.name}"
+            logger.error(e, exc_info=True)
             agent_tool_callback.on_tool_error(e)
         except ToolParameterValidationError as e:
             error_response = f"tool parameters validation error: {e}, please check your tool parameters"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
         except ToolInvokeError as e:
             error_response = f"tool invoke error: {e}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
         except ToolEngineInvokeError as e:
             meta = e.meta
             error_response = f"tool invoke error: {meta.error}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
             return error_response, [], meta
         except Exception as e:
             error_response = f"unknown error: {e}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
 
         return error_response, [], ToolInvokeMeta.error_instance(error_response)
 
@@ -192,7 +201,7 @@ class ToolEngine:
     @staticmethod
     def _invoke(
         tool: Tool,
-        tool_parameters: dict,
+        tool_parameters: dict[str, Any],
         user_id: str,
         conversation_id: str | None = None,
         app_id: str | None = None,
@@ -228,29 +237,43 @@ class ToolEngine:
         """
         Handle tool response
         """
-        result = ""
+        parts: list[str] = []
+        json_parts: list[str] = []
+
         for response in tool_response:
             if response.type == ToolInvokeMessage.MessageType.TEXT:
-                result += cast(ToolInvokeMessage.TextMessage, response.message).text
+                parts.append(cast(ToolInvokeMessage.TextMessage, response.message).text)
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += (
+                parts.append(
                     f"result link: {cast(ToolInvokeMessage.TextMessage, response.message).text}."
                     + " please tell user to check it."
                 )
             elif response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
-                result += (
+                parts.append(
                     "image has been created and sent to user already, "
                     + "you do not need to create it, just tell the user to check it now."
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
-                result += json.dumps(
-                    safe_json_value(cast(ToolInvokeMessage.JsonMessage, response.message).json_object),
-                    ensure_ascii=False,
+                json_message = cast(ToolInvokeMessage.JsonMessage, response.message)
+                if json_message.suppress_output:
+                    continue
+                json_parts.append(
+                    json.dumps(
+                        safe_json_value(cast(ToolInvokeMessage.JsonMessage, response.message).json_object),
+                        ensure_ascii=False,
+                    )
                 )
+            elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
+                continue
             else:
-                result += str(response.message)
+                parts.append(str(response.message))
 
-        return result
+        # Add JSON parts, avoiding duplicates from text parts.
+        if json_parts:
+            existing_parts = set(parts)
+            parts.extend(p for p in json_parts if p not in existing_parts)
+
+        return "".join(parts)
 
     @staticmethod
     def _extract_tool_response_binary_and_text(
@@ -260,7 +283,11 @@ class ToolEngine:
         Extract tool response binary
         """
         for response in tool_response:
-            if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
+            if response.type in {
+                ToolInvokeMessage.MessageType.IMAGE_LINK,
+                ToolInvokeMessage.MessageType.IMAGE,
+                ToolInvokeMessage.MessageType.BINARY_LINK,
+            }:
                 mimetype = None
                 if not response.meta:
                     raise ValueError("missing meta data")
@@ -275,7 +302,11 @@ class ToolEngine:
                             mimetype = guess_type_result
 
                 if not mimetype:
-                    mimetype = "image/jpeg"
+                    mimetype = (
+                        "image/jpeg"
+                        if response.type != ToolInvokeMessage.MessageType.BINARY_LINK
+                        else "application/octet-stream"
+                    )
 
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", mimetype),
@@ -331,7 +362,7 @@ class ToolEngine:
                 message_id=agent_message.id,
                 type=file_type,
                 transfer_method=FileTransferMethod.TOOL_FILE,
-                belongs_to="assistant",
+                belongs_to=MessageFileBelongsTo.ASSISTANT,
                 url=message.url,
                 upload_file_id=tool_file_id,
                 created_by_role=(

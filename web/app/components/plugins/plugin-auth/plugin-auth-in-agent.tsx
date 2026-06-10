@@ -1,20 +1,21 @@
+import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
+import type {
+  Credential,
+  PluginPayload,
+} from './types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Authorize from './authorize'
 import Authorized from './authorized'
-import type {
-  Credential,
-  PluginPayload,
-} from './types'
 import { usePluginAuth } from './hooks/use-plugin-auth'
-import Button from '@/app/components/base/button'
-import Indicator from '@/app/components/header/indicator'
-import cn from '@/utils/classnames'
 
 type PluginAuthInAgentProps = {
   pluginPayload: PluginPayload
@@ -36,12 +37,12 @@ const PluginAuthInAgent = ({
     disabled,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
-  } = usePluginAuth(pluginPayload, true)
+  } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
 
   const extraAuthorizationItems: Credential[] = [
     {
       id: '__workspace_default__',
-      name: t('plugin.auth.workspaceDefault'),
+      name: t('auth.workspaceDefault', { ns: 'plugin' }),
       provider: '',
       is_default: !credentialId,
       isWorkspaceDefault: true,
@@ -60,19 +61,19 @@ const PluginAuthInAgent = ({
     let label = ''
     let removed = false
     let unavailable = false
-    let color = 'green'
+    let color: StatusDotStatus = 'success'
     if (!credentialId) {
-      label = t('plugin.auth.workspaceDefault')
+      label = t('auth.workspaceDefault', { ns: 'plugin' })
     }
     else {
       const credential = credentials.find(c => c.id === credentialId)
-      label = credential ? credential.name : t('plugin.auth.authRemoved')
+      label = credential ? credential.name : t('auth.authRemoved', { ns: 'plugin' })
       removed = !credential
       unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
       if (removed)
-        color = 'red'
+        color = 'error'
       else if (unavailable)
-        color = 'gray'
+        color = 'disabled'
     }
     return (
       <Button
@@ -80,16 +81,17 @@ const PluginAuthInAgent = ({
           'w-full',
           isOpen && 'bg-components-button-secondary-bg-hover',
           removed && 'text-text-destructive',
-        )}>
-        <Indicator
-          className='mr-2'
-          color={color as any}
+        )}
+      >
+        <StatusDot
+          className="mr-2"
+          status={color}
         />
         {label}
         {
-          unavailable && t('plugin.auth.unavailable')
+          unavailable && t('auth.unavailable', { ns: 'plugin' })
         }
-        <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
+        <RiArrowDownSLine className="ml-0.5 size-4" />
       </Button>
     )
   }, [credentialId, credentials, t])

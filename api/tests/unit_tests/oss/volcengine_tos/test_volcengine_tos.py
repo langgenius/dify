@@ -1,14 +1,15 @@
 from unittest.mock import patch
 
 import pytest
-from tos import TosClientV2  # type: ignore
+from tos import TosClientV2
 
 from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
 from tests.unit_tests.oss.__mock.base import (
     BaseStorageTest,
     get_example_bucket,
 )
-from tests.unit_tests.oss.__mock.volcengine_tos import setup_volcengine_tos_mock
+
+pytest_plugins = ("tests.unit_tests.oss.__mock.volcengine_tos",)
 
 
 class TestVolcengineTos(BaseStorageTest):

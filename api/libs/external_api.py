@@ -1,5 +1,4 @@
 import re
-import sys
 from collections.abc import Mapping
 from typing import Any
 
@@ -10,6 +9,8 @@ from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
+from libs.flask_restx_compat import patch_swagger_for_inline_nested_dicts
+from libs.token import build_force_logout_cookie_headers
 
 
 def http_status_message(code):
@@ -17,12 +18,11 @@ def http_status_message(code):
 
 
 def register_external_error_handlers(api: Api):
-    @api.errorhandler(HTTPException)
     def handle_http_exception(e: HTTPException):
         got_request_exception.send(current_app, exception=e)
 
         # If Werkzeug already prepared a Response, just use it.
-        if getattr(e, "response", None) is not None:
+        if e.response is not None:
             return e.response
 
         status_code = getattr(e, "code", 500) or 500
@@ -67,29 +67,26 @@ def register_external_error_handlers(api: Api):
             # If you need WWW-Authenticate for 401, add it to headers
             if status_code == 401:
                 headers["WWW-Authenticate"] = 'Bearer realm="api"'
+                # Check if this is a forced logout error - clear cookies
+                error_code = getattr(e, "error_code", None)
+                if error_code == "unauthorized_and_force_logout":
+                    # Add Set-Cookie headers to clear auth cookies
+                    headers["Set-Cookie"] = build_force_logout_cookie_headers()
             return data, status_code, headers
 
-    _ = handle_http_exception
-
-    @api.errorhandler(ValueError)
     def handle_value_error(e: ValueError):
         got_request_exception.send(current_app, exception=e)
+        current_app.logger.exception("value_error in request handler")
         status_code = 400
         data = {"code": "invalid_param", "message": str(e), "status": status_code}
         return data, status_code
 
-    _ = handle_value_error
-
-    @api.errorhandler(AppInvokeQuotaExceededError)
     def handle_quota_exceeded(e: AppInvokeQuotaExceededError):
         got_request_exception.send(current_app, exception=e)
         status_code = 429
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
         return data, status_code
 
-    _ = handle_quota_exceeded
-
-    @api.errorhandler(Exception)
     def handle_general_exception(e: Exception):
         got_request_exception.send(current_app, exception=e)
 
@@ -103,15 +100,15 @@ def register_external_error_handlers(api: Api):
         data.setdefault("code", "unknown")
         data.setdefault("status", status_code)
 
-        # Log stack
-        exc_info: Any = sys.exc_info()
-        if exc_info[1] is None:
-            exc_info = None
-        current_app.log_exception(exc_info)
+        # Note: Exception logging is handled by Flask/Flask-RESTX framework automatically
+        # Explicit log_exception call removed to avoid duplicate log entries
 
         return data, status_code
 
-    _ = handle_general_exception
+    api.errorhandler(HTTPException)(handle_http_exception)
+    api.errorhandler(ValueError)(handle_value_error)
+    api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
+    api.errorhandler(Exception)(handle_general_exception)
 
 
 class ExternalApi(Api):
@@ -125,12 +122,13 @@ class ExternalApi(Api):
     }
 
     def __init__(self, app: Blueprint | Flask, *args, **kwargs):
+        patch_swagger_for_inline_nested_dicts()
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
         kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED
         kwargs["doc"] = dify_config.SWAGGER_UI_PATH if dify_config.SWAGGER_UI_ENABLED else False
 
         # manual separate call on construction and init_app to ensure configs in kwargs effective
-        super().__init__(app=None, *args, **kwargs)  # type: ignore
+        super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self)

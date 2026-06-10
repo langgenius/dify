@@ -1,22 +1,50 @@
-from flask_login import current_user
-from flask_restx import Resource, reqparse
-from werkzeug.exceptions import Forbidden
+from uuid import UUID
 
-from controllers.console import console_ns
-from controllers.console.auth.error import ApiKeyAuthFailedError
+from flask_restx import Resource
+from pydantic import BaseModel, Field
+
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from fields.base import ResponseModel
 from libs.login import login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
-from ..wraps import account_initialization_required, setup_required
+from .. import console_ns
+from ..auth.error import ApiKeyAuthFailedError
+from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required, with_current_tenant_id
+
+
+class ApiKeyAuthBindingPayload(BaseModel):
+    category: str = Field(...)
+    provider: str = Field(...)
+    credentials: dict = Field(...)
+
+
+class ApiKeyAuthDataSourceItem(ResponseModel):
+    id: str
+    category: str
+    provider: str
+    disabled: bool
+    created_at: int
+    updated_at: int
+
+
+class ApiKeyAuthDataSourceListResponse(ResponseModel):
+    sources: list[ApiKeyAuthDataSourceItem]
+
+
+register_schema_models(console_ns, ApiKeyAuthBindingPayload)
+register_response_schema_models(console_ns, ApiKeyAuthDataSourceItem, ApiKeyAuthDataSourceListResponse)
 
 
 @console_ns.route("/api-key-auth/data-source")
 class ApiKeyAuthDataSource(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ApiKeyAuthDataSourceListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        data_source_api_key_bindings = ApiKeyAuthService.get_provider_auth_list(current_user.current_tenant_id)
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
+        data_source_api_key_bindings = ApiKeyAuthService.get_provider_auth_list(current_tenant_id)
         if data_source_api_key_bindings:
             return {
                 "sources": [
@@ -39,18 +67,16 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @is_admin_or_owner_required
+    @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         # The role of the current user in the table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("category", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-        ApiKeyAuthService.validate_api_key_auth_args(args)
+        payload = ApiKeyAuthBindingPayload.model_validate(console_ns.payload)
+        data = payload.model_dump()
+        ApiKeyAuthService.validate_api_key_auth_args(data)
         try:
-            ApiKeyAuthService.create_provider_auth(current_user.current_tenant_id, args)
+            ApiKeyAuthService.create_provider_auth(current_tenant_id, data)
         except Exception as e:
             raise ApiKeyAuthFailedError(str(e))
         return {"result": "success"}, 200
@@ -61,11 +87,11 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, binding_id):
+    @is_admin_or_owner_required
+    @console_ns.response(204, "Binding deleted successfully")
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str, binding_id: UUID):
         # The role of the current user in the table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        ApiKeyAuthService.delete_provider_auth(current_tenant_id, str(binding_id))
 
-        ApiKeyAuthService.delete_provider_auth(current_user.current_tenant_id, binding_id)
-
-        return {"result": "success"}, 204
+        return "", 204

@@ -15,8 +15,8 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.message_entities import TextPromptMessageContent
-from core.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class AudioTrunk:
@@ -25,12 +25,10 @@ class AudioTrunk:
         self.status = status
 
 
-def _invoice_tts(text_content: str, model_instance: ModelInstance, tenant_id: str, voice: str):
+def _invoice_tts(text_content: str, model_instance: ModelInstance, voice: str):
     if not text_content or text_content.isspace():
         return
-    return model_instance.invoke_tts(
-        content_text=text_content.strip(), user="responding_tts", tenant_id=tenant_id, voice=voice
-    )
+    return model_instance.invoke_tts(content_text=text_content.strip(), voice=voice)
 
 
 def _process_future(
@@ -62,7 +60,7 @@ class AppGeneratorTTSPublisher:
         self._audio_queue: queue.Queue[AudioTrunk] = queue.Queue()
         self._msg_queue: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
         self.match = re.compile(r"[。.!?]")
-        self.model_manager = ModelManager()
+        self.model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id, user_id="responding_tts")
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS
         )
@@ -89,37 +87,38 @@ class AppGeneratorTTSPublisher:
                 if message is None:
                     if self.msg_text and len(self.msg_text.strip()) > 0:
                         futures_result = self.executor.submit(
-                            _invoice_tts, self.msg_text, self.model_instance, self.tenant_id, self.voice
+                            _invoice_tts, self.msg_text, self.model_instance, self.voice
                         )
                         future_queue.put(futures_result)
                     break
-                elif isinstance(message.event, QueueAgentMessageEvent | QueueLLMChunkEvent):
-                    message_content = message.event.chunk.delta.message.content
-                    if not message_content:
-                        continue
-                    if isinstance(message_content, str):
-                        self.msg_text += message_content
-                    elif isinstance(message_content, list):
-                        for content in message_content:
-                            if not isinstance(content, TextPromptMessageContent):
+                else:
+                    match message.event:
+                        case QueueAgentMessageEvent() | QueueLLMChunkEvent():
+                            message_content = message.event.chunk.delta.message.content
+                            if not message_content:
                                 continue
-                            self.msg_text += content.data
-                elif isinstance(message.event, QueueTextChunkEvent):
-                    self.msg_text += message.event.text
-                elif isinstance(message.event, QueueNodeSucceededEvent):
-                    if message.event.outputs is None:
-                        continue
-                    output = message.event.outputs.get("output", "")
-                    if isinstance(output, str):
-                        self.msg_text += output
+                            match message_content:
+                                case str():
+                                    self.msg_text += message_content
+                                case list():
+                                    for content in message_content:
+                                        if not isinstance(content, TextPromptMessageContent):
+                                            continue
+                                        self.msg_text += content.data
+                        case QueueTextChunkEvent():
+                            self.msg_text += message.event.text
+                        case QueueNodeSucceededEvent():
+                            if message.event.outputs is None:
+                                continue
+                            output = message.event.outputs.get("output", "")
+                            if isinstance(output, str):
+                                self.msg_text += output
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
                 if len(sentence_arr) >= min(self.max_sentence, 7):
                     self.max_sentence += 1
                     text_content = "".join(sentence_arr)
-                    futures_result = self.executor.submit(
-                        _invoice_tts, text_content, self.model_instance, self.tenant_id, self.voice
-                    )
+                    futures_result = self.executor.submit(_invoice_tts, text_content, self.model_instance, self.voice)
                     future_queue.put(futures_result)
                     if isinstance(text_tmp, str):
                         self.msg_text = text_tmp
