@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import json
+import logging
 from copy import deepcopy
 from typing import Any
 
+from sqlalchemy import select
+
 from core.app.entities.app_invoke_entities import DifyRunContext, ModelConfigWithCredentialsEntity
+from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
+from core.helper import encrypter
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
@@ -12,6 +18,9 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from graphon.nodes.llm.protocols import CredentialsProvider
+from models.provider import ProviderCredential
+
+logger = logging.getLogger(__name__)
 
 
 class DifyCredentialsProvider:
@@ -36,8 +45,10 @@ class DifyCredentialsProvider:
         *,
         run_context: DifyRunContext,
         provider_manager: ProviderManager | None = None,
+        credential_overrides: dict[str, str] | None = None,
     ) -> None:
         self.tenant_id = run_context.tenant_id
+        self.credential_overrides = credential_overrides or {}
         if provider_manager is None:
             provider_manager = create_plugin_provider_manager(
                 tenant_id=run_context.tenant_id,
@@ -47,6 +58,25 @@ class DifyCredentialsProvider:
         self.credentials_cache = {}
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
+        # Check for per-run credential override for this provider (accept provider aliases)
+        override_credential_id = None
+        for provider_alias in ProviderManager._get_provider_names(provider_name):
+            override_credential_id = self.credential_overrides.get(provider_alias)
+            if override_credential_id:
+                break
+        if override_credential_id:
+            cache_key_override = (f"__override__{provider_name}", override_credential_id)
+            if cache_key_override in self.credentials_cache:
+                return deepcopy(self.credentials_cache[cache_key_override])
+
+            credentials = self._fetch_by_credential_id(
+                credential_id=override_credential_id,
+                provider_name=provider_name,
+            )
+            self.credentials_cache[cache_key_override] = deepcopy(credentials)
+            return credentials
+
+        # Default resolution logic
         if (provider_name, model_name) in self.credentials_cache:
             return deepcopy(self.credentials_cache[(provider_name, model_name)])
 
@@ -65,6 +95,52 @@ class DifyCredentialsProvider:
             raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
 
         self.credentials_cache[(provider_name, model_name)] = deepcopy(credentials)
+        return credentials
+
+    def _fetch_by_credential_id(
+        self,
+        credential_id: str,
+        provider_name: str,
+    ) -> dict[str, Any]:
+        """Resolve and decrypt credentials from a specific ProviderCredential record.
+
+        Security: The credential must belong to the same tenant as the current run.
+        """
+        with session_factory.create_session() as session:
+            stmt = select(ProviderCredential).where(
+                ProviderCredential.id == credential_id,
+                ProviderCredential.tenant_id == self.tenant_id,
+            )
+            credential_record = session.scalar(stmt)
+
+        if credential_record is None:
+            raise ProviderTokenNotInitError(
+                f"Credential '{credential_id}' not found or does not belong to this workspace."
+            )
+
+        if credential_record.provider_name not in ProviderManager._get_provider_names(provider_name):
+            raise ValueError(
+                f"Credential '{credential_id}' belongs to provider '{credential_record.provider_name}', "
+                f"but was requested for provider '{provider_name}'."
+            )
+
+        # Decrypt the encrypted_config JSON blob
+        try:
+            credentials: dict[str, Any] = json.loads(credential_record.encrypted_config)
+        except (json.JSONDecodeError, TypeError) as e:
+            raise ProviderTokenNotInitError(
+                f"Failed to parse credentials for credential '{credential_id}': {e}"
+            )
+
+        # Decrypt secret fields using tenant RSA key
+        for key, value in credentials.items():
+            if isinstance(value, str) and value:
+                try:
+                    credentials[key] = encrypter.decrypt_token(tenant_id=self.tenant_id, token=value)
+                except Exception:
+                    # Not an encrypted value or not valid base64, keep as-is
+                    pass
+
         return credentials
 
 
@@ -98,7 +174,11 @@ class DifyModelFactory:
         )
 
 
-def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsProvider, DifyModelFactory]:
+def build_dify_model_access(
+    run_context: DifyRunContext,
+    *,
+    credential_overrides: dict[str, str] | None = None,
+) -> tuple[CredentialsProvider, DifyModelFactory]:
     """Create LLM access adapters that share the same tenant-bound manager graph."""
     provider_manager = create_plugin_provider_manager(
         tenant_id=run_context.tenant_id,
@@ -107,7 +187,11 @@ def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsPro
     model_manager = ModelManager(provider_manager=provider_manager, enable_credentials_cache=True)
 
     return (
-        DifyCredentialsProvider(run_context=run_context, provider_manager=provider_manager),
+        DifyCredentialsProvider(
+            run_context=run_context,
+            provider_manager=provider_manager,
+            credential_overrides=credential_overrides,
+        ),
         DifyModelFactory(run_context=run_context, model_manager=model_manager),
     )
 

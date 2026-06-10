@@ -68,6 +68,7 @@ class BaseMessagePayload(BaseModel):
     files: list[Any] | None = Field(default=None, description="Uploaded files")
     response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
     retriever_from: str = Field(default="dev", description="Retriever source")
+    credential_overrides: dict[str, str] | None = Field(default=None, description="Dynamic credential overrides")
 
 
 class CompletionMessagePayload(BaseMessagePayload):

@@ -297,6 +297,7 @@ class AppRunRequest(BaseModel):
     auto_generate_name: bool = True
     workflow_id: str | None = None
     workspace_id: UUIDStrOrEmpty | None = None
+    credential_overrides: dict[str, str] | None = Field(default=None, description="Dynamic credential overrides")
 
     @field_validator("conversation_id", mode="before")
     @classmethod

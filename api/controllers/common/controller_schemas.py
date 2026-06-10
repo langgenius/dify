@@ -63,6 +63,10 @@ class WorkflowListQuery(BaseModel):
 class WorkflowRunPayload(BaseModel):
     inputs: dict[str, Any]
     files: list[dict[str, Any]] | None = None
+    credential_overrides: dict[str, str] | None = Field(
+        default=None,
+        description="Optional mapping of provider name to credential ID for overriding default credentials per provider.",
+    )
 
 
 class WorkflowUpdatePayload(BaseModel):

@@ -48,6 +48,7 @@ class CompletionMessageExplorePayload(BaseModel):
     files: list[dict[str, Any]] | None = None
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="explore_app")
+    credential_overrides: dict[str, str] | None = Field(default=None, description="Dynamic credential overrides")
 
 
 class ChatMessagePayload(BaseModel):
@@ -57,6 +58,7 @@ class ChatMessagePayload(BaseModel):
     conversation_id: str | None = None
     parent_message_id: str | None = None
     retriever_from: str = Field(default="explore_app")
+    credential_overrides: dict[str, str] | None = Field(default=None, description="Dynamic credential overrides")
 
     @field_validator("conversation_id", "parent_message_id", mode="before")
     @classmethod
