@@ -1,10 +1,10 @@
 'use client'
 
 import type {
+  Environment,
   EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
-import type { EnvironmentOption } from './use-deploy-ready-form'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -46,7 +46,7 @@ type DeployFormProps = {
 }
 
 type DeployReadyFormProps = DeployFormProps & {
-  environments: EnvironmentOption[]
+  environments: Environment[]
   releases: Release[]
   runtimeRows: EnvironmentDeployment[]
   defaultReleaseId?: string
@@ -204,8 +204,8 @@ function deployReadyFormStoreKey({
     presetReleaseId ?? 'new',
     defaultReleaseId ?? 'none',
     environments.map(env => env.id).join(','),
-    releases.map(release => release.id ?? '').join(','),
-    runtimeRows.map(row => `${row.environment?.id ?? ''}:${row.currentRelease?.id ?? ''}`).join(','),
+    releases.map(release => release.id).join(','),
+    runtimeRows.map(row => `${row.environment.id}:${row.currentRelease?.id ?? 'none'}`).join(','),
   ].join('|')
 }
 
@@ -251,31 +251,20 @@ export function DeployForm({
     )
   }
 
-  const runtimeRows = releaseDeploymentViewQuery.data?.environmentDeployments ?? []
-  const environments = runtimeRows.flatMap((row): EnvironmentOption[] => {
-    if (!lockedEnvId && !isAvailableDeploymentTarget(row))
-      return []
+  const deploymentView = releaseDeploymentViewQuery.data
+  if (!deploymentView) {
+    return (
+      <div className="p-4 system-sm-regular text-text-destructive">
+        {t('common.loadFailed')}
+      </div>
+    )
+  }
 
-    const environment = row.environment
-    const environmentId = environment?.id
-    if (!environment || !environmentId)
-      return []
-
-    return [{
-      ...environment,
-      id: environmentId,
-    }]
-  })
-  const releaseRows = releaseDeploymentViewQuery.data?.releases?.flatMap((release) => {
-    const releaseId = release.id
-    if (!releaseId)
-      return []
-
-    return [{
-      ...release,
-      id: releaseId,
-    }]
-  }) ?? []
+  const runtimeRows = deploymentView.environmentDeployments
+  const environments = runtimeRows
+    .filter(row => lockedEnvId || isAvailableDeploymentTarget(row))
+    .map(row => row.environment)
+  const releaseRows = deploymentView.releases
   const currentReleaseId = currentReleaseIdForEnvironment(runtimeRows, lockedEnvId)
   const releases = selectableDeployReleases({
     releases: releaseRows,

@@ -1,10 +1,12 @@
 'use client'
 
 import type {
-  Environment,
+  EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
 import type { EnvVarBindingSlot, EnvVarValues, EnvVarValueSelection } from '../components/env-var-bindings'
-import type { BindingSelections, EnvironmentOption, GuideMethod } from './types'
+import type { RuntimeCredentialBindingSelections } from '../components/runtime-credential-bindings-utils'
+import type { DslEnvVarSlot } from '../dsl'
+import type { GuideMethod } from './types'
 import type { App } from '@/types/app'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
@@ -18,20 +20,44 @@ import { dslEnvVarSlots } from '../dsl'
 import { environmentMatchesIdentifier } from '../environment'
 import { useUnsupportedDslNodesFromError } from './use-unsupported-dsl-nodes'
 
-export function deploymentEnvironmentOptions(environments?: Environment[]): EnvironmentOption[] {
-  return environments?.flatMap((environment) => {
-    const environmentId = environment.id
-    if (!environmentId)
-      return []
-
-    return [{
-      ...environment,
-      id: environmentId,
-    }]
-  }) ?? []
+type EnvVarSlotMetadata = {
+  key: string
+  description?: string
+  defaultValue?: string
+  hasDefaultValue?: boolean
+  valueType?: EnvVarBindingSlot['valueType']
 }
 
-function mergeEnvVarSlotMetadata(slots: EnvVarBindingSlot[], metadataSlots: EnvVarBindingSlot[]) {
+function envVarBindingValueType(value?: string): EnvVarBindingSlot['valueType'] {
+  return value === 'number' || value === 'secret' ? value : 'string'
+}
+
+function deploymentEnvVarBindingSlot(slot: EnvVarSlot): EnvVarBindingSlot | undefined {
+  const key = slot.key.trim()
+  if (!key)
+    return undefined
+
+  return {
+    ...slot,
+    key,
+    valueType: envVarBindingValueType(slot.valueType),
+  }
+}
+
+function normalizeDslEnvVarSlotMetadata(slot: DslEnvVarSlot): EnvVarSlotMetadata | undefined {
+  const key = slot.key.trim()
+  if (!key)
+    return undefined
+
+  return {
+    key,
+    ...(slot.description ? { description: slot.description } : {}),
+    ...(slot.defaultValue !== undefined ? { defaultValue: slot.defaultValue, hasDefaultValue: true } : {}),
+    ...(slot.valueType ? { valueType: envVarBindingValueType(slot.valueType) } : {}),
+  }
+}
+
+function mergeEnvVarSlotMetadata(slots: EnvVarBindingSlot[], metadataSlots: EnvVarSlotMetadata[]) {
   if (metadataSlots.length === 0)
     return slots
 
@@ -44,20 +70,18 @@ function mergeEnvVarSlotMetadata(slots: EnvVarBindingSlot[], metadataSlots: EnvV
     if (!metadata)
       return slot
 
-    const description = slot.description || metadata.description
-    const defaultValue = slot.defaultValue ?? metadata.defaultValue
-    const lastValue = slot.lastValue ?? metadata.lastValue
-    const hasDefaultValue = slot.hasDefaultValue ?? metadata.hasDefaultValue
-    const hasLastValue = slot.hasLastValue ?? metadata.hasLastValue
+    const nextSlot = { ...slot }
 
-    return {
-      ...slot,
-      ...(description ? { description } : {}),
-      ...(hasDefaultValue ? { hasDefaultValue } : {}),
-      ...(hasLastValue ? { hasLastValue } : {}),
-      ...(defaultValue !== undefined ? { defaultValue } : {}),
-      ...(lastValue !== undefined ? { lastValue } : {}),
+    if (!nextSlot.description && metadata.description)
+      nextSlot.description = metadata.description
+    if (!nextSlot.hasDefaultValue && metadata.defaultValue !== undefined) {
+      nextSlot.defaultValue = metadata.defaultValue
+      nextSlot.hasDefaultValue = true
     }
+    if (nextSlot.valueType === 'string' && metadata.valueType)
+      nextSlot.valueType = metadata.valueType
+
+    return nextSlot
   })
 }
 
@@ -83,7 +107,7 @@ export function useDeploymentTargetOptions({
   shouldResolveDeploymentTarget: boolean
 }) {
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('')
-  const [manualBindingSelections, setManualBindingSelections] = useState<BindingSelections>({})
+  const [manualBindingSelections, setManualBindingSelections] = useState<RuntimeCredentialBindingSelections>({})
   const [envVarValues, setEnvVarValues] = useState<EnvVarValues>({})
   const shouldLoadSourceDeploymentOptions = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
   const shouldLoadDslDeploymentOptions = method === 'importDsl' && hasDslContent && !isReadingDsl && !dslReadError && !dslUnsupportedMode
@@ -131,40 +155,28 @@ export function useDeploymentTargetOptions({
     isError: deploymentOptionsQuery.isError,
   })
   const environments = shouldLoadDeploymentTarget
-    ? deploymentEnvironmentOptions(deployableEnvironmentsQuery.data?.data)
+    ? deployableEnvironmentsQuery.data?.data ?? []
     : []
   const bindingSlots = shouldLoadDeploymentTarget
-    ? deploymentOptions?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
+    ? deploymentOptions?.credentialSlots.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
     : []
   const deploymentOptionEnvVarSlots = shouldLoadDeploymentTarget
-    ? deploymentOptions?.envVarSlots?.flatMap((slot): EnvVarBindingSlot[] => {
-        const key = slot.key?.trim()
-        if (!key)
-          return []
-
-        return [{
-          ...slot,
-          key,
-          valueType: slot.valueType === 'number' || slot.valueType === 'secret' ? slot.valueType : 'string',
-        }]
-      }) ?? []
+    ? deploymentOptions?.envVarSlots.flatMap((slot): EnvVarBindingSlot[] => {
+      const bindingSlot = deploymentEnvVarBindingSlot(slot)
+      return bindingSlot ? [bindingSlot] : []
+    }) ?? []
     : []
-  const dslEnvVarSlotMetadata = method === 'importDsl' && dslContent
-    ? dslEnvVarSlots(dslContent).flatMap((slot): EnvVarBindingSlot[] => {
-        const key = slot.key?.trim()
-        if (!key)
-          return []
-
-        return [{
-          ...slot,
-          key,
-          valueType: slot.valueType === 'number' || slot.valueType === 'secret' ? slot.valueType : 'string',
-        }]
+  const dslEnvVarMetadataSlots = method === 'importDsl' && dslContent
+    ? dslEnvVarSlots(dslContent).flatMap((slot): EnvVarSlotMetadata[] => {
+        const metadata = normalizeDslEnvVarSlotMetadata(slot)
+        return metadata ? [metadata] : []
       })
     : []
-  const envVarSlots = mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata)
-  const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
-  const selectedEnvironment = environments.find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId)) ?? environments[0]
+  const envVarSlots = mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarMetadataSlots)
+  const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id
+  const selectedEnvironment = effectiveSelectedEnvironmentId
+    ? environments.find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId))
+    : undefined
   const bindingSelections = selectedRuntimeCredentialSelections(bindingSlots, manualBindingSelections)
   const requiredEnvVarsReady = envVarSlots.every((slot) => {
     const selection = envVarValues[slot.key]

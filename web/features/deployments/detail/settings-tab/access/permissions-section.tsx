@@ -66,20 +66,7 @@ export function AccessPermissionsSection({
   isError: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const policyRows = environmentPolicies?.flatMap((row) => {
-    const environment = row.environment
-    const environmentId = environment?.id
-    if (!environment || !environmentId)
-      return []
-
-    return [{
-      ...row,
-      environment: {
-        ...environment,
-        id: environmentId,
-      },
-    }]
-  }) ?? []
+  const policyRows = environmentPolicies ?? []
   const permissionsDisabled = !(accessChannels?.webAppEnabled ?? false)
 
   return (

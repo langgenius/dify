@@ -30,7 +30,7 @@ export type CreationSectionsProps = {
   selectedApp?: App
   sourceApps: App[]
   sourceAppsLoading: boolean
-  sourceName: string
+  sourceName?: string
   sourceSearchText: string
   stage: 'source' | 'release'
   unsupportedDslNodes: UnsupportedDslNode[]

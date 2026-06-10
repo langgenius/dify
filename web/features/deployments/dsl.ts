@@ -1,9 +1,12 @@
-import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
 import { load as yamlLoad } from 'js-yaml'
 import { AppModeEnum } from '@/types/app'
 
-type DslEnvVarSlot = EnvVarSlot & {
+export type DslEnvVarSlot = {
   key: string
+  description?: string
+  defaultValue?: string
+  hasDefaultValue?: boolean
+  valueType?: string
 }
 
 type DslMetadata = {

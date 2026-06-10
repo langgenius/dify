@@ -1,11 +1,10 @@
 'use client'
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
 import { DeploymentStatusBadge } from '../../deployment-ui'
-import { releaseLabel } from '../../release'
 import {
-  deploymentStatus,
   isUndeployedDeploymentRow,
 } from '../../runtime-status'
 
@@ -13,13 +12,13 @@ export function DeploymentStatusSummary({ row }: {
   row: EnvironmentDeployment
 }) {
   const { t } = useTranslation('deployments')
-  const status = deploymentStatus(row)
+  const status = row.status
 
-  if (status === 'undeploying') {
+  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING) {
     return (
       <DeploymentStatusBadge
-        status="undeploying"
-        label={t('status.undeploying')}
+        status={status}
+        label={t(`status.${status}`)}
       />
     )
   }
@@ -27,74 +26,73 @@ export function DeploymentStatusSummary({ row }: {
   if (isUndeployedDeploymentRow(row)) {
     return (
       <DeploymentStatusBadge
-        status="not_deployed"
-        label={t('status.notDeployed')}
+        status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}
+        label={t(`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}`)}
       />
     )
   }
 
-  if (status === 'deploying') {
+  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING) {
     const targetRelease = row.desiredRelease ?? row.currentRelease
-    const hasTargetRelease = !!(targetRelease?.name || targetRelease?.id)
-    if (!hasTargetRelease) {
+    if (!targetRelease) {
       return (
         <DeploymentStatusBadge
-          status="undeploying"
-          label={t('status.undeploying')}
+          status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING}
+          label={t(`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING}`)}
         />
       )
     }
 
     return (
       <DeploymentStatusBadge
-        status="deploying"
-        label={t('deployTab.status.deployingRelease', { release: releaseLabel(targetRelease) })}
+        status={status}
+        label={t('deployTab.status.deployingRelease', { release: targetRelease.name })}
       />
     )
   }
 
-  if (status === 'deploy_failed') {
-    const hasRunningRelease = !!row.currentRelease?.id
+  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED) {
+    const hasRunningRelease = Boolean(row.currentRelease)
     return (
       <DeploymentStatusBadge
-        status="deploy_failed"
+        status={status}
         label={t(hasRunningRelease ? 'deployTab.status.runningWithFailed' : 'deployTab.status.deployFailed')}
       />
     )
   }
 
-  if (status === 'drifted') {
-    const hasRunningRelease = !!row.currentRelease?.id
+  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DRIFTED) {
+    const hasRunningRelease = Boolean(row.currentRelease)
     return (
       <DeploymentStatusBadge
-        status="drifted"
-        label={t(hasRunningRelease ? 'deployTab.status.runningOutOfSync' : 'status.drifted')}
+        status={status}
+        label={t(hasRunningRelease ? 'deployTab.status.runningOutOfSync' : `status.${status}`)}
       />
     )
   }
 
-  if (status === 'invalid') {
+  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_INVALID) {
     return (
       <DeploymentStatusBadge
-        status="invalid"
-        label={t('status.invalid')}
+        status={status}
+        label={t(`status.${status}`)}
       />
     )
   }
 
-  if (status === 'unknown') {
+  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNSPECIFIED) {
     return (
       <DeploymentStatusBadge
-        status="unknown"
-        label={t('status.unknown')}
+        status={status}
+        label={t(`status.${status}`)}
       />
     )
   }
 
   return (
     <DeploymentStatusBadge
-      status="ready"
-      label={t('status.ready')}
+      status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY}
+      label={t(`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY}`)}
     />
   )
 }

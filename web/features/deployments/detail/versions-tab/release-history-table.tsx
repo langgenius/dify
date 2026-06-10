@@ -26,19 +26,8 @@ export function ReleaseHistoryTable({ appInstanceId }: {
     },
     placeholderData: keepPreviousData,
   }))
-  const releaseRows = releaseHistoryQuery.data?.data?.flatMap((releaseSummary) => {
-    const releaseRow = releaseRowFromSummary(releaseSummary)
-    return releaseRow ? [releaseRow] : []
-  }) ?? []
-  const totalReleases = releaseHistoryQuery.data?.pagination?.totalCount ?? releaseRows.length
-  const totalReleasePages = Math.ceil(totalReleases / RELEASE_HISTORY_PAGE_SIZE)
   const isLoading = releaseHistoryQuery.isLoading
   const hasError = releaseHistoryQuery.isError
-
-  function handleReleaseDeleted() {
-    if (releaseRows.length === 1 && currentPage > 0)
-      setCurrentPage(page => Math.max(page - 1, 0))
-  }
 
   if (isLoading)
     return <ReleaseHistoryTableSkeleton />
@@ -49,6 +38,24 @@ export function ReleaseHistoryTable({ appInstanceId }: {
         {t('common.loadFailed')}
       </DeploymentStateMessage>
     )
+  }
+
+  const releaseHistory = releaseHistoryQuery.data
+  if (!releaseHistory) {
+    return (
+      <DeploymentStateMessage variant="list">
+        {t('common.loadFailed')}
+      </DeploymentStateMessage>
+    )
+  }
+
+  const releaseRows = releaseHistory.data.map(releaseRowFromSummary)
+  const totalReleases = releaseHistory.pagination.totalCount ?? releaseRows.length
+  const totalReleasePages = Math.ceil(totalReleases / RELEASE_HISTORY_PAGE_SIZE)
+
+  function handleReleaseDeleted() {
+    if (releaseRows.length === 1 && currentPage > 0)
+      setCurrentPage(page => Math.max(page - 1, 0))
   }
 
   if (releaseRows.length === 0) {

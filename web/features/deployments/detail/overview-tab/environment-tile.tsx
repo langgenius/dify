@@ -1,7 +1,10 @@
 'use client'
 
-import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
-import type { DeploymentUiStatus } from '../../runtime-status'
+import type {
+  EnvironmentDeployment,
+  Release,
+  RuntimeInstanceStatus as RuntimeInstanceStatusValue,
+} from '@dify/contracts/enterprise/types.gen'
 import type { TileConfig } from './environment-tile-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSetAtom } from 'jotai'
@@ -12,9 +15,7 @@ import { DeploymentStatusBadge } from '../../deployment-ui'
 import {
   deploymentStatusLabelKey,
 } from '../../deployment-ui-utils'
-import { environmentId, environmentName } from '../../environment'
-import { releaseCommit, releaseLabel } from '../../release'
-import { deploymentStatus } from '../../runtime-status'
+import { releaseCommit } from '../../release'
 import { openDeployDrawerAtom } from '../../store'
 import { OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 import {
@@ -35,9 +36,9 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
 
-  const envId = environmentId(row.environment)
+  const envId = row.environment.id
   const drift = computeDrift(row)
-  const status = deploymentStatus(row)
+  const status = row.status
   const latestId = latestReleaseId(releaseRows)
   const hasAnyRelease = releaseRows.length > 0
   const currentReleaseId = row.currentRelease?.id
@@ -45,7 +46,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
   const isDisabled = config.intent === 'disabled'
   const showStatusSignal = config.kind !== 'deploying'
   const release = row.currentRelease
-  const showRelease = config.showRelease && Boolean(release?.id)
+  const showRelease = config.showRelease && release
   const commit = releaseCommit(release)
   const tooltip = isDisabled
     ? t('overview.chip.needsReleaseFirst')
@@ -96,7 +97,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
             <span className="i-ri-server-line size-4" />
           </span>
           <h4 className="truncate system-sm-medium text-text-primary">
-            {environmentName(row.environment)}
+            {row.environment.name}
           </h4>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -112,7 +113,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-2">
             <span className="min-w-0 truncate system-sm-semibold text-text-primary">
-              {showRelease ? releaseLabel(release) : '—'}
+              {showRelease ? showRelease.name : '—'}
             </span>
             {showRelease && commit !== '—' && (
               <span className="shrink-0 rounded bg-background-section-burn px-1.5 py-0.5 font-mono system-xs-regular text-text-tertiary">
@@ -137,7 +138,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
 }
 
 function RuntimeStatusSignal({ status, t }: {
-  status: DeploymentUiStatus
+  status: RuntimeInstanceStatusValue
   t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
   const label = t(deploymentStatusLabelKey(status))

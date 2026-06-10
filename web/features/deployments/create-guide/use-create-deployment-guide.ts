@@ -107,8 +107,8 @@ export function useCreateDeploymentGuide() {
         }
       : skipToken,
   }))
-  const remoteInstanceNameConflict = instanceNameConflictQuery.data?.data?.some(appInstance =>
-    appInstance.name?.trim() === releaseFields.submittedInstanceName,
+  const remoteInstanceNameConflict = instanceNameConflictQuery.data?.data.some(appInstance =>
+    appInstance.name.trim() === releaseFields.submittedInstanceName,
   )
   const isCheckingInstanceNameConflict = shouldCheckInstanceNameConflict && instanceNameConflictQuery.isLoading
   const hasInstanceNameConflict = Boolean(

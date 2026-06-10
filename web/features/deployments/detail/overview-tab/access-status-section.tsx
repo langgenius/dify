@@ -1,6 +1,7 @@
 'use client'
 
 import type { AccessChannels, ApiKeySummary } from '@dify/contracts/enterprise/types.gen'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -167,7 +168,7 @@ function StatusBadge({ enabled }: {
 
   return (
     <DeploymentStatusBadge
-      status={enabled ? 'ready' : 'not_deployed'}
+      status={enabled ? RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY : RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}
       label={enabled ? t('overview.enabled') : t('overview.disabled')}
     />
   )

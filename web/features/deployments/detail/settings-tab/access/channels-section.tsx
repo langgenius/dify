@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentNoticeState, DeploymentStateMessage } from '../../../components/empty-state'
-import { environmentName } from '../../../environment'
 import { Section } from '../../common'
 import { CopyPill, EndpointRow } from './common'
 import { getUrlOrigin } from './url'
@@ -179,7 +178,7 @@ export function AccessChannelsSection({
                             {webappRows.map(({ endpoint, endpointUrl }) => (
                               <EndpointRow
                                 key={`webapp-${endpoint.environment?.id ?? endpointUrl}`}
-                                envName={environmentName(endpoint.environment)}
+                                envName={endpoint.environment?.name ?? '—'}
                                 label={t('access.runAccess.urlLabel')}
                                 value={endpointUrl}
                                 openLabel={t('access.runAccess.openWebapp')}

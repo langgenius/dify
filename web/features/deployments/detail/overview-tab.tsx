@@ -66,7 +66,7 @@ export function OverviewTab({ appInstanceId }: {
   const { t } = useTranslation('deployments')
   const input = { params: { appInstanceId } }
   const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({ input }))
-  const instance = overviewQuery.data?.appInstance
+  const overview = overviewQuery.data
 
   if (overviewQuery.isLoading)
     return <OverviewLoadingSkeleton appInstanceId={appInstanceId} />
@@ -79,7 +79,7 @@ export function OverviewTab({ appInstanceId }: {
     )
   }
 
-  if (!instance?.id) {
+  if (!overview) {
     return (
       <OverviewLayout>
         <DeploymentStateMessage variant="section">{t('detail.notFound')}</DeploymentStateMessage>
@@ -87,14 +87,14 @@ export function OverviewTab({ appInstanceId }: {
     )
   }
 
-  const releaseRows = overviewQuery.data?.recentReleases ?? []
+  const releaseRows = overview.recentReleases
   // recentReleases is a capped preview; totalReleaseCount is the true total.
-  const releaseCount = overviewQuery.data?.totalReleaseCount ?? releaseRows.length
-  const runtimeRows = overviewQuery.data?.environmentDeployments ?? []
+  const releaseCount = overview.totalReleaseCount
+  const runtimeRows = overview.environmentDeployments
   const deployedEnvironmentCount = runtimeRows.filter(hasRuntimeInstanceDeployment).length
   const latestRelease = releaseRows[0]
-  const accessChannels = overviewQuery.data?.accessChannels
-  const apiKeySummary = overviewQuery.data?.apiKeySummary
+  const accessChannels = overview.accessChannels
+  const apiKeySummary = overview.apiKeySummary
 
   return (
     <OverviewLayout>

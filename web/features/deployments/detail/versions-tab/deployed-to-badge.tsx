@@ -1,6 +1,5 @@
 'use client'
 
-import type { DeploymentUiStatus } from '../../runtime-status'
 import type { ReleaseDeployment } from './release-deployments'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -8,20 +7,16 @@ import { useTranslation } from 'react-i18next'
 import {
   deploymentStatusToneClassNames,
 } from '../../deployment-ui-utils'
-
-const RELEASE_DEPLOYMENT_STATUS: Record<ReleaseDeployment['state'], DeploymentUiStatus> = {
-  active: 'ready',
-  deploying: 'deploying',
-  failed: 'deploy_failed',
-}
+import { isRuntimeDeploymentInProgress } from '../../runtime-status'
 
 export function DeployedToBadge({ item }: {
   item: ReleaseDeployment
 }) {
   const { t } = useTranslation('deployments')
-  const statusLabel = t(`versions.deployedStatus.${item.state}`)
-  const status = RELEASE_DEPLOYMENT_STATUS[item.state]
+  const status = item.status
+  const statusLabel = t(`versions.deployedStatus.${status}`)
   const toneClassNames = deploymentStatusToneClassNames(status)
+  const isInProgress = isRuntimeDeploymentInProgress(status)
 
   return (
     <Tooltip>
@@ -35,7 +30,7 @@ export function DeployedToBadge({ item }: {
           >
             <span
               aria-hidden
-              className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, status === 'deploying' && 'animate-pulse')}
+              className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, isInProgress && 'animate-pulse')}
             />
             <span className="truncate">{item.environmentName}</span>
             <span className="shrink-0 opacity-70">·</span>

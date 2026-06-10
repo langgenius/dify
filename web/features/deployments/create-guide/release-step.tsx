@@ -21,7 +21,7 @@ export function ReleaseStep({
   instanceDescription: string
   releaseName: string
   releaseDescription: string
-  instanceNamePlaceholder: string
+  instanceNamePlaceholder?: string
   instanceNameError?: string
   releaseNamePlaceholder: string
   onInstanceNameChange: (value: string) => void

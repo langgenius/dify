@@ -50,7 +50,7 @@ function RuntimeCredentialSelect({
   onChange,
 }: {
   ariaLabel: string
-  value: string
+  value?: string
   options: RuntimeCredentialSelectOption[]
   placeholder: string
   onChange: (value: string) => void
@@ -59,7 +59,7 @@ function RuntimeCredentialSelect({
 
   return (
     <Select
-      value={value || null}
+      value={value ?? null}
       onValueChange={(next) => {
         if (!next)
           return
@@ -138,9 +138,9 @@ export function RuntimeCredentialBindingsPanel({
               {slots.map((slot) => {
                 const slotKey = runtimeCredentialSlotKey(slot)
                 const candidates = runtimeCredentialCandidateOptions(slot)
-                const selectedValue = selections[slotKey] ?? ''
+                const selectedValue = selections[slotKey]
                 const missing = showMissingRequired && hasMissingRequiredRuntimeCredentialBinding(slot, selectedValue)
-                const slotName = runtimeCredentialProviderName(slot.providerId) || slotKey
+                const slotName = runtimeCredentialProviderName(slot.providerId) ?? slotKey
                 const categoryLabel = slot.category === 'PLUGIN_CATEGORY_MODEL'
                   ? t('categorySingle.model')
                   : slot.category === 'PLUGIN_CATEGORY_TOOL'

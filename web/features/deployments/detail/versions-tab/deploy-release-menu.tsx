@@ -1,7 +1,6 @@
 'use client'
 
 import type { Release } from '@dify/contracts/enterprise/types.gen'
-import type { EnvironmentOption } from './deploy-release-menu-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -16,7 +15,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { TitleTooltip } from '../../components/title-tooltip'
-import { releaseLabel } from '../../release'
 import { isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
@@ -54,25 +52,16 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   }))
   const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
 
-  const environments: EnvironmentOption[] = (environmentDeploymentsQuery.data?.data ?? [])
-    .flatMap((row) => {
-      const environment = row.environment
-      const environmentId = environment?.id
-      if (!environment || !environmentId)
-        return []
-
-      return [{
-        ...environment,
-        id: environmentId,
-      }]
-    })
-  const deploymentRows = environmentDeploymentsQuery.data?.data?.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)) ?? []
-  const targetRelease = releaseRows.find((release): release is Release & { id: string } => release.id === releaseId)
-  const appInstanceName = appInstanceData?.appInstance?.name
+  const environments = (environmentDeploymentsQuery.data?.data ?? [])
+    .map(row => row.environment)
+  const deploymentRows = environmentDeploymentsQuery.data?.data.filter(row => !isUndeployedDeploymentRow(row)) ?? []
+  const targetRelease = releaseRows.find(release => release.id === releaseId)
+  const appInstanceName = appInstanceData?.appInstance.name
 
   if (!targetRelease)
     return null
 
+  const targetReleaseName = targetRelease.name
   const deleteUsageCount = releaseUsageCount(releaseId, deploymentRows)
   const isCheckingDeleteUsage = open && environmentDeploymentsQuery.isLoading
   const isReleaseInUse = deleteUsageCount > 0
@@ -90,7 +79,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
 
     setIsExportingDsl(true)
     try {
-      await exportReleaseDsl({ release: targetRelease, appInstanceName })
+      await exportReleaseDsl({ release: targetRelease, releaseId, appInstanceName })
       setOpen(false)
     }
     catch {
@@ -114,7 +103,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
       {
         onSuccess: () => {
           setShowDeleteConfirm(false)
-          toast.success(t('versions.deleteSuccess', { name: releaseLabel(targetRelease) }))
+          toast.success(t('versions.deleteSuccess', { name: targetReleaseName }))
           onDeleted?.()
         },
         onError: () => {
@@ -180,7 +169,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
                 {section.rows.map((row) => {
                   const isDisabled = row.state === 'current' || row.state === 'deploying'
                   return (
-                    <TitleTooltip key={row.env.id} content={isDisabled ? row.disabledReason : undefined}>
+                    <TitleTooltip key={row.environmentId} content={isDisabled ? row.disabledReason : undefined}>
                       <DropdownMenuItem
                         disabled={isDisabled}
                         aria-disabled={isDisabled}
@@ -192,7 +181,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
                           if (isDisabled)
                             return
                           setOpen(false)
-                          openDeployDrawer({ appInstanceId, environmentId: row.env.id, releaseId })
+                          openDeployDrawer({ appInstanceId, environmentId: row.environmentId, releaseId })
                         }}
                       >
                         <span className="system-sm-regular text-text-secondary">

@@ -1,19 +1,20 @@
 'use client'
 
-import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
+import type {
+  EnvironmentDeployment,
+  RuntimeInstanceStatus as RuntimeInstanceStatusValue,
+} from '@dify/contracts/enterprise/types.gen'
 import type { ComponentPropsWithRef } from 'react'
-import type { DeploymentUiStatus } from './runtime-status'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import {
   deploymentStatusLabelKey,
   deploymentStatusToneClassNames,
 } from './deployment-ui-utils'
-import { environmentName } from './environment'
-import { deploymentStatus } from './runtime-status'
+import { isRuntimeDeploymentInProgress } from './runtime-status'
 
 type DeploymentStatusBadgeProps = Omit<ComponentPropsWithRef<'span'>, 'children'> & {
-  status: DeploymentUiStatus
+  status: RuntimeInstanceStatusValue
   label: string
 }
 
@@ -25,7 +26,7 @@ export function DeploymentStatusBadge({
   ...props
 }: DeploymentStatusBadgeProps) {
   const toneClassNames = deploymentStatusToneClassNames(status)
-  const isInProgress = status === 'deploying' || status === 'undeploying'
+  const isInProgress = isRuntimeDeploymentInProgress(status)
 
   return (
     <span
@@ -62,10 +63,10 @@ export function EnvironmentDeploymentBadge({
   ...props
 }: EnvironmentDeploymentBadgeProps) {
   const { t } = useTranslation('deployments')
-  const name = environmentName(row.environment)
-  const status = deploymentStatus(row)
+  const name = row.environment.name
+  const status = row.status
   const toneClassNames = deploymentStatusToneClassNames(status)
-  const isInProgress = status === 'deploying' || status === 'undeploying'
+  const isInProgress = isRuntimeDeploymentInProgress(status)
   const statusLabel = t(deploymentStatusLabelKey(status))
   const label = summaryLabel ?? `${name} · ${statusLabel}`
   const visibleLabel = showStatus ? `${name} · ${statusLabel}` : name

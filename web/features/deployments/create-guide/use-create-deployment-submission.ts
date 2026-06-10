@@ -2,6 +2,8 @@
 
 import type {
   CredentialSlot,
+  DeployReply,
+  Environment,
   EnvVarInput,
   ListDeployableEnvironmentsReply,
 } from '@dify/contracts/enterprise/types.gen'
@@ -9,7 +11,7 @@ import type { QueryObserverResult } from '@tanstack/react-query'
 import type { EnvVarBindingSlot, EnvVarValues } from '../components/env-var-bindings'
 import type { RuntimeCredentialBindingSelections } from '../components/runtime-credential-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
-import type { EnvironmentOption, GuideMethod } from './types'
+import type { GuideMethod } from './types'
 import type { App } from '@/types/app'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -26,12 +28,10 @@ import {
 } from '../components/runtime-credential-bindings-utils'
 import { isWorkflowDsl } from '../dsl'
 import {
-  environmentDeploymentId,
   environmentMatchesIdentifier,
 } from '../environment'
 import { deploymentErrorMessage, unsupportedDslNodeError } from '../error'
 import { createDeploymentIdempotencyKey } from '../idempotency'
-import { deploymentEnvironmentOptions } from './use-deployment-target-options'
 
 type RefetchDeployableEnvironments = () => Promise<QueryObserverResult<ListDeployableEnvironmentsReply>>
 
@@ -71,8 +71,8 @@ export function useCreateDeploymentSubmission({
   isInitialReleaseReady: boolean
   method: GuideMethod
   refetchDeployableEnvironments: RefetchDeployableEnvironments
-  selectedEnvironment?: EnvironmentOption
-  selectedEnvironmentId: string
+  selectedEnvironment?: Environment
+  selectedEnvironmentId?: string
   setSubmissionUnsupportedDslNodes: (nodes: UnsupportedDslNode[]) => void
   submittedInstanceName: string
   submittedReleaseDescription: string
@@ -97,34 +97,33 @@ export function useCreateDeploymentSubmission({
           description: instanceDescription.trim() || undefined,
         },
       })
-      const appInstanceId = createdAppInstance.appInstance?.id
-      if (!appInstanceId)
-        throw new Error('Create app instance did not return an app instance.')
+      const appInstanceId = createdAppInstance.appInstance.id
 
-      const createdRelease = method === 'importDsl'
-        ? await createReleaseFromDsl.mutateAsync({
-            body: {
-              appInstanceId,
-              dsl: encodedDslContent,
-              name: submittedReleaseName,
-              description: submittedReleaseDescription || undefined,
-              createAppInstance: false,
-            },
-          })
-        : effectiveSelectedApp?.id
-          ? await createReleaseFromSourceApp.mutateAsync({
-              body: {
-                appInstanceId,
-                sourceAppId: effectiveSelectedApp.id,
-                name: submittedReleaseName,
-                description: submittedReleaseDescription || undefined,
-                createAppInstance: false,
-              },
-            })
-          : undefined
-
-      if (!createdRelease?.release?.id)
-        throw new Error('Create release did not return a release.')
+      if (method === 'importDsl') {
+        await createReleaseFromDsl.mutateAsync({
+          body: {
+            appInstanceId,
+            dsl: encodedDslContent,
+            name: submittedReleaseName,
+            description: submittedReleaseDescription || undefined,
+            createAppInstance: false,
+          },
+        })
+      }
+      else if (effectiveSelectedApp?.id) {
+        await createReleaseFromSourceApp.mutateAsync({
+          body: {
+            appInstanceId,
+            sourceAppId: effectiveSelectedApp.id,
+            name: submittedReleaseName,
+            description: submittedReleaseDescription || undefined,
+            createAppInstance: false,
+          },
+        })
+      }
+      else {
+        return
+      }
 
       router.push(`/deployments/${appInstanceId}/overview`)
     }
@@ -134,20 +133,18 @@ export function useCreateDeploymentSubmission({
   }
 
   async function resolveSelectedDeploymentEnvironmentId() {
-    const currentEnvironmentId = environmentDeploymentId(selectedEnvironment)
-    if (currentEnvironmentId)
-      return currentEnvironmentId
+    if (selectedEnvironment)
+      return selectedEnvironment.id
 
-    const selectedEnvironmentIdentifier = selectedEnvironmentId || selectedEnvironment?.id || selectedEnvironment?.name || ''
-    const selectedEnvironmentName = selectedEnvironment?.name || ''
+    const selectedEnvironmentIdentifier = selectedEnvironmentId?.trim()
+    if (!selectedEnvironmentIdentifier)
+      return undefined
+
     const freshResult = await refetchDeployableEnvironments()
-    const freshEnvironments = deploymentEnvironmentOptions(freshResult.data?.data)
-    const freshSelectedEnvironment = freshEnvironments.find(environment => (
-      environmentMatchesIdentifier(environment, selectedEnvironmentIdentifier)
-      || (selectedEnvironmentName && environment.name === selectedEnvironmentName)
-    )) ?? freshEnvironments[0]
+    const freshEnvironments = freshResult.data?.data ?? []
+    const freshSelectedEnvironment = freshEnvironments.find(environment => environmentMatchesIdentifier(environment, selectedEnvironmentIdentifier))
 
-    return environmentDeploymentId(freshSelectedEnvironment)
+    return freshSelectedEnvironment?.id
   }
 
   async function createDeploymentAndRelease({ deployToEnvironment }: {
@@ -157,7 +154,7 @@ export function useCreateDeploymentSubmission({
       return
     if (hasInstanceNameConflict)
       return
-    if (deployToEnvironment && !selectedEnvironment?.id)
+    if (deployToEnvironment && !selectedEnvironment && !selectedEnvironmentId?.trim())
       return
     if (method === 'bindApp' && (!effectiveSelectedApp?.id || !isWorkflowApp(effectiveSelectedApp)))
       return
@@ -236,44 +233,48 @@ export function useCreateDeploymentSubmission({
           valueSource,
         }]
       })
-      const response = method === 'importDsl'
-        ? await createInitialDeployment.mutateAsync({
-            body: {
-              dsl: encodedDslContent,
-              new: {
-                name: submittedInstanceName,
-                description: instanceDescription.trim() || undefined,
-              },
-              environmentId: targetEnvironmentId,
-              releaseName: submittedReleaseName,
-              releaseDescription: submittedReleaseDescription || undefined,
-              credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
-              envVars,
-              idempotencyKey,
-              expectedDslDigest: deploymentOptionsDslDigest,
+      let response: DeployReply
+      if (method === 'importDsl') {
+        response = await createInitialDeployment.mutateAsync({
+          body: {
+            dsl: encodedDslContent,
+            new: {
+              name: submittedInstanceName,
+              description: instanceDescription.trim() || undefined,
             },
-          })
-        : effectiveSelectedApp?.id
-          ? await createInitialDeployment.mutateAsync({
-              body: {
-                sourceAppId: effectiveSelectedApp.id,
-                new: {
-                  name: submittedInstanceName,
-                  description: instanceDescription.trim() || undefined,
-                },
-                environmentId: targetEnvironmentId,
-                releaseName: submittedReleaseName,
-                releaseDescription: submittedReleaseDescription || undefined,
-                credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
-                envVars,
-                idempotencyKey,
-                expectedDslDigest: deploymentOptionsDslDigest,
-              },
-            })
-          : undefined
-      const appInstanceId = response?.appInstance?.id ?? response?.release?.appInstanceId
-      if (!appInstanceId)
-        throw new Error('Create initial deployment did not return an app instance.')
+            environmentId: targetEnvironmentId,
+            releaseName: submittedReleaseName,
+            releaseDescription: submittedReleaseDescription || undefined,
+            credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
+            envVars,
+            idempotencyKey,
+            expectedDslDigest: deploymentOptionsDslDigest,
+          },
+        })
+      }
+      else {
+        const sourceAppId = effectiveSelectedApp?.id
+        if (!sourceAppId)
+          return
+
+        response = await createInitialDeployment.mutateAsync({
+          body: {
+            sourceAppId,
+            new: {
+              name: submittedInstanceName,
+              description: instanceDescription.trim() || undefined,
+            },
+            environmentId: targetEnvironmentId,
+            releaseName: submittedReleaseName,
+            releaseDescription: submittedReleaseDescription || undefined,
+            credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
+            envVars,
+            idempotencyKey,
+            expectedDslDigest: deploymentOptionsDslDigest,
+          },
+        })
+      }
+      const appInstanceId = response.appInstance.id
 
       router.push(`/deployments/${appInstanceId}/overview`)
     }

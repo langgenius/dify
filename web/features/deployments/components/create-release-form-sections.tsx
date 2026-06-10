@@ -24,10 +24,6 @@ function selectedReleaseSourceMode(value: readonly ReleaseSourceMode[] | undefin
   return value?.[0]
 }
 
-function releaseContentMatchLabel(release?: ReleaseContentMatch) {
-  return release?.name || release?.releaseId || '—'
-}
-
 export function ReleaseSourceSection({
   releaseSourceMode,
   selectedSourceApp,
@@ -143,7 +139,7 @@ export function ReleaseContentFeedback({
 
       {matchedRelease && (
         <div role="alert" className="rounded-lg border border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 px-3 py-2 system-sm-regular text-util-colors-warning-warning-700">
-          {t('versions.releaseAlreadyExists', { name: releaseContentMatchLabel(matchedRelease) })}
+          {t('versions.releaseAlreadyExists', { name: matchedRelease.name })}
         </div>
       )}
 

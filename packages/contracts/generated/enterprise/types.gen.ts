@@ -226,75 +226,75 @@ export const LimitStatus = {
 export type LimitStatus = (typeof LimitStatus)[keyof typeof LimitStatus]
 
 export type AccessChannels = {
-  id?: string
-  appInstanceId?: string
-  webAppEnabled?: boolean
-  developerApiEnabled?: boolean
-  updatedBy?: string
-  createdAt?: string
-  updatedAt?: string
+  id: string
+  appInstanceId: string
+  webAppEnabled: boolean
+  developerApiEnabled: boolean
+  updatedBy: string
+  createdAt: string
+  updatedAt: string
 }
 
 export type AccessEndpoint = {
   environment?: Environment
-  endpointUrl?: string
+  endpointUrl: string
 }
 
 export type AccessPolicy = {
-  id?: string
-  appInstanceId?: string
-  environmentId?: string
-  mode?: AccessMode
-  subjects?: Array<AccessSubject>
-  createdAt?: string
-  updatedAt?: string
+  id: string
+  appInstanceId: string
+  environmentId: string
+  mode: AccessMode
+  subjects: Array<AccessSubject>
+  createdAt: string
+  updatedAt: string
 }
 
 export type AccessSubject = {
-  subjectType?: SubjectType
-  subjectId?: string
+  subjectType: SubjectType
+  subjectId: string
 }
 
 export type Actor = {
-  id?: string
-  name?: string
+  id: string
+  name: string
 }
 
 export type ApiKey = {
-  id?: string
-  appInstanceId?: string
-  environmentId?: string
-  name?: string
-  maskedToken?: string
-  lastUsedAt?: string
-  createdBy?: Actor
-  createdAt?: string
+  id: string
+  appInstanceId: string
+  environmentId: string
+  name: string
+  maskedToken: string
+  lastUsedAt: string
+  createdBy: Actor
+  createdAt: string
 }
 
 export type ApiKeySummary = {
-  apiKeyCount?: number
-  environmentCount?: number
-  developerApiEnabled?: boolean
-  developerApiUrl?: DeveloperApiUrl
+  apiKeyCount: number
+  environmentCount: number
+  developerApiEnabled: boolean
+  developerApiUrl: DeveloperApiUrl
 }
 
 export type AppInstance = {
-  id?: string
-  tenantId?: string
-  name?: string
-  description?: string
-  createdBy?: Actor
-  updatedBy?: Actor
-  createdAt?: string
-  updatedAt?: string
+  id: string
+  tenantId: string
+  name: string
+  description: string
+  createdBy: Actor
+  updatedBy: Actor
+  createdAt: string
+  updatedAt: string
 }
 
 export type AppInstanceSummary = {
-  appInstance?: AppInstance
-  environmentDeployments?: Array<EnvironmentDeployment>
+  appInstance: AppInstance
+  environmentDeployments: Array<EnvironmentDeployment>
   latestRelease?: Release
-  accessChannels?: AccessChannels
-  apiKeySummary?: ApiKeySummary
+  accessChannels: AccessChannels
+  apiKeySummary: ApiKeySummary
 }
 
 export type AppRunnerLog = {
@@ -367,13 +367,13 @@ export type CheckReleaseContentFromSourceAppReq = {
 }
 
 export type CheckReleaseContentReply = {
-  gateCommitId?: string
+  gateCommitId: string
   matchedRelease?: ReleaseContentMatch
 }
 
 export type CreateApiKeyReply = {
-  apiKey?: ApiKey
-  token?: string
+  apiKey: ApiKey
+  token: string
 }
 
 export type CreateApiKeyReq = {
@@ -383,7 +383,7 @@ export type CreateApiKeyReq = {
 }
 
 export type CreateAppInstanceReply = {
-  appInstance?: AppInstance
+  appInstance: AppInstance
 }
 
 export type CreateAppInstanceReq = {
@@ -440,29 +440,29 @@ export type CreateReleaseFromSourceAppReq = {
 }
 
 export type CreateReleaseReply = {
-  release?: Release
-  appInstance?: AppInstance
+  release: Release
+  appInstance: AppInstance
 }
 
 export type CredentialCandidate = {
-  credentialId?: string
-  providerId?: string
-  category?: PluginCategory
-  displayName?: string
-  fromEnterprise?: boolean
+  credentialId: string
+  providerId: string
+  category: PluginCategory
+  displayName: string
+  fromEnterprise: boolean
 }
 
 export type CredentialSelectionInput = {
-  providerId?: string
+  providerId: string
   category?: PluginCategory
-  credentialId?: string
+  credentialId: string
 }
 
 export type CredentialSlot = {
-  providerId?: string
-  category?: PluginCategory
-  candidates?: Array<CredentialCandidate>
-  lastCredentialId?: string
+  providerId: string
+  category: PluginCategory
+  candidates: Array<CredentialCandidate>
+  lastCredentialId: string
 }
 
 export type DeleteApiKeyReply = {
@@ -482,9 +482,9 @@ export type DeleteReleaseReply = {
 }
 
 export type DeployReply = {
-  appInstance?: AppInstance
-  release?: Release
-  deployment?: Deployment
+  appInstance: AppInstance
+  release: Release
+  deployment: Deployment
 }
 
 export type DeployReq = {
@@ -501,84 +501,84 @@ export type DeployReq = {
 }
 
 export type Deployment = {
-  id?: string
-  status?: DeploymentStatus
+  id: string
+  status: DeploymentStatus
   environment?: Environment
   release?: Release
   error?: Error
-  createdAt?: string
-  finalizedAt?: string
-  deployer?: Actor
-  action?: DeploymentAction
+  createdAt: string
+  finalizedAt: string
+  deployer: Actor
+  action: DeploymentAction
 }
 
 export type DeploymentOptions = {
-  dslDigest?: string
-  appInstanceDefaults?: DeploymentOptionsAppInstanceDefaults
-  releaseDefaults?: DeploymentOptionsReleaseDefaults
-  credentialSlots?: Array<CredentialSlot>
-  envVarSlots?: Array<EnvVarSlot>
+  dslDigest: string
+  appInstanceDefaults: DeploymentOptionsAppInstanceDefaults
+  releaseDefaults: DeploymentOptionsReleaseDefaults
+  credentialSlots: Array<CredentialSlot>
+  envVarSlots: Array<EnvVarSlot>
 }
 
 export type DeploymentOptionsAppInstanceDefaults = {
-  name?: string
-  description?: string
+  name: string
+  description: string
 }
 
 export type DeploymentOptionsReleaseDefaults = {
-  name?: string
-  description?: string
+  name: string
+  description: string
 }
 
 export type DeploymentReply = {
-  deployment?: Deployment
+  deployment: Deployment
 }
 
 export type DeveloperApiUrl = {
-  apiUrl?: string
-  status?: DeveloperApiUrlStatus
-  errorCode?: string
-  errorMessage?: string
+  apiUrl: string
+  status: DeveloperApiUrlStatus
+  errorCode: string
+  errorMessage: string
 }
 
 export type EnvVarInput = {
-  key?: string
+  key: string
   value?: string
   valueSource?: EnvVarValueSource
 }
 
 export type EnvVarSlot = {
-  key?: string
-  hasDefaultValue?: boolean
-  defaultValue?: string
-  hasLastValue?: boolean
-  lastValue?: string
-  valueType?: string
-  description?: string
+  key: string
+  hasDefaultValue: boolean
+  defaultValue: string
+  hasLastValue: boolean
+  lastValue: string
+  valueType: string
+  description: string
 }
 
 export type Environment = {
-  id?: string
-  name?: string
-  description?: string
-  mode?: EnvironmentMode
-  backend?: RuntimeBackend
-  namespace?: string
-  apiServer?: string
-  status?: EnvironmentStatus
-  statusMessage?: string
+  id: string
+  name: string
+  description: string
+  mode: EnvironmentMode
+  backend: RuntimeBackend
+  namespace: string
+  apiServer: string
+  status: EnvironmentStatus
+  statusMessage: string
   lastError?: EnvironmentError
-  managedBy?: string
-  createdAt?: string
-  updatedAt?: string
-  runtimeEndpoint?: string
-  cpuCount?: number
+  managedBy: string
+  createdAt: string
+  updatedAt: string
+  runtimeEndpoint: string
+  cpuCount: number
 }
 
 export type EnvironmentAccessPolicy = {
-  environment?: Environment
+  environment: Environment
   policy?: AccessPolicy
-  resolvedSubjects?: Array<Subject>
+  resolvedSubjects: Array<Subject>
 }
 
 export type EnvironmentAppInstance = {
@@ -589,14 +589,14 @@ export type EnvironmentAppInstance = {
 }
 
 export type EnvironmentDeployment = {
-  appInstanceId?: string
-  environment?: Environment
-  status?: RuntimeInstanceStatus
+  appInstanceId: string
+  environment: Environment
+  status: RuntimeInstanceStatus
   currentRelease?: Release
   desiredRelease?: Release
   currentDeployment?: EnvironmentDeploymentRecord
   error?: Error
-  updatedAt?: string
+  updatedAt: string
   releasesBehind?: number
 }
 
@@ -607,26 +607,26 @@ export type EnvironmentDeploymentHistoryItem = {
 }
 
 export type EnvironmentDeploymentRecord = {
-  id?: string
-  status?: DeploymentStatus
-  createdAt?: string
-  finalizedAt?: string
+  id: string
+  status: DeploymentStatus
+  createdAt: string
+  finalizedAt: string
 }
 
 export type EnvironmentError = {
-  code?: string
-  message?: string
+  code: string
+  message: string
 }
 
 export type Error = {
-  phase?: string
-  code?: string
-  message?: string
-  atUnix?: string
+  phase: string
+  code: string
+  message: string
+  atUnix: string
 }
 
 export type ExportReleaseDslReply = {
-  data?: string
+  data: string
 }
 
 export type ExternalAppRunnerConfig = {
@@ -634,31 +634,31 @@ export type ExternalAppRunnerConfig = {
 }
 
 export type GetAccessChannelsReply = {
-  accessChannels?: AccessChannels
+  accessChannels: AccessChannels
 }
 
 export type GetAccessPolicyReply = {
-  policy?: AccessPolicy
+  policy: AccessPolicy
 }
 
 export type GetAccessSettingsReply = {
-  accessChannels?: AccessChannels
-  environmentPolicies?: Array<EnvironmentAccessPolicy>
-  webAppEndpoints?: Array<AccessEndpoint>
+  accessChannels: AccessChannels
+  environmentPolicies: Array<EnvironmentAccessPolicy>
+  webAppEndpoints: Array<AccessEndpoint>
   cliEndpoint?: AccessEndpoint
 }
 
 export type GetAppInstanceOverviewReply = {
-  appInstance?: AppInstance
-  environmentDeployments?: Array<EnvironmentDeployment>
-  recentReleases?: Array<Release>
-  accessChannels?: AccessChannels
-  apiKeySummary?: ApiKeySummary
-  totalReleaseCount?: number
+  appInstance: AppInstance
+  environmentDeployments: Array<EnvironmentDeployment>
+  recentReleases: Array<Release>
+  accessChannels: AccessChannels
+  apiKeySummary: ApiKeySummary
+  totalReleaseCount: number
 }
 
 export type GetAppInstanceReply = {
-  appInstance?: AppInstance
+  appInstance: AppInstance
 }
 
 export type GetAppRunnerLogReply = {
@@ -679,14 +679,14 @@ export type GetDeploymentOptionsFromSourceAppReq = {
 }
 
 export type GetDeploymentOptionsReply = {
-  options?: DeploymentOptions
+  options: DeploymentOptions
 }
 
 export type GetDeveloperApiSettingsReply = {
-  accessChannels?: AccessChannels
-  environments?: Array<Environment>
-  apiKeys?: Array<ApiKey>
-  developerApiUrl?: DeveloperApiUrl
+  accessChannels: AccessChannels
+  environments: Array<Environment>
+  apiKeys: Array<ApiKey>
+  developerApiUrl: DeveloperApiUrl
 }
 
 export type GetEnvironmentReply = {
@@ -694,14 +694,14 @@ export type GetEnvironmentReply = {
 }
 
 export type GetReleaseDeploymentViewReply = {
-  releases?: Array<Release>
-  environmentDeployments?: Array<EnvironmentDeployment>
-  environmentActions?: Array<ReleaseEnvironmentAction>
+  releases: Array<Release>
+  environmentDeployments: Array<EnvironmentDeployment>
+  environmentActions: Array<ReleaseEnvironmentAction>
   options?: DeploymentOptions
 }
 
 export type GetReleaseReply = {
-  release?: Release
+  release: Release
 }
 
 export type K8sEnvironmentConfig = {
@@ -712,13 +712,13 @@ export type K8sEnvironmentConfig = {
 }
 
 export type ListApiKeysReply = {
-  data?: Array<ApiKey>
-  apiUrl?: string
+  data: Array<ApiKey>
+  apiUrl: string
 }
 
 export type ListAppInstanceSummariesReply = {
-  data?: Array<AppInstanceSummary>
-  pagination?: Pagination
+  data: Array<AppInstanceSummary>
+  pagination: Pagination
 }
 
 export type ListAppInstancesForDashboardReply = {
@@ -727,8 +727,8 @@ export type ListAppInstancesForDashboardReply = {
 }
 
 export type ListAppInstancesReply = {
-  data?: Array<AppInstance>
-  pagination?: Pagination
+  data: Array<AppInstance>
+  pagination: Pagination
 }
 
 export type ListAppRunnerLogsReply = {
@@ -738,12 +738,12 @@ export type ListAppRunnerLogsReply = {
 }
 
 export type ListDeployableEnvironmentsReply = {
-  data?: Array<Environment>
+  data: Array<Environment>
 }
 
 export type ListDeploymentsReply = {
-  data?: Array<Deployment>
-  pagination?: Pagination
+  data: Array<Deployment>
+  pagination: Pagination
 }
 
 export type ListEnvironmentAppInstancesReply = {
@@ -757,7 +757,7 @@ export type ListEnvironmentDeploymentHistoryReply = {
 }
 
 export type ListEnvironmentDeploymentsReply = {
-  data?: Array<EnvironmentDeployment>
+  data: Array<EnvironmentDeployment>
 }
 
 export type ListEnvironmentsReply = {
@@ -765,21 +765,21 @@ export type ListEnvironmentsReply = {
 }
 
 export type ListReleaseCredentialCandidatesReply = {
-  slots?: Array<CredentialSlot>
+  slots: Array<CredentialSlot>
 }
 
 export type ListReleaseSummariesReply = {
-  data?: Array<ReleaseSummary>
-  pagination?: Pagination
+  data: Array<ReleaseSummary>
+  pagination: Pagination
 }
 
 export type ListReleasesReply = {
-  data?: Array<Release>
-  pagination?: Pagination
+  data: Array<Release>
+  pagination: Pagination
 }
 
 export type ListRollbackTargetsReply = {
-  data?: Array<RollbackTarget>
+  data: Array<RollbackTarget>
 }
 
 export type NamedRef = {
@@ -808,7 +808,7 @@ export type PromoteReq = {
 }
 
 export type PutAccessPolicyReply = {
-  policy?: AccessPolicy
+  policy: AccessPolicy
 }
 
 export type PutAccessPolicyReq = {
@@ -819,42 +819,42 @@ export type PutAccessPolicyReq = {
 }
 
 export type Release = {
-  id?: string
-  appInstanceId?: string
-  name?: string
-  description?: string
-  source?: ReleaseSource
-  sourceAppId?: string
-  gateCommitId?: string
-  requiredSlots?: Array<RequiredSlot>
-  createdBy?: Actor
-  createdAt?: string
+  id: string
+  appInstanceId: string
+  name: string
+  description: string
+  source: ReleaseSource
+  sourceAppId: string
+  gateCommitId: string
+  requiredSlots: Array<RequiredSlot>
+  createdBy: Actor
+  createdAt: string
 }
 
 export type ReleaseContentMatch = {
-  releaseId?: string
-  name?: string
-  createdAt?: string
+  releaseId: string
+  name: string
+  createdAt: string
 }
 
 export type ReleaseEnvironmentAction = {
-  environment?: Environment
-  kind?: ReleaseEnvironmentActionKind
-  disabledReason?: string
-  requiresRuntimeInputs?: boolean
-  currentReleaseId?: string
+  environment: Environment
+  kind: ReleaseEnvironmentActionKind
+  disabledReason: string
+  requiresRuntimeInputs: boolean
+  currentReleaseId: string
 }
 
 export type ReleaseEnvironmentDeployment = {
-  environment?: Environment
-  status?: RuntimeInstanceStatus
+  environment: Environment
+  status: RuntimeInstanceStatus
 }
 
 export type ReleaseSummary = {
-  release?: Release
-  deployedEnvironments?: Array<ReleaseEnvironmentDeployment>
-  environmentActions?: Array<ReleaseEnvironmentAction>
-  activeEnvironmentCount?: number
+  release: Release
+  deployedEnvironments: Array<ReleaseEnvironmentDeployment>
+  environmentActions: Array<ReleaseEnvironmentAction>
+  activeEnvironmentCount: number
 }
 
 export type ReportRuntimeAssignmentStatusReply = {
@@ -873,10 +873,10 @@ export type ReportRuntimeAssignmentStatusReq = {
 }
 
 export type RequiredSlot = {
-  type?: SlotType
-  providerId?: string
-  category?: PluginCategory
-  name?: string
+  type: SlotType
+  providerId: string
+  category: PluginCategory
+  name: string
 }
 
 export type ResolveApiTokenRouteReply = {
@@ -908,10 +908,10 @@ export type RollbackReq = {
 }
 
 export type RollbackTarget = {
-  release?: Release
-  resolvedDeploymentId?: string
-  deployedAt?: string
-  isCurrent?: boolean
+  release: Release
+  resolvedDeploymentId: string
+  deployedAt: string
+  isCurrent: boolean
 }
 
 export type RunnerInfo = {
@@ -974,7 +974,7 @@ export type UndeployReq = {
 }
 
 export type UpdateAccessChannelsReply = {
-  accessChannels?: AccessChannels
+  accessChannels: AccessChannels
 }
 
 export type UpdateAccessChannelsReq = {
@@ -984,7 +984,7 @@ export type UpdateAccessChannelsReq = {
 }
 
 export type UpdateAppInstanceReply = {
-  appInstance?: AppInstance
+  appInstance: AppInstance
 }
 
 export type UpdateAppInstanceReq = {
@@ -1004,7 +1004,7 @@ export type UpdateEnvironmentReq = {
 }
 
 export type UpdateReleaseReply = {
-  release?: Release
+  release: Release
 }
 
 export type UpdateReleaseReq = {

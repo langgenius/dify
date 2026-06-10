@@ -10,8 +10,8 @@ type DeploymentErrorPayload = {
 const APP_DEPLOY_UNSUPPORTED_DSL_NODE_TYPE = 'APPDEPLOY_UNSUPPORTED_DSL_NODE_TYPE'
 
 export type UnsupportedDslNode = {
-  id: string
-  type: string
+  id?: string
+  type?: string
 }
 
 export type UnsupportedDslNodeError = {
@@ -76,12 +76,15 @@ function unsupportedDslNode(value: unknown) {
   if (!isRecord(value))
     return undefined
 
-  const id = nonEmptyString(value.id) ?? ''
-  const type = nonEmptyString(value.type) ?? ''
+  const id = nonEmptyString(value.id)
+  const type = nonEmptyString(value.type)
   if (!id && !type)
     return undefined
 
-  return { id, type } satisfies UnsupportedDslNode
+  return {
+    ...(id ? { id } : {}),
+    ...(type ? { type } : {}),
+  } satisfies UnsupportedDslNode
 }
 
 function unsupportedDslNodes(value: unknown) {

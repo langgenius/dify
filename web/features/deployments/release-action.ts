@@ -2,12 +2,8 @@ import type { Release } from '@dify/contracts/enterprise/types.gen'
 
 export type ReleaseDeploymentAction = 'deploy' | 'deployExistingRelease' | 'promote' | 'rollback'
 
-function releaseCreatedAt(release?: Release) {
-  const value = release?.createdAt
-  if (!value)
-    return undefined
-
-  const time = Date.parse(value)
+function releaseCreatedAt(release: Release) {
+  const time = Date.parse(release.createdAt)
   return Number.isFinite(time) ? time : undefined
 }
 
@@ -24,7 +20,7 @@ function compareReleaseOrder(
   currentRelease: Release,
   releaseRows: Release[],
 ) {
-  if (!targetRelease?.id || !currentRelease.id)
+  if (!targetRelease)
     return undefined
   if (targetRelease.id === currentRelease.id)
     return 0
@@ -56,7 +52,7 @@ export function releaseDeploymentAction({
   releaseRows: Release[]
   isExistingRelease?: boolean
 }): ReleaseDeploymentAction {
-  if (!currentRelease?.id)
+  if (!currentRelease)
     return isExistingRelease ? 'deployExistingRelease' : 'deploy'
 
   const order = compareReleaseOrder(targetRelease, currentRelease, releaseRows)
@@ -65,7 +61,7 @@ export function releaseDeploymentAction({
   if (order === 1)
     return 'promote'
 
-  return targetRelease?.id && targetRelease.id !== currentRelease.id
+  return targetRelease && targetRelease.id !== currentRelease.id
     ? 'promote'
     : isExistingRelease
       ? 'deployExistingRelease'

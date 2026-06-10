@@ -17,11 +17,6 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { releaseLabel } from '../../release'
-
-type ReleaseWithId = Release & {
-  id: string
-}
 
 type EditReleaseFormValues = {
   name: string
@@ -34,14 +29,14 @@ function EditReleaseForm({
   onClose,
   onSubmit,
 }: {
-  release: ReleaseWithId
+  release: Release
   isSaving: boolean
   onClose: () => void
   onSubmit: (values: EditReleaseFormValues) => void
 }) {
   const { t } = useTranslation('deployments')
-  const initialName = releaseLabel(release)
-  const initialDescription = release.description ?? ''
+  const initialName = release.name
+  const initialDescription = release.description
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
   const normalizedName = name.trim()
@@ -127,13 +122,13 @@ export function EditReleaseDialog({
   open,
   onOpenChange,
 }: {
-  release: ReleaseWithId
+  release: Release
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('deployments')
   const updateRelease = useMutation(consoleQuery.enterprise.releaseService.updateRelease.mutationOptions())
-  const formKey = `${release.id}-${release.name ?? ''}-${release.description ?? ''}`
+  const formKey = `${release.id}-${release.name}-${release.description}`
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && updateRelease.isPending)
@@ -155,7 +150,7 @@ export function EditReleaseDialog({
       },
       {
         onSuccess: (data) => {
-          const updatedName = data.release?.name || values.name || releaseLabel(release)
+          const updatedName = data.release.name
           toast.success(t('versions.editSuccess', { name: updatedName }))
           onOpenChange(false)
         },

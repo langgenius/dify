@@ -12,7 +12,7 @@ export function useDeploymentGuideReleaseFields({
   defaultedReleaseName: string
   existingInstanceNames: readonly string[]
   onFieldChange: () => void
-  sourceName: string
+  sourceName?: string
 }) {
   const [instanceName, setInstanceName] = useState('')
   const [instanceDescription, setInstanceDescription] = useState('')
@@ -23,7 +23,7 @@ export function useDeploymentGuideReleaseFields({
   const submittedReleaseDescription = releaseDescription.trim()
 
   function applyReleaseDefaults() {
-    const nextInstanceName = sourceName.trim()
+    const nextInstanceName = sourceName?.trim()
 
     if (!instanceName.trim() && nextInstanceName)
       setInstanceName(availableInstanceName(nextInstanceName, existingInstanceNames))

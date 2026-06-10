@@ -1,17 +1,13 @@
 'use client'
 
-import type { Environment } from '@dify/contracts/enterprise/types.gen'
+import type { Environment, EnvironmentStatus } from '@dify/contracts/enterprise/types.gen'
+import { EnvironmentStatus as EnvironmentStatusEnum } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { environmentBackend, environmentHealth, environmentMode, environmentName } from '../../environment'
 import { ModeBadge } from '../status-badge'
 import { TitleTooltip } from '../title-tooltip'
-
-type EnvironmentOption = Environment & {
-  disabled?: boolean
-}
 
 export function Field({ label, hint, children }: {
   label: string
@@ -30,14 +26,14 @@ export function Field({ label, hint, children }: {
 }
 
 type SelectOption = {
-  value: string
+  value?: string
   label: string
   disabled?: boolean
   disabledReason?: string
 }
 
 type SelectProps = {
-  value: string
+  value?: string
   onChange: (value: string) => void
   options: SelectOption[]
   placeholder?: string
@@ -49,7 +45,7 @@ export function DeploymentSelect({ value, onChange, options, placeholder }: Sele
 
   return (
     <Select
-      value={value || null}
+      value={value ?? null}
       onValueChange={(next) => {
         if (!next)
           return
@@ -66,28 +62,31 @@ export function DeploymentSelect({ value, onChange, options, placeholder }: Sele
         {selectedOption?.label ?? placeholder ?? t('deployDrawer.defaultSelect')}
       </SelectTrigger>
       <SelectContent popupClassName="w-(--anchor-width)">
-        {options.map(opt => (
-          <SelectItem
-            key={opt.value}
-            value={opt.value}
-            disabled={opt.disabled}
-          >
-            <TitleTooltip content={opt.disabled ? opt.disabledReason : undefined}>
-              <SelectItemText>{opt.label}</SelectItemText>
-            </TitleTooltip>
-            <SelectItemIndicator />
-          </SelectItem>
-        ))}
+        {options.map(opt => opt.value
+          ? (
+              <SelectItem
+                key={opt.value}
+                value={opt.value}
+                disabled={opt.disabled}
+              >
+                <TitleTooltip content={opt.disabled ? opt.disabledReason : undefined}>
+                  <SelectItemText>{opt.label}</SelectItemText>
+                </TitleTooltip>
+                <SelectItemIndicator />
+              </SelectItem>
+            )
+          : null)}
       </SelectContent>
     </Select>
   )
 }
 
-function EnvironmentHealthDot({ health }: {
-  health: ReturnType<typeof environmentHealth>
+function EnvironmentHealthDot({ status }: {
+  status: EnvironmentStatus
 }) {
   const { t } = useTranslation('deployments')
-  const label = t(health === 'ready' ? 'health.ready' : 'health.degraded')
+  const label = t(`health.${status}`)
+  const isReady = status === EnvironmentStatusEnum.ENVIRONMENT_STATUS_READY
 
   return (
     <Tooltip>
@@ -97,14 +96,14 @@ function EnvironmentHealthDot({ health }: {
             aria-label={label}
             className={cn(
               'flex size-4 shrink-0 items-center justify-center rounded-full',
-              health === 'ready' ? 'bg-util-colors-green-green-50' : 'bg-util-colors-warning-warning-50',
+              isReady ? 'bg-util-colors-green-green-50' : 'bg-util-colors-warning-warning-50',
             )}
           >
             <span
               aria-hidden
               className={cn(
                 'size-1.5 rounded-full',
-                health === 'ready' ? 'bg-util-colors-green-green-500' : 'bg-util-colors-warning-warning-500',
+                isReady ? 'bg-util-colors-green-green-500' : 'bg-util-colors-warning-warning-500',
               )}
             />
           </span>
@@ -115,17 +114,17 @@ function EnvironmentHealthDot({ health }: {
   )
 }
 
-export function EnvironmentRow({ env }: { env: EnvironmentOption }) {
-  const summary = env.description?.trim() || environmentBackend(env).toUpperCase()
-  const health = environmentHealth(env)
+export function EnvironmentRow({ env }: { env: Environment }) {
+  const { t } = useTranslation('deployments')
+  const summary = env.description.trim() || t(`backend.${env.backend}`)
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-components-panel-border bg-components-panel-bg-blur px-3 py-2">
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-2">
-          <EnvironmentHealthDot health={health} />
-          <span className="truncate system-sm-semibold text-text-primary">{environmentName(env)}</span>
-          <ModeBadge mode={environmentMode(env)} />
+          <EnvironmentHealthDot status={env.status} />
+          <span className="truncate system-sm-semibold text-text-primary">{env.name}</span>
+          <ModeBadge mode={env.mode} />
         </div>
         <span className="line-clamp-1 system-xs-regular text-text-tertiary">{summary}</span>
       </div>

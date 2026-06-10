@@ -2,7 +2,6 @@
 
 import type {
   AppInstanceSummary,
-  Release,
 } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useSetAtom } from 'jotai'
@@ -12,7 +11,6 @@ import Link from '@/next/link'
 import { CreateReleaseControl } from '../components/create-release-control'
 import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { TitleTooltip } from '../components/title-tooltip'
-import { releaseLabel } from '../release'
 import { openDeployDrawerAtom } from '../store'
 import {
   DeploymentAccessLinks,
@@ -32,25 +30,21 @@ export function InstanceCard({ summary }: {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const appInstance = summary.appInstance
-
-  if (!appInstance?.id)
-    return null
-
   const appInstanceId = appInstance.id
-  const appName = appInstance.name ?? appInstanceId
+  const appName = appInstance.name
   const detailHref = getInstanceTabHref(appInstanceId, 'overview')
-  const description = appInstance.description?.trim()
+  const description = appInstance.description.trim()
   const access = summary.accessChannels
-  const releaseRows = summary.latestRelease?.id ? [summary.latestRelease as Release & { id: string }] : []
+  const releaseRows = summary.latestRelease ? [summary.latestRelease] : []
   const hasRelease = releaseRows.length > 0
-  const activeDeploymentRows = summary.environmentDeployments?.filter(isActiveDeployment) ?? []
+  const activeDeploymentRows = summary.environmentDeployments.filter(isActiveDeployment)
   const latestRelease = releaseRows[0]
   const latestReleaseTime = latestRelease?.createdAt
   const latestReleaseTimeMs = latestReleaseTime ? Date.parse(latestReleaseTime) : Number.NaN
   const latestReleaseDeployed = isReleaseDeployed(latestRelease, activeDeploymentRows)
   const releaseMeta = latestRelease
     ? [
-        releaseLabel(latestRelease),
+        latestRelease.name,
         Number.isNaN(latestReleaseTimeMs) ? undefined : formatTimeFromNow(latestReleaseTimeMs),
       ].filter(Boolean).join(' · ')
     : t('card.notDeployed')

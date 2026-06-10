@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 
-type AppInstanceWithId = AppInstance & { id: string }
 type EditDeploymentFormValues = {
   name: string
   description: string
@@ -49,14 +48,14 @@ function EditDeploymentForm({
   onClose,
   onSubmit,
 }: {
-  app: AppInstanceWithId
+  app: AppInstance
   isSaving: boolean
   onClose: () => void
   onSubmit: (values: EditDeploymentFormValues) => void
 }) {
   const { t } = useTranslation('deployments')
-  const initialName = app.name ?? app.id
-  const initialDescription = app.description ?? ''
+  const initialName = app.name
+  const initialDescription = app.description
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
   const normalizedName = name.trim()
@@ -138,8 +137,7 @@ export function EditDeploymentDialog({
       : skipToken,
   }))
   const app = instanceQuery.data?.appInstance
-  const appWithId = app?.id ? { ...app, id: app.id } : undefined
-  const formKey = appWithId ? `${appWithId.id}-${appWithId.name ?? ''}-${appWithId.description ?? ''}` : 'loading'
+  const formKey = app ? `${app.id}-${app.name}-${app.description}` : 'loading'
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && updateInstance.isPending)
@@ -189,11 +187,11 @@ export function EditDeploymentDialog({
             ? <EditDeploymentFormSkeleton />
             : instanceQuery.isError
               ? <div className="system-sm-regular text-text-tertiary">{t('common.loadFailed')}</div>
-              : appWithId
+              : app
                 ? (
                     <EditDeploymentForm
                       key={formKey}
-                      app={appWithId}
+                      app={app}
                       isSaving={updateInstance.isPending}
                       onClose={handleClose}
                       onSubmit={handleSubmit}

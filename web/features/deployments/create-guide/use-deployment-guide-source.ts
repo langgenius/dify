@@ -42,10 +42,10 @@ export function useDeploymentGuideSource() {
   const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
   const effectiveSelectedApp = isWorkflowApp(selectedApp) ? selectedApp : sourceApps[0]
   const existingInstanceNames = appInstancesQuery.data?.pages.flatMap(page =>
-    page.data?.flatMap((appInstance) => {
-      const name = appInstance.name?.trim()
+    page.data.flatMap((appInstance) => {
+      const name = appInstance.name.trim()
       return name ? [name] : []
-    }) ?? [],
+    }),
   ) ?? []
 
   return {

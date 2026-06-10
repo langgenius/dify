@@ -1,16 +1,18 @@
-import type { DeploymentUiStatus } from './runtime-status'
+import type { RuntimeInstanceStatus as RuntimeInstanceStatusValue } from '@dify/contracts/enterprise/types.gen'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 
 type DeploymentStatusTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info'
+type DeploymentStatusLabelKey = `status.${RuntimeInstanceStatusValue}`
 
-const STATUS_TONE: Record<DeploymentUiStatus, DeploymentStatusTone> = {
-  deploy_failed: 'danger',
-  deploying: 'info',
-  drifted: 'warning',
-  invalid: 'danger',
-  not_deployed: 'neutral',
-  ready: 'success',
-  undeploying: 'info',
-  unknown: 'neutral',
+const STATUS_TONE: Record<RuntimeInstanceStatusValue, DeploymentStatusTone> = {
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNSPECIFIED]: 'neutral',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED]: 'neutral',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING]: 'info',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY]: 'success',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED]: 'danger',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DRIFTED]: 'warning',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_INVALID]: 'danger',
+  [RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING]: 'info',
 }
 
 const TONE_CLASS_NAMES: Record<DeploymentStatusTone, { badge: string, dot: string }> = {
@@ -36,25 +38,14 @@ const TONE_CLASS_NAMES: Record<DeploymentStatusTone, { badge: string, dot: strin
   },
 }
 
-const STATUS_LABEL_KEYS = {
-  deploy_failed: 'status.deployFailed',
-  deploying: 'status.deploying',
-  drifted: 'status.drifted',
-  invalid: 'status.invalid',
-  not_deployed: 'status.notDeployed',
-  ready: 'status.ready',
-  undeploying: 'status.undeploying',
-  unknown: 'status.unknown',
-} as const satisfies Record<DeploymentUiStatus, string>
-
-export function deploymentStatusLabelKey(status: DeploymentUiStatus) {
-  return STATUS_LABEL_KEYS[status]
+export function deploymentStatusLabelKey(status: RuntimeInstanceStatusValue): DeploymentStatusLabelKey {
+  return `status.${status}`
 }
 
-function deploymentStatusTone(status: DeploymentUiStatus) {
+function deploymentStatusTone(status: RuntimeInstanceStatusValue) {
   return STATUS_TONE[status]
 }
 
-export function deploymentStatusToneClassNames(status: DeploymentUiStatus) {
+export function deploymentStatusToneClassNames(status: RuntimeInstanceStatusValue) {
   return TONE_CLASS_NAMES[deploymentStatusTone(status)]
 }

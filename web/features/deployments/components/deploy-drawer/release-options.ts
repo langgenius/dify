@@ -1,11 +1,10 @@
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
-import { environmentId } from '../../environment'
 
 export function currentReleaseIdForEnvironment(rows: EnvironmentDeployment[], targetEnvironmentId?: string) {
   if (!targetEnvironmentId)
     return undefined
 
-  return rows.find(row => environmentId(row.environment) === targetEnvironmentId)?.currentRelease?.id
+  return rows.find(row => row.environment.id === targetEnvironmentId)?.currentRelease?.id
 }
 
 export function selectableDeployReleases({

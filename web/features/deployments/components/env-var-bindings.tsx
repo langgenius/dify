@@ -157,10 +157,10 @@ export function EnvVarBindingsPanel({
           })
           const isLiteralValue = valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL
           const displayValue = valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
-            ? slot.defaultValue ?? ''
+            ? slot.defaultValue
             : valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
-              ? slot.lastValue ?? ''
-              : selection?.value ?? ''
+              ? slot.lastValue
+              : selection?.value
 
           return (
             <div key={slot.key} className="flex min-w-0 flex-col gap-2 border-b border-divider-subtle px-3 py-3 last:border-b-0">
@@ -209,7 +209,7 @@ export function EnvVarBindingsPanel({
                 <Input
                   id={inputId}
                   type={ENV_VAR_INPUT_TYPES[slot.valueType]}
-                  value={displayValue}
+                  value={displayValue ?? ''}
                   onChange={event => onChange(slot.key, {
                     value: event.target.value,
                     valueSource: ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,

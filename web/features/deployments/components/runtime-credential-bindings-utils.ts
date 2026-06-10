@@ -21,9 +21,9 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   volcengine_maas: 'Volcengine',
 }
 
-function providerSlug(providerId?: string) {
-  const parts = providerId?.split('/').filter(Boolean) ?? []
-  return parts[parts.length - 1] ?? ''
+function providerSlug(providerId: string) {
+  const parts = providerId.split('/').filter(Boolean)
+  return parts[parts.length - 1]
 }
 
 function titleCaseProviderName(value: string) {
@@ -35,23 +35,21 @@ function titleCaseProviderName(value: string) {
 }
 
 export function runtimeCredentialSlotKey(slot: CredentialSlot) {
-  return [slot.providerId ?? '', slot.category ?? ''].join(':')
+  return [slot.providerId, slot.category].join(':')
 }
 
-export function runtimeCredentialProviderName(providerId?: string) {
+export function runtimeCredentialProviderName(providerId: string) {
   const slug = providerSlug(providerId)
   if (!slug)
-    return ''
+    return undefined
 
   return PROVIDER_DISPLAY_NAMES[slug.toLowerCase()] ?? titleCaseProviderName(slug)
 }
 
 function runtimeCredentialCandidateLabel(candidate: CredentialCandidate) {
-  const fallback = candidate.credentialId ?? ''
-  const rawLabel = candidate.displayName?.trim() || fallback
-  const providerId = candidate.providerId?.trim()
-  if (!providerId)
-    return rawLabel
+  const fallback = candidate.credentialId
+  const rawLabel = candidate.displayName.trim() || fallback
+  const providerId = candidate.providerId.trim()
 
   const providerSuffixes = [
     ` · ${providerId}`,
@@ -68,17 +66,10 @@ function runtimeCredentialCandidateLabel(candidate: CredentialCandidate) {
 }
 
 export function runtimeCredentialCandidateOptions(slot: CredentialSlot): RuntimeCredentialSelectOption[] {
-  return (slot.candidates ?? [])
-    .flatMap((candidate) => {
-      const credentialId = candidate.credentialId
-      if (!credentialId)
-        return []
-
-      return [{
-        value: credentialId,
-        label: runtimeCredentialCandidateLabel(candidate),
-      }]
-    })
+  return slot.candidates.map(candidate => ({
+    value: candidate.credentialId,
+    label: runtimeCredentialCandidateLabel(candidate),
+  }))
 }
 
 export function hasMissingRequiredRuntimeCredentialBinding(_slot: CredentialSlot, selectedValue?: string) {
@@ -112,7 +103,7 @@ export function selectedDeploymentRuntimeCredentials(
     .flatMap((slot): CredentialSelectionInput[] => {
       const slotKey = runtimeCredentialSlotKey(slot)
       const selectedValue = selections[slotKey]
-      if (!slotKey || !selectedValue)
+      if (!selectedValue)
         return []
 
       return [{

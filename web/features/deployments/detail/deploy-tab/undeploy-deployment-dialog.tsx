@@ -11,7 +11,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
-import { environmentName } from '../../environment'
 
 export function UndeployDeploymentDialog({
   disabled,
@@ -42,7 +41,7 @@ export function UndeployDeploymentDialog({
       <AlertDialogContent className="w-120">
         <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t('deployTab.undeployConfirmTitle', { name: environmentName(row.environment) })}
+            {t('deployTab.undeployConfirmTitle', { name: row.environment.name })}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-sm-regular text-text-tertiary">
             {t('deployTab.undeployConfirmDesc')}

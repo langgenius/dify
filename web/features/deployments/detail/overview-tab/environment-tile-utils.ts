@@ -1,12 +1,13 @@
+import type { RuntimeInstanceStatus as RuntimeInstanceStatusValue } from '@dify/contracts/enterprise/types.gen'
 import type { TFunction } from 'i18next'
-import type { deploymentStatus, DeploymentUiStatus } from '../../runtime-status'
 import type { computeDrift } from './overview-drift'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 
 export type TileKind = 'empty' | 'latest' | 'behind' | 'older' | 'deploying' | 'failed'
 
 export type TileConfig = {
   kind: TileKind
-  status: DeploymentUiStatus
+  status: RuntimeInstanceStatusValue
   actionClass: string
   showRelease: boolean
   intent: 'drawer' | 'navigate' | 'disabled'
@@ -15,25 +16,25 @@ export type TileConfig = {
 
 export function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseId }: {
   drift: ReturnType<typeof computeDrift>
-  status: ReturnType<typeof deploymentStatus>
+  status: RuntimeInstanceStatusValue
   hasAnyRelease: boolean
   latestId: string | undefined
   currentReleaseId: string | undefined
 }): TileConfig {
-  if (status === 'deploying') {
+  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING) {
     return {
       kind: 'deploying',
-      status: 'deploying',
+      status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING,
       actionClass: 'text-text-secondary hover:bg-state-base-hover hover:text-text-primary',
       showRelease: true,
       intent: 'navigate',
     }
   }
 
-  if (status === 'deploy_failed') {
+  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED) {
     return {
       kind: 'failed',
-      status: 'deploy_failed',
+      status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED,
       actionClass: 'text-primary-600 hover:bg-state-accent-hover',
       showRelease: true,
       intent: 'drawer',
@@ -44,7 +45,7 @@ export function resolveConfig({ drift, status, hasAnyRelease, latestId, currentR
   if (drift.kind === 'undeployed') {
     return {
       kind: 'empty',
-      status: 'not_deployed',
+      status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED,
       actionClass: hasAnyRelease
         ? 'text-primary-600 hover:bg-state-accent-hover'
         : 'text-text-tertiary',
@@ -57,7 +58,7 @@ export function resolveConfig({ drift, status, hasAnyRelease, latestId, currentR
   if (drift.kind === 'up-to-date') {
     return {
       kind: 'latest',
-      status: 'ready',
+      status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
       actionClass: 'text-text-secondary hover:bg-state-base-hover hover:text-text-primary',
       showRelease: true,
       intent: 'drawer',
@@ -68,7 +69,7 @@ export function resolveConfig({ drift, status, hasAnyRelease, latestId, currentR
   if (drift.kind === 'behind') {
     return {
       kind: 'behind',
-      status: 'drifted',
+      status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DRIFTED,
       actionClass: 'text-primary-600 hover:bg-state-accent-hover',
       showRelease: true,
       intent: 'drawer',
@@ -78,7 +79,7 @@ export function resolveConfig({ drift, status, hasAnyRelease, latestId, currentR
 
   return {
     kind: 'older',
-    status: 'unknown',
+    status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNSPECIFIED,
     actionClass: 'text-primary-600 hover:bg-state-accent-hover',
     showRelease: true,
     intent: 'drawer',

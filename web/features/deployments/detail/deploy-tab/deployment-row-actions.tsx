@@ -1,13 +1,14 @@
 'use client'
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { useMutation } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
-import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
+import { isRuntimeDeploymentInProgress, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 import { DeploymentErrorDialog } from './deployment-error-dialog'
 import { DeploymentActionsDropdown } from './deployment-row-actions-menu'
@@ -22,17 +23,17 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const undeployDeployment = useMutation(consoleQuery.enterprise.deploymentService.undeploy.mutationOptions())
   const isUndeployed = isUndeployedDeploymentRow(row)
-  const status = deploymentStatus(row)
+  const status = row.status
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [showErrorDetail, setShowErrorDetail] = useState(false)
   const [isUndeploying, setIsUndeploying] = useState(false)
   const undeployInFlightRef = useRef(false)
   const isUndeployRequesting = undeployDeployment.isPending || isUndeploying
-  const undeployActionDisabled = isUndeployRequesting || !envId
-  const isDeploymentInProgress = status === 'deploying' || status === 'undeploying'
-  const isDeployFailed = status === 'deploy_failed'
+  const undeployActionDisabled = isUndeployRequesting
+  const isDeploymentInProgress = isRuntimeDeploymentInProgress(status)
+  const isDeployFailed = status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED
   const currentReleaseId = row.currentRelease?.id
-  const failedReleaseId = row.desiredRelease?.id || row.currentRelease?.id
+  const failedReleaseId = row.desiredRelease?.id ?? row.currentRelease?.id
   const deployActionLabel = isUndeployed
     ? t('deployDrawer.deploy')
     : t('deployTab.deployOtherVersion')
@@ -42,7 +43,7 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
   }
 
   function handleUndeploy() {
-    if (!envId || undeployInFlightRef.current)
+    if (undeployInFlightRef.current)
       return
     undeployInFlightRef.current = true
     setIsUndeploying(true)

@@ -9,31 +9,29 @@ import { useParams, useRouter, useSelectedLayoutSegment } from '@/next/navigatio
 import { consoleQuery } from '@/service/client'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 
-function navItemFromListApp(app: AppInstance): NavItem[] {
-  if (!app.id || !app.name)
-    return []
+function navItemFromListApp(app: AppInstance): NavItem {
+  const id = app.id
 
-  return [{
-    id: app.id,
+  return {
+    id,
     name: app.name,
-    link: `/deployments/${app.id}/overview`,
+    link: `/deployments/${id}/overview`,
     icon_type: 'emoji',
     icon: '🚀',
     icon_background: '#E0EAFF',
     icon_url: null,
-  }]
+  }
 }
 
-function navItemFromOverview(instance?: AppInstance): NavItem | undefined {
-  if (!instance?.id)
+function navItemFromOverview(instance?: AppInstance, fallbackId?: string): NavItem | undefined {
+  const id = instance?.id ?? fallbackId
+  if (!id)
     return undefined
 
-  const name = instance.name ?? instance.id
-
   return {
-    id: instance.id,
-    name,
-    link: `/deployments/${instance.id}/overview`,
+    id,
+    name: instance ? instance.name : id,
+    link: `/deployments/${id}/overview`,
     icon_type: 'emoji',
     icon: '🚀',
     icon_background: '#E0EAFF',
@@ -51,7 +49,11 @@ export function DeploymentsNav() {
 
   const { data: currentInstance } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input: isActive && appInstanceId
-      ? { params: { appInstanceId } }
+      ? {
+          params: {
+            appInstanceId,
+          },
+        }
       : skipToken,
     select: data => data.appInstance,
   }))
@@ -70,8 +72,10 @@ export function DeploymentsNav() {
     }),
     enabled: isActive,
   })
-  const appNavItems = listQuery.data?.pages.flatMap(page => page.data?.flatMap(navItemFromListApp) ?? []) ?? []
-  const currentNavItem = navItemFromOverview(currentInstance)
+  const appNavItems = listQuery.data?.pages.flatMap(page =>
+    page.data.map(navItemFromListApp),
+  ) ?? []
+  const currentNavItem = navItemFromOverview(currentInstance, appInstanceId)
 
   const navigationItems: NavItem[] = isActive
     ? currentNavItem && !appNavItems.some(item => item.id === currentNavItem.id)

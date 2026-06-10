@@ -27,7 +27,7 @@ const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fift
 
 function listDeploymentStatusPollingInterval(data?: InfiniteData<ListAppInstanceSummariesReply>) {
   const rows = data?.pages?.flatMap(page =>
-    page.data?.flatMap(summary => summary.environmentDeployments ?? []) ?? [],
+    page.data.flatMap(summary => summary.environmentDeployments),
   ) ?? []
 
   return deploymentStatusPollingInterval(rows)
@@ -186,7 +186,7 @@ export function DeploymentsList() {
     refetchInterval: query => listDeploymentStatusPollingInterval(query.state.data),
   })
   const pages = data?.pages ?? []
-  const appInstanceSummaries = pages.flatMap(page => page.data ?? [])
+  const appInstanceSummaries = pages.flatMap(page => page.data)
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
   const showEmptyState = !showSkeleton && !isError && appInstanceSummaries.length === 0
 
@@ -226,9 +226,9 @@ export function DeploymentsList() {
             ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
             : appInstanceSummaries.length === 0
               ? <DeploymentsListEmpty />
-              : appInstanceSummaries.map((summary, index) => (
+              : appInstanceSummaries.map(summary => (
                   <InstanceCard
-                    key={summary.appInstance?.id ?? index}
+                    key={summary.appInstance.id}
                     summary={summary}
                   />
                 ))}

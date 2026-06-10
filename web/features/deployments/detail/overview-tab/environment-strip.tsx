@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { DeploymentEmptyState } from '../../components/empty-state'
-import { environmentId } from '../../environment'
 import { hasRuntimeInstanceDeployment } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 import { OVERVIEW_CARD_CLASS_NAME } from './card-styles'
@@ -50,7 +49,7 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows }: Environme
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
               {previewRows.map(row => (
                 <EnvironmentTile
-                  key={environmentId(row.environment)}
+                  key={row.environment.id}
                   appInstanceId={appInstanceId}
                   row={row}
                   releaseRows={releaseRows}

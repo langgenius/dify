@@ -2,14 +2,15 @@
 
 import type {
   CredentialSlot,
+  Environment,
 } from '@dify/contracts/enterprise/types.gen'
 import type {
   EnvVarBindingSlot,
   EnvVarValues,
   EnvVarValueSelection,
 } from '../components/env-var-bindings'
+import type { RuntimeCredentialBindingSelections } from '../components/runtime-credential-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
-import type { BindingSelections, EnvironmentOption } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -25,10 +26,7 @@ import { TitleTooltip } from '../components/title-tooltip'
 import { UnsupportedDslNodesAlert } from '../components/unsupported-dsl-nodes-alert'
 
 import {
-  environmentBackend,
   environmentMatchesIdentifier,
-  environmentMode,
-  environmentName,
 } from '../environment'
 import { StepShell } from './layout'
 
@@ -36,12 +34,11 @@ const targetEnvironmentSkeletonKeys = ['first-target-environment', 'second-targe
 const targetBindingSkeletonKeys = ['first-target-binding', 'second-target-binding']
 
 function EnvironmentOptionRow({ environment, selected }: {
-  environment: EnvironmentOption
+  environment: Environment
   selected: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const mode = environmentMode(environment)
-  const summary = environment.description?.trim() || `${t(mode === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(environment).toUpperCase()}`
+  const summary = environment.description.trim() || `${t(`mode.${environment.mode}`)} · ${t(`backend.${environment.backend}`)}`
 
   return (
     <RadioRoot<string>
@@ -56,7 +53,7 @@ function EnvironmentOptionRow({ environment, selected }: {
     >
       <RadioControl />
       <span className="flex min-w-0 grow flex-col gap-1">
-        <span className={cn('truncate system-sm-semibold', selected ? 'text-text-accent' : 'text-text-primary')}>{environmentName(environment)}</span>
+        <span className={cn('truncate system-sm-semibold', selected ? 'text-text-accent' : 'text-text-primary')}>{environment.name}</span>
         <TitleTooltip content={summary}>
           <span className={cn('line-clamp-1 system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>
             {summary}
@@ -100,11 +97,11 @@ function TargetBindingSkeleton() {
 }
 
 export type TargetReviewSectionsProps = {
-  environments: EnvironmentOption[]
+  environments: Environment[]
   bindingSlots: CredentialSlot[]
   envVarSlots: EnvVarBindingSlot[]
-  selectedEnvironmentId: string
-  bindingSelections: BindingSelections
+  selectedEnvironmentId?: string
+  bindingSelections: RuntimeCredentialBindingSelections
   envVarValues: EnvVarValues
   isEnvironmentLoading: boolean
   isEnvironmentError: boolean
@@ -140,7 +137,7 @@ function TargetEnvironmentSection({
                 <EnvironmentOptionRow
                   key={environment.id}
                   environment={environment}
-                  selected={environmentMatchesIdentifier(environment, selectedEnvironmentId)}
+                  selected={selectedEnvironmentId ? environmentMatchesIdentifier(environment, selectedEnvironmentId) : false}
                 />
               ))}
             </RadioGroup>

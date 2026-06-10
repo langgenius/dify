@@ -2,11 +2,7 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
-import {
-  environmentId,
-  environmentName,
-} from '../../environment'
-import { releaseCommit, releaseLabel } from '../../release'
+import { releaseCommit } from '../../release'
 import { isUndeployedDeploymentRow } from '../../runtime-status'
 import {
   DetailTable,
@@ -29,7 +25,7 @@ function EnvironmentSummary({ environment }: {
 }) {
   return (
     <span className="block truncate text-text-primary">
-      {environmentName(environment)}
+      {environment.name}
     </span>
   )
 }
@@ -37,7 +33,7 @@ function EnvironmentSummary({ environment }: {
 function CurrentReleaseSummary({ release }: {
   release: EnvironmentDeployment['currentRelease']
 }) {
-  if (!release?.id && !release?.name)
+  if (!release)
     return <span className="text-text-quaternary">—</span>
 
   const commit = releaseCommit(release)
@@ -46,7 +42,7 @@ function CurrentReleaseSummary({ release }: {
     <div className="flex min-w-0 flex-col gap-1">
       <div className="flex min-w-0 items-baseline gap-1.5">
         <span className="truncate text-text-primary">
-          {releaseLabel(release)}
+          {release.name}
         </span>
         {commit !== '—' && (
           <span className="shrink-0 font-mono system-xs-regular text-text-tertiary">
@@ -63,7 +59,7 @@ function CurrentReleaseMobileSummary({ release }: {
 }) {
   const { t } = useTranslation('deployments')
 
-  if (!release?.id && !release?.name)
+  if (!release)
     return null
 
   return (
@@ -80,7 +76,7 @@ function DeploymentEnvironmentMobileRow({ appInstanceId, row }: {
   appInstanceId: string
   row: EnvironmentDeployment
 }) {
-  const envId = environmentId(row.environment)
+  const envId = row.environment.id
   const release = row.currentRelease
 
   return (
@@ -106,7 +102,7 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
   return (
     <>
       {rows.map((row) => {
-        const envId = environmentId(row.environment)
+        const envId = row.environment.id
         return (
           <DetailTableRow key={envId}>
             <DetailTableCell>
@@ -141,7 +137,7 @@ export function DeploymentEnvironmentList({ appInstanceId, rows }: {
       <DetailTableCardList className="pc:hidden">
         {rows.map(row => (
           <DeploymentEnvironmentMobileRow
-            key={environmentId(row.environment)}
+            key={row.environment.id}
             appInstanceId={appInstanceId}
             row={row}
           />

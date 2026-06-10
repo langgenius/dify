@@ -11,7 +11,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
-import { releaseLabel } from '../../release'
 
 export function DeleteReleaseDialog({
   open,
@@ -43,7 +42,7 @@ export function DeleteReleaseDialog({
             {t('versions.deleteConfirmTitle')}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-            {t('versions.deleteConfirmDesc', { name: releaseLabel(release) })}
+            {t('versions.deleteConfirmDesc', { name: release.name })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions className="pt-3">

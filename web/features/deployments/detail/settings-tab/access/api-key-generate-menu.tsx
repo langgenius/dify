@@ -27,7 +27,6 @@ import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { environmentName } from '../../../environment'
 import { generateApiTokenName } from './api-token-name'
 
 export function ApiKeyGenerateMenu({
@@ -52,16 +51,7 @@ export function ApiKeyGenerateMenu({
   const [draftName, setDraftName] = useState('')
   const [nameError, setNameError] = useState(false)
   const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
-  const selectableEnvironments = environments.flatMap((environment) => {
-    const environmentId = environment.id
-    if (!environmentId)
-      return []
-
-    return [{
-      ...environment,
-      id: environmentId,
-    }]
-  })
+  const selectableEnvironments = environments
   const selectedEnvironment = selectedEnvironmentId
     ? selectableEnvironments.find(env => env.id === selectedEnvironmentId)
     : undefined
@@ -76,11 +66,11 @@ export function ApiKeyGenerateMenu({
   }
 
   function handleOpenCreateDialog() {
-    const firstEnvironmentId = selectableEnvironments[0]?.id
-    if (!firstEnvironmentId)
+    const firstEnvironment = selectableEnvironments[0]
+    if (!firstEnvironment)
       return
 
-    setSelectedEnvironmentId(firstEnvironmentId)
+    setSelectedEnvironmentId(firstEnvironment.id)
     setDraftName(generateApiTokenName())
     setNameError(false)
     setCreateDialogOpen(true)
@@ -201,12 +191,12 @@ export function ApiKeyGenerateMenu({
                     {t('access.api.table.environment')}
                   </SelectLabel>
                   <SelectTrigger>
-                    {environmentName(selectedEnvironment)}
+                    {selectedEnvironment?.name ?? '—'}
                   </SelectTrigger>
                   <SelectContent>
                     {selectableEnvironments.map(env => (
                       <SelectItem key={env.id} value={env.id}>
-                        <SelectItemText>{environmentName(env)}</SelectItemText>
+                        <SelectItemText>{env.name}</SelectItemText>
                         <SelectItemIndicator />
                       </SelectItem>
                     ))}

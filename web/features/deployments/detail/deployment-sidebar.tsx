@@ -129,9 +129,9 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
     },
   }))
   const app = overviewQuery.data?.appInstance
-  const isLoading = !app?.id && overviewQuery.isLoading
-  const isUnavailable = !app?.id || overviewQuery.isError
-  const instanceName = app?.name ?? appInstanceId
+  const isLoading = !app && overviewQuery.isLoading
+  const isUnavailable = !app || overviewQuery.isError
+  const instanceName = app ? app.name : appInstanceId
 
   return (
     <div className={cn('shrink-0', expand ? 'p-2' : 'p-1')}>

@@ -10,11 +10,11 @@ export function getInstanceTabHref(appInstanceId: string, tabKey: InstanceDetail
 }
 
 export function isActiveDeployment(row: EnvironmentDeployment) {
-  return Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)
+  return !isUndeployedDeploymentRow(row)
 }
 
 export function isReleaseDeployed(release: Release | undefined, rows: EnvironmentDeployment[]) {
-  if (!release?.id)
+  if (!release)
     return false
 
   return rows.some(row => row.currentRelease?.id === release.id)

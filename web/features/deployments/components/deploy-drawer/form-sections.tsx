@@ -1,13 +1,11 @@
 'use client'
 
-import type { CredentialSlot } from '@dify/contracts/enterprise/types.gen'
+import type { CredentialSlot, Environment } from '@dify/contracts/enterprise/types.gen'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
-import type { EnvironmentOption } from './use-deploy-ready-form'
 import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
-import { environmentBackend, environmentMode, environmentName } from '../../environment'
-import { formatDate, releaseCommit, releaseLabel } from '../../release'
+import { formatDate, releaseCommit } from '../../release'
 import { DeploymentStateMessage } from '../empty-state'
 import { RuntimeCredentialBindingsPanel } from '../runtime-credential-bindings'
 import {
@@ -22,12 +20,12 @@ import {
 
 export const DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME = 'max-h-none overflow-visible'
 
-function environmentOptionLabel(env: EnvironmentOption, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
-  const description = env.description?.trim()
+function environmentOptionLabel(env: Environment, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
+  const description = env.description.trim()
   if (description)
-    return `${environmentName(env)} · ${description}`
+    return `${env.name} · ${description}`
 
-  return `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(env).toUpperCase()}`
+  return `${env.name} · ${t(`mode.${env.mode}`)} · ${t(`backend.${env.backend}`)}`
 }
 
 export function BindingOptionsPanel({
@@ -120,7 +118,7 @@ export function ReleaseField() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between rounded-lg border border-components-panel-border bg-components-panel-bg-blur px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 font-mono system-sm-semibold text-text-primary">{releaseLabel(displayedRelease)}</span>
+                  <span className="shrink-0 font-mono system-sm-semibold text-text-primary">{displayedRelease.name}</span>
                   <span className="shrink-0 system-xs-regular text-text-tertiary">·</span>
                   <span className="shrink-0 font-mono system-xs-regular text-text-tertiary">{releaseCommit(displayedRelease)}</span>
                 </div>
@@ -141,16 +139,10 @@ export function ReleaseField() {
               <DeploymentSelect
                 value={selectedReleaseId}
                 onChange={selectRelease}
-                options={releases.flatMap((release) => {
-                  const releaseId = release.id
-                  if (!releaseId)
-                    return []
-
-                  return [{
-                    value: releaseId,
-                    label: `${releaseLabel(release)} · ${releaseCommit(release)}`,
-                  }]
-                })}
+                options={releases.map(release => ({
+                  value: release.id,
+                  label: `${release.name} · ${releaseCommit(release)}`,
+                }))}
                 placeholder={t('deployDrawer.selectRelease')}
               />
             )}

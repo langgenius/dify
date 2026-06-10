@@ -7,6 +7,11 @@ import { EnvVarBindingsPanel } from '../env-var-bindings'
 function createEnvVarSlot(overrides: Partial<EnvVarBindingSlot> = {}): EnvVarBindingSlot {
   return {
     key: 'API_KEY',
+    description: 'API key',
+    defaultValue: 'unused-default',
+    hasDefaultValue: false,
+    hasLastValue: false,
+    lastValue: 'unused-last',
     valueType: 'string',
     ...overrides,
   }

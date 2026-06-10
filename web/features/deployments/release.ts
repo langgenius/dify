@@ -12,10 +12,6 @@ export function formatDate(value?: string) {
   return formatTime({ date, dateFormat: 'YYYY-MM-DD HH:mm' })
 }
 
-export function releaseLabel(release?: Release) {
-  return release?.name || release?.id || '—'
-}
-
 export function releaseCommit(release?: Release) {
   return release?.gateCommitId ? release.gateCommitId.slice(0, 8) : '—'
 }

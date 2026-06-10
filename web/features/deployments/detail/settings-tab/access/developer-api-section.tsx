@@ -38,7 +38,7 @@ function useDeveloperApiSettings(appInstanceId: string) {
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
   const environments = developerApiSettingsQuery.data?.environments ?? []
   const apiKeys: ApiKey[] = developerApiSettingsQuery.data?.apiKeys ?? []
-  const apiUrl = developerApiSettingsQuery.data?.developerApiUrl?.apiUrl
+  const apiUrl = developerApiSettingsQuery.data?.developerApiUrl.apiUrl
 
   return {
     apiEnabled,

@@ -13,7 +13,7 @@ export function ReleaseDeploymentsContent({
 
   return items.map(item => (
     <DeployedToBadge
-      key={`${item.environmentId}-${item.state}`}
+      key={`${item.environmentId}-${item.status}`}
       item={item}
     />
   ))

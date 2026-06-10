@@ -6,6 +6,7 @@ import type {
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type { ReactElement } from 'react'
+import { ReleaseSource } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
@@ -15,17 +16,15 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { EnvironmentDeploymentBadge } from '../deployment-ui'
 import { deploymentStatusLabelKey } from '../deployment-ui-utils'
-import { environmentName } from '../environment'
-import { formatDate, releaseLabel } from '../release'
-import { deploymentStatus } from '../runtime-status'
+import { formatDate } from '../release'
 import { getInstanceTabHref } from './instance-card-utils'
 
 const VISIBLE_ENVIRONMENT_COUNT = 3
 
 function releaseSourceLabel(release: Release | undefined, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
-  if (release?.source === 'RELEASE_SOURCE_SOURCE_APP' || release?.sourceAppId)
+  if (release?.source === ReleaseSource.RELEASE_SOURCE_SOURCE_APP || release?.sourceAppId)
     return t('versions.sourceAppOption')
-  if (release?.source === 'RELEASE_SOURCE_UPLOAD')
+  if (release?.source === ReleaseSource.RELEASE_SOURCE_UPLOAD)
     return t('versions.manualDslOption')
   return '—'
 }
@@ -37,11 +36,11 @@ export function ReleaseMetaTooltip({ release, deployed, children }: {
 }) {
   const { t } = useTranslation('deployments')
 
-  if (!release?.id)
+  if (!release)
     return children
 
   const rows = [
-    { label: t('card.tooltip.releaseName'), value: releaseLabel(release) },
+    { label: t('card.tooltip.releaseName'), value: release.name },
     { label: t('card.tooltip.deploymentStatus'), value: deployed ? t('card.tooltip.deployed') : t('card.tooltip.notDeployedShort') },
     { label: t('card.tooltip.source'), value: releaseSourceLabel(release, t) },
     { label: t('card.tooltip.createdAt'), value: formatDate(release.createdAt) },
@@ -68,12 +67,12 @@ function EnvironmentChip({ row }: {
   row: EnvironmentDeployment
 }) {
   const { t } = useTranslation('deployments')
-  const name = environmentName(row.environment)
-  const status = deploymentStatus(row)
+  const name = row.environment.name
+  const status = row.status
   const statusLabel = t(deploymentStatusLabelKey(status))
   const tooltipSummary = [
     name,
-    row.currentRelease ? releaseLabel(row.currentRelease) : undefined,
+    row.currentRelease ? row.currentRelease.name : undefined,
     statusLabel,
   ].filter(Boolean).join(' · ')
 
@@ -116,15 +115,15 @@ function EnvironmentOverflow({ rows }: {
       <PopoverContent popupClassName="px-3 py-2">
         <div className="flex min-w-40 flex-col gap-1">
           {rows.map((row) => {
-            const status = deploymentStatus(row)
+            const status = row.status
             const summary = [
-              environmentName(row.environment),
-              row.currentRelease ? releaseLabel(row.currentRelease) : undefined,
+              row.environment.name,
+              row.currentRelease ? row.currentRelease.name : undefined,
               t(deploymentStatusLabelKey(status)),
             ].filter(Boolean).join(' · ')
 
             return (
-              <span key={row.environment?.id} className="whitespace-nowrap text-text-secondary">{summary}</span>
+              <span key={row.environment.id} className="whitespace-nowrap text-text-secondary">{summary}</span>
             )
           })}
         </div>
@@ -147,7 +146,7 @@ export function DeploymentStatusContent({
     return (
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         {visibleRows.map(row => (
-          <EnvironmentChip key={row.environment?.id} row={row} />
+          <EnvironmentChip key={row.environment.id} row={row} />
         ))}
         {overflowRows.length > 0 && <EnvironmentOverflow rows={overflowRows} />}
       </div>

@@ -1,5 +1,12 @@
-import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
+import type { Environment, EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
+import {
+  EnvironmentMode,
+  EnvironmentStatus,
+  ReleaseSource,
+  RuntimeBackend,
+  RuntimeInstanceStatus,
+} from '@dify/contracts/enterprise/types.gen'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
@@ -63,18 +70,48 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 function release(id: string, createdAt: string): Release {
   return {
+    appInstanceId: 'app-instance-1',
+    createdBy: {
+      id: 'user-1',
+      name: 'User',
+    },
+    description: `${id} description`,
+    gateCommitId: `${id}-commit`,
     id,
+    name: id,
+    requiredSlots: [],
+    source: ReleaseSource.RELEASE_SOURCE_UPLOAD,
+    sourceAppId: 'source-app-1',
     createdAt,
+  }
+}
+
+function environment(id = 'env-1'): Environment {
+  return {
+    apiServer: 'https://api.example.com',
+    backend: RuntimeBackend.RUNTIME_BACKEND_EXTERNAL,
+    cpuCount: 2,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    description: 'Production environment',
+    id,
+    managedBy: 'system',
+    mode: EnvironmentMode.ENVIRONMENT_MODE_ISOLATED,
+    name: 'Production',
+    namespace: 'production',
+    runtimeEndpoint: 'https://runtime.example.com',
+    status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
+    statusMessage: 'Ready',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   }
 }
 
 function runtimeRow(currentRelease: Release): EnvironmentDeployment {
   return {
-    environment: {
-      id: 'env-1',
-      name: 'Production',
-    },
+    appInstanceId: 'app-instance-1',
+    environment: environment(),
     currentRelease,
+    status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
+    updatedAt: '2026-01-01T00:00:00.000Z',
   }
 }
 
@@ -101,10 +138,7 @@ describe('useDeployReleaseSubmission', () => {
       const config = {
         appInstanceId: 'app-instance-1',
         defaultReleaseId: targetRelease.id,
-        environments: [{
-          id: 'env-1',
-          name: 'Production',
-        }],
+        environments: [environment()],
         releases: [targetRelease, currentRelease],
         runtimeRows: [runtimeRow(currentRelease)],
       }

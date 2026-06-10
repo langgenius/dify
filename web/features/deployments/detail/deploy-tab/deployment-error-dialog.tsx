@@ -10,7 +10,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
-import { environmentName } from '../../environment'
 
 function DeploymentErrorDetails({ error }: {
   error?: EnvironmentDeployment['error']
@@ -59,7 +58,7 @@ export function DeploymentErrorDialog({ open, row, onOpenChange }: {
       <AlertDialogContent className="w-120">
         <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t('deployTab.errorDialogTitle', { name: environmentName(row.environment) })}
+            {t('deployTab.errorDialogTitle', { name: row.environment.name })}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-sm-regular text-text-tertiary">
             {t('deployTab.errorDialogDesc')}

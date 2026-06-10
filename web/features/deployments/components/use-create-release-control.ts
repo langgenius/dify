@@ -11,7 +11,6 @@ import { consoleQuery } from '@/service/client'
 import { isWorkflowApp } from '../app-mode'
 import { encodeDslContent, isWorkflowDsl } from '../dsl'
 import { deploymentErrorMessage, unsupportedDslNodeError } from '../error'
-import { releaseLabel } from '../release'
 import { useDslFileReader } from '../use-dsl-file-reader'
 import { workflowSourceAppPickerValue } from './source-app-picker-value'
 
@@ -48,8 +47,8 @@ export function useCreateReleaseControl(appInstanceId: string) {
     },
     enabled: isCreating,
   }))
-  const latestSourceAppId = latestReleaseQuery.data?.data?.[0]?.sourceAppId
-  const defaultSourceAppId = isCreating && latestSourceAppId && !sourceApp ? latestSourceAppId : ''
+  const latestSourceAppId = latestReleaseQuery.data?.data[0]?.sourceAppId
+  const defaultSourceAppId = isCreating && latestSourceAppId && !sourceApp ? latestSourceAppId : undefined
   const defaultSourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
     input: defaultSourceAppId
       ? { params: { app_id: defaultSourceAppId } }
@@ -187,11 +186,7 @@ export function useCreateReleaseControl(appInstanceId: string) {
     clearCreateError()
 
     const handleSuccess = (response: CreateReleaseReply) => {
-      if (!response.release?.id) {
-        toast.error(t('versions.createFailed'))
-        return
-      }
-      const createdName = response.release.name || submittedReleaseName || releaseLabel(response.release)
+      const createdName = response.release.name
       toast.success(t('versions.createSuccess', { name: createdName }))
       form.reset()
       closeDialog()

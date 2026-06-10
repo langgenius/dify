@@ -2,6 +2,7 @@
 
 import type { Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
+import { ReleaseSource } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,7 @@ import { consoleQuery } from '@/service/client'
 import { CreateReleaseControl } from '../../components/create-release-control'
 import { DeploymentEmptyState } from '../../components/empty-state'
 import { TitleTooltip } from '../../components/title-tooltip'
-import { formatDate, releaseCommit, releaseLabel } from '../../release'
+import { formatDate, releaseCommit } from '../../release'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from './card-styles'
 
 type ReleaseHeroProps = {
@@ -31,12 +32,7 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
   const { t } = useTranslation('deployments')
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
-  const author = latestRelease?.createdBy?.name ?? ''
-  const ago = latestRelease?.createdAt ? formatTimeFromNow(new Date(latestRelease.createdAt).getTime()) : ''
-  const createdAtTitle = latestRelease?.createdAt ? formatDate(latestRelease.createdAt) : undefined
-  const commit = releaseCommit(latestRelease)
-
-  if (!latestRelease?.id) {
+  if (!latestRelease) {
     return (
       <DeploymentEmptyState
         variant="section"
@@ -49,6 +45,11 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
     )
   }
 
+  const author = latestRelease.createdBy.name
+  const ago = formatTimeFromNow(new Date(latestRelease.createdAt).getTime())
+  const createdAtTitle = formatDate(latestRelease.createdAt)
+  const commit = releaseCommit(latestRelease)
+
   return (
     <div className={cn(OVERVIEW_CARD_CLASS_NAME, 'flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6')}>
       <div className="flex min-w-0 items-center gap-3">
@@ -58,7 +59,7 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex min-w-0 items-center gap-2">
             <h4 className="truncate system-sm-semibold text-text-primary">
-              {releaseLabel(latestRelease)}
+              {latestRelease.name}
             </h4>
             {commit !== '—' && (
               <TitleTooltip content={t('versions.commitTooltip', { commit })}>
@@ -124,7 +125,7 @@ function LatestReleaseSource({ release }: {
   if (!sourceAppId) {
     return (
       <span>
-        {release.source === 'RELEASE_SOURCE_UPLOAD' ? t('versions.manualDslOption') : '—'}
+        {release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD ? t('versions.manualDslOption') : '—'}
       </span>
     )
   }

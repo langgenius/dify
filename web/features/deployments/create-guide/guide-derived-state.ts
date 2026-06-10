@@ -52,9 +52,9 @@ export function createGuideSourceName({
   if (method === 'importDsl')
     return dslDefaultAppName || dslFallbackAppName
   if (method === 'bindApp')
-    return selectedApp?.name ?? ''
+    return selectedApp?.name
 
-  return ''
+  return undefined
 }
 
 export function isCreateGuideSourceReady({

@@ -13,7 +13,6 @@ import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { environmentId, environmentName } from '../environment'
 import { envFilterQueryState } from './query-state'
 
 type EnvironmentFilterOption = {
@@ -38,17 +37,11 @@ export function EnvironmentFilter({ className }: {
     },
   }))
   const environmentOptions: EnvironmentFilterOption[] = environmentsQuery.data?.data
-    ?.flatMap((environment) => {
-      const value = environmentId(environment)
-      if (!value)
-        return []
-
-      return [{
-        value,
-        text: environmentName(environment),
-        icon: <EnvironmentOptionIcon />,
-      }]
-    }) ?? []
+    ?.map(environment => ({
+      value: environment.id,
+      text: environment.name,
+      icon: <EnvironmentOptionIcon />,
+    })) ?? []
   const filterOptions: EnvironmentFilterOption[] = [
     {
       value: null,

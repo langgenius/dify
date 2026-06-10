@@ -7,12 +7,15 @@ const INVALID_FILENAME_CHARS_PATTERN = /[\\/:*?"<>|]+/g
 const FILENAME_SEPARATOR_PATTERN = /[\s-]+/g
 
 function sanitizeFileNamePart(value?: string) {
+  if (!value)
+    return ''
+
   return value
-    ?.trim()
+    .trim()
     .replace(YAML_EXTENSION_PATTERN, '')
     .replace(INVALID_FILENAME_CHARS_PATTERN, '-')
     .replace(FILENAME_SEPARATOR_PATTERN, '-')
-    .replace(/^-+|-+$/g, '') ?? ''
+    .replace(/^-+|-+$/g, '')
 }
 
 function releaseDslFileName({ release, appInstanceName }: {
@@ -20,17 +23,18 @@ function releaseDslFileName({ release, appInstanceName }: {
   appInstanceName?: string
 }) {
   const projectName = sanitizeFileNamePart(appInstanceName)
-  const releaseName = sanitizeFileNamePart(release.name || release.id) || 'release'
+  const releaseName = sanitizeFileNamePart(release.name) || 'release'
   const baseName = [projectName, releaseName].filter(Boolean).join('-')
 
   return `${baseName}.yaml`
 }
 
-export async function exportReleaseDsl({ release, appInstanceName }: {
-  release: Release & { id: string }
+export async function exportReleaseDsl({ release, releaseId, appInstanceName }: {
+  release: Release
+  releaseId: string
   appInstanceName?: string
 }) {
-  const data = new Blob([await fetchReleaseDsl(release.id)], {
+  const data = new Blob([await fetchReleaseDsl(releaseId)], {
     type: 'application/x-yaml;charset=utf-8',
   })
   downloadBlob({

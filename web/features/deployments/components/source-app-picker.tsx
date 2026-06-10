@@ -169,8 +169,18 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
         onChange(app)
         setIsShow(false)
       }}
-      itemToStringLabel={app => app?.name ?? ''}
-      itemToStringValue={app => app?.id ?? ''}
+      itemToStringLabel={(app) => {
+        if (!app)
+          return ''
+
+        return app.name
+      }}
+      itemToStringValue={(app) => {
+        if (!app)
+          return ''
+
+        return app.id
+      }}
       filter={(app, query) => sourceAppSearchText(app).includes(query.toLowerCase())}
       disabled={false}
     >

@@ -1,7 +1,8 @@
 'use client'
 
 import type { Release } from '@dify/contracts/enterprise/types.gen'
-import type { ReleaseRowWithId } from './release-history-types'
+import type { ReleaseWithSummaryDeployments } from './release-deployments'
+import { ReleaseSource } from '@dify/contracts/enterprise/types.gen'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,6 @@ import { TitleTooltip } from '../../components/title-tooltip'
 import {
   formatDate,
   releaseCommit,
-  releaseLabel,
 } from '../../release'
 import {
   DetailTable,
@@ -26,7 +26,6 @@ import {
 } from '../table'
 import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../table-styles'
 import { DeployReleaseMenu } from './deploy-release-menu'
-import { getReleaseDeployments } from './release-deployments'
 import {
   ReleaseDeploymentsContent,
 } from './release-history-deployments'
@@ -41,7 +40,7 @@ function ReleaseTitleTooltip({ release }: {
       <TooltipTrigger
         render={(
           <span className="inline-flex max-w-full cursor-default truncate text-text-primary">
-            {releaseLabel(release)}
+            {release.name}
           </span>
         )}
       />
@@ -53,11 +52,9 @@ function ReleaseTitleTooltip({ release }: {
 }
 
 function CreatedAtCell({ createdAt }: {
-  createdAt?: string
+  createdAt: string
 }) {
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  if (!createdAt)
-    return <>—</>
   const ms = Date.parse(createdAt)
   if (Number.isNaN(ms))
     return <>{formatDate(createdAt)}</>
@@ -89,7 +86,7 @@ function ReleaseSourceCell({ release }: {
   if (!sourceAppId) {
     return (
       <span className="text-text-tertiary">
-        {release.source === 'RELEASE_SOURCE_UPLOAD' ? t('versions.manualDslOption') : '—'}
+        {release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD ? t('versions.manualDslOption') : '—'}
       </span>
     )
   }
@@ -115,7 +112,7 @@ function ReleaseSourceCell({ release }: {
 
 function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted }: {
   appInstanceId: string
-  releaseRows: ReleaseRowWithId[]
+  releaseRows: ReleaseWithSummaryDeployments[]
   onReleaseDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
@@ -124,11 +121,11 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
     <DetailTableCardList className="pc:hidden">
       {releaseRows.map((row) => {
         const release = row
-        const releaseDeployments = getReleaseDeployments(row)
-        const hasDeployments = releaseDeployments.length > 0
+        const releaseId = release.id
+        const hasDeployments = row.summaryDeployments.length > 0
 
         return (
-          <DetailTableCard key={release.id}>
+          <DetailTableCard key={releaseId}>
             <div className="flex flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -136,8 +133,8 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 system-xs-regular text-text-secondary">
                     <CreatedAtCell createdAt={release.createdAt} />
                     <span aria-hidden>·</span>
-                    <span>{row.createdBy?.name ?? '—'}</span>
-                    {(release.sourceAppId || release.source === 'RELEASE_SOURCE_UPLOAD') && (
+                    <span>{row.createdBy.name}</span>
+                    {(release.sourceAppId || release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD) && (
                       <>
                         <span aria-hidden>·</span>
                         <span className="inline-flex max-w-full min-w-0 items-baseline gap-1">
@@ -150,7 +147,7 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
                 </div>
                 <div className="flex shrink-0 justify-end gap-1">
                   <DeployReleaseMenu
-                    releaseId={release.id}
+                    releaseId={releaseId}
                     appInstanceId={appInstanceId}
                     releaseRows={releaseRows}
                     onDeleted={onReleaseDeleted}
@@ -160,7 +157,7 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
               {hasDeployments && (
                 <div className="flex min-w-0 flex-wrap items-center gap-1">
                   <ReleaseDeploymentsContent
-                    items={releaseDeployments}
+                    items={row.summaryDeployments}
                   />
                 </div>
               )}
@@ -174,7 +171,7 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
 
 export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDeleted }: {
   appInstanceId: string
-  releaseRows: ReleaseRowWithId[]
+  releaseRows: ReleaseWithSummaryDeployments[]
   onReleaseDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
@@ -201,10 +198,10 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDelete
           <DetailTableBody>
             {releaseRows.map((row) => {
               const release = row
-              const releaseDeployments = getReleaseDeployments(row)
+              const releaseId = release.id
 
               return (
-                <DetailTableRow key={release.id}>
+                <DetailTableRow key={releaseId}>
                   <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>
                     <ReleaseTitleTooltip release={release} />
                   </DetailTableCell>
@@ -215,19 +212,19 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDelete
                     <CreatedAtCell createdAt={release.createdAt} />
                   </DetailTableCell>
                   <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author} truncate text-text-secondary`}>
-                    {row.createdBy?.name ?? '—'}
+                    {row.createdBy.name}
                   </DetailTableCell>
                   <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>
                     <div className="flex flex-wrap gap-1">
                       <ReleaseDeploymentsContent
-                        items={releaseDeployments}
+                        items={row.summaryDeployments}
                       />
                     </div>
                   </DetailTableCell>
                   <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action}>
                     <div className="flex justify-end">
                       <DeployReleaseMenu
-                        releaseId={release.id}
+                        releaseId={releaseId}
                         appInstanceId={appInstanceId}
                         releaseRows={releaseRows}
                         onDeleted={onReleaseDeleted}

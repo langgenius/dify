@@ -6,6 +6,7 @@ import type {
 } from './access-policy'
 import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
 import type { AccessControlDraft } from '@/app/components/app/app-access-control/store'
+import { SubjectType } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { AccessControlDialog } from '@/app/components/app/app-access-control/access-control-dialog'
@@ -17,7 +18,6 @@ import { AccessMode as AppAccessMode } from '@/models/access-control'
 import {
   appAccessModeToPermissionKey,
   permissionIcon,
-  SUBJECT_TYPE_GROUP,
 } from './access-policy'
 
 export function PermissionSummaryButton({
@@ -88,7 +88,7 @@ export function SubjectsSummary({
     )
   }
 
-  const groupCount = subjects.filter(subject => subject.subjectType === SUBJECT_TYPE_GROUP).length
+  const groupCount = subjects.filter(subject => subject.subjectType === SubjectType.SUBJECT_TYPE_GROUP).length
   const memberCount = subjects.length - groupCount
   const countLabels = [
     ...(groupCount > 0 ? [t('access.members.groupCount', { count: groupCount })] : []),
@@ -120,8 +120,8 @@ export function DeploymentAccessControlDialog({
 }) {
   const draftKey = [
     initialDraft.currentMenu,
-    initialDraft.specificGroups?.map(group => group.id).join(',') ?? '',
-    initialDraft.specificMembers?.map(member => member.id).join(',') ?? '',
+    initialDraft.specificGroups ? initialDraft.specificGroups.map(group => group.id).join(',') : 'no-groups',
+    initialDraft.specificMembers ? initialDraft.specificMembers.map(member => member.id).join(',') : 'no-members',
   ].join(':')
 
   return (

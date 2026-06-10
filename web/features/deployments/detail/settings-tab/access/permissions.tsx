@@ -15,7 +15,6 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { environmentName } from '../../../environment'
 import {
   DetailTableCell,
   DetailTableRow,
@@ -56,13 +55,9 @@ export function EnvironmentPermissionRow({
   const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
   const policy = summaryPolicy
   const policyKind = accessModeToPermissionKey(policy?.mode)
-  const policySubjectFingerprint = policy?.subjects
-    ?.map(subject => `${subject.subjectType ?? ''}:${subject.subjectId ?? ''}`)
-    .join(',')
-  const policyFingerprint = [
-    policy?.mode ?? '',
-    policySubjectFingerprint ?? '',
-  ].join(':')
+  const policyFingerprint = policy
+    ? `${policy.mode}:${policy.subjects.map(subject => `${subject.subjectType}:${subject.subjectId}`).join(',')}`
+    : 'no-policy'
   const [draft, setDraft] = useState<{
     fingerprint?: string
     kind?: AccessPermissionKind
@@ -83,7 +78,7 @@ export function EnvironmentPermissionRow({
   const subjectSelection = accessControlSelectionFromSubjects(subjects)
   const isSaving = setEnvironmentAccessPolicy.isPending
   const controlsDisabled = disabled || isSaving
-  const envName = environmentName(environment)
+  const envName = environment.name
 
   const persistPolicy = (
     nextKind: AccessPermissionKind,
@@ -92,8 +87,6 @@ export function EnvironmentPermissionRow({
       onSuccess?: () => void
     },
   ) => {
-    if (!environmentId)
-      return false
     if (nextKind === 'specific' && nextSubjects.length === 0)
       return false
 

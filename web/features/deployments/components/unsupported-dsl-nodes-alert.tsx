@@ -4,7 +4,7 @@ import type { UnsupportedDslNode } from '../error'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 
-function translatedNodeType(type: string, t: ReturnType<typeof useTranslation>['t']) {
+function translatedNodeType(type: string | undefined, t: ReturnType<typeof useTranslation>['t']) {
   if (!type)
     return t('unsupportedDslNodes.unknownType')
 

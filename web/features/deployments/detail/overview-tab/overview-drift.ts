@@ -11,7 +11,7 @@ export function computeDrift(row: EnvironmentDeployment): Drift {
   if (isUndeployedDeploymentRow(row))
     return { kind: 'undeployed' }
 
-  if (!row.currentRelease?.id)
+  if (!row.currentRelease)
     return { kind: 'unknown' }
 
   // releasesBehind is server-computed against the full release history (0 == up
@@ -25,5 +25,5 @@ export function computeDrift(row: EnvironmentDeployment): Drift {
 }
 
 export function latestReleaseId(releaseRows: Release[]): string | undefined {
-  return releaseRows[0]?.id || undefined
+  return releaseRows[0]?.id
 }

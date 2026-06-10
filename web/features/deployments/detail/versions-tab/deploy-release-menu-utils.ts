@@ -4,18 +4,15 @@ import type {
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type { TFunction } from 'i18next'
-import { environmentId, environmentName } from '../../environment'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { releaseDeploymentAction } from '../../release-action'
-import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
-
-export type EnvironmentOption = Environment & {
-  id: string
-}
+import { isUndeployedDeploymentRow } from '../../runtime-status'
 
 export type DeployMenuRowState = 'deploy' | 'rollback' | 'current' | 'deploying'
 
 export type DeployMenuRow = {
-  env: EnvironmentOption
+  env?: Environment
+  environmentId: string
   state: DeployMenuRowState
   label: string
   disabledReason?: string
@@ -43,10 +40,8 @@ export function releaseUsageCount(releaseId: string, deploymentRows: Environment
 
   deploymentRows.forEach((row) => {
     const usesRelease = row.currentRelease?.id === releaseId || row.desiredRelease?.id === releaseId
-    const envId = environmentId(row.environment)
-
-    if (usesRelease && envId)
-      environmentIds.add(envId)
+    if (usesRelease)
+      environmentIds.add(row.environment.id)
   })
 
   return environmentIds.size
@@ -60,7 +55,7 @@ function buildDeployMenuRow({
   targetRelease,
   t,
 }: {
-  env: EnvironmentOption
+  env: Environment
   deploymentRows: EnvironmentDeployment[]
   releaseRows: Release[]
   releaseId: string
@@ -68,15 +63,16 @@ function buildDeployMenuRow({
   t: TFunction<'deployments'>
 }): DeployMenuRow {
   const envId = env.id
-  const envName = environmentName(env)
-  const row = deploymentRows.find(item => environmentId(item.environment) === envId)
+  const envName = env.name
+  const row = deploymentRows.find(item => item.environment.id === envId)
   const currentRelease = row?.currentRelease
   const isCurrent = currentRelease?.id === releaseId
-  const isEnvironmentDeploying = row ? deploymentStatus(row) === 'deploying' : false
+  const isEnvironmentDeploying = row?.status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING
 
   if (isEnvironmentDeploying) {
     return {
       env,
+      environmentId: envId,
       state: 'deploying',
       label: t('versions.deployingTo', { name: envName }),
       disabledReason: t('versions.disabledReason.deploying'),
@@ -85,6 +81,7 @@ function buildDeployMenuRow({
   if (isCurrent) {
     return {
       env,
+      environmentId: envId,
       state: 'current',
       label: t('versions.currentOn', { name: envName }),
       disabledReason: t('versions.disabledReason.current', { name: envName }),
@@ -101,6 +98,7 @@ function buildDeployMenuRow({
   if (!row) {
     return {
       env,
+      environmentId: envId,
       state: 'deploy',
       label: t('versions.deployTo', { name: envName }),
     }
@@ -108,12 +106,14 @@ function buildDeployMenuRow({
   if (action === 'rollback') {
     return {
       env,
+      environmentId: envId,
       state: 'rollback',
       label: t('versions.rollbackTo', { name: envName }),
     }
   }
   return {
     env,
+    environmentId: envId,
     state: 'deploy',
     label: t('versions.deployTo', { name: envName }),
   }
@@ -127,14 +127,14 @@ export function buildDeployMenuSections({
   targetRelease,
   t,
 }: {
-  environments: EnvironmentOption[]
+  environments: Environment[]
   environmentDeployments: EnvironmentDeployment[]
   releaseRows: Release[]
   releaseId: string
   targetRelease: Release
   t: TFunction<'deployments'>
 }) {
-  const deploymentRows = environmentDeployments.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row))
+  const deploymentRows = environmentDeployments.filter(row => !isUndeployedDeploymentRow(row))
   const menuRows = environments.map(env => buildDeployMenuRow({
     env,
     deploymentRows,

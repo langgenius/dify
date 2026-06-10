@@ -19,7 +19,6 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { environmentName } from '../../../environment'
 import {
   DetailTable,
   DetailTableBody,
@@ -39,7 +38,7 @@ function ApiKeyName({ apiKey }: {
 }) {
   return (
     <span className="block truncate text-text-primary">
-      {apiKey.name || apiKey.id || '—'}
+      {apiKey.name}
     </span>
   )
 }
@@ -49,7 +48,7 @@ function EnvironmentBadge({ environment }: {
 }) {
   return (
     <span className="inline-flex h-5 max-w-36 items-center rounded-md bg-background-section-burn px-1.5 text-xs text-text-tertiary">
-      <span className="truncate">{environmentName(environment)}</span>
+      <span className="truncate">{environment?.name ?? '—'}</span>
     </span>
   )
 }
@@ -73,10 +72,10 @@ function RevokeApiKeyButton({ apiKey }: {
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
   const revokeApiKey = useMutation(consoleQuery.enterprise.accessService.deleteApiKey.mutationOptions())
   const isRevoking = revokeApiKey.isPending
-  const apiKeyName = apiKey.name || apiKey.id || t('access.api.table.key')
+  const apiKeyName = apiKey.name
 
   function handleRevoke() {
-    if (!apiKey.id || isRevoking)
+    if (isRevoking)
       return
 
     revokeApiKey.mutate(
@@ -111,7 +110,7 @@ function RevokeApiKeyButton({ apiKey }: {
         onClick={() => setShowRevokeConfirm(true)}
         aria-label={t('access.revoke')}
         aria-busy={isRevoking}
-        disabled={!apiKey.id || isRevoking}
+        disabled={isRevoking}
         className={cn(
           'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           isRevoking
@@ -150,7 +149,7 @@ function ApiKeyMobileRow({ apiKey, environment }: {
   environment?: Environment
 }) {
   const { t } = useTranslation('deployments')
-  const displayValue = apiKey.maskedToken || apiKey.id || '—'
+  const displayValue = apiKey.maskedToken
 
   return (
     <DetailTableCard>
@@ -179,7 +178,7 @@ function ApiKeyDesktopRow({ apiKey, environment }: {
   apiKey: ApiKey
   environment?: Environment
 }) {
-  const displayValue = apiKey.maskedToken || apiKey.id || '—'
+  const displayValue = apiKey.maskedToken
 
   return (
     <DetailTableRow>
@@ -225,11 +224,11 @@ export function ApiKeyList({ apiKeys, environments }: {
   return (
     <>
       <DetailTableCardList className={cn('pc:hidden')}>
-        {apiKeys.map((apiKey, index) => (
+        {apiKeys.map(apiKey => (
           <ApiKeyMobileRow
-            key={apiKey.id ?? apiKey.maskedToken ?? apiKey.name ?? index}
+            key={apiKey.id}
             apiKey={apiKey}
-            environment={apiKey.environmentId ? environmentById.get(apiKey.environmentId) : undefined}
+            environment={environmentById.get(apiKey.environmentId)}
           />
         ))}
       </DetailTableCardList>
@@ -237,11 +236,11 @@ export function ApiKeyList({ apiKeys, environments }: {
         <DetailTable>
           <ApiKeyTableHeader />
           <DetailTableBody>
-            {apiKeys.map((apiKey, index) => (
+            {apiKeys.map(apiKey => (
               <ApiKeyDesktopRow
-                key={apiKey.id ?? apiKey.maskedToken ?? apiKey.name ?? index}
+                key={apiKey.id}
                 apiKey={apiKey}
-                environment={apiKey.environmentId ? environmentById.get(apiKey.environmentId) : undefined}
+                environment={environmentById.get(apiKey.environmentId)}
               />
             ))}
           </DetailTableBody>

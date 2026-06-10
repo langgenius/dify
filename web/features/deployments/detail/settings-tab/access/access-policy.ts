@@ -1,6 +1,8 @@
 import type {
   AccessPolicy,
+  AccessMode as AccessPolicyMode,
   AccessSubject,
+  SubjectType as AccessSubjectType,
   Subject,
 } from '@dify/contracts/enterprise/types.gen'
 import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
@@ -8,17 +10,13 @@ import type {
   AccessControlAccount,
   AccessControlGroup,
 } from '@/models/access-control'
+import {
+  AccessMode,
+  SubjectType,
+} from '@dify/contracts/enterprise/types.gen'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
 
 export type AccessPermissionKind = 'organization' | 'specific' | 'anyone'
-type AccessPolicyMode = NonNullable<AccessPolicy['mode']>
-type AccessSubjectType = NonNullable<AccessSubject['subjectType']>
-
-const ACCESS_MODE_PUBLIC = 'ACCESS_MODE_PUBLIC' satisfies AccessPolicyMode
-const ACCESS_MODE_PRIVATE = 'ACCESS_MODE_PRIVATE' satisfies AccessPolicyMode
-const ACCESS_MODE_PRIVATE_ALL = 'ACCESS_MODE_PRIVATE_ALL' satisfies AccessPolicyMode
-const SUBJECT_TYPE_ACCOUNT = 'SUBJECT_TYPE_ACCOUNT' satisfies AccessSubjectType
-export const SUBJECT_TYPE_GROUP = 'SUBJECT_TYPE_GROUP' satisfies AccessSubjectType
 
 export const permissionIcon: Record<AccessPermissionKind, string> = {
   organization: 'i-ri-team-line',
@@ -34,19 +32,19 @@ export type SelectableAccessSubject = {
 }
 
 export function accessModeToPermissionKey(mode?: AccessPolicy['mode']): AccessPermissionKind {
-  if (mode === ACCESS_MODE_PRIVATE)
+  if (mode === AccessMode.ACCESS_MODE_PRIVATE)
     return 'specific'
-  if (mode === ACCESS_MODE_PUBLIC)
+  if (mode === AccessMode.ACCESS_MODE_PUBLIC)
     return 'anyone'
   return 'organization'
 }
 
 export function permissionKeyToAccessMode(key: AccessPermissionKind): AccessPolicyMode {
   if (key === 'organization')
-    return ACCESS_MODE_PRIVATE_ALL
+    return AccessMode.ACCESS_MODE_PRIVATE_ALL
   if (key === 'specific')
-    return ACCESS_MODE_PRIVATE
-  return ACCESS_MODE_PUBLIC
+    return AccessMode.ACCESS_MODE_PRIVATE
+  return AccessMode.ACCESS_MODE_PUBLIC
 }
 
 export function permissionKeyToAppAccessMode(key: AccessPermissionKind): AppAccessMode {
@@ -66,27 +64,27 @@ export function appAccessModeToPermissionKey(mode: AppAccessMode): AccessPermiss
 }
 
 export function normalizeResolvedSubject(subject: Subject): SelectableAccessSubject | undefined {
-  if (subject.subjectType === SUBJECT_TYPE_GROUP) {
+  if (subject.subjectType === SubjectType.SUBJECT_TYPE_GROUP) {
     const id = subject.subjectId || subject.groupData?.id
     if (!id)
       return undefined
 
     return {
       id,
-      subjectType: SUBJECT_TYPE_GROUP,
+      subjectType: SubjectType.SUBJECT_TYPE_GROUP,
       name: subject.groupData?.name,
       memberCount: subject.groupData?.groupSize,
     }
   }
 
-  if (subject.subjectType === SUBJECT_TYPE_ACCOUNT) {
+  if (subject.subjectType === SubjectType.SUBJECT_TYPE_ACCOUNT) {
     const id = subject.subjectId || subject.accountData?.id
     if (!id)
       return undefined
 
     return {
       id,
-      subjectType: SUBJECT_TYPE_ACCOUNT,
+      subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
       name: subject.accountData?.name || subject.accountData?.email,
     }
   }
@@ -106,20 +104,21 @@ export function policySubjects(subjects: SelectableAccessSubject[]): AccessSubje
 }
 
 export function selectedSubjectsFromPolicy(policy?: AccessPolicy, labelSubjects: SelectableAccessSubject[] = []) {
-  return policy?.subjects
-    ?.flatMap((subject): SelectableAccessSubject[] => {
-      if (!subject.subjectId || !subject.subjectType)
-        return []
+  if (!policy)
+    return []
+
+  return policy.subjects
+    .map((subject): SelectableAccessSubject => {
       const matchedSubject = labelSubjects.find(labelSubject =>
         labelSubject.id === subject.subjectId && labelSubject.subjectType === subject.subjectType,
       )
-      return [{
+      return {
         id: subject.subjectId,
         subjectType: subject.subjectType,
         name: matchedSubject?.name,
         memberCount: matchedSubject?.memberCount,
-      }]
-    }) ?? []
+      }
+    })
 }
 
 function selectableSubjectToGroup(subject: SelectableAccessSubject): AccessControlGroup {
@@ -145,10 +144,10 @@ function selectableSubjectToAccount(subject: SelectableAccessSubject): AccessCon
 export function accessControlSelectionFromSubjects(subjects: SelectableAccessSubject[]): AccessSubjectSelectionValue {
   return {
     groups: subjects
-      .filter(subject => subject.subjectType === SUBJECT_TYPE_GROUP)
+      .filter(subject => subject.subjectType === SubjectType.SUBJECT_TYPE_GROUP)
       .map(selectableSubjectToGroup),
     members: subjects
-      .filter(subject => subject.subjectType === SUBJECT_TYPE_ACCOUNT)
+      .filter(subject => subject.subjectType === SubjectType.SUBJECT_TYPE_ACCOUNT)
       .map(selectableSubjectToAccount),
   }
 }
@@ -157,13 +156,13 @@ export function subjectsFromAccessControlSelection(value: AccessSubjectSelection
   return [
     ...value.groups.map((group): SelectableAccessSubject => ({
       id: group.id,
-      subjectType: SUBJECT_TYPE_GROUP,
+      subjectType: SubjectType.SUBJECT_TYPE_GROUP,
       name: group.name,
       memberCount: group.groupSize,
     })),
     ...value.members.map((member): SelectableAccessSubject => ({
       id: member.id,
-      subjectType: SUBJECT_TYPE_ACCOUNT,
+      subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
       name: member.name || member.email,
     })),
   ]
