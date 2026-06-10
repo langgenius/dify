@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any, ClassVar, cast
 
 import httpx
@@ -8,6 +8,7 @@ from pydantic import JsonValue
 from pydantic_ai import Tool
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import (
+    ToolReturnPart,
     ModelMessage,
     ModelRequest,
     ModelResponse,
@@ -18,12 +19,14 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 from pydantic_ai.settings import ModelSettings
 
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider, LayerSessionSnapshot
 from agenton.layers import ExitIntent, LifecycleState
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID, PydanticAIHistoryRuntimeState
 from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
+from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
@@ -42,6 +45,7 @@ from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerC
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
     CreateRunRequest,
+    DeferredToolResultsPayload,
     LayerExitSignals,
     RunComposition,
     RunLayerSpec,
@@ -54,7 +58,7 @@ from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, 
 
 
 class StaticToolsTestLayer(ToolsLayer):
-    type_id: ClassVar[str] = "test.static.tools"
+    type_id: ClassVar[str | None] = "test.static.tools"
 
 
 class FakeRunnerShellctlClient:
@@ -115,6 +119,8 @@ def _request(
     user: str | list[str] = "hello",
     *,
     include_history: bool = False,
+    include_ask_human: bool = False,
+    ask_human_config: DifyAskHumanLayerConfig | None = None,
     llm_layer_name: str = DIFY_AGENT_MODEL_LAYER_ID,
     execution_context_layer_name: str = "execution_context",
     on_exit: LayerExitSignals | None = None,
@@ -129,6 +135,17 @@ def _request(
         *(
             [RunLayerSpec(name=DIFY_AGENT_HISTORY_LAYER_ID, type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID)]
             if include_history
+            else []
+        ),
+        *(
+            [
+                RunLayerSpec(
+                    name="ask_human",
+                    type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
+                    config=ask_human_config or DifyAskHumanLayerConfig(),
+                )
+            ]
+            if include_ask_human
             else []
         ),
         RunLayerSpec(
@@ -270,6 +287,7 @@ class RecordingTestModel(TestModel):
 def _history_session_snapshot(
     messages: list[ModelMessage],
     *,
+    include_ask_human: bool = False,
     include_output: bool = False,
 ) -> CompositorSessionSnapshot:
     layers = [
@@ -279,6 +297,7 @@ def _history_session_snapshot(
             lifecycle_state=LifecycleState.SUSPENDED,
             runtime_state=PydanticAIHistoryRuntimeState(messages=messages).model_dump(mode="json"),
         ),
+        *( [LayerSessionSnapshot(name="ask_human", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})] if include_ask_human else [] ),
         LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
         LayerSessionSnapshot(
             name=DIFY_AGENT_MODEL_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
@@ -300,6 +319,18 @@ def _history_messages_from_snapshot(snapshot: CompositorSessionSnapshot) -> list
 
 def _flatten_message_parts(messages: list[ModelMessage]) -> list[object]:
     return [part for message in messages for part in message.parts]
+
+
+class FakeAgentRunResult:
+    output: object
+    _new_messages: list[ModelMessage]
+
+    def __init__(self, output: object, new_messages: list[ModelMessage]) -> None:
+        self.output = output
+        self._new_messages = new_messages
+
+    def new_messages(self) -> list[ModelMessage]:
+        return list(self._new_messages)
 
 
 def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -348,6 +379,483 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
         LifecycleState.SUSPENDED,
     ]
     assert sink.statuses["run-1"] == "succeeded"
+
+
+def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult(None, [])
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    request = _request()
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-null-output",
+                plugin_daemon_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-null-output"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert terminal.data.output is None
+    assert terminal.data.deferred_tool_call is None
+    assert sink.statuses["run-null-output"] == "succeeded"
+
+
+def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured_output_types: list[object] = []
+    captured_user_prompts: list[object] = []
+    pending_tool_call = ToolCallPart(
+        tool_name="ask_human",
+        args={
+            "question": "Which deployment window should we use?",
+            "fields": [{"type": "paragraph", "name": "window", "label": "Deployment window"}],
+        },
+        tool_call_id="tool-call-1",
+    )
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, user_prompt: object, **kwargs: object) -> FakeAgentRunResult:
+            captured_user_prompts.append(user_prompt)
+            assert kwargs["deferred_tool_results"] is None
+            return FakeAgentRunResult(
+                DeferredToolRequests(calls=[pending_tool_call]),
+                [
+                    ModelRequest(parts=[UserPromptPart(content="current user")]),
+                    ModelResponse(parts=[pending_tool_call]),
+                ],
+            )
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
+        del model, tools
+        captured_output_types.append(output_type)
+        return FakeAgent()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+    request = _request("current user", include_history=True, include_ask_human=True)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-ask-human",
+                plugin_daemon_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-ask-human"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert captured_user_prompts == ["current user"]
+    assert any(item is DeferredToolRequests for item in cast(Iterable[object], captured_output_types[0]))
+    assert terminal.data.output is None
+    assert terminal.data.deferred_tool_call is not None
+    assert terminal.data.deferred_tool_call.tool_call_id == "tool-call-1"
+    assert terminal.data.deferred_tool_call.tool_name == "ask_human"
+    assert terminal.data.deferred_tool_call.args == {
+        "title": None,
+        "question": "Which deployment window should we use?",
+        "markdown": None,
+        "fields": [
+            {
+                "type": "paragraph",
+                "name": "window",
+                "label": "Deployment window",
+                "required": False,
+                "placeholder": None,
+                "default": None,
+            }
+        ],
+        "actions": [{"id": "submit", "label": "Submit", "style": "primary"}],
+        "urgency": "normal",
+    }
+    saved_history = _history_messages_from_snapshot(terminal.data.session_snapshot)
+    assert isinstance(saved_history[-1], ModelResponse)
+    assert saved_history[-1].parts == [pending_tool_call]
+
+
+def test_runner_resumes_with_deferred_tool_results_and_no_user_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_user_prompts: list[object] = []
+    seen_deferred_results: list[object] = []
+    pending_tool_call = ToolCallPart(
+        tool_name="ask_human",
+        args={"question": "Need approval"},
+        tool_call_id="tool-call-1",
+    )
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, user_prompt: object, **kwargs: object) -> FakeAgentRunResult:
+            seen_user_prompts.append(user_prompt)
+            seen_deferred_results.append(kwargs.get("deferred_tool_results"))
+            if kwargs.get("deferred_tool_results") is None:
+                return FakeAgentRunResult(
+                    DeferredToolRequests(calls=[pending_tool_call]),
+                    [
+                        ModelRequest(parts=[UserPromptPart(content="current user")]),
+                        ModelResponse(parts=[pending_tool_call]),
+                    ],
+                )
+
+            deferred_tool_results = cast(DeferredToolResults, kwargs["deferred_tool_results"])
+            assert deferred_tool_results is not None
+            submitted_result = cast(dict[str, object], deferred_tool_results.calls["tool-call-1"])
+            assert submitted_result["status"] == "submitted"
+            return FakeAgentRunResult(
+                "done after human",
+                [
+                    ModelRequest(
+                        parts=[
+                            ToolReturnPart(
+                                tool_name="ask_human",
+                                content={"status": "submitted", "values": {"comment": "Ship it"}},
+                                tool_call_id="tool-call-1",
+                            )
+                        ]
+                    ),
+                    ModelResponse(parts=[TextPart(content="done after human")]),
+                ],
+            )
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
+        del model, tools, output_type
+        return FakeAgent()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+    request = _request("current user", include_history=True, include_ask_human=True)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-ask-human-initial",
+                plugin_daemon_http_client=client,
+            ).run()
+
+            initial_terminal = sink.events["run-ask-human-initial"][-1]
+            assert isinstance(initial_terminal, RunSucceededEvent)
+
+            resumed_request = request.model_copy(deep=True)
+            resumed_request.session_snapshot = initial_terminal.data.session_snapshot
+            resumed_request.deferred_tool_results = DeferredToolResultsPayload.model_validate(
+                {
+                    "calls": {
+                        "tool-call-1": {
+                            "status": "submitted",
+                            "action": {"id": "submit", "label": "Submit"},
+                            "values": {"comment": "Ship it"},
+                        }
+                    }
+                }
+            )
+
+            await AgentRunRunner(
+                sink=sink,
+                request=resumed_request,
+                run_id="run-ask-human-resume",
+                plugin_daemon_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    resumed_terminal = sink.events["run-ask-human-resume"][-1]
+    assert isinstance(resumed_terminal, RunSucceededEvent)
+    assert resumed_terminal.data.output == "done after human"
+    assert resumed_terminal.data.deferred_tool_call is None
+    assert seen_user_prompts == ["current user", None]
+    assert seen_deferred_results[0] is None
+    assert seen_deferred_results[1] is not None
+
+
+def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_user_prompts: list[object] = []
+    first_pending_tool_call = ToolCallPart(
+        tool_name="ask_human",
+        args={"question": "Need deployment owner"},
+        tool_call_id="tool-call-1",
+    )
+    second_pending_tool_call = ToolCallPart(
+        tool_name="ask_human",
+        args={"question": "Need final go-live confirmation"},
+        tool_call_id="tool-call-2",
+    )
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, user_prompt: object, **kwargs: object) -> FakeAgentRunResult:
+            seen_user_prompts.append(user_prompt)
+            deferred_tool_results = kwargs.get("deferred_tool_results")
+            if deferred_tool_results is None:
+                return FakeAgentRunResult(
+                    DeferredToolRequests(calls=[first_pending_tool_call]),
+                    [
+                        ModelRequest(parts=[UserPromptPart(content="current user")]),
+                        ModelResponse(parts=[first_pending_tool_call]),
+                    ],
+                )
+
+            return FakeAgentRunResult(
+                DeferredToolRequests(calls=[second_pending_tool_call]),
+                [
+                    ModelRequest(
+                        parts=[
+                            ToolReturnPart(
+                                tool_name="ask_human",
+                                content={"status": "submitted", "values": {"owner": "ops"}},
+                                tool_call_id="tool-call-1",
+                            )
+                        ]
+                    ),
+                    ModelResponse(parts=[second_pending_tool_call]),
+                ],
+            )
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
+        del model, tools, output_type
+        return FakeAgent()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+    request = _request("current user", include_history=True, include_ask_human=True)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-ask-human-turn-1",
+                plugin_daemon_http_client=client,
+            ).run()
+
+            first_terminal = sink.events["run-ask-human-turn-1"][-1]
+            assert isinstance(first_terminal, RunSucceededEvent)
+
+            resumed_request = request.model_copy(deep=True)
+            resumed_request.session_snapshot = first_terminal.data.session_snapshot
+            resumed_request.deferred_tool_results = DeferredToolResultsPayload.model_validate(
+                {
+                    "calls": {
+                        "tool-call-1": {
+                            "status": "submitted",
+                            "action": {"id": "submit", "label": "Submit"},
+                            "values": {"owner": "ops"},
+                        }
+                    }
+                }
+            )
+
+            await AgentRunRunner(
+                sink=sink,
+                request=resumed_request,
+                run_id="run-ask-human-turn-2",
+                plugin_daemon_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    second_terminal = sink.events["run-ask-human-turn-2"][-1]
+    assert isinstance(second_terminal, RunSucceededEvent)
+    assert second_terminal.data.output is None
+    assert second_terminal.data.deferred_tool_call is not None
+    assert second_terminal.data.deferred_tool_call.tool_call_id == "tool-call-2"
+    assert seen_user_prompts == ["current user", None]
+    saved_history = _history_messages_from_snapshot(second_terminal.data.session_snapshot)
+    assert isinstance(saved_history[1], ModelResponse)
+    assert saved_history[1].parts == [first_pending_tool_call]
+    assert isinstance(saved_history[2], ModelRequest)
+    assert len(saved_history[2].parts) == 1
+    assert isinstance(saved_history[2].parts[0], ToolReturnPart)
+    assert saved_history[2].parts[0].tool_name == "ask_human"
+    assert saved_history[2].parts[0].tool_call_id == "tool-call-1"
+    assert saved_history[2].parts[0].content == {"status": "submitted", "values": {"owner": "ops"}}
+    assert isinstance(saved_history[3], ModelResponse)
+    assert saved_history[3].parts == [second_pending_tool_call]
+
+
+def test_runner_rejects_deferred_tool_call_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult(
+                DeferredToolRequests(
+                    calls=[ToolCallPart(tool_name="ask_human", args={"question": "Need owner"}, tool_call_id="tool-call-1")]
+                ),
+                [],
+            )
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *args, **kwargs: FakeAgent())
+    request = _request("current user", include_history=False, include_ask_human=True)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(
+                AgentRunValidationError,
+                match="ask_human deferred tool requests require a 'history' layer so the pending tool call can be resumed",
+            ):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-ask-human-no-history",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-ask-human-no-history"]] == ["run_started", "run_failed"]
+
+
+def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_run_called = False
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            nonlocal agent_run_called
+            agent_run_called = True
+            return FakeAgentRunResult("unexpected", [])
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *args, **kwargs: FakeAgent())
+    request = _request("current user", include_history=False, include_ask_human=True)
+    request.deferred_tool_results = DeferredToolResultsPayload.model_validate(
+        {
+            "calls": {
+                "tool-call-1": {
+                    "status": "submitted",
+                    "action": {"id": "submit", "label": "Submit"},
+                    "values": {"owner": "ops"},
+                }
+            }
+        }
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(
+                AgentRunValidationError,
+                match="Deferred tool results require a 'history' layer with prior message history",
+            ):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-ask-human-resume-no-history",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert agent_run_called is False
+    assert [event.type for event in sink.events["run-ask-human-resume-no-history"]] == ["run_started", "run_failed"]
+
+
+def test_runner_rejects_multiple_deferred_tool_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult(
+                DeferredToolRequests(
+                    calls=[
+                        ToolCallPart(tool_name="ask_human", args={"question": "One"}, tool_call_id="tool-call-1"),
+                        ToolCallPart(tool_name="ask_human", args={"question": "Two"}, tool_call_id="tool-call-2"),
+                    ]
+                ),
+                [],
+            )
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *args, **kwargs: FakeAgent())
+    request = _request("current user", include_history=True, include_ask_human=True)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="supports exactly one deferred call per run"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-ask-human-multi",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-ask-human-multi"]] == ["run_started", "run_failed"]
+
+
+def test_runner_rejects_deferred_approval_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult(
+                DeferredToolRequests(
+                    approvals=[
+                        ToolCallPart(tool_name="ask_human", args={"question": "Need approval"}, tool_call_id="tool-call-1")
+                    ]
+                ),
+                [],
+            )
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *args, **kwargs: FakeAgent())
+    request = _request("current user", include_history=True, include_ask_human=True)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="does not support approval requests"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-ask-human-approval",
+                    plugin_daemon_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-ask-human-approval"]] == ["run_started", "run_failed"]
 
 
 def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.MonkeyPatch) -> None:
