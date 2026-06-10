@@ -880,15 +880,15 @@ class TestTrialChatTextApi:
 
 
 class TestTrialAppWorkflowTaskStopApi:
-    def test_not_workflow_app(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_not_workflow_app(self, app: Flask, trial_app_chat: MagicMock) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
         method = unwrap(api.post)
 
         with app.test_request_context("/"):
             with pytest.raises(NotWorkflowAppError):
-                method(api, account, trial_app_chat, str(uuid4()))
+                method(api, trial_app_chat, str(uuid4()))
 
-    def test_success(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_success(self, app: Flask, trial_app_workflow: MagicMock) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
         method = unwrap(api.post)
 
@@ -898,7 +898,7 @@ class TestTrialAppWorkflowTaskStopApi:
             patch.object(module.AppQueueManager, "set_stop_flag_no_user_check") as mock_set_flag,
             patch.object(module.GraphEngineManager, "send_stop_command") as mock_send_cmd,
         ):
-            result = method(api, account, trial_app_workflow, task_id)
+            result = method(api, trial_app_workflow, task_id)
 
         assert result == {"result": "success"}
         mock_set_flag.assert_called_once_with(task_id)

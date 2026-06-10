@@ -16,6 +16,7 @@ from ..wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     setup_required,
+    with_current_tenant_id,
     with_current_user,
 )
 
@@ -40,12 +41,16 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @with_current_tenant_id
     @with_current_user
-    def post(self, current_user: Account, dataset_id: UUID) -> dict[str, object]:
+    def post(self, current_user: Account, current_tenant_id: str, dataset_id: UUID) -> dict[str, object]:
         dataset_id_str = str(dataset_id)
 
-        dataset = self.get_and_validate_dataset(dataset_id_str, current_user)
+        dataset = self.get_and_validate_dataset(dataset_id_str, current_user, current_tenant_id)
         args = self.parse_args(console_ns.payload)
         self.hit_testing_args_check(args)
 
-        return dump_response(HitTestingResponse, self.perform_hit_testing(dataset, args, current_user))
+        return dump_response(
+            HitTestingResponse,
+            self.perform_hit_testing(dataset, args, current_user, current_tenant_id),
+        )

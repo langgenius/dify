@@ -71,8 +71,10 @@ class DatasetsHitTestingBase:
         return normalized_records
 
     @staticmethod
-    def get_and_validate_dataset(dataset_id: str, current_user: Account | None = None) -> Dataset:
-        current_user, _ = resolve_account_fallback(current_user)
+    def get_and_validate_dataset(
+        dataset_id: str, current_user: Account | None = None, current_tenant_id: str | None = None
+    ) -> Dataset:
+        current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -96,10 +98,13 @@ class DatasetsHitTestingBase:
 
     @staticmethod
     def perform_hit_testing(
-        dataset: Dataset, args: dict[str, Any], current_user: Account | None = None
+        dataset: Dataset,
+        args: dict[str, Any],
+        current_user: Account | None = None,
+        current_tenant_id: str | None = None,
     ) -> dict[str, Any]:
         try:
-            current_user, _ = resolve_account_fallback(current_user)
+            current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
                 dataset=dataset,
                 query=cast(str, args.get("query")),

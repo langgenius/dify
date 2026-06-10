@@ -21,7 +21,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
-from models.account import Account
+from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
@@ -31,6 +31,10 @@ from services.hit_testing_service import HitTestingService
 def account():
     acc = Account(name="User", email="user@example.com")
     acc.id = "account-1"
+    tenant = Tenant(name="Tenant")
+    tenant.id = "tenant-1"
+    acc._current_tenant = tenant
+    acc.role = TenantAccountRole.OWNER
     return acc
 
 
@@ -90,7 +94,7 @@ class TestGetAndValidateDataset:
                 "check_dataset_permission",
             ),
         ):
-            result = DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account)
+            result = DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
 
         assert result == dataset
 
@@ -101,7 +105,7 @@ class TestGetAndValidateDataset:
             return_value=None,
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account)
+                DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
 
     def test_permission_denied(self, dataset, account):
         with (
@@ -117,7 +121,7 @@ class TestGetAndValidateDataset:
             ),
         ):
             with pytest.raises(Forbidden, match="no access"):
-                DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account)
+                DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
 
 
 class TestHitTestingArgsCheck:
@@ -167,7 +171,7 @@ class TestPerformHitTesting:
             "retrieve",
             return_value=response,
         ):
-            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
         assert result["query"] == {"content": "hello"}
         assert result["records"] == []
@@ -183,7 +187,7 @@ class TestPerformHitTesting:
             "retrieve",
             return_value=response,
         ):
-            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
         assert result["query"] == {"content": "hello"}
         record = result["records"][0]
@@ -204,7 +208,7 @@ class TestPerformHitTesting:
             ),
             pytest.raises(ValueError, match="Invalid hit testing query response"),
         ):
-            DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+            DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
     def test_invalid_records_response_raises_value_error(self):
         with pytest.raises(ValueError, match="Invalid hit testing records response"):
@@ -221,7 +225,7 @@ class TestPerformHitTesting:
             side_effect=services.errors.index.IndexNotInitializedError(),
         ):
             with pytest.raises(DatasetNotInitializedError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
     def test_provider_token_not_init(self, dataset, account):
         with patch.object(
@@ -230,7 +234,7 @@ class TestPerformHitTesting:
             side_effect=ProviderTokenNotInitError("token missing"),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
     def test_quota_exceeded(self, dataset, account):
         with patch.object(
@@ -239,7 +243,7 @@ class TestPerformHitTesting:
             side_effect=QuotaExceededError(),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
     def test_model_not_supported(self, dataset, account):
         with patch.object(
@@ -248,7 +252,7 @@ class TestPerformHitTesting:
             side_effect=ModelCurrentlyNotSupportError(),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
     def test_llm_bad_request(self, dataset, account):
         with patch.object(
@@ -257,7 +261,7 @@ class TestPerformHitTesting:
             side_effect=LLMBadRequestError("bad request"),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
     def test_invoke_error(self, dataset, account):
         with patch.object(
@@ -266,7 +270,7 @@ class TestPerformHitTesting:
             side_effect=InvokeError("invoke failed"),
         ):
             with pytest.raises(CompletionRequestError):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
     def test_value_error(self, dataset, account):
         with patch.object(
@@ -275,7 +279,7 @@ class TestPerformHitTesting:
             side_effect=ValueError("bad args"),
         ):
             with pytest.raises(ValueError, match="bad args"):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
 
     def test_unexpected_error(self, dataset, account):
         with patch.object(
@@ -284,4 +288,4 @@ class TestPerformHitTesting:
             side_effect=Exception("boom"),
         ):
             with pytest.raises(InternalServerError, match="boom"):
-                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account)
+                DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"}, account, "tenant-1")
