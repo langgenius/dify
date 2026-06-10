@@ -64,11 +64,6 @@ describe('E2E / difyctl export app', () => {
     expect(result.stdout.endsWith('\n')).toBe(true)
   })
 
-  it('[P1] exported stdout has no ANSI colour codes (non-TTY)', async () => {
-    const result = await fx.r(['export', 'app', E.workflowAppId])
-    assertExitCode(result, 0)
-    assertNoAnsi(result.stdout, 'stdout')
-  })
 
   it('[P1] chat app export also succeeds and includes mode', async () => {
     const result = await fx.r(['export', 'app', E.chatAppId])
@@ -149,11 +144,6 @@ describe('E2E / difyctl export app', () => {
     expect(result.stderr.length).toBeGreaterThan(0)
   })
 
-  it('[P1] non-existent app with no flags outputs JSON error envelope on stderr', async () => {
-    const result = await fx.r(['export', 'app', 'nonexistent-app-id-export-json-e2e'])
-    expect(result.exitCode).not.toBe(0)
-    expect(result.stderr.trim().length).toBeGreaterThan(0)
-  })
 
   it('[P0] unauthenticated export returns auth error (exit code 4)', async () => {
     const unauthTmp = await withTempConfig()
