@@ -178,7 +178,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       subject_email: ACCOUNT.email,
       account: { id: ACCOUNT.id, email: ACCOUNT.email, name: ACCOUNT.name },
       workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
-      default_workspace_id: 'ws-1',
+      default_workspace_id: ACCOUNT.current_workspace_id,
     })
   })
 
@@ -227,7 +227,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const mode = c.req.query('mode')
     const tag = c.req.query('tag')
     const name = c.req.query('name')
-    const workspaceId = c.req.query('workspace_id') ?? 'ws-1'
+    const workspaceId = c.req.query('workspace_id') ?? ACCOUNT.current_workspace_id
     let filtered = APPS.filter(a => a.workspace_id === workspaceId)
     if (mode !== undefined && mode !== '')
       filtered = filtered.filter(a => a.mode === mode)
@@ -374,7 +374,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         subject_type: 'account',
         account: { id: ACCOUNT.id, email: '', name: '' },
         workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
-        default_workspace_id: 'ws-1',
+        default_workspace_id: ACCOUNT.current_workspace_id,
         token_id: 'tok-1',
       })
     }
@@ -383,7 +383,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       subject_type: 'account',
       account: ACCOUNT,
       workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
-      default_workspace_id: 'ws-1',
+      default_workspace_id: ACCOUNT.current_workspace_id,
       token_id: 'tok-1',
     })
   })

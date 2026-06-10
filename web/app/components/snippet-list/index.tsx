@@ -12,6 +12,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import dynamic from '@/next/dynamic'
+import Link from '@/next/link'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
 import Empty from '../apps/empty'
@@ -121,36 +122,50 @@ const SnippetList = () => {
 
   return (
     <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-background-body px-12 pt-7 pb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <CreatorsFilter
-            value={creatorIDs}
-            onChange={setCreatorIDs}
-          />
-          <TagFilter type="snippet" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-          <div className="relative w-50">
-            <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
-            <Input
-              className={cn('pl-6.5', keywords && 'pr-6.5')}
-              value={keywords}
-              onChange={e => setKeywords(e.target.value)}
-              placeholder={t('tabs.searchSnippets', { ns: 'workflow' })}
-            />
-            {!!keywords && (
-              <button
-                type="button"
-                aria-label={t('operation.clear', { ns: 'common' })}
-                className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
-                onClick={() => setKeywords('')}
-              >
-                <span aria-hidden className="i-ri-close-circle-fill size-4" />
-              </button>
-            )}
-          </div>
+      <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-12 pt-4 pb-5">
+        <div className="flex h-6 min-w-0 items-center">
+          <Link
+            href="/apps"
+            className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            {t('menus.apps', { ns: 'common' })}
+          </Link>
+          <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
+          <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
+            {t('tabs.snippets', { ns: 'workflow' })}
+          </h1>
         </div>
-        {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
-          <SnippetCreateButton />
-        )}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <CreatorsFilter
+              value={creatorIDs}
+              onChange={setCreatorIDs}
+            />
+            <TagFilter type="snippet" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
+            <div className="relative w-50">
+              <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
+              <Input
+                className={cn('pl-6.5', keywords && 'pr-6.5')}
+                value={keywords}
+                onChange={e => setKeywords(e.target.value)}
+                placeholder={t('tabs.searchSnippets', { ns: 'workflow' })}
+              />
+              {!!keywords && (
+                <button
+                  type="button"
+                  aria-label={t('operation.clear', { ns: 'common' })}
+                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
+                  onClick={() => setKeywords('')}
+                >
+                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
+                </button>
+              )}
+            </div>
+          </div>
+          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
+            <SnippetCreateButton />
+          )}
+        </div>
       </div>
       <div className={cn(
         'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',

@@ -222,7 +222,7 @@
   "newAppFromTemplate.sidebar.Assistant": "Помощник",
   "newAppFromTemplate.sidebar.HR": "ЧАС",
   "newAppFromTemplate.sidebar.Programming": "Программирование",
-  "newAppFromTemplate.sidebar.Recommended": "Рекомендованный",
+  "newAppFromTemplate.sidebar.Recommended": "Все",
   "newAppFromTemplate.sidebar.Workflow": "Рабочий процесс",
   "newAppFromTemplate.sidebar.Writing": "Пишущий",
   "noAccessPermission": "Нет разрешения на доступ к веб-приложению",

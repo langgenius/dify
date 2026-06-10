@@ -192,7 +192,7 @@ let mockStarredAppData: MockStarredAppData = {
   data: [],
   total: 0,
   page: 1,
-  limit: 4,
+  limit: 100,
   has_more: false,
 }
 
@@ -374,7 +374,7 @@ describe('List', () => {
       data: [],
       total: 0,
       page: 1,
-      limit: 4,
+      limit: 100,
       has_more: false,
     }
     mockUseWorkflowOnlineUsers.mockClear()
@@ -400,7 +400,7 @@ describe('List', () => {
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.completion' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
@@ -467,7 +467,7 @@ describe('List', () => {
         }],
         total: 1,
         page: 1,
-        limit: 4,
+        limit: 100,
         has_more: false,
       }
 
@@ -665,7 +665,7 @@ describe('List', () => {
       expect(options.input).toEqual({
         query: {
           page: 1,
-          limit: 4,
+          limit: 100,
           name: 'sales',
           sort_by: 'last_modified',
           tag_ids: ['tag-1'],
@@ -846,7 +846,7 @@ describe('List', () => {
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.completion' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
     })
 
     it('should update category for each app type option click', async () => {
@@ -855,7 +855,7 @@ describe('List', () => {
         { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
         { mode: AppModeEnum.CHAT, text: 'app.types.chatbot' },
         { mode: AppModeEnum.AGENT_CHAT, text: 'app.types.agent' },
-        { mode: AppModeEnum.COMPLETION, text: 'app.types.completion' },
+        { mode: AppModeEnum.COMPLETION, text: 'app.newApp.completeApp' },
       ]
 
       for (const { mode, text } of appTypeTexts) {

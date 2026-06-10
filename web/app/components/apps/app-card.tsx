@@ -948,7 +948,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             </div>
           </div>
           <div className="flex h-[26px] shrink-0 items-start px-3" />
-          <div className="flex min-w-0 shrink-0 items-center pt-2 pr-12 pb-3 pl-4 system-xs-regular text-text-tertiary">
+          <div className="flex min-w-0 shrink-0 items-center pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
             <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
               <div className="truncate">{app.author_name}</div>
               <div className="shrink-0">·</div>

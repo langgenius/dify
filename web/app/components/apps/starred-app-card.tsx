@@ -47,7 +47,7 @@ export function StarredAppCard({ app, isCurrentWorkspaceEditor, onRefresh }: Sta
           />
           <AppTypeIcon type={app.mode} wrapperClassName="absolute -right-0.5 -bottom-0.5 h-4 w-4 shadow-sm" className="size-3" />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px pr-16">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
           <div className="truncate system-md-semibold text-text-secondary">{app.name}</div>
           <div className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary">
             {app.author_name && <span className="shrink-0 truncate">{app.author_name}</span>}

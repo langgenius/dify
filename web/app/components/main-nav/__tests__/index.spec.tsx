@@ -465,6 +465,17 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
 
+  it('keeps Studio active on snippets routes', () => {
+    mockPathname = '/snippets'
+
+    renderMainNav()
+
+    const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
+    expect(studioLink).toHaveClass(activeEdgeClassName)
+    expect(studioLink).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
+  })
+
   it('replaces global navigation with app detail navigation on app routes', () => {
     mockPathname = '/app/app-1/overview'
 

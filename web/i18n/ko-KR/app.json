@@ -222,7 +222,7 @@
   "newAppFromTemplate.sidebar.Assistant": "어시스턴트",
   "newAppFromTemplate.sidebar.HR": "인사",
   "newAppFromTemplate.sidebar.Programming": "프로그래밍",
-  "newAppFromTemplate.sidebar.Recommended": "권장",
+  "newAppFromTemplate.sidebar.Recommended": "전체",
   "newAppFromTemplate.sidebar.Workflow": "워크플로",
   "newAppFromTemplate.sidebar.Writing": "쓰기",
   "noAccessPermission": "웹 앱에 대한 접근 권한이 없습니다.",

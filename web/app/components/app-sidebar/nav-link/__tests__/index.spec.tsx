@@ -112,13 +112,16 @@ describe('NavLink Animation and Layout Issues', () => {
 
       rerender(<NavLink {...mockProps} mode="expand" />)
 
-      // In expand mode, wrapper should not have the micro-adjustment
+      // In expand mode, wrapper should keep the fixed icon slot.
       const expandedIconWrapper = screen.getByTestId('nav-icon').parentElement
-      expect(expandedIconWrapper).not.toHaveClass('-ml-1')
+      expect(expandedIconWrapper).toHaveClass('flex')
+      expect(expandedIconWrapper).toHaveClass('size-5')
+      expect(expandedIconWrapper).toHaveClass('items-center')
+      expect(expandedIconWrapper).toHaveClass('justify-center')
 
-      // Icon itself returns to the expanded size.
+      // Icon itself uses the fixed glyph size.
       const expandedIconElement = screen.getByTestId('nav-icon')
-      expect(expandedIconElement).toHaveClass('size-4')
+      expect(expandedIconElement).toHaveClass('size-[18px]')
       expect(iconElement).toHaveClass('shrink-0')
 
       // This wrapper approach eliminates the icon margin shift issue
@@ -187,12 +190,15 @@ describe('NavLink Animation and Layout Issues', () => {
 
       const expandedIconWrapper = screen.getByTestId('nav-icon').parentElement
 
-      // Expanded: no wrapper adjustment needed
-      expect(expandedIconWrapper).not.toHaveClass('-ml-1')
+      // Expanded: wrapper still centers the 18px icon in a 20px slot.
+      expect(expandedIconWrapper).toHaveClass('flex')
+      expect(expandedIconWrapper).toHaveClass('size-5')
+      expect(expandedIconWrapper).toHaveClass('items-center')
+      expect(expandedIconWrapper).toHaveClass('justify-center')
 
-      // Icon classes return to expanded sizing.
+      // Icon keeps the same fixed glyph size.
       const expandedIconElement = screen.getByTestId('nav-icon')
-      expect(expandedIconElement).toHaveClass('size-4')
+      expect(expandedIconElement).toHaveClass('size-[18px]')
       expect(expandedIconElement).toHaveClass('shrink-0')
     })
   })

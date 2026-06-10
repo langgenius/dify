@@ -222,7 +222,7 @@
   "newAppFromTemplate.sidebar.Assistant": "助手",
   "newAppFromTemplate.sidebar.HR": "人力资源",
   "newAppFromTemplate.sidebar.Programming": "编程",
-  "newAppFromTemplate.sidebar.Recommended": "推荐",
+  "newAppFromTemplate.sidebar.Recommended": "全部",
   "newAppFromTemplate.sidebar.Workflow": "工作流",
   "newAppFromTemplate.sidebar.Writing": "写作",
   "noAccessPermission": "没有权限访问 web 应用",

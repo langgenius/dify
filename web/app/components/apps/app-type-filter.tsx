@@ -34,7 +34,7 @@ export function AppTypeFilter({
     { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), iconClassName: 'i-ri-message-3-line' },
     { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), iconClassName: 'i-ri-message-3-line' },
     { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), iconClassName: 'i-ri-robot-3-line' },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), iconClassName: 'i-ri-file-4-line' },
+    { value: AppModeEnum.COMPLETION, text: t('newApp.completeApp', { ns: 'app' }), iconClassName: 'i-ri-file-4-line' },
   ]), [t])
 
   const activeOption = options.find(option => option.value === value)
