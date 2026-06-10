@@ -372,7 +372,7 @@ class DraftWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required("app", "app_view_layout")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
@@ -977,7 +977,7 @@ class PublishedWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required("app", "app_view_layout")
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
