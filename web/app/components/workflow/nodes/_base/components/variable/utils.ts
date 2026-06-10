@@ -1,4 +1,3 @@
-import type { AgentNodeType } from '../../../agent/types'
 import type { AnswerNodeType } from '../../../answer/types'
 import type { CodeNodeType } from '../../../code/types'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
@@ -592,21 +591,7 @@ const formatItem = (
     }
 
     case BlockEnum.Agent: {
-      const payload = data as AgentNodeType
-      const outputs: Var[] = []
-      Object.keys(payload.output_schema?.properties || {}).forEach(
-        (outputKey) => {
-          const output = payload.output_schema.properties[outputKey]
-          outputs.push({
-            variable: outputKey,
-            type:
-              output.type === 'array'
-                ? (`Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]` as VarType)
-                : (`${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType),
-          })
-        },
-      )
-      res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
+      res.vars = [...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
       break
     }
 
@@ -1507,21 +1492,6 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
 
-    case BlockEnum.Agent: {
-      const payload = data as AgentNodeType
-      const valueSelectors: ValueSelector[] = []
-      if (!payload.agent_parameters)
-        break
-
-      Object.keys(payload.agent_parameters || {}).forEach((key) => {
-        const { value } = payload.agent_parameters![key]!
-        if (typeof value === 'string')
-          valueSelectors.push(...matchNotSystemVars([value]))
-      })
-      res = valueSelectors
-      break
-    }
-
     case BlockEnum.HumanInput: {
       const payload = data as HumanInputNodeType
       const formContent = payload.form_content
@@ -1915,46 +1885,6 @@ export const updateNodeVars = (
               }
             }
           })
-        }
-        break
-      }
-      case BlockEnum.Agent: {
-        const payload = data as AgentNodeType
-        if (payload.agent_parameters) {
-          Object.keys(payload.agent_parameters).forEach((key) => {
-            const value = payload.agent_parameters![key]!
-            const { type } = value!
-
-            if (
-              type === ToolVarType.variable
-              && Array.isArray(value!.value)
-              && value!.value.join('.') === oldVarSelector.join('.')
-            ) {
-              payload.agent_parameters![key] = {
-                ...value,
-                value: newVarSelector,
-              }
-            }
-
-            if (type === ToolVarType.mixed && typeof value!.value === 'string') {
-              payload.agent_parameters![key] = {
-                ...value,
-                value: replaceOldVarInText(
-                  value!.value,
-                  oldVarSelector,
-                  newVarSelector,
-                ),
-              }
-            }
-          })
-        }
-
-        if (payload.memory?.query_prompt_template) {
-          payload.memory.query_prompt_template = replaceOldVarInText(
-            payload.memory.query_prompt_template,
-            oldVarSelector,
-            newVarSelector,
-          )
         }
         break
       }

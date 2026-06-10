@@ -1,7 +1,7 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AgentLogNav from '../agent-log-nav'
+import { AgentLogNav } from '../agent-log-nav'
 
 const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
   message_id: 'message-1',
@@ -23,7 +23,7 @@ describe('AgentLogNav', () => {
     const user = userEvent.setup()
     const onShowAgentOrToolLog = vi.fn()
     const stack = [
-      createLogItem({ message_id: 'root', label: 'Strategy' }),
+      createLogItem({ message_id: 'root', label: 'Agent' }),
       createLogItem({ message_id: 'mid', label: 'Tool A' }),
       createLogItem({ message_id: 'tail', label: 'Tool B' }),
     ]
@@ -36,7 +36,7 @@ describe('AgentLogNav', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /^AGENT$/i }))
-    await user.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.strategy\.label$/ }))
+    await user.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.label$/ }))
     await user.click(screen.getAllByRole('button')[2]!)
     await user.click(screen.getByText('Tool A'))
 
