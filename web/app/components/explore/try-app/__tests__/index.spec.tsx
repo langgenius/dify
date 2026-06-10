@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import TryApp from '../index'
-import { TypeEnum } from '../tab'
+import { TypeEnum } from '../types'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal() as object
@@ -172,6 +172,7 @@ describe('TryApp (main index.tsx)', () => {
         expect(screen.getByText('explore.tryApp.tabHeader.try')).toBeInTheDocument()
         expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
       })
+      expect(screen.getByRole('tablist')).toHaveClass('w-auto', 'shrink-0')
     })
 
     it('renders App component by default (TRY mode)', async () => {
@@ -213,8 +214,7 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        const buttons = document.body.querySelectorAll('button')
-        expect(buttons.length).toBeGreaterThan(0)
+        expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
       })
     })
   })
@@ -281,15 +281,10 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        const buttons = document.body.querySelectorAll('button')
-        const closeButton = Array.from(buttons).find(btn =>
-          btn.querySelector('svg') || btn.className.includes('rounded-[10px]'),
-        )
-        expect(closeButton).toBeInTheDocument()
-
-        if (closeButton)
-          fireEvent.click(closeButton)
+        expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
       })
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnClose).toHaveBeenCalled()
     })
