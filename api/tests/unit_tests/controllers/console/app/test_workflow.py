@@ -542,7 +542,6 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     app_id_2 = "22222222-2222-2222-2222-222222222222"
     signed_avatar_url = "https://files.example.com/signed/avatar-1"
     sign_avatar = Mock(return_value=signed_avatar_url)
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -596,7 +595,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
         method="POST",
         json={"app_ids": [app_id_1, app_id_2]},
     ):
-        response = handler(api)
+        response = handler(api, "tenant-1")
 
     assert response == {
         "data": [
@@ -625,7 +624,6 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
 
 def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     app_ids = [f"wf-{index}" for index in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE + 1)]
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -647,7 +645,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
         method="POST",
         json={"app_ids": app_ids},
     ):
-        response = handler(api)
+        response = handler(api, "tenant-1")
 
     assert len(response["data"]) == len(app_ids)
     assert redis_pipeline_factory.call_count == 2
@@ -656,7 +654,6 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
 
 
 def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     accessible_app_ids = Mock(return_value=set())
     monkeypatch.setattr(
         workflow_module,
@@ -675,7 +672,7 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
         json={"app_ids": excessive_ids},
     ):
         with pytest.raises(HTTPException) as exc:
-            handler(api)
+            handler(api, "tenant-1")
 
     assert exc.value.code == 400
     assert exc.value.description is not None

@@ -102,11 +102,13 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
     prompt_config = PromptLayerConfig(prefix="system", user="hello")
     execution_context_config = DifyExecutionContextLayerConfig(
         tenant_id="tenant-1",
+        user_from="account",
         workflow_id="workflow-1",
         workflow_run_id="workflow-run-1",
         node_id="node-1",
         node_execution_id="node-execution-1",
-        invoke_from="workflow_run",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
         trace_id="trace-1",
     )
     llm_config = DifyPluginLLMLayerConfig(
@@ -156,6 +158,7 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
     assert payload["composition"]["layers"][1]["config"] == {
         "tenant_id": "tenant-1",
         "user_id": None,
+        "user_from": "account",
         "app_id": None,
         "workflow_id": "workflow-1",
         "workflow_run_id": "workflow-run-1",
@@ -164,7 +167,8 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         "conversation_id": None,
         "agent_id": None,
         "agent_config_version_id": None,
-        "invoke_from": "workflow_run",
+        "agent_mode": "workflow_run",
+        "invoke_from": "service-api",
         "trace_id": "trace-1",
     }
     assert payload["purpose"] == "workflow_node"
@@ -209,7 +213,12 @@ def test_create_run_request_accepts_plugin_tools_layer_with_prepared_parameters_
                     {
                         "name": "execution_context",
                         "type": DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                        "config": {"tenant_id": "tenant-1", "invoke_from": "workflow_run"},
+                        "config": {
+                            "tenant_id": "tenant-1",
+                            "user_from": "account",
+                            "agent_mode": "workflow_run",
+                            "invoke_from": "service-api",
+                        },
                     },
                     {
                         "name": DIFY_AGENT_MODEL_LAYER_ID,
@@ -338,7 +347,12 @@ def test_create_run_request_rejects_removed_top_level_execution_context() -> Non
         _ = CreateRunRequest.model_validate(
             {
                 "composition": {"layers": []},
-                "execution_context": {"tenant_id": "tenant-1", "invoke_from": "workflow_run"},
+                "execution_context": {
+                    "tenant_id": "tenant-1",
+                    "user_from": "account",
+                    "agent_mode": "workflow_run",
+                    "invoke_from": "service-api",
+                },
             }
         )
 

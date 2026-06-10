@@ -12,9 +12,9 @@ import { Plan } from '../type'
 import UsageInfo from '../usage-info'
 import { getPlanVectorSpaceLimitMB } from '../utils'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-}
+}>
 
 // Storage threshold in MB - usage below this shows as "< 50 MB"
 const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB(Plan.sandbox)
