@@ -672,10 +672,11 @@ class RBACMemberRolesApi(Resource):
         )
 
 
-
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/members")
 class ListMembersByRole(Resource):
     @login_required
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.Roles.list_members_by_role(tenant_id, role_id=role_id, options=_pagination_options()))
+        return _dump(
+            svc.RBACService.Roles.list_members_by_role(tenant_id, role_id=role_id, options=_pagination_options())
+        )

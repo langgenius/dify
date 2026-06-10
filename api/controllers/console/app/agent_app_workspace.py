@@ -24,7 +24,12 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required, with_current_tenant_id
+from controllers.console.wraps import (
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+)
 from fields.base import ResponseModel
 from libs.login import login_required
 from models.model import App, AppMode
