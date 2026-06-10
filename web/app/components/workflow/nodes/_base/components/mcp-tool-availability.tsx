@@ -1,6 +1,6 @@
 'use client'
 import type { ReactNode } from 'react'
-import { createContext, useContext } from 'react'
+import { createContext, use } from 'react'
 
 type MCPToolAvailabilityContextValue = {
   versionSupported?: boolean
@@ -8,7 +8,7 @@ type MCPToolAvailabilityContextValue = {
 
 const MCPToolAvailabilityContext = createContext<MCPToolAvailabilityContextValue | undefined>(undefined)
 
-export type MCPToolAvailability = {
+type MCPToolAvailability = {
   allowed: boolean
   versionSupported?: boolean
 }
@@ -26,7 +26,7 @@ export const MCPToolAvailabilityProvider = ({
 )
 
 export const useMCPToolAvailability = (): MCPToolAvailability => {
-  const context = useContext(MCPToolAvailabilityContext)
+  const context = use(MCPToolAvailabilityContext)
   if (context === undefined)
     return { allowed: true }
 

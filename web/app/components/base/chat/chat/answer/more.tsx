@@ -14,7 +14,7 @@ const More: FC<MoreProps> = ({
 
   return (
     <div
-      className="mt-1 flex items-center text-text-quaternary opacity-0 system-xs-regular group-hover:opacity-100"
+      className="mt-1 flex items-center system-xs-regular text-text-quaternary opacity-0 group-hover:opacity-100"
       data-testid="more-container"
     >
       {

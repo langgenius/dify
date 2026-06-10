@@ -75,8 +75,8 @@ function insertTextAndRead(text: string): ReadResult {
     const nodes = $nodesOfType(ContextBlockNode)
     result.count = nodes.length
     if (nodes.length > 0) {
-      result.datasets = nodes[0].getDatasets()
-      result.canNotAddContext = nodes[0].getCanNotAddContext()
+      result.datasets = nodes[0]!.getDatasets()
+      result.canNotAddContext = nodes[0]!.getCanNotAddContext()
     }
   })
   return result

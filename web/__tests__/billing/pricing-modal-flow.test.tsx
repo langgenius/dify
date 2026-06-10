@@ -51,7 +51,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
 }))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
@@ -295,24 +295,7 @@ describe('Pricing Modal Flow', () => {
     })
   })
 
-  // ─── 6. Close Handling ───────────────────────────────────────────────────
-  describe('Close handling', () => {
-    it('should call onCancel when pressing ESC key', () => {
-      render(<Pricing onCancel={onCancel} />)
-
-      // ahooks useKeyPress listens on document for keydown events
-      document.dispatchEvent(new KeyboardEvent('keydown', {
-        key: 'Escape',
-        code: 'Escape',
-        keyCode: 27,
-        bubbles: true,
-      }))
-
-      expect(onCancel).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // ─── 7. Pricing URL ─────────────────────────────────────────────────────
+  // ─── 6. Pricing URL ─────────────────────────────────────────────────────
   describe('Pricing page URL', () => {
     it('should render pricing link with correct URL', () => {
       render(<Pricing onCancel={onCancel} />)

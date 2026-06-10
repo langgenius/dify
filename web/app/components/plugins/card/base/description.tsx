@@ -1,7 +1,7 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string

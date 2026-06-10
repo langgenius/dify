@@ -1,28 +1,36 @@
-@tailwind components;
+@utility badge {
+  @apply inline-flex justify-center items-center text-text-tertiary border border-divider-deep;
 
-@layer components {
-    .badge {
-        @apply inline-flex justify-center items-center text-text-tertiary border border-divider-deep
-    }
+  &.badge-warning {
+    @apply text-text-warning border border-text-warning;
+  }
 
-    .badge-l {
-        @apply rounded-md gap-1 min-w-6
-    }
+  &.badge-accent {
+    @apply text-text-accent-secondary border border-text-accent-secondary;
+  }
+}
 
-    /* m is for the regular button */
-    .badge-m {
-        @apply rounded-md gap-[3px] min-w-5
-    }
+@utility badge-l {
+  @apply rounded-md gap-1 min-w-6;
+}
 
-    .badge-s {
-        @apply rounded-[5px] gap-0.5 min-w-[18px]
-    }
+@utility badge-m {
+  /* m is for the regular button */
+  @apply rounded-md gap-[3px] min-w-5;
+}
 
-    .badge.badge-warning {
-        @apply text-text-warning border border-text-warning
-    }
+@utility badge-s {
+  @apply rounded-[5px] gap-0.5 min-w-[18px];
+}
 
-    .badge.badge-accent {
-        @apply text-text-accent-secondary border border-text-accent-secondary
-    }
+@utility badge-warning {
+  &.badge {
+    @apply text-text-warning border border-text-warning;
+  }
+}
+
+@utility badge-accent {
+  &.badge {
+    @apply text-text-accent-secondary border border-text-accent-secondary;
+  }
 }

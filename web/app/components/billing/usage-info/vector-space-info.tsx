@@ -7,13 +7,14 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
+import { useCurrentPlanVectorSpace } from '@/service/use-billing'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
 import { getPlanVectorSpaceLimitMB } from '../utils'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-}
+}>
 
 // Storage threshold in MB - usage below this shows as "< 50 MB"
 const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB(Plan.sandbox)
@@ -23,11 +24,25 @@ const VectorSpaceInfo: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
+  const { data: vectorSpace } = useCurrentPlanVectorSpace()
+  const displayPlan = vectorSpace
+    ? {
+        ...plan,
+        usage: {
+          ...plan.usage,
+          vectorSpace: vectorSpace.size,
+        },
+        total: {
+          ...plan.total,
+          vectorSpace: vectorSpace.limit,
+        },
+      }
+    : plan
   const {
     type,
     usage,
     total,
-  } = plan
+  } = displayPlan
 
   // Determine total based on plan type (in MB), derived from ALL_PLANS config
   const getTotalInMB = () => {

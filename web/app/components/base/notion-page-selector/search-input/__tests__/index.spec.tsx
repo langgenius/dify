@@ -16,7 +16,7 @@ describe('SearchInput', () => {
     const user = userEvent.setup()
     render(<SearchInput value="" onChange={handleChange} />)
 
-    const input = screen.getByTestId('notion-search-input')
+    const input = screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages')
     await user.type(input, 'test query')
 
     expect(handleChange).toHaveBeenCalled()
@@ -25,7 +25,7 @@ describe('SearchInput', () => {
   it('should show clear button when value is not empty', () => {
     render(<SearchInput value="some value" onChange={vi.fn()} />)
 
-    expect(screen.getByTestId('notion-search-input-clear')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeInTheDocument()
   })
 
   it('should call onChange with empty string when clear button is clicked', async () => {
@@ -33,7 +33,7 @@ describe('SearchInput', () => {
     const user = userEvent.setup()
     render(<SearchInput value="some value" onChange={handleChange} />)
 
-    const clearBtn = screen.getByTestId('notion-search-input-clear')
+    const clearBtn = screen.getByRole('button', { name: 'common.operation.clear' })
     await user.click(clearBtn)
 
     expect(handleChange).toHaveBeenCalledWith('')
@@ -42,6 +42,6 @@ describe('SearchInput', () => {
   it('should not show clear button when value is empty', () => {
     render(<SearchInput value="" onChange={vi.fn()} />)
 
-    expect(screen.queryByTestId('notion-search-input-clear')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
   })
 })

@@ -1,8 +1,8 @@
 import type { LabelProps } from '../label'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback } from 'react'
 import FileTypeItem from '@/app/components/workflow/nodes/_base/components/file-type-item'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import Label from '../label'
 

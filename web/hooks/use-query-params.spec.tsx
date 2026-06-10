@@ -79,7 +79,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get(PRICING_MODAL_QUERY_PARAM)).toBe(PRICING_MODAL_QUERY_VALUE)
     })
 
@@ -94,7 +94,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -112,7 +112,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has(PRICING_MODAL_QUERY_PARAM)).toBe(false)
     })
 
@@ -130,7 +130,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -145,7 +145,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
   })
@@ -205,7 +205,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('action')).toBe(ACCOUNT_SETTING_MODAL_ACTION)
       expect(update.searchParams.get('tab')).toBe('members')
     })
@@ -221,7 +221,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -239,7 +239,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('tab')).toBe('provider')
     })
 
@@ -257,7 +257,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
 
@@ -275,7 +275,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('action')).toBe(false)
       expect(update.searchParams.has('tab')).toBe(false)
     })
@@ -294,7 +294,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
   })
@@ -356,7 +356,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('package-ids')).toBe('["org/plugin"]')
     })
 
@@ -372,7 +372,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
 
@@ -391,7 +391,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('package-ids')).toBe(false)
       expect(update.searchParams.has('bundle-info')).toBe(false)
     })
@@ -411,7 +411,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
   })

@@ -1,12 +1,13 @@
 import json
+from typing import override
 
 import httpx
 
-from services.auth.api_key_auth_base import ApiKeyAuthBase
+from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
 
 
 class FirecrawlAuth(ApiKeyAuthBase):
-    def __init__(self, credentials: dict):
+    def __init__(self, credentials: AuthCredentials):
         super().__init__(credentials)
         auth_type = credentials.get("auth_type")
         if auth_type != "bearer":
@@ -17,6 +18,7 @@ class FirecrawlAuth(ApiKeyAuthBase):
         if not self.api_key:
             raise ValueError("No API key provided")
 
+    @override
     def validate_credentials(self):
         headers = self._prepare_headers()
         options = {

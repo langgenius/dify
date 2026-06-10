@@ -7,6 +7,7 @@ import type {
   ToolDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
@@ -20,7 +21,6 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
-import { cn } from '@/utils/classnames'
 import BlockSelector from '../../../../block-selector'
 
 const i18nPrefix = 'nodes.parameterExtractor'

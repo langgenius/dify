@@ -66,7 +66,7 @@ describe('Billing', () => {
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [, options] = openAsyncWindowMock.mock.calls[0]
+    const [, options] = (openAsyncWindowMock.mock.calls[0] ?? []) as [unknown, any]
     expect(options).toMatchObject({
       immediateUrl: currentBillingUrl,
       features: 'noopener,noreferrer',
@@ -82,7 +82,7 @@ describe('Billing', () => {
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [asyncCallback] = openAsyncWindowMock.mock.calls[0]
+    const [asyncCallback] = (openAsyncWindowMock.mock.calls[0] ?? []) as [any]
 
     // Execute the async callback passed to openAsyncWindow
     const result = await asyncCallback()
@@ -98,7 +98,7 @@ describe('Billing', () => {
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [asyncCallback] = openAsyncWindowMock.mock.calls[0]
+    const [asyncCallback] = (openAsyncWindowMock.mock.calls[0] ?? []) as [any]
 
     // Execute the async callback when url is null
     const result = await asyncCallback()
@@ -113,7 +113,7 @@ describe('Billing', () => {
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [, options] = openAsyncWindowMock.mock.calls[0]
+    const [, options] = (openAsyncWindowMock.mock.calls[0] ?? []) as [unknown, any]
 
     // Execute the onError callback
     const testError = new Error('Test error')
@@ -128,6 +128,6 @@ describe('Billing', () => {
     render(<Billing />)
 
     const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    expect(actionButton).toBeDisabled()
+    expect(actionButton)!.toBeDisabled()
   })
 })

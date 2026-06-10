@@ -10,7 +10,7 @@ import {
   useFetchFileIndexingEstimateForWeb,
 } from '@/service/knowledge/use-create-dataset'
 
-export type UseIndexingEstimateOptions = {
+type UseIndexingEstimateOptions = {
   dataSourceType: DataSourceType
   datasetId?: string
   // Document settings
@@ -119,5 +119,3 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     reset: currentMutation.reset,
   }
 }
-
-export type IndexingEstimate = ReturnType<typeof useIndexingEstimate>

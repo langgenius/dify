@@ -13,7 +13,7 @@ describe('selectWorkflowNode', () => {
     selectWorkflowNode('node-1', true)
 
     expect(handler).toHaveBeenCalledTimes(1)
-    const event = handler.mock.calls[0][0] as CustomEvent
+    const event = handler.mock.calls[0]![0] as CustomEvent
     expect(event.detail).toEqual({ nodeId: 'node-1', focus: true })
 
     document.removeEventListener('workflow:select-node', handler)
@@ -25,7 +25,7 @@ describe('selectWorkflowNode', () => {
 
     selectWorkflowNode('node-2')
 
-    const event = handler.mock.calls[0][0] as CustomEvent
+    const event = handler.mock.calls[0]![0] as CustomEvent
     expect(event.detail.focus).toBe(false)
 
     document.removeEventListener('workflow:select-node', handler)
@@ -40,7 +40,7 @@ describe('scrollToWorkflowNode', () => {
     scrollToWorkflowNode('node-5')
 
     expect(handler).toHaveBeenCalledTimes(1)
-    const event = handler.mock.calls[0][0] as CustomEvent
+    const event = handler.mock.calls[0]![0] as CustomEvent
     expect(event.detail).toEqual({ nodeId: 'node-5' })
 
     document.removeEventListener('workflow:scroll-to-node', handler)
@@ -112,7 +112,7 @@ describe('setupScrollToNodeListener', () => {
     scrollToWorkflowNode('n1')
 
     expect(reactflow.setCenter).toHaveBeenCalledTimes(1)
-    const [targetX, targetY, options] = reactflow.setCenter.mock.calls[0]
+    const [targetX, targetY, options] = (reactflow.setCenter.mock.calls[0] ?? []) as [any, any, any]
     expect(targetX).toBeGreaterThan(100)
     expect(targetY).toBeGreaterThan(200)
     expect(options).toEqual({ zoom: 1, duration: 800 })

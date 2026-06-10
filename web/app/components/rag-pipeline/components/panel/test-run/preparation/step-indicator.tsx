@@ -1,6 +1,6 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Divider from '@/app/components/base/divider'
-import { cn } from '@/utils/classnames'
 
 type Step = {
   label: string

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useSchemaNodeOperations } from './hooks'
 import SchemaNode from './schema-node'
 

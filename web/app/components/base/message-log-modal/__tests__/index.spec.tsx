@@ -57,8 +57,8 @@ describe('MessageLogModal', () => {
 
     it('renders modal with correct title and Run component', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      expect(screen.getByText(/title/i)).toBeInTheDocument()
-      expect(screen.getByTestId('workflow-run')).toBeInTheDocument()
+      expect(screen.getByText(/title/i))!.toBeInTheDocument()
+      expect(screen.getByTestId('workflow-run'))!.toBeInTheDocument()
     })
   })
 
@@ -73,32 +73,41 @@ describe('MessageLogModal', () => {
 
     it('sets fixed style when fixedWidth is false (floating)', () => {
       const { container } = render(<MessageLogModal width={1000} onCancel={onCancel} currentLogItem={mockLog} fixedWidth={false} />)
-      const modal = container.firstChild as HTMLElement
-      expect(modal.style.position).toBe('fixed')
-      expect(modal.style.width).toBe('480px')
+      const modal = screen.getByRole('dialog')
+      expect(container).not.toContainElement(modal)
+      expect(document.body).toContainElement(modal)
+      expect(modal).toHaveClass('fixed', 'z-50', 'w-[480px]!', 'left-[max(8px,calc(100vw-1136px))]!')
     })
 
     it('sets fixed width when fixedWidth is true', () => {
       const { container } = render(<MessageLogModal width={1000} onCancel={onCancel} currentLogItem={mockLog} fixedWidth={true} />)
-      const modal = container.firstChild as HTMLElement
-      expect(modal.style.width).toBe('1000px')
+      const panel = container.firstElementChild as HTMLElement
+      expect(panel).toHaveClass('relative', 'z-10')
+      expect(panel.style.width).toBe('1000px')
     })
   })
 
   describe('Interaction', () => {
     it('calls onCancel when close icon is clicked', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      const closeButton = screen.getByTestId('close-button')
-      expect(closeButton).toBeInTheDocument()
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
+      expect(closeButton)!.toBeInTheDocument()
       fireEvent.click(closeButton)
       expect(onCancel).toHaveBeenCalledTimes(1)
     })
 
     it('calls onCancel when clicked away', () => {
-      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
+      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} fixedWidth />)
       expect(clickAwayHandler).toBeTruthy()
       clickAwayHandler!()
       expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not use click away to close the floating dialog', () => {
+      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
+      expect(clickAwayHandler).toBeTruthy()
+      clickAwayHandler!()
+      expect(onCancel).not.toHaveBeenCalled()
     })
   })
 })

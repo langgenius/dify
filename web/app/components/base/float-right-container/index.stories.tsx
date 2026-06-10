@@ -49,7 +49,6 @@ const ContainerDemo = () => {
         isOpen={open}
         onClose={() => setOpen(false)}
         title="Responsive panel"
-        description="Switch the toggle to see drawer vs inline behaviour."
         mask
       >
         <div className="rounded-xl border border-divider-subtle bg-components-panel-bg p-4 text-xs text-text-secondary">

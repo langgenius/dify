@@ -4,9 +4,9 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -39,7 +39,6 @@ export const useFormState = () => {
   // Icon state
   const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const previousAppIcon = useRef(DEFAULT_APP_ICON)
 
   // Permission state
   const [permission, setPermission] = useState(currentDataset?.permission)
@@ -83,8 +82,7 @@ export const useFormState = () => {
   // Icon handlers
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
-    previousAppIcon.current = iconInfo
-  }, [iconInfo])
+  }, [])
 
   const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
     const newIconInfo: IconInfo = {
@@ -94,12 +92,6 @@ export const useFormState = () => {
       icon_url: icon.type === 'emoji' ? undefined : icon.url,
     }
     setIconInfo(newIconInfo)
-    setShowAppIconPicker(false)
-  }, [])
-
-  const handleCloseAppIconPicker = useCallback(() => {
-    setIconInfo(previousAppIcon.current)
-    setShowAppIconPicker(false)
   }, [])
 
   // External retrieval settings handler
@@ -123,12 +115,12 @@ export const useFormState = () => {
       return
 
     if (!name?.trim()) {
-      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
+      toast.error(t('form.nameError', { ns: 'datasetSettings' }))
       return
     }
 
     if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
-      Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
+      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
       return
     }
 
@@ -176,7 +168,7 @@ export const useFormState = () => {
       }
 
       await updateDatasetSetting({ datasetId: currentDataset!.id, body })
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
 
       if (mutateDatasets) {
         await mutateDatasets()
@@ -184,7 +176,7 @@ export const useFormState = () => {
       }
     }
     catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     }
     finally {
       setLoading(false)
@@ -223,9 +215,9 @@ export const useFormState = () => {
     // Icon
     iconInfo,
     showAppIconPicker,
+    setShowAppIconPicker,
     handleOpenAppIconPicker,
     handleSelectAppIcon,
-    handleCloseAppIconPicker,
 
     // Permission
     permission,

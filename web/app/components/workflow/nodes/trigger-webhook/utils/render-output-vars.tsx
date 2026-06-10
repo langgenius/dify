@@ -34,7 +34,7 @@ const VarItem: FC<VarItemProps> = ({ prefix, name, type }) => {
           .
         </span>
         <span className="code-sm-semibold text-text-secondary">{name}</span>
-        <span className="system-xs-regular ml-2 text-text-tertiary">{type}</span>
+        <span className="ml-2 system-xs-regular text-text-tertiary">{type}</span>
       </div>
     </div>
   )
@@ -43,7 +43,7 @@ const VarItem: FC<VarItemProps> = ({ prefix, name, type }) => {
 export const OutputVariablesContent: FC<OutputVariablesContentProps> = ({ variables = [] }) => {
   if (!variables || variables.length === 0) {
     return (
-      <div className="system-sm-regular py-2 text-text-tertiary">
+      <div className="py-2 system-sm-regular text-text-tertiary">
         No output variables
       </div>
     )

@@ -12,33 +12,48 @@ import type {
   HandleUpdateSubVariableCondition,
   IfElseNodeType,
 } from './types'
-import { produce } from 'immer'
-import { useCallback, useMemo } from 'react'
+import {
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
-import { v4 as uuid4 } from 'uuid'
 import {
   useEdgesInteractions,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { VarType } from '../../types'
-import { LogicalOperator } from './types'
-import useIsVarFileAttribute from './use-is-var-file-attribute'
 import {
-  branchNameCorrect,
-  getOperators,
-} from './utils'
+  addCase,
+  addCondition,
+  addSubVariableCondition,
+  filterAllVars,
+  filterNumberVars,
+  getVarsIsVarFileAttribute,
+  removeCase,
+  removeCondition,
+  removeSubVariableCondition,
+  sortCases,
+  toggleConditionLogicalOperator,
+  toggleSubVariableConditionLogicalOperator,
+  updateCondition,
+  updateSubVariableCondition,
+} from './use-config.helpers'
+import useIsVarFileAttribute from './use-is-var-file-attribute'
 
 const useConfig = (id: string, payload: IfElseNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
   const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
+  const inputsRef = useRef(inputs)
+  const handleInputsChange = useCallback((newInputs: IfElseNodeType) => {
+    inputsRef.current = newInputs
+    setInputs(newInputs)
+  }, [setInputs])
 
-  const filterVar = useCallback(() => {
-    return true
-  }, [])
+  const filterVar = useCallback(() => filterAllVars(), [])
 
   const {
     availableVars,
@@ -48,9 +63,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     filterVar,
   })
 
-  const filterNumberVar = useCallback((varPayload: Var) => {
-    return varPayload.type === VarType.number
-  }, [])
+  const filterNumberVar = useCallback((varPayload: Var) => filterNumberVars(varPayload), [])
 
   const {
     getIsVarFileAttribute,
@@ -61,13 +74,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   })
 
   const varsIsVarFileAttribute = useMemo(() => {
-    const conditions: Record<string, boolean> = {}
-    inputs.cases?.forEach((c) => {
-      c.conditions.forEach((condition) => {
-        conditions[condition.id] = getIsVarFileAttribute(condition.variable_selector!)
-      })
-    })
-    return conditions
+    return getVarsIsVarFileAttribute(inputs.cases, getIsVarFileAttribute)
   }, [inputs.cases, getIsVarFileAttribute])
 
   const {
@@ -79,177 +86,56 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   })
 
   const handleAddCase = useCallback(() => {
-    const newInputs = produce(inputs, (draft) => {
-      if (draft.cases) {
-        const case_id = uuid4()
-        draft.cases.push({
-          case_id,
-          logical_operator: LogicalOperator.and,
-          conditions: [],
-        })
-        if (draft._targetBranches) {
-          const elseCaseIndex = draft._targetBranches.findIndex(branch => branch.id === 'false')
-          if (elseCaseIndex > -1) {
-            draft._targetBranches = branchNameCorrect([
-              ...draft._targetBranches.slice(0, elseCaseIndex),
-              {
-                id: case_id,
-                name: '',
-              },
-              ...draft._targetBranches.slice(elseCaseIndex),
-            ])
-          }
-        }
-      }
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+    handleInputsChange(addCase(inputsRef.current))
+  }, [handleInputsChange])
 
   const handleRemoveCase = useCallback((caseId: string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.cases = draft.cases?.filter(item => item.case_id !== caseId)
-
-      if (draft._targetBranches)
-        draft._targetBranches = branchNameCorrect(draft._targetBranches.filter(branch => branch.id !== caseId))
-
-      handleEdgeDeleteByDeleteBranch(id, caseId)
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs, id, handleEdgeDeleteByDeleteBranch])
+    handleEdgeDeleteByDeleteBranch(id, caseId)
+    handleInputsChange(removeCase(inputsRef.current, caseId))
+  }, [handleEdgeDeleteByDeleteBranch, handleInputsChange, id])
 
   const handleSortCase = useCallback((newCases: (CaseItem & { id: string })[]) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.cases = newCases.filter(Boolean).map(item => ({
-        id: item.id,
-        case_id: item.case_id,
-        logical_operator: item.logical_operator,
-        conditions: item.conditions,
-      }))
-
-      draft._targetBranches = branchNameCorrect([
-        ...newCases.filter(Boolean).map(item => ({ id: item.case_id, name: '' })),
-        { id: 'false', name: '' },
-      ])
-    })
-    setInputs(newInputs)
+    handleInputsChange(sortCases(inputsRef.current, newCases))
     updateNodeInternals(id)
-  }, [id, inputs, setInputs, updateNodeInternals])
+  }, [handleInputsChange, id, updateNodeInternals])
 
   const handleAddCondition = useCallback<HandleAddCondition>((caseId, valueSelector, varItem) => {
-    const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.case_id === caseId)
-      if (targetCase) {
-        targetCase.conditions.push({
-          id: uuid4(),
-          varType: varItem.type,
-          variable_selector: valueSelector,
-          comparison_operator: getOperators(varItem.type, getIsVarFileAttribute(valueSelector) ? { key: valueSelector.slice(-1)[0] } : undefined)[0],
-          value: (varItem.type === VarType.boolean || varItem.type === VarType.arrayBoolean) ? false : '',
-        })
-      }
-    })
-    setInputs(newInputs)
-  }, [getIsVarFileAttribute, inputs, setInputs])
+    handleInputsChange(addCondition({
+      inputs: inputsRef.current,
+      caseId,
+      valueSelector,
+      variable: varItem,
+      isVarFileAttribute: !!getIsVarFileAttribute(valueSelector),
+    }))
+  }, [getIsVarFileAttribute, handleInputsChange])
 
   const handleRemoveCondition = useCallback<HandleRemoveCondition>((caseId, conditionId) => {
-    const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.case_id === caseId)
-      if (targetCase)
-        targetCase.conditions = targetCase.conditions.filter(item => item.id !== conditionId)
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+    handleInputsChange(removeCondition(inputsRef.current, caseId, conditionId))
+  }, [handleInputsChange])
 
   const handleUpdateCondition = useCallback<HandleUpdateCondition>((caseId, conditionId, newCondition) => {
-    const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.case_id === caseId)
-      if (targetCase) {
-        const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
-        if (targetCondition)
-          Object.assign(targetCondition, newCondition)
-      }
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+    handleInputsChange(updateCondition(inputsRef.current, caseId, conditionId, newCondition))
+  }, [handleInputsChange])
 
   const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>((caseId) => {
-    const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.case_id === caseId)
-      if (targetCase)
-        targetCase.logical_operator = targetCase.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+    handleInputsChange(toggleConditionLogicalOperator(inputsRef.current, caseId))
+  }, [handleInputsChange])
 
   const handleAddSubVariableCondition = useCallback<HandleAddSubVariableCondition>((caseId: string, conditionId: string, key?: string) => {
-    const newInputs = produce(inputs, (draft) => {
-      const condition = draft.cases?.find(item => item.case_id === caseId)?.conditions.find(item => item.id === conditionId)
-      if (!condition)
-        return
-      if (!condition?.sub_variable_condition) {
-        condition.sub_variable_condition = {
-          case_id: uuid4(),
-          logical_operator: LogicalOperator.and,
-          conditions: [],
-        }
-      }
-      const subVarCondition = condition.sub_variable_condition
-      if (subVarCondition) {
-        if (!subVarCondition.conditions)
-          subVarCondition.conditions = []
-
-        subVarCondition.conditions.push({
-          id: uuid4(),
-          key: key || '',
-          varType: VarType.string,
-          comparison_operator: undefined,
-          value: '',
-        })
-      }
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+    handleInputsChange(addSubVariableCondition(inputsRef.current, caseId, conditionId, key))
+  }, [handleInputsChange])
 
   const handleRemoveSubVariableCondition = useCallback((caseId: string, conditionId: string, subConditionId: string) => {
-    const newInputs = produce(inputs, (draft) => {
-      const condition = draft.cases?.find(item => item.case_id === caseId)?.conditions.find(item => item.id === conditionId)
-      if (!condition)
-        return
-      if (!condition?.sub_variable_condition)
-        return
-      const subVarCondition = condition.sub_variable_condition
-      if (subVarCondition)
-        subVarCondition.conditions = subVarCondition.conditions.filter(item => item.id !== subConditionId)
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+    handleInputsChange(removeSubVariableCondition(inputsRef.current, caseId, conditionId, subConditionId))
+  }, [handleInputsChange])
 
   const handleUpdateSubVariableCondition = useCallback<HandleUpdateSubVariableCondition>((caseId, conditionId, subConditionId, newSubCondition) => {
-    const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.case_id === caseId)
-      if (targetCase) {
-        const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
-        if (targetCondition && targetCondition.sub_variable_condition) {
-          const targetSubCondition = targetCondition.sub_variable_condition.conditions.find(item => item.id === subConditionId)
-          if (targetSubCondition)
-            Object.assign(targetSubCondition, newSubCondition)
-        }
-      }
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+    handleInputsChange(updateSubVariableCondition(inputsRef.current, caseId, conditionId, subConditionId, newSubCondition))
+  }, [handleInputsChange])
 
   const handleToggleSubVariableConditionLogicalOperator = useCallback<HandleToggleSubVariableConditionLogicalOperator>((caseId, conditionId) => {
-    const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.case_id === caseId)
-      if (targetCase) {
-        const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
-        if (targetCondition && targetCondition.sub_variable_condition)
-          targetCondition.sub_variable_condition.logical_operator = targetCondition.sub_variable_condition.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
-      }
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+    handleInputsChange(toggleSubVariableConditionLogicalOperator(inputsRef.current, caseId, conditionId))
+  }, [handleInputsChange])
 
   return {
     readOnly,

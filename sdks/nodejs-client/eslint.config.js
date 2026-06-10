@@ -12,11 +12,11 @@ const typeCheckedRules =
 
 export default [
   {
-    ignores: ["dist", "node_modules", "scripts", "tests", "**/*.test.*", "**/*.spec.*"],
+    ignores: ["dist", "node_modules", "scripts"],
   },
   js.configs.recommended,
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "tests/**/*.ts"],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: "latest",

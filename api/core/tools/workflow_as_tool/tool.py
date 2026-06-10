@@ -3,11 +3,17 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, cast, override
 
 from sqlalchemy import select
 
+from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
+from core.helper.trace_id_helper import (
+    ParentTraceContext,
+    extract_parent_trace_context_from_args,
+    extract_trace_session_id_from_args,
+)
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
@@ -17,20 +23,26 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
-from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from core.workflow.file_reference import resolve_file_record_id
 from factories.file_factory import build_from_mapping
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from models import Account, Tenant
 from models.model import App, EndUser
+from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class WorkflowTool(Tool):
     """
     Workflow tool.
     """
+
+    _parent_trace_context: ParentTraceContext | None
+    _trace_session_id: str | None
 
     def __init__(
         self,
@@ -50,9 +62,12 @@ class WorkflowTool(Tool):
         self.workflow_call_depth = workflow_call_depth
         self.label = label
         self._latest_usage = LLMUsage.empty_usage()
+        self._parent_trace_context = None
+        self._trace_session_id = None
 
         super().__init__(entity=entity, runtime=runtime)
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         """
         get the tool provider type
@@ -61,6 +76,7 @@ class WorkflowTool(Tool):
         """
         return ToolProviderType.WORKFLOW
 
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -90,11 +106,19 @@ class WorkflowTool(Tool):
 
         self._latest_usage = LLMUsage.empty_usage()
 
+        generator_args: dict[str, Any] = {"inputs": tool_parameters, "files": files}
+        if self._parent_trace_context:
+            generator_args.update(
+                extract_parent_trace_context_from_args({"parent_trace_context": self._parent_trace_context})
+            )
+        if self._trace_session_id:
+            generator_args.update(extract_trace_session_id_from_args({"trace_session_id": self._trace_session_id}))
+
         result = generator.generate(
             app_model=app,
             workflow=workflow,
             user=user,
-            args={"inputs": tool_parameters, "files": files},
+            args=generator_args,
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
@@ -184,13 +208,14 @@ class WorkflowTool(Tool):
                             return found
         return None
 
+    @override
     def fork_tool_runtime(self, runtime: ToolRuntime) -> WorkflowTool:
         """
         fork a new tool with metadata
 
         :return: the new tool
         """
-        return self.__class__(
+        forked = self.__class__(
             entity=self.entity.model_copy(),
             runtime=runtime,
             workflow_app_id=self.workflow_app_id,
@@ -200,6 +225,33 @@ class WorkflowTool(Tool):
             version=self.version,
             label=self.label,
         )
+        forked._parent_trace_context = self._parent_trace_context.model_copy() if self._parent_trace_context else None
+        forked._trace_session_id = self._trace_session_id
+        return forked
+
+    def set_parent_trace_context(
+        self,
+        *,
+        parent_workflow_run_id: str,
+        parent_node_execution_id: str,
+    ) -> None:
+        """Attach outer workflow trace context without exposing it as tool input."""
+        self._parent_trace_context = ParentTraceContext(
+            parent_workflow_run_id=parent_workflow_run_id,
+            parent_node_execution_id=parent_node_execution_id,
+        )
+
+    def clear_parent_trace_context(self) -> None:
+        """Remove parent trace context before invoking this tool outside a nested workflow."""
+        self._parent_trace_context = None
+
+    def set_trace_session_id(self, trace_session_id: str) -> None:
+        """Attach parent trace session ID without exposing it as tool input."""
+        self._trace_session_id = trace_session_id
+
+    def clear_trace_session_id(self) -> None:
+        """Remove trace session ID before invoking this tool outside a traced session."""
+        self._trace_session_id = None
 
     def _resolve_user(self, user_id: str) -> Account | EndUser | None:
         """
@@ -273,7 +325,7 @@ class WorkflowTool(Tool):
             session.expunge(app)
             return app
 
-    def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
+    def _transform_args(self, tool_parameters: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str | None]]]:
         """
         transform the tool parameters
 
@@ -288,28 +340,51 @@ class WorkflowTool(Tool):
                 file = tool_parameters.get(parameter.name)
                 if file:
                     try:
-                        file_var_list = [File.model_validate(f) for f in file]
+                        file_var_list = [
+                            build_file_from_stored_mapping(
+                                file_mapping=cast(Mapping[str, Any], f),
+                                tenant_id=str(self.runtime.tenant_id),
+                            )
+                            for f in file
+                            if isinstance(f, Mapping)
+                        ]
                         for file in file_var_list:
                             file_dict: dict[str, str | None] = {
                                 "transfer_method": file.transfer_method.value,
                                 "type": file.type.value,
                             }
-                            if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = file.related_id
-                            elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = file.related_id
-                            elif file.transfer_method == FileTransferMethod.REMOTE_URL:
-                                file_dict["url"] = file.generate_url()
+                            match file.transfer_method:
+                                case FileTransferMethod.TOOL_FILE:
+                                    file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.LOCAL_FILE:
+                                    file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.DATASOURCE_FILE:
+                                    file_dict["datasource_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.REMOTE_URL:
+                                    file_dict["url"] = file.generate_url()
 
                             files.append(file_dict)
                     except Exception:
                         logger.exception("Failed to transform file %s", file)
+            elif parameter.type == ToolParameter.ToolParameterType.FILES:
+                value = tool_parameters.get(parameter.name)
+                if not parameter.required and self._is_empty_files_parameter_value(value):
+                    value = []
+                parameters_result[parameter.name] = value
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 
         return parameters_result, files
 
-    def _extract_files(self, outputs: dict) -> tuple[dict, list[File]]:
+    @staticmethod
+    def _is_empty_files_parameter_value(value: Any) -> bool:
+        """Identify empty optional file-list placeholders before workflow input validation."""
+
+        if value is None or value == "":
+            return True
+        return isinstance(value, list) and all(item is None or item == "" for item in value)
+
+    def _extract_files(self, outputs: dict[str, Any]) -> tuple[dict[str, Any], list[File]]:
         """
         extract files from the result
 
@@ -325,6 +400,7 @@ class WorkflowTool(Tool):
                         file = build_from_mapping(
                             mapping=item,
                             tenant_id=str(self.runtime.tenant_id),
+                            access_controller=_file_access_controller,
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
@@ -332,6 +408,7 @@ class WorkflowTool(Tool):
                 file = build_from_mapping(
                     mapping=value,
                     tenant_id=str(self.runtime.tenant_id),
+                    access_controller=_file_access_controller,
                 )
                 files.append(file)
 
@@ -339,10 +416,17 @@ class WorkflowTool(Tool):
 
         return result, files
 
-    def _update_file_mapping(self, file_dict: dict):
-        transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
-        if transfer_method == FileTransferMethod.TOOL_FILE:
-            file_dict["tool_file_id"] = file_dict.get("related_id")
-        elif transfer_method == FileTransferMethod.LOCAL_FILE:
-            file_dict["upload_file_id"] = file_dict.get("related_id")
+    def _update_file_mapping(self, file_dict: dict[str, Any]) -> dict[str, Any]:
+        file_id = resolve_file_record_id(file_dict.get("reference") or file_dict.get("related_id"))
+        transfer_method_value = file_dict.get("transfer_method")
+        if not isinstance(transfer_method_value, str):
+            raise ValueError("Workflow file mapping is missing a valid transfer_method")
+        transfer_method = FileTransferMethod.value_of(transfer_method_value)
+        match transfer_method:
+            case FileTransferMethod.TOOL_FILE:
+                file_dict["tool_file_id"] = file_id
+            case FileTransferMethod.LOCAL_FILE:
+                file_dict["upload_file_id"] = file_id
+            case FileTransferMethod.REMOTE_URL | FileTransferMethod.DATASOURCE_FILE:
+                pass
         return file_dict

@@ -1,6 +1,6 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
@@ -26,9 +26,9 @@ const Form = () => {
     // Icon
     iconInfo,
     showAppIconPicker,
+    setShowAppIconPicker,
     handleOpenAppIconPicker,
     handleSelectAppIcon,
-    handleCloseAppIconPicker,
 
     // Permission
     permission,
@@ -78,9 +78,9 @@ const Form = () => {
         setDescription={setDescription}
         iconInfo={iconInfo}
         showAppIconPicker={showAppIconPicker}
+        setShowAppIconPicker={setShowAppIconPicker}
         handleOpenAppIconPicker={handleOpenAppIconPicker}
         handleSelectAppIcon={handleSelectAppIcon}
-        handleCloseAppIconPicker={handleCloseAppIconPicker}
         permission={permission}
         setPermission={setPermission}
         selectedMemberIDs={selectedMemberIDs}

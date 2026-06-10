@@ -31,10 +31,9 @@ from core.tools.errors import (
 )
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from dify_graph.file import FileType
-from dify_graph.file.models import FileTransferMethod
 from extensions.ext_database import db
-from models.enums import CreatorUserRole
+from graphon.file import FileTransferMethod, FileType
+from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
 
 logger = logging.getLogger(__name__)
@@ -48,7 +47,7 @@ class ToolEngine:
     @staticmethod
     def agent_invoke(
         tool: Tool,
-        tool_parameters: Union[str, dict],
+        tool_parameters: Union[str, dict[str, Any]],
         user_id: str,
         tenant_id: str,
         message: Message,
@@ -86,7 +85,8 @@ class ToolEngine:
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
-                invocation_meta_dict: dict, messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]
+                invocation_meta_dict: dict[str, ToolInvokeMeta],
+                messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
             ):
                 for message in messages:
                     if isinstance(message, ToolInvokeMeta):
@@ -201,7 +201,7 @@ class ToolEngine:
     @staticmethod
     def _invoke(
         tool: Tool,
-        tool_parameters: dict,
+        tool_parameters: dict[str, Any],
         user_id: str,
         conversation_id: str | None = None,
         app_id: str | None = None,
@@ -263,6 +263,8 @@ class ToolEngine:
                         ensure_ascii=False,
                     )
                 )
+            elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
+                continue
             else:
                 parts.append(str(response.message))
 
@@ -281,7 +283,11 @@ class ToolEngine:
         Extract tool response binary
         """
         for response in tool_response:
-            if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
+            if response.type in {
+                ToolInvokeMessage.MessageType.IMAGE_LINK,
+                ToolInvokeMessage.MessageType.IMAGE,
+                ToolInvokeMessage.MessageType.BINARY_LINK,
+            }:
                 mimetype = None
                 if not response.meta:
                     raise ValueError("missing meta data")
@@ -296,7 +302,11 @@ class ToolEngine:
                             mimetype = guess_type_result
 
                 if not mimetype:
-                    mimetype = "image/jpeg"
+                    mimetype = (
+                        "image/jpeg"
+                        if response.type != ToolInvokeMessage.MessageType.BINARY_LINK
+                        else "application/octet-stream"
+                    )
 
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", mimetype),
@@ -352,7 +362,7 @@ class ToolEngine:
                 message_id=agent_message.id,
                 type=file_type,
                 transfer_method=FileTransferMethod.TOOL_FILE,
-                belongs_to="assistant",
+                belongs_to=MessageFileBelongsTo.ASSISTANT,
                 url=message.url,
                 upload_file_id=tool_file_id,
                 created_by_role=(

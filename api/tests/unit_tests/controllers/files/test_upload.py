@@ -1,3 +1,4 @@
+import io
 import types
 from unittest.mock import patch
 
@@ -5,6 +6,7 @@ import pytest
 from werkzeug.exceptions import Forbidden
 
 import controllers.files.upload as module
+from core.workflow.file_reference import build_file_reference
 
 
 def unwrap(func):
@@ -30,9 +32,10 @@ class DummyFile:
         self.filename = filename
         self.mimetype = mimetype
         self._content = content
+        self.stream = io.BytesIO(content)
 
     def read(self):
-        return self._content
+        return self.stream.read()
 
 
 class DummyToolFile:
@@ -83,6 +86,7 @@ class TestPluginUploadFileApi:
 
         assert status_code == 201
         assert result["id"] == "file-id"
+        assert result["reference"] == build_file_reference(record_id="file-id")
         assert result["preview_url"] == "signed-url"
 
     def test_missing_file(self):

@@ -3,7 +3,7 @@ import * as React from 'react'
 import { GotoAnythingProvider, useGotoAnythingContext } from '../context'
 
 let pathnameMock: string | null | undefined = '/'
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => pathnameMock,
 }))
 

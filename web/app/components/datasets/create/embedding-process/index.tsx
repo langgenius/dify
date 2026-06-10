@@ -1,20 +1,20 @@
 import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiArrowRightLine,
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import IndexingProgressItem from './indexing-progress-item'
@@ -39,7 +39,7 @@ const StatusHeader: FC<{ isEmbedding: boolean, isCompleted: boolean }> = ({
   const { t } = useTranslation()
 
   return (
-    <div className="system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary">
+    <div className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary">
       {isEmbedding && (
         <>
           <RiLoader2Fill className="size-4 animate-spin" />
