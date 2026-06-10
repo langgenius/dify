@@ -1,10 +1,14 @@
 'use client'
 
+import type { Tool, ToolParameter } from '@/app/components/tools/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
+import { CollectionType } from '@/app/components/tools/types'
 
 type AgentToolBase = {
   id: string
@@ -14,6 +18,8 @@ type AgentToolBase = {
 type AgentToolAction = {
   id: string
   name: string
+  toolName: string
+  description: string
 }
 
 type AgentProviderTool = AgentToolBase & {
@@ -40,10 +46,30 @@ const defaultTools: AgentTool[] = [
     credentialKey: 'agentDetail.configure.tools.credential.authOne',
     credentialVariant: 'authorized',
     actions: [
-      { id: 'duckduckgo-ai-chat', name: 'DuckDuckGo AI Chat' },
-      { id: 'duckduckgo-image-search', name: 'DuckDuckGo Image Search' },
-      { id: 'duckduckgo-search', name: 'DuckDuckGo Search' },
-      { id: 'duckduckgo-translate', name: 'DuckDuckGo Translate' },
+      {
+        id: 'duckduckgo-ai-chat',
+        name: 'DuckDuckGo AI Chat',
+        toolName: 'duckduckgo_ai_chat',
+        description: 'Chat with DuckDuckGo AI for lightweight web answers.',
+      },
+      {
+        id: 'duckduckgo-image-search',
+        name: 'DuckDuckGo Image Search',
+        toolName: 'duckduckgo_image_search',
+        description: 'Search DuckDuckGo images and return matching image results.',
+      },
+      {
+        id: 'duckduckgo-search',
+        name: 'DuckDuckGo Search',
+        toolName: 'duckduckgo_search',
+        description: 'Search DuckDuckGo and return relevant webpage snippets.',
+      },
+      {
+        id: 'duckduckgo-translate',
+        name: 'DuckDuckGo Translate',
+        toolName: 'duckduckgo_translate',
+        description: 'Translate short text with DuckDuckGo translation tools.',
+      },
     ],
   },
   {
@@ -54,8 +80,18 @@ const defaultTools: AgentTool[] = [
     credentialKey: 'agentDetail.configure.tools.credential.endUserOAuth',
     credentialVariant: 'endUser',
     actions: [
-      { id: 'web-search-query', name: 'Search' },
-      { id: 'web-search-read', name: 'Read webpage' },
+      {
+        id: 'web-search-query',
+        name: 'Search',
+        toolName: 'web_search',
+        description: 'Search the web and return relevant result snippets.',
+      },
+      {
+        id: 'web-search-read',
+        name: 'Read webpage',
+        toolName: 'read_webpage',
+        description: 'Read and summarize content from a webpage URL.',
+      },
     ],
   },
   {
@@ -70,6 +106,61 @@ const defaultTools: AgentTool[] = [
     action: 'preAuthorize',
   },
 ]
+
+type ToolSettingTarget = {
+  action: AgentToolAction
+  tool: AgentProviderTool
+}
+
+const localize = (value: string) => ({
+  en_US: value,
+  zh_Hans: value,
+})
+
+const mockSettingParameter = (name: string): ToolParameter => ({
+  name,
+  label: localize(name === 'used_in_agent_nodes' ? 'Used in Agent nodes' : 'Query'),
+  human_description: localize(name === 'used_in_agent_nodes'
+    ? 'Whether this tool can be used by agent nodes.'
+    : 'The input query passed to this tool.'),
+  type: name === 'used_in_agent_nodes' ? 'boolean' : 'string',
+  form: name === 'used_in_agent_nodes' ? 'form' : 'llm',
+  llm_description: name === 'used_in_agent_nodes'
+    ? 'Whether this tool can be used by agent nodes.'
+    : 'Search query or URL input for the tool.',
+  required: name !== 'used_in_agent_nodes',
+  multiple: false,
+  default: '',
+})
+
+const createToolCollection = (tool: AgentProviderTool): ToolWithProvider => ({
+  id: tool.id,
+  name: tool.id,
+  author: tool.name,
+  description: localize(`${tool.name} tools`),
+  icon: '',
+  label: localize(tool.name),
+  type: CollectionType.builtIn,
+  team_credentials: {},
+  is_team_authorization: true,
+  allow_delete: false,
+  labels: [],
+  meta: {
+    version: '0.0.0',
+  },
+  tools: tool.actions.map<Tool>(action => ({
+    name: action.toolName,
+    author: tool.name,
+    label: localize(action.name),
+    description: localize(action.description),
+    parameters: [
+      mockSettingParameter('used_in_agent_nodes'),
+      mockSettingParameter('query'),
+    ],
+    labels: [],
+    output_schema: {},
+  })),
+}) as ToolWithProvider
 
 function ProviderIcon({
   iconClassName,
@@ -118,10 +209,12 @@ function AgentProviderToolItem({
   tool,
   isExpanded,
   onToggle,
+  onConfigureAction,
 }: {
   tool: AgentProviderTool
   isExpanded: boolean
   onToggle: () => void
+  onConfigureAction: (target: ToolSettingTarget) => void
 }) {
   const { t } = useTranslation('agentV2')
 
@@ -168,6 +261,7 @@ function AgentProviderToolItem({
                 <button
                   type="button"
                   aria-label={t('agentDetail.configure.tools.editAction', { name: action.name })}
+                  onClick={() => onConfigureAction({ action, tool })}
                   className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 >
                   <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -235,13 +329,15 @@ function AgentToolItem({
   tool,
   isExpanded,
   onToggle,
+  onConfigureAction,
 }: {
   tool: AgentTool
   isExpanded: boolean
   onToggle: () => void
+  onConfigureAction: (target: ToolSettingTarget) => void
 }) {
   if (tool.kind === 'provider')
-    return <AgentProviderToolItem tool={tool} isExpanded={isExpanded} onToggle={onToggle} />
+    return <AgentProviderToolItem tool={tool} isExpanded={isExpanded} onToggle={onToggle} onConfigureAction={onConfigureAction} />
 
   return <AgentCliToolItem tool={tool} />
 }
@@ -254,6 +350,8 @@ export function AgentTools({
   const { t } = useTranslation('agentV2')
   const [isExpanded, setIsExpanded] = useState(true)
   const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())
+  const [toolSettings, setToolSettings] = useState<Record<string, Record<string, unknown>>>({})
+  const [settingTarget, setSettingTarget] = useState<ToolSettingTarget | null>(null)
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
   const toggleTool = (tool: AgentTool) => {
@@ -270,69 +368,90 @@ export function AgentTools({
       return nextIds
     })
   }
+  const currentSettingCollection = settingTarget ? createToolCollection(settingTarget.tool) : null
+  const currentSettingValue = settingTarget ? toolSettings[settingTarget.action.id] : undefined
 
   return (
-    <section className={cn('border-b border-divider-subtle pt-4', isExpanded && 'pb-4')} aria-labelledby="agent-configure-tools-label">
-      <div className="mb-2 flex min-h-6 items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5">
-          <h3
-            id="agent-configure-tools-label"
-            className="truncate system-sm-semibold-uppercase text-text-secondary"
-          >
-            {t('agentDetail.configure.tools.label')}
-          </h3>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <button
-                  type="button"
-                  aria-label={toolsTip}
-                  className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-question-line size-3.5" />
-                </button>
-              )}
-            />
-            <TooltipContent placement="top" className="max-w-64">
-              {toolsTip}
-            </TooltipContent>
-          </Tooltip>
+    <>
+      <section className={cn('border-b border-divider-subtle pt-4', isExpanded && 'pb-4')} aria-labelledby="agent-configure-tools-label">
+        <div className="mb-2 flex min-h-6 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-0.5">
+            <h3
+              id="agent-configure-tools-label"
+              className="truncate system-sm-semibold-uppercase text-text-secondary"
+            >
+              {t('agentDetail.configure.tools.label')}
+            </h3>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <button
+                    type="button"
+                    aria-label={toolsTip}
+                    className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  >
+                    <span aria-hidden className="i-ri-question-line size-3.5" />
+                  </button>
+                )}
+              />
+              <TooltipContent placement="top" className="max-w-64">
+                {toolsTip}
+              </TooltipContent>
+            </Tooltip>
+            <button
+              type="button"
+              aria-label={t('agentDetail.configure.tools.toggle')}
+              aria-controls={toolsListId}
+              aria-expanded={isExpanded}
+              onClick={() => setIsExpanded(expanded => !expanded)}
+              className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              <span
+                aria-hidden
+                className={`i-custom-vender-solid-arrows-arrow-down-round-fill size-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
+              />
+            </button>
+          </div>
+
           <button
             type="button"
-            aria-label={t('agentDetail.configure.tools.toggle')}
-            aria-controls={toolsListId}
-            aria-expanded={isExpanded}
-            onClick={() => setIsExpanded(expanded => !expanded)}
-            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            aria-label={t('agentDetail.configure.tools.add')}
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
-            <span
-              aria-hidden
-              className={`i-custom-vender-solid-arrows-arrow-down-round-fill size-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
-            />
+            <span aria-hidden className="i-ri-add-line size-4" />
           </button>
         </div>
 
-        <button
-          type="button"
-          aria-label={t('agentDetail.configure.tools.add')}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-add-line size-4" />
-        </button>
-      </div>
-
-      {isExpanded && (
-        <div id={toolsListId} className="flex flex-col gap-1">
-          {tools.map(tool => (
-            <AgentToolItem
-              key={tool.id}
-              tool={tool}
-              isExpanded={tool.kind === 'provider' && expandedToolIds.has(tool.id)}
-              onToggle={() => toggleTool(tool)}
-            />
-          ))}
-        </div>
+        {isExpanded && (
+          <div id={toolsListId} className="flex flex-col gap-1">
+            {tools.map(tool => (
+              <AgentToolItem
+                key={tool.id}
+                tool={tool}
+                isExpanded={tool.kind === 'provider' && expandedToolIds.has(tool.id)}
+                onToggle={() => toggleTool(tool)}
+                onConfigureAction={setSettingTarget}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+      {settingTarget && currentSettingCollection && (
+        <SettingBuiltInTool
+          toolName={settingTarget.action.toolName}
+          setting={currentSettingValue}
+          collection={currentSettingCollection}
+          isModel={false}
+          onSave={(value) => {
+            setToolSettings(currentSettings => ({
+              ...currentSettings,
+              [settingTarget.action.id]: value,
+            }))
+            setSettingTarget(null)
+          }}
+          onHide={() => setSettingTarget(null)}
+        />
       )}
-    </section>
+    </>
   )
 }

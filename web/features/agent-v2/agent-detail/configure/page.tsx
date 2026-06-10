@@ -9,6 +9,7 @@ import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList }
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/client'
 import { AgentFiles } from './components/agent-files'
+import { AgentKnowledgeRetrieval } from './components/agent-knowledge-retrieval'
 import { AgentPreviewHeader } from './components/agent-preview-header'
 import { AgentPreviewVersionsPanel } from './components/agent-preview-versions-panel'
 import { AgentPromptEditor } from './components/agent-prompt-editor'
@@ -87,13 +88,7 @@ export function AgentConfigurePage({
           <AgentTools />
 
           {/* Knowledge retrieval */}
-          <div className="space-y-2">
-            <div className="h-4 w-40 rounded bg-state-base-hover" />
-            <div className="space-y-1">
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-            </div>
-          </div>
+          <AgentKnowledgeRetrieval />
         </div>
 
         {/* Save and publish actions */}
@@ -103,9 +98,9 @@ export function AgentConfigurePage({
         </div>
       </div>
 
-      {/* Preview panel */}
-      <div className="flex min-w-[420px] flex-1 overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      {/* Preview area */}
+      <div className="flex min-w-[420px] flex-1 gap-1 overflow-hidden">
+        <div className="flex min-w-[420px] flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
           <AgentPreviewHeader
             isVersionsOpen={showPreviewVersions}
             onToggleVersions={() => setShowPreviewVersions(open => !open)}
@@ -129,6 +124,7 @@ export function AgentConfigurePage({
             <div className="mx-auto h-12 max-w-[720px] rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5" />
           </div>
         </div>
+
         {showPreviewVersions && (
           <AgentPreviewVersionsPanel
             agentId={agentId}
