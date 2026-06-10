@@ -2,14 +2,11 @@ from __future__ import annotations
 
 from typing import cast
 
-from flask import request
 from flask_restx import Resource
-from pydantic import ValidationError
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest
 
-from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
+from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppDslExportQuery, AppDslImportPayload
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
@@ -34,36 +31,30 @@ class AppDslImportApi(Resource):
     Returns 400 when the import failed due to invalid DSL or a business error.
     """
 
-    @openapi_ns.expect(openapi_ns.models[AppDslImportPayload.__name__])
-    @openapi_ns.response(200, "Import completed", openapi_ns.models[Import.__name__])
-    @openapi_ns.response(202, "Import pending confirmation", openapi_ns.models[Import.__name__])
-    @openapi_ns.response(400, "Import failed", openapi_ns.models[Import.__name__])
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
     )
-    def post(self, workspace_id: str, *, auth_data: AuthData):
-        body = request.get_json(silent=True) or {}
-        try:
-            payload = AppDslImportPayload.model_validate(body)
-        except ValidationError as exc:
-            raise BadRequest(str(exc))
-
+    @returns(200, Import, "Import completed")
+    @returns(202, Import, "Import pending confirmation")
+    @returns(400, Import, "Import failed")
+    @accepts(body=AppDslImportPayload)
+    def post(self, workspace_id: str, *, auth_data: AuthData, body: AppDslImportPayload):
         account = cast(Account, auth_data.caller)
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
             result = service.import_app(
                 account=account,
-                import_mode=payload.mode,
-                yaml_content=payload.yaml_content,
-                yaml_url=payload.yaml_url,
-                name=payload.name,
-                description=payload.description,
-                icon_type=payload.icon_type,
-                icon=payload.icon,
-                icon_background=payload.icon_background,
-                app_id=payload.app_id,
+                import_mode=body.mode,
+                yaml_content=body.yaml_content,
+                yaml_url=body.yaml_url,
+                name=body.name,
+                description=body.description,
+                icon_type=body.icon_type,
+                icon=body.icon,
+                icon_background=body.icon_background,
+                app_id=body.app_id,
             )
             if result.status == ImportStatus.FAILED:
                 session.rollback()
@@ -72,11 +63,11 @@ class AppDslImportApi(Resource):
 
         match result.status:
             case ImportStatus.FAILED:
-                return result.model_dump(mode="json"), 400
+                return result, 400
             case ImportStatus.PENDING:
-                return result.model_dump(mode="json"), 202
+                return result, 202
             case _:
-                return result.model_dump(mode="json"), 200
+                return result, 200
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports/<string:import_id>/confirm")
@@ -91,12 +82,12 @@ class AppDslImportConfirmApi(Resource):
     Returns 400 when the pending data has expired or the import fails.
     """
 
-    @openapi_ns.response(200, "Import confirmed", openapi_ns.models[Import.__name__])
-    @openapi_ns.response(400, "Import failed", openapi_ns.models[Import.__name__])
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
     )
+    @returns(200, Import, "Import confirmed")
+    @returns(400, Import, "Import failed")
     def post(self, workspace_id: str, import_id: str, *, auth_data: AuthData):
         account = cast(Account, auth_data.caller)
 
@@ -109,8 +100,8 @@ class AppDslImportConfirmApi(Resource):
                 session.commit()
 
         if result.status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        return result.model_dump(mode="json"), 200
+            return result, 400
+        return result, 200
 
 
 @openapi_ns.route("/apps/<string:app_id>/export")
@@ -126,18 +117,13 @@ class AppDslExportApi(Resource):
     receive a 403; enable the API in the console first if needed.
     """
 
-    @openapi_ns.doc(params=query_params_from_model(AppDslExportQuery))
     @openapi_ns.response(200, "Export successful")
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
     )
-    def get(self, app_id: str, *, auth_data: AuthData):
-        try:
-            query = AppDslExportQuery.model_validate(request.args.to_dict(flat=True))
-        except ValidationError as exc:
-            raise BadRequest(str(exc))
-
+    @accepts(query=AppDslExportQuery)
+    def get(self, app_id: str, *, auth_data: AuthData, query: AppDslExportQuery):
         app = cast(App, auth_data.app)
         data = AppDslService.export_dsl(
             app_model=app,
@@ -157,11 +143,11 @@ class AppDslCheckDependenciesApi(Resource):
     dependencies are satisfied.
     """
 
-    @openapi_ns.response(200, "Dependencies checked", openapi_ns.models[CheckDependenciesResult.__name__])
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
     )
+    @returns(200, CheckDependenciesResult, "Dependencies checked")
     def get(self, app_id: str, *, auth_data: AuthData):
         app = cast(App, auth_data.app)
 
@@ -169,4 +155,4 @@ class AppDslCheckDependenciesApi(Resource):
             service = AppDslService(session)
             result = service.check_dependencies(app_model=app)
 
-        return result.model_dump(mode="json"), 200
+        return result, 200
