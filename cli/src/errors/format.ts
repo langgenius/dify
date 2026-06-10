@@ -47,9 +47,14 @@ function renderEnvelope(env: ErrorEnvelope): string {
 function renderHuman(env: ErrorEnvelope, isErrTTY: boolean): string {
   const cs = colorScheme(colorEnabled(isErrTTY))
   const e = env.error
-  const lines: string[] = [`${e.code}: ${e.message}`]
-  if (e.hint !== undefined)
-    lines.push(`${cs.magenta('hint:')} ${cs.cyan(e.hint)}`)
+  const server = e.server
+  const headerCode = server?.code ?? e.code
+  const lines: string[] = [`${headerCode}: ${e.message}`]
+  for (const d of server?.details ?? [])
+    lines.push(`  - ${(d.loc ?? []).join('.')}: ${d.msg} (${d.type})`)
+  const hint = server?.hint ?? e.hint
+  if (hint !== undefined && hint !== null)
+    lines.push(`${cs.magenta('hint:')} ${cs.cyan(hint)}`)
   if (e.method !== undefined && e.url !== undefined)
     lines.push(`request: ${e.method} ${e.url}`)
   if (e.http_status !== undefined)
