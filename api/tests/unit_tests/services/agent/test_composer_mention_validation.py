@@ -31,36 +31,36 @@ def _node_job_payload(workflow_prompt: str) -> ComposerSavePayload:
 
 def test_soul_prompt_accepts_soul_kinds():
     payload = _soul_payload(
-        "Use {{#skill:s1#}} {{#file:f1#}} {{#tool:p/t#}} {{#cli_tool:c#}} {{#knowledge:k1#}} {{#human:h1#}}"
+        "Use [§skill:s1§] [§file:f1§] [§tool:p/t§] [§cli_tool:c§] [§knowledge:k1§] [§human:h1§]"
     )
     ComposerConfigValidator.validate_save_payload(payload)
 
 
 def test_soul_prompt_rejects_node_output_mention():
     with pytest.raises(InvalidComposerConfigError, match="mention_kind_not_allowed"):
-        ComposerConfigValidator.validate_save_payload(_soul_payload("Read {{#node_output:n1.text#}}"))
+        ComposerConfigValidator.validate_save_payload(_soul_payload("Read [§node_output:n1.text§]"))
 
 
 def test_soul_prompt_rejects_declared_output_mention():
     with pytest.raises(InvalidComposerConfigError, match="mention_kind_not_allowed"):
-        ComposerConfigValidator.validate_save_payload(_soul_payload("Produce {{#output:report#}}"))
+        ComposerConfigValidator.validate_save_payload(_soul_payload("Produce [§output:report§]"))
 
 
 def test_node_job_prompt_accepts_job_kinds():
     payload = _node_job_payload(
-        "Read {{#node_output:n1.text|START/text#}}, produce {{#output:report#}}, ask {{#human:h1#}}"
+        "Read [§node_output:n1.text:START/text§], produce [§output:report§], ask [§human:h1§]"
     )
     ComposerConfigValidator.validate_save_payload(payload)
 
 
-@pytest.mark.parametrize("token", ["{{#skill:s1#}}", "{{#tool:p/t#}}", "{{#cli_tool:c#}}", "{{#knowledge:k1#}}"])
+@pytest.mark.parametrize("token", ["[§skill:s1§]", "[§tool:p/t§]", "[§cli_tool:c§]", "[§knowledge:k1§]"])
 def test_node_job_prompt_rejects_soul_only_kinds(token: str):
     with pytest.raises(InvalidComposerConfigError, match="mention_kind_not_allowed"):
         ComposerConfigValidator.validate_save_payload(_node_job_payload(f"Use {token}"))
 
 
 def test_mention_limit_enforced():
-    prompt = " ".join(f"{{{{#human:h{i}#}}}}" for i in range(201))
+    prompt = " ".join(f"[§human:h{i}§]" for i in range(201))
     with pytest.raises(InvalidComposerConfigError, match="mention_limit_exceeded"):
         ComposerConfigValidator.validate_save_payload(_soul_payload(prompt))
 
@@ -93,11 +93,11 @@ def test_configured_human_without_mention_is_rejected():
 
 
 def test_configured_human_referenced_by_id_passes():
-    ComposerConfigValidator.validate_save_payload(_soul_payload_with_human("ask {{#human:c-1#}} when unsure"))
+    ComposerConfigValidator.validate_save_payload(_soul_payload_with_human("ask [§human:c-1§] when unsure"))
 
 
 def test_configured_human_referenced_by_email_alias_passes():
-    ComposerConfigValidator.validate_save_payload(_soul_payload_with_human("ask {{#human:david@acme.com#}}"))
+    ComposerConfigValidator.validate_save_payload(_soul_payload_with_human("ask [§human:david@acme.com§]"))
 
 
 def test_node_job_human_must_be_referenced_too():
@@ -114,7 +114,7 @@ def test_node_job_human_must_be_referenced_too():
     with pytest.raises(InvalidComposerConfigError, match="human_involvement_not_referenced"):
         ComposerConfigValidator.validate_save_payload(payload)
 
-    payload.node_job.workflow_prompt = "escalate to {{#human:c-2#}}"
+    payload.node_job.workflow_prompt = "escalate to [§human:c-2§]"
     ComposerConfigValidator.validate_save_payload(payload)
 
 
@@ -140,14 +140,14 @@ def _findings(payload: ComposerSavePayload, **kwargs):
 
 
 def test_dangling_knowledge_mention_becomes_placeholder_with_label():
-    payload = _soul_payload("ground in {{#knowledge:gone-1|旧产品手册#}}")
+    payload = _soul_payload("ground in [§knowledge:gone-1:旧产品手册§]")
     findings = _findings(payload)
     assert findings["knowledge_retrieval_placeholder"] == [{"id": "gone-1", "placeholder_name": "旧产品手册"}]
     assert findings["warnings"] == []
 
 
 def test_dangling_knowledge_without_label_gets_fallback_name():
-    findings = _findings(_soul_payload("see {{#knowledge:deadbeef-cafe#}}"))
+    findings = _findings(_soul_payload("see [§knowledge:deadbeef-cafe§]"))
     assert findings["knowledge_retrieval_placeholder"] == [
         {"id": "deadbeef-cafe", "placeholder_name": "Knowledge deadbeef"}
     ]
@@ -158,7 +158,7 @@ def test_configured_but_deleted_dataset_surfaces_as_placeholder():
         {
             "variant": "agent_app",
             "agent_soul": {
-                "prompt": {"system_prompt": "see {{#knowledge:ds-1|产品手册#}}"},
+                "prompt": {"system_prompt": "see [§knowledge:ds-1:产品手册§]"},
                 "knowledge": {"datasets": [{"id": "ds-1", "name": "产品手册"}]},
             },
             "save_strategy": "save_to_current_version",
@@ -173,7 +173,7 @@ def test_configured_but_deleted_dataset_surfaces_as_placeholder():
 
 
 def test_unresolved_non_knowledge_mentions_warn_target_missing():
-    findings = _findings(_soul_payload("use {{#skill:nope|Ghost Skill#}} and {{#human:missing#}}"))
+    findings = _findings(_soul_payload("use [§skill:nope:Ghost Skill§] and [§human:missing§]"))
     codes = [(w["code"], w["kind"]) for w in findings["warnings"]]
     assert ("mention_target_missing", "skill") in codes
     assert ("mention_target_missing", "human") in codes
@@ -181,7 +181,7 @@ def test_unresolved_non_knowledge_mentions_warn_target_missing():
 
 
 def test_malformed_marker_warns_but_does_not_block():
-    payload = _soul_payload("hello {{#wat:x|y#}} world")
+    payload = _soul_payload("hello [§wat:x:y§] world")
     ComposerConfigValidator.validate_save_payload(payload)  # no hard error
     findings = _findings(payload)
     assert [w["code"] for w in findings["warnings"]] == ["mention_malformed"]

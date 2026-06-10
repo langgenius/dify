@@ -2,20 +2,21 @@
 
 Slash-menu insertions are stored inline in the plain-string prompt as tokens:
 
-    {{#<kind>:<id>[|<label>]#}}
+    [§<kind>:<id>[:<label>]§]
 
 ``kind`` is a fixed lowercase word; ``id`` points at an item in the Agent config
 lists (mentions are pointers — the entity itself lives in ``skills_files`` /
 ``tools`` / ``knowledge.datasets`` / ``human.contacts`` /
 ``previous_node_output_refs`` / ``declared_outputs``); ``label`` is an optional
 plain-text fallback only (the backend always re-resolves by id, so renames never
-break references).
+break references). A single ``:`` separates all three fields; ``label`` is the
+trailing remainder and may itself contain ``:``.
 
-The colon form is invisible to the legacy prompt-template parsers
-(``core/prompt/utils/prompt_template_parser.py`` only matches ``{{var}}`` /
-``{{#a.b#}}`` dot forms), so these tokens never collide with existing Dify
-template syntax. Runtime expansion (and the final scrub that guarantees no
-internal marker ever reaches the model) is owned by the run-request builders.
+The ``[§…§]`` wrapper uses the section sign ``§`` (U+00A7), which never appears
+in Dify template syntax (``{{var}}`` / ``{{#a.b#}}``) nor in normal prompt text,
+so these tokens can never collide with the existing template parsers. Runtime
+expansion (and the final scrub that guarantees no internal marker ever reaches
+the model) is owned by the run-request builders.
 """
 
 from __future__ import annotations
@@ -45,13 +46,13 @@ class MentionKind(StrEnum):
 
 
 MENTION_PATTERN = re.compile(
-    r"\{\{#(skill|file|tool|cli_tool|knowledge|human|node_output|output):([^#|{}]+?)(?:\|([^#{}]*?))?#\}\}"
+    r"\[§(skill|file|tool|cli_tool|knowledge|human|node_output|output):([^:§]+?)(?::([^§]*?))?§\]"
 )
-# Anything mention-shaped (a kind-ish word followed by ``:``) that the strict
-# pattern did not consume — unknown kinds, malformed bodies. The colon
-# requirement keeps legacy ``{{#histories#}}`` / ``{{#node.var#}}`` forms (which
-# never contain a colon) out of scope.
-_RESIDUAL_MENTION_PATTERN = re.compile(r"\{\{#([A-Za-z_][A-Za-z0-9_]*:[^{}]*?)#\}\}")
+# Anything mention-shaped (``[§word:…§]``) that the strict pattern did not consume
+# — unknown kinds, malformed bodies. The ``§`` wrapper + a kind-word + ``:``
+# requirement keeps legacy ``{{#histories#}}`` / ``{{var}}`` template forms and
+# ordinary bracketed text out of scope.
+_RESIDUAL_MENTION_PATTERN = re.compile(r"\[§([A-Za-z_][A-Za-z0-9_]*:[^§]*?)§\]")
 
 MAX_MENTIONS_PER_PROMPT = 200
 MAX_MENTION_FIELD_LENGTH = 255
@@ -148,15 +149,16 @@ def find_malformed_mention_markers(prompt: str) -> list[str]:
 
 
 def scrub_mention_markers(text: str) -> str:
-    """Degrade any residual mention-shaped ``{{#kind:…#}}`` marker to readable text."""
+    """Degrade any residual mention-shaped ``[§kind:…§]`` marker to readable text."""
 
     def _degrade(match: re.Match[str]) -> str:
-        inner = match.group(1)
-        if "|" in inner:
-            label = inner.rsplit("|", 1)[1].strip()
-            if label:
-                return label[:MAX_MENTION_FIELD_LENGTH]
-        return inner.split(":", 1)[1].strip()[:MAX_MENTION_FIELD_LENGTH] or inner[:MAX_MENTION_FIELD_LENGTH]
+        # inner is ``kind:id[:label]``; prefer the label, else the id.
+        parts = match.group(1).split(":", 2)
+        if len(parts) >= 3 and parts[2].strip():
+            return parts[2].strip()[:MAX_MENTION_FIELD_LENGTH]
+        if len(parts) >= 2 and parts[1].strip():
+            return parts[1].strip()[:MAX_MENTION_FIELD_LENGTH]
+        return match.group(1)[:MAX_MENTION_FIELD_LENGTH]
 
     return _RESIDUAL_MENTION_PATTERN.sub(_degrade, text)
 

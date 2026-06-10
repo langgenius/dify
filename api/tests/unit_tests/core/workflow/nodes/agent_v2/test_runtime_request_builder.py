@@ -604,20 +604,20 @@ def test_effective_declared_outputs_passthrough_when_user_declared():
 def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
     """ENG-616: slash-menu mention tokens expand to canonical names; node_output
     mentions expand to the reference name only (the value stays in the Workflow
-    context user prompt), and no ``{{#…#}}`` marker leaks into the request."""
+    context user prompt), and no ``[§…§]`` marker leaks into the request."""
     import json
 
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
-        prompt={"system_prompt": "Careful. Ask {{#human:c-1|EMAIL · DAVE#}} when unsure."},
+        prompt={"system_prompt": "Careful. Ask [§human:c-1:EMAIL · DAVE§] when unsure."},
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
         human={"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
     )
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
             "workflow_prompt": (
-                "Read {{#node_output:previous-node.text|PREV/text#}} and produce {{#output:summary#}}. "
-                "Unknown {{#knowledge:gone|旧手册#}} degrades."
+                "Read [§node_output:previous-node.text:PREV/text§] and produce [§output:summary§]. "
+                "Unknown [§knowledge:gone:旧手册§] degrades."
             ),
             "previous_node_output_refs": [
                 {"selector": ["previous-node", "text"], "name": "PREV/text"},
@@ -637,4 +637,4 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
     )
     # the value still rides the Workflow context block, not the job prompt
     assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
-    assert "{{#" not in json.dumps(dumped["composition"]["layers"][:3])
+    assert "[§" not in json.dumps(dumped["composition"]["layers"][:3])

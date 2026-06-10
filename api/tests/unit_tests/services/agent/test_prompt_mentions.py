@@ -1,6 +1,6 @@
 """Unit tests for the prompt mention contract (ENG-616).
 
-Token form: ``{{#<kind>:<id>[|<label>]#}}``. Mentions are pointers into the Agent
+Token form: ``[§<kind>:<id>[:<label>]§]``. Mentions are pointers into the Agent
 config lists; expansion replaces them with canonical names and the scrub pass
 guarantees no mention-shaped marker survives to the model.
 """
@@ -26,7 +26,7 @@ from services.agent.prompt_mentions import (
 
 
 def test_parse_extracts_kind_id_and_optional_label():
-    prompt = "Use {{#skill:abc-1|tender-analyzer#}} then ask {{#human:c-1#}}."
+    prompt = "Use [§skill:abc-1:tender-analyzer§] then ask [§human:c-1§]."
     mentions = parse_prompt_mentions(prompt)
 
     assert [(m.kind, m.ref_id, m.label) for m in mentions] == [
@@ -38,45 +38,45 @@ def test_parse_extracts_kind_id_and_optional_label():
 
 def test_parse_supports_ids_with_slash_and_dot():
     mentions = parse_prompt_mentions(
-        "{{#tool:langgenius/tavily/tavily_search|tavily#}} {{#node_output:node-1.tenders#}}"
+        "[§tool:langgenius/tavily/tavily_search:tavily§] [§node_output:node-1.tenders§]"
     )
     assert mentions[0].ref_id == "langgenius/tavily/tavily_search"
     assert mentions[1].ref_id == "node-1.tenders"
 
 
 def test_parse_ignores_legacy_template_forms_and_unknown_kinds():
-    prompt = "{{var}} {{#context#}} {{#sys.query#}} {{#bogus_kind:x#}}"
+    prompt = "{{var}} {{#context#}} {{#sys.query#}} [§bogus_kind:x§]"
     assert parse_prompt_mentions(prompt) == []
 
 
 def test_parse_skips_oversized_id_or_label():
     long_id = "x" * (MAX_MENTION_FIELD_LENGTH + 1)
-    assert parse_prompt_mentions(f"{{{{#skill:{long_id}#}}}}") == []
+    assert parse_prompt_mentions(f"[§skill:{long_id}§]") == []
 
 
 # ── expand + scrub ────────────────────────────────────────────────────────────
 
 
 def test_expand_uses_resolver_and_degrades_unresolved_to_label_then_id():
-    prompt = "A {{#skill:s1|Skill One#}} B {{#human:h1|EMAIL · DAVE#}} C {{#knowledge:k1#}}"
+    prompt = "A [§skill:s1:Skill One§] B [§human:h1:EMAIL · DAVE§] C [§knowledge:k1§]"
 
     def resolver(mention):
         return "resolved-skill" if mention.kind == MentionKind.SKILL else None
 
     expanded = expand_prompt_mentions(prompt, resolver)
     assert expanded == "A resolved-skill B EMAIL · DAVE C k1"
-    assert "{{#" not in expanded
+    assert "[§" not in expanded
 
 
 def test_expand_scrubs_unknown_kind_tokens_but_keeps_legacy_forms():
-    prompt = "x {{#wat:id-1|Label#}} y {{#context#}} z {{#node.var#}}"
+    prompt = "x [§wat:id-1:Label§] y {{#context#}} z {{#node.var#}}"
     expanded = expand_prompt_mentions(prompt, lambda m: None)
     # unknown mention-shaped token degraded to its label; legacy forms untouched
     assert expanded == "x Label y {{#context#}} z {{#node.var#}}"
 
 
 def test_scrub_degrades_colon_tokens_without_label_to_id_part():
-    assert scrub_mention_markers("see {{#weird_kind:some-id#}}") == "see some-id"
+    assert scrub_mention_markers("see [§weird_kind:some-id§]") == "see some-id"
 
 
 def test_expand_empty_prompt_is_noop():
@@ -114,9 +114,9 @@ def soul() -> AgentSoulConfig:
 def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
     resolver = build_soul_mention_resolver(soul)
     prompt = (
-        "Use {{#skill:sk-1#}} with {{#file:f-1#}}, search via "
-        "{{#tool:tavily/tavily_search|tavily#}}, run {{#cli_tool:ffmpeg#}}, "
-        "ground in {{#knowledge:ds-1#}}, ask {{#human:c-1#}}."
+        "Use [§skill:sk-1§] with [§file:f-1§], search via "
+        "[§tool:tavily/tavily_search:tavily§], run [§cli_tool:ffmpeg§], "
+        "ground in [§knowledge:ds-1§], ask [§human:c-1§]."
     )
 
     expanded = expand_prompt_mentions(prompt, resolver)
@@ -128,7 +128,7 @@ def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
 
 
 def test_soul_resolver_unknown_ids_degrade(soul: AgentSoulConfig):
-    expanded = expand_prompt_mentions("{{#knowledge:missing|旧产品手册#}}", build_soul_mention_resolver(soul))
+    expanded = expand_prompt_mentions("[§knowledge:missing:旧产品手册§]", build_soul_mention_resolver(soul))
     assert expanded == "旧产品手册"
 
 
@@ -151,8 +151,8 @@ def node_job() -> WorkflowNodeJobConfig:
 def test_node_job_resolver_resolves_each_kind(node_job: WorkflowNodeJobConfig):
     resolver = build_node_job_mention_resolver(node_job)
     prompt = (
-        "Read {{#node_output:start-1.tenders#}} and produce {{#output:qna_report#}}; "
-        "if unsure contact {{#human:c-1#}}."
+        "Read [§node_output:start-1.tenders§] and produce [§output:qna_report§]; "
+        "if unsure contact [§human:c-1§]."
     )
 
     expanded = expand_prompt_mentions(prompt, resolver)
@@ -164,7 +164,7 @@ def test_node_job_resolver_matches_ref_by_node_id_and_output_fields():
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "n-2", "output": "text"}]}
     )
-    expanded = expand_prompt_mentions("{{#node_output:n-2.text|LLM/text#}}", build_node_job_mention_resolver(node_job))
+    expanded = expand_prompt_mentions("[§node_output:n-2.text:LLM/text§]", build_node_job_mention_resolver(node_job))
     # ref has no display name -> degrade to the mention label
     assert expanded == "LLM/text"
 
