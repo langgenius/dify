@@ -90,10 +90,12 @@ class WorkflowAgentComposerValidateApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App, node_id: str):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, app_model: App, node_id: str):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": []})
+        findings = AgentComposerService.collect_validation_findings(tenant_id=tenant_id, payload=payload)
+        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/candidates")
@@ -105,10 +107,17 @@ class WorkflowAgentComposerCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App, node_id: str):
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user_id: str, app_model: App, node_id: str):
         return dump_response(
             AgentComposerCandidatesResponse,
-            AgentComposerService.get_workflow_candidates(app_id=app_model.id),
+            AgentComposerService.get_workflow_candidates(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                node_id=node_id,
+                user_id=current_user_id,
+            ),
         )
 
 
@@ -167,7 +176,7 @@ class AgentAppComposerApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
+    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
     def get(self, tenant_id: str, app_model: App):
         return dump_response(
@@ -181,7 +190,7 @@ class AgentAppComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model()
+    @get_app_model(mode=[AppMode.AGENT])
     @with_current_user_id
     @with_current_tenant_id
     def put(self, tenant_id: str, account_id: str, app_model: App):
@@ -206,11 +215,13 @@ class AgentAppComposerValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
-    def post(self, app_model: App):
+    @get_app_model(mode=[AppMode.AGENT])
+    @with_current_tenant_id
+    def post(self, tenant_id: str, app_model: App):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": []})
+        findings = AgentComposerService.collect_validation_findings(tenant_id=tenant_id, payload=payload)
+        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent-composer/candidates")
@@ -221,9 +232,15 @@ class AgentAppComposerCandidatesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
-    def get(self, app_model: App):
+    @get_app_model(mode=[AppMode.AGENT])
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user_id: str, app_model: App):
         return dump_response(
             AgentComposerCandidatesResponse,
-            AgentComposerService.get_agent_app_candidates(app_id=app_model.id),
+            AgentComposerService.get_agent_app_candidates(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                user_id=current_user_id,
+            ),
         )

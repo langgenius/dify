@@ -1,6 +1,13 @@
 ## Frontend Workflow
 
 - Refer to the `./docs/test.md` and `./docs/lint.md` for detailed frontend workflow instructions.
+- For frontend coding tasks, also apply the repo-local `how-to-write-component` skill when the change touches React components, state ownership, routing, styling, or Tailwind classes.
+- For frontend reviews, use the repo-local `frontend-code-review` skill as the canonical checklist.
+
+## i18n
+
+- User-facing strings must use `web/i18n/en-US/` keys instead of hardcoded text.
+- When adding or renaming an i18n key, update all supported locale files with correct localized values. Do not leave fallback English in non-English locales unless the repo already intentionally does so for that exact key.
 
 ## Overlay Components (Mandatory)
 
@@ -8,6 +15,14 @@
 - `./docs/overlay.md` records the current web overlay best practices.
 - In new or modified code, use only overlay primitives from `@langgenius/dify-ui/*`.
 - Do not introduce overlay imports from `@/app/components/base/*`; when touching existing callers, migrate them.
+
+## SVG Icons (Mandatory)
+
+- New custom SVG icons must be added under `../packages/iconify-collections/assets/...`.
+- Run `pnpm --filter @dify/iconify-collections generate` and consume generated icons with Tailwind `i-custom-*` classes.
+- Restart the web dev server after regenerating icons because Tailwind loads the custom icon collection at startup.
+- Do not add new generated React icon components or JSON files under `app/components/base/icons/src/...`.
+- See `../packages/iconify-collections/README.md` for the full workflow.
 
 ## Design Token Mapping
 

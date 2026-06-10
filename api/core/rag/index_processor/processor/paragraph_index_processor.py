@@ -3,7 +3,7 @@
 import logging
 import re
 import uuid
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict, cast, override
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,7 @@ class ParagraphFormatPreviewDict(TypedDict):
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
+    @override
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
             extract_setting=extract_setting,
@@ -71,6 +72,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         return text_docs
 
+    @override
     def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
@@ -120,6 +122,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         return all_documents
 
+    @override
     def load(
         self,
         dataset: Dataset,
@@ -142,6 +145,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.add_texts(documents)
 
+    @override
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
@@ -178,6 +182,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.delete()
 
+    @override
     def retrieve(
         self,
         retrieval_method: RetrievalMethod,
@@ -206,6 +211,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 docs.append(doc)
         return docs
 
+    @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         documents: list[Any] = []
         all_multimodal_documents: list[Any] = []
@@ -271,6 +277,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
 
+    @override
     def format_preview(self, chunks: Any) -> ParagraphFormatPreviewDict:
         if isinstance(chunks, list):
             preview = []
@@ -285,6 +292,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         else:
             raise ValueError("Chunks is not a list")
 
+    @override
     def generate_summary_preview(
         self,
         tenant_id: str,

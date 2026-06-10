@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import NewAppResponse, SimpleResultResponse
 from controllers.common.schema import (
     register_response_schema_model,
@@ -19,9 +20,19 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import (
+    ConversationCompletedError,
+    DraftWorkflowNotExist,
+    DraftWorkflowNotSync,
+)
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -50,11 +61,12 @@ from graphon.file import helpers as file_helpers
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
+from graphon.variables.exc import VariableError
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
-from libs.login import current_account_with_tenant, login_required
-from models import App
+from libs.login import login_required
+from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
@@ -401,13 +413,12 @@ class DraftWorkflowApi(Resource):
     )
     @console_ns.response(400, "Invalid workflow configuration")
     @console_ns.response(403, "Permission denied")
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, current_user: Account, app_model: App):
         """
         Sync draft workflow
         """
-        current_user, _ = current_account_with_tenant()
-
         content_type = request.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
@@ -447,6 +458,8 @@ class DraftWorkflowApi(Resource):
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
+        except VariableError as e:
+            raise InvalidArgumentError(description=str(e))
 
         return {
             "result": "success",
@@ -468,13 +481,12 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
-        current_user, _ = current_account_with_tenant()
-
         args_model = AdvancedChatWorkflowRunPayload.model_validate(console_ns.payload or {})
         args = args_model.model_dump(exclude_none=True)
 
@@ -514,12 +526,12 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
-        current_user, _ = current_account_with_tenant()
         args = IterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         try:
@@ -552,12 +564,12 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
-        current_user, _ = current_account_with_tenant()
         args = IterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         try:
@@ -590,12 +602,12 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow loop node
         """
-        current_user, _ = current_account_with_tenant()
         args = LoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
@@ -628,12 +640,12 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow loop node
         """
-        current_user, _ = current_account_with_tenant()
         args = LoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
@@ -695,12 +707,12 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
         """
-        current_user, _ = current_account_with_tenant()
         args = HumanInputFormPreviewPayload.model_validate(console_ns.payload or {})
         inputs = args.inputs
 
@@ -724,12 +736,12 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
-        current_user, _ = current_account_with_tenant()
         args = HumanInputFormSubmitPayload.model_validate(console_ns.payload or {})
         workflow_service = WorkflowService()
         result = workflow_service.submit_human_input_form_preview(
@@ -753,12 +765,12 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
         """
-        current_user, _ = current_account_with_tenant()
         args = HumanInputFormPreviewPayload.model_validate(console_ns.payload or {})
         inputs = args.inputs
 
@@ -782,12 +794,12 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
-        current_user, _ = current_account_with_tenant()
         workflow_service = WorkflowService()
         args = HumanInputFormSubmitPayload.model_validate(console_ns.payload or {})
         result = workflow_service.submit_human_input_form_preview(
@@ -811,12 +823,12 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Test human input delivery
         """
-        current_user, _ = current_account_with_tenant()
         workflow_service = WorkflowService()
         args = HumanInputDeliveryTestPayload.model_validate(console_ns.payload or {})
         workflow_service.test_human_input_delivery(
@@ -841,12 +853,12 @@ class DraftWorkflowRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
-        current_user, _ = current_account_with_tenant()
         args = DraftWorkflowRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         external_trace_id = get_external_trace_id(request)
@@ -911,12 +923,12 @@ class DraftWorkflowNodeRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow node
         """
-        current_user, _ = current_account_with_tenant()
         args_model = DraftWorkflowNodeRunPayload.model_validate(console_ns.payload or {})
         args = args_model.model_dump(exclude_none=True)
 
@@ -981,12 +993,12 @@ class PublishedWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, current_user: Account, app_model: App):
         """
         Publish workflow
         """
-        current_user, _ = current_account_with_tenant()
 
         args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
@@ -1086,14 +1098,14 @@ class ConvertToWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, current_user: Account, app_model: App):
         """
         Convert basic mode of chatbot app to workflow mode
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-        current_user, _ = current_account_with_tenant()
 
         payload = console_ns.payload or {}
         args = ConvertToWorkflowPayload.model_validate(payload).model_dump(exclude_none=True)
@@ -1125,9 +1137,9 @@ class WorkflowFeaturesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App):
-        current_user, _ = current_account_with_tenant()
+    def post(self, current_user: Account, app_model: App):
 
         args = WorkflowFeaturesPayload.model_validate(console_ns.payload or {})
         features = args.features
@@ -1153,12 +1165,12 @@ class PublishedAllWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def get(self, app_model: App):
+    def get(self, current_user: Account, app_model: App):
         """
         Get published workflows
         """
-        current_user, _ = current_account_with_tenant()
 
         args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))
         page = args.page
@@ -1202,9 +1214,9 @@ class DraftWorkflowRestoreApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, workflow_id: str):
-        current_user, _ = current_account_with_tenant()
+    def post(self, current_user: Account, app_model: App, workflow_id: str):
         workflow_service = WorkflowService()
 
         try:
@@ -1240,12 +1252,12 @@ class WorkflowByIdApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def patch(self, app_model: App, workflow_id: str):
+    def patch(self, current_user: Account, app_model: App, workflow_id: str):
         """
         Update workflow attributes
         """
-        current_user, _ = current_account_with_tenant()
         args = WorkflowUpdatePayload.model_validate(console_ns.payload or {})
 
         # Prepare update data
@@ -1358,12 +1370,12 @@ class DraftWorkflowTriggerRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, current_user: Account, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
         """
-        current_user, _ = current_account_with_tenant()
         args = DraftWorkflowTriggerRunPayload.model_validate(console_ns.payload or {})
         node_id = args.node_id
         workflow_service = WorkflowService()
@@ -1422,12 +1434,12 @@ class DraftWorkflowTriggerNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App, node_id: str):
+    def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Poll for trigger events and execute single node when event arrives
         """
-        current_user, _ = current_account_with_tenant()
 
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model)
@@ -1502,12 +1514,12 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, current_user: Account, app_model: App):
         """
         Full workflow debug when the start node is a trigger
         """
-        current_user, _ = current_account_with_tenant()
 
         args = DraftWorkflowTriggerRunAllPayload.model_validate(console_ns.payload or {})
         node_ids = args.node_ids
@@ -1568,7 +1580,8 @@ class WorkflowOnlineUsersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
 
         app_ids = args.app_ids
@@ -1578,7 +1591,6 @@ class WorkflowOnlineUsersApi(Resource):
         if not app_ids:
             return {"data": []}
 
-        _, current_tenant_id = current_account_with_tenant()
         workflow_service = WorkflowService()
         accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id)
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]

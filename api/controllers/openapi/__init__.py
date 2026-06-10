@@ -25,6 +25,9 @@ from controllers.openapi._models import (
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
+    AppDslExportQuery,
+    AppDslExportResponse,
+    AppDslImportPayload,
     AppInfoResponse,
     AppListQuery,
     AppListResponse,
@@ -37,6 +40,8 @@ from controllers.openapi._models import (
     DeviceMutateRequest,
     DeviceMutateResponse,
     DevicePollRequest,
+    FormSubmitResponse,
+    HealthResponse,
     MemberActionResponse,
     MemberInvitePayload,
     MemberInviteResponse,
@@ -49,9 +54,11 @@ from controllers.openapi._models import (
     PermittedExternalAppsListResponse,
     RevokeResponse,
     ServerVersionResponse,
+    SessionListQuery,
     SessionListResponse,
     SessionRow,
     TagItem,
+    TaskStopResponse,
     UsageInfo,
     WorkflowRunData,
     WorkspaceDetailResponse,
@@ -60,10 +67,14 @@ from controllers.openapi._models import (
     WorkspaceSummaryResponse,
 )
 from fields.file_fields import FileResponse
+from services.app_dsl_service import Import
+from services.entities.dsl_entities import CheckDependenciesResult
 
 register_schema_models(
     openapi_ns,
     AppDescribeQuery,
+    AppDslImportPayload,
+    AppDslExportQuery,
     AppListQuery,
     AppRunRequest,
     DeviceCodeRequest,
@@ -74,6 +85,7 @@ register_schema_models(
     MemberListQuery,
     MemberRoleUpdatePayload,
     PermittedExternalAppsListQuery,
+    SessionListQuery,
 )
 register_response_schema_models(
     openapi_ns,
@@ -85,6 +97,9 @@ register_response_schema_models(
     AppInfoResponse,
     AppDescribeInfo,
     AppDescribeResponse,
+    AppDslExportResponse,
+    Import,
+    CheckDependenciesResult,
     WorkflowRunData,
     AccountPayload,
     WorkspacePayload,
@@ -100,16 +115,20 @@ register_response_schema_models(
     MemberListResponse,
     MemberInviteResponse,
     MemberActionResponse,
+    TaskStopResponse,
+    FormSubmitResponse,
     DeviceCodeResponse,
     DeviceLookupResponse,
     DeviceMutateResponse,
     FileResponse,
     ServerVersionResponse,
+    HealthResponse,
 )
 
 from . import (
     _meta,
     account,
+    app_dsl,
     app_run,
     apps,
     apps_permitted_external,
@@ -127,6 +146,7 @@ from . import (
 __all__ = [
     "_meta",
     "account",
+    "app_dsl",
     "app_run",
     "apps",
     "apps_permitted_external",

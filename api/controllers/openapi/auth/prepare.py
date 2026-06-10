@@ -19,6 +19,10 @@ def load_app(data: AuthData) -> None:
     if data.app is not None:
         return
     app_id = data.path_params["app_id"]
+    try:
+        uuid.UUID(app_id)
+    except ValueError:
+        raise NotFound("app not found")
     app = AppService.get_app_by_id(db.session, app_id)
     if not app or app.status != "normal":
         raise NotFound("app not found")

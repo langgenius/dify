@@ -9,9 +9,8 @@ import { FileUploadClient } from '@/api/file-upload'
 import { pickStrategy } from '@/commands/run/app/_strategies/index'
 import { BaseError, HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { getEnv, processExit } from '@/sys/index'
+import { processExit } from '@/sys/index'
 import { FieldInfo } from '@/types/app-meta'
-import { resolveWorkspaceId } from '@/workspace/resolver'
 import { resolveFileInputs } from './file-flags.js'
 import { RUN_MODES } from './handlers.js'
 
@@ -78,13 +77,11 @@ async function resolveInputs(
 }
 
 export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<void> {
-  const env = deps.envLookup ?? getEnv
-  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
 
   try {
-    await executeRun(opts, deps, meta, wsId)
+    await executeRun(opts, deps, meta)
   }
   catch (err) {
     if (err instanceof HttpClientError && err.httpStatus === 422) {
@@ -99,9 +96,8 @@ async function executeRun(
   opts: RunAppOptions,
   deps: RunAppDeps,
   meta: AppMetaClient,
-  wsId: string,
 ): Promise<void> {
-  const m = await meta.get(opts.appId, wsId, [FieldInfo])
+  const m = await meta.get(opts.appId, [FieldInfo])
   const mode = m.info?.mode ?? ''
   if (mode === '')
     throw new Error(`app ${opts.appId}: mode missing from /describe`)
