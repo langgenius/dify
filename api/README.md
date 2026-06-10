@@ -34,6 +34,9 @@ The scripts resolve paths relative to their location, so you can run them from a
    ./dev/start-api
    ```
 
+   This starts the API through Gunicorn with a gevent websocket-capable worker.
+   Direct server startup via `python -m app` or `flask run` is unsupported.
+
 1. Start Dify [web](../web) service.
 
    ```bash
@@ -50,11 +53,17 @@ The scripts resolve paths relative to their location, so you can run them from a
    ./dev/start-worker
    ```
 
+   This uses `celery_entrypoint.celery` so local worker startup applies the
+   same gevent compatibility patches as Docker deployments.
+
 1. Optional: start Celery Beat (scheduled tasks).
 
    ```bash
    ./dev/start-beat
    ```
+
+   Beat also runs through `celery_entrypoint.celery` to keep local and Docker
+   startup behavior aligned.
 
 ### Environment notes
 
@@ -77,6 +86,18 @@ The scripts resolve paths relative to their location, so you can run them from a
   sed -i '' "/^SECRET_KEY=/c\\
   SECRET_KEY=${secret_key}" .env
   ```
+
+### Runtime model
+
+- The supported backend runtime is gevent-only.
+- Gunicorn owns standard library monkey patch timing for API workers.
+- Celery owns gevent pool patch timing for worker and beat processes.
+- Shared third-party compatibility patches (currently gRPC and psycopg2) are
+  applied through `gunicorn.conf.py` and `celery_entrypoint.py`.
+- 使用 IntelliJ IDEA 或 PyCharm 调试后端时，需要在对应的 Python Debug
+  配置中启用
+  [`"Gevent compatible"` 选项](https://www.jetbrains.com/help/pycharm/debugger-python.html#:~:text=Gevent%20compatible)，
+  否则调试器的运行模型会和当前 gevent-only runtime 不一致。
 
 ## Testing
 

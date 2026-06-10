@@ -1,11 +1,25 @@
 #!/bin/bash
 
-set -x
+set -ex
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/../api"
 
 uv run flask db upgrade
 
+HOST="${DIFY_BIND_ADDRESS:-0.0.0.0}"
+PORT="${DIFY_PORT:-5001}"
+WORKERS="${SERVER_WORKER_AMOUNT:-1}"
+WORKER_CLASS="${SERVER_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker}"
+WORKER_CONNECTIONS="${SERVER_WORKER_CONNECTIONS:-10}"
+TIMEOUT="${GUNICORN_TIMEOUT:-200}"
+
 uv run \
-  flask run --host 0.0.0.0 --port=5001 --debug
+  gunicorn \
+  --reload \
+  --bind "${HOST}:${PORT}" \
+  --workers "${WORKERS}" \
+  --worker-class "${WORKER_CLASS}" \
+  --worker-connections "${WORKER_CONNECTIONS}" \
+  --timeout "${TIMEOUT}" \
+  app:socketio_app

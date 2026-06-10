@@ -69,7 +69,7 @@ if [[ "${MODE}" == "worker" ]]; then
     --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1}
 
 elif [[ "${MODE}" == "beat" ]]; then
-  exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
+  exec celery -A celery_entrypoint.celery beat --loglevel ${LOG_LEVEL:-INFO}
 
 elif [[ "${MODE}" == "job" ]]; then
   # Job mode: Run a one-time Flask command and exit
@@ -118,17 +118,13 @@ elif [[ "${MODE}" == "job" ]]; then
   exit ${JOB_EXIT_CODE}
 
 else
-  if [[ "${DEBUG}" == "true" ]]; then
-    export HOST=${DIFY_BIND_ADDRESS:-0.0.0.0}
-    export PORT=${DIFY_PORT:-5001}
-    exec python -m app
-  else
-    exec gunicorn \
-      --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-5001}" \
-      --workers ${SERVER_WORKER_AMOUNT:-1} \
-      --worker-class ${SERVER_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker} \
-      --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
-      --timeout ${GUNICORN_TIMEOUT:-200} \
-      app:socketio_app
-  fi
+  # The API runtime is always Gunicorn + gevent. DEBUG only affects
+  # application-level behavior and must not change the process model.
+  exec gunicorn \
+    --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-5001}" \
+    --workers ${SERVER_WORKER_AMOUNT:-1} \
+    --worker-class ${SERVER_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker} \
+    --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
+    --timeout ${GUNICORN_TIMEOUT:-200} \
+    app:socketio_app
 fi
