@@ -8,6 +8,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/client'
+import { AgentFiles } from './components/agent-files'
 import { AgentPromptEditor } from './components/agent-prompt-editor'
 import { AgentSkills } from './components/agent-skills'
 
@@ -74,6 +75,9 @@ export function AgentConfigurePage({
 
           {/* Skills */}
           <AgentSkills />
+
+          {/* Files */}
+          <AgentFiles />
 
           {/* Tools */}
           <div className="mb-4 space-y-2">

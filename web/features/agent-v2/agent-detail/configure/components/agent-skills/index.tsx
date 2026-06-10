@@ -2,6 +2,7 @@
 
 import type { AgentSkill } from './agent-skill-item'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentSkillItem } from './agent-skill-item'
 
@@ -30,7 +31,9 @@ export function AgentSkills({
   skills?: AgentSkill[]
 }) {
   const { t } = useTranslation('agentV2')
+  const [isExpanded, setIsExpanded] = useState(true)
   const skillsTip = t('agentDetail.configure.skills.tip')
+  const skillsListId = 'agent-configure-skills-list'
 
   return (
     <section className="mb-4 border-b border-divider-subtle py-4" aria-labelledby="agent-configure-skills-label">
@@ -61,9 +64,15 @@ export function AgentSkills({
           <button
             type="button"
             aria-label={t('agentDetail.configure.skills.toggle')}
+            aria-controls={skillsListId}
+            aria-expanded={isExpanded}
+            onClick={() => setIsExpanded(expanded => !expanded)}
             className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
-            <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+            <span
+              aria-hidden
+              className={`i-custom-vender-solid-arrows-arrow-down-round-fill size-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
+            />
           </button>
         </div>
 
@@ -76,7 +85,7 @@ export function AgentSkills({
         </button>
       </div>
 
-      <div className="flex flex-col gap-1">
+      <div id={skillsListId} hidden={!isExpanded} className="flex flex-col gap-1">
         {skills.map(skill => (
           <AgentSkillItem key={skill.id} skill={skill} />
         ))}
