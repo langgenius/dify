@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useDocumentTitle from '@/hooks/use-document-title'
 import useTimestamp from '@/hooks/use-timestamp'
+import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 
 type AgentDetailLayoutProps = {
@@ -43,6 +44,7 @@ export function AgentDetailLayout({
 }: AgentDetailLayoutProps) {
   const { t } = useTranslation('agentV2')
   const { t: tWorkflow } = useTranslation('workflow')
+  const pathname = usePathname()
   const [showVersionHistory, setShowVersionHistory] = useState(false)
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
@@ -63,56 +65,59 @@ export function AgentDetailLayout({
   })
   const agent = agentQuery.data
   const isAgentPending = agentQuery.isPending
+  const isConfigureSection = pathname.split('/').filter(Boolean).at(2) === 'configure'
 
   useDocumentTitle(agent?.name ?? t('agentDetail.documentTitle'))
 
   return (
     <main className="relative flex h-full min-w-0 flex-col overflow-hidden bg-components-panel-bg-blur">
-      <header className="flex h-20 shrink-0 items-center justify-between border-b border-divider-subtle bg-components-panel-bg-blur px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <AgentIcon agent={agent} />
-          <div className="min-w-0">
-            {isAgentPending
-              ? <SkeletonRectangle className="my-0 h-5 w-32 animate-pulse rounded-md" />
-              : (
-                  <h1 className="truncate title-xl-semi-bold text-text-primary">
-                    {agent?.name ?? t('agentDetail.title')}
-                  </h1>
-                )}
-            <p className="mt-1 truncate system-xs-regular text-text-tertiary">
-              {t('agentDetail.subtitle', { agentId })}
-            </p>
+      {!isConfigureSection && (
+        <header className="flex h-20 shrink-0 items-center justify-between border-b border-divider-subtle bg-components-panel-bg-blur px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <AgentIcon agent={agent} />
+            <div className="min-w-0">
+              {isAgentPending
+                ? <SkeletonRectangle className="my-0 h-5 w-32 animate-pulse rounded-md" />
+                : (
+                    <h1 className="truncate title-xl-semi-bold text-text-primary">
+                      {agent?.name ?? t('agentDetail.title')}
+                    </h1>
+                  )}
+              <p className="mt-1 truncate system-xs-regular text-text-tertiary">
+                {t('agentDetail.subtitle', { agentId })}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="primary"
-            disabled
-            aria-label={`${t('agentDetail.publish')} · ${t('agentDetail.publishSoon')}`}
-            title={`${t('agentDetail.publish')} · ${t('agentDetail.publishSoon')}`}
-            className="min-w-40 gap-2 py-2 pr-2 pl-3"
-          >
-            <span aria-hidden className="i-ri-upload-cloud-2-line size-4" />
-            <span>
-              {t('agentDetail.publish')}
-            </span>
-            <span className="rounded-[5px] bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-              {t('agentDetail.publishSoon')}
-            </span>
-          </Button>
-          <Button
-            variant="secondary"
-            className={cn(
-              'size-8 px-0! text-text-tertiary hover:text-text-secondary',
-              showVersionHistory && 'border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-text-secondary',
-            )}
-            aria-label={tWorkflow('common.versionHistory')}
-            onClick={() => setShowVersionHistory(true)}
-          >
-            <span aria-hidden className="i-ri-history-line size-4" />
-          </Button>
-        </div>
-      </header>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="primary"
+              disabled
+              aria-label={`${t('agentDetail.publish')} · ${t('agentDetail.publishSoon')}`}
+              title={`${t('agentDetail.publish')} · ${t('agentDetail.publishSoon')}`}
+              className="min-w-40 gap-2 py-2 pr-2 pl-3"
+            >
+              <span aria-hidden className="i-ri-upload-cloud-2-line size-4" />
+              <span>
+                {t('agentDetail.publish')}
+              </span>
+              <span className="rounded-[5px] bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                {t('agentDetail.publishSoon')}
+              </span>
+            </Button>
+            <Button
+              variant="secondary"
+              className={cn(
+                'size-8 px-0! text-text-tertiary hover:text-text-secondary',
+                showVersionHistory && 'border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-text-secondary',
+              )}
+              aria-label={tWorkflow('common.versionHistory')}
+              onClick={() => setShowVersionHistory(true)}
+            >
+              <span aria-hidden className="i-ri-history-line size-4" />
+            </Button>
+          </div>
+        </header>
+      )}
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">
         {children}
       </div>

@@ -1,10 +1,8 @@
 'use client'
 
-import { skipToken, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { AgentMetadata } from './components/agent-metadata'
-import { MemorySettings } from './components/memory-settings'
 
 type AgentConfigurePageProps = {
   agentId: string
@@ -21,32 +19,92 @@ export function AgentConfigurePage({
       },
     },
   }))
-  const activeVersionId = agentQuery.data?.active_config_snapshot_id
-  const versionDetailQuery = useQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
-    input: activeVersionId
-      ? {
-          params: {
-            agent_id: agentId,
-            version_id: activeVersionId,
-          },
-        }
-      : skipToken,
-  }))
 
   return (
     <section
       aria-label={t('agentDetail.sections.configure')}
-      className="h-full min-w-0 flex-1 overflow-auto bg-components-panel-bg-blur px-4 py-6 sm:px-12"
+      aria-busy={agentQuery.isPending}
+      className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden bg-background-default p-1"
     >
-      <div className="mx-auto max-w-3xl space-y-4">
-        <AgentMetadata
-          agent={agentQuery.data}
-          isPending={agentQuery.isPending}
-        />
-        <MemorySettings
-          isPending={agentQuery.isPending || (!!activeVersionId && versionDetailQuery.isPending)}
-          memory={versionDetailQuery.data?.config_snapshot.memory}
-        />
+      {/* Orchestrate configuration panel */}
+      <div className="flex min-w-[360px] flex-[0_0_42%] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg">
+        {/* Orchestrate header */}
+        <div className="flex h-14 shrink-0 items-center gap-3 border-b border-divider-subtle px-4">
+          <div className="h-5 w-30 rounded-md bg-state-base-hover" />
+          <div className="ml-auto h-8 w-31 rounded-lg bg-state-base-hover" />
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+          {/* Prompt editor */}
+          <div className="mb-4 h-52 rounded-lg border border-state-accent-solid bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3" />
+
+          {/* Skills and files */}
+          <div className="mb-4 space-y-2">
+            <div className="h-4 w-34 rounded bg-state-base-hover" />
+            <div className="space-y-1">
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+            </div>
+          </div>
+
+          {/* Tools */}
+          <div className="mb-4 space-y-2">
+            <div className="h-4 w-18 rounded bg-state-base-hover" />
+            <div className="space-y-1">
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+            </div>
+          </div>
+
+          {/* Knowledge retrieval */}
+          <div className="space-y-2">
+            <div className="h-4 w-40 rounded bg-state-base-hover" />
+            <div className="space-y-1">
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
+            </div>
+          </div>
+        </div>
+
+        {/* Save and publish actions */}
+        <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-4">
+          <div className="h-8 w-36 rounded-xl bg-components-panel-on-panel-item-bg shadow-md shadow-shadow-shadow-5" />
+          <div className="h-8 w-20 rounded-lg bg-components-button-primary-bg shadow-xs shadow-shadow-shadow-3" />
+        </div>
+      </div>
+
+      {/* Preview panel */}
+      <div className="flex min-w-[420px] flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
+        {/* Preview header */}
+        <div className="flex h-14 shrink-0 items-center gap-3 px-6">
+          <div className="h-5 w-18 rounded-md bg-state-base-hover" />
+          <div className="ml-auto flex gap-2">
+            <div className="size-8 rounded-lg bg-state-base-hover" />
+            <div className="size-8 rounded-lg bg-state-base-hover" />
+            <div className="size-8 rounded-lg bg-state-base-hover" />
+          </div>
+        </div>
+
+        {/* Chat transcript */}
+        <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
+          <div className="mx-auto flex max-w-[720px] flex-col gap-3">
+            <div className="ml-auto h-12 w-48 rounded-2xl bg-background-default-dimmed" />
+            <div className="h-16 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-1" />
+            <div className="h-7 w-80 rounded-md bg-components-panel-on-panel-item-bg" />
+            <div className="h-9 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-2" />
+            <div className="h-9 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-2" />
+            <div className="h-26 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-1" />
+            <div className="h-8 w-32 rounded-lg bg-state-base-hover" />
+          </div>
+        </div>
+
+        {/* Chat input */}
+        <div className="shrink-0 bg-linear-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2 px-6 py-3">
+          <div className="mx-auto h-12 max-w-[720px] rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5" />
+        </div>
       </div>
     </section>
   )
