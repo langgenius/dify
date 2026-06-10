@@ -749,6 +749,7 @@ class _InsertionDict(TypedDict):
     file_id: str | None
     visible: NotRequired[bool]
     editable: NotRequired[bool]
+    is_default_value: NotRequired[bool]
     created_at: NotRequired[datetime]
     updated_at: NotRequired[datetime]
     description: NotRequired[str]
