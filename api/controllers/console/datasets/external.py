@@ -295,7 +295,7 @@ class ExternalDatasetCreateApi(Resource):
         )
         item["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
 
-        return marshal(dataset, dataset_detail_fields), 201
+        return item, 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
