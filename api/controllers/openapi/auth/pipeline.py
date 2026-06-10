@@ -145,7 +145,7 @@ class PipelineRouter:
         allowed_token_types: frozenset[TokenType] | None = None,
         edition: frozenset[Edition] | None = None,
         allowed_roles: frozenset[TenantAccountRole] | None = frozenset(
-            [TenantAccountRole.ADMIN, TenantAccountRole.EDITOR]
+            [TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR]
         ),
     ) -> Callable:
         return self._make_decorator(
