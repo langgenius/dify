@@ -69,9 +69,9 @@ class OAuthUserInfo:
 
 
 def encode_oauth_state(
-    invite_token: str | None = None,
-    timezone: str | None = None,
-    language: str | None = None,
+    invite_token: str = "",
+    timezone: str = "",
+    language: str = "",
 ) -> str | None:
     state: OAuthState = {}
     if invite_token:
@@ -119,9 +119,9 @@ class OAuth:
 
     def get_authorization_url(
         self,
-        invite_token: str | None = None,
-        timezone: str | None = None,
-        language: str | None = None,
+        invite_token: str = "",
+        timezone: str = "",
+        language: str = "",
     ) -> str:
         raise NotImplementedError()
 
@@ -148,9 +148,9 @@ class GitHubOAuth(OAuth):
     @override
     def get_authorization_url(
         self,
-        invite_token: str | None = None,
-        timezone: str | None = None,
-        language: str | None = None,
+        invite_token: str = "",
+        timezone: str = "",
+        language: str = "",
     ) -> str:
         params = {
             "client_id": self.client_id,
@@ -234,7 +234,7 @@ class GitHubOAuth(OAuth):
             github_id = payload["id"]
             email = f"{github_id}@users.noreply.github.com"
             logger.info("GitHub user %s has no public email; using noreply address", payload["login"])
-        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name") or ""), email=email)
+        return OAuthUserInfo(id=str(payload["id"]), name=payload.get("name") or "", email=email)
 
 
 class GoogleOAuth(OAuth):
@@ -245,9 +245,9 @@ class GoogleOAuth(OAuth):
     @override
     def get_authorization_url(
         self,
-        invite_token: str | None = None,
-        timezone: str | None = None,
-        language: str | None = None,
+        invite_token: str = "",
+        timezone: str = "",
+        language: str = "",
     ) -> str:
         params = {
             "client_id": self.client_id,
@@ -290,4 +290,4 @@ class GoogleOAuth(OAuth):
     @override
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = GOOGLE_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
-        return OAuthUserInfo(id=str(payload["sub"]), name="", email=payload["email"])
+        return OAuthUserInfo(id=payload["sub"], name="", email=payload["email"])
