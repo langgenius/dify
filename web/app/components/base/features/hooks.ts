@@ -12,5 +12,5 @@ export function useFeatures<T>(selector: (state: FeatureStoreState) => T): T {
 }
 
 export function useFeaturesStore() {
-  return useContext(FeaturesContext)
+  return use(FeaturesContext)
 }
