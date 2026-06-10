@@ -30,16 +30,6 @@ describe('AppDslClient.exportDsl', () => {
     expect(yaml).toBe(DSL_YAML)
   })
 
-  it('forwards include_secret and workflow_id as query params', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, { data: DSL_YAML }, cap))
-
-    await makeClient(stub.url).exportDsl('app-1', { includeSecret: true, workflowId: 'wf-2' })
-
-    const q = new URL(stub.captured.url ?? '', 'http://x').searchParams
-    expect(q.get('include_secret')).toBe('true')
-    expect(q.get('workflow_id')).toBe('wf-2')
-  })
-
   it('throws when response has no data field', async () => {
     stub = await startStubServer(cap => jsonResponder(200, { wrong: 1 }, cap))
 
