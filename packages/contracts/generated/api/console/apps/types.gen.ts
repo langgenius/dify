@@ -173,6 +173,7 @@ export type AgentAppComposerResponse = {
   agent: AgentComposerAgentResponse
   agent_soul: AgentSoulConfig
   save_options: Array<ComposerSaveStrategy>
+  validation?: ComposerValidationFindingsResponse
   variant: string
 }
 
@@ -193,12 +194,15 @@ export type AgentComposerCandidatesResponse = {
   allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
   allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
   capabilities?: ComposerCandidateCapabilities
+  truncated?: boolean
   variant: ComposerVariant
 }
 
 export type AgentComposerValidateResponse = {
   errors?: Array<string>
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
   result: string
+  warnings?: Array<ComposerValidationWarningResponse>
 }
 
 export type AgentAppFeaturesPayload = {
@@ -797,6 +801,7 @@ export type WorkflowAgentComposerResponse = {
   node_job: WorkflowNodeJobConfig
   save_options: Array<ComposerSaveStrategy>
   soul_lock: AgentComposerSoulLockResponse
+  validation?: ComposerValidationFindingsResponse
   variant: string
   workflow_id?: string | null
 }
@@ -1099,6 +1104,11 @@ export type ComposerSaveStrategy
     | 'save_to_current_version'
     | 'save_to_roster'
 
+export type ComposerValidationFindingsResponse = {
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
+  warnings?: Array<ComposerValidationWarningResponse>
+}
+
 export type ComposerBindingPayload = {
   agent_id?: string | null
   binding_type: 'inline_agent' | 'roster_agent'
@@ -1138,6 +1148,19 @@ export type AgentComposerSoulCandidatesResponse = {
 
 export type ComposerCandidateCapabilities = {
   human_roster_available?: boolean
+}
+
+export type ComposerKnowledgePlaceholderResponse = {
+  id: string
+  placeholder_name: string
+}
+
+export type ComposerValidationWarningResponse = {
+  code: string
+  id?: string | null
+  kind?: string | null
+  message?: string | null
+  surface?: string | null
 }
 
 export type AgentFeatureToggleConfig = {

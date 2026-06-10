@@ -294,9 +294,7 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
     assert (
         unwrap(WorkflowAgentComposerCandidatesApi.get)(
             WorkflowAgentComposerCandidatesApi(), "tenant-1", account_id, app_model, "node-1"
-        )[
-            "variant"
-        ]
+        )["variant"]
         == "workflow"
     )
     with app.test_request_context(json=payload):
