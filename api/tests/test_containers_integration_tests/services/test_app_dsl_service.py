@@ -273,7 +273,8 @@ class TestAppDslService:
             yaml_content=_yaml_dump({"version": "0.6.0", "kind": "app"}),
         )
         assert result.status == ImportStatus.FAILED
-        assert "Missing app data" in result.error
+        assert "missing the top-level 'app' section" in result.error
+        assert "kind" in result.error and "version" in result.error
 
     def test_import_app_yaml_error_returns_failed(
         self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
