@@ -85,6 +85,8 @@ export default defineConfig({
           'test/e2e/suites/framework/**/*.e2e.ts',
           // discovery (get app / describe app)
           'test/e2e/suites/discovery/**/*.e2e.ts',
+          // dsl (export / import)
+          'test/e2e/suites/dsl/**/*.e2e.ts',
           // run tests (require valid token)
           'test/e2e/suites/run/**/*.e2e.ts',
           'test/e2e/suites/agent/**/*.e2e.ts',
