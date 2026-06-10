@@ -189,7 +189,7 @@ class DatasetRetrievalModelResponse(ResponseModel):
 
 
 class DatasetSummaryIndexSettingResponse(ResponseModel):
-    enable: bool | None = None
+    enable: bool = False
     model_name: str | None = None
     model_provider_name: str | None = None
     summary_prompt: str | None = None
