@@ -90,6 +90,7 @@
   "chatVariable.modal.arrayValue": "ค่า",
   "chatVariable.modal.description": "คำอธิบาย",
   "chatVariable.modal.descriptionPlaceholder": "อธิบายตัวแปร",
+  "chatVariable.modal.descriptionTooLong": "คำอธิบายต้องมีความยาวไม่เกิน {{maxLength}} ตัวอักษร",
   "chatVariable.modal.editInForm": "แก้ไขในแบบฟอร์ม",
   "chatVariable.modal.editInJSON": "แก้ไขใน JSON",
   "chatVariable.modal.editTitle": "แก้ไขตัวแปรการสนทนา",

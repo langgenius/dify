@@ -90,6 +90,7 @@
   "chatVariable.modal.arrayValue": "مقدار",
   "chatVariable.modal.description": "توضیحات",
   "chatVariable.modal.descriptionPlaceholder": "توصیف متغیر",
+  "chatVariable.modal.descriptionTooLong": "توضیحات باید {{maxLength}} کاراکتر یا کمتر باشد",
   "chatVariable.modal.editInForm": "ویرایش در فرم",
   "chatVariable.modal.editInJSON": "ویرایش در JSON",
   "chatVariable.modal.editTitle": "ویرایش متغیر مکالمه",
