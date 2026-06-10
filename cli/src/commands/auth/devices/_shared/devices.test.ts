@@ -2,36 +2,14 @@ import type { SessionListResponse, SessionRow } from '@dify/contracts/api/openap
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { AccountSessionsClient } from '@/api/account-sessions'
 import type { ActiveContext } from '@/auth/hosts'
-import type { TokenStore } from '@/store/token-store'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
+import { MemStore } from '@test/fixtures/mem-store'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Registry } from '@/auth/hosts'
-import { ENV_CONFIG_DIR } from '@/store/dir'
 import { bufferStreams } from '@/sys/io/streams'
 import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
-
-class MemStore implements TokenStore {
-  readonly entries = new Map<string, string>()
-  private k(host: string, email: string): string {
-    return `${host} ${email}`
-  }
-
-  read(host: string, email: string): string {
-    return this.entries.get(this.k(host, email)) ?? ''
-  }
-
-  write(host: string, email: string, bearer: string): void {
-    this.entries.set(this.k(host, email), bearer)
-  }
-
-  remove(host: string, email: string): void {
-    this.entries.delete(this.k(host, email))
-  }
-}
 
 function buildRegistry(host: string, email: string, tokenId: string): { reg: Registry, active: ActiveContext } {
   const reg = Registry.empty('file')
@@ -81,21 +59,12 @@ describe('runDevicesList', () => {
 
 describe('runDevicesRevoke', () => {
   let mock: DifyMock
-  let configDir: string
-  let prevConfigDir: string | undefined
+  useTempConfigDir('difyctl-devrevoke-')
   beforeEach(async () => {
     mock = await startMock({ scenario: 'happy' })
-    configDir = await mkdtemp(join(tmpdir(), 'difyctl-devrevoke-'))
-    prevConfigDir = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = configDir
   })
   afterEach(async () => {
-    if (prevConfigDir === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else
-      process.env[ENV_CONFIG_DIR] = prevConfigDir
     await mock.stop()
-    await rm(configDir, { recursive: true, force: true })
   })
 
   it('exact device_label: revokes one + leaves local creds', async () => {

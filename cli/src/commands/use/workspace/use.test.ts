@@ -4,12 +4,9 @@ import type {
 } from '@dify/contracts/api/openapi/types.gen'
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Registry } from '@/auth/hosts'
-import { ENV_CONFIG_DIR } from '@/store/dir'
 import { selectFromList } from '@/sys/io/select'
 import { bufferStreams } from '@/sys/io/streams'
 import { runUseWorkspace } from './use.js'
@@ -66,21 +63,10 @@ function fakeClient(opts: {
 }
 
 describe('runUseWorkspace', () => {
-  let configDir: string
-  let prevConfigDir: string | undefined
+  useTempConfigDir('difyctl-use-workspace-')
 
-  beforeEach(async () => {
-    configDir = await mkdtemp(join(tmpdir(), 'difyctl-use-workspace-'))
-    prevConfigDir = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = configDir
+  beforeEach(() => {
     selectFromListMock.mockReset()
-  })
-  afterEach(async () => {
-    if (prevConfigDir === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else
-      process.env[ENV_CONFIG_DIR] = prevConfigDir
-    await rm(configDir, { recursive: true, force: true })
   })
 
   it('arg path: switches directly without listing and persists only the active workspace', async () => {

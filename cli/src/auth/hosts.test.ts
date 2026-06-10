@@ -1,10 +1,7 @@
 import type { AccountContext } from './hosts'
-import type { TokenStore } from '@/store/token-store'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CONFIG_DIR } from '@/store/dir'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { MemStore } from '@test/fixtures/mem-store'
+import { describe, expect, it } from 'vitest'
 import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts'
 
 describe('RegistrySchema', () => {
@@ -140,19 +137,7 @@ describe('Registry (pure)', () => {
 })
 
 describe('Registry.load / Registry.save', () => {
-  let dir: string
-  let prev: string | undefined
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-reg-'))
-    prev = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-  afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else process.env[ENV_CONFIG_DIR] = prev
-    await rm(dir, { recursive: true, force: true })
-  })
+  useTempConfigDir('difyctl-reg-')
 
   it('returns an empty registry when nothing saved', () => {
     const reg = Registry.load()
@@ -172,28 +157,8 @@ describe('Registry.load / Registry.save', () => {
   })
 })
 
-class MemStore implements TokenStore {
-  readonly entries = new Map<string, string>()
-  private k(host: string, email: string): string { return `${host} ${email}` }
-  read(host: string, email: string): string { return this.entries.get(this.k(host, email)) ?? '' }
-  write(host: string, email: string, bearer: string): void { this.entries.set(this.k(host, email), bearer) }
-  remove(host: string, email: string): void { this.entries.delete(this.k(host, email)) }
-}
-
 describe('Registry.forget', () => {
-  let dir: string
-  let prev: string | undefined
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-forget-'))
-    prev = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-  afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else process.env[ENV_CONFIG_DIR] = prev
-    await rm(dir, { recursive: true, force: true })
-  })
+  useTempConfigDir('difyctl-forget-')
 
   it('drops token + active context, keeps siblings, unsets pointers', () => {
     const store = new MemStore()
