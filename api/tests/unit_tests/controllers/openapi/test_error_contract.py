@@ -1,5 +1,7 @@
 """Wire-contract tests for the canonical /openapi/v1 error body."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
@@ -173,3 +175,59 @@ class TestOpenApiErrorFormatter:
         for e, data, status in cases:
             wire = fmt.finalize(e, data, status)
             assert wire["code"] in {c.value for c in OpenApiErrorCode}
+
+
+class TestWireContract:
+    """End-to-end: request in, canonical JSON out, through the real openapi blueprint."""
+
+    def test_accepts_422_carries_code_status_details(self, openapi_app, bypass_pipeline):
+        client = openapi_app.test_client()
+
+        resp = client.get("/openapi/v1/apps?page=0")
+
+        assert resp.status_code == 422
+        wire = resp.get_json()
+        ErrorBody.model_validate(wire)
+        assert wire["code"] == "invalid_param"
+        assert wire["status"] == 422
+        assert wire["details"]
+
+    def test_unknown_route_404_is_canonical_without_route_suggestions(self, openapi_app):
+        client = openapi_app.test_client()
+
+        resp = client.get("/openapi/v1/definitely-not-a-route")
+
+        assert resp.status_code == 404
+        wire = resp.get_json()
+        ErrorBody.model_validate(wire)
+        assert wire["code"] == "not_found"
+        assert "did you mean" not in wire["message"].lower()
+
+    def test_404_outside_blueprint_prefix_is_not_claimed(self, openapi_app):
+        # catch_all_404s wraps the app-level exception handler; the prefix
+        # guard must keep non-/openapi/v1 paths on the app's own 404 handling
+        client = openapi_app.test_client()
+
+        resp = client.get("/console/definitely-not-a-route")
+
+        assert resp.status_code == 404
+        # not intercepted → Flask's default HTML 404, not the canonical JSON body
+        assert "application/json" not in (resp.content_type or "")
+
+    @patch("controllers.openapi.oauth_device.DeviceFlowRedis")
+    def test_oauth_device_token_keeps_rfc8628_shape(self, mock_redis_cls, openapi_app):
+        store = MagicMock()
+        mock_redis_cls.return_value = store
+        store.record_poll.return_value = None  # not SlowDownDecision.SLOW_DOWN
+        store.load_by_device_code.return_value = None  # unknown code → expired_token
+
+        client = openapi_app.test_client()
+
+        resp = client.post(
+            "/openapi/v1/oauth/device/token",
+            json={"client_id": "difyctl", "device_code": "nope"},
+        )
+
+        assert resp.status_code == 400
+        wire = resp.get_json()
+        assert wire == {"error": "expired_token"}

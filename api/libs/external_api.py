@@ -2,7 +2,7 @@ import re
 from collections.abc import Mapping
 from typing import Any, Protocol
 
-from flask import Blueprint, Flask, current_app, got_request_exception
+from flask import Blueprint, Flask, current_app, got_request_exception, request
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
@@ -133,13 +133,43 @@ class ExternalApi(Api):
     }
 
     def __init__(self, app: Blueprint | Flask, *args, error_body_formatter: ErrorBodyFormatter | None = None, **kwargs):
+        self._error_body_formatter = error_body_formatter
         patch_swagger_for_inline_nested_dicts()
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
         kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED
         kwargs["doc"] = dify_config.SWAGGER_UI_PATH if dify_config.SWAGGER_UI_ENABLED else False
+        if error_body_formatter is not None:
+            kwargs.setdefault("catch_all_404s", True)
+            # the overrides below patch private flask-restx methods; fail at
+            # startup (not at the first 404) if an upgrade removes them
+            for private_hook in ("_should_use_fr_error_handler", "_help_on_404"):
+                if not callable(getattr(Api, private_hook, None)):
+                    raise RuntimeError(f"flask-restx no longer exposes {private_hook}; update ExternalApi overrides")
 
         # manual separate call on construction and init_app to ensure configs in kwargs effective
         super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
+
+    def _should_use_fr_error_handler(self):
+        # catch_all_404s makes flask-restx claim NotFound for ANY app path
+        # (it wraps the app-level handle_exception), so scope the claim to
+        # this blueprint's url prefix; other surfaces keep their own 404s.
+        if self._error_body_formatter is not None and not self._request_under_own_prefix():
+            return False
+        return super()._should_use_fr_error_handler()
+
+    def _request_under_own_prefix(self) -> bool:
+        prefix = self.blueprint.url_prefix if self.blueprint is not None else None
+        if not prefix:
+            return True
+        return request.path == prefix or request.path.startswith(prefix.rstrip("/") + "/")
+
+    def _help_on_404(self, message: str | None = None) -> str | None:
+        # flask-restx appends route suggestions post-handler; with a canonical
+        # formatter installed, that would corrupt the contract and enumerate
+        # routes to unauthenticated callers.
+        if self._error_body_formatter is not None:
+            return message
+        return super()._help_on_404(message)

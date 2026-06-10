@@ -1,6 +1,7 @@
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.openapi._errors import OpenApiErrorFormatter
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ExternalApi
 
@@ -12,6 +13,7 @@ api = ExternalApi(
     version="1.0",
     title="OpenAPI",
     description="User-scoped programmatic API (bearer auth)",
+    error_body_formatter=OpenApiErrorFormatter(),
 )
 
 openapi_ns = Namespace("openapi", description="User-scoped operations", path="/")
