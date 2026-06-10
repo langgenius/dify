@@ -17,6 +17,7 @@
   "agentDetail.access.status.disabled": "Disabled",
   "agentDetail.access.status.enabled": "Enabled",
   "agentDetail.access.title": "Access points",
+  "agentDetail.configure.orchestrate": "Orchestrate",
   "agentDetail.documentTitle": "Agent",
   "agentDetail.history": "History",
   "agentDetail.logs.description": "Review recent runs that invoked this reusable agent across workflows.",

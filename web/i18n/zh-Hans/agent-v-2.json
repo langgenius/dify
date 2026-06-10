@@ -17,6 +17,7 @@
   "agentDetail.access.status.disabled": "已禁用",
   "agentDetail.access.status.enabled": "已启用",
   "agentDetail.access.title": "访问入口",
+  "agentDetail.configure.orchestrate": "编排",
   "agentDetail.documentTitle": "智能体",
   "agentDetail.history": "历史记录",
   "agentDetail.logs.description": "查看近期调用此可复用智能体的工作流运行记录。",
