@@ -400,10 +400,10 @@ describe('TaskStatusIndicator Component', () => {
       expect(trigger)!.toHaveClass('bg-state-destructive-hover')
     })
 
-    it('should apply cursor-pointer only for error states', () => {
+    it('should apply cursor-pointer for statuses that open the task menu', () => {
       render(<TaskStatusIndicator {...defaultProps} isInstalling />)
       const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass('cursor-default')
+      expect(trigger)!.toHaveClass('cursor-pointer')
     })
   })
 
