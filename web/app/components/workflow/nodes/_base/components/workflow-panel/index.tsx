@@ -399,6 +399,11 @@ const BasePanel: FC<BasePanelProps> = ({
     id,
     data,
   }) as Node, [id, data])
+  const singleRunForms = singleRunParams?.forms
+  const isCustomRunFormNode = isSupportCustomRunForm(data.type)
+  const shouldRenderSingleRunPanel = isShowSingleRun && (isCustomRunFormNode || !!singleRunForms)
+  const isSingleRunPanelVisible = showSingleRunPanel && shouldRenderSingleRunPanel
+
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -407,7 +412,7 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div
           ref={containerRef}
-          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
           style={{
             width: `${nodePanelWidth}px`,
           }}
@@ -425,20 +430,39 @@ const BasePanel: FC<BasePanelProps> = ({
     )
   }
 
-  if (isShowSingleRun) {
-    const form = getCustomRunForm({
-      nodeId: id,
-      flowId: configsMap?.flowId || '',
-      flowType: configsMap?.flowType || FlowType.appFlow,
-      payload: data,
-      setRunResult,
-      setIsRunAfterSingleRun,
-      isPaused,
-      isRunAfterSingleRun,
-      onSuccess: handleAfterCustomSingleRun,
-      onCancel: hideSingleRun,
-      appendNodeInspectVars,
-    })
+  if (shouldRenderSingleRunPanel) {
+    const customRunForm = isCustomRunFormNode
+      ? getCustomRunForm({
+          nodeId: id,
+          flowId: configsMap?.flowId || '',
+          flowType: configsMap?.flowType || FlowType.appFlow,
+          payload: data,
+          setRunResult,
+          setIsRunAfterSingleRun,
+          isPaused,
+          isRunAfterSingleRun,
+          onSuccess: handleAfterCustomSingleRun,
+          onCancel: hideSingleRun,
+          appendNodeInspectVars,
+        })
+      : null
+    const singleRunPanelContent = isCustomRunFormNode
+      ? customRunForm
+      : singleRunForms
+        ? (
+            <BeforeRunForm
+              nodeName={data.title}
+              nodeType={data.type}
+              onHide={hideSingleRun}
+              onRun={handleRunWithParams}
+              {...singleRunParams!}
+              {...passedLogParams}
+              existVarValuesInForms={getExistVarValuesInForms(singleRunForms)}
+              filteredExistVarForms={getFilteredExistVarForms(singleRunForms)}
+              handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
+            />
+          )
+        : null
 
     return (
       <div className={cn(
@@ -447,29 +471,12 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div
           ref={containerRef}
-          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
           style={{
             width: `${nodePanelWidth}px`,
           }}
         >
-          {isSupportCustomRunForm(data.type)
-            ? (
-                form
-              )
-            : (
-                <BeforeRunForm
-                  nodeName={data.title}
-                  nodeType={data.type}
-                  onHide={hideSingleRun}
-                  onRun={handleRunWithParams}
-                  {...singleRunParams!}
-                  {...passedLogParams}
-                  existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
-                  filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
-                  handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
-                />
-              )}
-
+          {singleRunPanelContent}
         </div>
       </div>
     )
@@ -498,7 +505,7 @@ const BasePanel: FC<BasePanelProps> = ({
       </div>
       <div
         ref={containerRef}
-        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${nodePanelWidth}px`,
         }}
