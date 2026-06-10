@@ -24,12 +24,12 @@ def _edge(source: str, target: str, handle: str = "source") -> dict:
 
 
 class TestValidateVariableReferences:
-    def test_empty_graph_returns_no_issues(self):
+    def test_empty_graph_returns_no_issues(self) -> None:
         """An empty or node-less graph is accepted without issues."""
         assert validate_variable_references({}) == []
         assert validate_variable_references({"nodes": [], "edges": []}) == []
 
-    def test_sequential_reference_is_safe(self):
+    def test_sequential_reference_is_safe(self) -> None:
         """A reference to a producer that always runs upstream is safe."""
         graph = {
             "nodes": [
@@ -41,7 +41,7 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
-    def test_upstream_always_run_reference_is_safe(self):
+    def test_upstream_always_run_reference_is_safe(self) -> None:
         """Reading a node that runs before the branch split is safe."""
         graph = {
             "nodes": [
@@ -58,7 +58,7 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
-    def test_cross_branch_reference_is_flagged(self):
+    def test_cross_branch_reference_is_flagged(self) -> None:
         """Reading a producer that sits on the opposite branch is flagged."""
         graph = {
             "nodes": [
@@ -78,7 +78,7 @@ class TestValidateVariableReferences:
         assert issues[0].node_id == "b"
         assert issues[0].referenced_node_id == "a"
 
-    def test_join_after_conditional_skip_is_flagged(self):
+    def test_join_after_conditional_skip_is_flagged(self) -> None:
         """A join reading a node skipped on the taken branch is flagged."""
         graph = {
             "nodes": [
@@ -99,7 +99,7 @@ class TestValidateVariableReferences:
         assert issues[0].node_id == "join"
         assert issues[0].referenced_node_id == "a"
 
-    def test_template_reference_is_detected(self):
+    def test_template_reference_is_detected(self) -> None:
         """A reference expressed as a {{#node.field#}} template is detected."""
         b = _node("b", "llm", "B")
         b["data"]["prompt"] = "Use {{#a.text#}} here"
@@ -120,7 +120,7 @@ class TestValidateVariableReferences:
         assert len(issues) == 1
         assert issues[0].referenced_node_id == "a"
 
-    def test_variable_typed_parameter_reference_is_detected(self):
+    def test_variable_typed_parameter_reference_is_detected(self) -> None:
         """A {type: variable} parameter selector is detected."""
         consumer = _node("c", "tool", "Consumer")
         consumer["data"]["parameters"] = [{"type": "variable", "value": ["a", "text"]}]
@@ -141,7 +141,7 @@ class TestValidateVariableReferences:
         assert len(issues) == 1
         assert issues[0].referenced_node_id == "a"
 
-    def test_bare_hash_text_is_not_a_placeholder(self):
+    def test_bare_hash_text_is_not_a_placeholder(self) -> None:
         """Bare #a.text# text without braces is not treated as a reference."""
         b = _node("b", "llm", "B")
         b["data"]["prompt"] = "see #a.text# (not a placeholder)"
@@ -160,7 +160,7 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
-    def test_parallel_branches_are_not_flagged(self):
+    def test_parallel_branches_are_not_flagged(self) -> None:
         """Parallel branches both run, so a join reading one of them is safe."""
         graph = {
             "nodes": [
@@ -180,7 +180,7 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
-    def test_producer_on_an_independent_always_on_path_is_not_flagged(self):
+    def test_producer_on_an_independent_always_on_path_is_not_flagged(self) -> None:
         """A producer that also runs on an unconditional path is never skipped."""
         graph = {
             "nodes": [
@@ -199,7 +199,7 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
-    def test_fan_out_forced_producer_is_not_flagged(self):
+    def test_fan_out_forced_producer_is_not_flagged(self) -> None:
         """A fan-out that forces the producer in on every run is safe."""
         graph = {
             "nodes": [
@@ -216,7 +216,7 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
-    def test_variable_aggregator_reference_is_exempt(self):
+    def test_variable_aggregator_reference_is_exempt(self) -> None:
         """A Variable Aggregator merging branch outputs is exempt."""
         agg = _node("agg", "variable-aggregator", "Aggregator")
         agg["data"]["variables"] = [["a", "text"], ["b", "text"]]
@@ -238,7 +238,7 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
-    def test_reserved_selector_heads_are_ignored(self):
+    def test_reserved_selector_heads_are_ignored(self) -> None:
         """sys/conversation/env selector heads are always available and never flagged."""
         b = _node("b", "llm", "B", selector=["sys", "query"])
         b["data"]["prompt"] = "{{#conversation.foo#}} {{#env.bar#}}"
@@ -254,7 +254,7 @@ class TestValidateVariableReferences:
 
 
 class TestFormatVariableReferenceErrors:
-    def test_message_includes_titles_and_count(self):
+    def test_message_includes_titles_and_count(self) -> None:
         """The rendered message names both nodes and reports the issue count."""
         graph = {
             "nodes": [
