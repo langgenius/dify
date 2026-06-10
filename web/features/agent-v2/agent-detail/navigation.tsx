@@ -196,7 +196,7 @@ export function AgentDetailSection({
             expand && 'mr-2',
           )}
           >
-            <span aria-hidden className="i-custom-vender-solid-mediaAndDevices-robot size-4" />
+            <span aria-hidden className="i-custom-vender-main-nav-roster-active size-4" />
           </div>
           <div className={cn('min-w-0', !expand && 'hidden')}>
             <div className="truncate system-md-semibold text-text-secondary">

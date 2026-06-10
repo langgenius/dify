@@ -16,7 +16,7 @@ export function RosterSidebar({ totalAgents }: RosterSidebarProps) {
         <div className="px-2 pb-3">
           <div className="flex items-center gap-2">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-text-accent text-text-primary-on-surface shadow-xs">
-              <span aria-hidden className="i-custom-vender-solid-mediaAndDevices-robot size-4" />
+              <span aria-hidden className="i-custom-vender-main-nav-roster-active size-4" />
             </div>
             <div className="min-w-0">
               <div className="truncate system-md-semibold text-text-secondary">
@@ -36,7 +36,7 @@ export function RosterSidebar({ totalAgents }: RosterSidebarProps) {
             aria-current="page"
             className="flex h-8 items-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active pr-1 pl-3 system-sm-semibold text-text-accent-light-mode-only"
           >
-            <span aria-hidden className="i-custom-vender-solid-mediaAndDevices-robot size-4 shrink-0" />
+            <span aria-hidden className="i-custom-vender-main-nav-roster-active size-4 shrink-0" />
             <span className="ml-2 min-w-0 flex-1 truncate">
               {t('roster.sidebar.agents')}
             </span>

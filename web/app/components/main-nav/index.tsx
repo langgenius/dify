@@ -176,8 +176,8 @@ const MainNav = ({
             href: '/roster',
             label: t('menus.roster', { ns: 'common' }),
             active: (path: string) => path.startsWith('/roster'),
-            icon: 'i-custom-vender-solid-mediaAndDevices-robot',
-            activeIcon: 'i-custom-vender-solid-mediaAndDevices-robot',
+            icon: 'i-custom-vender-main-nav-roster',
+            activeIcon: 'i-custom-vender-main-nav-roster-active',
           },
         ]
       : []),
