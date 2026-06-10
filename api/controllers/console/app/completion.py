@@ -23,6 +23,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_user,
     with_current_user_id,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -36,7 +37,7 @@ from core.helper.trace_id_helper import get_external_trace_id
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
-from libs.login import current_user, login_required
+from libs.login import login_required
 from models import Account
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
@@ -104,7 +105,8 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model: App):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -112,8 +114,6 @@ class CompletionMessageApi(Resource):
         args["auto_generate_name"] = False
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account or EndUser instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
@@ -178,7 +178,8 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @edit_permission_required
-    def post(self, app_model: App):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         raw_payload = console_ns.payload or {}
         args_model = ChatMessagePayload.model_validate(raw_payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
@@ -197,8 +198,6 @@ class ChatMessageApi(Resource):
             args["external_trace_id"] = external_trace_id
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account or EndUser instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )

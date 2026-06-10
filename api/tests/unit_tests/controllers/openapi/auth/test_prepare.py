@@ -32,18 +32,27 @@ def _make_auth_data(**kwargs) -> AuthData:
     return data
 
 
+_VALID_APP_UUID = "00000000-0000-0000-0000-000000000001"
+
+
 def test_load_app_writes_app_to_data():
     app = MagicMock()
     app.status = "normal"
     app.enable_api = True
-    data = _make_auth_data(path_params={"app_id": "abc"})
+    data = _make_auth_data(path_params={"app_id": _VALID_APP_UUID})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=app):
         load_app(data)
     assert data.app is app
 
 
+def test_load_app_raises_not_found_for_non_uuid_app_id():
+    data = _make_auth_data(path_params={"app_id": "not-a-uuid"})
+    with pytest.raises(NotFound):
+        load_app(data)
+
+
 def test_load_app_raises_not_found_when_missing():
-    data = _make_auth_data(path_params={"app_id": "missing"})
+    data = _make_auth_data(path_params={"app_id": _VALID_APP_UUID})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=None):
         with pytest.raises(NotFound):
             load_app(data)
@@ -52,7 +61,7 @@ def test_load_app_raises_not_found_when_missing():
 def test_load_app_raises_not_found_when_not_normal():
     app = MagicMock()
     app.status = "archived"
-    data = _make_auth_data(path_params={"app_id": "abc"})
+    data = _make_auth_data(path_params={"app_id": _VALID_APP_UUID})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=app):
         with pytest.raises(NotFound):
             load_app(data)
@@ -62,7 +71,7 @@ def test_load_app_stashes_app_even_when_api_disabled():
     app = MagicMock()
     app.status = "normal"
     app.enable_api = False
-    data = _make_auth_data(path_params={"app_id": "abc"})
+    data = _make_auth_data(path_params={"app_id": _VALID_APP_UUID})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=app):
         load_app(data)
     assert data.app is app

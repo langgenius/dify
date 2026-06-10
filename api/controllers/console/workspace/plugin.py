@@ -13,13 +13,20 @@ from controllers.common.fields import SuccessResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
-from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    is_admin_or_owner_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+    with_current_user_id,
+)
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from libs.login import current_account_with_tenant, login_required
-from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from libs.login import login_required
+from models.account import Account, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
@@ -200,9 +207,8 @@ class PluginDebuggingKeyApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(debug_required=True)
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         try:
             return {
                 "key": PluginService.get_debugging_key(tenant_id),
@@ -219,11 +225,12 @@ class PluginListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user_id: str):
         args = ParserList.model_validate(request.args.to_dict(flat=True))
         try:
-            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
+            plugins_with_total = PluginService.list_with_total(tenant_id, user_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 
@@ -253,9 +260,8 @@ class PluginListInstallationsFromIdsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserLatest.model_validate(console_ns.payload)
 
         try:
@@ -288,10 +294,10 @@ class PluginAssetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         args = ParserAsset.model_validate(request.args.to_dict(flat=True))
 
-        _, tenant_id = current_account_with_tenant()
         try:
             binary = PluginService.extract_asset(tenant_id, args.plugin_unique_identifier, args.file_name)
             return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
@@ -305,9 +311,8 @@ class PluginUploadFromPkgApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         file = request.files["pkg"]
         content = _read_upload_content(file, dify_config.PLUGIN_MAX_PACKAGE_SIZE)
         try:
@@ -325,9 +330,8 @@ class PluginUploadFromGithubApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserGithubUpload.model_validate(console_ns.payload)
 
         try:
@@ -344,9 +348,8 @@ class PluginUploadFromBundleApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         file = request.files["bundle"]
         content = _read_upload_content(file, dify_config.PLUGIN_MAX_BUNDLE_SIZE)
         try:
@@ -364,8 +367,8 @@ class PluginInstallFromPkgApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserPluginIdentifiers.model_validate(console_ns.payload)
 
         try:
@@ -383,9 +386,8 @@ class PluginInstallFromGithubApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserGithubInstall.model_validate(console_ns.payload)
 
         try:
@@ -409,9 +411,8 @@ class PluginInstallFromMarketplaceApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserPluginIdentifiers.model_validate(console_ns.payload)
 
         try:
@@ -429,8 +430,8 @@ class PluginFetchMarketplacePkgApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
@@ -453,9 +454,8 @@ class PluginFetchManifestApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
@@ -473,9 +473,8 @@ class PluginFetchInstallTasksApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         args = ParserTasks.model_validate(request.args.to_dict(flat=True))
 
         try:
@@ -490,9 +489,8 @@ class PluginFetchInstallTaskApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def get(self, task_id: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str, task_id: str):
         try:
             return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
         except PluginDaemonClientSideError as e:
@@ -506,9 +504,8 @@ class PluginDeleteInstallTaskApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self, task_id: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str, task_id: str):
         try:
             return {"success": PluginService.delete_install_task(tenant_id, task_id)}
         except PluginDaemonClientSideError as e:
@@ -522,9 +519,8 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         try:
             return {"success": PluginService.delete_all_install_task_items(tenant_id)}
         except PluginDaemonClientSideError as e:
@@ -538,9 +534,8 @@ class PluginDeleteInstallTaskItemApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self, task_id: str, identifier: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str, task_id: str, identifier: str):
         try:
             return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
         except PluginDaemonClientSideError as e:
@@ -554,9 +549,8 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserMarketplaceUpgrade.model_validate(console_ns.payload)
 
         try:
@@ -576,9 +570,8 @@ class PluginUpgradeFromGithubApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserGithubUpgrade.model_validate(console_ns.payload)
 
         try:
@@ -604,10 +597,9 @@ class PluginUninstallApi(Resource):
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserUninstall.model_validate(console_ns.payload)
-
-        _, tenant_id = current_account_with_tenant()
 
         try:
             return {"success": PluginService.uninstall(tenant_id, args.plugin_installation_id)}
@@ -622,15 +614,13 @@ class PluginChangePermissionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
-        user = current_user
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         args = ParserPermissionChange.model_validate(console_ns.payload)
-
-        tenant_id = current_tenant_id
 
         return {
             "success": PluginPermissionService.change_permission(
@@ -644,9 +634,8 @@ class PluginFetchPermissionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         permission = PluginPermissionService.get_permission(tenant_id)
         if not permission:
             return jsonable_encoder(
@@ -671,16 +660,15 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def get(self):
-        current_user, tenant_id = current_account_with_tenant()
-        user_id = current_user.id
-
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account):
         args = ParserDynamicOptions.model_validate(request.args.to_dict(flat=True))
 
         try:
             options = PluginParameterService.get_dynamic_select_options(
                 tenant_id=tenant_id,
-                user_id=user_id,
+                user_id=current_user.id,
                 plugin_id=args.plugin_id,
                 provider=args.provider,
                 action=args.action,
@@ -701,17 +689,16 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account):
         """Fetch dynamic options using credentials directly (for edit mode)."""
-        current_user, tenant_id = current_account_with_tenant()
-        user_id = current_user.id
-
         args = ParserDynamicOptionsWithCredentials.model_validate(console_ns.payload)
 
         try:
             options = PluginParameterService.get_dynamic_select_options_with_credentials(
                 tenant_id=tenant_id,
-                user_id=user_id,
+                user_id=current_user.id,
                 plugin_id=args.plugin_id,
                 provider=args.provider,
                 action=args.action,
@@ -731,8 +718,9 @@ class PluginChangePreferencesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
@@ -780,9 +768,8 @@ class PluginFetchPreferencesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         permission = PluginPermissionService.get_permission(tenant_id)
         permission_dict = {
             "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
@@ -820,10 +807,9 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         # exclude one single plugin
-        _, tenant_id = current_account_with_tenant()
-
         args = ParserExcludePlugin.model_validate(console_ns.payload)
 
         return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args.plugin_id)})
@@ -835,8 +821,8 @@ class PluginReadmeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         args = ParserReadme.model_validate(request.args.to_dict(flat=True))
         return jsonable_encoder(
             {"readme": PluginService.fetch_plugin_readme(tenant_id, args.plugin_unique_identifier, args.language)}

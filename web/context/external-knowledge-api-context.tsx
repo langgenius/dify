@@ -2,7 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import type { ExternalAPIItem, ExternalAPIListResponse } from '@/models/datasets'
-import { createContext, useCallback, useContext, useMemo } from 'react'
+import { createContext, use, useCallback, useMemo } from 'react'
 import { useExternalKnowledgeApiList } from '@/service/knowledge/use-dataset'
 
 type ExternalKnowledgeApiContextType = {
@@ -38,7 +38,7 @@ export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps>
 }
 
 export const useExternalKnowledgeApi = () => {
-  const context = useContext(ExternalKnowledgeApiContext)
+  const context = use(ExternalKnowledgeApiContext)
   if (context === undefined)
     throw new Error('useExternalKnowledgeApi must be used within a ExternalKnowledgeApiProvider')
 

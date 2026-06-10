@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Sequence
+from typing import override
 
 from opentelemetry.trace import SpanKind
 from sqlalchemy.orm import sessionmaker
@@ -74,6 +75,7 @@ class AliyunDataTrace(BaseTraceInstance):
         endpoint = build_endpoint(aliyun_config.endpoint, aliyun_config.license_key)
         self.trace_client = TraceClient(service_name=aliyun_config.app_name, endpoint=endpoint)
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
         match trace_info:
             case WorkflowTraceInfo():

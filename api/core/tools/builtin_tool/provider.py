@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from os import listdir, path
-from typing import Any
+from typing import Any, override
 
 from core.entities.provider_entities import ProviderConfig
 from core.helper.module_import_helper import load_single_subclass_from_source
@@ -105,6 +105,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.tools
 
+    @override
     def get_credentials_schema(self) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
@@ -182,6 +183,7 @@ class BuiltinToolProviderController(ToolProviderController):
         )
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider

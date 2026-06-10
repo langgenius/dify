@@ -3,6 +3,10 @@ import { useTabs, useToolTabs } from '../hooks'
 import { TabsEnum, ToolTypeEnum } from '../types'
 
 describe('block-selector hooks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('falls back to the first valid tab when the preferred start tab is disabled', () => {
     const { result } = renderHook(() => useTabs({
       noStart: false,
@@ -48,5 +52,21 @@ describe('block-selector hooks', () => {
 
     expect(visible.current.some(tab => tab.key === ToolTypeEnum.MCP)).toBe(true)
     expect(hidden.current.some(tab => tab.key === ToolTypeEnum.MCP)).toBe(false)
+  })
+
+  it('includes the snippets tab by default', () => {
+    const { result } = renderHook(() => useTabs({}))
+
+    expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(true)
+  })
+
+  it('hides the snippets tab and falls back when snippets are disabled', () => {
+    const { result } = renderHook(() => useTabs({
+      defaultActiveTab: TabsEnum.Snippets,
+      noSnippets: true,
+    }))
+
+    expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(false)
+    expect(result.current.activeTab).toBe(TabsEnum.Blocks)
   })
 })

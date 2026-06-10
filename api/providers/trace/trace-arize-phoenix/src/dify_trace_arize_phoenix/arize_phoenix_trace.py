@@ -6,7 +6,7 @@ import traceback
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Protocol, Union, cast
+from typing import Any, Protocol, Union, cast, override
 from urllib.parse import urlparse
 
 from openinference.semconv.trace import (
@@ -730,6 +730,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         self.root_span_carriers: dict[str, dict[str, str]] = {}
         self.carrier: dict[str, str] = {}
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
         logger.info("[Arize/Phoenix] Trace Entity Info: %s", trace_info)
         logger.info("[Arize/Phoenix] Trace Entity Type: %s", type(trace_info))

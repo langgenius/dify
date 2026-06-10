@@ -146,6 +146,7 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
     isSuccess,
   } = useInfiniteQuery({
     enabled: !disable,
+    gcTime: 0,
     queryKey: useInstalledPluginListKey,
     queryFn: fetchPlugins,
     getNextPageParam: (lastPage, pages) => {
@@ -159,6 +160,7 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
       return currentPage + 1
     },
     initialPageParam: 1,
+    staleTime: 0,
   })
 
   const plugins = data?.pages.flatMap(page => page.plugins) ?? []

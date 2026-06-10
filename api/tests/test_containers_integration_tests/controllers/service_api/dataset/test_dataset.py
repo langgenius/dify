@@ -239,13 +239,7 @@ class TestTagUnbindingPayload:
 # Helpers
 # ---------------------------------------------------------------------------
 
-
-def _unwrap(method):
-    """Walk ``__wrapped__`` chain to get the original function."""
-    fn = method
-    while hasattr(fn, "__wrapped__"):
-        fn = fn.__wrapped__
-    return fn
+from inspect import unwrap
 
 
 @pytest.fixture
@@ -499,7 +493,7 @@ class TestDatasetListApiPost:
             json={"name": "New Dataset"},
         ):
             api = DatasetListApi()
-            response, status = _unwrap(api.post)(api, tenant_id=mock_tenant.id)
+            response, status = unwrap(api.post)(api, tenant_id=mock_tenant.id)
 
         assert status == 200
         assert_dataset_detail_shape(response)
@@ -527,7 +521,7 @@ class TestDatasetListApiPost:
         ):
             api = DatasetListApi()
             with pytest.raises(DatasetNameDuplicateError):
-                _unwrap(api.post)(api, tenant_id=mock_tenant.id)
+                unwrap(api.post)(api, tenant_id=mock_tenant.id)
 
 
 # ---------------------------------------------------------------------------
@@ -720,7 +714,7 @@ class TestDatasetApiPatch:
             json=payload,
         ):
             api = DatasetApi()
-            response, status = _unwrap(api.patch)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+            response, status = unwrap(api.patch)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
         assert status == 200
         assert_dataset_detail_shape(response, with_partial_members=True)
@@ -760,7 +754,7 @@ class TestDatasetApiDelete:
             method="DELETE",
         ):
             api = DatasetApi()
-            result = _unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+            result = unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
         assert result == ("", 204)
 
@@ -783,7 +777,7 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(NotFound):
-                _unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+                unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
@@ -804,7 +798,7 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(DatasetInUseError):
-                _unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+                unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
 
 # ---------------------------------------------------------------------------

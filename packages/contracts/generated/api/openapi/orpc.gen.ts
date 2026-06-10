@@ -10,6 +10,7 @@ import {
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath,
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse,
   zGetAccountResponse,
+  zGetAccountSessionsQuery,
   zGetAccountSessionsResponse,
   zGetAppsByAppIdDescribePath,
   zGetAppsByAppIdDescribeQuery,
@@ -23,6 +24,7 @@ import {
   zGetHealthResponse,
   zGetOauthDeviceLookupQuery,
   zGetOauthDeviceLookupResponse,
+  zGetPermittedExternalAppsQuery,
   zGetPermittedExternalAppsResponse,
   zGetVersionResponse,
   zGetWorkspacesByWorkspaceIdMembersPath,
@@ -59,16 +61,8 @@ import {
   zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponse,
 } from './zod.gen'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getHealth',
@@ -132,6 +126,7 @@ export const get3 = oc
     path: '/account/sessions',
     tags: ['openapi'],
   })
+  .input(z.object({ query: zGetAccountSessionsQuery.optional() }))
   .output(zGetAccountSessionsResponse)
 
 export const sessions = {
@@ -155,16 +150,8 @@ export const account = {
   sessions,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdDescribe',
@@ -226,16 +213,8 @@ export const get6 = oc
   .input(z.object({ params: zGetAppsByAppIdFormHumanInputByFormTokenPath }))
   .output(zGetAppsByAppIdFormHumanInputByFormTokenResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdFormHumanInputByFormToken',
@@ -309,16 +288,8 @@ export const events = {
   get: get7,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdTasksByTaskIdStop',
@@ -468,6 +439,7 @@ export const get10 = oc
     path: '/permitted-external-apps',
     tags: ['openapi'],
   })
+  .input(z.object({ query: zGetPermittedExternalAppsQuery.optional() }))
   .output(zGetPermittedExternalAppsResponse)
 
 export const permittedExternalApps = {
