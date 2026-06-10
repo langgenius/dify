@@ -47,7 +47,7 @@ export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps):
   if (opts.fromFile !== undefined && opts.fromUrl !== undefined)
     throw newError(ErrorCode.UsageInvalidFlag, '--from-file and --from-url are mutually exclusive')
 
-  let mode: string
+  let mode: 'yaml-content' | 'yaml-url'
   let yamlContent: string | undefined
   let yamlUrl: string | undefined
 
