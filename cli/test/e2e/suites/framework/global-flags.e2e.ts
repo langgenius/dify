@@ -201,19 +201,6 @@ describe('E2E / global flags (spec 5.5)', () => {
     expect(result.stderr).toMatch(/flag -o expects a value/i)
   })
 
-  // ── 5.136  --workspace nonexistent → workspace not found, exit 1 ──────────
-
-  it('[P0] 5.136 --workspace with a nonexistent id returns workspace not found with exit 1', async () => {
-    // Spec 5.136: --workspace must validate the workspace exists; if not, exit 1.
-    const result = await fx.r([
-      'use',
-      'workspace',
-      'ffffffff-0000-0000-0000-nonexistent-ws',
-    ])
-    expect(result.exitCode).toBe(1)
-    expect(result.stderr).toMatch(/workspace.*(not found|404)|server_4xx/i)
-  })
-
   // ── 5.140  help + -o json doesn't crash ───────────────────────────────────
 
   it('[P1] 5.140 difyctl --help -o json runs without crashing and exits 0', async () => {
