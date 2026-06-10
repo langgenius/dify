@@ -4,41 +4,12 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { GuideActions, GuideCard, GuideFrame } from './layout'
-import { CreationSections } from './source-release-sections'
-import { TargetReviewSections } from './target-step'
-import { useCreateDeploymentGuide } from './use-create-deployment-guide'
+import { CreateDeploymentGuideProvider } from './state/provider'
+import { CreateDeploymentGuideShell } from './ui/shell/guide-shell'
 
 export function CreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
-  const {
-    canContinue,
-    canSkipDeployment,
-    creationSectionsProps,
-    handleBack,
-    handlePrimaryAction,
-    handleSkipDeployment,
-    isDeploying,
-    isSkippingDeployment,
-    showTargetConfiguration,
-    step,
-    targetReviewSectionsProps,
-  } = useCreateDeploymentGuide()
-
-  const guideContent = (
-    <>
-      {showTargetConfiguration
-        ? (
-            <div className="flex flex-col gap-7 pb-4">
-              <TargetReviewSections {...targetReviewSectionsProps} />
-            </div>
-          )
-        : (
-            <CreationSections {...creationSectionsProps} />
-          )}
-    </>
-  )
 
   return (
     <Dialog open onOpenChange={open => !open && router.push('/deployments')}>
@@ -54,25 +25,9 @@ export function CreateDeploymentGuide() {
           >
             <span aria-hidden="true" className="i-ri-close-large-line h-3.5 w-3.5 text-components-button-tertiary-text" />
           </Link>
-          <GuideFrame activeStep={step}>
-            <GuideCard
-              contentScrollable={step !== 'source'}
-              actions={(
-                <GuideActions
-                  canContinue={canContinue}
-                  canSkipDeployment={canSkipDeployment}
-                  isDeploying={isDeploying}
-                  isSkippingDeployment={isSkippingDeployment}
-                  step={step}
-                  onBack={handleBack}
-                  onPrimaryAction={handlePrimaryAction}
-                  onSkipDeployment={handleSkipDeployment}
-                />
-              )}
-            >
-              {guideContent}
-            </GuideCard>
-          </GuideFrame>
+          <CreateDeploymentGuideProvider>
+            <CreateDeploymentGuideShell />
+          </CreateDeploymentGuideProvider>
         </main>
       </DialogContent>
     </Dialog>
