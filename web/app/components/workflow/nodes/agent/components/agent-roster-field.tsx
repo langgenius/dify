@@ -152,7 +152,7 @@ export function AgentRosterField({
   return (
     <FieldRoot name="agent_roster" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-2">
-        <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase">
+        <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t('nodes.agent.roster.label', { ns: 'workflow' })}
         </FieldLabel>
         <button

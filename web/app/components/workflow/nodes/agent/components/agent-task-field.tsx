@@ -103,7 +103,7 @@ export function AgentTaskField({
   return (
     <FieldRoot name="agent_task" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-1">
-        <FieldLabel className="min-w-0 py-1 system-sm-semibold-uppercase">
+        <FieldLabel className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t(`${i18nPrefix}.task.label`, { ns: 'workflow' })}
         </FieldLabel>
         <Infotip aria-label={t(`${i18nPrefix}.task.tooltip`, { ns: 'workflow' })}>
