@@ -11918,6 +11918,22 @@ Risk marker for CLI tool bootstrap commands.
 | provider | string |  | No |
 | provider_id | string |  | No |
 
+#### AgentComposerFileCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_id | string |  | No |
+| id | string |  | No |
+| kind | string |  | No |
+| name | string |  | No |
+| reference | string |  | No |
+| remote_url | string |  | No |
+| tenant_id | string |  | No |
+| transfer_method | string |  | No |
+| type | string |  | No |
+| upload_file_id | string |  | No |
+| url | string |  | No |
+
 #### AgentComposerImpactBindingResponse
 
 | Name | Type | Description | Required |
@@ -11942,6 +11958,17 @@ Risk marker for CLI tool bootstrap commands.
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | previous_node_outputs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 
+#### AgentComposerSkillCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| file_id | string |  | No |
+| id | string |  | No |
+| kind | string |  | No |
+| name | string |  | No |
+| path | string |  | No |
+
 #### AgentComposerSoulCandidatesResponse
 
 | Name | Type | Description | Required |
@@ -11950,7 +11977,7 @@ Risk marker for CLI tool bootstrap commands.
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
-| skills_files | [ [AgentComposerSkillCandidateResponse](#agentcomposerskillcandidateresponse) ]<br>[ [AgentComposerFileCandidateResponse](#agentcomposerfilecandidateresponse) ] |  | No |
+| skills_files | [  ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -12041,33 +12068,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
-
-#### AgentComposerFileCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| file_id | string |  | No |
-| id | string |  | No |
-| kind | string |  | No |
-| name | string |  | No |
-| reference | string |  | No |
-| remote_url | string |  | No |
-| tenant_id | string |  | No |
-| transfer_method | string |  | No |
-| type | string |  | No |
-| upload_file_id | string |  | No |
-| url | string |  | No |
-
-#### AgentComposerSkillCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| id | string |  | No |
-| kind | string |  | No |
-| name | string |  | No |
-| path | string |  | No |
 
 #### AgentFileRefConfig
 
