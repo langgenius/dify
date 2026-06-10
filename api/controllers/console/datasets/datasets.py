@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Protocol, cast
+from typing import Any
 from uuid import UUID
 
 from flask import request
@@ -416,7 +416,6 @@ class DatasetListApi(Resource):
                 query.include_all,
             )
 
-
         permission_keys_map = {}
         if datasets:
             dataset_ids = [str(dataset.id) for dataset in datasets]
@@ -520,8 +519,9 @@ class DatasetListApi(Resource):
             [str(dataset.id)],
         )
 
-        item = DatasetDetailWithPartialMembersResponse.model_validate(
-            dataset, from_attributes=True).model_dump(mode="json")
+        item = DatasetDetailWithPartialMembersResponse.model_validate(dataset, from_attributes=True).model_dump(
+            mode="json"
+        )
         item["permission_keys"] = permission_keys_map.get(str(dataset.id), [])
         return item, 201
 

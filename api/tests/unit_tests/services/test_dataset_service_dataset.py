@@ -268,7 +268,9 @@ class TestDatasetServiceRetrievalPermissions:
 
         select_stmt = mock_db.paginate.call_args.kwargs["select"]
         where_clause = select_stmt._where_criteria[-1]
-        assert any(getattr(clause.right, "value", None) == DatasetPermissionEnum.ALL_TEAM for clause in where_clause.clauses)
+        assert any(
+            getattr(clause.right, "value", None) == DatasetPermissionEnum.ALL_TEAM for clause in where_clause.clauses
+        )
 
     def test_get_datasets_rbac_without_user_returns_empty_result(self):
         mock_db = MagicMock()
