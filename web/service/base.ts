@@ -376,7 +376,6 @@ export const handleStream = (
             else if (bufferObj.event === 'error') {
               hasError = true
               onCompleted?.(true, bufferObj.message)
-              return
             }
             else {
               console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
