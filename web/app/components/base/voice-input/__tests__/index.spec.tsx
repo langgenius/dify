@@ -406,6 +406,31 @@ describe('VoiceInput', () => {
     expect(recorder.stop).toHaveBeenCalled()
   })
 
+  it('should stop without cancelling after unmount while recording start is pending', async () => {
+    let resolveStart!: () => void
+    mockState.startOverride = () => new Promise<void>((resolve) => {
+      resolveStart = resolve
+    })
+
+    const { unmount } = render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
+    await waitFor(() => {
+      expect(mockState.recorderInstances).toHaveLength(1)
+    })
+    // eslint-disable-next-line ts/no-explicit-any
+    const recorder = mockState.recorderInstances[0] as any
+
+    unmount()
+    expect(recorder.stop).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveStart()
+      await Promise.resolve()
+    })
+
+    expect(recorder.stop).toHaveBeenCalledTimes(2)
+    expect(onCancel).not.toHaveBeenCalled()
+  })
+
   it('should handle all data in recordAnalyseData for canvas drawing', async () => {
     const allDataValues = []
     for (let i = 0; i < 256; i++) {

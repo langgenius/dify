@@ -22,6 +22,7 @@ const VoiceInput = ({
 }: VoiceInputTypes) => {
   const { t } = useTranslation()
   const recorderRef = useRef<Recorder | null>(null)
+  const mountedRef = useRef(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawRecordIdRef = useRef<number | null>(null)
@@ -134,7 +135,19 @@ const VoiceInput = ({
   const handleStartRecord = useCallback(async () => {
     try {
       const currentRecorder = await getRecorder()
+
+      if (!mountedRef.current) {
+        currentRecorder.stop()
+        return
+      }
+
       await currentRecorder.start()
+
+      if (!mountedRef.current) {
+        currentRecorder.stop()
+        return
+      }
+
       setStartRecord(true)
       setStartConvert(false)
 
@@ -142,9 +155,10 @@ const VoiceInput = ({
         drawRecord()
     }
     catch {
-      onCancel()
+      if (mountedRef.current)
+        onCancel()
     }
-  }, [drawRecord, getRecorder, onCancel, setStartRecord, setStartConvert])
+  }, [drawRecord, getRecorder, onCancel])
   const initCanvas = useCallback(() => {
     const dpr = window.devicePixelRatio || 1
     const canvas = document.getElementById('voice-input-record') as HTMLCanvasElement
@@ -168,9 +182,13 @@ const VoiceInput = ({
     handleStopRecorder()
 
   useEffect(() => {
+    mountedRef.current = true
     initCanvas()
     handleStartRecord()
     return () => {
+      mountedRef.current = false
+      if (drawRecordIdRef.current)
+        cancelAnimationFrame(drawRecordIdRef.current)
       recorderRef.current?.stop()
     }
   }, [handleStartRecord, initCanvas])
