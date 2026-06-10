@@ -344,11 +344,13 @@ const Debug: FC<IDebug> = ({
 
   const handleVisionConfigInMultipleModel = useCallback(() => {
     if (debugWithMultipleModel && mode) {
-      const supportedVision = multipleModelConfigs.some((modelConfig) => {
+      const supportedFileContext = multipleModelConfigs.some((modelConfig) => {
         const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === modelConfig.provider)
         const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model)
 
-        return currentModel?.features?.includes(ModelFeatureEnum.vision)
+        return !!currentModel?.features?.some(f =>
+          f === ModelFeatureEnum.vision || f === ModelFeatureEnum.document,
+        )
       })
       const {
         features,
@@ -358,7 +360,7 @@ const Debug: FC<IDebug> = ({
       const newFeatures = produce(features, (draft) => {
         draft.file = {
           ...draft.file,
-          enabled: supportedVision,
+          enabled: supportedFileContext,
         }
       })
       setFeatures(newFeatures)
