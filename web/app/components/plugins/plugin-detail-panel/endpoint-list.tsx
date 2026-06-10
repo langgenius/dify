@@ -2,11 +2,6 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiAddLine,
-  RiApps2AddLine,
-  RiBookOpenLine,
-} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -19,6 +14,7 @@ import {
   useEndpointList,
   useInvalidateEndpointList,
 } from '@/service/use-endpoints'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'
@@ -34,6 +30,7 @@ const EndpointList = ({ detail }: Props) => {
   const showTopBorder = detail.declaration.tool
   const { data } = useEndpointList(detail.plugin_id)
   const invalidateEndpointList = useInvalidateEndpointList()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const [isShowEndpointModal, {
     setTrue: showEndpointModal,
@@ -47,6 +44,7 @@ const EndpointList = ({ detail }: Props) => {
   const { mutate: createEndpoint } = useCreateEndpoint({
     onSuccess: async () => {
       await invalidateEndpointList(detail.plugin_id)
+      invalidateInstalledPluginList()
       hideEndpointModal()
     },
     onError: () => {
@@ -86,7 +84,7 @@ const EndpointList = ({ detail }: Props) => {
             >
               <div className="flex flex-col gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
-                  <RiApps2AddLine className="size-4 text-text-tertiary" />
+                  <span aria-hidden className="i-ri-apps-2-add-line size-4 text-text-tertiary" />
                 </div>
                 <div className="system-xs-regular text-text-tertiary">{t('detailPanel.endpointsTip', { ns: 'plugin' })}</div>
                 <a
@@ -95,7 +93,7 @@ const EndpointList = ({ detail }: Props) => {
                   rel="noopener noreferrer"
                   className="inline-flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent"
                 >
-                  <RiBookOpenLine className="size-3" />
+                  <span aria-hidden className="i-ri-book-open-line size-3" />
                   {t('detailPanel.endpointsDocLink', { ns: 'plugin' })}
                 </a>
               </div>
@@ -106,18 +104,21 @@ const EndpointList = ({ detail }: Props) => {
           aria-label={t('detailPanel.endpointModalTitle', { ns: 'plugin' })}
           onClick={showEndpointModal}
         >
-          <RiAddLine className="size-4" />
+          <span aria-hidden className="i-ri-add-line size-4" />
         </ActionButton>
       </div>
       {data.endpoints.length === 0 && (
         <div className="mb-1 flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t('detailPanel.endpointsEmpty', { ns: 'plugin' })}</div>
       )}
       <div className="flex flex-col gap-2">
-        {data.endpoints.map((item, index) => (
+        {data.endpoints.map(item => (
           <EndpointCard
-            key={index}
+            key={item.id}
             data={item}
-            handleChange={() => invalidateEndpointList(detail.plugin_id)}
+            handleChange={() => {
+              invalidateEndpointList(detail.plugin_id)
+              invalidateInstalledPluginList()
+            }}
             pluginDetail={detail}
           />
         ))}
