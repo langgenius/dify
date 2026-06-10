@@ -18,7 +18,7 @@ from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
 from sqlalchemy.orm import Session, sessionmaker
 
-from controllers.common.errors import InvalidArgumentError
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_draft_variable import (
@@ -37,7 +37,6 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
-from controllers.web.error import NotFoundError
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db

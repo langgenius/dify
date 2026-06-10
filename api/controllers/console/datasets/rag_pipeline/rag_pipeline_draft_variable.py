@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.errors import InvalidArgumentError
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -24,7 +24,6 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
-from controllers.web.error import NotFoundError
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db

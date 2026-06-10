@@ -1,7 +1,4 @@
-from controllers.common import errors as common_errors
 from libs.exception import BaseHTTPException
-
-InvalidArgumentError = common_errors.InvalidArgumentError
 
 
 class AppUnavailableError(BaseHTTPException):
@@ -124,8 +121,3 @@ class WebFormRateLimitExceededError(BaseHTTPException):
     error_code = "web_form_rate_limit_exceeded"
     description = "Too many form requests. Please try again later."
     code = 429
-
-
-class NotFoundError(BaseHTTPException):
-    error_code = "not_found"
-    code = 404

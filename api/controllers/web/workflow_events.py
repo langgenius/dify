@@ -8,9 +8,8 @@ from collections.abc import Generator
 from flask import Response, request
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.errors import InvalidArgumentError
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.web import api
-from controllers.web.error import NotFoundError
 from controllers.web.wraps import WebApiResource
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator

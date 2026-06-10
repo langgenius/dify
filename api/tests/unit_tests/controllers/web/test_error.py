@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from controllers.common.errors import InvalidArgumentError
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
@@ -16,7 +16,6 @@ from controllers.web.error import (
     NoAudioUploadedError,
     NotChatAppError,
     NotCompletionAppError,
-    NotFoundError,
     NotWorkflowAppError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,

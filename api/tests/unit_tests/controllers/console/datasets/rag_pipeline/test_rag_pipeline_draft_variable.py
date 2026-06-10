@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, Response
 
-from controllers.common.errors import InvalidArgumentError
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable import (
@@ -14,7 +14,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable impor
     RagPipelineVariableCollectionApi,
     RagPipelineVariableResetApi,
 )
-from controllers.web.error import NotFoundError
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from graphon.variables.types import SegmentType
 from models.account import Account, TenantAccountRole
