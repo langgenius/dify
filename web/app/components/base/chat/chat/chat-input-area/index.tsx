@@ -6,7 +6,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
-import Recorder from 'js-audio-recorder'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
@@ -14,11 +13,17 @@ import FeatureBar from '@/app/components/base/features/new-feature-panel/feature
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import { FileContextProvider, useFileStore } from '@/app/components/base/file-uploader/store'
-import VoiceInput from '@/app/components/base/voice-input'
+import dynamic from '@/next/dynamic'
 import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
+
+const VoiceInput = dynamic(() => import('@/app/components/base/voice-input'), { ssr: false })
+
+type RecorderConstructorWithPermission = typeof import('js-audio-recorder').default & {
+  getPermission: () => Promise<void>
+}
 
 type ChatInputAreaProps = {
   readonly?: boolean
@@ -128,12 +133,16 @@ const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, feat
       }
     }
   }
-  const handleShowVoiceInput = useCallback(() => {
-    (Recorder as any).getPermission().then(() => {
+  const handleShowVoiceInput = useCallback(async () => {
+    const { default: Recorder } = await import('js-audio-recorder')
+
+    try {
+      await (Recorder as RecorderConstructorWithPermission).getPermission()
       setShowVoiceInput(true)
-    }, () => {
+    }
+    catch {
       toast.error(t('voiceInput.notAllow', { ns: 'common' }))
-    })
+    }
   }, [t])
   const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} theme={theme} />)
   return (

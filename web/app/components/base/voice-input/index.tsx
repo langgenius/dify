@@ -1,12 +1,13 @@
+'use client'
+
+import type Recorder from 'js-audio-recorder'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRafInterval } from 'ahooks'
-import Recorder from 'js-audio-recorder'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, usePathname } from '@/next/navigation'
 import { AppSourceType, audioToText } from '@/service/share'
 import s from './index.module.css'
-import { convertToMp3 } from './utils'
 
 type VoiceInputTypes = {
   onConverted: (text: string) => void
@@ -20,15 +21,10 @@ const VoiceInput = ({
   wordTimestamps,
 }: VoiceInputTypes) => {
   const { t } = useTranslation()
-  const recorder = useRef(new Recorder({
-    sampleBits: 16,
-    sampleRate: 16000,
-    numChannels: 1,
-    compiling: false,
-  }))
+  const recorderRef = useRef<Recorder | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
-  const drawRecordId = useRef<number | null>(null)
+  const drawRecordIdRef = useRef<number | null>(null)
   const [originDuration, setOriginDuration] = useState(0)
   const [startRecord, setStartRecord] = useState(false)
   const [startConvert, setStartConvert] = useState(false)
@@ -38,11 +34,29 @@ const VoiceInput = ({
     setOriginDuration(originDuration + 1)
   }, 1000)
 
+  const getRecorder = useCallback(async () => {
+    if (!recorderRef.current) {
+      const { default: Recorder } = await import('js-audio-recorder')
+      recorderRef.current = new Recorder({
+        sampleBits: 16,
+        sampleRate: 16000,
+        numChannels: 1,
+        compiling: false,
+      })
+    }
+
+    return recorderRef.current
+  }, [])
+
   const drawRecord = useCallback(() => {
-    drawRecordId.current = requestAnimationFrame(drawRecord)
+    drawRecordIdRef.current = requestAnimationFrame(drawRecord)
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
-    const dataUnit8Array = recorder.current.getRecordAnalyseData()
+    const currentRecorder = recorderRef.current
+    if (!currentRecorder)
+      return
+
+    const dataUnit8Array = currentRecorder.getRecordAnalyseData()
     const dataArray = [].slice.call(dataUnit8Array)
     const lineLength = Number.parseInt(`${canvas.width / 3}`)
     const gap = Number.parseInt(`${1024 / lineLength}`)
@@ -72,17 +86,22 @@ const VoiceInput = ({
     ctx.closePath()
   }, [])
   const handleStopRecorder = useCallback(async () => {
+    const currentRecorder = recorderRef.current
+    if (!currentRecorder)
+      return
+
     clearInterval()
     setStartRecord(false)
     setStartConvert(true)
-    recorder.current.stop()
-    if (drawRecordId.current)
-      cancelAnimationFrame(drawRecordId.current)
-    drawRecordId.current = null
+    currentRecorder.stop()
+    if (drawRecordIdRef.current)
+      cancelAnimationFrame(drawRecordIdRef.current)
+    drawRecordIdRef.current = null
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    const mp3Blob = convertToMp3(recorder.current)
+    const { convertToMp3 } = await import('./utils')
+    const mp3Blob = convertToMp3(currentRecorder)
     const mp3File = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
     const formData = new FormData()
     formData.append('file', mp3File)
@@ -114,7 +133,8 @@ const VoiceInput = ({
   }, [clearInterval, onCancel, onConverted, params.appId, params.token, pathname, wordTimestamps])
   const handleStartRecord = useCallback(async () => {
     try {
-      await recorder.current.start()
+      const currentRecorder = await getRecorder()
+      await currentRecorder.start()
       setStartRecord(true)
       setStartConvert(false)
 
@@ -124,7 +144,7 @@ const VoiceInput = ({
     catch {
       onCancel()
     }
-  }, [drawRecord, onCancel, setStartRecord, setStartConvert])
+  }, [drawRecord, getRecorder, onCancel, setStartRecord, setStartConvert])
   const initCanvas = useCallback(() => {
     const dpr = window.devicePixelRatio || 1
     const canvas = document.getElementById('voice-input-record') as HTMLCanvasElement
@@ -150,9 +170,8 @@ const VoiceInput = ({
   useEffect(() => {
     initCanvas()
     handleStartRecord()
-    const recorderRef = recorder?.current
     return () => {
-      recorderRef?.stop()
+      recorderRef.current?.stop()
     }
   }, [handleStartRecord, initCanvas])
 

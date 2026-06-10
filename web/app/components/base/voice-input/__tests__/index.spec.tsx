@@ -98,6 +98,9 @@ describe('VoiceInput', () => {
 
   it('should start recording on mount and show speaking state', async () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
+    await waitFor(() => {
+      expect(mockState.recorderInstances).toHaveLength(1)
+    })
     // eslint-disable-next-line ts/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
     expect(recorder.start).toHaveBeenCalled()
@@ -390,8 +393,11 @@ describe('VoiceInput', () => {
     expect(await screen.findByText('common.voiceInput.speaking'))!.toBeInTheDocument()
   })
 
-  it('should cleanup on unmount', () => {
+  it('should cleanup on unmount', async () => {
     const { unmount } = render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
+    await waitFor(() => {
+      expect(mockState.recorderInstances).toHaveLength(1)
+    })
     // eslint-disable-next-line ts/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
 
