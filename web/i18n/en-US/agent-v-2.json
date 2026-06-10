@@ -28,6 +28,7 @@
   "agentDetail.configure.advancedSettings.envEditor.scopeColumn": "Scope",
   "agentDetail.configure.advancedSettings.envEditor.scopePlain": "Plain",
   "agentDetail.configure.advancedSettings.envEditor.scopeSecret": "Secret",
+  "agentDetail.configure.advancedSettings.envEditor.scopeSelector": "Select environment variable scope",
   "agentDetail.configure.advancedSettings.envEditor.tip": "Environment variables available to this agent at runtime.",
   "agentDetail.configure.advancedSettings.envEditor.toggle": "Toggle env editor",
   "agentDetail.configure.advancedSettings.envEditor.valueColumn": "Value",

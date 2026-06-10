@@ -6,9 +6,11 @@ import { useTranslation } from 'react-i18next'
 export function AgentPreviewHeader({
   isVersionsOpen,
   onToggleVersions,
+  onRestart,
 }: {
   isVersionsOpen: boolean
   onToggleVersions: () => void
+  onRestart: () => void
 }) {
   const { t } = useTranslation('agentV2')
 
@@ -20,6 +22,7 @@ export function AgentPreviewHeader({
       <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
+          onClick={onRestart}
           className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           aria-label={t('agentDetail.configure.preview.restart')}
         >
