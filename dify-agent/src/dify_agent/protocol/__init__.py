@@ -1,4 +1,8 @@
-"""Public protocol exports shared by the Dify Agent server and clients."""
+"""Public run-protocol exports shared by the Dify Agent server and clients.
+
+Stub-specific protocol DTOs live under ``dify_agent.agent_stub.protocol`` so the
+run API package boundary stays explicit.
+"""
 
 from .schemas import (
     DIFY_AGENT_HISTORY_LAYER_ID,
