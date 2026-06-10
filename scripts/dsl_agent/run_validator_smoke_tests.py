@@ -288,6 +288,146 @@ def human_input_workflow_doc() -> dict[str, Any]:
     return doc
 
 
+def iteration_workflow_doc() -> dict[str, Any]:
+    doc = base_workflow_doc()
+    doc["dependencies"] = []
+    graph = doc["workflow"]["graph"]
+    graph["edges"] = [
+        {
+            "id": "start-source-build_items-target",
+            "source": "start",
+            "sourceHandle": "source",
+            "target": "build_items",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "start", "targetType": "code", "isInLoop": False},
+        },
+        {
+            "id": "build_items-source-iterate_items-target",
+            "source": "build_items",
+            "sourceHandle": "source",
+            "target": "iterate_items",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "code", "targetType": "iteration", "isInLoop": False},
+        },
+        {
+            "id": "iterate_itemsstart-source-format_item-target",
+            "source": "iterate_itemsstart",
+            "sourceHandle": "source",
+            "target": "format_item",
+            "targetHandle": "target",
+            "type": "custom",
+            "zIndex": 1002,
+            "data": {
+                "sourceType": "iteration-start",
+                "targetType": "template-transform",
+                "isInIteration": True,
+                "isInLoop": False,
+                "iteration_id": "iterate_items",
+            },
+        },
+        {
+            "id": "iterate_items-source-end-target",
+            "source": "iterate_items",
+            "sourceHandle": "source",
+            "target": "end",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "iteration", "targetType": "end", "isInLoop": False},
+        },
+    ]
+    graph["nodes"] = [
+        {
+            "id": "start",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 0, "y": 0},
+            "data": {"title": "Start", "type": "start", "variables": []},
+        },
+        {
+            "id": "build_items",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 300, "y": 0},
+            "data": {
+                "title": "Build Items",
+                "type": "code",
+                "code_language": "python3",
+                "variables": [],
+                "code": "def main():\n    return {\"items\": [1, 2, 3]}\n",
+                "outputs": {"items": {"type": "array[number]", "children": None}},
+            },
+        },
+        {
+            "id": "iterate_items",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 600, "y": 0},
+            "width": 388,
+            "height": 178,
+            "data": {
+                "title": "Iterate Items",
+                "type": "iteration",
+                "start_node_id": "iterate_itemsstart",
+                "iterator_selector": ["build_items", "items"],
+                "iterator_input_type": "array[number]",
+                "output_selector": ["format_item", "output"],
+                "output_type": "array[string]",
+            },
+        },
+        {
+            "id": "iterate_itemsstart",
+            "type": "custom-iteration-start",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 24, "y": 68},
+            "parentId": "iterate_items",
+            "data": {"title": "", "type": "iteration-start", "isInIteration": True},
+        },
+        {
+            "id": "format_item",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 128, "y": 68},
+            "parentId": "iterate_items",
+            "data": {
+                "title": "Format Item",
+                "type": "template-transform",
+                "template": "output: {{ arg1 }}",
+                "variables": [
+                    {
+                        "variable": "arg1",
+                        "value_selector": ["iterate_items", "item"],
+                        "value_type": "string",
+                    }
+                ],
+                "isInIteration": True,
+                "iteration_id": "iterate_items",
+            },
+        },
+        {
+            "id": "end",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 900, "y": 0},
+            "data": {
+                "title": "End",
+                "type": "end",
+                "outputs": [
+                    {"variable": "items", "value_selector": ["iterate_items", "output"], "value_type": "array[string]"}
+                ],
+            },
+        },
+    ]
+    return doc
+
+
 def malformed_native_shape_doc() -> dict[str, Any]:
     return {
         "version": "0.6.0",
@@ -420,6 +560,7 @@ def main() -> int:
     valid_llm_doc = llm_workflow_doc()
     valid_agent_doc = agent_workflow_doc()
     valid_human_input_doc = human_input_workflow_doc()
+    valid_iteration_doc = iteration_workflow_doc()
 
     missing_dependency_doc = deepcopy(valid_doc)
     missing_dependency_doc["dependencies"] = []
@@ -449,11 +590,18 @@ def main() -> int:
     invalid_human_input_handle_doc["workflow"]["graph"]["edges"][1]["sourceHandle"] = "send"
     invalid_human_input_handle_doc["workflow"]["graph"]["edges"][1]["id"] = "review-send-end_approved-target"
 
+    invalid_iteration_parent_doc = deepcopy(valid_iteration_doc)
+    invalid_iteration_parent_doc["workflow"]["graph"]["nodes"][3]["parentId"] = "wrong_parent"
+
+    invalid_iteration_edge_doc = deepcopy(valid_iteration_doc)
+    invalid_iteration_edge_doc["workflow"]["graph"]["edges"][2]["data"]["iteration_id"] = "missing_iteration"
+
     cases = [
         assert_case("valid_plugin_dependency", valid_doc, set(), True),
         assert_case("valid_model_dependency", valid_llm_doc, set(), True),
         assert_case("valid_agent_dependency", valid_agent_doc, set(), True),
         assert_case("valid_human_input_actions", valid_human_input_doc, set(), True),
+        assert_case("valid_iteration_container", valid_iteration_doc, set(), True),
         assert_case("missing_plugin_dependency", missing_dependency_doc, {"plugin_dependency_missing"}, False),
         assert_case("missing_model_dependency", missing_model_dependency_doc, {"model_dependency_missing"}, False),
         assert_case("missing_agent_dependency", missing_agent_dependency_doc, {"plugin_dependency_missing"}, False),
@@ -461,6 +609,18 @@ def main() -> int:
             "human_input_handle_unknown",
             invalid_human_input_handle_doc,
             {"human_input_handle_unknown"},
+            False,
+        ),
+        assert_case(
+            "iteration_start_node_parent_mismatch",
+            invalid_iteration_parent_doc,
+            {"iteration_start_node_parent_mismatch"},
+            False,
+        ),
+        assert_case(
+            "edge_iteration_id_invalid",
+            invalid_iteration_edge_doc,
+            {"edge_iteration_id_invalid"},
             False,
         ),
         assert_case(

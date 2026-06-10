@@ -479,6 +479,7 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
 
     node_ids: set[str] = set()
     node_types: dict[str, str] = {}
+    node_by_id: dict[str, dict[str, Any]] = {}
     root_entries: list[str] = []
     duplicates: set[str] = set()
 
@@ -493,6 +494,7 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
         if node_id in node_ids:
             duplicates.add(node_id)
         node_ids.add(node_id)
+        node_by_id[node_id] = node
         typ = node_type(node)
         node_types[node_id] = typ
         if not typ:
@@ -561,10 +563,18 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
             for flag in ("isInIteration", "isInLoop"):
                 if flag in edge_data and not isinstance(edge_data[flag], bool):
                     report.add("error", f"edge_{flag}_not_bool", f"$.workflow.graph.edges[{index}].data.{flag}", f"edge.data.{flag} must be boolean")
-            if edge_data.get("isInIteration") and not edge_data.get("iteration_id"):
-                report.add("error", "edge_iteration_id_missing", f"$.workflow.graph.edges[{index}].data.iteration_id", "iteration edge requires iteration_id")
-            if edge_data.get("isInLoop") and not edge_data.get("loop_id"):
-                report.add("error", "edge_loop_id_missing", f"$.workflow.graph.edges[{index}].data.loop_id", "loop edge requires loop_id")
+            if edge_data.get("isInIteration"):
+                iteration_id = edge_data.get("iteration_id")
+                if not iteration_id:
+                    report.add("error", "edge_iteration_id_missing", f"$.workflow.graph.edges[{index}].data.iteration_id", "iteration edge requires iteration_id")
+                elif node_types.get(str(iteration_id)) != "iteration":
+                    report.add("error", "edge_iteration_id_invalid", f"$.workflow.graph.edges[{index}].data.iteration_id", "iteration_id must reference an iteration node")
+            if edge_data.get("isInLoop"):
+                loop_id = edge_data.get("loop_id")
+                if not loop_id:
+                    report.add("error", "edge_loop_id_missing", f"$.workflow.graph.edges[{index}].data.loop_id", "loop edge requires loop_id")
+                elif node_types.get(str(loop_id)) != "loop":
+                    report.add("error", "edge_loop_id_invalid", f"$.workflow.graph.edges[{index}].data.loop_id", "loop_id must reference a loop node")
         if isinstance(edge_id, str):
             expected = f"{source}-{edge.get('sourceHandle', 'source')}-{target}-{edge.get('targetHandle', 'target')}"
             if edge_id != expected:
@@ -777,6 +787,43 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
                 report.add("error", f"{typ}_start_node_missing", f"{path}.data.start_node_id", f"{typ} requires start_node_id")
             elif node_types.get(start_node_id) != expected_start_type:
                 report.add("error", f"{typ}_start_node_invalid", f"{path}.data.start_node_id", f"start_node_id must point to a {expected_start_type} node")
+            elif node_by_id.get(start_node_id, {}).get("parentId") != node_id:
+                report.add("error", f"{typ}_start_node_parent_mismatch", f"{path}.data.start_node_id", f"{expected_start_type} node `{start_node_id}` must have parentId `{node_id}`")
+
+        if typ == "iteration":
+            iterator_selector = data_block.get("iterator_selector")
+            output_selector = data_block.get("output_selector")
+            if iterator_selector is None:
+                report.add("error", "iteration_iterator_selector_missing", f"{path}.data.iterator_selector", "iteration requires iterator_selector")
+            else:
+                validate_selector(report, iterator_selector, f"{path}.data.iterator_selector", node_ids)
+            if output_selector is None:
+                report.add("error", "iteration_output_selector_missing", f"{path}.data.output_selector", "iteration requires output_selector")
+            else:
+                validate_selector(report, output_selector, f"{path}.data.output_selector", node_ids)
+            for key in ("iterator_input_type", "output_type"):
+                if not isinstance(data_block.get(key), str) or not data_block.get(key):
+                    report.add("error", f"iteration_{key}_missing", f"{path}.data.{key}", f"iteration requires {key}")
+
+        if typ == "loop":
+            loop_variables = data_block.get("loop_variables")
+            break_conditions = data_block.get("break_conditions")
+            if not isinstance(loop_variables, list):
+                report.add("error", "loop_variables_not_list", f"{path}.data.loop_variables", "loop.loop_variables must be a list")
+                loop_variables = []
+            for variable_index, variable in enumerate(loop_variables):
+                if not isinstance(variable, dict) or not variable.get("id"):
+                    report.add("error", "loop_variable_id_missing", f"{path}.data.loop_variables[{variable_index}]", "each loop variable needs id")
+            if not isinstance(break_conditions, list):
+                report.add("error", "loop_break_conditions_not_list", f"{path}.data.break_conditions", "loop.break_conditions must be a list")
+                break_conditions = []
+            for condition_index, condition in enumerate(break_conditions):
+                if not isinstance(condition, dict):
+                    report.add("error", "loop_break_condition_not_mapping", f"{path}.data.break_conditions[{condition_index}]", "loop break condition must be a mapping")
+                    continue
+                selector = condition.get("variable_selector")
+                if selector is not None:
+                    validate_selector(report, selector, f"{path}.data.break_conditions[{condition_index}].variable_selector", node_ids)
 
         for provider_path, provider in model_provider_entries(data_block, typ, path):
             validate_model_provider_dependency(
