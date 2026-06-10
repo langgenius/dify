@@ -631,11 +631,7 @@ class RBACService:
             *,
             options: ListOption | None = None,
         ) -> Paginated[RBACRole]:
-            params = (options or ListOption()).to_params()
-            if params:
-                params.update({"include_owner": include_owner})
-            else:
-                params = {"include_owner": include_owner}
+            params = (options or ListOption()).to_params({"include_owner": include_owner})
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/roles",

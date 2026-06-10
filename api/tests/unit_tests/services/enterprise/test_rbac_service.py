@@ -95,6 +95,13 @@ class TestRoles:
         svc.RBACService.Roles.list("tenant-1")
         assert _call_args(mock_send).params is None
 
+    def test_list_forwards_include_owner(self, mock_send: MagicMock):
+        mock_send.return_value = {"data": [], "pagination": None}
+
+        svc.RBACService.Roles.list("tenant-1", include_owner=1)
+
+        assert _call_args(mock_send).params == {"include_owner": 1}
+
     def test_list_coerces_null_permission_keys(self, mock_send: MagicMock):
         mock_send.return_value = {
             "data": [
