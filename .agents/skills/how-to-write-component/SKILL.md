@@ -15,6 +15,7 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Prefer local code and purpose-named helpers over catch-all utility modules; do not group workflow-specific defaults, validation, payload shaping, or metadata merging in a generic utils file just because they share a DTO.
 - Keep source/default selection, validation, and payload shaping close to the workflow that owns the behavior. Do not extract a shared helper just because two flows read the same DTO when their priority order, fallback behavior, or submit semantics differ.
 - Prefer direct, readable conditionals at the use site for small branch-specific decisions, especially form source selection and request payload assembly. Extract only when the helper name captures a stable domain rule and removes repeated complexity without hiding flow-specific behavior.
+- When fixing an invalid pattern, scan the touched feature or branch for equivalent patterns and fix them together.
 - Follow Dify's CSS-first Tailwind v4 contract from `packages/dify-ui/README.md` and `packages/dify-ui/AGENTS.md`. Prefer design-system tokens, utilities, and radius mappings over generic Tailwind guidance.
 
 ## Ownership
@@ -37,24 +38,30 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Prefer named exports. Use default exports only where the framework requires them, such as Next.js route files.
 - Type simple one-off props inline. Use a named `Props` type only when reused, exported, complex, or clearer.
 - Use API-generated or API-returned types at component boundaries. Keep small UI conversion helpers and one-off UI extensions beside the component that needs them.
+- Do not create type aliases that only rename another type. Use an alias only when it encodes a real UI concept, refinement, or reusable local contract.
 - Name values by their domain role and backend API contract, and keep that name stable across the call chain, especially persistent IDs and route params. Normalize framework or route params at the boundary.
 - Keep fallback and invariant checks at the lowest component that already handles that state; avoid defensive fallbacks that mask impossible states.
+- Do not extract fallback helpers whose only behavior is hiding missing display data. The component that renders the surface owns the empty, disabled, hidden, or placeholder state.
 
 ## Generated API Contracts
 
 - Treat generated contracts as authoritative at API, query, mutation, cache, and service boundaries. For enterprise APIs, use `packages/contracts/generated/enterprise/*`.
-- Do not hand-write local request/response/reply/page/cache-data types that mirror generated DTOs, such as `{ data?: Release[] }`, `{ release?: Release }`, or copied infinite-query page shapes. Import or infer the generated type.
-- Do not widen generated fields or enums for compatibility, such as `EnvironmentDeployment['status']` to `number | string`. Normalize legacy input at the boundary, then return the generated field type.
+- Do not hand-write local request/response/reply/page/cache-data types that mirror generated DTOs. Import or infer the generated type.
+- Do not widen generated fields or enums for compatibility. Normalize legacy input at the boundary, then return the generated field type.
 - Do not repair generated or API-returned contract fields in components unless the API contract or product requirement says they need normalization. Treat enums, statuses, and presence flags as exact contract values.
+- Use generated enum objects and union types directly in props, comparisons, status logic, and i18n keys. Do not add local enum constants or parallel frontend enum/status layers unless they model real product state not represented by the API. Presentation-only tone maps should be keyed by the generated enum.
 - Normalize or coerce only at a real boundary, such as user-entered forms, search, URL/query params, file names, DOM IDs, or legacy adapters. Preserve user-entered values when whitespace or formatting can be meaningful.
-- Local UI models are fine for presentation, form state, select options, or guarded required-field refinements. Name them as UI concepts; avoid `Response`, `Reply`, `Data`, and generated DTO names.
-- Required-value refinements like `Release & { id: string }` are allowed only after same-branch filtering or early return. Prefer nullable-tolerant props for render-only data.
+- Do not coerce nullable or optional API strings to `''` in query, derived model, or payload-building code. Keep `undefined` or `null` until the final boundary that requires a string.
+- Local UI models are fine for presentation, form state, select options, or guarded required-field refinements. Name them as UI concepts, not generated DTO mirrors.
+- Required-value refinements are allowed only after same-branch filtering or early return. Prefer nullable-tolerant props for render-only data.
 - When a component needs a stricter shape than a generated DTO, refine once at the API/query-to-UI boundary into a purpose-named UI type instead of hiding missing fields with generic fallback or coercion helpers.
 
 ## Nullable API Data
 
 - Prefer nullable-tolerant call boundaries. Pass API-returned types through for render-only rows, and let the component render fallback, disabled state, or nothing.
 - Narrow only where a real value is required, such as mutation params, route hrefs, select values, or query input. Build that target model with `flatMap`, a local loop, or an early return so the required value is captured in the same branch.
+- If design says a field is the display value, use that field. Only the final component should decide whether a nullable display value renders a placeholder, hides content, or disables an action.
+- Do not wrap required arrays or fields in null-fallback helpers. Use empty collection fallbacks only for not-yet-loaded query data or genuinely nullable collections at the owning render boundary.
 - Do not drop rows only to satisfy props or React keys; use a stable fallback key when possible.
 - Use conditional spreads or explicit pushes for conditional array items instead of `undefined` placeholders followed by a narrowing filter.
 - Avoid truthiness type guards, `filter(Boolean)`, `filter(item => item.id)`, and `!` after those filters.
