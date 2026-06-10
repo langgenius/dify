@@ -70,7 +70,7 @@ export function AgentDetailLayout({
   useDocumentTitle(agent?.name ?? t('agentDetail.documentTitle'))
 
   return (
-    <main className="relative flex h-full min-w-0 flex-col overflow-hidden bg-components-panel-bg-blur">
+    <main className="relative flex h-full min-w-0 flex-col overflow-hidden">
       {!isConfigureSection && (
         <header className="flex h-20 shrink-0 items-center justify-between border-b border-divider-subtle bg-components-panel-bg-blur px-6">
           <div className="flex min-w-0 items-center gap-3">

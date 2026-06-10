@@ -46,7 +46,7 @@ export function AgentConfigurePage({
     <section
       aria-label={t('agentDetail.sections.configure')}
       aria-busy={agentQuery.isPending}
-      className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden bg-background-default p-1"
+      className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden p-1"
     >
       {/* Orchestrate configuration panel */}
       <div className="flex max-w-[560px] min-w-[360px] flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg">

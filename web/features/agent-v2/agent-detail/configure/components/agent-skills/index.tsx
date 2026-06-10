@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentSkill } from './agent-skill-item'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,7 +37,7 @@ export function AgentSkills({
   const skillsListId = 'agent-configure-skills-list'
 
   return (
-    <section className="mb-4 border-b border-divider-subtle py-4" aria-labelledby="agent-configure-skills-label">
+    <section className={cn('border-b border-divider-subtle pt-4', isExpanded && 'pb-4')} aria-labelledby="agent-configure-skills-label">
       <div className="mb-2 flex min-h-6 items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-0.5">
           <h3
@@ -85,11 +86,13 @@ export function AgentSkills({
         </button>
       </div>
 
-      <div id={skillsListId} hidden={!isExpanded} className="flex flex-col gap-1">
-        {skills.map(skill => (
-          <AgentSkillItem key={skill.id} skill={skill} />
-        ))}
-      </div>
+      {isExpanded && (
+        <div id={skillsListId} className="flex flex-col gap-1">
+          {skills.map(skill => (
+            <AgentSkillItem key={skill.id} skill={skill} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }

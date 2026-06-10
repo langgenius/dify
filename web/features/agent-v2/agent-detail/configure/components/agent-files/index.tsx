@@ -1,6 +1,7 @@
 'use client'
 
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   FileTreeFile,
   FileTreeFolder,
@@ -102,7 +103,7 @@ export function AgentFiles({
   const filesTreeId = 'agent-configure-files-tree'
 
   return (
-    <section className="mb-4 border-b border-divider-subtle py-4" aria-labelledby="agent-configure-files-label">
+    <section className={cn('border-b border-divider-subtle pt-4', isExpanded && 'pb-4')} aria-labelledby="agent-configure-files-label">
       <div className="mb-2 flex min-h-6 items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-0.5">
           <h3
@@ -151,7 +152,7 @@ export function AgentFiles({
         </button>
       </div>
 
-      <div id={filesTreeId} hidden={!isExpanded}>
+      {isExpanded && (
         <FileTreeRoot
           aria-label={t('agentDetail.configure.files.treeLabel')}
           className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3"
@@ -160,7 +161,7 @@ export function AgentFiles({
             <AgentFileRows files={files} />
           </FileTreeList>
         </FileTreeRoot>
-      </div>
+      )}
     </section>
   )
 }

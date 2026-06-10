@@ -84,7 +84,7 @@ export function AgentPromptEditor({
   }
 
   return (
-    <section className="mb-4 flex flex-col gap-1 px-0 py-0" aria-labelledby="agent-configure-prompt-label">
+    <section className="flex flex-col gap-1 px-0 py-0" aria-labelledby="agent-configure-prompt-label">
       <div className="flex items-center gap-2">
         <div className="flex min-h-6 min-w-0 flex-1 items-center gap-0.5">
           <h3
