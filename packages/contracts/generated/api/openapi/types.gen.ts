@@ -751,7 +751,12 @@ export type PostOauthDeviceTokenResponse
 export type GetPermittedExternalAppsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    limit?: number
+    mode?: string
+    name?: string
+    page?: number
+  }
   url: '/permitted-external-apps'
 }
 

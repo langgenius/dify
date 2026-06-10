@@ -29,6 +29,7 @@ import {
   zGetHealthResponse,
   zGetOauthDeviceLookupQuery,
   zGetOauthDeviceLookupResponse,
+  zGetPermittedExternalAppsQuery,
   zGetPermittedExternalAppsResponse,
   zGetVersionResponse,
   zGetWorkspacesByWorkspaceIdMembersPath,
@@ -490,6 +491,7 @@ export const get12 = oc
     path: '/permitted-external-apps',
     tags: ['openapi'],
   })
+  .input(z.object({ query: zGetPermittedExternalAppsQuery.optional() }))
   .output(zGetPermittedExternalAppsResponse)
 
 export const permittedExternalApps = {

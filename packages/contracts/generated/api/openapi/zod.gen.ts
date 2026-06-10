@@ -753,6 +753,13 @@ export const zPostOauthDeviceTokenBody = zDevicePollRequest
  */
 export const zPostOauthDeviceTokenResponse = z.record(z.string(), z.unknown())
 
+export const zGetPermittedExternalAppsQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  mode: z.string().optional(),
+  name: z.string().max(200).optional(),
+  page: z.int().gte(1).optional().default(1),
+})
+
 /**
  * Permitted external apps list
  */

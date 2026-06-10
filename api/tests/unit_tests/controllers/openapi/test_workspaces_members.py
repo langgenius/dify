@@ -29,7 +29,7 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._models import MemberInvitePayload, MemberRoleUpdatePayload
@@ -198,7 +198,7 @@ def test_member_role_route_registered(openapi_app: Flask):
 
 
 # ---------------------------------------------------------------------------
-# Payload validation lands at 400
+# Payload validation lands at 422 (unified via @accepts)
 # ---------------------------------------------------------------------------
 
 
@@ -227,18 +227,38 @@ def test_role_payload_rejects_extra_field():
         MemberRoleUpdatePayload.model_validate({"role": "normal", "extra": "x"})
 
 
-def test_validate_body_helper_maps_validation_error_to_400(app, monkeypatch):
-    """`_validate_body` is the centralized 400-mapper for invalid request bodies."""
-    from controllers.openapi.workspaces import _validate_body
+def test_invite_rejects_invalid_body_with_422(app, bypass_pipeline):
+    """Invalid invite body → 422 via @accepts (was 400 through _validate_body)."""
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
 
     with app.test_request_context(
-        "/openapi/v1/workspaces/ws-1/members",
+        f"/openapi/v1/workspaces/{ws_id}/members",
         method="POST",
-        data=json.dumps({"email": "u@example.com", "role": "owner"}),
+        data=json.dumps({"email": "u@example.com", "role": "owner"}),  # owner is not invite-assignable
         content_type="application/json",
     ):
-        with pytest.raises(BadRequest):
-            _validate_body(MemberInvitePayload)
+        _seed(_auth_ctx(account_id=acct_id))
+        with pytest.raises(UnprocessableEntity):
+            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+
+
+def test_update_role_rejects_invalid_body_with_422(app, bypass_pipeline):
+    """Invalid role-update body surfaces as 422 through @accepts (was 400)."""
+    ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMemberRoleApi()
+
+    with app.test_request_context(
+        f"/openapi/v1/workspaces/{ws_id}/members/{member_id}/role",
+        method="PUT",
+        data=json.dumps({"role": "owner"}),  # closed enum rejects owner
+        content_type="application/json",
+    ):
+        _seed(_auth_ctx(account_id=acct_id))
+        with pytest.raises(UnprocessableEntity):
+            api.put.__wrapped__(api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -384,7 +404,7 @@ def test_members_list_paginates_with_query_params(app, bypass_pipeline, monkeypa
 
 
 def test_members_list_rejects_unknown_query_param(app, bypass_pipeline, monkeypatch):
-    """Strict (`extra='forbid'`) — typos like `?pg=2` surface as 400."""
+    """Strict (`extra='forbid'`) — typos like `?pg=2` surface as 422 (unified via @accepts)."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
@@ -395,7 +415,7 @@ def test_members_list_rejects_unknown_query_param(app, bypass_pipeline, monkeypa
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?pg=2"):
         _seed(_auth_ctx(account_id=acct_id))
-        with pytest.raises(BadRequest):
+        with pytest.raises(UnprocessableEntity):
             api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
