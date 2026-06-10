@@ -148,6 +148,7 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
         tenant_id="tenant-1", app_id="app-1", node_id="node-1", account_id="account-1", payload=payload
     )
 
+    assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"state": "ok"}
     assert calls
     assert fake_session.commits == 1
@@ -189,6 +190,7 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch):
         tenant_id="tenant-1", app_id="app-1", account_id="account-1", payload=payload
     )
 
+    assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"loaded": True}
     assert fake_session.added[0].name == "Analyst"
     assert fake_session.added[0].active_config_snapshot_id == "version-1"
@@ -222,6 +224,7 @@ def test_save_agent_app_composer_updates_current_version(monkeypatch):
         tenant_id="tenant-1", app_id="app-1", account_id="account-1", payload=payload
     )
 
+    assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"loaded": True}
     assert updated["operation"].value == "save_current_version"
     assert fake_session._scalar == []
@@ -235,12 +238,28 @@ def test_agent_app_composer_candidates_and_impact(monkeypatch):
     ]
     monkeypatch.setattr(composer_service.db, "session", FakeSession(scalars=[bindings]))
 
-    workflow_candidates = AgentComposerService.get_workflow_candidates(app_id="app-1")
-    agent_app_candidates = AgentComposerService.get_agent_app_candidates(app_id="app-1")
+    # Candidates assembly is covered in test_composer_candidates.py; here we stub
+    # the IO loaders and assert the response envelope per variant (ENG-615).
+    def _no_draft_workflow(**kwargs):
+        raise ValueError("draft workflow not found")
+
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", _no_draft_workflow)
+    monkeypatch.setattr(AgentComposerService, "_load_agent_app_soul", lambda **kwargs: None)
+    monkeypatch.setattr(AgentComposerService, "_workspace_dify_tools", lambda **kwargs: [])
+
+    workflow_candidates = AgentComposerService.get_workflow_candidates(
+        tenant_id="tenant-1", app_id="app-1", node_id="node-1", user_id="account-1"
+    )
+    agent_app_candidates = AgentComposerService.get_agent_app_candidates(
+        tenant_id="tenant-1", app_id="app-1", user_id="account-1"
+    )
     impact = AgentComposerService.calculate_impact(tenant_id="tenant-1", current_snapshot_id="version-1")
 
     assert workflow_candidates["variant"] == "workflow"
+    assert workflow_candidates["allowed_node_job_candidates"]["previous_node_outputs"] == []
+    assert workflow_candidates["truncated"] is False
     assert agent_app_candidates["variant"] == "agent_app"
+    assert agent_app_candidates["allowed_soul_candidates"]["dify_tools"] == []
     assert impact["workflow_node_count"] == 2
     assert impact["bindings"][1]["node_id"] == "node-2"
 
@@ -875,3 +894,27 @@ class TestListWorkflowsReferencingAppAgent:
         service = AgentRosterService(session)
 
         assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
+
+
+def test_dataset_rows_filters_malformed_ids(monkeypatch):
+    """Mention ids are user-editable text: a non-UUID id must read as missing
+    (placeholder semantics), never reach the UUID-typed dataset query (E2E 500)."""
+    captured = {}
+
+    def fake_get_datasets_by_ids(ids, tenant_id):
+        captured["ids"] = ids
+        return [], 0
+
+    import services.dataset_service as dataset_service_module
+
+    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+
+    valid = "550e8400-e29b-41d4-a716-446655440000"
+    rows = AgentComposerService._dataset_rows(tenant_id="tenant-1", dataset_ids=["9999dead-beef", valid])
+    assert rows == {}
+    assert captured["ids"] == [valid]
+
+    # all-malformed input never touches the DB
+    captured.clear()
+    assert AgentComposerService._dataset_rows(tenant_id="tenant-1", dataset_ids=["nope"]) == {}
+    assert captured == {}

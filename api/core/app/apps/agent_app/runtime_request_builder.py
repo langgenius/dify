@@ -35,6 +35,7 @@ from core.workflow.nodes.agent_v2.plugin_tools_builder import (
 from core.workflow.nodes.agent_v2.runtime_request_builder import build_shell_layer_config
 from models.agent_config_entities import AgentSoulConfig
 from models.provider_ids import ModelProviderID
+from services.agent.prompt_mentions import build_soul_mention_resolver, expand_prompt_mentions
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -135,7 +136,12 @@ class AgentAppRuntimeRequestBuilder:
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
                 ),
-                agent_soul_prompt=agent_soul.prompt.system_prompt or None,
+                # ENG-616: expand slash-menu mention tokens to canonical names so
+                # no frontend-internal {{#…#}} marker ever reaches the model.
+                agent_soul_prompt=expand_prompt_mentions(
+                    agent_soul.prompt.system_prompt, build_soul_mention_resolver(agent_soul)
+                ).strip()
+                or None,
                 user_prompt=context.user_query,
                 tools=tools_layer,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
