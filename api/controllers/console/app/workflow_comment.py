@@ -220,7 +220,7 @@ class WorkflowCommentListApi(Resource):
     @setup_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required("app", "app_view_layout")
     @get_app_model()
     def get(self, current_tenant_id: str, app_model: App):
         """Get all comments for a workflow."""

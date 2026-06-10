@@ -259,7 +259,7 @@ class WorkflowVariableCollectionApi(Resource):
     )
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required("app", "app_view_layout")
     def get(self, current_user: Account, app_model: App):
         """
         Get draft workflow
@@ -532,7 +532,7 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required("app", "app_view_layout")
     def get(self, current_user: Account, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
@@ -583,7 +583,7 @@ class SystemVariableCollectionApi(Resource):
     @console_ns.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required("app", "app_view_layout")
     def get(self, current_user: Account, app_model: App):
         return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id)
 
