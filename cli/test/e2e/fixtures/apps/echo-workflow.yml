@@ -1,0 +1,207 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: basic_auto_test
+  use_icon_as_answer_icon: false
+dependencies:
+  - current_identifier: null
+    type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/tongyi:0.1.48@966d88dc40611f067311c1c9839139ebc4b55bff471bc5e736dc3e828bc67b46
+      version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+        - .JPG
+        - .JPEG
+        - .PNG
+        - .GIF
+        - .WEBP
+        - .SVG
+      allowed_file_types:
+        - image
+      allowed_file_upload_methods:
+        - local_file
+        - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+          - local_file
+          - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: llm
+        id: 1779097154262-source-1779097204645-target
+        source: '1779097154262'
+        sourceHandle: source
+        target: '1779097204645'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInLoop: false
+          sourceType: llm
+          targetType: end
+        id: 1779097204645-source-1779171097399-target
+        source: '1779097204645'
+        sourceHandle: source
+        target: '1779171097399'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          selected: true
+          title: 用户输入
+          type: start
+          variables:
+            - default: ''
+              hint: ''
+              label: x
+              options: []
+              placeholder: ''
+              required: true
+              type: text-input
+              variable: x
+            - default: ''
+              hint: ''
+              label: num
+              options: []
+              placeholder: ''
+              required: true
+              type: number
+              variable: num
+            - hint: ''
+              label: enum_var
+              options:
+                - A
+                - B
+                - C
+              placeholder: ''
+              required: true
+              type: select
+              variable: enum_var
+            - default: ''
+              hint: ''
+              label: paragraph
+              max_length: 100
+              options: []
+              placeholder: ''
+              required: true
+              type: text-input
+              variable: paragraph
+        height: 187
+        id: '1779097154262'
+        position:
+          x: 80
+          y: 282
+        positionAbsolute:
+          x: 80
+          y: 282
+        selected: true
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: qwen3.6-plus
+            provider: langgenius/tongyi/tongyi
+          prompt_template:
+            - id: 1ddb3202-d84c-4faf-afe3-424eedc9049a
+              role: system
+              text: 'User says:{{#1779097154262.x#}}. Reply exactly: echo:{{#1779097154262.x#}}
+
+                '
+          selected: false
+          title: LLM
+          type: llm
+          vision:
+            enabled: false
+        height: 88
+        id: '1779097204645'
+        position:
+          x: 382
+          y: 282
+        positionAbsolute:
+          x: 382
+          y: 282
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          outputs:
+            - value_selector:
+                - '1779097204645'
+                - text
+              value_type: string
+              variable: x
+          selected: false
+          title: 输出
+          type: end
+        height: 88
+        id: '1779171097399'
+        position:
+          x: 752
+          y: 259
+        positionAbsolute:
+          x: 752
+          y: 259
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+    viewport:
+      x: 68
+      y: 131
+      zoom: 1
+  rag_pipeline_variables: []

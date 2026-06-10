@@ -61,6 +61,10 @@
       "types": "./src/fieldset/index.tsx",
       "import": "./src/fieldset/index.tsx"
     },
+    "./file-tree": {
+      "types": "./src/file-tree/index.tsx",
+      "import": "./src/file-tree/index.tsx"
+    },
     "./form": {
       "types": "./src/form/index.tsx",
       "import": "./src/form/index.tsx"
@@ -147,7 +151,7 @@
     }
   },
   "scripts": {
-    "storybook": "storybook dev",
+    "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "test": "vp test",
     "test:watch": "vp test --watch",
@@ -192,6 +196,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
+    "vitest": "catalog:",
     "vitest-browser-react": "catalog:"
   }
 }

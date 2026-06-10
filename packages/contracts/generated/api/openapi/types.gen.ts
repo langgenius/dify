@@ -32,8 +32,7 @@ export type AppDescribeInfo = {
 }
 
 export type AppDescribeQuery = {
-  fields?: Array<string> | null
-  workspace_id?: string | null
+  fields?: string
 }
 
 export type AppDescribeResponse = {
@@ -155,10 +154,19 @@ export type FileResponse = {
   name: string
   original_url?: string | null
   preview_url?: string | null
+  reference?: string | null
   size: number
   source_url?: string | null
   tenant_id?: string | null
   user_id?: string | null
+}
+
+export type FormSubmitResponse = {
+  [key: string]: never
+}
+
+export type HealthResponse = {
+  ok: boolean
 }
 
 export type HumanInputFormSubmitPayload = {
@@ -245,6 +253,11 @@ export type ServerVersionResponse = {
   version: string
 }
 
+export type SessionListQuery = {
+  limit?: number
+  page?: number
+}
+
 export type SessionListResponse = {
   data: Array<SessionRow>
   has_more: boolean
@@ -265,6 +278,10 @@ export type SessionRow = {
 
 export type TagItem = {
   name: string
+}
+
+export type TaskStopResponse = {
+  result: string
 }
 
 export type UsageInfo = {
@@ -323,9 +340,7 @@ export type GetHealthData = {
 }
 
 export type GetHealthResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HealthResponse
 }
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses]
@@ -359,7 +374,10 @@ export type GetAccountResponse = GetAccountResponses[keyof GetAccountResponses]
 export type GetAccountSessionsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
   url: '/account/sessions'
 }
 
@@ -426,8 +444,7 @@ export type GetAppsByAppIdDescribeData = {
     app_id: string
   }
   query?: {
-    fields?: Array<string>
-    workspace_id?: string
+    fields?: string
   }
   url: '/apps/{app_id}/describe'
 }
@@ -503,9 +520,7 @@ export type PostAppsByAppIdFormHumanInputByFormTokenData = {
 }
 
 export type PostAppsByAppIdFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: FormSubmitResponse
 }
 
 export type PostAppsByAppIdFormHumanInputByFormTokenResponse
@@ -559,9 +574,7 @@ export type PostAppsByAppIdTasksByTaskIdStopData = {
 }
 
 export type PostAppsByAppIdTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TaskStopResponse
 }
 
 export type PostAppsByAppIdTasksByTaskIdStopResponse
@@ -644,7 +657,12 @@ export type PostOauthDeviceTokenResponse
 export type GetPermittedExternalAppsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    limit?: number
+    mode?: string
+    name?: string
+    page?: number
+  }
   url: '/permitted-external-apps'
 }
 

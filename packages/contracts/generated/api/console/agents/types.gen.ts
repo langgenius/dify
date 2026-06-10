@@ -255,31 +255,43 @@ export type AgentTextToSpeechFeatureConfig = {
 }
 
 export type AgentSecretRefConfig = {
+  credential_id?: string | null
+  env_name?: string | null
   id?: string | null
+  key?: string | null
   name?: string | null
-  permission?: {
-    [key: string]: unknown
-  }
+  permission?: AgentPermissionConfig
   permission_status?: string | null
   provider?: string | null
+  provider_credential_id?: string | null
+  ref?: string | null
   type?: string | null
+  variable?: string | null
   [key: string]: unknown
 }
 
 export type AgentEnvVariableConfig = {
+  default?: unknown
+  env_name?: string | null
+  key?: string | null
   name?: string | null
   required?: boolean
   type?: string | null
   value?: unknown
+  variable?: string | null
   [key: string]: unknown
 }
 
 export type AgentHumanContactConfig = {
+  channel?: string | null
   contact_id?: string | null
+  contact_method?: string | null
   email?: string | null
   human_id?: string | null
   id?: string | null
+  method?: string | null
   name?: string | null
+  tenant_id?: string | null
   [key: string]: unknown
 }
 
@@ -329,10 +341,10 @@ export type AgentSoulModelSettings = {
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
-  [key: string]: unknown
 }
 
 export type AgentSandboxProviderConfig = {
+  cpu?: number | null
   env?: Array<AgentEnvVariableConfig>
   image?: string | null
   working_dir?: string | null
@@ -340,10 +352,15 @@ export type AgentSandboxProviderConfig = {
 }
 
 export type AgentFileRefConfig = {
+  file_id?: string | null
   id?: string | null
   name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
   transfer_method?: string | null
   type?: string | null
+  upload_file_id?: string | null
   url?: string | null
   [key: string]: unknown
 }
@@ -358,21 +375,30 @@ export type AgentSkillRefConfig = {
 }
 
 export type AgentCliToolConfig = {
+  approved?: boolean
   authorization_status?: AgentCliToolAuthorizationStatus
   command?: string | null
   dangerous?: boolean
+  dangerous_accepted?: boolean
   dangerous_acknowledged?: boolean
+  dangerous_command?: boolean
   description?: string | null
   enabled?: boolean
+  install?: string | null
+  install_command?: string | null
+  install_commands?: Array<string>
   invoke_metadata?: {
     [key: string]: unknown
   }
+  label?: string | null
   name?: string | null
-  permission?: {
-    [key: string]: unknown
-  }
+  permission?: AgentPermissionConfig
   pre_authorized?: boolean | null
+  requires_confirmation?: boolean
+  risk_accepted?: boolean
   risk_level?: AgentCliToolRiskLevel
+  setup_command?: string | null
+  tool_name?: string | null
   [key: string]: unknown
 }
 
@@ -398,6 +424,12 @@ export type AgentModerationProviderConfig = {
   keywords?: string | null
   outputs_config?: AgentModerationIoConfig
   [key: string]: unknown
+}
+
+export type AgentPermissionConfig = {
+  allowed?: boolean | null
+  state?: string | null
+  status?: string | null
 }
 
 export type AgentModelResponseFormatConfig = {

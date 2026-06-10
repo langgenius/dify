@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
@@ -10,12 +11,6 @@ from controllers.console.auth.data_source_bearer_auth import (
     ApiKeyAuthDataSourceBinding,
     ApiKeyAuthDataSourceBindingDelete,
 )
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def _payload_patch(payload: dict):
@@ -29,7 +24,7 @@ def _payload_patch(payload: dict):
 
 def test_list_data_source_auth_uses_injected_tenant_id() -> None:
     api = ApiKeyAuthDataSource()
-    method = _unwrap(api.get)
+    method = unwrap(api.get)
     binding = SimpleNamespace(
         id="binding-1",
         category="api_key",
@@ -52,7 +47,7 @@ def test_list_data_source_auth_uses_injected_tenant_id() -> None:
 
 def test_create_data_source_auth_binding_uses_injected_tenant_id() -> None:
     api = ApiKeyAuthDataSourceBinding()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
     payload = {
         "category": "api_key",
         "provider": "custom",
@@ -73,7 +68,7 @@ def test_create_data_source_auth_binding_uses_injected_tenant_id() -> None:
 
 def test_delete_data_source_auth_binding_uses_injected_tenant_id() -> None:
     api = ApiKeyAuthDataSourceBindingDelete()
-    method = _unwrap(api.delete)
+    method = unwrap(api.delete)
 
     with patch(
         "controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.delete_provider_auth"

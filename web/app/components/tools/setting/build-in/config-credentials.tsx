@@ -26,14 +26,14 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 
-type Props = {
+type Props = Readonly<{
   collection: Collection
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
   isHideRemoveBtn?: boolean
   onRemove?: () => void
   isSaving?: boolean
-}
+}>
 
 const ConfigCredential: FC<Props> = ({
   collection,
