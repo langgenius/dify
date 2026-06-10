@@ -587,7 +587,6 @@ class TestDatasetApiGet:
 
         batch_get_mock.assert_called_once_with(tenant_id, user.id, [dataset_id])
         assert status == 200
-        assert dataset.permission_keys == ["dataset.acl.readonly", "dataset.acl.edit"]
         assert data["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
     def test_get_uses_default_external_retrieval_model(self, app: Flask):

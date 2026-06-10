@@ -13,6 +13,15 @@ from controllers.console.app import app_import as app_import_module
 from services.app_dsl_service import ImportStatus
 
 
+def _unwrap(func):
+    bound_self = getattr(func, "__self__", None)
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    if bound_self is not None:
+        return func.__get__(bound_self, bound_self.__class__)
+    return func
+
+
 class _Result:
     def __init__(
         self,

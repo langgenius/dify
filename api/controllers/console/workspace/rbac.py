@@ -132,7 +132,9 @@ def _pagination_options() -> svc.ListOption:
     return _PaginationQuery.model_validate(request.args.to_dict(flat=True)).to_inner_options()
 
 
-def _legacy_workspace_roles(options: svc.ListOption | None = None) -> svc.Paginated[svc.RBACRole]:
+def _legacy_workspace_roles(
+    options: svc.ListOption | None = None, *, include_owner: int = 0
+) -> svc.Paginated[svc.RBACRole]:
     """Return the built-in legacy workspace roles in the RBAC list shape.
 
     This keeps the new `/rbac/roles` endpoint compatible with the original
@@ -153,6 +155,9 @@ def _legacy_workspace_roles(options: svc.ListOption | None = None) -> svc.Pagina
         )
         for role_name in ("owner", "admin", "editor", "normal", "dataset_operator")
     ]
+
+    if not include_owner:
+        legacy_roles = [r for r in legacy_roles if r.name != "owner"]
 
     page_number = options.page_number if options and options.page_number is not None else 1
     results_per_page = (
@@ -235,7 +240,7 @@ class RBACRolesApi(Resource):
         query = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
         options = query.to_inner_options()
         if not dify_config.RBAC_ENABLED:
-            result = _legacy_workspace_roles(options)
+            result = _legacy_workspace_roles(options, include_owner=query.include_owner)
         else:
             result = svc.RBACService.Roles.list(
                 tenant_id, account_id, include_owner=query.include_owner, options=options

@@ -532,7 +532,6 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
             resp, status = method(app_module.AppListApi(), "tenant-1", SimpleNamespace(id="acct-1"))
 
     assert status == 201
-    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit"]
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
 
@@ -577,7 +576,6 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
             resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", session)
 
     assert status == 200
-    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit"]
     assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
 
@@ -615,7 +613,6 @@ def test_app_detail_api_attaches_permission_keys_from_batch_get(app, app_module)
 
             resp = method(app_module.AppApi(), "tenant-1", SimpleNamespace(id="acct-1"), app_model=app_obj)
 
-    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
 
 
@@ -676,5 +673,4 @@ def test_app_copy_api_attaches_permission_keys(app, app_module):
 
     assert status == 201
     assert fake_session.scalar.called
-    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit"]
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]

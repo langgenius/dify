@@ -50,7 +50,10 @@ class TestConvertToWorkflowApi:
             method="POST",
             json={},
         ):
-            response = method(app_model=SimpleNamespace(id="app-1"))
+            response = method(
+                current_user=SimpleNamespace(id="u1"),
+                app_model=SimpleNamespace(id="app-1"),
+            )
 
         assert response["new_app_id"] == "new-app-1"
         assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
