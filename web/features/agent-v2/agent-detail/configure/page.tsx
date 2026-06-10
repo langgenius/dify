@@ -9,8 +9,10 @@ import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList }
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/client'
 import { AgentFiles } from './components/agent-files'
+import { AgentPreviewHeader } from './components/agent-preview-header'
 import { AgentPromptEditor } from './components/agent-prompt-editor'
 import { AgentSkills } from './components/agent-skills'
+import { AgentTools } from './components/agent-tools'
 
 type AgentConfigurePageProps = {
   agentId: string
@@ -80,15 +82,7 @@ export function AgentConfigurePage({
           <AgentFiles />
 
           {/* Tools */}
-          <div className="mb-4 space-y-2">
-            <div className="h-4 w-18 rounded bg-state-base-hover" />
-            <div className="space-y-1">
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-              <div className="h-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg" />
-            </div>
-          </div>
+          <AgentTools />
 
           {/* Knowledge retrieval */}
           <div className="space-y-2">
@@ -109,15 +103,7 @@ export function AgentConfigurePage({
 
       {/* Preview panel */}
       <div className="flex min-w-[420px] flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
-        {/* Preview header */}
-        <div className="flex h-14 shrink-0 items-center gap-3 px-6">
-          <div className="h-5 w-18 rounded-md bg-state-base-hover" />
-          <div className="ml-auto flex gap-2">
-            <div className="size-8 rounded-lg bg-state-base-hover" />
-            <div className="size-8 rounded-lg bg-state-base-hover" />
-            <div className="size-8 rounded-lg bg-state-base-hover" />
-          </div>
-        </div>
+        <AgentPreviewHeader />
 
         {/* Chat transcript */}
         <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
