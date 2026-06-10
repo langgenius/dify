@@ -89,7 +89,8 @@ def migrate_member_roles_to_rbac(tenant_id: str | None, dry_run: bool) -> None:
 
         resolved_role_id = resolved_role_ids[cache_key]
         click.echo(
-            f"tenant={workspace_id} member={member_account_id} legacy_role={legacy_role} -> rbac_role_id={resolved_role_id}"
+            f"tenant={workspace_id} member={member_account_id} "
+            f"legacy_role={legacy_role} -> rbac_role_id={resolved_role_id}"
         )
 
         if dry_run:

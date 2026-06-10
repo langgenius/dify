@@ -87,7 +87,8 @@ class TestRoles:
         assert call.method == "GET"
         assert call.endpoint == "/rbac/roles"
         assert call.params == {"page_number": 2, "results_per_page": 50, "reverse": "true"}
-        assert out.pagination and out.pagination.total_count == 1
+        assert out.pagination
+        assert out.pagination.total_count == 1
 
     def test_list_omits_params_when_default(self, mock_send: MagicMock):
         mock_send.return_value = {"data": [], "pagination": None}
@@ -349,7 +350,8 @@ class TestWorkspaceAccess:
         assert call.method == "GET"
         assert call.endpoint == "/rbac/workspace/apps/access-policy"
         assert call.params == {"page_number": 2, "results_per_page": 20}
-        assert out.pagination and out.pagination.current_page == 2
+        assert out.pagination
+        assert out.pagination.current_page == 2
 
     def test_dataset_matrix(self, mock_send: MagicMock):
         mock_send.return_value = {"items": []}
