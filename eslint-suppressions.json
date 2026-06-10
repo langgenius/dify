@@ -853,7 +853,7 @@
   },
   "web/app/components/base/chat/chat/chat-input-area/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/base/chat/chat/check-input-forms-hooks.ts": {
