@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from fields.agent_fields import AgentComposerCandidatesResponse
 from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, DeclaredOutputType
 from services.agent.composer_candidates import (
     MAX_CANDIDATES_PER_LIST,
@@ -35,13 +36,13 @@ _GRAPH = {
 }
 
 
-def _declared_loader(nid: str):
+def _declared_loader(nid: str) -> list[DeclaredOutputConfig] | None:
     if nid == "agent-up":
         return [DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)]
     return None
 
 
-def _draft_vars(nid: str):
+def _draft_vars(nid: str) -> list[tuple[str, str | None]]:
     if nid == "llm-1":
         return [("text", "string")]
     return []
@@ -102,7 +103,7 @@ def test_previous_outputs_capped_and_flagged():
         "nodes": [{"id": "start-1", "data": {"type": "start", "title": "S", "variables": []}}, {"id": "t"}],
         "edges": [{"source": "start-1", "target": "t"}],
     }
-    many = [(f"v{i}", "string") for i in range(MAX_CANDIDATES_PER_LIST + 5)]
+    many: list[tuple[str, str | None]] = [(f"v{i}", "string") for i in range(MAX_CANDIDATES_PER_LIST + 5)]
     entries, truncated = previous_node_output_candidates(
         graph=graph,
         node_id="t",
@@ -150,6 +151,37 @@ def test_soul_candidates_lists_configured_items_only():
     assert knowledge["ds-gone"]["name"] == "已删"
     assert lists["human_contacts"][0]["id"] == "c-1"
     assert lists["dify_tools"][0]["id"] == "tavily/tavily_search"
+
+
+def test_candidates_response_preserves_skill_and_file_candidate_shapes():
+    response = AgentComposerCandidatesResponse.model_validate(
+        {
+            "variant": "agent_app",
+            "allowed_node_job_candidates": {},
+            "allowed_soul_candidates": {
+                "skills_files": [
+                    {"kind": "skill", "id": "sk-1", "name": "tender-analyzer", "path": "skills/tender.md"},
+                    {
+                        "kind": "file",
+                        "id": "f-1",
+                        "name": "qna_report.pdf",
+                        "transfer_method": "local_file",
+                        "reference": "upload-1",
+                        "url": "https://files.example/qna_report.pdf",
+                    },
+                ]
+            },
+            "capabilities": {"human_roster_available": False},
+        }
+    ).model_dump(mode="json")
+
+    skill, file = response["allowed_soul_candidates"]["skills_files"]
+    assert skill["kind"] == "skill"
+    assert skill["path"] == "skills/tender.md"
+    assert file["kind"] == "file"
+    assert file["transfer_method"] == "local_file"
+    assert file["reference"] == "upload-1"
+    assert file["url"] == "https://files.example/qna_report.pdf"
 
 
 def test_soul_candidates_empty_config_yields_empty_lists():

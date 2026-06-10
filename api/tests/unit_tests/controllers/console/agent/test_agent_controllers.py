@@ -24,6 +24,7 @@ from controllers.console.agent.roster import (
     AgentRosterVersionDetailApi,
     AgentRosterVersionsApi,
 )
+from models.model import AppMode
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
 
 
@@ -109,6 +110,22 @@ def _candidates_response(variant: str) -> dict:
         "allowed_soul_candidates": {},
         "capabilities": {"human_roster_available": False},
     }
+
+
+def _get_app_model_modes(view) -> list[AppMode]:
+    current = view
+    while current is not None:
+        closure = getattr(current, "__closure__", None)
+        if closure is not None:
+            for cell in closure:
+                try:
+                    value = cell.cell_contents
+                except ValueError:
+                    continue
+                if isinstance(value, list) and all(isinstance(item, AppMode) for item in value):
+                    return value
+        current = getattr(current, "__wrapped__", None)
+    return []
 
 
 class _PayloadWithDescription(Protocol):
@@ -359,3 +376,10 @@ def test_agent_app_composer_get_put_validate_and_candidates(
         AgentAppComposerCandidatesApi(), "tenant-1", account_id, app_model
     )
     assert agent_app_candidates["variant"] == "agent_app"
+
+
+def test_agent_app_composer_routes_are_agent_mode_only() -> None:
+    assert _get_app_model_modes(AgentAppComposerApi.get) == [AppMode.AGENT]
+    assert _get_app_model_modes(AgentAppComposerApi.put) == [AppMode.AGENT]
+    assert _get_app_model_modes(AgentAppComposerValidateApi.post) == [AppMode.AGENT]
+    assert _get_app_model_modes(AgentAppComposerCandidatesApi.get) == [AppMode.AGENT]

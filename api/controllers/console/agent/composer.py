@@ -176,7 +176,7 @@ class AgentAppComposerApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
+    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
     def get(self, tenant_id: str, app_model: App):
         return dump_response(
@@ -190,7 +190,7 @@ class AgentAppComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model()
+    @get_app_model(mode=[AppMode.AGENT])
     @with_current_user_id
     @with_current_tenant_id
     def put(self, tenant_id: str, account_id: str, app_model: App):
@@ -215,7 +215,7 @@ class AgentAppComposerValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
+    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
     def post(self, tenant_id: str, app_model: App):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
@@ -232,7 +232,7 @@ class AgentAppComposerCandidatesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
+    @get_app_model(mode=[AppMode.AGENT])
     @with_current_user_id
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user_id: str, app_model: App):
