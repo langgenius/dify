@@ -7,8 +7,8 @@ import {
   useNodesInteractions,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { useAllWorkflowTools } from '@/service/use-tools'

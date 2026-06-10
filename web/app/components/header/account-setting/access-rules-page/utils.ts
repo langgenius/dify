@@ -7,7 +7,7 @@ type AccessRulesResponse = {
   items: AccessPolicyWithBindings[]
 }
 
-export const isFullAccessPolicy = (policyKey: string) => {
+const isFullAccessPolicy = (policyKey: string) => {
   return FULL_ACCESS_POLICY_KEYS.has(policyKey)
 }
 
