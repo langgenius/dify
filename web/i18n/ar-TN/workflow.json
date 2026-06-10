@@ -90,6 +90,7 @@
   "chatVariable.modal.arrayValue": "القيمة",
   "chatVariable.modal.description": "الوصف",
   "chatVariable.modal.descriptionPlaceholder": "وصف المتغير",
+  "chatVariable.modal.descriptionTooLong": "يجب ألا يتجاوز الوصف {{maxLength}} حرفًا",
   "chatVariable.modal.editInForm": "تعديل في النموذج",
   "chatVariable.modal.editInJSON": "تعديل في JSON",
   "chatVariable.modal.editTitle": "تعديل متغير محادثة",
