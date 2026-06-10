@@ -33,6 +33,15 @@ export const zAppDslExportQuery = z.object({
 })
 
 /**
+ * AppDslExportResponse
+ *
+ * Export DSL response.
+ */
+export const zAppDslExportResponse = z.object({
+  data: z.string(),
+})
+
+/**
  * AppDslImportPayload
  *
  * Request body for POST /workspaces/<workspace_id>/apps/imports.
@@ -653,7 +662,7 @@ export const zGetAppsByAppIdExportQuery = z.object({
 /**
  * Export successful
  */
-export const zGetAppsByAppIdExportResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdExportResponse = zAppDslExportResponse
 
 export const zPostAppsByAppIdFilesUploadPath = z.object({
   app_id: z.string(),

@@ -147,9 +147,9 @@ User-scoped operations
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Export successful |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export successful | [AppDslExportResponse](#appdslexportresponse) |
 
 ### /apps/{app_id}/files/upload
 
@@ -546,6 +546,14 @@ Query parameters for GET /apps/<app_id>/export.
 | ---- | ---- | ----------- | -------- |
 | include_secret | boolean | Include encrypted secret values in the exported DSL | No |
 | workflow_id | string | Export a specific workflow version instead of the current draft | No |
+
+#### AppDslExportResponse
+
+Export DSL response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | string | DSL YAML string | Yes |
 
 #### AppDslImportPayload
 

@@ -50,6 +50,10 @@ export type AppDslExportQuery = {
   workflow_id?: string | null
 }
 
+export type AppDslExportResponse = {
+  data: string
+}
+
 export type AppDslImportPayload = {
   app_id?: string | null
   description?: string | null
@@ -543,9 +547,7 @@ export type GetAppsByAppIdExportData = {
 }
 
 export type GetAppsByAppIdExportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppDslExportResponse
 }
 
 export type GetAppsByAppIdExportResponse

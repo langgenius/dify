@@ -452,7 +452,9 @@ class AppDslExportQuery(BaseModel):
     """Query parameters for GET /apps/<app_id>/export."""
 
     include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
-    workflow_id: UUIDStr | None = Field(None, description="Export a specific workflow version instead of the current draft")
+    workflow_id: UUIDStr | None = Field(
+        None, description="Export a specific workflow version instead of the current draft"
+    )
 
 
 class AppDslExportResponse(BaseModel):

@@ -117,6 +117,7 @@ class AppDslExportApi(Resource):
     routes in the openapi group.  Apps with the service API disabled will
     receive a 403; enable the API in the console first if needed.
     """
+
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
