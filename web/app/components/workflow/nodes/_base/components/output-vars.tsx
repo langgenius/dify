@@ -26,7 +26,7 @@ const OutputVars: FC<Props> = ({
   return (
     <FieldCollapse
       title={title || t('nodes.common.outputVars', { ns: 'workflow' })}
-      operations={operations}
+      actions={operations}
       collapsed={collapsed}
       onCollapse={onCollapse}
     >
