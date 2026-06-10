@@ -542,6 +542,7 @@
   "operation.duplicate": "중복",
   "operation.edit": "편집",
   "operation.exporting": "내보내는 중",
+  "operation.fill": "자동 입력",
   "operation.format": "형식",
   "operation.getForFree": "무료로 받기",
   "operation.imageCopied": "복사된 이미지",

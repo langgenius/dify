@@ -196,11 +196,15 @@ class TestPluginListApi:
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch("controllers.console.workspace.plugin.PluginService.list_with_total", return_value=mock_list),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_with_total",
+                return_value=mock_list,
+            ) as mock_list_with_total,
         ):
-            result = method(api, "t1")
+            result = method(api, "t1", "u1")
 
         assert result["total"] == 1
+        mock_list_with_total.assert_called_once_with("t1", "u1", 1, 10)
 
 
 class TestPluginCategoryListApi:

@@ -25,6 +25,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_tenant_id,
     with_current_user,
+    with_current_user_id,
 )
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginInstallationSource
@@ -400,11 +401,12 @@ class PluginListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user_id
     @with_current_tenant_id
-    def get(self, tenant_id: str):
+    def get(self, tenant_id: str, user_id: str):
         args = ParserList.model_validate(request.args.to_dict(flat=True))
         try:
-            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
+            plugins_with_total = PluginService.list_with_total(tenant_id, user_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 

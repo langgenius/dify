@@ -542,6 +542,7 @@
   "operation.duplicate": "สำเนา",
   "operation.edit": "แก้ไข",
   "operation.exporting": "กำลังส่งออก",
+  "operation.fill": "กรอกอัตโนมัติ",
   "operation.format": "รูปแบบ",
   "operation.getForFree": "รับฟรี",
   "operation.imageCopied": "ภาพที่คัดลอก",

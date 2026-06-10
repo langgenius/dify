@@ -90,6 +90,7 @@
   "chatVariable.modal.arrayValue": "值",
   "chatVariable.modal.description": "描述",
   "chatVariable.modal.descriptionPlaceholder": "变量的描述",
+  "chatVariable.modal.descriptionTooLong": "描述不能超过 {{maxLength}} 个字符",
   "chatVariable.modal.editInForm": "在表单中编辑",
   "chatVariable.modal.editInJSON": "在 JSON 中编辑",
   "chatVariable.modal.editTitle": "编辑会话变量",

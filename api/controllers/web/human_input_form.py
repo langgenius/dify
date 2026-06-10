@@ -15,10 +15,11 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
-from controllers.web.error import NotFoundError, WebFormRateLimitExceededError
+from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import serialize_app_site_payload
 from extensions.ext_database import db
 from graphon.nodes.human_input.entities import FormInputConfig
