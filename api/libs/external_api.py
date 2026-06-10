@@ -1,6 +1,6 @@
 import re
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Protocol
 
 from flask import Blueprint, Flask, current_app, got_request_exception
 from flask_restx import Api
@@ -17,7 +17,18 @@ def http_status_message(code):
     return HTTP_STATUS_CODES.get(code, "")
 
 
-def register_external_error_handlers(api: Api):
+class ErrorBodyFormatter(Protocol):
+    """Last-touch hook over an error body before it goes on the wire."""
+
+    def finalize(self, e: Exception, data: dict[str, Any], status_code: int) -> dict[str, Any]: ...
+
+
+def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatter | None = None):
+    def _finalize(e: Exception, data: dict[str, Any], status_code: int) -> dict[str, Any]:
+        if body_formatter is None:
+            return data
+        return body_formatter.finalize(e, data, status_code)
+
     def handle_http_exception(e: HTTPException):
         got_request_exception.send(current_app, exception=e)
 
@@ -45,7 +56,7 @@ def register_external_error_handlers(api: Api):
         # Payload per status
         if status_code == 406 and api.default_mediatype is None:
             data = {"code": "not_acceptable", "message": default_data["message"], "status": status_code}
-            return data, status_code, headers
+            return _finalize(e, data, status_code), status_code, headers
         elif status_code == 400:
             msg = default_data["message"]
             if isinstance(msg, Mapping) and msg:
@@ -60,7 +71,7 @@ def register_external_error_handlers(api: Api):
             else:
                 data = {**default_data}
                 data.setdefault("code", "unknown")
-            return data, status_code, headers
+            return _finalize(e, data, status_code), status_code, headers
         else:
             data = {**default_data}
             data.setdefault("code", "unknown")
@@ -72,20 +83,20 @@ def register_external_error_handlers(api: Api):
                 if error_code == "unauthorized_and_force_logout":
                     # Add Set-Cookie headers to clear auth cookies
                     headers["Set-Cookie"] = build_force_logout_cookie_headers()
-            return data, status_code, headers
+            return _finalize(e, data, status_code), status_code, headers
 
     def handle_value_error(e: ValueError):
         got_request_exception.send(current_app, exception=e)
         current_app.logger.exception("value_error in request handler")
         status_code = 400
         data = {"code": "invalid_param", "message": str(e), "status": status_code}
-        return data, status_code
+        return _finalize(e, data, status_code), status_code
 
     def handle_quota_exceeded(e: AppInvokeQuotaExceededError):
         got_request_exception.send(current_app, exception=e)
         status_code = 429
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
-        return data, status_code
+        return _finalize(e, data, status_code), status_code
 
     def handle_general_exception(e: Exception):
         got_request_exception.send(current_app, exception=e)
@@ -103,7 +114,7 @@ def register_external_error_handlers(api: Api):
         # Note: Exception logging is handled by Flask/Flask-RESTX framework automatically
         # Explicit log_exception call removed to avoid duplicate log entries
 
-        return data, status_code
+        return _finalize(e, data, status_code), status_code
 
     api.errorhandler(HTTPException)(handle_http_exception)
     api.errorhandler(ValueError)(handle_value_error)
@@ -121,7 +132,7 @@ class ExternalApi(Api):
         }
     }
 
-    def __init__(self, app: Blueprint | Flask, *args, **kwargs):
+    def __init__(self, app: Blueprint | Flask, *args, error_body_formatter: ErrorBodyFormatter | None = None, **kwargs):
         patch_swagger_for_inline_nested_dicts()
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
@@ -131,4 +142,4 @@ class ExternalApi(Api):
         # manual separate call on construction and init_app to ensure configs in kwargs effective
         super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
-        register_external_error_handlers(self)
+        register_external_error_handlers(self, body_formatter=error_body_formatter)
