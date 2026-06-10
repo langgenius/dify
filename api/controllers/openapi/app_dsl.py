@@ -13,6 +13,7 @@ from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, App
+from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.app import WorkflowNotFoundError
@@ -35,6 +36,9 @@ class AppDslImportApi(Resource):
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        allowed_roles=frozenset({
+            TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER
+        })
     )
     @returns(200, Import, "Import completed")
     @returns(202, Import, "Import pending confirmation")
@@ -86,6 +90,9 @@ class AppDslImportConfirmApi(Resource):
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        allowed_roles=frozenset({
+            TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER
+        })
     )
     @returns(200, Import, "Import confirmed")
     @returns(400, Import, "Import failed")
@@ -121,6 +128,9 @@ class AppDslExportApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        allowed_roles=frozenset({
+            TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER
+        })
     )
     @accepts(query=AppDslExportQuery)
     @returns(200, AppDslExportResponse, "Export successful")
@@ -150,6 +160,9 @@ class AppDslCheckDependenciesApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        allowed_roles=frozenset({
+            TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER
+        })
     )
     @returns(200, CheckDependenciesResult, "Dependencies checked")
     def get(self, app_id: str, *, auth_data: AuthData):
