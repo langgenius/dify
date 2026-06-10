@@ -1,8 +1,15 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 
-export function AgentPreviewHeader() {
+export function AgentPreviewHeader({
+  isVersionsOpen,
+  onToggleVersions,
+}: {
+  isVersionsOpen: boolean
+  onToggleVersions: () => void
+}) {
   const { t } = useTranslation('agentV2')
 
   return (
@@ -23,11 +30,16 @@ export function AgentPreviewHeader() {
           className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           aria-label={t('agentDetail.configure.preview.endUserAuth')}
         >
-          <span aria-hidden className="i-ri-user-settings-line size-4" />
+          <span aria-hidden className="i-custom-vender-agent-v2-end-user-auth size-4" />
         </button>
         <button
           type="button"
-          className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          aria-pressed={isVersionsOpen}
+          onClick={onToggleVersions}
+          className={cn(
+            'flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            isVersionsOpen && 'bg-state-base-hover text-text-secondary',
+          )}
           aria-label={t('agentDetail.configure.preview.settings')}
         >
           <span aria-hidden className="i-ri-equalizer-2-line size-4" />

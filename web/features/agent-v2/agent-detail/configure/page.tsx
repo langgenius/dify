@@ -10,6 +10,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { consoleQuery } from '@/service/client'
 import { AgentFiles } from './components/agent-files'
 import { AgentPreviewHeader } from './components/agent-preview-header'
+import { AgentPreviewVersionsPanel } from './components/agent-preview-versions-panel'
 import { AgentPromptEditor } from './components/agent-prompt-editor'
 import { AgentSkills } from './components/agent-skills'
 import { AgentTools } from './components/agent-tools'
@@ -24,6 +25,7 @@ export function AgentConfigurePage({
   const { t } = useTranslation('agentV2')
   const [selectedModel, setSelectedModel] = useState<DefaultModel>()
   const [prompt, setPrompt] = useState('')
+  const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
       params: {
@@ -102,26 +104,38 @@ export function AgentConfigurePage({
       </div>
 
       {/* Preview panel */}
-      <div className="flex min-w-[420px] flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
-        <AgentPreviewHeader />
+      <div className="flex min-w-[420px] flex-1 overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <AgentPreviewHeader
+            isVersionsOpen={showPreviewVersions}
+            onToggleVersions={() => setShowPreviewVersions(open => !open)}
+          />
 
-        {/* Chat transcript */}
-        <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
-          <div className="mx-auto flex max-w-[720px] flex-col gap-3">
-            <div className="ml-auto h-12 w-48 rounded-2xl bg-background-default-dimmed" />
-            <div className="h-16 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-1" />
-            <div className="h-7 w-80 rounded-md bg-components-panel-on-panel-item-bg" />
-            <div className="h-9 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-2" />
-            <div className="h-9 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-2" />
-            <div className="h-26 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-1" />
-            <div className="h-8 w-32 rounded-lg bg-state-base-hover" />
+          {/* Chat transcript */}
+          <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
+            <div className="mx-auto flex max-w-[720px] flex-col gap-3">
+              <div className="ml-auto h-12 w-48 rounded-2xl bg-background-default-dimmed" />
+              <div className="h-16 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-1" />
+              <div className="h-7 w-80 rounded-md bg-components-panel-on-panel-item-bg" />
+              <div className="h-9 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-2" />
+              <div className="h-9 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-2" />
+              <div className="h-26 rounded-xl bg-background-gradient-bg-fill-chat-bubble-bg-1" />
+              <div className="h-8 w-32 rounded-lg bg-state-base-hover" />
+            </div>
+          </div>
+
+          {/* Chat input */}
+          <div className="shrink-0 bg-linear-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2 px-6 py-3">
+            <div className="mx-auto h-12 max-w-[720px] rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5" />
           </div>
         </div>
-
-        {/* Chat input */}
-        <div className="shrink-0 bg-linear-to-b from-components-chat-input-bg-mask-1 to-components-chat-input-bg-mask-2 px-6 py-3">
-          <div className="mx-auto h-12 max-w-[720px] rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5" />
-        </div>
+        {showPreviewVersions && (
+          <AgentPreviewVersionsPanel
+            agentId={agentId}
+            activeVersionId={agentQuery.data?.active_config_snapshot_id}
+            onClose={() => setShowPreviewVersions(false)}
+          />
+        )}
       </div>
     </section>
   )
