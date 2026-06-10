@@ -94,14 +94,6 @@ logger = logging.getLogger(__name__)
 
 
 def _propagate_otel_context[**P, R](func: Callable[P, R]) -> Callable[P, R]:
-    """Re-attach the caller's OpenTelemetry context inside a worker thread.
-
-    ``ThreadPoolExecutor`` does not copy ``contextvars`` (where OTel stores the
-    active span) into its worker threads, so spans created by retrieval tasks
-    submitted to the pool would otherwise become orphaned root spans. Capturing
-    the current context at submit time and attaching it before the task runs
-    keeps retrieval spans nested under the caller's span.
-    """
     captured_context = otel_context.get_current()
 
     @functools.wraps(func)
