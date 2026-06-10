@@ -391,7 +391,6 @@ class DatasetListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @rbac_permission_required("dataset", "dataset_readonly", resource_required=False)
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
         # Convert query parameters to dict, handling list parameters correctly

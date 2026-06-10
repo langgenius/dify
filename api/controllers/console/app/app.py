@@ -523,7 +523,6 @@ class AppListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @rbac_permission_required("app", "app_library_access", resource_required=False)
     @with_session(write=False)
     @with_current_user_id
     @with_current_tenant_id

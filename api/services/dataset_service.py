@@ -273,12 +273,9 @@ class DatasetService:
 
                 if not should_show_all_datasets:
                     if dify_config.RBAC_ENABLED:
-                        # RBAC mode still honors public datasets and creator-owned datasets.
-                        visibility_conditions = [Dataset.permission == DatasetPermissionEnum.ALL_TEAM]
-                        visibility_conditions.append(Dataset.created_by == user.id)
-                        if permitted_dataset_ids:
-                            visibility_conditions.append(Dataset.id.in_(permitted_dataset_ids))
-                        query = query.where(sa.or_(*visibility_conditions))
+                        # RBAC mode: show all datasets.  Permission control is enforced
+                        # via permission_keys on each item and @rbac_permission_required decorators.
+                        pass
                     else:
                         # Keep legacy visibility rules when RBAC is disabled.
                         if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
