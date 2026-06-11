@@ -749,8 +749,10 @@ python3 dify/scripts/dsl_agent/runtime_repair.py \
 ```
 
 This reads `generated.yml`, `console_draft_run.json`, and any available
-`console_import.json` / `console_run_detail.json` / `console_node_executions.json`,
-then writes:
+`console_import.json` / `console_run_detail.json` / `console_node_executions.json`.
+If run detail or node executions are embedded in `console_draft_run.json`, runtime
+repair extracts them and builds a compact `summary` for deterministic and LLM
+repair. It then writes:
 
 ```text
 generated.runtime_repair.yml

@@ -73,6 +73,117 @@ def resolve_file(run_dir: Path, explicit: Path | None, default_name: str) -> Pat
     return explicit if explicit else run_dir / default_name
 
 
+def list_payload_items(value: Any) -> list[dict[str, Any]]:
+    if isinstance(value, dict):
+        for key in ("data", "items", "node_executions", "workflow_runs"):
+            items = value.get(key)
+            if isinstance(items, list):
+                return [item for item in items if isinstance(item, dict)]
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    return []
+
+
+def extend_unique(items: list[dict[str, Any]], additions: list[dict[str, Any]], *, keys: tuple[str, ...]) -> None:
+    seen = {tuple(json.dumps(item.get(key), sort_keys=True, ensure_ascii=False) for key in keys) for item in items}
+    for item in additions:
+        marker = tuple(json.dumps(item.get(key), sort_keys=True, ensure_ascii=False) for key in keys)
+        if marker in seen:
+            continue
+        seen.add(marker)
+        items.append(item)
+
+
+def summarize_runtime_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "workflow_run_id": None,
+        "status": None,
+        "succeeded": None,
+        "failed_nodes": [],
+        "errors": [],
+    }
+
+    draft = evidence.get("draft_run")
+    draft_summary = None
+    if isinstance(draft, dict):
+        nested_draft = draft.get("draft_run")
+        if isinstance(nested_draft, dict) and isinstance(nested_draft.get("summary"), dict):
+            draft_summary = nested_draft["summary"]
+        elif isinstance(draft.get("summary"), dict):
+            draft_summary = draft["summary"]
+
+    if isinstance(draft_summary, dict):
+        for key in ("workflow_run_id", "status", "succeeded"):
+            if draft_summary.get(key) is not None:
+                summary[key] = draft_summary[key]
+        failed_nodes = draft_summary.get("failed_nodes")
+        if isinstance(failed_nodes, list):
+            extend_unique(
+                summary["failed_nodes"],
+                [item for item in failed_nodes if isinstance(item, dict)],
+                keys=("node_id", "node_type", "status", "error"),
+            )
+        errors = draft_summary.get("errors")
+        if isinstance(errors, list):
+            extend_unique(
+                summary["errors"],
+                [item for item in errors if isinstance(item, dict)],
+                keys=("event", "node_id", "message"),
+            )
+
+    run_detail = evidence.get("run_detail")
+    if isinstance(run_detail, dict):
+        run_id = run_detail.get("id") or run_detail.get("workflow_run_id")
+        if run_id and not summary["workflow_run_id"]:
+            summary["workflow_run_id"] = run_id
+        status = run_detail.get("status")
+        if status and not summary["status"]:
+            summary["status"] = status
+        error = run_detail.get("error")
+        if error:
+            extend_unique(
+                summary["errors"],
+                [{"event": "workflow_run_detail", "message": str(error), "workflow_run_id": run_id}],
+                keys=("event", "message", "workflow_run_id"),
+            )
+
+    node_failures: list[dict[str, Any]] = []
+    for node in list_payload_items(evidence.get("node_executions")):
+        status = node.get("status")
+        error = node.get("error")
+        if not error and status in {None, "succeeded", "partial-succeeded"}:
+            continue
+        node_failures.append(
+            {
+                "node_id": node.get("node_id") or node.get("id"),
+                "node_type": node.get("node_type"),
+                "title": node.get("title"),
+                "status": status,
+                "error": error,
+                "elapsed_time": node.get("elapsed_time"),
+            }
+        )
+    extend_unique(summary["failed_nodes"], node_failures, keys=("node_id", "node_type", "status", "error"))
+    extend_unique(
+        summary["errors"],
+        [
+            {
+                "event": "node_execution",
+                "node_id": node.get("node_id"),
+                "node_type": node.get("node_type"),
+                "title": node.get("title"),
+                "message": str(node.get("error") or node.get("status")),
+            }
+            for node in node_failures
+        ],
+        keys=("event", "node_id", "message"),
+    )
+
+    if summary["succeeded"] is None and summary["errors"]:
+        summary["succeeded"] = False
+    return summary
+
+
 def load_runtime_evidence(args: argparse.Namespace) -> dict[str, Any]:
     run_dir = args.run_dir
     import_report = resolve_file(run_dir, args.import_report, "console_import.json")
@@ -86,11 +197,20 @@ def load_runtime_evidence(args: argparse.Namespace) -> dict[str, Any]:
         "run_detail": read_json_or_text(run_detail, None),
         "node_executions": read_json_or_text(node_executions, None),
     }
+    draft_run = evidence.get("draft_run")
+    if isinstance(draft_run, dict):
+        if evidence["run_detail"] is None:
+            evidence["run_detail"] = draft_run.get("run_detail")
+        if evidence["node_executions"] is None:
+            evidence["node_executions"] = draft_run.get("node_executions")
     loaded = {key: value for key, value in evidence.items() if value is not None}
     if not loaded:
+        expected_files = [import_report, runtime_report, run_detail, node_executions]
         raise FileNotFoundError(
-            f"No Console evidence found. Expected at least one of: {import_report}, {runtime_report}, {run_detail}, {node_executions}"
+            "No Console evidence found. Expected at least one of: "
+            + ", ".join(str(path) for path in expected_files)
         )
+    loaded["summary"] = summarize_runtime_evidence(loaded)
     return loaded
 
 
