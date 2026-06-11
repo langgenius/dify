@@ -810,6 +810,21 @@ class TestTenantService:
 
         self._assert_database_operations_called(mock_db_dependencies["db"])
 
+    def test_create_tenant_member_uses_injected_session_without_commit(self):
+        """Injected request sessions should leave member creation commits to the caller."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
+
+        result = TenantService.create_tenant_member(mock_tenant, mock_account, "normal", session=mock_session)
+
+        assert result is not None
+        mock_session.add.assert_called_once()
+        mock_session.flush.assert_called_once()
+        mock_session.commit.assert_not_called()
+
     # ==================== Member Removal Tests ====================
 
     def test_remove_pending_member_deletes_orphaned_account(self):
@@ -913,6 +928,30 @@ class TestTenantService:
 
             # Assert: only the join record should be deleted
             mock_db.session.delete.assert_called_once_with(mock_ta)
+
+    def test_remove_member_uses_injected_session_without_commit(self):
+        """Injected request sessions should leave member-removal commits to the caller."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123", role="owner")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="owner"
+        )
+        mock_ta = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="normal"
+        )
+        mock_session = MagicMock()
+        mock_session.scalar.side_effect = [mock_operator_join, mock_ta]
+
+        with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+            mock_sync.return_value = True
+
+            TenantService.remove_member_from_tenant(mock_tenant, mock_member, mock_operator, session=mock_session)
+
+        mock_session.delete.assert_called_once_with(mock_ta)
+        mock_session.flush.assert_called_once()
+        mock_session.commit.assert_not_called()
 
     # ==================== Tenant Switching Tests ====================
 
@@ -1089,6 +1128,27 @@ class TestTenantService:
 
             with pytest.raises(NoPermissionError):
                 TenantService.update_member_role(mock_tenant, mock_member, "owner", mock_operator)
+
+    def test_update_member_role_uses_injected_session_without_commit(self):
+        """Injected request sessions should leave role-update commits to the caller."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_target_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="normal"
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="owner"
+        )
+        mock_session = MagicMock()
+        mock_session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
+
+        TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator, session=mock_session)
+
+        assert mock_target_join.role == TenantAccountRole.ADMIN
+        mock_session.flush.assert_called_once()
+        mock_session.commit.assert_not_called()
 
     # ==================== Permission Check Tests ====================
 
