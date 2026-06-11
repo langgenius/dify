@@ -2314,6 +2314,7 @@ export const zAgentCliToolConfig = z.object({
   description: z.string().nullish(),
   enabled: z.boolean().optional().default(true),
   env: zAgentCliToolEnvConfig.optional(),
+  id: z.string().max(255).nullish(),
   install: z.string().nullish(),
   install_command: z.string().nullish(),
   install_commands: z.array(z.string()).optional(),
@@ -2587,7 +2588,7 @@ export const zAgentSoulDifyToolConfig = z.object({
   provider_id: z.string().max(255).nullish(),
   provider_type: z.string().optional().default('plugin'),
   runtime_parameters: z.record(z.string(), z.unknown()).optional(),
-  tool_name: z.string().min(1).max(255),
+  tool_name: z.string().min(1).max(255).nullish(),
 })
 
 /**
