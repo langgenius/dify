@@ -4,6 +4,12 @@ import { useCallback } from 'react'
 
 const KEY_PREFIX = 'workflow-gen-'
 
+// Upper bound on retained generations. Each version embeds a full graph
+// (tens of KB for a large refine), and sessionStorage offers ~5MB for the
+// whole origin — an unbounded history can hit the quota mid-session and
+// silently stop persisting. Ten comfortably covers "compare a few attempts".
+const MAX_VERSIONS = 10
+
 type Params = {
   storageKey: string
 }
@@ -26,17 +32,24 @@ const useGenGraph = ({ storageKey }: Params) => {
     { defaultValue: 0 },
   )
 
-  const current = versions?.[currentVersionIndex ?? 0]
+  // Clamp the persisted index into bounds — sessionStorage can hold an index
+  // from a longer, since-capped history (or one cleared by another tab).
+  const safeIndex = Math.min(currentVersionIndex ?? 0, Math.max((versions?.length ?? 0) - 1, 0))
+  const current = versions?.[safeIndex]
 
   const addVersion = useCallback((version: GenerateWorkflowResponse) => {
-    setCurrentVersionIndex(() => versions?.length || 0)
-    setVersions(prev => [...(prev ?? []), version])
-  }, [setVersions, setCurrentVersionIndex, versions?.length])
+    // Compute the next list once so the selected index always points at the
+    // entry we just appended — even when the cap drops the oldest version
+    // (the old length-based index would then be off by one).
+    const next = [...(versions ?? []), version].slice(-MAX_VERSIONS)
+    setVersions(next)
+    setCurrentVersionIndex(next.length - 1)
+  }, [setVersions, setCurrentVersionIndex, versions])
 
   return {
     versions,
     addVersion,
-    currentVersionIndex,
+    currentVersionIndex: safeIndex,
     setCurrentVersionIndex,
     current,
   }
