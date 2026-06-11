@@ -46,6 +46,15 @@ function renderEnvelope(env: ErrorEnvelope): string {
   return JSON.stringify(env)
 }
 
+function resolveHint(e: ErrorEnvelope['error']): string | undefined {
+  if (e.server?.hint != null)
+    return e.server.hint
+  if (e.hint !== undefined)
+    return e.hint
+  const rawHiddenAndUnparsed = e.server === undefined && Boolean(e.raw_response) && !isVerbose()
+  return rawHiddenAndUnparsed ? RAW_RESPONSE_HINT : undefined
+}
+
 function renderHuman(env: ErrorEnvelope, isErrTTY: boolean): string {
   const cs = colorScheme(colorEnabled(isErrTTY))
   const e = env.error
@@ -56,8 +65,8 @@ function renderHuman(env: ErrorEnvelope, isErrTTY: boolean): string {
     const loc = (d.loc ?? []).join('.')
     lines.push(`  - ${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`)
   }
-  const hint = server?.hint ?? e.hint ?? (server === undefined && e.raw_response && !isVerbose() ? RAW_RESPONSE_HINT : undefined)
-  if (hint !== undefined && hint !== null)
+  const hint = resolveHint(e)
+  if (hint !== undefined)
     lines.push(`${cs.magenta('hint:')} ${cs.cyan(hint)}`)
   if (e.method !== undefined && e.url !== undefined)
     lines.push(`request: ${e.method} ${e.url}`)
