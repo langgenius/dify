@@ -1,8 +1,8 @@
 'use client'
 
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, MouseEvent } from 'react'
 import type { SlashMenuCategory, SlashMenuView } from './slash-menu'
-import { useCallback, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -29,6 +29,41 @@ const useIsHydrated = () => useSyncExternalStore(
   () => false,
 )
 
+const getLastTextContent = (node: Node): string => {
+  if (node.nodeType === Node.TEXT_NODE)
+    return node.textContent ?? ''
+
+  const textParts: string[] = []
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+  let current = walker.nextNode()
+  while (current) {
+    textParts.push(current.textContent ?? '')
+    current = walker.nextNode()
+  }
+
+  return textParts.join('')
+}
+
+const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: string) => {
+  if (!rootElement)
+    return fallbackValue.endsWith('/')
+
+  const selection = window.getSelection()
+  if (!selection || !selection.isCollapsed || selection.rangeCount === 0)
+    return fallbackValue.endsWith('/')
+
+  const anchorNode = selection.anchorNode
+  if (!anchorNode || !rootElement.contains(anchorNode))
+    return false
+
+  if (anchorNode.nodeType === Node.TEXT_NODE)
+    return (anchorNode.textContent ?? '').slice(0, selection.anchorOffset).endsWith('/')
+
+  const element = anchorNode as Element
+  const previousChild = element.childNodes.item(selection.anchorOffset - 1)
+  return previousChild ? getLastTextContent(previousChild).endsWith('/') : false
+}
+
 export function AgentPromptEditor({
   value,
   onChange,
@@ -39,6 +74,8 @@ export function AgentPromptEditor({
   const count = value.length
   const [slashMenuView, setSlashMenuView] = useState<SlashMenuView>('main')
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const editorRef = useRef<HTMLDivElement>(null)
 
   const handleInsert = useCallback((token: string) => {
     onChange(appendToken(value, token))
@@ -48,6 +85,21 @@ export function AgentPromptEditor({
     setIsSlashMenuOpen(false)
     setSlashMenuView('main')
   }
+
+  const openSlashMenu = () => {
+    setSlashMenuView('main')
+    setIsSlashMenuOpen(true)
+  }
+
+  const syncSlashMenuWithSelection = useCallback(() => {
+    if (!isHydrated)
+      return
+
+    if (isSelectionAfterSlash(editorRef.current, value))
+      openSlashMenu()
+    else
+      closeSlashMenu()
+  }, [isHydrated, value])
 
   const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!isHydrated)
@@ -62,14 +114,54 @@ export function AgentPromptEditor({
     if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey)
       return
 
-    setSlashMenuView('main')
-    setIsSlashMenuOpen(true)
+    openSlashMenu()
+  }
+
+  const handleEditorKeyUp = () => {
+    window.requestAnimationFrame(syncSlashMenuWithSelection)
+  }
+
+  const handleEditorPointerUp = () => {
+    window.requestAnimationFrame(syncSlashMenuWithSelection)
+  }
+
+  const handleRootPointerDown = (event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target
+    if (!(target instanceof Node))
+      return
+
+    if (editorRef.current?.contains(target))
+      return
+
+    if (target instanceof Element && target.closest('[data-agent-prompt-slash-menu]'))
+      return
+
+    closeSlashMenu()
   }
 
   const handleSlashSelect = (token: string) => {
     onChange(replaceTrailingSlashWithToken(value, token))
     closeSlashMenu()
   }
+
+  useEffect(() => {
+    if (!isSlashMenuOpen)
+      return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node))
+        return
+
+      if (!rootRef.current?.contains(target))
+        closeSlashMenu()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [isSlashMenuOpen])
 
   const slashMenuCategories: SlashMenuCategory[] = [
     {
@@ -110,12 +202,18 @@ export function AgentPromptEditor({
         </div>
       </div>
 
-      <div className="relative">
+      <div
+        ref={rootRef}
+        className="relative"
+        onPointerDownCapture={handleRootPointerDown}
+      >
         <div
           className="overflow-hidden rounded-[10px] border-[1.5px] border-components-input-border-active-prompt-1 bg-components-input-bg-active shadow-xs shadow-shadow-shadow-3"
           onKeyDownCapture={handleEditorKeyDown}
+          onKeyUpCapture={handleEditorKeyUp}
+          onPointerUpCapture={handleEditorPointerUp}
         >
-          <div className="max-h-64 min-h-20 overflow-y-auto px-3 pt-2">
+          <div ref={editorRef} className="max-h-64 min-h-20 overflow-y-auto px-3 pt-2">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
               compact
@@ -158,7 +256,7 @@ export function AgentPromptEditor({
         </div>
 
         {isHydrated && isSlashMenuOpen && (
-          <div className="absolute top-9 left-3 z-50">
+          <div data-agent-prompt-slash-menu className="absolute top-9 left-3 z-50">
             <AgentPromptSlashMenu
               view={slashMenuView}
               categories={slashMenuCategories}

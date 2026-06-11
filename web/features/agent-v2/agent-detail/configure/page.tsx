@@ -91,7 +91,7 @@ export function AgentConfigurePage({
           <AgentPromptEditor value={prompt} onChange={setPrompt} />
 
           {/* Skills */}
-          <AgentSkills />
+          <AgentSkills agentId={agentId} />
 
           {/* Files */}
           <AgentFiles />

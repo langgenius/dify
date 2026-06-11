@@ -16,6 +16,8 @@ const RosterReferenceBlockComponent = ({
   if (!token)
     return null
 
+  const isKnowledge = token.kind === 'knowledge'
+
   return (
     <span
       contentEditable={false}
@@ -29,9 +31,10 @@ const RosterReferenceBlockComponent = ({
         className={cn(
           'inline-flex size-4 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-divider-subtle bg-background-default-dodge',
           token.kind === 'cli_tool' && 'border-divider-regular bg-text-tertiary',
+          isKnowledge && 'border-divider-subtle bg-util-colors-green-green-500 p-[3px] text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3',
         )}
       >
-        <span className={cn('size-3.5 shrink-0', getRosterReferenceIconClassName(token))} />
+        <span className={cn(isKnowledge ? 'size-3.5' : 'size-3.5 shrink-0', getRosterReferenceIconClassName(token))} />
       </span>
       <span className="max-w-48 truncate system-xs-medium text-text-accent">
         {token.label}

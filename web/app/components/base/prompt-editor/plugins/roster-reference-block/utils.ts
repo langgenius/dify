@@ -86,6 +86,6 @@ export function getRosterReferenceIconClassName(token: RosterReferenceToken) {
     case 'cli_tool':
       return 'i-ri-terminal-box-line text-text-primary-on-surface'
     case 'knowledge':
-      return 'i-ri-book-open-line text-text-tertiary'
+      return 'i-ri-book-open-line'
   }
 }
