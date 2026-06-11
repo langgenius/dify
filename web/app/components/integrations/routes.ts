@@ -83,6 +83,19 @@ export const marketplaceCategoryByIntegrationSection: Partial<Record<Integration
   'extension': 'extension',
 }
 
+export const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationSection, string>> = {
+  'provider': '/plugins/model',
+  'builtin': '/plugins/tool',
+  'mcp': '/plugins/tool',
+  'custom-tool': '/plugins/tool',
+  'workflow-tool': '/plugins/tool',
+  'data-source': '/plugins/datasource',
+  'custom-endpoint': '/plugins/extension',
+  'trigger': '/plugins/trigger',
+  'agent-strategy': '/plugins/agent-strategy',
+  'extension': '/plugins/extension',
+}
+
 export const integrationPathBySection: Record<IntegrationSection, string> = {
   'provider': '/integrations/model-provider',
   'builtin': '/integrations/tools/built-in',
@@ -108,6 +121,10 @@ export const buildMarketplacePathByIntegrationSection = (section: IntegrationSec
 
   const params = new URLSearchParams({ category })
   return `/marketplace?${params.toString()}`
+}
+
+export const buildMarketplaceUrlPathByIntegrationSection = (section: IntegrationSection) => {
+  return marketplaceUrlPathByIntegrationSection[section] ?? '/plugins'
 }
 
 export const getIntegrationRedirectPathByLegacyToolsSearchParams = (

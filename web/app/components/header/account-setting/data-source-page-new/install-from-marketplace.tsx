@@ -1,3 +1,4 @@
+import type { DataSourceAuth } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -14,15 +15,16 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import ProviderCard from '@/app/components/plugins/provider-card'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
 import {
   useMarketplaceAllPlugins,
 } from './hooks'
 
 type InstallFromMarketplaceProps = {
-  providers: any[]
+  providers: DataSourceAuth[]
   searchText: string
 }
 const InstallFromMarketplace = ({
@@ -59,7 +61,7 @@ const InstallFromMarketplace = ({
         </button>
         <div className="mb-2 flex items-center pt-2">
           <span className="pr-1 system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
-          <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="inline-flex items-center system-sm-medium text-text-accent">
+          <Link target="_blank" href={getMarketplaceCategoryUrl(PluginCategoryEnum.datasource, { theme })} className="inline-flex items-center system-sm-medium text-text-accent">
             {t('marketplace.difyMarketplace', { ns: 'plugin' })}
             <RiArrowRightUpLine className="size-4" />
           </Link>

@@ -158,8 +158,9 @@ vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => 
   default: () => ({ check: mockCheck }),
 }))
 
+const mockGetMarketplaceUrl = vi.hoisted(() => vi.fn(() => 'https://marketplace.example.com'))
 vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn(() => 'https://marketplace.example.com'),
+  getMarketplaceUrl: mockGetMarketplaceUrl,
 }))
 
 vi.mock('../../utils', async () => {
@@ -866,6 +867,7 @@ describe('Popup', () => {
     expect(screen.getByText('TestAnthropic'))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.fromMarketplace/))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/))!.toBeInTheDocument()
+    expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('/plugins/model', expect.objectContaining({ theme: expect.any(String) }))
   })
 
   it('should hide marketplace providers when marketplace is disabled', () => {

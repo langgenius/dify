@@ -114,7 +114,7 @@ describe('InstallFromMarketplace Component', () => {
       // Assert
       expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url?theme=light')
+      expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url/plugins/datasource?theme=light')
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
       expect(screen.getByTestId('mock-list')).toHaveClass('grid', 'grid-cols-3', 'gap-2')
       expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-[146px]')

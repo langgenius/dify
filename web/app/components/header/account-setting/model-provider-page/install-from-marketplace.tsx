@@ -9,9 +9,10 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import ProviderCard from '@/app/components/plugins/provider-card'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
 import {
   useMarketplaceAllPlugins,
 } from './hooks'
@@ -57,7 +58,7 @@ const InstallFromMarketplace = ({
           <Link
             target="_blank"
             rel="noopener noreferrer"
-            href={getMarketplaceUrl('', { theme })}
+            href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
             className="inline-flex items-center system-sm-medium text-text-accent"
           >
             {t('marketplace.difyMarketplace', { ns: 'plugin' })}
