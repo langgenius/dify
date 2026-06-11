@@ -406,17 +406,18 @@ class AnnotationBatchImportStatusApi(Resource):
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
     def get(self, app_id: UUID, job_id: UUID):
-        indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
+        job_id_str = str(job_id)
+        indexing_cache_key = f"app_annotation_batch_import_{job_id_str}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
-            indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
+            indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{job_id_str}"
             error_msg = redis_client.get(indexing_error_msg_key).decode()
 
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
+        return {"job_id": job_id_str, "job_status": job_status, "error_msg": error_msg}, 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")
