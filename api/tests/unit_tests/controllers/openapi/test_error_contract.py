@@ -335,3 +335,15 @@ class TestErrorMatrix:
         assert wire["status"] == status
         assert wire["code"] in {c.value for c in OpenApiErrorCode}
         ErrorBody.model_validate(wire)
+
+
+class TestErrorCodeEnumRegistration:
+    def test_enum_registered_with_all_values(self):
+        from controllers.openapi import openapi_ns
+        from controllers.openapi._errors import OpenApiErrorCode
+
+        model = openapi_ns.models.get("OpenApiErrorCode")
+        assert model is not None
+        schema = model.__schema__
+        assert schema["type"] == "string"
+        assert set(schema["enum"]) == {member.value for member in OpenApiErrorCode}
