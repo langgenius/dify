@@ -21,13 +21,13 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { ReadmeEntrance } from '../readme-panel/entrance'
 
-type Props = {
+type Props = Readonly<{
   formSchemas: FormSchema[]
   defaultValues?: any
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
   pluginDetail: PluginDetail
-}
+}>
 
 const extractDefaultValues = (schemas: any[]) => {
   const result: Record<string, any> = {}

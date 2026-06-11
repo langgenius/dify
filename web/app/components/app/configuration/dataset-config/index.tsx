@@ -39,10 +39,10 @@ import CardItem from './card-item'
 import ContextVar from './context-var'
 import ParamsConfig from './params-config'
 
-type Props = {
+type Props = Readonly<{
   readonly?: boolean
   hideMetadataFilter?: boolean
-}
+}>
 const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   const { t } = useTranslation()
   const userProfile = useAppContextSelector(s => s.userProfile)

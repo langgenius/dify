@@ -14,11 +14,11 @@ import { useCallback, useState } from 'react'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import Input from '@/app/components/base/input'
 
-type Props = {
+type Props = Readonly<{
   value: CodeDependency
   available_dependencies: CodeDependency[]
   onChange: (dependency: CodeDependency) => void
-}
+}>
 
 const DependencyPicker: FC<Props> = ({
   available_dependencies,

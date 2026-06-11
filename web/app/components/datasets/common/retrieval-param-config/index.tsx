@@ -27,12 +27,12 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
 import Reranking from '../../create/assets/rerank.svg'
 
-type Props = {
+type Props = Readonly<{
   type: RETRIEVE_METHOD
   value: RetrievalConfig
   showMultiModalTip?: boolean
   onChange: (value: RetrievalConfig) => void
-}
+}>
 
 const RetrievalParamConfig: FC<Props> = ({
   type,

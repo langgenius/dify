@@ -14,9 +14,9 @@ import TabSlider from '@/app/components/base/tab-slider-plain'
 import { useRouter } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 
-type Props = {
+type Props = Readonly<{
   pageType: PageType
-}
+}>
 
 const LogAnnotation: FC<Props> = ({
   pageType,

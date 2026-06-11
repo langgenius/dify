@@ -37,9 +37,9 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-type Props = {
+type Props = Readonly<{
   controlRefreshList?: number
-}
+}>
 function List({
   controlRefreshList = 0,
 }: Props) {

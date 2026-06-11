@@ -19,13 +19,13 @@ import AppInfo from './app-info'
 import Preview from './preview'
 import { TypeEnum } from './types'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   app?: AppType
   categories?: string[]
   onClose: () => void
   onCreate: () => void
-}
+}>
 
 const TryApp: FC<Props> = ({
   appId,
