@@ -99,6 +99,86 @@ class TestValidateVariableReferences:
         assert issues[0].node_id == "join"
         assert issues[0].referenced_node_id == "a"
 
+    def test_single_wired_branch_handle_is_flagged(self) -> None:
+        """A branch node with one wired handle can still select an unwired outcome."""
+        cons = _node("cons", "llm", "Consumer")
+        cons["data"]["prompt"] = "Use {{#prod.text#}}"
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                _node("hi", "human-input", "Approval"),
+                _node("prod", "tool", "Producer"),
+                cons,
+            ],
+            "edges": [
+                _edge("start", "hi"),
+                _edge("hi", "prod", "approve"),
+                _edge("start", "cons"),
+            ],
+        }
+        issues = validate_variable_references(graph)
+        assert len(issues) == 1
+        assert issues[0].node_id == "cons"
+        assert issues[0].referenced_node_id == "prod"
+
+    def test_single_wired_if_else_branch_is_flagged(self) -> None:
+        """An if-else with only one branch wired skips it when the other is taken."""
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                _node("router", "if-else", "Router"),
+                _node("prod", "tool", "Producer"),
+                _node("cons", "llm", "Consumer", selector=["prod", "text"]),
+            ],
+            "edges": [
+                _edge("start", "router"),
+                _edge("router", "prod", "true"),
+                _edge("start", "cons"),
+            ],
+        }
+        issues = validate_variable_references(graph)
+        assert len(issues) == 1
+        assert issues[0].referenced_node_id == "prod"
+
+    def test_fail_branch_producer_is_flagged(self) -> None:
+        """A producer behind a fail-branch node's success handle is skipped on failure."""
+        risky = _node("risky", "tool", "Risky")
+        risky["data"]["error_strategy"] = "fail-branch"
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                risky,
+                _node("prod", "tool", "Producer"),
+                _node("cons", "llm", "Consumer", selector=["prod", "text"]),
+            ],
+            "edges": [
+                _edge("start", "risky"),
+                _edge("risky", "prod", "success"),
+                _edge("start", "cons"),
+            ],
+        }
+        issues = validate_variable_references(graph)
+        assert len(issues) == 1
+        assert issues[0].referenced_node_id == "prod"
+
+    def test_branches_converging_into_producer_are_not_flagged(self) -> None:
+        """When every wired branch leads into the producer it runs on every path."""
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                _node("router", "if-else", "Router"),
+                _node("prod", "tool", "Producer"),
+                _node("cons", "llm", "Consumer", selector=["prod", "text"]),
+            ],
+            "edges": [
+                _edge("start", "router"),
+                _edge("router", "prod", "true"),
+                _edge("router", "prod", "false"),
+                _edge("start", "cons"),
+            ],
+        }
+        assert validate_variable_references(graph) == []
+
     def test_template_reference_is_detected(self) -> None:
         """A reference expressed as a {{#node.field#}} template is detected."""
         b = _node("b", "llm", "B")

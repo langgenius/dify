@@ -6,6 +6,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from graphon.enums import ErrorStrategy
 from graphon.nodes import BuiltinNodeTypes
 
 _RESERVED_SELECTOR_HEADS: frozenset[str] = frozenset({"sys", "env", "conversation", "start"})
@@ -14,6 +15,14 @@ _REFERENCE_EXEMPT_NODE_TYPES: frozenset[str] = frozenset(
     {
         BuiltinNodeTypes.VARIABLE_AGGREGATOR,
         BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR,
+    }
+)
+
+_BRANCH_NODE_TYPES: frozenset[str] = frozenset(
+    {
+        BuiltinNodeTypes.IF_ELSE,
+        BuiltinNodeTypes.QUESTION_CLASSIFIER,
+        BuiltinNodeTypes.HUMAN_INPUT,
     }
 )
 
@@ -44,13 +53,15 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
     A reference (consumer reads producer) is flagged only when a concrete run exists in
     which the consumer executes but the producer does not. That is decided with the real
     execution model rather than plain graph reachability: a node fires when any incoming
-    edge is active, an exclusive brancher (if-else / question-classifier / fail-branch)
-    activates only its chosen handle, and every other node activates all of its outgoing
-    edges. Modelling the mandatory fan-out is what keeps this sound -- a producer that is
-    pulled in on every run that reaches the consumer (because some always-firing node
-    forces it) is never flagged, and neither are parallel branches or Variable Aggregator
-    readers. Returns an empty list when every reference is safe (or the graph is empty /
-    shaped in a way other validators already reject).
+    edge is active, a branch node (if-else / question-classifier / human-input, or any
+    node whose error strategy is fail-branch) activates only its selected handle -- which
+    may be an unwired one, so wiring a single branch never guarantees it runs -- and every
+    other node activates all of its outgoing edges. Modelling the mandatory fan-out is
+    what keeps this sound -- a producer that is pulled in on every run that reaches the
+    consumer (because some always-firing node forces it) is never flagged, and neither are
+    parallel branches or Variable Aggregator readers. Returns an empty list when every
+    reference is safe (or the graph is empty / shaped in a way other validators already
+    reject).
     """
     nodes = graph.get("nodes") or []
     edges = graph.get("edges") or []
@@ -96,7 +107,11 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
 
     entries = [nid for nid in node_ids if node_parent.get(nid) is None and in_degree[nid] == 0]
     reachable = _reachable_from(entries, successors)
-    exclusive = {nid for nid, handles in out_targets_by_handle.items() if len(handles) > 1}
+    exclusive = {
+        nid
+        for nid in node_ids
+        if node_type.get(nid) in _BRANCH_NODE_TYPES or node_data[nid].get("error_strategy") == ErrorStrategy.FAIL_BRANCH
+    }
 
     consumers_by_producer: dict[str, set[str]] = defaultdict(set)
     for node_id in node_ids:
@@ -181,12 +196,13 @@ def _nodes_runnable_without(
 
     First find the ``forbidden`` nodes -- those that cannot execute without dragging the
     producer in. The producer is forbidden; a node is added when it would inevitably
-    activate a forbidden node: a non-exclusive node forces every successor, and an
-    exclusive brancher only when *all* of its handles lead solely into forbidden nodes
-    (otherwise it can route around them). If an entry is forbidden the producer fires on
-    every run, so nothing can avoid it. Otherwise return what stays reachable from the
-    entries once the forbidden nodes are removed; reaching any of those nodes is witnessed
-    by routing each exclusive brancher along the surviving path.
+    activate a forbidden node: a non-branch node forces every successor, while a branch
+    node only when more than one handle is wired and *all* of them lead solely into
+    forbidden nodes -- a single-wired branch can always select an unwired outcome and
+    route around. If an entry is forbidden the producer fires on every run, so nothing
+    can avoid it. Otherwise return what stays reachable from the entries once the
+    forbidden nodes are removed; reaching any of those nodes is witnessed by routing each
+    branch node along the surviving path.
     """
     forbidden = {producer}
     queue: deque[str] = deque([producer])
@@ -195,8 +211,11 @@ def _nodes_runnable_without(
         for pred in predecessors.get(node, ()):
             if pred in forbidden:
                 continue
-            if pred not in exclusive or all(
-                all(target in forbidden for target in targets) for targets in out_targets_by_handle[pred].values()
+            if pred not in exclusive or (
+                len(out_targets_by_handle[pred]) > 1
+                and all(
+                    all(target in forbidden for target in targets) for targets in out_targets_by_handle[pred].values()
+                )
             ):
                 forbidden.add(pred)
                 queue.append(pred)
