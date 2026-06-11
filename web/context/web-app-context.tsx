@@ -55,7 +55,8 @@ export const useWebAppStore = create<WebAppStore>(set => ({
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
   if (!redirectUrl || redirectUrl.length === 0)
     return null
-  const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+  // base only anchors relative-path parsing; never read back (SSR-safe)
+  const url = new URL(decodeURIComponent(redirectUrl), 'http://base.invalid')
   return url.pathname.split('/').pop() || null
 }
 const getShareCodeFromPathname = (pathname: string): string | null => {
