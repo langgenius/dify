@@ -30,6 +30,14 @@ def _load_generate_swagger_specs_module():
     return module
 
 
+def _operation_ids(payload):
+    methods = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
+    for path_item in payload["paths"].values():
+        for method, operation in path_item.items():
+            if method in methods and isinstance(operation, dict) and "operationId" in operation:
+                yield operation["operationId"]
+
+
 def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
     module = _load_generate_swagger_specs_module()
 
@@ -66,6 +74,18 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_no_nulls(t
 
         assert refs <= set(schemas)
         assert all(value is not None for value in _walk_values(payload))
+
+
+def test_generate_specs_writes_unique_operation_ids(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+
+    for path in written_paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        operation_ids = list(_operation_ids(payload))
+
+        assert len(operation_ids) == len(set(operation_ids))
 
 
 def test_generate_specs_is_idempotent(tmp_path):

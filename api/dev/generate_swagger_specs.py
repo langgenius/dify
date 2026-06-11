@@ -327,6 +327,37 @@ def _replace_legacy_refs(value: object) -> object:
     return value
 
 
+HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
+
+
+def _deduplicate_operation_ids(payload: dict[str, object]) -> dict[str, object]:
+    """Make operationId values unique while preserving already-unique IDs."""
+
+    paths = payload.get("paths")
+    if not isinstance(paths, dict):
+        return payload
+
+    operations_by_id: dict[str, list[tuple[str, str, dict[str, object]]]] = {}
+    for path, path_item in paths.items():
+        if not isinstance(path, str) or not isinstance(path_item, dict):
+            continue
+        for method, operation in path_item.items():
+            if method not in HTTP_METHODS or not isinstance(operation, dict):
+                continue
+            operation_id = operation.get("operationId")
+            if isinstance(operation_id, str):
+                operations_by_id.setdefault(operation_id, []).append((method, path, operation))
+
+    for operation_id, operations in operations_by_id.items():
+        if len(operations) < 2:
+            continue
+        for method, path, operation in operations:
+            digest = hashlib.sha1(f"{method}:{path}".encode("utf-8")).hexdigest()[:8]
+            operation["operationId"] = f"{operation_id}_{digest}"
+
+    return payload
+
+
 def _component_schemas(payload: dict[str, object]) -> dict[str, object]:
     components = payload.setdefault("components", {})
     if not isinstance(components, dict):
@@ -373,6 +404,7 @@ def generate_specs(output_dir: Path) -> list[Path]:
         if not isinstance(payload, dict):
             raise RuntimeError(f"unexpected response payload for {target.route}")
         payload = _merge_registered_schemas(payload, target.namespace)
+        payload = _deduplicate_operation_ids(payload)
         payload = drop_null_values(payload)
         payload = sort_openapi_arrays(payload)
 
