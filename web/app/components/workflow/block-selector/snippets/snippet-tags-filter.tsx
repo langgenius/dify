@@ -10,7 +10,6 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tag01Icon from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag01'
 import { consoleQuery } from '@/service/client'
 
 type SnippetTagsFilterProps = {
@@ -74,7 +73,7 @@ const SnippetTagsFilter = ({
               value.length > 0 && 'text-text-secondary',
             )}
           >
-            <Tag01Icon className="size-4" aria-hidden="true" />
+            <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-4 text-text-tertiary" aria-hidden="true" />
             {value.length > 0 && (
               <span className="ml-1 system-xs-medium text-text-secondary">
                 {value.length}

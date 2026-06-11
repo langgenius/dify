@@ -330,9 +330,9 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "node", "install_commands": ["apt-get install -y nodejs"]},
-        {"name": "python", "install_commands": ["pip install pytest"]},
-        {"name": None, "install_commands": ["apk add git"]},
+        {"name": "node", "install_commands": ["apt-get install -y nodejs"], "env": [], "secret_refs": []},
+        {"name": "python", "install_commands": ["pip install pytest"], "env": [], "secret_refs": []},
+        {"name": None, "install_commands": ["apk add git"], "env": [], "secret_refs": []},
     ]
     assert config["env"] == [
         {"name": "PROJECT_NAME", "value": "demo"},
@@ -353,7 +353,9 @@ def test_build_shell_layer_config_maps_typed_command_field():
 
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
-    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+    assert config["cli_tools"] == [
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+    ]
 
 
 def test_build_shell_layer_config_skips_disabled_cli_tools():
@@ -371,7 +373,9 @@ def test_build_shell_layer_config_skips_disabled_cli_tools():
 
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
-    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+    assert config["cli_tools"] == [
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+    ]
 
 
 def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools():
@@ -397,8 +401,43 @@ def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "jq", "install_commands": ["apt-get install -y jq"]},
-        {"name": "accepted-risk", "install_commands": ["curl https://example.test/install.sh | sh"]},
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []},
+        {
+            "name": "accepted-risk",
+            "install_commands": ["curl https://example.test/install.sh | sh"],
+            "env": [],
+            "secret_refs": [],
+        },
+    ]
+
+
+def test_build_shell_layer_config_maps_cli_tool_scoped_env():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "cli_tools": [
+                    {
+                        "name": "github",
+                        "command": "apt-get install -y gh",
+                        "env": {
+                            "variables": [{"name": "GH_HOST", "value": "github.com"}],
+                            "secret_refs": [{"name": "GITHUB_TOKEN", "credential_id": "credential-1"}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [
+        {
+            "name": "github",
+            "install_commands": ["apt-get install -y gh"],
+            "env": [{"name": "GH_HOST", "value": "github.com"}],
+            "secret_refs": [{"name": "GITHUB_TOKEN", "ref": "credential-1"}],
+        }
     ]
 
 
