@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+import { ConfigureSection } from '../configure-section'
 
 type EnvScope = 'secret' | 'plain'
 
@@ -171,7 +171,6 @@ export function AgentEnvEditor({
   variables?: EnvVariable[]
 }) {
   const { t } = useTranslation('agentV2')
-  const [isExpanded, setIsExpanded] = useState(true)
   const [envVariables, setEnvVariables] = useState<EnvVariable[]>(() => variables)
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
   const envEditorTableId = 'agent-configure-env-editor-table'
@@ -185,84 +184,66 @@ export function AgentEnvEditor({
   }
 
   return (
-    <section className={cn('flex flex-col gap-1 py-3', !isExpanded && 'pb-0')} aria-labelledby="agent-configure-env-editor-label">
-      <div className="flex min-h-6 items-center gap-1 px-3">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5">
-          <h4
-            id="agent-configure-env-editor-label"
-            className="truncate system-sm-semibold-uppercase text-text-secondary"
-          >
-            {t('agentDetail.configure.advancedSettings.envEditor.label')}
-          </h4>
-          <Infotip aria-label={envEditorTip} popupClassName="max-w-64">
-            {envEditorTip}
-          </Infotip>
+    <ConfigureSection
+      label={t('agentDetail.configure.advancedSettings.envEditor.label')}
+      labelId="agent-configure-env-editor-label"
+      headingLevel="h4"
+      panelId={envEditorTableId}
+      tip={envEditorTip}
+      tipAriaLabel={envEditorTip}
+      rootClassName="gap-1 pt-3"
+      headerClassName="mb-0 gap-1 px-3"
+      panelContentClassName="px-3 pb-3"
+      actions={(
+        <>
           <button
             type="button"
-            aria-label={t('agentDetail.configure.advancedSettings.envEditor.toggle')}
-            aria-controls={envEditorTableId}
-            aria-expanded={isExpanded}
-            onClick={() => setIsExpanded(expanded => !expanded)}
-            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
-            <span
-              aria-hidden
-              className={`i-custom-vender-solid-arrows-arrow-down-round-fill size-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
-            />
+            <span aria-hidden className="i-ri-file-upload-line size-3.5" />
+            <span className="system-xs-medium">{t('agentDetail.configure.advancedSettings.envEditor.importEnv')}</span>
           </button>
-        </div>
-
-        <button
-          type="button"
-          className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-file-upload-line size-3.5" />
-          <span className="system-xs-medium">{t('agentDetail.configure.advancedSettings.envEditor.importEnv')}</span>
-        </button>
-        <div className="mx-1 h-3 w-px shrink-0 bg-divider-regular" />
-        <button
-          type="button"
-          aria-label={t('agentDetail.configure.advancedSettings.envEditor.add')}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-add-line size-4" />
-        </button>
-      </div>
-
-      {isExpanded && (
-        <div id={envEditorTableId} className="px-3">
-          <div className="overflow-hidden rounded-lg border border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3">
-            <div className="grid min-h-7 grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px] text-text-tertiary">
-              <EnvEditorCell>
-                <span className="px-3 system-xs-medium-uppercase">
-                  {t('agentDetail.configure.advancedSettings.envEditor.keyColumn')}
-                </span>
-              </EnvEditorCell>
-              <EnvEditorCell>
-                <span className="px-3 system-xs-medium-uppercase">
-                  {t('agentDetail.configure.advancedSettings.envEditor.valueColumn')}
-                </span>
-              </EnvEditorCell>
-              <EnvEditorCell>
-                <span className="px-3 system-xs-medium-uppercase">
-                  {t('agentDetail.configure.advancedSettings.envEditor.scopeColumn')}
-                </span>
-              </EnvEditorCell>
-              <EnvEditorCell />
-            </div>
-            {envVariables.map((variable, index) => (
-              <EnvEditorRow
-                key={variable.id}
-                variable={variable}
-                isHighlighted={index === 1}
-                onDelete={() => deleteVariable(variable.id)}
-                onScopeChange={scope => updateVariableScope(variable.id, scope)}
-              />
-            ))}
-            <EnvEditorDraftRow />
-          </div>
-        </div>
+          <div className="mx-1 h-3 w-px shrink-0 bg-divider-regular" />
+          <button
+            type="button"
+            aria-label={t('agentDetail.configure.advancedSettings.envEditor.add')}
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-add-line size-4" />
+          </button>
+        </>
       )}
-    </section>
+    >
+      <div className="overflow-hidden rounded-lg border border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3">
+        <div className="grid min-h-7 grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px] text-text-tertiary">
+          <EnvEditorCell>
+            <span className="px-3 system-xs-medium-uppercase">
+              {t('agentDetail.configure.advancedSettings.envEditor.keyColumn')}
+            </span>
+          </EnvEditorCell>
+          <EnvEditorCell>
+            <span className="px-3 system-xs-medium-uppercase">
+              {t('agentDetail.configure.advancedSettings.envEditor.valueColumn')}
+            </span>
+          </EnvEditorCell>
+          <EnvEditorCell>
+            <span className="px-3 system-xs-medium-uppercase">
+              {t('agentDetail.configure.advancedSettings.envEditor.scopeColumn')}
+            </span>
+          </EnvEditorCell>
+          <EnvEditorCell />
+        </div>
+        {envVariables.map((variable, index) => (
+          <EnvEditorRow
+            key={variable.id}
+            variable={variable}
+            isHighlighted={index === 1}
+            onDelete={() => deleteVariable(variable.id)}
+            onScopeChange={scope => updateVariableScope(variable.id, scope)}
+          />
+        ))}
+        <EnvEditorDraftRow />
+      </div>
+    </ConfigureSection>
   )
 }

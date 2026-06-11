@@ -1,10 +1,8 @@
 'use client'
 
 import type { I18nKeysWithPrefix } from '@/types/i18n'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+import { ConfigureSection } from './configure-section'
 
 type AgentKnowledgeRetrievalItem = {
   id: string
@@ -55,38 +53,19 @@ export function AgentKnowledgeRetrieval({
   retrievals?: AgentKnowledgeRetrievalItem[]
 }) {
   const { t } = useTranslation('agentV2')
-  const [isExpanded, setIsExpanded] = useState(true)
   const knowledgeRetrievalTip = t('agentDetail.configure.knowledgeRetrieval.tip')
   const retrievalListId = 'agent-configure-knowledge-retrieval-list'
 
   return (
-    <section className={cn('border-b border-divider-subtle pt-4', isExpanded && 'pb-4')} aria-labelledby="agent-configure-knowledge-retrieval-label">
-      <div className="mb-2 flex min-h-6 items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5">
-          <h3
-            id="agent-configure-knowledge-retrieval-label"
-            className="truncate system-sm-semibold-uppercase text-text-secondary"
-          >
-            {t('agentDetail.configure.knowledgeRetrieval.label')}
-          </h3>
-          <Infotip aria-label={knowledgeRetrievalTip} popupClassName="max-w-64">
-            {knowledgeRetrievalTip}
-          </Infotip>
-          <button
-            type="button"
-            aria-label={t('agentDetail.configure.knowledgeRetrieval.toggle')}
-            aria-controls={retrievalListId}
-            aria-expanded={isExpanded}
-            onClick={() => setIsExpanded(expanded => !expanded)}
-            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span
-              aria-hidden
-              className={`i-custom-vender-solid-arrows-arrow-down-round-fill size-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
-            />
-          </button>
-        </div>
-
+    <ConfigureSection
+      label={t('agentDetail.configure.knowledgeRetrieval.label')}
+      labelId="agent-configure-knowledge-retrieval-label"
+      panelId={retrievalListId}
+      tip={knowledgeRetrievalTip}
+      tipAriaLabel={knowledgeRetrievalTip}
+      rootClassName="border-b border-divider-subtle pt-4"
+      panelContentClassName="flex flex-col gap-1 pb-4"
+      actions={(
         <button
           type="button"
           aria-label={t('agentDetail.configure.knowledgeRetrieval.add')}
@@ -94,15 +73,11 @@ export function AgentKnowledgeRetrieval({
         >
           <span aria-hidden className="i-ri-add-line size-4" />
         </button>
-      </div>
-
-      {isExpanded && (
-        <div id={retrievalListId} className="flex flex-col gap-1">
-          {retrievals.map(item => (
-            <AgentKnowledgeRetrievalRow key={item.id} item={item} />
-          ))}
-        </div>
       )}
-    </section>
+    >
+      {retrievals.map(item => (
+        <AgentKnowledgeRetrievalRow key={item.id} item={item} />
+      ))}
+    </ConfigureSection>
   )
 }

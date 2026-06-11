@@ -1,10 +1,8 @@
 'use client'
 
 import type { AgentSkill } from './agent-skill-item'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+import { ConfigureSection } from '../configure-section'
 import { AgentSkillItem } from './agent-skill-item'
 
 const defaultSkills: AgentSkill[] = [
@@ -32,38 +30,19 @@ export function AgentSkills({
   skills?: AgentSkill[]
 }) {
   const { t } = useTranslation('agentV2')
-  const [isExpanded, setIsExpanded] = useState(true)
   const skillsTip = t('agentDetail.configure.skills.tip')
   const skillsListId = 'agent-configure-skills-list'
 
   return (
-    <section className={cn('border-b border-divider-subtle pt-4', isExpanded && 'pb-4')} aria-labelledby="agent-configure-skills-label">
-      <div className="mb-2 flex min-h-6 items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5">
-          <h3
-            id="agent-configure-skills-label"
-            className="truncate system-sm-semibold-uppercase text-text-secondary"
-          >
-            {t('agentDetail.configure.skills.label')}
-          </h3>
-          <Infotip aria-label={skillsTip} popupClassName="max-w-64">
-            {skillsTip}
-          </Infotip>
-          <button
-            type="button"
-            aria-label={t('agentDetail.configure.skills.toggle')}
-            aria-controls={skillsListId}
-            aria-expanded={isExpanded}
-            onClick={() => setIsExpanded(expanded => !expanded)}
-            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span
-              aria-hidden
-              className={`i-custom-vender-solid-arrows-arrow-down-round-fill size-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
-            />
-          </button>
-        </div>
-
+    <ConfigureSection
+      label={t('agentDetail.configure.skills.label')}
+      labelId="agent-configure-skills-label"
+      panelId={skillsListId}
+      tip={skillsTip}
+      tipAriaLabel={skillsTip}
+      rootClassName="border-b border-divider-subtle pt-4"
+      panelContentClassName="flex flex-col gap-1 pb-4"
+      actions={(
         <button
           type="button"
           aria-label={t('agentDetail.configure.skills.add')}
@@ -71,15 +50,11 @@ export function AgentSkills({
         >
           <span aria-hidden className="i-ri-add-line size-4" />
         </button>
-      </div>
-
-      {isExpanded && (
-        <div id={skillsListId} className="flex flex-col gap-1">
-          {skills.map(skill => (
-            <AgentSkillItem key={skill.id} skill={skill} />
-          ))}
-        </div>
       )}
-    </section>
+    >
+      {skills.map(skill => (
+        <AgentSkillItem key={skill.id} skill={skill} />
+      ))}
+    </ConfigureSection>
   )
 }

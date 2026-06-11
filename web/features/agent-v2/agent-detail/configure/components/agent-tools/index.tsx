@@ -4,11 +4,16 @@ import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  CollapsiblePanel,
+  CollapsibleRoot,
+  CollapsibleTrigger,
+} from '@langgenius/dify-ui/collapsible'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import { Infotip } from '@/app/components/base/infotip'
 import { CollectionType } from '@/app/components/tools/types'
+import { ConfigureSection } from '../configure-section'
 
 type AgentToolBase = {
   id: string
@@ -208,24 +213,25 @@ function CredentialStatus({
 function AgentProviderToolItem({
   tool,
   isExpanded,
-  onToggle,
+  onOpenChange,
   onConfigureAction,
 }: {
   tool: AgentProviderTool
   isExpanded: boolean
-  onToggle: () => void
+  onOpenChange: (open: boolean) => void
   onConfigureAction: (target: ToolSettingTarget) => void
 }) {
   const { t } = useTranslation('agentV2')
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3">
+    <CollapsibleRoot
+      open={isExpanded}
+      onOpenChange={onOpenChange}
+      className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+    >
       <div className="flex min-h-7 items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-1">
-        <button
-          type="button"
-          aria-expanded={isExpanded}
-          onClick={onToggle}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md pr-1 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        <CollapsibleTrigger
+          className="group min-h-0 min-w-0 flex-1 justify-start gap-2 rounded-md px-0 pr-1 text-left hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary"
         >
           <ProviderIcon iconClassName={tool.iconClassName} />
           <span className="flex min-w-0 items-center">
@@ -235,16 +241,15 @@ function AgentProviderToolItem({
             <span
               aria-hidden
               className={cn(
-                'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 text-text-quaternary transition-transform',
-                !isExpanded && '-rotate-90',
+                'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none',
               )}
             />
           </span>
-        </button>
+        </CollapsibleTrigger>
         <CredentialStatus credentialKey={tool.credentialKey} variant={tool.credentialVariant} />
       </div>
 
-      {isExpanded && (
+      <CollapsiblePanel>
         <div className="flex flex-col">
           {tool.actions.map(action => (
             <div
@@ -277,8 +282,8 @@ function AgentProviderToolItem({
             </div>
           ))}
         </div>
-      )}
-    </div>
+      </CollapsiblePanel>
+    </CollapsibleRoot>
   )
 }
 
@@ -328,16 +333,16 @@ function AgentCliToolItem({
 function AgentToolItem({
   tool,
   isExpanded,
-  onToggle,
+  onOpenChange,
   onConfigureAction,
 }: {
   tool: AgentTool
   isExpanded: boolean
-  onToggle: () => void
+  onOpenChange: (open: boolean) => void
   onConfigureAction: (target: ToolSettingTarget) => void
 }) {
   if (tool.kind === 'provider')
-    return <AgentProviderToolItem tool={tool} isExpanded={isExpanded} onToggle={onToggle} onConfigureAction={onConfigureAction} />
+    return <AgentProviderToolItem tool={tool} isExpanded={isExpanded} onOpenChange={onOpenChange} onConfigureAction={onConfigureAction} />
 
   return <AgentCliToolItem tool={tool} />
 }
@@ -348,22 +353,21 @@ export function AgentTools({
   tools?: AgentTool[]
 }) {
   const { t } = useTranslation('agentV2')
-  const [isExpanded, setIsExpanded] = useState(true)
   const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())
   const [toolSettings, setToolSettings] = useState<Record<string, Record<string, unknown>>>({})
   const [settingTarget, setSettingTarget] = useState<ToolSettingTarget | null>(null)
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
-  const toggleTool = (tool: AgentTool) => {
+  const setToolOpen = (tool: AgentTool, open: boolean) => {
     if (tool.kind === 'cli')
       return
 
     setExpandedToolIds((currentIds) => {
       const nextIds = new Set(currentIds)
-      if (nextIds.has(tool.id))
-        nextIds.delete(tool.id)
-      else
+      if (open)
         nextIds.add(tool.id)
+      else
+        nextIds.delete(tool.id)
 
       return nextIds
     })
@@ -373,33 +377,15 @@ export function AgentTools({
 
   return (
     <>
-      <section className={cn('border-b border-divider-subtle pt-4', isExpanded && 'pb-4')} aria-labelledby="agent-configure-tools-label">
-        <div className="mb-2 flex min-h-6 items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-0.5">
-            <h3
-              id="agent-configure-tools-label"
-              className="truncate system-sm-semibold-uppercase text-text-secondary"
-            >
-              {t('agentDetail.configure.tools.label')}
-            </h3>
-            <Infotip aria-label={toolsTip} popupClassName="max-w-64">
-              {toolsTip}
-            </Infotip>
-            <button
-              type="button"
-              aria-label={t('agentDetail.configure.tools.toggle')}
-              aria-controls={toolsListId}
-              aria-expanded={isExpanded}
-              onClick={() => setIsExpanded(expanded => !expanded)}
-              className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span
-                aria-hidden
-                className={`i-custom-vender-solid-arrows-arrow-down-round-fill size-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
-              />
-            </button>
-          </div>
-
+      <ConfigureSection
+        label={t('agentDetail.configure.tools.label')}
+        labelId="agent-configure-tools-label"
+        panelId={toolsListId}
+        tip={toolsTip}
+        tipAriaLabel={toolsTip}
+        rootClassName="border-b border-divider-subtle pt-4"
+        panelContentClassName="flex flex-col gap-1 pb-4"
+        actions={(
           <button
             type="button"
             aria-label={t('agentDetail.configure.tools.add')}
@@ -407,22 +393,18 @@ export function AgentTools({
           >
             <span aria-hidden className="i-ri-add-line size-4" />
           </button>
-        </div>
-
-        {isExpanded && (
-          <div id={toolsListId} className="flex flex-col gap-1">
-            {tools.map(tool => (
-              <AgentToolItem
-                key={tool.id}
-                tool={tool}
-                isExpanded={tool.kind === 'provider' && expandedToolIds.has(tool.id)}
-                onToggle={() => toggleTool(tool)}
-                onConfigureAction={setSettingTarget}
-              />
-            ))}
-          </div>
         )}
-      </section>
+      >
+        {tools.map(tool => (
+          <AgentToolItem
+            key={tool.id}
+            tool={tool}
+            isExpanded={tool.kind === 'provider' && expandedToolIds.has(tool.id)}
+            onOpenChange={open => setToolOpen(tool, open)}
+            onConfigureAction={setSettingTarget}
+          />
+        ))}
+      </ConfigureSection>
       {settingTarget && currentSettingCollection && (
         <SettingBuiltInTool
           toolName={settingTarget.action.toolName}

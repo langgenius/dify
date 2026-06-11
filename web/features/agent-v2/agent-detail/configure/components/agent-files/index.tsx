@@ -1,7 +1,6 @@
 'use client'
 
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   FileTreeFile,
   FileTreeFolder,
@@ -12,9 +11,8 @@ import {
   FileTreeList,
   FileTreeRoot,
 } from '@langgenius/dify-ui/file-tree'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+import { ConfigureSection } from '../configure-section'
 
 export type AgentFileNode = {
   id: string
@@ -98,38 +96,18 @@ export function AgentFiles({
   files?: AgentFileNode[]
 }) {
   const { t } = useTranslation('agentV2')
-  const [isExpanded, setIsExpanded] = useState(true)
   const filesTip = t('agentDetail.configure.files.tip')
   const filesTreeId = 'agent-configure-files-tree'
 
   return (
-    <section className={cn('border-b border-divider-subtle pt-4', isExpanded && 'pb-4')} aria-labelledby="agent-configure-files-label">
-      <div className="mb-2 flex min-h-6 items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5">
-          <h3
-            id="agent-configure-files-label"
-            className="truncate system-sm-semibold-uppercase text-text-secondary"
-          >
-            {t('agentDetail.configure.files.label')}
-          </h3>
-          <Infotip aria-label={filesTip} popupClassName="max-w-64">
-            {filesTip}
-          </Infotip>
-          <button
-            type="button"
-            aria-label={t('agentDetail.configure.files.toggle')}
-            aria-controls={filesTreeId}
-            aria-expanded={isExpanded}
-            onClick={() => setIsExpanded(expanded => !expanded)}
-            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span
-              aria-hidden
-              className={`i-custom-vender-solid-arrows-arrow-down-round-fill size-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
-            />
-          </button>
-        </div>
-
+    <ConfigureSection
+      label={t('agentDetail.configure.files.label')}
+      labelId="agent-configure-files-label"
+      tip={filesTip}
+      tipAriaLabel={filesTip}
+      rootClassName="border-b border-divider-subtle pt-4"
+      panelContentClassName="pb-4"
+      actions={(
         <button
           type="button"
           aria-label={t('agentDetail.configure.files.add')}
@@ -137,18 +115,17 @@ export function AgentFiles({
         >
           <span aria-hidden className="i-ri-add-line size-4" />
         </button>
-      </div>
-
-      {isExpanded && (
-        <FileTreeRoot
-          aria-label={t('agentDetail.configure.files.treeLabel')}
-          className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3"
-        >
-          <FileTreeList>
-            <AgentFileRows files={files} />
-          </FileTreeList>
-        </FileTreeRoot>
       )}
-    </section>
+    >
+      <FileTreeRoot
+        id={filesTreeId}
+        aria-label={t('agentDetail.configure.files.treeLabel')}
+        className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3"
+      >
+        <FileTreeList>
+          <AgentFileRows files={files} />
+        </FileTreeList>
+      </FileTreeRoot>
+    </ConfigureSection>
   )
 }
