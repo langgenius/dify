@@ -722,7 +722,8 @@ class RBACService:
                 f"{_INNER_PREFIX}/roles/copy",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                params={"id": role_id, "copy_member": copy_member},
+                json={"copy_member": copy_member},
+                params={"id": role_id},
             )
             return RBACRole.model_validate(data or {})
 
