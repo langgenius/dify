@@ -709,12 +709,12 @@ describe('useFormState', () => {
       }
     })
 
-    it('should include external knowledge info in save request for external provider', async () => {
+    it('should include trimmed external knowledge info in save request for external provider', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
-        result.current.setExternalKnowledgeId('ext-updated')
+        result.current.setExternalKnowledgeId('  ext-updated  ')
       })
 
       await act(async () => {

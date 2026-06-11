@@ -2,6 +2,7 @@
 import type { MouseEventHandler } from 'react'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import type { DataSet } from '@/models/datasets'
+import type { UpdateDatasetSettingBody } from '@/service/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
@@ -45,10 +46,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     }
     try {
       setLoading(true)
-      const body: Partial<DataSet> & {
-        external_knowledge_id?: string
-        external_knowledge_api_id?: string
-      } = {
+      const body: UpdateDatasetSettingBody = {
         name,
         description,
         icon_info: {

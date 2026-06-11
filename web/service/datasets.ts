@@ -49,7 +49,7 @@ export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
 export type MetadataType = 'all' | 'only' | 'without'
 
-type UpdateDatasetSettingBody = Partial<Pick<
+export type UpdateDatasetSettingBody = Partial<Pick<
   DataSet,
   | 'name'
   | 'description'
