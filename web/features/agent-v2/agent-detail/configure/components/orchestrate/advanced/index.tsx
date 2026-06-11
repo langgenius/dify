@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import { ConfigureSection } from '../section'
+import { ConfigureSection } from '../common/section'
 import { AgentEnvEditor } from './env'
 
 export function AgentAdvancedSettings() {

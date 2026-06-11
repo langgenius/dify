@@ -1,6 +1,6 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentFileNode, AgentKnowledgeRetrievalItem } from './components/data'
 import type { EnvVariable } from './components/orchestrate/advanced/env'
-import type { AgentFileNode, AgentKnowledgeRetrievalItem } from './components/orchestrate/data'
 import type { AgentSkill } from './components/orchestrate/skills/item'
 import type { AgentTool } from './components/orchestrate/tools'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -11,7 +11,7 @@ import {
   defaultAgentKnowledgeRetrievals,
   defaultAgentSkills,
   defaultAgentTools,
-} from './components/orchestrate/data'
+} from './components/data'
 
 type AgentConfigureDraft = {
   prompt: string

@@ -5,8 +5,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { useAgentConfigureEnvVariables } from '../../../atoms'
-import { ConfigureSectionAddButton } from '../add-button'
-import { ConfigureSection } from '../section'
+import { ConfigureSectionAddButton } from '../common/add-button'
+import { ConfigureSection } from '../common/section'
 
 export type EnvScope = 'secret' | 'plain'
 

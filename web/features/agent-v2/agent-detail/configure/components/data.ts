@@ -1,5 +1,5 @@
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
-import type { AgentSkill } from './skills/item'
+import type { AgentSkill } from './orchestrate/skills/item'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type AgentFileNode = {

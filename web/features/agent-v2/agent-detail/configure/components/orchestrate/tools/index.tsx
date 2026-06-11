@@ -14,8 +14,8 @@ import { useTranslation } from 'react-i18next'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
 import { useAgentConfigureTools, useAgentConfigureToolSettings } from '../../../atoms'
-import { ConfigureSectionAddButton } from '../add-button'
-import { ConfigureSection } from '../section'
+import { ConfigureSectionAddButton } from '../common/add-button'
+import { ConfigureSection } from '../common/section'
 
 type AgentToolBase = {
   id: string

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentFileNode } from '../data'
+import type { AgentFileNode } from '../../data'
 import {
   DialogCloseButton,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
-import { AgentFileTree } from '../file-tree'
+import { AgentFileTree } from '../files/tree'
 import { countAgentFileNodes } from '../utils'
 
 export type AgentSkillFileNode = AgentFileNode

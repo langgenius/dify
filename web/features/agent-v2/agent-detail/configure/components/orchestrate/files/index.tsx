@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentFileNode } from '../data'
+import type { AgentFileNode } from '../../data'
 import type { AgentSkillDetail } from '../skills/detail-dialog'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
@@ -8,10 +8,10 @@ import {
 } from '@langgenius/dify-ui/file-tree'
 import { useTranslation } from 'react-i18next'
 import { useAgentConfigureFiles } from '../../../atoms'
-import { ConfigureSectionAddButton } from '../add-button'
-import { AgentFileTree } from '../file-tree'
-import { ConfigureSection } from '../section'
+import { ConfigureSectionAddButton } from '../common/add-button'
+import { ConfigureSection } from '../common/section'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
+import { AgentFileTree } from './tree'
 
 function createFileDetail(file: AgentFileNode, files: AgentFileNode[]): AgentSkillDetail {
   return {
