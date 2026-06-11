@@ -57,10 +57,14 @@ describe('formatErrorForCli — human', () => {
     expect(out).toContain('server_5xx: server error (HTTP 502)')
   })
 
-  it('server hint wins over cli hint; cli hint fills when server sent none', () => {
-    const withCliHint = validationError({ cliHint: 'cli fallback hint', serverHint: 'check the page parameter', details: [] })
-    expect(formatErrorForCli(withCliHint, { isErrTTY: false })).toContain('check the page parameter')
-    expect(formatErrorForCli(withCliHint, { isErrTTY: false })).not.toContain('cli fallback hint')
+  it('cli hint wins over server hint; server hint fills when cli sent none', () => {
+    const withBothHints = validationError({ cliHint: 'cli local hint', serverHint: 'check the page parameter', details: [] })
+    expect(formatErrorForCli(withBothHints, { isErrTTY: false })).toContain('cli local hint')
+    expect(formatErrorForCli(withBothHints, { isErrTTY: false })).not.toContain('check the page parameter')
+
+    // no cli hint → server hint shown
+    const noCliHint = validationError({ serverHint: 'check the page parameter', details: [] })
+    expect(formatErrorForCli(noCliHint, { isErrTTY: false })).toContain('check the page parameter')
 
     // no server hint → cli hint shown
     const noServerHint = new HttpClientError({

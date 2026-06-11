@@ -46,11 +46,13 @@ function renderEnvelope(env: ErrorEnvelope): string {
   return JSON.stringify(env)
 }
 
+// CLI-authored hint wins: it knows local remediation (e.g. which command to
+// run); the server hint fills in when the CLI has nothing for this error.
 function resolveHint(e: ErrorEnvelope['error']): string | undefined {
-  if (e.server?.hint != null)
-    return e.server.hint
   if (e.hint !== undefined)
     return e.hint
+  if (e.server?.hint != null)
+    return e.server.hint
   const rawHiddenAndUnparsed = e.server === undefined && Boolean(e.raw_response) && !isVerbose()
   return rawHiddenAndUnparsed ? RAW_RESPONSE_HINT : undefined
 }
