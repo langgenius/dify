@@ -78,14 +78,6 @@ export const zAdvancedChatWorkflowRunPayload = z.object({
 })
 
 /**
- * AgentComposerValidateResponse
- */
-export const zAgentComposerValidateResponse = z.object({
-  errors: z.array(z.string()).optional(),
-  result: z.string(),
-})
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -802,6 +794,43 @@ export const zComposerVariant = z.enum(['agent_app', 'workflow'])
  */
 export const zComposerCandidateCapabilities = z.object({
   human_roster_available: z.boolean().optional().default(false),
+})
+
+/**
+ * ComposerKnowledgePlaceholderResponse
+ */
+export const zComposerKnowledgePlaceholderResponse = z.object({
+  id: z.string(),
+  placeholder_name: z.string(),
+})
+
+/**
+ * ComposerValidationWarningResponse
+ */
+export const zComposerValidationWarningResponse = z.object({
+  code: z.string(),
+  id: z.string().nullish(),
+  kind: z.string().nullish(),
+  message: z.string().nullish(),
+  surface: z.string().nullish(),
+})
+
+/**
+ * AgentComposerValidateResponse
+ */
+export const zAgentComposerValidateResponse = z.object({
+  errors: z.array(z.string()).optional(),
+  knowledge_retrieval_placeholder: z.array(zComposerKnowledgePlaceholderResponse).optional(),
+  result: z.string(),
+  warnings: z.array(zComposerValidationWarningResponse).optional(),
+})
+
+/**
+ * ComposerValidationFindingsResponse
+ */
+export const zComposerValidationFindingsResponse = z.object({
+  knowledge_retrieval_placeholder: z.array(zComposerKnowledgePlaceholderResponse).optional(),
+  warnings: z.array(zComposerValidationWarningResponse).optional(),
 })
 
 /**
@@ -1769,14 +1798,32 @@ export const zAgentKnowledgeDatasetConfig = z.object({
 })
 
 /**
- * AgentSkillRefConfig
+ * AgentComposerSkillCandidateResponse
  */
-export const zAgentSkillRefConfig = z.object({
+export const zAgentComposerSkillCandidateResponse = z.object({
   description: z.string().nullish(),
   file_id: z.string().max(255).nullish(),
   id: z.string().max(255).nullish(),
+  kind: z.string().optional().default('skill'),
   name: z.string().max(255).nullish(),
   path: z.string().nullish(),
+})
+
+/**
+ * AgentComposerFileCandidateResponse
+ */
+export const zAgentComposerFileCandidateResponse = z.object({
+  file_id: z.string().max(255).nullish(),
+  id: z.string().max(255).nullish(),
+  kind: z.string().optional().default('file'),
+  name: z.string().max(255).nullish(),
+  reference: z.string().max(255).nullish(),
+  remote_url: z.string().nullish(),
+  tenant_id: z.string().max(255).nullish(),
+  transfer_method: z.string().max(64).nullish(),
+  type: z.string().max(64).nullish(),
+  upload_file_id: z.string().max(255).nullish(),
+  url: z.string().nullish(),
 })
 
 /**
@@ -2163,19 +2210,30 @@ export const zAgentFileRefConfig = z.object({
 })
 
 /**
- * AgentSoulSkillsFilesConfig
- */
-export const zAgentSoulSkillsFilesConfig = z.object({
-  files: z.array(zAgentFileRefConfig).optional(),
-  skills: z.array(zAgentSkillRefConfig).optional(),
-})
-
-/**
  * WorkflowNodeJobMetadata
  */
 export const zWorkflowNodeJobMetadata = z.object({
   agent_soul: z.record(z.string(), z.unknown()).nullish(),
   file_refs: z.array(zAgentFileRefConfig).nullish(),
+})
+
+/**
+ * AgentSkillRefConfig
+ */
+export const zAgentSkillRefConfig = z.object({
+  description: z.string().nullish(),
+  file_id: z.string().max(255).nullish(),
+  id: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+  path: z.string().nullish(),
+})
+
+/**
+ * AgentSoulSkillsFilesConfig
+ */
+export const zAgentSoulSkillsFilesConfig = z.object({
+  files: z.array(zAgentFileRefConfig).optional(),
+  skills: z.array(zAgentSkillRefConfig).optional(),
 })
 
 /**
@@ -2276,7 +2334,7 @@ export const zAgentComposerSoulCandidatesResponse = z.object({
   dify_tools: z.array(zAgentComposerDifyToolCandidateResponse).optional(),
   human_contacts: z.array(zAgentHumanContactConfig).optional(),
   knowledge_datasets: z.array(zAgentKnowledgeDatasetConfig).optional(),
-  skills_files: z.array(zAgentSkillRefConfig).optional(),
+  skills_files: z.array(z.unknown()).optional(),
 })
 
 /**
@@ -2286,6 +2344,7 @@ export const zAgentComposerCandidatesResponse = z.object({
   allowed_node_job_candidates: zAgentComposerNodeJobCandidatesResponse.optional(),
   allowed_soul_candidates: zAgentComposerSoulCandidatesResponse.optional(),
   capabilities: zComposerCandidateCapabilities.optional(),
+  truncated: z.boolean().optional().default(false),
   variant: zComposerVariant,
 })
 
@@ -2563,6 +2622,7 @@ export const zAgentAppComposerResponse = z.object({
   agent: zAgentComposerAgentResponse,
   agent_soul: zAgentSoulConfig,
   save_options: z.array(zComposerSaveStrategy),
+  validation: zComposerValidationFindingsResponse.optional(),
   variant: z.string(),
 })
 
@@ -2597,6 +2657,7 @@ export const zWorkflowAgentComposerResponse = z.object({
   node_job: zWorkflowNodeJobConfig,
   save_options: z.array(zComposerSaveStrategy),
   soul_lock: zAgentComposerSoulLockResponse,
+  validation: zComposerValidationFindingsResponse.optional(),
   variant: z.string(),
   workflow_id: z.string().nullish(),
 })

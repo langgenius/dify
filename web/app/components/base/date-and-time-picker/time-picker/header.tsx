@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   title?: string
-}
+}>
 const Header = ({
   title,
 }: Props) => {

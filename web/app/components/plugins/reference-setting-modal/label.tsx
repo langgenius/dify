@@ -4,11 +4,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   label: string
   description?: string
   tooltip?: string
-}
+}>
 
 const Label: FC<Props> = ({
   label,

@@ -8,9 +8,9 @@ import {
   useBuiltinTools,
 } from '@/service/use-tools'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
-}
+}>
 
 const ActionList = ({
   detail,

@@ -1,3 +1,4 @@
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -38,6 +39,7 @@ class MockUser(UserMixin):
         self.id = user_id
         self.current_tenant_id = "tenant123"
 
+    @override
     def get_id(self) -> str:
         return self.id
 
@@ -280,6 +282,7 @@ class TestModelValidationInjection:
                 Handler().post()
 
         assert exc_info.value.code == 422
+        assert exc_info.value.description is not None
         assert "count" in exc_info.value.description
 
 

@@ -13,6 +13,7 @@ import {
   RiUserSettingsFill,
   RiUserSettingsLine,
 } from '@remixicon/react'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -28,7 +29,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'

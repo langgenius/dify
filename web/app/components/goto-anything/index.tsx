@@ -20,9 +20,9 @@ import {
   useGotoAnythingSearch,
 } from './hooks'
 
-type Props = {
+type Props = Readonly<{
   onHide?: () => void
-}
+}>
 
 const GotoAnythingDialog: FC<Props> = ({
   onHide,

@@ -12,6 +12,7 @@ from controllers.console.wraps import (
     enterprise_license_required,
     rbac_permission_required,
     setup_required,
+    with_current_tenant_id,
     with_current_user,
 )
 from fields.dataset_fields import (
@@ -51,8 +52,9 @@ class DatasetMetadataCreateApi(Resource):
     @console_ns.response(201, "Metadata created successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
     @with_current_user
+    @with_current_tenant_id
     @rbac_permission_required("dataset", "dataset_edit")
-    def post(self, current_user: Account, dataset_id: UUID):
+    def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
@@ -61,7 +63,7 @@ class DatasetMetadataCreateApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.create_metadata(dataset_id_str, metadata_args)
+        metadata = MetadataService.create_metadata(dataset_id_str, metadata_args, current_user, current_tenant_id)
         return dump_response(DatasetMetadataResponse, metadata), 201
 
     @setup_required
@@ -90,8 +92,9 @@ class DatasetMetadataApi(Resource):
     @console_ns.response(200, "Metadata updated successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
     @with_current_user
+    @with_current_tenant_id
     @rbac_permission_required("dataset", "dataset_edit")
-    def patch(self, current_user: Account, dataset_id: UUID, metadata_id: UUID):
+    def patch(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, metadata_id: UUID):
         payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
         name = payload.name
 
@@ -102,7 +105,9 @@ class DatasetMetadataApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, name)
+        metadata = MetadataService.update_metadata_name(
+            dataset_id_str, metadata_id_str, name, current_user, current_tenant_id
+        )
         return dump_response(DatasetMetadataResponse, metadata), 200
 
     @setup_required
@@ -188,7 +193,7 @@ class DocumentMetadataEditApi(Resource):
 
         metadata_args = MetadataOperationData.model_validate(console_ns.payload or {})
 
-        MetadataService.update_documents_metadata(dataset, metadata_args)
+        MetadataService.update_documents_metadata(dataset, metadata_args, current_user)
 
         # Frontend callers only await success and invalidate caches; no response body is consumed.
         return "", 204

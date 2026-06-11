@@ -19,9 +19,9 @@ import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/ins
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
-type Props = {
+type Props = Readonly<{
   onSwitchToMarketplaceTab: () => void
-}
+}>
 
 type InstallMethod = {
   icon: React.FC<{ className?: string }>

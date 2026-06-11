@@ -9,11 +9,11 @@ import ActionButton from '@/app/components/base/action-button'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
-type Props = {
+type Props = Readonly<{
   index: number
   list: any[]
   onChange: (list: any[]) => void
-}
+}>
 
 const typeList = [
   ChatVarType.String,

@@ -31,12 +31,12 @@ import { useDeleteSnippetMutation, useExportSnippetMutation, useUpdateSnippetMut
 import { downloadBlob } from '@/utils/download'
 import { formatTime } from '@/utils/time'
 
-type Props = {
+type Props = Readonly<{
   snippet: SnippetListItem
   onOpenTagManagement?: () => void
   onRefresh?: () => void
   onTagsChange?: () => void
-}
+}>
 
 const SnippetCard = ({
   snippet,

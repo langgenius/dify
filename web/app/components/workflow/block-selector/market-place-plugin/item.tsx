@@ -15,10 +15,10 @@ import Action from './action'
 
 type ActionType = 'install' | 'download'
 
-type Props = {
+type Props = Readonly<{
   payload: Plugin
   onAction: (type: ActionType) => void
-}
+}>
 
 const Item: FC<Props> = ({
   payload,

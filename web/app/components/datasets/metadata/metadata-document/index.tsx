@@ -12,13 +12,13 @@ import NoData from './no-data'
 
 const i18nPrefix = 'metadata.documentMetadata'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
   documentId: string
   className?: string
   docDetail: FullDocumentDetail
   canEdit?: boolean
-}
+}>
 const MetadataDocument: FC<Props> = ({
   datasetId,
   documentId,

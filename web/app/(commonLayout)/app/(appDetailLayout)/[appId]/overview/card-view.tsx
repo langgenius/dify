@@ -6,6 +6,7 @@ import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +20,6 @@ import { webSocketClient } from '@/app/components/workflow/collaboration/core/we
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   updateAppSiteAccessToken,
   updateAppSiteConfig,

@@ -19,10 +19,10 @@ import Description from './card/base/description'
 import DownloadCount from './card/base/download-count'
 import Title from './card/base/title'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: Plugin
-}
+}>
 
 const ProviderCardComponent: FC<Props> = ({
   className,

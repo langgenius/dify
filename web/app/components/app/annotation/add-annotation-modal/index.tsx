@@ -21,11 +21,11 @@ import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import EditItem, { EditItemType } from './edit-item'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onHide: () => void
   onAdd: (payload: AnnotationItemBasic) => void
-}
+}>
 
 const AddAnnotationModal: FC<Props> = ({
   isShow,

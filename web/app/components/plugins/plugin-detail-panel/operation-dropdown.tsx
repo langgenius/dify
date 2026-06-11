@@ -17,7 +17,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useReferenceSetting from '../plugin-page/use-reference-setting'
 import { PluginSource } from '../types'
 
-type Props = {
+type Props = Readonly<{
   source: PluginSource
   onInfo: () => void
   onCheckVersion: () => void
@@ -27,7 +27,7 @@ type Props = {
   sideOffset?: number
   alignOffset?: number
   popupClassName?: string
-}
+}>
 
 const OperationDropdown: FC<Props> = ({
   source,

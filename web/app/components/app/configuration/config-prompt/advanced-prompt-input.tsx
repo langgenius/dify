@@ -33,7 +33,7 @@ import MessageTypeSelector from './message-type-selector'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import s from './style.module.css'
 
-type Props = {
+type Props = Readonly<{
   type: PromptRole
   isChatMode: boolean
   value: string
@@ -45,7 +45,7 @@ type Props = {
   isContextMissing: boolean
   onHideContextMissingTip: () => void
   noResize?: boolean
-}
+}>
 
 const AdvancedPromptInput: FC<Props> = ({
   type,

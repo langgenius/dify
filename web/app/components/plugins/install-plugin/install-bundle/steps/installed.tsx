@@ -9,12 +9,12 @@ import Card from '@/app/components/plugins/card'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import useGetIcon from '../../base/use-get-icon'
 
-type Props = {
+type Props = Readonly<{
   list: Plugin[]
   installStatus: InstallStatus[]
   onCancel: () => void
   isHideButton?: boolean
-}
+}>
 
 const Installed: FC<Props> = ({
   list,
