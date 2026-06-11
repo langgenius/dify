@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Document } from '@/app/components/base/icons/src/vender/features'
 import { Infotip } from '@/app/components/base/infotip'
@@ -17,7 +17,7 @@ const ConfigDocument: FC = () => {
   const { t } = useTranslation()
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
-  const { isShowDocumentConfig, readonly } = useContext(ConfigContext)
+  const { isShowDocumentConfig, readonly } = use(ConfigContext)
 
   const isDocumentEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.document) ?? false
 
