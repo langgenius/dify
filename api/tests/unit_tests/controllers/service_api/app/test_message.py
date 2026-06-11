@@ -15,6 +15,7 @@ Focus on:
 """
 
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -41,12 +42,6 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestMessageListQuery:
@@ -383,7 +378,7 @@ class TestMessageService:
 class TestMessageListApi:
     def test_not_chat_app(self, app: Flask) -> None:
         api = MessageListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
@@ -399,7 +394,7 @@ class TestMessageListApi:
         )
 
         api = MessageListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -418,7 +413,7 @@ class TestMessageListApi:
         )
 
         api = MessageListApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -439,7 +434,7 @@ class TestMessageFeedbackApi:
         )
 
         api = MessageFeedbackApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace()
         end_user = SimpleNamespace()
 
@@ -457,7 +452,7 @@ class TestAppGetFeedbacksApi:
         monkeypatch.setattr(MessageService, "get_all_messages_feedbacks", lambda *_args, **_kwargs: ["f1"])
 
         api = AppGetFeedbacksApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace()
 
         with app.test_request_context("/app/feedbacks?page=1&limit=20", method="GET"):
@@ -469,7 +464,7 @@ class TestAppGetFeedbacksApi:
 class TestMessageSuggestedApi:
     def test_not_chat(self, app: Flask) -> None:
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
@@ -485,7 +480,7 @@ class TestMessageSuggestedApi:
         )
 
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -501,7 +496,7 @@ class TestMessageSuggestedApi:
         )
 
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -517,7 +512,7 @@ class TestMessageSuggestedApi:
         )
 
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -533,7 +528,7 @@ class TestMessageSuggestedApi:
         )
 
         api = MessageSuggestedApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 

@@ -1,10 +1,10 @@
 import * as React from 'react'
 import DownloadCount from './base/download-count'
 
-type Props = {
+type Props = Readonly<{
   downloadCount?: number
   tags: string[]
-}
+}>
 
 const CardMoreInfoComponent = ({
   downloadCount,

@@ -9,13 +9,13 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
 
-type Props = {
+type Props = Readonly<{
   label: string
   labelWidthClassName?: string
   value: string
   maskedValue?: string
   valueMaxWidthClassName?: string
-}
+}>
 
 const KeyValueItem: FC<Props> = ({
   label,

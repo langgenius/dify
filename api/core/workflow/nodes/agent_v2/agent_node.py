@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, override
 from agenton.compositor import CompositorSessionSnapshot
 
 from clients.agent_backend import (
+    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendHTTPError,
     AgentBackendInternalEventType,
@@ -14,7 +15,6 @@ from clients.agent_backend import (
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
-    AgentBackendRunPausedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
@@ -62,7 +62,7 @@ _TerminalAgentBackendEvent = (
     AgentBackendRunSucceededInternalEvent
     | AgentBackendRunFailedInternalEvent
     | AgentBackendRunCancelledInternalEvent
-    | AgentBackendRunPausedInternalEvent
+    | AgentBackendDeferredToolCallInternalEvent
 )
 
 
@@ -250,7 +250,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 )
                 return
 
-            if isinstance(terminal_event, AgentBackendRunPausedInternalEvent):
+            if isinstance(terminal_event, AgentBackendDeferredToolCallInternalEvent):
                 self._save_session_snapshot(
                     session_scope=session_scope,
                     backend_run_id=terminal_event.run_id,
@@ -312,6 +312,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
+                        declared_outputs=effective_outputs,
                     )
                 )
                 return
@@ -342,6 +343,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         inputs=inputs,
                         process_data=process_data,
                         metadata=metadata,
+                        declared_outputs=effective_outputs,
                     )
                 )
                 return
@@ -392,16 +394,15 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         **dict(metadata.get("agent_backend") or {}),
                         "stream_event_count": stream_event_count,
                     }
-                    # Narrow to the 4 known terminal event types so the caller
-                    # can hand the result to ``build_failure_result`` (which is
-                    # typed against the union). Anything else is a protocol-
-                    # level surprise we surface as a stream error.
+                    # Narrow to the known terminal event types before returning
+                    # to the caller. Deferred-tool events are terminal on the
+                    # Dify Agent wire, then converted into workflow pause locally.
                     if isinstance(
                         internal_event,
                         AgentBackendRunSucceededInternalEvent
                         | AgentBackendRunFailedInternalEvent
                         | AgentBackendRunCancelledInternalEvent
-                        | AgentBackendRunPausedInternalEvent,
+                        | AgentBackendDeferredToolCallInternalEvent,
                     ):
                         return internal_event, None
                     return None, self._failure_event(

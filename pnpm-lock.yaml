@@ -264,9 +264,6 @@ catalogs:
     cli-table3:
       specifier: 0.6.5
       version: 0.6.5
-    client-only:
-      specifier: 0.0.1
-      version: 0.0.1
     clsx:
       specifier: 2.1.1
       version: 2.1.1
@@ -348,6 +345,9 @@ catalogs:
     fast-deep-equal:
       specifier: 3.1.3
       version: 3.1.3
+    foxact:
+      specifier: 0.3.4
+      version: 0.3.4
     fuse.js:
       specifier: 7.4.2
       version: 7.4.2
@@ -641,6 +641,15 @@ importers:
       '@napi-rs/keyring':
         specifier: 'catalog:'
         version: 1.3.0
+      '@orpc/client':
+        specifier: 'catalog:'
+        version: 1.14.5
+      '@orpc/contract':
+        specifier: 'catalog:'
+        version: 1.14.5
+      '@orpc/openapi-client':
+        specifier: 'catalog:'
+        version: 1.14.5
       cli-table3:
         specifier: 'catalog:'
         version: 0.6.5
@@ -1080,9 +1089,6 @@ importers:
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
-      client-only:
-        specifier: 'catalog:'
-        version: 0.0.1
       cmdk:
         specifier: 'catalog:'
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1125,6 +1131,9 @@ importers:
       fast-deep-equal:
         specifier: 'catalog:'
         version: 3.1.3
+      foxact:
+        specifier: 'catalog:'
+        version: 0.3.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       fuse.js:
         specifier: 'catalog:'
         version: 7.4.2
@@ -6349,6 +6358,9 @@ packages:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
 
+  event-target-bus@1.0.0:
+    resolution: {integrity: sha512-uPcWKbj/BJU3Tbw9XqhHqET4/LBOhvv3/SJWr7NksxA6TC5YqBpaZgawE9R+WpYFCBFSAE4Vun+xQS6w4ABdlA==}
+
   eventsource-parser@3.1.0:
     resolution: {integrity: sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==}
     engines: {node: '>=18.0.0'}
@@ -6453,6 +6465,17 @@ packages:
     resolution: {integrity: sha512-9XNj/o4wrRFyhSMJOvsuyMwy8aUfBaZ1VrqHVfohyXf0Sw0e+yfKG+xZaY3arGCOMdwFsqObtzVOc1gU9KiT9w==}
     engines: {node: '>=18.3.0'}
     hasBin: true
+
+  foxact@0.3.4:
+    resolution: {integrity: sha512-6ENWStzEp/VczVgwBdn8scZUGccko2kLGho8Qg1VyUTG6tpSW1vz2xX/dRtAUjPEFbu618DKsjj/YL7iMU8mlA==}
+    peerDependencies:
+      react: '*'
+      react-dom: '*'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   fs-constants@1.0.0:
     resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
@@ -14731,6 +14754,8 @@ snapshots:
 
   esutils@2.0.3: {}
 
+  event-target-bus@1.0.0: {}
+
   eventsource-parser@3.1.0: {}
 
   expand-template@2.0.3:
@@ -14833,6 +14858,15 @@ snapshots:
   formatly@0.3.0:
     dependencies:
       fd-package-json: 2.0.0
+
+  foxact@0.3.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      client-only: 0.0.1
+      event-target-bus: 1.0.0
+      server-only: 0.0.1
+    optionalDependencies:
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
 
   fs-constants@1.0.0:
     optional: true
@@ -18160,7 +18194,6 @@ time:
   chokidar@5.0.0: '2025-11-25T23:28:06.854Z'
   class-variance-authority@0.7.1: '2024-11-26T08:20:34.604Z'
   cli-table3@0.6.5: '2024-05-12T16:36:50.079Z'
-  client-only@0.0.1: '2022-09-03T01:07:11.981Z'
   clsx@2.1.1: '2024-04-23T05:26:04.645Z'
   cmdk@1.1.1: '2025-03-14T19:21:16.194Z'
   code-inspector-plugin@1.5.2: '2026-06-07T02:32:04.545Z'
@@ -18188,6 +18221,7 @@ time:
   eslint@10.4.1: '2026-05-29T20:32:32.193Z'
   eventsource-parser@3.1.0: '2026-05-27T20:55:51.466Z'
   fast-deep-equal@3.1.3: '2020-06-08T07:27:28.474Z'
+  foxact@0.3.4: '2026-05-15T12:55:52.584Z'
   fuse.js@7.4.2: '2026-06-05T22:22:52.388Z'
   happy-dom@20.10.2: '2026-06-06T15:03:11.325Z'
   hast-util-to-jsx-runtime@2.3.6: '2025-03-05T11:30:29.166Z'

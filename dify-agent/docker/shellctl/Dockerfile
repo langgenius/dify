@@ -12,7 +12,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --no-cache-dir \
-        shell-session-manager==2.1.1 \
+        shell-session-manager==2.2.0 \
         uv
 
 RUN useradd --create-home --shell /bin/sh dify

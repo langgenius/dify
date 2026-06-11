@@ -23,6 +23,11 @@ describe('SearchInput', () => {
       expect(screen.getByRole('searchbox', { name: 'Search providers' })).toBeInTheDocument()
     })
 
+    it('focuses the searchbox when autoFocus is enabled', () => {
+      render(<SearchInput value="" onValueChange={() => {}} autoFocus />)
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveFocus()
+    })
+
     it('shows clear button when value is present', () => {
       const onValueChange = vi.fn()
       render(<SearchInput value="has value" onValueChange={onValueChange} />)

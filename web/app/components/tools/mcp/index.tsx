@@ -10,9 +10,9 @@ import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
 import MCPCard from './provider-card'
 
-type Props = {
+type Props = Readonly<{
   searchText: string
-}
+}>
 
 const MCPList = ({
   searchText,

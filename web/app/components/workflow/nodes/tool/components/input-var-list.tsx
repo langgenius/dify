@@ -20,7 +20,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import { VarType } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '../types'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
@@ -31,7 +31,7 @@ type Props = {
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
-}
+}>
 
 const InputVarList: FC<Props> = ({
   readOnly,

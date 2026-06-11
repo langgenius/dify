@@ -3,10 +3,10 @@ import type { WorkflowGeneratorMode } from './types'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   mode: WorkflowGeneratorMode
   onSelect: (prompt: string) => void
-}
+}>
 
 /**
  * "Try one of these" chips that sit below the instruction textarea.

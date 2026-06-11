@@ -34,10 +34,10 @@ import { usePluginPageContext } from '../plugin-page/context'
 import { PluginCategoryEnum, PluginSource } from '../types'
 import Action from './action'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   plugin: PluginDetail
-}
+}>
 
 const PluginItem: FC<Props> = ({
   className,
