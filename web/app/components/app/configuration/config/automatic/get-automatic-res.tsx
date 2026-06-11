@@ -37,6 +37,7 @@ import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import IdeaOutput from './idea-output'
@@ -49,6 +50,7 @@ import { GeneratorType } from './types'
 import useGenData from './use-gen-data'
 
 const i18nPrefix = 'generate'
+const AUTO_GEN_MODEL_STORAGE_KEY = 'auto-gen-model'
 
 type IGetAutomaticResProps = {
   mode: AppModeEnum
@@ -90,10 +92,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
-  const [model, setModel] = React.useState<Model>(localModel || {
+  const [storedModel, setStoredModel] = useLocalStorage<Model>(AUTO_GEN_MODEL_STORAGE_KEY)
+  const [model, setModel] = React.useState<Model>(storedModel || {
     name: '',
     provider: '',
     mode: mode as unknown as ModelModeType,
@@ -182,11 +182,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
-      if (localModel) {
-        setModel(localModel)
+      if (storedModel) {
+        setModel(storedModel)
       }
       else {
         setModel(prev => ({
@@ -196,7 +193,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         }))
       }
     }
-  }, [defaultModel])
+  }, [defaultModel, storedModel])
 
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
@@ -213,8 +210,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    setStoredModel(newModel)
+  }, [model, setModel, setStoredModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     const newModel = {
@@ -222,8 +219,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    setStoredModel(newModel)
+  }, [model, setModel, setStoredModel])
 
   const onGenerate = async () => {
     if (!isValid())
