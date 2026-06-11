@@ -824,7 +824,7 @@ def run_preflight_sequence(client: DifyConsoleClient) -> dict[str, Any]:
         if health_error:
             result["errors"].append(health_error)
         return start_local_ce_result()
-    if health_error:
+    if health_error and health_error.get("status") != 404:
         result["warnings"].append(health_error)
 
     setup_step = result["setup"].get("step") if isinstance(result["setup"], dict) else None

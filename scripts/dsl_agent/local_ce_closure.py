@@ -31,6 +31,7 @@ def build_debug_loop_command(args: argparse.Namespace) -> list[str]:
         sys.executable,
         str(SCRIPT_DIR / "debug_loop.py"),
         str(args.run_dir),
+        "--skip-preflight",
         "--console-base",
         args.console_base,
         "--mode",

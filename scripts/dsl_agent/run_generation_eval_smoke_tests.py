@@ -22,6 +22,7 @@ def assert_post_success_args() -> dict[str, object]:
         service_api_key=None,
         service_response_mode="blocking",
         cleanup_app=True,
+        skip_preflight=False,
     )
     cmd: list[str] = []
     append_post_success_args(cmd, args)

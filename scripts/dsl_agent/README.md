@@ -468,6 +468,11 @@ uv run python ../scripts/dsl_agent/run_generation_eval.py \
   --json
 ```
 
+The runner performs a Console preflight before import/debug so expired cookies,
+missing setup, or login requirements fail as `preflight_failed` with suggested
+next commands instead of surfacing later as misleading import or dataset errors.
+Use `--skip-preflight` only when a wrapper has already checked the Console state.
+
 This writes each generated `generated.yml` under
 `scripts/dsl_agent/outputs/generation_eval_latest/<case-id>/`, then invokes
 `debug_loop.py` for import, dependency check/install, draft run, runtime error

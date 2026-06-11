@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from console_lifecycle import ConsoleApiError, DifyConsoleClient, console_error_to_dict
+from console_lifecycle import ConsoleApiError, DifyConsoleClient, console_error_to_dict, run_preflight_sequence
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
@@ -209,6 +209,11 @@ def bootstrap_rag_dataset(case_dir: Path, args: argparse.Namespace) -> dict[str,
     return report
 
 
+def console_preflight(args: argparse.Namespace) -> dict[str, Any]:
+    client = DifyConsoleClient(console_base=args.console_base, cookie_jar_path=args.cookie_jar)
+    return run_preflight_sequence(client)
+
+
 def append_post_success_args(cmd: list[str], args: argparse.Namespace) -> None:
     if args.publish:
         cmd.append("--publish")
@@ -236,6 +241,8 @@ def append_post_success_args(cmd: list[str], args: argparse.Namespace) -> None:
         cmd.extend(["--service-response-mode", args.service_response_mode])
     if args.cleanup_app:
         cmd.append("--cleanup-app")
+    if args.skip_preflight:
+        cmd.append("--skip-preflight")
 
 
 def cleanup_rag_dataset(dataset_bootstrap: dict[str, Any] | None, args: argparse.Namespace) -> dict[str, Any] | None:
@@ -295,6 +302,28 @@ def run_debug_loop_for_case(
 
     yaml_file = case_dir / "generated.yml"
     report_path = case_dir / "debug_loop_report.json"
+    preflight = None
+    if not args.skip_preflight:
+        preflight = console_preflight(args)
+        preflight_path = case_dir / "console_preflight.json"
+        write_json(preflight_path, preflight)
+        if not preflight.get("ready"):
+            return {
+                "enabled": True,
+                "ok": False,
+                "status": "preflight_failed",
+                "preflight": {
+                    "artifact": str(preflight_path),
+                    "ready": preflight.get("ready"),
+                    "next_action": preflight.get("next_action"),
+                    "errors": preflight.get("errors", []),
+                    "warnings": preflight.get("warnings", []),
+                    "suggested_commands": preflight.get("suggested_commands", []),
+                },
+                "report": str(report_path),
+                "errors": ["Console preflight failed"],
+            }
+
     dataset_bootstrap = bootstrap_rag_dataset(case_dir, args) if args.bootstrap_rag_dataset else None
     if dataset_bootstrap and not dataset_bootstrap.get("ok"):
         return {
@@ -378,6 +407,14 @@ def run_debug_loop_for_case(
         "report": str(report_path),
         "app_id": report.get("app_id") if isinstance(report, dict) else None,
         "final_yaml": report.get("final_yaml") if isinstance(report, dict) else None,
+        "preflight": {
+            "ready": preflight.get("ready"),
+            "next_action": preflight.get("next_action"),
+            "errors": preflight.get("errors", []),
+            "warnings": preflight.get("warnings", []),
+        }
+        if isinstance(preflight, dict)
+        else None,
         "dataset_bootstrap": dataset_bootstrap,
         "dataset_cleanup": dataset_cleanup,
         "cleanup": report.get("cleanup") if isinstance(report, dict) else None,
@@ -528,6 +565,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-wait-plugin-install", action="store_true")
     parser.add_argument("--skip-run-records", action="store_true")
     parser.add_argument("--no-repair", action="store_true")
+    parser.add_argument("--skip-preflight", action="store_true", help="Skip Console health/setup/login preflight.")
     parser.add_argument("--publish", action="store_true", help="Publish after draft debug succeeds.")
     parser.add_argument("--publish-name")
     parser.add_argument("--publish-comment")

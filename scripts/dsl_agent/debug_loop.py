@@ -20,6 +20,7 @@ from console_lifecycle import (
     run_debug_draft_sequence,
     run_import_debug_sequence,
     run_install_dependencies_sequence,
+    run_preflight_sequence,
 )
 from dependency_normalizer import normalize_yaml_text
 from deterministic_repair import repair_yaml_text as deterministic_repair_yaml_text
@@ -666,6 +667,27 @@ def run(args: argparse.Namespace) -> int:
     inputs = parse_json_arg(args.inputs, {})
     files = parse_json_arg(args.files, None)
 
+    if not args.skip_preflight:
+        preflight = run_preflight_sequence(client)
+        preflight_path = run_dir / "console_preflight.json"
+        write_json(preflight_path, preflight)
+        summary["preflight"] = {
+            "artifact": str(preflight_path),
+            "ready": preflight.get("ready"),
+            "next_action": preflight.get("next_action"),
+            "errors": preflight.get("errors", []),
+            "warnings": preflight.get("warnings", []),
+            "suggested_commands": preflight.get("suggested_commands", []),
+        }
+        if not preflight.get("ready"):
+            summary["status"] = "preflight_failed"
+            report_path = args.output or run_dir / "debug_loop_report.json"
+            write_json(report_path, summary)
+            print(f"Debug loop report: {report_path}")
+            print(f"Status: {summary['status']}")
+            print(f"Final YAML: {summary['final_yaml']}")
+            return 1
+
     for iteration in range(1, args.max_loops + 1):
         record: dict[str, Any] = {
             "iteration": iteration,
@@ -972,6 +994,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--service-api-key", help="Existing App API key for Service API regression.")
     parser.add_argument("--service-response-mode", choices=["blocking", "streaming"], default="blocking")
     parser.add_argument("--cleanup-app", action="store_true", help="Delete the created app after the debug loop finishes.")
+    parser.add_argument("--skip-preflight", action="store_true", help="Skip Console health/setup/login preflight.")
     parser.add_argument("--output", type=Path, help="Defaults to <run_dir>/debug_loop_report.json.")
     return parser.parse_args()
 

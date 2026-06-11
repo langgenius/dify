@@ -45,6 +45,7 @@ def command_case() -> dict[str, object]:
     )
     command = build_debug_loop_command(args)
     required = {
+        "--skip-preflight",
         "--install-missing-dependencies",
         "--publish",
         "--enable-api",
