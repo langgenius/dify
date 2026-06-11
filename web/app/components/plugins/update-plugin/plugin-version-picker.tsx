@@ -15,7 +15,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { useVersionListOfPlugin } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   isShow: boolean
   onShowChange: (isShow: boolean) => void
@@ -34,7 +34,7 @@ type Props = {
     unique_identifier: string
     isDowngrade: boolean
   }) => void
-}
+}>
 
 const PluginVersionPicker: FC<Props> = ({
   disabled = false,

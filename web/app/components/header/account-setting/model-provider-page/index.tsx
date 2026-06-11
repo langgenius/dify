@@ -27,9 +27,9 @@ import { providerToPluginId } from './utils'
 
 type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
 
-type Props = {
+type Props = Readonly<{
   searchText: string
-}
+}>
 
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 

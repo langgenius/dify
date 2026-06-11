@@ -21,7 +21,8 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.BUILTIN
 
     @override
-    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
+    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+        del current_tenant_id
         result = self.fetch_pipeline_templates_from_builtin(language)
         return result
 

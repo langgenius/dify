@@ -2,6 +2,7 @@ import type { FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import {
   Tooltip,
   TooltipContent,
@@ -12,6 +13,7 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import {
   cloneElement,
@@ -67,7 +69,6 @@ import {
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -90,8 +91,8 @@ import {
 } from './helpers'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
-import Tab, { TabType } from './tab'
 import { TriggerSubscription } from './trigger-subscription'
+import { TabType } from './types'
 
 type BasePanelProps = {
   children: ReactNode
@@ -480,6 +481,17 @@ const BasePanel: FC<BasePanelProps> = ({
     ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
     : runThisStepLabel
 
+  const panelTabs = (
+    <TabsList>
+      <TabsTab value={TabType.settings}>
+        {t('debug.settingsTab', { ns: 'workflow' }).toLocaleUpperCase()}
+      </TabsTab>
+      <TabsTab value={TabType.lastRun}>
+        {t('debug.lastRunTab', { ns: 'workflow' }).toLocaleUpperCase()}
+      </TabsTab>
+    </TabsList>
+  )
+
   return (
     <div
       className={cn(
@@ -496,8 +508,10 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </div>
-      <div
+      <Tabs
         ref={containerRef}
+        value={tabType}
+        onValueChange={selectedValue => setTabType(selectedValue)}
         className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${nodePanelWidth}px`,
@@ -558,12 +572,14 @@ const BasePanel: FC<BasePanelProps> = ({
               <HelpLink nodeType={data.type} />
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
-              <div
-                className="flex size-6 cursor-pointer items-center justify-center"
+              <button
+                type="button"
+                aria-label={t('common.operation.close')}
+                className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine className="size-4 text-text-tertiary" />
-              </div>
+                <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
+              </button>
             </div>
           </div>
           <div className="p-2">
@@ -584,10 +600,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 }}
               >
                 <div className="flex items-center justify-between pr-3 pl-4">
-                  <Tab
-                    value={tabType}
-                    onChange={setTabType}
-                  />
+                  {panelTabs}
                   <AuthorizedInNode
                     pluginPayload={{
                       provider: currToolCollection?.name || '',
@@ -609,10 +622,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 isAuthorized={currentDataSource.is_authorized}
               >
                 <div className="flex items-center justify-between pr-3 pl-4">
-                  <Tab
-                    value={tabType}
-                    onChange={setTabType}
-                  />
+                  {panelTabs}
                   <AuthorizedInDataSourceNode
                     onJumpToDataSourcePage={handleJumpToDataSourcePage}
                     authorizationsNum={3}
@@ -627,76 +637,68 @@ const BasePanel: FC<BasePanelProps> = ({
                 subscriptionIdSelected={data.subscription_id}
                 onSubscriptionChange={handleSubscriptionChange}
               >
-                <Tab
-                  value={tabType}
-                  onChange={setTabType}
-                />
+                {panelTabs}
               </TriggerSubscription>
             )
           }
           {
             !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
               <div className="flex items-center justify-between pr-3 pl-4">
-                <Tab
-                  value={tabType}
-                  onChange={setTabType}
-                />
+                {panelTabs}
               </div>
             )
           }
           <Split />
         </div>
-        {tabType === TabType.settings && (
-          <div className="flex flex-1 flex-col overflow-y-auto">
-            <div>
-              {cloneElement(children as any, {
-                id,
-                data,
-                panelProps: {
-                  getInputVars,
-                  toVarInputs,
-                  runInputData,
-                  setRunInputData,
-                  runResult,
-                  runInputDataRef,
-                },
-              })}
-            </div>
-            <Split />
-            {
-              hasRetryNode(data.type) && (
-                <RetryOnPanel
-                  id={id}
-                  data={data}
-                />
-              )
-            }
-            {
-              hasErrorHandleNode(data.type) && (
-                <ErrorHandleOnPanel
-                  id={id}
-                  data={data}
-                />
-              )
-            }
-            {
-              !!availableNextBlocks.length && (
-                <div className="border-t-[0.5px] border-divider-regular p-4">
-                  <div className="mb-1 flex items-center system-sm-semibold-uppercase text-text-secondary">
-                    {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
-                  </div>
-                  <div className="mb-2 system-xs-regular text-text-tertiary">
-                    {t('panel.addNextStep', { ns: 'workflow' })}
-                  </div>
-                  <NextStep selectedNode={selectedNode} />
-                </div>
-              )
-            }
-            {readmeEntranceComponent}
+        <TabsPanel value={TabType.settings} className="flex flex-1 flex-col overflow-y-auto">
+          <div>
+            {cloneElement(children as any, {
+              id,
+              data,
+              panelProps: {
+                getInputVars,
+                toVarInputs,
+                runInputData,
+                setRunInputData,
+                runResult,
+                runInputDataRef,
+              },
+            })}
           </div>
-        )}
+          <Split />
+          {
+            hasRetryNode(data.type) && (
+              <RetryOnPanel
+                id={id}
+                data={data}
+              />
+            )
+          }
+          {
+            hasErrorHandleNode(data.type) && (
+              <ErrorHandleOnPanel
+                id={id}
+                data={data}
+              />
+            )
+          }
+          {
+            !!availableNextBlocks.length && (
+              <div className="border-t-[0.5px] border-divider-regular p-4">
+                <div className="mb-1 flex items-center system-sm-semibold-uppercase text-text-secondary">
+                  {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
+                </div>
+                <div className="mb-2 system-xs-regular text-text-tertiary">
+                  {t('panel.addNextStep', { ns: 'workflow' })}
+                </div>
+                <NextStep selectedNode={selectedNode} />
+              </div>
+            )
+          }
+          {readmeEntranceComponent}
+        </TabsPanel>
 
-        {tabType === TabType.lastRun && (
+        <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col">
           <LastRun
             appId={appDetail?.id || ''}
             nodeId={id}
@@ -710,9 +712,9 @@ const BasePanel: FC<BasePanelProps> = ({
             isPaused={isPaused}
             {...passedLogParams}
           />
-        )}
+        </TabsPanel>
 
-      </div>
+      </Tabs>
     </div>
   )
 }

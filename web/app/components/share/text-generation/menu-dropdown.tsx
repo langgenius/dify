@@ -21,11 +21,11 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { webAppLogout } from '@/service/webapp-auth'
 import InfoModal from './info-modal'
 
-type Props = {
+type Props = Readonly<{
   data?: SiteInfo
   placement?: Placement
   hideLogout?: boolean
-}
+}>
 
 const MenuDropdown: FC<Props> = ({
   data,

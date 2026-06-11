@@ -734,6 +734,28 @@ def test_composer_validator_rejects_invalid_shell_env_and_cli():
             }
         )
 
+    # CLI tool scoped env shares the same shell namespace as agent-level env.
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict(
+            {
+                "env": {"variables": [{"name": "TOKEN", "value": "v"}]},
+                "tools": {
+                    "cli_tools": [
+                        {
+                            "name": "github",
+                            "env": {"secret_refs": [{"name": "TOKEN", "credential_id": "credential-1"}]},
+                        }
+                    ]
+                },
+            }
+        )
+
+    # CLI tool scoped env names are validated before runtime.
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_agent_soul_dict(
+            {"tools": {"cli_tools": [{"name": "github", "env": {"variables": [{"name": "BAD-NAME"}]}}]}}
+        )
+
     # an enabled CLI tool with neither a name nor a command is meaningless
     with pytest.raises(InvalidComposerConfigError):
         ComposerConfigValidator.validate_agent_soul_dict({"tools": {"cli_tools": [{"enabled": True}]}})
@@ -783,7 +805,14 @@ def test_composer_validator_accepts_valid_shell_env_and_cli():
             },
             "tools": {
                 "cli_tools": [
-                    {"name": "jq", "command": "apt-get install -y jq"},
+                    {
+                        "name": "jq",
+                        "command": "apt-get install -y jq",
+                        "env": {
+                            "variables": [{"name": "JQ_COLOR", "value": "1"}],
+                            "secret_refs": [{"name": "JQ_TOKEN", "id": "credential-2"}],
+                        },
+                    },
                     {
                         "name": "accepted-risk",
                         "command": "curl https://example.test/install.sh | sh",
@@ -797,6 +826,8 @@ def test_composer_validator_accepts_valid_shell_env_and_cli():
     )
     assert {variable.name for variable in config.env.variables} == {"MY_VAR"}
     assert {secret.name for secret in config.env.secret_refs} == {"API_TOKEN"}
+    assert config.tools.cli_tools[0].env.variables[0].name == "JQ_COLOR"
+    assert config.tools.cli_tools[0].env.secret_refs[0].name == "JQ_TOKEN"
 
 
 class TestAgentAppBackingAgent:

@@ -4,6 +4,7 @@ import type {
 } from '@/models/app'
 import type { AppIconType } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import {
   useCallback,
   useRef,
@@ -13,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector } from '@/context/app-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import {

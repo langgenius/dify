@@ -1143,7 +1143,7 @@ export type AgentComposerSoulCandidatesResponse = {
   dify_tools?: Array<AgentComposerDifyToolCandidateResponse>
   human_contacts?: Array<AgentHumanContactConfig>
   knowledge_datasets?: Array<AgentKnowledgeDatasetConfig>
-  skills_files?: Array<AgentSkillRefConfig>
+  skills_files?: Array<unknown>
 }
 
 export type ComposerCandidateCapabilities = {
@@ -1721,6 +1721,7 @@ export type AgentCliToolConfig = {
   dangerous_command?: boolean
   description?: string | null
   enabled?: boolean
+  env?: AgentCliToolEnvConfig
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
@@ -1755,12 +1756,28 @@ export type AgentKnowledgeDatasetConfig = {
   [key: string]: unknown
 }
 
-export type AgentSkillRefConfig = {
+export type AgentComposerSkillCandidateResponse = {
   description?: string | null
   file_id?: string | null
   id?: string | null
+  kind?: string
   name?: string | null
   path?: string | null
+  [key: string]: unknown
+}
+
+export type AgentComposerFileCandidateResponse = {
+  file_id?: string | null
+  id?: string | null
+  kind?: string
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
   [key: string]: unknown
 }
 
@@ -1964,6 +1981,15 @@ export type AgentFileRefConfig = {
   [key: string]: unknown
 }
 
+export type AgentSkillRefConfig = {
+  description?: string | null
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  path?: string | null
+  [key: string]: unknown
+}
+
 export type AgentSoulDifyToolConfig = {
   credential_ref?: AgentSoulDifyToolCredentialRef
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
@@ -1989,6 +2015,11 @@ export type AgentCliToolAuthorizationStatus
     | 'pending'
     | 'pre_authorized'
     | 'unauthorized'
+
+export type AgentCliToolEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
 
 export type AgentPermissionConfig = {
   allowed?: boolean | null

@@ -25,9 +25,9 @@ import BlockSelector from '../../../../block-selector'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
-type Props = {
+type Props = Readonly<{
   onImport: (params: Param[]) => void
-}
+}>
 
 function toParmExactParams(toolParams: ToolParameter[], lan: string): Param[] {
   return toolParams.map((item) => {

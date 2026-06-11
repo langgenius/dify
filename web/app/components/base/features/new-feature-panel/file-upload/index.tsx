@@ -11,10 +11,10 @@ import SettingModal from '@/app/components/base/features/new-feature-panel/file-
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { FolderUpload } from '@/app/components/base/icons/src/vender/features'
 
-type Props = {
+type Props = Readonly<{
   disabled: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const FileUpload = ({
   disabled,

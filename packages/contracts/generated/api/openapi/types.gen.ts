@@ -45,6 +45,27 @@ export type AppDescribeResponse = {
   } | null
 }
 
+export type AppDslExportQuery = {
+  include_secret?: boolean
+  workflow_id?: string | null
+}
+
+export type AppDslExportResponse = {
+  data: string
+}
+
+export type AppDslImportPayload = {
+  app_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  mode: 'yaml-content' | 'yaml-url'
+  name?: string | null
+  yaml_content?: string | null
+  yaml_url?: string | null
+}
+
 export type AppInfoResponse = {
   author?: string | null
   description?: string | null
@@ -107,6 +128,10 @@ export type AppRunRequest = {
   workspace_id?: string | null
 }
 
+export type CheckDependenciesResult = {
+  leaked_dependencies?: Array<PluginDependency>
+}
+
 export type DeviceCodeRequest = {
   client_id: string
   device_label: string
@@ -165,6 +190,13 @@ export type FormSubmitResponse = {
   [key: string]: never
 }
 
+export type Github = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
 export type HealthResponse = {
   ok: boolean
 }
@@ -176,7 +208,24 @@ export type HumanInputFormSubmitPayload = {
   }
 }
 
+export type Import = {
+  app_id?: string | null
+  app_mode?: string | null
+  current_dsl_version?: string
+  error?: string
+  id: string
+  imported_dsl_version?: string
+  status: ImportStatus
+}
+
+export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
 export type JsonValue = unknown
+
+export type Marketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
 
 export type MemberActionResponse = {
   result?: string
@@ -229,6 +278,11 @@ export type MessageMetadata = {
   usage?: UsageInfo
 }
 
+export type Package = {
+  plugin_unique_identifier: string
+  version?: string | null
+}
+
 export type PermittedExternalAppsListQuery = {
   limit?: number
   mode?: AppMode
@@ -242,6 +296,12 @@ export type PermittedExternalAppsListResponse = {
   limit: number
   page: number
   total: number
+}
+
+export type PluginDependency = {
+  current_identifier?: string | null
+  type: Type
+  value: unknown
 }
 
 export type RevokeResponse = {
@@ -283,6 +343,8 @@ export type TagItem = {
 export type TaskStopResponse = {
   result: string
 }
+
+export type Type = 'github' | 'marketplace' | 'package'
 
 export type UsageInfo = {
   completion_tokens?: number
@@ -438,6 +500,22 @@ export type GetAppsResponses = {
 
 export type GetAppsResponse = GetAppsResponses[keyof GetAppsResponses]
 
+export type GetAppsByAppIdCheckDependenciesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/check-dependencies'
+}
+
+export type GetAppsByAppIdCheckDependenciesResponses = {
+  200: CheckDependenciesResult
+}
+
+export type GetAppsByAppIdCheckDependenciesResponse
+  = GetAppsByAppIdCheckDependenciesResponses[keyof GetAppsByAppIdCheckDependenciesResponses]
+
 export type GetAppsByAppIdDescribeData = {
   body?: never
   path: {
@@ -455,6 +533,25 @@ export type GetAppsByAppIdDescribeResponses = {
 
 export type GetAppsByAppIdDescribeResponse
   = GetAppsByAppIdDescribeResponses[keyof GetAppsByAppIdDescribeResponses]
+
+export type GetAppsByAppIdExportData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    include_secret?: boolean
+    workflow_id?: string
+  }
+  url: '/apps/{app_id}/export'
+}
+
+export type GetAppsByAppIdExportResponses = {
+  200: AppDslExportResponse
+}
+
+export type GetAppsByAppIdExportResponse
+  = GetAppsByAppIdExportResponses[keyof GetAppsByAppIdExportResponses]
 
 export type PostAppsByAppIdFilesUploadData = {
   body?: never
@@ -701,6 +798,54 @@ export type GetWorkspacesByWorkspaceIdResponses = {
 
 export type GetWorkspacesByWorkspaceIdResponse
   = GetWorkspacesByWorkspaceIdResponses[keyof GetWorkspacesByWorkspaceIdResponses]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsData = {
+  body: AppDslImportPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/imports'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsErrors = {
+  400: Import
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsError
+  = PostWorkspacesByWorkspaceIdAppsImportsErrors[keyof PostWorkspacesByWorkspaceIdAppsImportsErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsResponses = {
+  200: Import
+  202: Import
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsResponse
+  = PostWorkspacesByWorkspaceIdAppsImportsResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsResponses]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmData = {
+  body?: never
+  path: {
+    import_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/imports/{import_id}/confirm'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors = {
+  400: Import
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmError
+  = PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors[keyof PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses = {
+  200: Import
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse
+  = PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses]
 
 export type GetWorkspacesByWorkspaceIdMembersData = {
   body?: never

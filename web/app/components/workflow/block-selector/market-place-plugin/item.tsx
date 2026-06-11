@@ -16,10 +16,10 @@ enum ActionType {
   download = 'download',
   // viewDetail = 'viewDetail', // wait for marketplace api
 }
-type Props = {
+type Props = Readonly<{
   payload: Plugin
   onAction: (type: ActionType) => void
-}
+}>
 
 const Item: FC<Props> = ({
   payload,

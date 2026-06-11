@@ -11853,6 +11853,7 @@ composer/publish validators and skipped by runtime request builders.
 | dangerous_command | boolean |  | No |
 | description | string |  | No |
 | enabled | boolean |  | No |
+| env | [AgentCliToolEnvConfig](#agentclitoolenvconfig) |  | No |
 | install | string |  | No |
 | install_command | string |  | No |
 | install_commands | [ string ] |  | No |
@@ -11866,6 +11867,13 @@ composer/publish validators and skipped by runtime request builders.
 | risk_level | [AgentCliToolRiskLevel](#agentclitoolrisklevel) |  | No |
 | setup_command | string |  | No |
 | tool_name | string |  | No |
+
+#### AgentCliToolEnvConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| secret_refs | [ [AgentSecretRefConfig](#agentsecretrefconfig) ] |  | No |
+| variables | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
 
 #### AgentCliToolRiskLevel
 
@@ -11918,6 +11926,22 @@ Risk marker for CLI tool bootstrap commands.
 | provider | string |  | No |
 | provider_id | string |  | No |
 
+#### AgentComposerFileCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_id | string |  | No |
+| id | string |  | No |
+| kind | string |  | No |
+| name | string |  | No |
+| reference | string |  | No |
+| remote_url | string |  | No |
+| tenant_id | string |  | No |
+| transfer_method | string |  | No |
+| type | string |  | No |
+| upload_file_id | string |  | No |
+| url | string |  | No |
+
 #### AgentComposerImpactBindingResponse
 
 | Name | Type | Description | Required |
@@ -11941,6 +11965,17 @@ Risk marker for CLI tool bootstrap commands.
 | declare_output_types | [ [DeclaredOutputType](#declaredoutputtype) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | previous_node_outputs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
+
+#### AgentComposerSkillCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| file_id | string |  | No |
+| id | string |  | No |
+| kind | string |  | No |
+| name | string |  | No |
+| path | string |  | No |
 
 #### AgentComposerSoulCandidatesResponse
 

@@ -5,11 +5,11 @@ import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { appDefaultIconBackground } from '@/config'
 
-type Props = {
+type Props = Readonly<{
   data?: SiteInfo
   isShow: boolean
   onClose: () => void
-}
+}>
 
 const InfoModal = ({
   isShow,
