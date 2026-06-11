@@ -79,7 +79,7 @@ export const TagFilter = ({
         >
           <span className="flex w-full min-w-0 items-center gap-1">
             <span className="p-px">
-              <span className="i-ri-price-tag-3-line size-3.5 text-text-tertiary" aria-hidden="true" />
+              <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary" aria-hidden="true" />
             </span>
             <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
               {!value.length && t('tag.placeholder', { ns: 'common' })}
