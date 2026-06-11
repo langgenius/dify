@@ -428,6 +428,64 @@ def iteration_workflow_doc() -> dict[str, Any]:
     return doc
 
 
+def knowledge_retrieval_placeholder_doc() -> dict[str, Any]:
+    doc = llm_workflow_doc()
+    graph = doc["workflow"]["graph"]
+    graph["edges"] = [
+        {
+            "id": "start-source-retrieve-target",
+            "source": "start",
+            "sourceHandle": "source",
+            "target": "retrieve",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "start", "targetType": "knowledge-retrieval", "isInLoop": False},
+        },
+        {
+            "id": "retrieve-source-llm-target",
+            "source": "retrieve",
+            "sourceHandle": "source",
+            "target": "llm",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "knowledge-retrieval", "targetType": "llm", "isInLoop": False},
+        },
+        {
+            "id": "llm-source-end-target",
+            "source": "llm",
+            "sourceHandle": "source",
+            "target": "end",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "llm", "targetType": "end", "isInLoop": False},
+        },
+    ]
+    graph["nodes"].insert(
+        1,
+        {
+            "id": "retrieve",
+            "type": "custom",
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "position": {"x": 300, "y": 0},
+            "data": {
+                "title": "Retrieve",
+                "type": "knowledge-retrieval",
+                "dataset_ids": ["REPLACE_WITH_DATASET_ID"],
+                "query_variable_selector": ["start", "input"],
+                "retrieval_mode": "multiple",
+                "multiple_retrieval_config": {"top_k": 3, "score_threshold": None, "reranking_enable": False},
+            },
+        },
+    )
+    graph["nodes"][0]["data"]["variables"] = [
+        {"variable": "input", "label": "Input", "type": "paragraph", "required": True}
+    ]
+    graph["nodes"][2]["position"] = {"x": 600, "y": 0}
+    graph["nodes"][3]["position"] = {"x": 900, "y": 0}
+    return doc
+
+
 def malformed_native_shape_doc() -> dict[str, Any]:
     return {
         "version": "0.6.0",
@@ -561,6 +619,7 @@ def main() -> int:
     valid_agent_doc = agent_workflow_doc()
     valid_human_input_doc = human_input_workflow_doc()
     valid_iteration_doc = iteration_workflow_doc()
+    valid_knowledge_placeholder_doc = knowledge_retrieval_placeholder_doc()
 
     missing_dependency_doc = deepcopy(valid_doc)
     missing_dependency_doc["dependencies"] = []
@@ -602,6 +661,12 @@ def main() -> int:
         assert_case("valid_agent_dependency", valid_agent_doc, set(), True),
         assert_case("valid_human_input_actions", valid_human_input_doc, set(), True),
         assert_case("valid_iteration_container", valid_iteration_doc, set(), True),
+        assert_case(
+            "knowledge_retrieval_dataset_placeholder",
+            valid_knowledge_placeholder_doc,
+            {"knowledge_retrieval_dataset_placeholder"},
+            True,
+        ),
         assert_case("missing_plugin_dependency", missing_dependency_doc, {"plugin_dependency_missing"}, False),
         assert_case("missing_model_dependency", missing_model_dependency_doc, {"model_dependency_missing"}, False),
         assert_case("missing_agent_dependency", missing_agent_dependency_doc, {"plugin_dependency_missing"}, False),

@@ -19,6 +19,7 @@ SYSTEM_SELECTOR_ROOTS = {"sys", "env", "conversation", "rag"}
 VAR_REF_RE = re.compile(r"\{\{#([^.#]+)\.[^#]*#\}\}")
 GENERIC_PROVIDER_RE = re.compile(r"^[a-z0-9_-]+(?:/[a-z0-9_-]+/[a-z0-9_-]+)?$")
 SUSPICIOUS_MODEL_NAME_RE = re.compile(r"(definitely|fake|invalid|not[-_ ]?a[-_ ]?real|placeholder|unknown)", re.IGNORECASE)
+PLACEHOLDER_DATASET_IDS = {"REPLACE_WITH_DATASET_ID", "YOUR_DATASET_ID", "DATASET_ID"}
 SELECTOR_KEYS = {"value_selector", "variable_selector"}
 DEPENDENCY_TYPES = {"github", "marketplace", "package"}
 DEPENDENCY_IDENTIFIER_KEYS = (
@@ -412,6 +413,21 @@ def validate_code_node(report: ValidationReport, data_block: dict[str, Any], pat
             report.add("error", "code_output_type_missing", f"{output_path}.type", "code output definition requires type")
 
 
+def validate_knowledge_retrieval_node(report: ValidationReport, data_block: dict[str, Any], path: str) -> None:
+    dataset_ids = data_block.get("dataset_ids")
+    if not isinstance(dataset_ids, list):
+        return
+    for index, dataset_id in enumerate(dataset_ids):
+        if isinstance(dataset_id, str) and dataset_id.strip() in PLACEHOLDER_DATASET_IDS:
+            report.add(
+                "warning",
+                "knowledge_retrieval_dataset_placeholder",
+                f"{path}.data.dataset_ids[{index}]",
+                "knowledge-retrieval dataset id is a placeholder; replace it or run with "
+                "--bootstrap-rag-dataset before live import/debug",
+            )
+
+
 def validate_yaml_text(yaml_text: str) -> ValidationReport:
     report = ValidationReport()
     try:
@@ -779,6 +795,9 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
 
         if typ == "code":
             validate_code_node(report, data_block, path, node_ids)
+
+        if typ == "knowledge-retrieval":
+            validate_knowledge_retrieval_node(report, data_block, path)
 
         if typ in {"iteration", "loop"}:
             start_node_id = data_block.get("start_node_id")
