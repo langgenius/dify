@@ -7,13 +7,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   payload: CrawlResultItemType
   isChecked: boolean
   isPreview: boolean
   onCheckChange: (checked: boolean) => void
   onPreview: () => void
-}
+}>
 
 const CrawledResultItem: FC<Props> = ({
   isPreview,

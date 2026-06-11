@@ -381,7 +381,7 @@ def _build_from_datasource_file(
             file_id=mapping.get("datasource_file_id"),
             filename=datasource_file.name,
             file_type=file_type,
-            transfer_method=FileTransferMethod.TOOL_FILE,
+            transfer_method=transfer_method,
             remote_url=datasource_file.source_url,
             reference=build_file_reference(record_id=str(datasource_file.id)),
             extension=extension,

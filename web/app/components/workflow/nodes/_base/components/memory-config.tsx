@@ -46,14 +46,14 @@ const RoleItem: FC<RoleItemProps> = ({
   )
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   readonly: boolean
   config: { data?: Memory }
   onChange: (memory?: Memory) => void
   canSetRoleName?: boolean
   defaultMemory?: Memory
-}
+}>
 
 const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },

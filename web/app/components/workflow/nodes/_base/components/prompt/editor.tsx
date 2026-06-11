@@ -39,7 +39,7 @@ import { CodeLanguage } from '../../../code/types'
 import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
 import Wrap from '../editor/wrap'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   headerClassName?: string
   instanceId?: string
@@ -81,7 +81,7 @@ type Props = {
   placeholderClassName?: string
   titleClassName?: string
   required?: boolean
-}
+}>
 
 const Editor: FC<Props> = ({
   className,

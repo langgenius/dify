@@ -8,7 +8,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title: ReactNode
   tooltip?: ReactNode
@@ -19,7 +19,7 @@ type Props = {
   inline?: boolean
   required?: boolean
   warningDot?: boolean
-}
+}>
 
 const getTextFromNode = (node: ReactNode): string | undefined => {
   if (typeof node === 'string' || typeof node === 'number')

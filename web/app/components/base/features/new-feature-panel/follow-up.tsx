@@ -14,10 +14,10 @@ import FollowUpSettingModal from '@/app/components/base/features/new-feature-pan
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const FollowUp = ({
   disabled,

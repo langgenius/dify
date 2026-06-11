@@ -20,12 +20,17 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuilder,
     AgentAppRuntimeRequestBuildError,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from models.agent_config_entities import AgentSoulConfig
 
 
 def _exec_ctx() -> DifyExecutionContextLayerConfig:
-    return DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="agent_app")
+    return DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        user_from="end-user",
+        invoke_from="web-app",
+        agent_mode="agent_app",
+    )
 
 
 class TestBuildForAgentApp:
@@ -85,6 +90,7 @@ def _ctx(soul: AgentSoulConfig, *, query: str = "hello") -> AgentAppRuntimeBuild
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
+        user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
     return AgentAppRuntimeBuildContext(
@@ -130,7 +136,10 @@ class TestAgentAppRuntimeRequestBuilder:
         # execution context carries conversation + agent_app invoke source.
         exec_ctx = next(layer for layer in req.composition.layers if layer.name == "execution_context")
         assert exec_ctx.config.conversation_id == "conv-1"
-        assert exec_ctx.config.invoke_from == "agent_app"
+        # Real Dify access context forwarded; agent run mode in agent_mode.
+        assert exec_ctx.config.user_from == "end-user"
+        assert exec_ctx.config.invoke_from == "web-app"
+        assert exec_ctx.config.agent_mode == "agent_app"
         # credentials are redacted in the log-safe view.
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"

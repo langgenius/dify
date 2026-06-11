@@ -499,6 +499,7 @@
   "operation.duplicate": "複製",
   "operation.edit": "編集",
   "operation.exporting": "エクスポート中",
+  "operation.fill": "自動入力",
   "operation.format": "フォーマット",
   "operation.getForFree": "無料で入手",
   "operation.imageCopied": "コピーした画像",

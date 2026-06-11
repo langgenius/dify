@@ -1192,6 +1192,56 @@ Get agent execution logs for an application
 | 200 | Agent logs retrieved successfully | [ object ] |
 | 400 | Invalid request parameters |  |
 
+### /apps/{app_id}/agent/skills/standardize
+
+#### POST
+##### Summary
+
+Upload a Skill, validate it, and standardize it into the app agent's drive
+
+##### Description
+
+Validate + standardize a Skill into the agent drive (ENG-594)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 201 | Skill standardized into drive |
+| 400 | Invalid skill package or no bound agent |
+
+### /apps/{app_id}/agent/skills/upload
+
+#### POST
+##### Summary
+
+Validate an uploaded Skill package and persist the archive
+
+##### Description
+
+Upload + validate a Skill package (.zip/.skill) and extract its manifest
+Returns a validated skill ref (to bind into the Agent soul config on save)
+plus its manifest. Standardizing into the agent drive is ENG-594.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 201 | Skill validated |
+| 400 | Invalid skill package |
+
 ### /apps/{app_id}/annotation-reply/{action}
 
 #### POST
@@ -3674,9 +3724,10 @@ Snapshot of every node's declared outputs for a draft workflow run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node outputs | [WorkflowRunSnapshotView](#workflowrunsnapshotview) |
+| 404 | Workflow run not found |  |
 
 ### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events
 
@@ -3696,6 +3747,7 @@ Server-Sent Events stream of inspector deltas for a draft workflow run.
 
 | Code | Description |
 | ---- | ----------- |
+| 200 | Workflow run node output event stream |
 | 404 | Workflow run not found |
 
 ### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
@@ -3715,9 +3767,10 @@ One node's declared outputs for a draft workflow run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run / node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output detail | [NodeOutputsView](#nodeoutputsview) |
+| 404 | Workflow run / node not found |  |
 
 ### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
 
@@ -3737,9 +3790,10 @@ Full value for one declared output, including signed download URL for files.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run / node / output not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output preview | [OutputPreviewView](#outputpreviewview) |
+| 404 | Workflow run / node / output not found |  |
 
 ### /apps/{app_id}/workflows/draft/system-variables
 
@@ -3994,9 +4048,10 @@ Snapshot of every node's declared outputs for a published workflow run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node outputs | [WorkflowRunSnapshotView](#workflowrunsnapshotview) |
+| 404 | Workflow run not found |  |
 
 ### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events
 
@@ -4016,6 +4071,7 @@ Server-Sent Events stream of inspector deltas for a published workflow run.
 
 | Code | Description |
 | ---- | ----------- |
+| 200 | Workflow run node output event stream |
 | 404 | Workflow run not found |
 
 ### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
@@ -4035,9 +4091,10 @@ One node's declared outputs for a published workflow run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run / node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output detail | [NodeOutputsView](#nodeoutputsview) |
+| 404 | Workflow run / node not found |  |
 
 ### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
 
@@ -4057,9 +4114,10 @@ Full value for one declared output of a published run.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 404 | Workflow run / node / output not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output preview | [OutputPreviewView](#outputpreviewview) |
+| 404 | Workflow run / node / output not found |  |
 
 ### /apps/{app_id}/workflows/triggers/webhook
 
@@ -11750,6 +11808,7 @@ Get banner list
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
+| validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 
 #### AgentAppFeaturesPayload
@@ -11785,17 +11844,28 @@ composer/publish validators and skipped by runtime request builders.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| approved | boolean |  | No |
 | authorization_status | [AgentCliToolAuthorizationStatus](#agentclitoolauthorizationstatus) |  | No |
 | command | string |  | No |
 | dangerous | boolean |  | No |
+| dangerous_accepted | boolean |  | No |
 | dangerous_acknowledged | boolean |  | No |
+| dangerous_command | boolean |  | No |
 | description | string |  | No |
 | enabled | boolean |  | No |
+| install | string |  | No |
+| install_command | string |  | No |
+| install_commands | [ string ] |  | No |
 | invoke_metadata | object |  | No |
+| label | string |  | No |
 | name | string |  | No |
-| permission | object |  | No |
+| permission | [AgentPermissionConfig](#agentpermissionconfig) |  | No |
 | pre_authorized | boolean |  | No |
+| requires_confirmation | boolean |  | No |
+| risk_accepted | boolean |  | No |
 | risk_level | [AgentCliToolRiskLevel](#agentclitoolrisklevel) |  | No |
+| setup_command | string |  | No |
+| tool_name | string |  | No |
 
 #### AgentCliToolRiskLevel
 
@@ -11834,6 +11904,7 @@ Risk marker for CLI tool bootstrap commands.
 | allowed_node_job_candidates | [AgentComposerNodeJobCandidatesResponse](#agentcomposernodejobcandidatesresponse) |  | No |
 | allowed_soul_candidates | [AgentComposerSoulCandidatesResponse](#agentcomposersoulcandidatesresponse) |  | No |
 | capabilities | [ComposerCandidateCapabilities](#composercandidatecapabilities) |  | No |
+| truncated | boolean |  | No |
 | variant | [ComposerVariant](#composervariant) |  | Yes |
 
 #### AgentComposerDifyToolCandidateResponse
@@ -11846,6 +11917,22 @@ Risk marker for CLI tool bootstrap commands.
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
+
+#### AgentComposerFileCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_id | string |  | No |
+| id | string |  | No |
+| kind | string |  | No |
+| name | string |  | No |
+| reference | string |  | No |
+| remote_url | string |  | No |
+| tenant_id | string |  | No |
+| transfer_method | string |  | No |
+| type | string |  | No |
+| upload_file_id | string |  | No |
+| url | string |  | No |
 
 #### AgentComposerImpactBindingResponse
 
@@ -11871,6 +11958,17 @@ Risk marker for CLI tool bootstrap commands.
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | previous_node_outputs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 
+#### AgentComposerSkillCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| file_id | string |  | No |
+| id | string |  | No |
+| kind | string |  | No |
+| name | string |  | No |
+| path | string |  | No |
+
 #### AgentComposerSoulCandidatesResponse
 
 | Name | Type | Description | Required |
@@ -11879,7 +11977,7 @@ Risk marker for CLI tool bootstrap commands.
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
-| skills_files | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
+| skills_files | [  ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -11894,7 +11992,9 @@ Risk marker for CLI tool bootstrap commands.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | errors | [ string ] |  | No |
+| knowledge_retrieval_placeholder | [ [ComposerKnowledgePlaceholderResponse](#composerknowledgeplaceholderresponse) ] |  | No |
 | result | string |  | Yes |
+| warnings | [ [ComposerValidationWarningResponse](#composervalidationwarningresponse) ] |  | No |
 
 #### AgentConfigRevisionOperation
 
@@ -11954,10 +12054,14 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| default | string<br>integer<br>number<br>boolean<br>[ string ]<br>[ integer ]<br>[ number ]<br>[ boolean ] |  | No |
+| env_name | string |  | No |
+| key | string |  | No |
 | name | string |  | No |
 | required | boolean |  | No |
 | type | string |  | No |
 | value | string<br>integer<br>number<br>boolean<br>[ string ]<br>[ integer ]<br>[ number ]<br>[ boolean ] |  | No |
+| variable | string |  | No |
 
 #### AgentFeatureToggleConfig
 
@@ -11969,21 +12073,30 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| file_id | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
+| reference | string |  | No |
+| remote_url | string |  | No |
+| tenant_id | string |  | No |
 | transfer_method | string |  | No |
 | type | string |  | No |
+| upload_file_id | string |  | No |
 | url | string |  | No |
 
 #### AgentHumanContactConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| channel | string |  | No |
 | contact_id | string |  | No |
+| contact_method | string |  | No |
 | email | string |  | No |
 | human_id | string |  | No |
 | id | string |  | No |
+| method | string |  | No |
 | name | string |  | No |
+| tenant_id | string |  | No |
 
 #### AgentHumanToolConfig
 
@@ -12127,6 +12240,14 @@ the current roster/workflow APIs scoped to Dify Agent.
 | keywords | string |  | No |
 | outputs_config | [AgentModerationIOConfig](#agentmoderationioconfig) |  | No |
 
+#### AgentPermissionConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed | boolean |  | No |
+| state | string |  | No |
+| status | string |  | No |
+
 #### AgentReferencingWorkflowResponse
 
 | Name | Type | Description | Required |
@@ -12183,6 +12304,7 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| cpu | integer |  | No |
 | env | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
 | image | string |  | No |
 | working_dir | string |  | No |
@@ -12199,12 +12321,18 @@ Visibility and lifecycle scope of an Agent record.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| credential_id | string |  | No |
+| env_name | string |  | No |
 | id | string |  | No |
+| key | string |  | No |
 | name | string |  | No |
-| permission | object |  | No |
+| permission | [AgentPermissionConfig](#agentpermissionconfig) |  | No |
 | permission_status | string |  | No |
 | provider | string |  | No |
+| provider_credential_id | string |  | No |
+| ref | string |  | No |
 | type | string |  | No |
+| variable | string |  | No |
 
 #### AgentSensitiveWordAvoidanceFeatureConfig
 
@@ -13043,6 +13171,15 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 
+#### CheckResultView
+
+``type_check`` / ``output_check`` per-output summary block.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passed | boolean |  | Yes |
+| reason | string |  | No |
+
 #### ChildChunkBatchUpdatePayload
 
 | Name | Type | Description | Required |
@@ -13180,6 +13317,13 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | human_roster_available | boolean |  | No |
 
+#### ComposerKnowledgePlaceholderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| placeholder_name | string |  | Yes |
+
 #### ComposerSavePayload
 
 | Name | Type | Description | Required |
@@ -13207,6 +13351,23 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | locked | boolean |  | No |
 | unlocked_from_version_id | string |  | No |
+
+#### ComposerValidationFindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| knowledge_retrieval_placeholder | [ [ComposerKnowledgePlaceholderResponse](#composerknowledgeplaceholderresponse) ] |  | No |
+| warnings | [ [ComposerValidationWarningResponse](#composervalidationwarningresponse) ] |  | No |
+
+#### ComposerValidationWarningResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| id | string |  | No |
+| kind | string |  | No |
+| message | string |  | No |
+| surface | string |  | No |
 
 #### ComposerVariant
 
@@ -14638,6 +14799,7 @@ Request payload for bulk downloading documents as a zip archive.
 | name | string |  | Yes |
 | original_url | string |  | No |
 | preview_url | string |  | No |
+| reference | string |  | No |
 | size | integer |  | Yes |
 | source_url | string |  | No |
 | tenant_id | string |  | No |
@@ -15485,6 +15647,38 @@ Enum class for model type.
 | ---- | ---- | ----------- | -------- |
 | node_id | string |  | Yes |
 
+#### NodeOutputStatus
+
+Lifecycle status of a single declared output within a run.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeOutputStatus | string | Lifecycle status of a single declared output within a run. |  |
+
+#### NodeOutputView
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| output_check | [CheckResultView](#checkresultview) |  | No |
+| retried | integer |  | No |
+| status | [NodeOutputStatus](#nodeoutputstatus) |  | Yes |
+| type | [DeclaredOutputType](#declaredoutputtype) |  | No |
+| type_check | [CheckResultView](#checkresultview) |  | No |
+| value_preview |  |  | No |
+
+#### NodeOutputsView
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_completed_at | dateTime |  | No |
+| node_display_name | string |  | Yes |
+| node_id | string |  | Yes |
+| node_kind | string |  | Yes |
+| node_started_at | dateTime |  | No |
+| node_status | [NodeStatus](#nodestatus) |  | Yes |
+| outputs | [ [NodeOutputView](#nodeoutputview) ] |  | No |
+
 #### NodeRunPayload
 
 | Name | Type | Description | Required |
@@ -15496,6 +15690,14 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | Yes |
+
+#### NodeStatus
+
+Coarse node-level status used by Inspector to pick a banner.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeStatus | string | Coarse node-level status used by Inspector to pick a banner. |  |
 
 #### NotionEstimatePayload
 
@@ -15586,6 +15788,16 @@ output check fails and any configured retry attempts have been exhausted.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | OutputErrorStrategy | string | Per-output failure handling strategy.  Mirrors ``graphon.ErrorStrategy`` but scoped to a single declared output of a Workflow Agent Node. The runtime applies the strategy after type check or output check fails and any configured retry attempts have been exhausted. |  |
+
+#### OutputPreviewView
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| output_name | string |  | Yes |
+| status | [NodeOutputStatus](#nodeoutputstatus) |  | Yes |
+| type | [DeclaredOutputType](#declaredoutputtype) |  | No |
+| value |  |  | No |
 
 #### OwnerTransferCheckPayload
 
@@ -17414,6 +17626,7 @@ How a workflow node is bound to an Agent.
 | node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | Yes |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | soul_lock | [AgentComposerSoulLockResponse](#agentcomposersoullockresponse) |  | Yes |
+| validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 | workflow_id | string |  | No |
 
@@ -17771,6 +17984,7 @@ can reuse its existing handler.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_soul | object |  | No |
 | file_refs | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
 
 #### WorkflowNodeJobMode
@@ -18027,6 +18241,14 @@ Query parameters for workflow runs.
 | ---- | ---- | ----------- | -------- |
 | files | [  ] |  | No |
 | inputs | object |  | Yes |
+
+#### WorkflowRunSnapshotView
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_outputs | [ [NodeOutputsView](#nodeoutputsview) ] |  | No |
+| workflow_run_id | string |  | Yes |
+| workflow_run_status | [WorkflowExecutionStatus](#workflowexecutionstatus) |  | Yes |
 
 #### WorkflowStatisticQuery
 

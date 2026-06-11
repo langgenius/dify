@@ -13,7 +13,7 @@ import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
 
-type Props = {
+type Props = Readonly<{
   type: TracingProvider
   readOnly: boolean
   isChosen: boolean
@@ -21,7 +21,7 @@ type Props = {
   onChoose: () => void
   hasConfigured: boolean
   onConfig: () => void
-}
+}>
 
 const getIcon = (type: TracingProvider) => {
   return ({

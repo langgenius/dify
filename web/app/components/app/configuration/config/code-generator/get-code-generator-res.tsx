@@ -19,6 +19,7 @@ import {
   useBoolean,
   useSessionStorageState,
 } from 'ahooks'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +28,6 @@ import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'

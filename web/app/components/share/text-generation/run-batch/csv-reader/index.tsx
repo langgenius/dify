@@ -9,9 +9,9 @@ import {
 } from 'react-papaparse'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 
-type Props = {
+type Props = Readonly<{
   onParsed: (data: string[][]) => void
-}
+}>
 
 const CSVReader: FC<Props> = ({
   onParsed,

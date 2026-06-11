@@ -10,12 +10,12 @@ import OptionCard from '@/app/components/workflow/nodes/_base/components/option-
 import { usePluginStore } from '../../store'
 import { ClientTypeEnum, useOAuthClientState as useOAuthClientSettings } from './hooks/use-oauth-client-state'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   oauthConfig?: TriggerOAuthConfig
   onOpenChange: (open: boolean) => void
   showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
-}
+}>
 
 const CLIENT_TYPE_OPTIONS = [ClientTypeEnum.Default, ClientTypeEnum.Custom] as const
 
