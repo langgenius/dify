@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useGetLanguage } from '@/context/i18n'
 import { matchAction, searchAnything } from '../actions'
-import { getRecentItems } from '../actions/recent-store'
+import { useRecentItems } from './use-recent-items'
 
 type UseGotoAnythingResultsReturn = {
   searchResults: SearchResult[]
@@ -44,6 +44,7 @@ export const useGotoAnythingResults = (
   } = options
 
   const defaultLocale = useGetLanguage()
+  const { recentItems } = useRecentItems()
 
   // Use action keys as stable cache key instead of the full Actions object
   // (Actions contains functions which are not serializable)
@@ -77,7 +78,7 @@ export const useGotoAnythingResults = (
   const recentResults = useMemo((): RecentSearchResult[] => {
     if (searchQueryDebouncedValue || isCommandsMode)
       return []
-    return getRecentItems().map(item => ({
+    return recentItems.map(item => ({
       id: `recent-${item.id}`,
       title: item.title,
       description: item.description,
@@ -91,7 +92,7 @@ export const useGotoAnythingResults = (
       ),
       data: { path: item.path },
     }))
-  }, [searchQueryDebouncedValue, isCommandsMode])
+  }, [searchQueryDebouncedValue, isCommandsMode, recentItems])
 
   const dedupedResults = useMemo(() => {
     const allResults = recentResults.length ? recentResults : searchResults

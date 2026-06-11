@@ -33,8 +33,11 @@ vi.mock('../../actions/commands/registry', () => ({
   },
 }))
 
-vi.mock('../../actions/recent-store', () => ({
-  addRecentItem: (...args: unknown[]) => mockAddRecentItem(...args),
+vi.mock('../use-recent-items', () => ({
+  useRecentItems: () => ({
+    recentItems: [],
+    addRecentItem: (...args: unknown[]) => mockAddRecentItem(...args),
+  }),
 }))
 
 const createMockActionItem = (
