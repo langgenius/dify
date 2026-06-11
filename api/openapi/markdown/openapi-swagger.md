@@ -900,6 +900,12 @@ Strict (extra='forbid').
 | retriever_resources | [ object ] |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
 
+#### OpenApiErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenApiErrorCode | string |  |  |
+
 #### Package
 
 | Name | Type | Description | Required |
