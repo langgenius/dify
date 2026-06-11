@@ -419,12 +419,100 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
         return _update_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/document/create_by_file",
-    "/datasets/<uuid:dataset_id>/document/create-by-file",
-)
+def _create_document_by_file(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[str, object], int]:
+    """Create a document from an uploaded file for canonical and deprecated routes."""
+    dataset = db.session.scalar(
+        select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+    )
+
+    if not dataset:
+        raise ValueError("Dataset does not exist.")
+
+    if dataset.provider == "external":
+        raise ValueError("External datasets are not supported.")
+
+    args = {}
+    if "data" in request.form:
+        args = json.loads(request.form["data"])
+    if "doc_form" not in args:
+        args["doc_form"] = dataset.chunk_structure or "text_model"
+    if "doc_language" not in args:
+        args["doc_language"] = "English"
+
+    # get dataset info
+    tenant_id = str(tenant_id)
+
+    indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
+    if not indexing_technique:
+        raise ValueError("indexing_technique is required.")
+    args["indexing_technique"] = indexing_technique
+
+    if "embedding_model_provider" in args:
+        DatasetService.check_embedding_model_setting(
+            tenant_id, args["embedding_model_provider"], args["embedding_model"]
+        )
+    if (
+        "retrieval_model" in args
+        and args["retrieval_model"].get("reranking_model")
+        and args["retrieval_model"].get("reranking_model").get("reranking_provider_name")
+    ):
+        DatasetService.check_reranking_model_setting(
+            tenant_id,
+            args["retrieval_model"].get("reranking_model").get("reranking_provider_name"),
+            args["retrieval_model"].get("reranking_model").get("reranking_model_name"),
+        )
+
+    # check file
+    if "file" not in request.files:
+        raise NoFileUploadedError()
+
+    if len(request.files) > 1:
+        raise TooManyFilesError()
+
+    # save file info
+    file = request.files["file"]
+    if not file.filename:
+        raise FilenameNotExistsError
+
+    if not current_user:
+        raise ValueError("current_user is required")
+    upload_file = FileService(db.engine).upload_file(
+        filename=file.filename,
+        content=file.stream.read(),
+        mimetype=file.mimetype,
+        user=current_user,
+        source="datasets",
+    )
+    data_source = {
+        "type": "upload_file",
+        "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+    }
+    args["data_source"] = data_source
+    # validate args
+    knowledge_config = KnowledgeConfig.model_validate(args)
+    DocumentService.document_create_args_validate(knowledge_config)
+
+    dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
+    if not knowledge_config.original_document_id and not dataset_process_rule and not knowledge_config.process_rule:
+        raise ValueError("process_rule is required.")
+
+    try:
+        documents, batch = DocumentService.save_document_with_dataset_id(
+            dataset=dataset,
+            knowledge_config=knowledge_config,
+            account=dataset.created_by_account,
+            dataset_process_rule=dataset_process_rule,
+            created_from="api",
+        )
+    except ProviderTokenNotInitError as ex:
+        raise ProviderNotInitializeError(ex.description)
+    document = documents[0]
+    return dump_response(DocumentAndBatchResponse, {"document": document, "batch": batch}), 200
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/document/create-by-file")
 class DocumentAddByFileApi(DatasetApiResource):
-    """Resource for documents."""
+    """Resource for the canonical document file creation route."""
 
     @service_api_ns.doc("create_document_by_file")
     @service_api_ns.doc(description="Create a new document by uploading a file")
@@ -442,95 +530,37 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id: UUID):
+    def post(self, tenant_id: str, dataset_id: UUID):
         """Create document by upload file."""
-        dataset = db.session.scalar(
-            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        return _create_document_by_file(tenant_id=tenant_id, dataset_id=dataset_id)
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/document/create_by_file")
+class DeprecatedDocumentAddByFileApi(DatasetApiResource):
+    """Deprecated resource alias for document file creation."""
+
+    @service_api_ns.doc("create_document_by_file_deprecated")
+    @service_api_ns.doc(deprecated=True)
+    @service_api_ns.doc(
+        description=(
+            "Deprecated legacy alias for creating a new document by uploading a file. "
+            "Use /datasets/{dataset_id}/document/create-by-file instead."
         )
-
-        if not dataset:
-            raise ValueError("Dataset does not exist.")
-
-        if dataset.provider == "external":
-            raise ValueError("External datasets are not supported.")
-
-        args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
-        if "doc_form" not in args:
-            args["doc_form"] = dataset.chunk_structure or "text_model"
-        if "doc_language" not in args:
-            args["doc_language"] = "English"
-
-        # get dataset info
-        tenant_id = str(tenant_id)
-
-        indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
-        if not indexing_technique:
-            raise ValueError("indexing_technique is required.")
-        args["indexing_technique"] = indexing_technique
-
-        if "embedding_model_provider" in args:
-            DatasetService.check_embedding_model_setting(
-                tenant_id, args["embedding_model_provider"], args["embedding_model"]
-            )
-        if (
-            "retrieval_model" in args
-            and args["retrieval_model"].get("reranking_model")
-            and args["retrieval_model"].get("reranking_model").get("reranking_provider_name")
-        ):
-            DatasetService.check_reranking_model_setting(
-                tenant_id,
-                args["retrieval_model"].get("reranking_model").get("reranking_provider_name"),
-                args["retrieval_model"].get("reranking_model").get("reranking_model_name"),
-            )
-
-        # check file
-        if "file" not in request.files:
-            raise NoFileUploadedError()
-
-        if len(request.files) > 1:
-            raise TooManyFilesError()
-
-        # save file info
-        file = request.files["file"]
-        if not file.filename:
-            raise FilenameNotExistsError
-
-        if not current_user:
-            raise ValueError("current_user is required")
-        upload_file = FileService(db.engine).upload_file(
-            filename=file.filename,
-            content=file.stream.read(),
-            mimetype=file.mimetype,
-            user=current_user,
-            source="datasets",
-        )
-        data_source = {
-            "type": "upload_file",
-            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+    )
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Document created successfully",
+            401: "Unauthorized - invalid API token",
+            400: "Bad request - invalid file or parameters",
         }
-        args["data_source"] = data_source
-        # validate args
-        knowledge_config = KnowledgeConfig.model_validate(args)
-        DocumentService.document_create_args_validate(knowledge_config)
-
-        dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
-        if not knowledge_config.original_document_id and not dataset_process_rule and not knowledge_config.process_rule:
-            raise ValueError("process_rule is required.")
-
-        try:
-            documents, batch = DocumentService.save_document_with_dataset_id(
-                dataset=dataset,
-                knowledge_config=knowledge_config,
-                account=dataset.created_by_account,
-                dataset_process_rule=dataset_process_rule,
-                created_from="api",
-            )
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        document = documents[0]
-        return dump_response(DocumentAndBatchResponse, {"document": document, "batch": batch}), 200
+    )
+    @cloud_edition_billing_resource_check("vector_space", "dataset")
+    @cloud_edition_billing_resource_check("documents", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id: str, dataset_id: UUID):
+        """Create document by upload file through the deprecated underscore alias."""
+        return _create_document_by_file(tenant_id=tenant_id, dataset_id=dataset_id)
 
 
 def _update_document_by_file(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:

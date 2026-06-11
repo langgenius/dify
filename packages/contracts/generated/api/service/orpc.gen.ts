@@ -121,7 +121,6 @@ import {
   zPostConversationsByCIdNamePath,
   zPostConversationsByCIdNameResponse,
   zPostDatasetsBody,
-  zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Response,
   zPostDatasetsByDatasetIdDocumentCreateByFileBody,
@@ -878,23 +877,24 @@ export const post13 = oc
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
 
 /**
- * Create a new document by uploading a file
+ * Deprecated legacy alias for creating a new document by uploading a file. Use /datasets/{dataset_id}/document/create-by-file instead.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post14 = oc
   .route({
-    description: 'Create a new document by uploading a file',
+    deprecated: true,
+    description:
+      'Deprecated legacy alias for creating a new document by uploading a file. Use /datasets/{dataset_id}/document/create-by-file instead.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
     path: '/datasets/{dataset_id}/document/create_by_file',
     tags: ['service_api'],
   })
-  .input(
-    z.object({
-      body: zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
-      params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
-    }),
-  )
+  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path }))
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
 
 export const createByFile = {

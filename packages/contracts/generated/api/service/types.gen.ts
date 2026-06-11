@@ -1950,10 +1950,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextResponse
   = PostDatasetsByDatasetIdDocumentCreateByTextResponses[keyof PostDatasetsByDatasetIdDocumentCreateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
-  body: {
-    data?: string
-    file: Blob | File
-  }
+  body?: never
   path: {
     dataset_id: string
   }
@@ -1974,7 +1971,9 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Error
   = PostDatasetsByDatasetIdDocumentCreateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Errors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
-  200: DocumentAndBatchResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Response
