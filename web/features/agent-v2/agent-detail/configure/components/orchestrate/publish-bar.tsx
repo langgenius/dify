@@ -2,6 +2,7 @@
 
 import type { AgentConfigSnapshotDetailResponse } from '@dify/contracts/api/console/agents/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { isAgentConfigureDirtyAtom, useAgentConfigurePublishPayload } from '../../atoms'
@@ -63,11 +64,11 @@ export function AgentConfigurePublishBar({
           onClick={handlePublish}
         >
           <span>{t('agentDetail.publish')}</span>
-          <span aria-hidden className="flex items-center gap-0.5">
-            <span className="flex size-4 items-center justify-center rounded-[4px] bg-components-button-primary-bg-hover system-2xs-medium text-text-primary-on-surface">⌘</span>
-            <span className="flex size-4 items-center justify-center rounded-[4px] bg-components-button-primary-bg-hover system-2xs-medium text-text-primary-on-surface">⇧</span>
-            <span className="flex size-4 items-center justify-center rounded-[4px] bg-components-button-primary-bg-hover system-2xs-medium text-text-primary-on-surface">P</span>
-          </span>
+          <KbdGroup aria-hidden>
+            <Kbd color="white">⌘</Kbd>
+            <Kbd color="white">⇧</Kbd>
+            <Kbd color="white">P</Kbd>
+          </KbdGroup>
         </Button>
       </div>
     </div>
