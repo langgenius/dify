@@ -176,6 +176,59 @@ def test_unresolved_non_knowledge_mentions_warn_target_missing():
     assert findings["knowledge_retrieval_placeholder"] == []
 
 
+def test_all_tools_mention_never_warns_target_missing():
+    # `[§tool:*§]` is the reserved all-tools reference — always valid, even with
+    # zero configured tools, so it must produce neither hard error nor warning.
+    payload = _soul_payload("use [§tool:*:ALL TOOLS§] when needed")
+    ComposerConfigValidator.validate_save_payload(payload)
+    assert _findings(payload) == {"warnings": [], "knowledge_retrieval_placeholder": []}
+
+
+def test_duplicate_cli_tool_ids_rejected():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "agent_app",
+            "agent_soul": {
+                "prompt": {"system_prompt": "plain"},
+                "tools": {
+                    "cli_tools": [
+                        {"id": "ct-1", "name": "ffmpeg"},
+                        # disabled entries still occupy the id namespace
+                        {"id": "ct-1", "name": "pandoc", "enabled": False},
+                    ]
+                },
+            },
+            "save_strategy": "save_to_current_version",
+        }
+    )
+    with pytest.raises(InvalidComposerConfigError, match="duplicate CLI tool id 'ct-1'"):
+        ComposerConfigValidator.validate_save_payload(payload)
+
+
+def test_save_backfills_missing_cli_tool_ids_and_keeps_existing():
+    from services.agent.composer_service import _backfill_cli_tool_ids
+
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "agent_app",
+            "agent_soul": {
+                "prompt": {"system_prompt": "plain"},
+                "tools": {"cli_tools": [{"name": "ffmpeg"}, {"id": "ct-1", "name": "pandoc"}]},
+            },
+            "save_strategy": "save_to_current_version",
+        }
+    )
+
+    _backfill_cli_tool_ids(payload.agent_soul)
+
+    assert payload.agent_soul is not None
+    minted, existing = payload.agent_soul.tools.cli_tools
+    assert existing.id == "ct-1"
+    assert minted.id is not None
+    assert len(minted.id) == 12
+    assert minted.id != "ct-1"
+
+
 def test_malformed_marker_warns_but_does_not_block():
     payload = _soul_payload("hello [§wat:x:y§] world")
     ComposerConfigValidator.validate_save_payload(payload)  # no hard error

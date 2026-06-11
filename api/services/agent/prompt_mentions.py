@@ -57,6 +57,13 @@ _RESIDUAL_MENTION_PATTERN = re.compile(r"\[§([A-Za-z_][A-Za-z0-9_]*:[^§]*?)§\
 MAX_MENTIONS_PER_PROMPT = 200
 MAX_MENTION_FIELD_LENGTH = 255
 
+# Reserved ``tool`` mention id meaning "every tool this agent has" (single tools use
+# ``<provider>/<tool_name>``, so ``*`` can never collide with a real tool id). The
+# menu row is a static frontend entry; selecting it writes nothing back to config,
+# and validation always resolves it, so it can never dangle.
+ALL_TOOLS_MENTION_ID = "*"
+_ALL_TOOLS_MENTION_TEXT = "all available tools"
+
 # Per-surface allowlists (design §2.4): the soul prompt may only reference
 # soul-owned entities; the workflow job prompt may only reference run-scoped ones.
 SOUL_PROMPT_ALLOWED_KINDS = frozenset(
@@ -177,6 +184,8 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
                     if mention.ref_id in (file.id, file.name):
                         return file.name or file.id
             case MentionKind.TOOL:
+                if mention.ref_id == ALL_TOOLS_MENTION_ID:
+                    return _ALL_TOOLS_MENTION_TEXT
                 for tool in agent_soul.tools.dify_tools:
                     aliases = {tool.tool_name} | {
                         f"{prefix}/{tool.tool_name}"
@@ -187,8 +196,10 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
                         return tool.name or tool.tool_name
             case MentionKind.CLI_TOOL:
                 for cli_tool in agent_soul.tools.cli_tools:
-                    if cli_tool.name and mention.ref_id == cli_tool.name:
-                        return cli_tool.name
+                    # id is the stable reference; name stays as an alias so tokens
+                    # minted before ids existed (or hand-written ones) keep working.
+                    if mention.ref_id in (cli_tool.id, cli_tool.name):
+                        return cli_tool.name or cli_tool.id
             case MentionKind.KNOWLEDGE:
                 for dataset in agent_soul.knowledge.datasets:
                     if mention.ref_id == dataset.id:
@@ -247,6 +258,7 @@ def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> tuple[str, str] | 
 
 
 __all__ = [
+    "ALL_TOOLS_MENTION_ID",
     "MAX_MENTIONS_PER_PROMPT",
     "MAX_MENTION_FIELD_LENGTH",
     "MENTION_PATTERN",

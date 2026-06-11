@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Any
 
 from sqlalchemy import func, select
@@ -43,6 +44,27 @@ _DRAFT_WORKFLOW_VERSION = "draft"
 logger = logging.getLogger(__name__)
 
 
+def _backfill_cli_tool_ids(agent_soul: AgentSoulConfig | None) -> None:
+    """Mint stable ids for CLI tools that predate the id field (ENG-616).
+
+    `[§cli_tool:<id>§]` mentions resolve by id so renames never break references;
+    the frontend mints ids for new entries, and save backfills legacy ones. Runs
+    before validation so duplicate-id checks see the final state. Save-only — the
+    validate endpoint must not mutate the payload.
+    """
+    if agent_soul is None:
+        return
+    seen_ids = {cli_tool.id for cli_tool in agent_soul.tools.cli_tools if cli_tool.id}
+    for cli_tool in agent_soul.tools.cli_tools:
+        if cli_tool.id:
+            continue
+        minted = uuid.uuid4().hex[:12]
+        while minted in seen_ids:
+            minted = uuid.uuid4().hex[:12]
+        cli_tool.id = minted
+        seen_ids.add(minted)
+
+
 class AgentComposerService:
     @classmethod
     def load_workflow_composer(cls, *, tenant_id: str, app_id: str, node_id: str) -> dict[str, Any]:
@@ -66,6 +88,7 @@ class AgentComposerService:
         if payload.variant != ComposerVariant.WORKFLOW:
             raise ValueError("Workflow composer endpoint only accepts workflow variant")
 
+        _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_save_payload(payload)
         workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
@@ -150,6 +173,7 @@ class AgentComposerService:
     ) -> dict[str, Any]:
         if payload.variant != ComposerVariant.AGENT_APP:
             raise ValueError("Agent App composer endpoint only accepts agent_app variant")
+        _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_save_payload(payload)
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
