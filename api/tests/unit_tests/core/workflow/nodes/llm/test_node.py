@@ -76,6 +76,7 @@ from graphon.nodes.llm.node import (
     _render_jinja2_message,
 )
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.reasoning import split_reasoning
 from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
@@ -1271,7 +1272,10 @@ class TestLLMNodeSaveMultiModalImageOutput:
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
         mock_file_saver.save_binary_string.assert_called_once_with(
-            data=b"test-data", mime_type="image/png", file_type=FileType.IMAGE
+            data=b"test-data",
+            mime_type="image/png",
+            file_type=FileType.IMAGE,
+            extension_override=".png",
         )
 
     def test_llm_node_save_url_output(self, llm_node_for_multimodal: tuple[LLMNode, LLMFileSaver]):
@@ -1305,8 +1309,9 @@ class TestLLMNodeSaveMultiModalImageOutput:
 
 def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
     mock_file = mock.MagicMock(spec=File)
+    mock_file.type = FileType.IMAGE
     mock_file.generate_url.return_value = "https://example.com/image.png"
-    markdown = llm_node._image_file_to_markdown(mock_file)
+    markdown = llm_node._saved_file_to_markdown(mock_file)
     assert markdown == "![](https://example.com/image.png)"
 
 
@@ -1378,6 +1383,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
             data=image_raw_data,
             mime_type="image/png",
             file_type=FileType.IMAGE,
+            extension_override=".png",
         )
         assert mock_saved_file in llm_node._file_outputs
 
@@ -1425,7 +1431,7 @@ class TestReasoningFormat:
         </think>Dify is an open source AI platform.
         """
 
-        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, "separated")
+        clean_text, reasoning_content = split_reasoning(text_with_think, "separated")
 
         assert clean_text == "Dify is an open source AI platform."
         assert reasoning_content == "I need to explain what Dify is. It's an open source AI platform."
@@ -1438,7 +1444,7 @@ class TestReasoningFormat:
         </think>Dify is an open source AI platform.
         """
 
-        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, "tagged")
+        clean_text, reasoning_content = split_reasoning(text_with_think, "tagged")
 
         # Original text unchanged
         assert clean_text == text_with_think
@@ -1450,7 +1456,7 @@ class TestReasoningFormat:
 
         text_without_think = "This is a simple answer without any thinking blocks."
 
-        clean_text, reasoning_content = LLMNode._split_reasoning(text_without_think, "separated")
+        clean_text, reasoning_content = split_reasoning(text_without_think, "separated")
 
         assert clean_text == text_without_think
         assert reasoning_content == ""
@@ -1471,7 +1477,7 @@ class TestReasoningFormat:
         <think>I need to explain what Dify is. It's an open source AI platform.
         </think>Dify is an open source AI platform.
         """
-        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, node_data.reasoning_format)
+        clean_text, reasoning_content = split_reasoning(text_with_think, node_data.reasoning_format)
 
         assert clean_text == text_with_think
         assert reasoning_content == ""
@@ -1569,10 +1575,10 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
         )
 
     assert events[0] == first_chunk
-    assert events[1] == StreamChunkEvent(selector=["node-1", "text"], chunk="<think>plan</think>", is_final=False)
-    assert events[2] == StreamChunkEvent(selector=["node-1", "text"], chunk="answer", is_final=False)
 
-    completed = events[3]
+    assert events[1] == StreamChunkEvent(selector=["node-1", "text"], chunk="answer", is_final=False)
+
+    completed = events[2]
     assert isinstance(completed, ModelInvokeCompletedEvent)
     assert completed.text == "answer"
     assert completed.reasoning_content == "plan"
