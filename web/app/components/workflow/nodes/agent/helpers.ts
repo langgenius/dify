@@ -61,10 +61,7 @@ export function getRosterAgentFromComposer(
   if (!composerData)
     return graphAgent
 
-  if (!composerData.binding)
-    return graphAgent
-
-  if (composerData.binding.binding_type !== 'roster_agent' || !composerData.agent)
+  if (composerData.binding?.binding_type !== 'roster_agent' || !composerData.agent)
     return undefined
 
   const graphIcon = graphAgent?.id === composerData.agent.id ? graphAgent : undefined
