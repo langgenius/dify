@@ -27,6 +27,7 @@ import { useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import { StarredAppList } from './starred-app-list'
+import { StudioListHeader } from './studio-list-header'
 
 const STARRED_APP_LIMIT = 100
 
@@ -213,12 +214,13 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
-          <div className="flex h-6 items-center">
+        <StudioListHeader
+          title={(
             <div className="flex items-center">
               <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.apps', { ns: 'common' })}</h1>
             </div>
-          </div>
+          )}
+        >
           <AppListHeaderFilters
             category={category}
             tagIDs={tagIDs}
@@ -236,7 +238,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
             onOpenTagManagement={() => setShowTagManagementModal(true)}
             showCreateButton={isCurrentWorkspaceEditor}
           />
-        </div>
+        </StudioListHeader>
         {showFirstEmptyState
           ? (
               <FirstEmptyState
