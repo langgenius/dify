@@ -24,6 +24,7 @@ class TestApiTokenCache:
         self.mock_token.id = "test-token-id-123"
         self.mock_token.app_id = "test-app-id-456"
         self.mock_token.tenant_id = "test-tenant-id-789"
+        self.mock_token.dataset_id = None
         self.mock_token.type = "app"
         self.mock_token.token = "test-token-value-abc"
         self.mock_token.last_used_at = datetime(2026, 2, 3, 10, 0, 0)
@@ -47,6 +48,7 @@ class TestApiTokenCache:
         assert data["id"] == "test-token-id-123"
         assert data["app_id"] == "test-app-id-456"
         assert data["tenant_id"] == "test-tenant-id-789"
+        assert data["dataset_id"] is None
         assert data["type"] == "app"
         assert data["token"] == "test-token-value-abc"
         assert data["last_used_at"] == "2026-02-03T10:00:00"
@@ -58,6 +60,7 @@ class TestApiTokenCache:
         mock_token.id = "test-id"
         mock_token.app_id = None
         mock_token.tenant_id = None
+        mock_token.dataset_id = None
         mock_token.type = "dataset"
         mock_token.token = "test-token"
         mock_token.last_used_at = None
@@ -69,6 +72,24 @@ class TestApiTokenCache:
         assert data["app_id"] is None
         assert data["tenant_id"] is None
         assert data["last_used_at"] is None
+
+    def test_serialize_dataset_bound_token(self):
+        """Test that a dataset-bound token round-trips its dataset_id through the cache."""
+        mock_token = MagicMock()
+        mock_token.id = "test-id"
+        mock_token.app_id = None
+        mock_token.tenant_id = "test-tenant"
+        mock_token.dataset_id = "test-dataset-id-123"
+        mock_token.type = "dataset"
+        mock_token.token = "test-token"
+        mock_token.last_used_at = None
+        mock_token.created_at = datetime(2026, 1, 1, 0, 0, 0)
+
+        serialized = ApiTokenCache._serialize_token(mock_token)
+        deserialized = ApiTokenCache._deserialize_token(serialized)
+
+        assert isinstance(deserialized, CachedApiToken)
+        assert deserialized.dataset_id == "test-dataset-id-123"
 
     def test_deserialize_token(self):
         """Test token deserialization."""
@@ -94,6 +115,9 @@ class TestApiTokenCache:
         assert result.token == "test-token"
         assert result.last_used_at == datetime(2026, 2, 3, 10, 0, 0)
         assert result.created_at == datetime(2026, 1, 1, 0, 0, 0)
+        # Cache entries written before the dataset_id field existed must keep
+        # deserializing (otherwise live tokens 401 until the cache TTL expires).
+        assert result.dataset_id is None
 
     def test_deserialize_null_token(self):
         """Test deserialization of null token (cached miss)."""
@@ -218,6 +242,7 @@ class TestApiTokenCacheIntegration:
         mock_token.id = "id-123"
         mock_token.app_id = "app-456"
         mock_token.tenant_id = "tenant-789"
+        mock_token.dataset_id = None
         mock_token.type = "app"
         mock_token.token = "token-abc"
         mock_token.last_used_at = datetime(2026, 2, 3, 10, 0, 0)

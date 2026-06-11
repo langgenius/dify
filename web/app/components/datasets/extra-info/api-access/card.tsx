@@ -1,7 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { PopoverClose } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { RiArrowRightUpLine, RiBookOpenLine } from '@remixicon/react'
+import { RiArrowRightUpLine, RiBookOpenLine, RiKey2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,10 +14,12 @@ import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/servi
 
 type CardProps = {
   apiEnabled: boolean
+  onOpenSecretKeyModal: () => void
 }
 
 const Card = ({
   apiEnabled,
+  onOpenSecretKeyModal,
 }: CardProps) => {
   const { t } = useTranslation()
   const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
@@ -72,6 +75,20 @@ const Card = ({
       </div>
       <div className="h-px bg-divider-subtle"></div>
       <div className="p-1">
+        <PopoverClose
+          render={(
+            <button
+              type="button"
+              className="flex h-8 w-full items-center space-x-[7px] rounded-lg border-none bg-transparent px-2 text-left text-text-tertiary hover:bg-state-base-hover"
+              onClick={onOpenSecretKeyModal}
+            >
+              <RiKey2Line className="size-3.5 shrink-0" />
+              <div className="grow truncate system-sm-regular">
+                {t('serviceApi.card.apiKey', { ns: 'dataset' })}
+              </div>
+            </button>
+          )}
+        />
         <Link
           href={apiReferenceUrl}
           target="_blank"

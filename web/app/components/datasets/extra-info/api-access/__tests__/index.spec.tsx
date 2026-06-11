@@ -20,6 +20,13 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useDisableDatasetServiceApi: vi.fn(() => ({ mutateAsync: vi.fn() })),
 }))
 
+// Mock SecretKeyModal to avoid complex modal rendering
+vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
+  default: ({ isShow, datasetId }: { isShow: boolean, datasetId?: string }) => (
+    <div data-testid="secret-key-modal" data-show={String(isShow)} data-dataset-id={datasetId} />
+  ),
+}))
+
 afterEach(() => {
   cleanup()
 })
@@ -52,6 +59,13 @@ describe('ApiAccess', () => {
 
   it('should be wrapped with React.memo', () => {
     expect((ApiAccess as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+  })
+
+  it('should pass the dataset id from context to the secret key modal', () => {
+    render(<ApiAccess expand={true} apiEnabled={true} />)
+    const modal = screen.getByTestId('secret-key-modal')
+    expect(modal).toHaveAttribute('data-dataset-id', 'test-dataset-id')
+    expect(modal).toHaveAttribute('data-show', 'false')
   })
 
   describe('toggle functionality', () => {

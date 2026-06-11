@@ -1,4 +1,5 @@
 import type { DataSet, RelatedApp, RelatedAppResponse } from '@/models/datasets'
+import { Popover } from '@langgenius/dify-ui/popover'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -529,9 +530,12 @@ describe('ApiAccessCard', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
@@ -539,9 +543,12 @@ describe('ApiAccessCard', () => {
 
     it('should display enabled status when API is enabled', () => {
       render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
@@ -549,9 +556,12 @@ describe('ApiAccessCard', () => {
 
     it('should display disabled status when API is disabled', () => {
       render(
-        <ApiAccessCard
-          apiEnabled={false}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={false}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       expect(screen.getByText(/serviceApi\.disabled/i)).toBeInTheDocument()
@@ -559,9 +569,12 @@ describe('ApiAccessCard', () => {
 
     it('should render API Reference link', () => {
       render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       expect(screen.getByText(/overview\.apiInfo\.doc/i)).toBeInTheDocument()
@@ -569,9 +582,12 @@ describe('ApiAccessCard', () => {
 
     it('should render switch component', () => {
       render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       expect(screen.getByRole('switch')).toBeInTheDocument()
@@ -583,9 +599,12 @@ describe('ApiAccessCard', () => {
       const user = userEvent.setup()
 
       render(
-        <ApiAccessCard
-          apiEnabled={false}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={false}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       const switchButton = screen.getByRole('switch')
@@ -600,9 +619,12 @@ describe('ApiAccessCard', () => {
       const user = userEvent.setup()
 
       render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       const switchButton = screen.getByRole('switch')
@@ -617,9 +639,12 @@ describe('ApiAccessCard', () => {
       const user = userEvent.setup()
 
       render(
-        <ApiAccessCard
-          apiEnabled={false}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={false}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       const switchButton = screen.getByRole('switch')
@@ -635,9 +660,12 @@ describe('ApiAccessCard', () => {
       const user = userEvent.setup()
 
       render(
-        <ApiAccessCard
-          apiEnabled={false}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={false}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       const switchButton = screen.getByRole('switch')
@@ -653,9 +681,12 @@ describe('ApiAccessCard', () => {
 
     it('should have correct href for API Reference link', () => {
       render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       const apiRefLink = screen.getByText(/overview\.apiInfo\.doc/i).closest('a')
@@ -668,9 +699,12 @@ describe('ApiAccessCard', () => {
       mockIsCurrentWorkspaceManager = false
 
       render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       const switchButton = screen.getByRole('switch')
@@ -681,9 +715,12 @@ describe('ApiAccessCard', () => {
       mockIsCurrentWorkspaceManager = true
 
       render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       const switchButton = screen.getByRole('switch')
@@ -694,15 +731,21 @@ describe('ApiAccessCard', () => {
   describe('Memoization', () => {
     it('should be memoized with React.memo', () => {
       const { rerender } = render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       rerender(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
@@ -711,15 +754,21 @@ describe('ApiAccessCard', () => {
     it('should use useCallback for handlers', () => {
       // Verify handlers are stable by rendering multiple times
       const { rerender } = render(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       rerender(
-        <ApiAccessCard
-          apiEnabled={true}
-        />,
+        <Popover open>
+          <ApiAccessCard
+            apiEnabled={true}
+            onOpenSecretKeyModal={vi.fn()}
+          />
+        </Popover>,
       )
 
       // Component should render without issues with memoized callbacks

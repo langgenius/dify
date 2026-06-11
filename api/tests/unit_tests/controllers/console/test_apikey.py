@@ -9,9 +9,10 @@ from unittest.mock import patch
 import pytest
 from werkzeug.exceptions import Forbidden
 
-from controllers.console.apikey import BaseApiKeyListResource, BaseApiKeyResource
+from controllers.console.apikey import BaseApiKeyListResource, BaseApiKeyResource, DatasetApiKeyListResource
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
 
@@ -69,6 +70,7 @@ def test_list_api_keys_uses_injected_tenant_id() -> None:
                 "id": "key-1",
                 "type": "app",
                 "token": "app-token",
+                "dataset_id": None,
                 "last_used_at": None,
                 "created_at": None,
             }
@@ -104,6 +106,46 @@ def test_create_api_key_uses_injected_tenant_id() -> None:
     assert api_token.tenant_id == "tenant-1"
     assert api_token.type == ApiTokenType.APP
     db_mock.session.commit.assert_called_once()
+
+
+def test_create_dataset_api_key_binds_dataset_id() -> None:
+    """Creating a key on the per-dataset route must bind it to that dataset (ApiToken.dataset_id)."""
+    resource = DatasetApiKeyListResource()
+
+    def add_api_token(api_token: ApiToken) -> None:
+        api_token.id = "key-1"
+
+    with (
+        patch("controllers.console.apikey._get_resource") as get_resource,
+        patch("controllers.console.apikey.db") as db_mock,
+        patch("controllers.console.apikey.ApiToken.generate_api_key", return_value="dataset-generated-token"),
+    ):
+        db_mock.session.scalar.return_value = 0
+        db_mock.session.add.side_effect = add_api_token
+
+        api_token = resource._create_api_key("dataset-1", "tenant-1")
+
+    get_resource.assert_called_once_with("dataset-1", "tenant-1", Dataset)
+    assert api_token.dataset_id == "dataset-1"
+    assert api_token.tenant_id == "tenant-1"
+    assert api_token.type == ApiTokenType.DATASET
+    db_mock.session.commit.assert_called_once()
+
+
+def test_dataset_api_key_list_includes_workspace_scoped_keys() -> None:
+    """The per-dataset key list shows everything that can reach the dataset:
+    keys bound to it plus the tenant's workspace-scoped (NULL dataset_id) keys."""
+    resource = DatasetApiKeyListResource()
+
+    with (
+        patch("controllers.console.apikey._get_resource"),
+        patch("controllers.console.apikey.db") as db_mock,
+    ):
+        db_mock.session.scalars.return_value.all.return_value = []
+        resource._get_api_key_list("dataset-1", "tenant-1")
+
+    query_sql = str(db_mock.session.scalars.call_args.args[0])
+    assert "dataset_id IS NULL" in query_sql
 
 
 def test_delete_api_key_rejects_non_admin_account() -> None:

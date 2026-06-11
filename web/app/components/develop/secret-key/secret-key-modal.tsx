@@ -13,6 +13,8 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Radio } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { RiDeleteBinLine } from '@remixicon/react'
 import {
   useState,
@@ -31,20 +33,26 @@ import {
   createApikey as createDatasetApikey,
   delApikey as delDatasetApikey,
 } from '@/service/datasets'
-import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
+import { useDatasetApiKeys, useDatasetScopedApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
 import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
 
+type DatasetKeyScope = 'dataset' | 'workspace'
+
 type ISecretKeyModalProps = {
   isShow: boolean
   appId?: string
+  // When set (and appId is not), the modal manages keys for this knowledge base:
+  // it lists every key that can reach it and can create keys bound to it.
+  datasetId?: string
   onClose: () => void
 }
 
 const SecretKeyModal = ({
   isShow = false,
   appId,
+  datasetId,
   onClose,
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
@@ -53,12 +61,15 @@ const SecretKeyModal = ({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
+  const [newKeyScope, setNewKeyScope] = useState<DatasetKeyScope>('dataset')
   const invalidateAppApiKeys = useInvalidateAppApiKeys()
   const invalidateDatasetApiKeys = useInvalidateDatasetApiKeys()
   const { data: appApiKeys, isLoading: isAppApiKeysLoading } = useAppApiKeys(appId, { enabled: !!appId && isShow })
-  const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading } = useDatasetApiKeys({ enabled: !appId && isShow })
-  const apiKeysList = appId ? appApiKeys : datasetApiKeys
-  const isApiKeysLoading = appId ? isAppApiKeysLoading : isDatasetApiKeysLoading
+  const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading } = useDatasetApiKeys({ enabled: !appId && !datasetId && isShow })
+  const { data: datasetScopedApiKeys, isLoading: isDatasetScopedApiKeysLoading } = useDatasetScopedApiKeys(datasetId, { enabled: !appId && isShow })
+  const isDatasetScope = !appId && !!datasetId
+  const apiKeysList = appId ? appApiKeys : (isDatasetScope ? datasetScopedApiKeys : datasetApiKeys)
+  const isApiKeysLoading = appId ? isAppApiKeysLoading : (isDatasetScope ? isDatasetScopedApiKeysLoading : isDatasetApiKeysLoading)
 
   const [delKeyID, setDelKeyId] = useState('')
 
@@ -67,10 +78,14 @@ const SecretKeyModal = ({
     if (!delKeyID)
       return
 
+    const deletedKey = apiKeysList?.data?.find(api => api.id === delKeyID)
     const delApikey = appId ? delAppApikey : delDatasetApikey
     const params = appId
       ? { url: `/apps/${appId}/api-keys/${delKeyID}`, params: {} }
-      : { url: `/datasets/api-keys/${delKeyID}`, params: {} }
+      // Bound keys are managed on the per-dataset route; workspace keys on the tenant route.
+      : deletedKey?.dataset_id
+        ? { url: `/datasets/${deletedKey.dataset_id}/api-keys/${delKeyID}`, params: {} }
+        : { url: `/datasets/api-keys/${delKeyID}`, params: {} }
     await delApikey(params)
     if (appId)
       invalidateAppApiKeys(appId)
@@ -81,7 +96,9 @@ const SecretKeyModal = ({
   const onCreate = async () => {
     const params = appId
       ? { url: `/apps/${appId}/api-keys`, body: {} }
-      : { url: '/datasets/api-keys', body: {} }
+      : isDatasetScope && newKeyScope === 'dataset'
+        ? { url: `/datasets/${datasetId}/api-keys`, body: {} }
+        : { url: '/datasets/api-keys', body: {} }
     const createApikey = appId ? createAppApikey : createDatasetApikey
     const res = await createApikey(params)
     setVisible(true)
@@ -90,6 +107,14 @@ const SecretKeyModal = ({
       invalidateAppApiKeys(appId)
     else
       invalidateDatasetApiKeys()
+  }
+
+  const getScopeLabel = (keyDatasetId?: string | null) => {
+    if (!keyDatasetId)
+      return t('apiKeyModal.scopeAllDatasets', { ns: 'appApi' })
+    return isDatasetScope
+      ? t('apiKeyModal.scopeThisDataset', { ns: 'appApi' })
+      : t('apiKeyModal.scopeBoundDataset', { ns: 'appApi' })
   }
 
   const generateToken = (token: string) => {
@@ -133,6 +158,7 @@ const SecretKeyModal = ({
               <div className="mt-4 flex grow flex-col overflow-hidden">
                 <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
                   <div className="w-64 shrink-0 px-3">{t('apiKeyModal.secretKey', { ns: 'appApi' })}</div>
+                  {!appId && <div className="w-[180px] shrink-0 px-3">{t('apiKeyModal.scope', { ns: 'appApi' })}</div>}
                   <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.created', { ns: 'appApi' })}</div>
                   <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.lastUsed', { ns: 'appApi' })}</div>
                   <div className="grow px-3"></div>
@@ -141,6 +167,7 @@ const SecretKeyModal = ({
                   {apiKeysList.data.map(api => (
                     <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary" key={api.id}>
                       <div className="w-64 shrink-0 truncate px-3 font-mono">{generateToken(api.token)}</div>
+                      {!appId && <div className="w-[180px] shrink-0 truncate px-3">{getScopeLabel(api.dataset_id)}</div>}
                       <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
                       <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
                       <div className="flex grow space-x-2 px-3">
@@ -162,6 +189,22 @@ const SecretKeyModal = ({
               </div>
             )
           }
+          {isDatasetScope && (
+            <RadioGroup
+              className="mt-4 flex items-center gap-4"
+              value={newKeyScope}
+              onValueChange={value => setNewKeyScope(value as DatasetKeyScope)}
+            >
+              <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary">
+                <Radio value="dataset" />
+                {t('apiKeyModal.scopeThisDataset', { ns: 'appApi' })}
+              </label>
+              <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary">
+                <Radio value="workspace" />
+                {t('apiKeyModal.scopeAllDatasets', { ns: 'appApi' })}
+              </label>
+            </RadioGroup>
+          )}
           <div className="flex">
             <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
               <PlusIcon className="mr-1 flex size-4 shrink-0" />

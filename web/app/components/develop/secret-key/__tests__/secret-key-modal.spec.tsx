@@ -70,12 +70,18 @@ vi.mock('@/service/use-apps', () => ({
 
 const mockDatasetApiKeysData = vi.fn().mockReturnValue({ data: [] })
 const mockIsDatasetApiKeysLoading = vi.fn().mockReturnValue(false)
+const mockDatasetScopedApiKeysData = vi.fn().mockReturnValue({ data: [] })
+const mockIsDatasetScopedApiKeysLoading = vi.fn().mockReturnValue(false)
 const mockInvalidateDatasetApiKeys = vi.fn()
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetApiKeys: (_options: unknown) => ({
     data: mockDatasetApiKeysData(),
     isLoading: mockIsDatasetApiKeysLoading(),
+  }),
+  useDatasetScopedApiKeys: (_datasetId: string | undefined, _options: unknown) => ({
+    data: mockDatasetScopedApiKeysData(),
+    isLoading: mockIsDatasetScopedApiKeysLoading(),
   }),
   useInvalidateDatasetApiKeys: () => mockInvalidateDatasetApiKeys,
 }))
@@ -98,6 +104,8 @@ describe('SecretKeyModal', () => {
     mockIsAppApiKeysLoading.mockReturnValue(false)
     mockDatasetApiKeysData.mockReturnValue({ data: [] })
     mockIsDatasetApiKeysLoading.mockReturnValue(false)
+    mockDatasetScopedApiKeysData.mockReturnValue({ data: [] })
+    mockIsDatasetScopedApiKeysLoading.mockReturnValue(false)
   })
 
   afterEach(() => {
@@ -274,6 +282,50 @@ describe('SecretKeyModal', () => {
           body: {},
         })
       })
+    })
+
+    it('should create a dataset-bound key by default when datasetId is provided', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
+
+      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey')
+      await act(async () => {
+        await user.click(createButton)
+      })
+
+      await waitFor(() => {
+        expect(mockCreateDatasetApikey).toHaveBeenCalledWith({
+          url: '/datasets/dataset-123/api-keys',
+          body: {},
+        })
+      })
+    })
+
+    it('should create a workspace key when the workspace scope is selected', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
+
+      const workspaceScopeRadio = screen.getByText('appApi.apiKeyModal.scopeAllDatasets')
+      await act(async () => {
+        await user.click(workspaceScopeRadio)
+      })
+
+      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey')
+      await act(async () => {
+        await user.click(createButton)
+      })
+
+      await waitFor(() => {
+        expect(mockCreateDatasetApikey).toHaveBeenCalledWith({
+          url: '/datasets/api-keys',
+          body: {},
+        })
+      })
+    })
+
+    it('should not render the scope selector without datasetId', async () => {
+      await renderModal(<SecretKeyModal {...defaultProps} />)
+      expect(screen.queryByText('appApi.apiKeyModal.scopeThisDataset')).not.toBeInTheDocument()
     })
 
     it('should show generate modal after creating key', async () => {
@@ -572,6 +624,56 @@ describe('SecretKeyModal', () => {
           params: {},
         })
       })
+    })
+
+    it('should delete a dataset-bound key via the per-dataset route', async () => {
+      mockDatasetScopedApiKeysData.mockReturnValue({
+        data: [
+          { id: 'dk-2', token: 'dataset-bound-key-123456', dataset_id: 'dataset-123', created_at: 1700000000, last_used_at: null },
+        ],
+      })
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
+
+      const actionButtons = document.body.querySelectorAll('button.action-btn')
+      const deleteButton = actionButtons[1]
+      await act(async () => {
+        await user.click(deleteButton!)
+        vi.runAllTimers()
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('appApi.actionMsg.deleteConfirmTitle')).toBeInTheDocument()
+      })
+      await flushTransitions()
+
+      const confirmButton = screen.getByText('common.operation.confirm')
+      await act(async () => {
+        await user.click(confirmButton)
+        vi.runAllTimers()
+      })
+
+      await waitFor(() => {
+        expect(mockDelDatasetApikey).toHaveBeenCalledWith({
+          url: '/datasets/dataset-123/api-keys/dk-2',
+          params: {},
+        })
+      })
+    })
+
+    it('should show the scope column for dataset keys', async () => {
+      mockDatasetScopedApiKeysData.mockReturnValue({
+        data: [
+          { id: 'dk-2', token: 'dataset-bound-key-123456', dataset_id: 'dataset-123', created_at: 1700000000, last_used_at: null },
+          { id: 'dk-3', token: 'dataset-workspace-key-123', dataset_id: null, created_at: 1700000000, last_used_at: null },
+        ],
+      })
+      await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
+
+      expect(screen.getByText('appApi.apiKeyModal.scope')).toBeInTheDocument()
+      // Bound key: the column label plus the selected radio option both use scopeThisDataset.
+      expect(screen.getAllByText('appApi.apiKeyModal.scopeThisDataset').length).toBeGreaterThanOrEqual(2)
+      expect(screen.getAllByText('appApi.apiKeyModal.scopeAllDatasets').length).toBeGreaterThanOrEqual(2)
     })
 
     it('should invalidate dataset API keys after deleting', async () => {

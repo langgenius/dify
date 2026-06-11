@@ -178,6 +178,17 @@ export const useDatasetApiKeys = (options?: { enabled?: boolean }) => {
   })
 }
 
+// Keys that can access one dataset: keys bound to it plus workspace-scoped keys.
+export const useDatasetScopedApiKeys = (datasetId?: string, options?: { enabled?: boolean }) => {
+  return useQuery<ApiKeysListResponse>({
+    queryKey: [NAME_SPACE, 'api-keys', datasetId],
+    queryFn: () => get<ApiKeysListResponse>(`/datasets/${datasetId}/api-keys`),
+    enabled: !!datasetId && (options?.enabled ?? true),
+  })
+}
+
+// Prefix-matches both the workspace list ([NAME_SPACE, 'api-keys']) and every
+// per-dataset list ([NAME_SPACE, 'api-keys', datasetId]).
 export const useInvalidateDatasetApiKeys = () => {
   const queryClient = useQueryClient()
   return () => {

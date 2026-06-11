@@ -1516,12 +1516,14 @@ class TestDatasetApiKeyApi:
         mock_key_1 = MagicMock(spec=ApiToken)
         mock_key_1.id = "key-1"
         mock_key_1.type = "dataset"
+        mock_key_1.dataset_id = None
         mock_key_1.token = "ds-abc"
         mock_key_1.last_used_at = None
         mock_key_1.created_at = None
         mock_key_2 = MagicMock(spec=ApiToken)
         mock_key_2.id = "key-2"
         mock_key_2.type = "dataset"
+        mock_key_2.dataset_id = None
         mock_key_2.token = "ds-def"
         mock_key_2.last_used_at = None
         mock_key_2.created_at = None
@@ -1548,6 +1550,7 @@ class TestDatasetApiKeyApi:
 
         mock_token = MagicMock()
         mock_token.id = "new-key-id"
+        mock_token.dataset_id = None
         mock_token.last_used_at = None
         mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
 
