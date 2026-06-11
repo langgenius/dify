@@ -34,6 +34,14 @@ server {
       include proxy.conf;
     }
 
+    # Static assets (CSS/JS) for the Swagger UI served by the API when
+    # SWAGGER_UI_ENABLED is true. Without this the UI page loads but its
+    # assets 404, leaving a blank page.
+    location /swaggerui {
+      proxy_pass http://api:5001;
+      include proxy.conf;
+    }
+
     location /files {
       proxy_pass http://api:5001;
       include proxy.conf;
