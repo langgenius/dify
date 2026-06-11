@@ -2,6 +2,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _load_lint_response_contracts_module():
     api_dir = Path(__file__).parents[3]
@@ -115,7 +117,7 @@ class StreamApi(Resource):
     assert {actual.model for actual in checks[0].actual} == {"StreamResponse"}
 
 
-def test_main_is_report_only_by_default_for_mismatches(tmp_path: Path, monkeypatch):
+def test_main_is_report_only_by_default_for_mismatches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     module = _load_lint_response_contracts_module()
     controller_path = tmp_path / "controllers" / "sample.py"
     controller_path.parent.mkdir()
@@ -135,6 +137,34 @@ class BadDeleteApi(Resource):
 
     monkeypatch.setattr(sys, "argv", ["lint_response_contracts.py", "--fail-on-mismatch", str(controller_path)])
     assert module.main() == 1
+
+
+def test_main_hides_unknown_details_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys):
+    module = _load_lint_response_contracts_module()
+    controller_path = tmp_path / "controllers" / "sample.py"
+    controller_path.parent.mkdir()
+    controller_path.write_text(
+        """
+@ns.route("/items")
+class ItemApi(Resource):
+    @ns.response(200, "OK", ns.models[ItemResponse.__name__])
+    def get(self):
+        return dump_response(ItemResponse, item), status_code
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(sys, "argv", ["lint_response_contracts.py", str(controller_path)])
+    assert module.main() == 0
+    default_output = capsys.readouterr().out
+    assert "1 unknown" in default_output
+    assert "UNKNOWN:" not in default_output
+
+    monkeypatch.setattr(sys, "argv", ["lint_response_contracts.py", "--include-unknown", str(controller_path)])
+    assert module.main() == 0
+    include_unknown_output = capsys.readouterr().out
+    assert "UNKNOWN:" in include_unknown_output
+    assert "non-literal or unsupported status" in include_unknown_output
 
 
 def test_class_level_route_and_response_docs_apply_to_methods(tmp_path: Path):

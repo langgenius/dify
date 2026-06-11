@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { isServer } from '@/utils/client'
+import { useLocalStorage } from 'foxact/use-local-storage'
 
 export type TriggerEventsLimitModalPayload = {
   usage: number

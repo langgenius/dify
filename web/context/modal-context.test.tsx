@@ -32,8 +32,8 @@ vi.mock('@/app/components/header/account-setting', () => ({
   ),
 }))
 
-vi.mock('@/hooks/use-local-storage', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/hooks/use-local-storage')>()
+vi.mock('foxact/use-local-storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('foxact/use-local-storage')>()
 
   return {
     ...actual,

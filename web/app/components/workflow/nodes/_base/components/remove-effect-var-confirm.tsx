@@ -12,11 +12,11 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onConfirm: () => void
   onCancel: () => void
-}
+}>
 const i18nPrefix = 'common.effectVarConfirm'
 
 const RemoveVarConfirm: FC<Props> = ({

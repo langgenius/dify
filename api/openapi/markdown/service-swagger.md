@@ -2824,6 +2824,7 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | name | string |  | Yes |
 | original_url | string |  | No |
 | preview_url | string |  | No |
+| reference | string |  | No |
 | size | integer |  | Yes |
 | source_url | string |  | No |
 | tenant_id | string |  | No |
@@ -3039,8 +3040,16 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | string | *Enum:* `"automatic"`, `"custom"`, `"hierarchical"` | Yes |
+| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
+
+#### ProcessRuleMode
+
+Dataset Process Rule Mode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProcessRuleMode | string | Dataset Process Rule Mode |  |
 
 #### RerankingModel
 

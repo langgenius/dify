@@ -21,9 +21,10 @@ User-scoped operations
 #### GET
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Health check | [HealthResponse](#healthresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /_version
 
@@ -33,6 +34,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server version | [ServerVersionResponse](#serverversionresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /account
 
@@ -42,15 +44,25 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account info | [AccountResponse](#accountresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /account/sessions
 
 #### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Session list | [SessionListResponse](#sessionlistresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /account/sessions/self
 
@@ -60,6 +72,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Session revoked | [RevokeResponse](#revokeresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /account/sessions/{session_id}
 
@@ -75,6 +88,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Session revoked | [RevokeResponse](#revokeresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps
 
@@ -95,6 +109,24 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App list | [AppListResponse](#applistresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
+
+### /apps/{app_id}/check-dependencies
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dependencies checked | [CheckDependenciesResult](#checkdependenciesresult) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/describe
 
@@ -104,14 +136,34 @@ User-scoped operations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
-| fields | query |  | No | [ string ] |
-| workspace_id | query |  | No | string |
+| fields | query |  | No | string |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App description | [AppDescribeResponse](#appdescriberesponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
+
+### /apps/{app_id}/export
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| include_secret | query | Include encrypted secret values in the exported DSL | No | boolean |
+| workflow_id | query | Export a specific workflow version instead of the current draft | No | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export successful | [AppDslExportResponse](#appdslexportresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/files/upload
 
@@ -135,6 +187,7 @@ Upload a file to use as an input variable when running the app
 | 401 | Unauthorized — invalid or expired bearer token |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type or blocked extension |  |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/form/human_input/{form_token}
 
@@ -163,9 +216,11 @@ Upload a file to use as an input variable when running the app
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Form submitted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form submitted | [FormSubmitResponse](#formsubmitresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/run
 
@@ -179,9 +234,10 @@ Upload a file to use as an input variable when running the app
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Run result (SSE stream) |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) |  |
+| 422 | Validation error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/tasks/{task_id}/events
 
@@ -211,9 +267,10 @@ Upload a file to use as an input variable when running the app
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped | [TaskStopResponse](#taskstopresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /oauth/device/approve
 
@@ -293,11 +350,22 @@ Upload a file to use as an input variable when running the app
 ### /permitted-external-apps
 
 #### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer |
+| mode | query |  | No | string |
+| name | query |  | No | string |
+| page | query |  | No | integer |
+
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Permitted external apps list | [PermittedExternalAppsListResponse](#permittedexternalappslistresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces
 
@@ -307,6 +375,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace list | [WorkspaceListResponse](#workspacelistresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}
 
@@ -322,6 +391,45 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace detail | [WorkspaceDetailResponse](#workspacedetailresponse) |
+| default | Error | [ErrorBody](#errorbody) |
+
+### /workspaces/{workspace_id}/apps/imports
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+| payload | body |  | Yes | [AppDslImportPayload](#appdslimportpayload) |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Import completed | [Import](#import) |
+| 202 | Import pending confirmation | [Import](#import) |
+| 400 | Import failed | [Import](#import) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
+
+### /workspaces/{workspace_id}/apps/imports/{import_id}/confirm
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| import_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Import confirmed | [Import](#import) |
+| 400 | Import failed | [Import](#import) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/members
 
@@ -339,6 +447,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Member list | [MemberListResponse](#memberlistresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 #### POST
 ##### Parameters
@@ -353,6 +463,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Member invited | [MemberInviteResponse](#memberinviteresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/members/{member_id}
 
@@ -369,6 +481,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Member removed | [MemberActionResponse](#memberactionresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/members/{member_id}/role
 
@@ -386,6 +499,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Role updated | [MemberActionResponse](#memberactionresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/switch
 
@@ -401,6 +516,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace detail | [WorkspaceDetailResponse](#workspacedetailresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ---
 ### Models
@@ -446,8 +562,7 @@ Empty / omitted → all blocks. Unknown member → ValidationError → 422.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| fields | [ string ] |  | No |
-| workspace_id | string |  | No |
+| fields | string |  | No |
 
 #### AppDescribeResponse
 
@@ -456,6 +571,39 @@ Empty / omitted → all blocks. Unknown member → ValidationError → 422.
 | info | [AppDescribeInfo](#appdescribeinfo) |  | No |
 | input_schema | object |  | No |
 | parameters | object |  | No |
+
+#### AppDslExportQuery
+
+Query parameters for GET /apps/<app_id>/export.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_secret | boolean | Include encrypted secret values in the exported DSL | No |
+| workflow_id | string | Export a specific workflow version instead of the current draft | No |
+
+#### AppDslExportResponse
+
+Export DSL response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | string | DSL YAML string | Yes |
+
+#### AppDslImportPayload
+
+Request body for POST /workspaces/<workspace_id>/apps/imports.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Existing app ID to overwrite (workflow/advanced-chat apps only) | No |
+| description | string | Override the app description from the DSL | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| mode | string | Import mode: yaml-content or yaml-url<br>*Enum:* `"yaml-content"`, `"yaml-url"` | Yes |
+| name | string | Override the app name from the DSL | No |
+| yaml_content | string | Inline YAML DSL string (required when mode is yaml-content) | No |
+| yaml_url | string | Remote URL to fetch YAML from (required when mode is yaml-url) | No |
 
 #### AppInfoResponse
 
@@ -523,6 +671,12 @@ mode is a closed enum.
 | workflow_id | string |  | No |
 | workspace_id | string |  | No |
 
+#### CheckDependenciesResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
+
 #### DeviceCodeRequest
 
 | Name | Type | Description | Required |
@@ -573,6 +727,28 @@ mode is a closed enum.
 | client_id | string |  | Yes |
 | device_code | string |  | Yes |
 
+#### ErrorBody
+
+Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
+generated client schema stays an open enum — old CLIs keep parsing when a
+future server adds a code. Formatter tests pin emitted values to the enum.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | [ [ErrorDetail](#errordetail) ] |  | No |
+| hint | string |  | No |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### ErrorDetail
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| loc | [  ] |  | No |
+| msg | string |  | Yes |
+| type | string |  | Yes |
+
 #### FileResponse
 
 | Name | Type | Description | Required |
@@ -587,10 +763,37 @@ mode is a closed enum.
 | name | string |  | Yes |
 | original_url | string |  | No |
 | preview_url | string |  | No |
+| reference | string |  | No |
 | size | integer |  | Yes |
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FormSubmitResponse
+
+Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+pins `additionalProperties: false` so the generated contract is an exact `{}` rather
+than an under-annotated open object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
+#### Github
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| github_plugin_unique_identifier | string |  | Yes |
+| package | string |  | Yes |
+| repo | string |  | Yes |
+| version | string |  | Yes |
+
+#### HealthResponse
+
+Liveness payload for `GET /openapi/v1/_health` — no auth required.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ok | boolean |  | Yes |
 
 #### HumanInputFormSubmitPayload
 
@@ -599,11 +802,36 @@ mode is a closed enum.
 | action | string |  | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
+#### Import
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| app_mode | string |  | No |
+| current_dsl_version | string |  | No |
+| error | string |  | No |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | No |
+| status | [ImportStatus](#importstatus) |  | Yes |
+
+#### ImportStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ImportStatus | string |  |  |
+
 #### JsonValue
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
+
+#### Marketplace
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| marketplace_plugin_unique_identifier | string |  | Yes |
+| version | string |  | No |
 
 #### MemberActionResponse
 
@@ -672,6 +900,19 @@ Strict (extra='forbid').
 | retriever_resources | [ object ] |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
 
+#### OpenApiErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenApiErrorCode | string |  |  |
+
+#### Package
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_unique_identifier | string |  | Yes |
+| version | string |  | No |
+
 #### PermittedExternalAppsListQuery
 
 Strict (extra='forbid').
@@ -693,6 +934,14 @@ Strict (extra='forbid').
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### PluginDependency
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_identifier | string |  | No |
+| type | [Type](#type) |  | Yes |
+| value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+
 #### RevokeResponse
 
 | Name | Type | Description | Required |
@@ -707,6 +956,15 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | edition | string | *Enum:* `"CLOUD"`, `"SELF_HOSTED"` | Yes |
 | version | string |  | Yes |
+
+#### SessionListQuery
+
+Pagination for GET /account/sessions. Strict (extra='forbid').
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | No |
+| page | integer |  | No |
 
 #### SessionListResponse
 
@@ -735,6 +993,22 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
+
+#### TaskStopResponse
+
+200 body for POST /apps/<id>/tasks/<task_id>/stop. The handler always returns
+{"result": "success"}, so `result` is required (no default) — the generated contract
+types it as a required `'success'` rather than an optional field.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
+#### Type
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| Type | string |  |  |
 
 #### UsageInfo
 

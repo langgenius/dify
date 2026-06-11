@@ -80,6 +80,17 @@ describe('Slider', () => {
     expect(screen.container.querySelector('.outer-test')).toBeInTheDocument()
   })
 
+  it('should expose focus-visible ring styles on the thumb wrapper', async () => {
+    const screen = await render(<Slider value={10} onValueChange={vi.fn()} aria-label="Value" />)
+
+    const thumb = screen.getByLabelText('Value').element().parentElement
+
+    expect(thumb).toHaveClass(
+      'has-[:focus-visible]:ring-2',
+      'has-[:focus-visible]:ring-state-accent-solid',
+    )
+  })
+
   it('should not render prehydration script tags', async () => {
     const screen = await render(<Slider value={10} onValueChange={vi.fn()} aria-label="Value" />)
 

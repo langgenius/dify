@@ -9,11 +9,11 @@ export enum EditItemType {
   Query = 'query',
   Answer = 'answer',
 }
-type Props = {
+type Props = Readonly<{
   type: EditItemType
   content: string
   onChange: (content: string) => void
-}
+}>
 
 const EditItem: FC<Props> = ({
   type,

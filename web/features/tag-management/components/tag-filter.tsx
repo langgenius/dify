@@ -5,7 +5,6 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tag01Icon from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag01'
 import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XCircle'
 import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
@@ -80,9 +79,9 @@ export const TagFilter = ({
         >
           <span className="flex w-full min-w-0 items-center gap-1">
             <span className="p-px">
-              <Tag01Icon className="size-3.5 text-text-tertiary" aria-hidden="true" />
+              <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary" aria-hidden="true" />
             </span>
-            <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-secondary">
+            <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
               {!value.length && t('tag.placeholder', { ns: 'common' })}
               {!!value.length && currentTagName}
             </span>

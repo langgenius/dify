@@ -10,6 +10,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useDebounceFn } from 'ahooks'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -20,7 +21,6 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
@@ -349,29 +349,40 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 
 function AppPreview({ mode }: { mode: AppModeEnum }) {
   const { t } = useTranslation()
-  const modeToPreviewInfoMap = {
-    [AppModeEnum.CHAT]: {
-      title: t('types.chatbot', { ns: 'app' }),
-      description: t('newApp.chatbotUserDescription', { ns: 'app' }),
-    },
-    [AppModeEnum.ADVANCED_CHAT]: {
-      title: t('types.advanced', { ns: 'app' }),
-      description: t('newApp.advancedUserDescription', { ns: 'app' }),
-    },
-    [AppModeEnum.AGENT_CHAT]: {
-      title: t('types.agent', { ns: 'app' }),
-      description: t('newApp.agentUserDescription', { ns: 'app' }),
-    },
-    [AppModeEnum.COMPLETION]: {
-      title: t('newApp.completeApp', { ns: 'app' }),
-      description: t('newApp.completionUserDescription', { ns: 'app' }),
-    },
-    [AppModeEnum.WORKFLOW]: {
-      title: t('types.workflow', { ns: 'app' }),
-      description: t('newApp.workflowUserDescription', { ns: 'app' }),
-    },
-  }
-  const previewInfo = modeToPreviewInfoMap[mode]
+  const previewInfo = (() => {
+    switch (mode) {
+      case AppModeEnum.CHAT:
+        return {
+          title: t('types.chatbot', { ns: 'app' }),
+          description: t('newApp.chatbotUserDescription', { ns: 'app' }),
+        }
+      case AppModeEnum.ADVANCED_CHAT:
+        return {
+          title: t('types.advanced', { ns: 'app' }),
+          description: t('newApp.advancedUserDescription', { ns: 'app' }),
+        }
+      case AppModeEnum.AGENT_CHAT:
+        return {
+          title: t('types.agent', { ns: 'app' }),
+          description: t('newApp.agentUserDescription', { ns: 'app' }),
+        }
+      case AppModeEnum.COMPLETION:
+        return {
+          title: t('newApp.completeApp', { ns: 'app' }),
+          description: t('newApp.completionUserDescription', { ns: 'app' }),
+        }
+      case AppModeEnum.WORKFLOW:
+        return {
+          title: t('types.workflow', { ns: 'app' }),
+          description: t('newApp.workflowUserDescription', { ns: 'app' }),
+        }
+      default:
+        return {
+          title: t('types.workflow', { ns: 'app' }),
+          description: t('newApp.workflowUserDescription', { ns: 'app' }),
+        }
+    }
+  })()
   return (
     <div className="px-8 py-4">
       <h4 className="system-sm-semibold-uppercase text-text-secondary">{previewInfo.title}</h4>

@@ -37,13 +37,13 @@ import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'
 import ToolItem from './tool-item'
 
-type Props = {
+type Props = Readonly<{
   detail: ToolWithProvider
   onUpdate: (isDelete?: boolean) => void
   onHide: () => void
   isTriggerAuthorize: boolean
   onFirstCreate: () => void
-}
+}>
 
 type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
 type MutationResult = {

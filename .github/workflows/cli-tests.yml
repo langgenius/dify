@@ -37,8 +37,17 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate release manifest
+        if: matrix.os == 'depot-ubuntu-24.04'
+        run: scripts/release-validate-manifest.sh
+
       - name: CI pipeline (typecheck, lint, coverage, build)
-        run: pnpm ci
+        run: pnpm run ci
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' && matrix.os == 'depot-ubuntu-24.04' }}

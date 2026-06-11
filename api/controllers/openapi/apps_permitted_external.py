@@ -7,12 +7,10 @@ EE blueprint chain so this module is unreachable there.
 
 from __future__ import annotations
 
-from flask import request
 from flask_restx import Resource
-from pydantic import ValidationError
-from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.openapi import openapi_ns
+from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import (
     AppListRow,
     PermittedExternalAppsListQuery,
@@ -30,20 +28,14 @@ from services.enterprise.app_permitted_service import list_permitted_apps
 
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
-    @openapi_ns.response(
-        200, "Permitted external apps list", openapi_ns.models[PermittedExternalAppsListResponse.__name__]
-    )
     @auth_router.guard(
         scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
         allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
         edition=frozenset({Edition.EE}),
     )
-    def get(self, *, auth_data: AuthData):
-        try:
-            query = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
-        except ValidationError as exc:
-            raise UnprocessableEntity(exc.json())
-
+    @returns(200, PermittedExternalAppsListResponse, description="Permitted external apps list")
+    @accepts(query=PermittedExternalAppsListQuery)
+    def get(self, *, auth_data: AuthData, query: PermittedExternalAppsListQuery):
         page_result = list_permitted_apps(
             page=query.page,
             limit=query.limit,
@@ -55,7 +47,7 @@ class PermittedExternalAppsListApi(Resource):
             env = PermittedExternalAppsListResponse(
                 page=query.page, limit=query.limit, total=page_result.total, has_more=False, data=[]
             )
-            return env.model_dump(mode="json"), 200
+            return env
 
         apps_by_id: dict[str, App] = {
             str(a.id): a for a in AppService.find_visible_apps_by_ids(db.session, page_result.app_ids)
@@ -89,4 +81,4 @@ class PermittedExternalAppsListApi(Resource):
             has_more=query.page * query.limit < page_result.total,
             data=items,
         )
-        return env.model_dump(mode="json"), 200
+        return env

@@ -74,7 +74,7 @@ describe('runLogin', () => {
     })
     const active = reg.resolveActive()
     expect(active?.ctx.account.email).toBe('tester@dify.ai')
-    expect(active?.ctx.workspace?.id).toBe('ws-1')
+    expect(active?.ctx.workspace?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(active?.ctx.available_workspaces).toHaveLength(2)
     expect(store.get(tokenKey(active!.host, 'tester@dify.ai'))).toBe('dfoa_test')
 
@@ -199,5 +199,24 @@ describe('runLogin', () => {
       browserOpener: noopBrowser,
     })
     expect(io.errBuf()).toContain('--no-browser requested')
+  })
+
+  it('TTY: prompts for host when --host omitted, uses typed URL', async () => {
+    const io = bufferStreams(`${mock.url}\n`)
+    ;(io as { isErrTTY: boolean }).isErrTTY = true
+    const store = new MemStore()
+    const reg = await runLogin({
+      io,
+      noBrowser: true,
+      insecure: true,
+      deviceLabel: 'difyctl on test',
+      api: new DeviceFlowApi(testHttpClient(mock.url)),
+      store: { store, mode: 'file' },
+      clock: noopClock,
+      browserOpener: noopBrowser,
+    })
+    expect(reg.resolveActive()?.ctx.account.email).toBe('tester@dify.ai')
+    expect(io.errBuf()).toContain('Enter Dify host URL')
+    expect(io.errBuf()).toContain('[default: https://cloud.dify.ai]')
   })
 })

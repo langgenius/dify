@@ -17,7 +17,7 @@ import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   readonly: boolean
   list: Variable[]
@@ -27,7 +27,7 @@ type Props = {
   onlyLeafNodeVar?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
   isSupportFileVar?: boolean
-}
+}>
 
 const VarList: FC<Props> = ({
   nodeId,

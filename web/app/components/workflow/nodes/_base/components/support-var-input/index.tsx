@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import VarHighlight from '@/app/components/app/configuration/base/var-highlight'
 
-type Props = {
+type Props = Readonly<{
   isFocus?: boolean
   onFocus?: () => void
   value: string
@@ -12,7 +12,7 @@ type Props = {
   wrapClassName?: string
   textClassName?: string
   readonly?: boolean
-}
+}>
 
 const SupportVarInput: FC<Props> = ({
   isFocus,

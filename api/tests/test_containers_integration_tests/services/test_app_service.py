@@ -307,6 +307,61 @@ class TestAppService:
         )
         assert len(my_apps.items) == 1
 
+    def test_get_paginate_apps_filters_by_creator_ids(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test paginated app list with creator ID filters.
+        """
+        fake = Faker()
+
+        first_account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=generate_valid_password(fake),
+        )
+        TenantService.create_owner_tenant_if_not_exist(first_account, name=fake.company())
+        tenant = first_account.current_tenant
+        second_account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=generate_valid_password(fake),
+        )
+
+        from services.app_service import AppListParams, AppService, CreateAppParams
+
+        app_service = AppService()
+        app_params = CreateAppParams(
+            name="First Creator App",
+            description="Created by the first account",
+            mode="chat",
+            icon_type="emoji",
+            icon="💬",
+            icon_background="#FF6B6B",
+        )
+        app_service.create_app(tenant.id, app_params, first_account)
+        other_app_params = CreateAppParams(
+            name="Second Creator App",
+            description="Created by the second account",
+            mode="chat",
+            icon_type="emoji",
+            icon="✍️",
+            icon_background="#4ECDC4",
+        )
+        app_service.create_app(tenant.id, other_app_params, second_account)
+
+        filtered_apps = app_service.get_paginate_apps(
+            first_account.id,
+            tenant.id,
+            AppListParams(page=1, limit=10, mode="chat", creator_ids=[second_account.id]),
+        )
+
+        assert filtered_apps is not None
+        assert len(filtered_apps.items) == 1
+        assert filtered_apps.items[0].created_by == second_account.id
+
     def test_get_paginate_apps_with_tag_filters(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -351,7 +406,7 @@ class TestAppService:
             paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
 
             # Verify tag service was called
-            mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"])
+            mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"], match_all=True)
 
             # Verify results
             assert paginated_apps is not None

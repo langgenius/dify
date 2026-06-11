@@ -18,12 +18,13 @@ side-effecting ``on_context_resume`` attempt fails after issuing shellctl jobs,
 Agenton still exits ``resource_context()`` but never transitions the layer to
 ``ACTIVE``. In that failed-enter path, normal suspend/delete hooks do not run,
 so the enter hook itself must perform best-effort business compensation before
-re-raising the failure.
+re-raising the failure. Agent Stub env injection uses shellctl's native per-run
+``env`` argument only for user-visible ``shell.run``.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Callable, Sequence
+from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
 from contextlib import asynccontextmanager
 import json
 import logging
@@ -45,7 +46,9 @@ from shell_session_manager.shellctl.shared import (
 )
 from typing_extensions import Self, override
 
-from agenton.layers import NoLayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
+from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
+from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
+from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 
 
@@ -162,6 +165,12 @@ type ShellRunToolResult = ShellJobObservation | ShellToolErrorObservation
 type ShellInterruptToolResult = ShellJobStatusObservation | ShellToolErrorObservation
 
 
+class DifyShellLayerDeps(LayerDeps):
+    """Optional direct-layer dependencies used by the shell runtime layer."""
+
+    execution_context: DifyExecutionContextLayer | None  # pyright: ignore[reportUninitializedInstanceVariable]
+
+
 class ShellctlClientProtocol(Protocol):
     """Boundary that the shell layer needs from a shellctl client."""
 
@@ -170,6 +179,7 @@ class ShellctlClientProtocol(Protocol):
         script: str,
         *,
         cwd: str | None = None,
+        env: Mapping[str, str] | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> JobResult: ...
 
@@ -266,7 +276,7 @@ class DifyShellRuntimeState(BaseModel):
 
 
 @dataclass(slots=True)
-class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, DifyShellRuntimeState]):
+class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerConfig, DifyShellRuntimeState]):
     """Shell tool layer backed by a live shellctl client while active.
 
     The mutable serializable state lives in ``runtime_state``; the live client is
@@ -281,6 +291,8 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     config: DifyShellLayerConfig
     shellctl_entrypoint: str
     shellctl_client_factory: ShellctlClientFactory
+    agent_stub_url: str | None = None
+    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     _shellctl_client: ShellctlClientProtocol | None = None
 
     @classmethod
@@ -297,18 +309,24 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         *,
         shellctl_entrypoint: str | None,
         shellctl_client_factory: ShellctlClientFactory,
+        agent_stub_url: str | None = None,
+        agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
-        """Create the layer from public config plus server-only shellctl settings."""
+        """Create the layer from public config plus server-only shell settings."""
         normalized_entrypoint = (shellctl_entrypoint or "").strip()
         if not normalized_entrypoint:
             raise ValueError(
                 "DifyShellLayer requires a non-empty DIFY_AGENT_SHELLCTL_ENTRYPOINT when the 'dify.shell' layer is used."
             )
-        return cls(
+        layer = cls(
             config=config,
             shellctl_entrypoint=normalized_entrypoint,
             shellctl_client_factory=shellctl_client_factory,
+            agent_stub_url=agent_stub_url,
+            agent_stub_token_factory=agent_stub_token_factory,
         )
+        layer.bind_deps({})
+        return layer
 
     @property
     @override
@@ -434,7 +452,12 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         """Start a new shell job inside the session workspace."""
         try:
             client = self._require_client()
-            result = await client.run(_wrap_user_script(script), cwd=self._require_workspace_cwd(), timeout=timeout)
+            result = await client.run(
+                _wrap_user_script(script),
+                cwd=self._require_workspace_cwd(),
+                env=self._build_user_shell_run_env(),
+                timeout=timeout,
+            )
             self._track_job_result(result)
             return _job_result_observation(result)
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
@@ -530,7 +553,7 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     ) -> ShellJobObservation:
         """Run an internal lifecycle command, track it, and wait for completion."""
         client = self._require_client()
-        result = await client.run(script, cwd=cwd, timeout=DEFAULT_TIMEOUT_SECONDS)
+        result = await client.run(script, cwd=cwd, env=None, timeout=DEFAULT_TIMEOUT_SECONDS)
         self._track_job_result(result)
         while not result.done:
             result = await client.wait(
@@ -637,6 +660,17 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         self.runtime_state.job_offsets = {}
         self.runtime_state.job_ids = []
 
+    def _build_user_shell_run_env(self) -> dict[str, str] | None:
+        """Build per-command Agent Stub env only for user-visible ``shell.run``."""
+        execution_context_layer = self.deps.execution_context
+        execution_context = execution_context_layer.config if execution_context_layer is not None else None
+        return build_shell_agent_stub_env(
+            agent_stub_url=self.agent_stub_url,
+            execution_context=execution_context,
+            token_factory=self.agent_stub_token_factory,
+            session_id=self.runtime_state.session_id,
+        )
+
 
 def _shell_layer_prefix_prompt() -> str:
     """Return the static model-facing shell tool usage guidance."""
@@ -696,6 +730,10 @@ def _workspace_cwd(session_id: str) -> str:
 
 def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
     """Return the workspace bootstrap script for env + CLI tool declarations."""
+    has_bootstrap = bool(config.env or config.secret_refs or config.cli_tools or config.sandbox is not None)
+    if not has_bootstrap:
+        return ""
+
     lines: list[str] = [
         "set -eu",
         'mkdir -p ".dify"',
@@ -707,6 +745,11 @@ def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
         # Secret refs are resolved outside this public DTO. Preserve the env var
         # name without inventing a value so host-provided env can flow through.
         lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
+    for tool in config.cli_tools:
+        for env_var in tool.env:
+            lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
+        for secret_ref in tool.secret_refs:
+            lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
     if config.sandbox is not None:
         if config.sandbox.provider:
             lines.append(f"export DIFY_SANDBOX_PROVIDER={_shquote(config.sandbox.provider)}")
@@ -717,16 +760,18 @@ def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
         [
             "DIFY_ENV_EOF",
             'chmod 600 ".dify/env.sh"',
+            '. ".dify/env.sh"',
         ]
     )
     for tool in config.cli_tools:
         for command in tool.install_commands:
             lines.append(command)
-    return "\n".join(lines) if len(lines) > 5 or config.cli_tools else ""
+    return "\n".join(lines)
 
 
 def _wrap_user_script(script: str) -> str:
     """Source Agent Soul env before executing a model-requested shell command."""
+    # TODO: refactor
     return "\n".join(
         [
             'if [ -f ".dify/env.sh" ]; then',
@@ -786,6 +831,7 @@ def _deduplicate_preserving_order(values: Sequence[str]) -> list[str]:
 
 
 __all__ = [
+    "DifyShellLayerDeps",
     "DifyShellLayer",
     "DifyShellRuntimeState",
     "ShellctlClientFactory",

@@ -12,10 +12,10 @@ const baseActive: ActiveContext = {
   email: 'tester@dify.ai',
   ctx: {
     account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+    workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
     available_workspaces: [
-      { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: 'ws-2', name: 'Other', role: 'normal' },
+      { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
+      { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Other', role: 'normal' },
     ],
   },
   scheme: 'http',
@@ -128,7 +128,7 @@ describe('runGetApp', () => {
   })
 
   it('--workspace flag overrides bundle default', async () => {
-    const out = await render({ workspace: 'ws-2' })
+    const out = await render({ workspace: '550e8400-e29b-41d4-a716-446655440001' })
     expect(out).toContain('app-3')
     expect(out).toContain('OtherWS Bot')
     expect(out).not.toContain('Greeter')

@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import override
 
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -12,6 +13,7 @@ class CreatorUserRole(StrEnum):
     END_USER = "end_user"
 
     @classmethod
+    @override
     def _missing_(cls, value):
         if value == "end-user":
             return cls.END_USER
@@ -224,6 +226,7 @@ class TagType(StrEnum):
 
     KNOWLEDGE = "knowledge"
     APP = "app"
+    SNIPPET = "snippet"
 
 
 class DatasetMetadataType(StrEnum):

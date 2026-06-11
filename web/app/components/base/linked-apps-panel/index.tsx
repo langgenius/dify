@@ -8,11 +8,11 @@ import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 
-type ILikedItemProps = {
+type ILikedItemProps = Readonly<{
   appStatus?: boolean
   detail: RelatedApp
   isMobile: boolean
-}
+}>
 
 const appTypeMap = {
   [AppModeEnum.CHAT]: 'Chatbot',
@@ -40,10 +40,10 @@ const LikedItem = ({
   )
 }
 
-type Props = {
+type Props = Readonly<{
   relatedApps: RelatedApp[]
   isMobile: boolean
-}
+}>
 
 const LinkedAppsPanel: FC<Props> = ({
   relatedApps,

@@ -8,13 +8,13 @@ import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import Card from '../../card'
 import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 
-type Props = {
+type Props = Readonly<{
   payload?: Plugin | PluginDeclaration | PluginManifestInMarket | null
   isMarketPayload?: boolean
   isFailed: boolean
   errMsg?: string | null
   onCancel: () => void
-}
+}>
 
 const Installed: FC<Props> = ({
   payload,

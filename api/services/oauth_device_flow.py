@@ -13,7 +13,6 @@ from enum import StrEnum
 from typing import Any, NotRequired, TypedDict
 
 from sqlalchemy import and_, func, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, scoped_session
 
 from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType
@@ -405,6 +404,9 @@ def _upsert(
     # Snapshot prior live row's hash for Redis invalidation post-rotate.
     # subject_issuer is always non-null here (account flow uses sentinel,
     # external-SSO is validated upstream), so equality matches the index.
+    # FOR UPDATE locks the row so that concurrent logins for the same
+    # (subject, client, device) serialize here rather than both reading
+    # the same prior and producing two active tokens (TOCTOU race).
     prior = session.execute(
         select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
         .where(
@@ -415,10 +417,18 @@ def _upsert(
             OAuthAccessToken.revoked_at.is_(None),
         )
         .limit(1)
+        .with_for_update()
     ).first()
     old_hash = prior.token_hash if prior else None
 
-    insert_stmt = pg_insert(OAuthAccessToken).values(
+    # Revoke any existing active token for this (subject, client, device) combination.
+    # PostgreSQL's ON CONFLICT doesn't support partial unique indexes (those with WHERE clauses),
+    # so we use a manual revoke-then-insert pattern instead.
+    if prior:
+        session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=func.now()))
+
+    # Insert the new token.
+    new_token = OAuthAccessToken(
         subject_email=subject_email,
         subject_issuer=subject_issuer,
         account_id=account_id,
@@ -428,26 +438,14 @@ def _upsert(
         token_hash=new_hash,
         expires_at=expires_at,
     )
-    upsert_stmt = insert_stmt.on_conflict_do_update(
-        index_elements=["subject_email", "subject_issuer", "client_id", "device_label"],
-        index_where=OAuthAccessToken.revoked_at.is_(None),
-        set_={
-            "token_hash": insert_stmt.excluded.token_hash,
-            "prefix": insert_stmt.excluded.prefix,
-            "account_id": insert_stmt.excluded.account_id,
-            "expires_at": insert_stmt.excluded.expires_at,
-            "created_at": func.now(),
-            "last_used_at": None,
-        },
-    ).returning(OAuthAccessToken.id)
-    row = session.execute(upsert_stmt).first()
+    session.add(new_token)
+    session.flush()
+
+    token_id = new_token.id
     session.commit()
 
-    if row is None:
-        raise RuntimeError("oauth_token upsert returned no row")
-    token_id = uuid.UUID(str(row.id))
     return UpsertOutcome(
-        token_id=token_id,
+        token_id=uuid.UUID(str(token_id)),
         rotated=prior is not None,
         old_hash=old_hash,
     )

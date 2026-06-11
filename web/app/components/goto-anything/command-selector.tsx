@@ -6,14 +6,14 @@ import { useTranslation } from 'react-i18next'
 import { usePathname } from '@/next/navigation'
 import { slashCommandRegistry } from './actions/commands/registry'
 
-type Props = {
+type Props = Readonly<{
   actions: Record<string, ActionItem>
   onCommandSelect: (commandKey: string) => void
   searchFilter?: string
   commandValue?: string
   onCommandValueChange?: (value: string) => void
   originalQuery?: string
-}
+}>
 
 const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, commandValue, onCommandValueChange, originalQuery }) => {
   const { t } = useTranslation()
@@ -109,6 +109,8 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                 ? (
                     (() => {
                       const slashKeyMap = {
+                        '/create': 'gotoAnything.actions.createCategoryDesc',
+                        '/refine': 'gotoAnything.actions.refineCategoryDesc',
                         '/theme': 'gotoAnything.actions.themeCategoryDesc',
                         '/language': 'gotoAnything.actions.languageChangeDesc',
                         '/account': 'gotoAnything.actions.accountDesc',

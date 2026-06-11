@@ -12,12 +12,12 @@ import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label?: string
   value?: number
   onChange: (date: number | null) => void
-}
+}>
 const WrappedDatePicker = ({
   className,
   label,

@@ -11,7 +11,7 @@ import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
-import { useContext } from 'react'
+import { use } from 'react'
 import {
   useStore as useZustandStore,
 } from 'zustand'
@@ -116,6 +116,7 @@ export const createHooksStore = ({
   invalidateSysVarValues = noop,
   resetConversationVar = async () => noop(),
   invalidateConversationVarValues = noop,
+  configsMap,
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
@@ -153,11 +154,12 @@ export const createHooksStore = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
+    configsMap,
   }))
 }
 
 export function useHooksStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(HooksStoreContext)
+  const store = use(HooksStoreContext)
   if (!store)
     throw new Error('Missing HooksStoreContext.Provider in the tree')
 

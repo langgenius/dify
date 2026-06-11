@@ -5,7 +5,11 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import (
+    DifyExecutionContextInvokeFrom,
+    DifyExecutionContextLayerConfig,
+    DifyExecutionContextUserFrom,
+)
 from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
@@ -26,6 +30,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.file import FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
@@ -40,6 +45,11 @@ from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
 from models.provider_ids import ModelProviderID
+from services.agent.prompt_mentions import (
+    build_node_job_mention_resolver,
+    build_soul_mention_resolver,
+    expand_prompt_mentions,
+)
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
@@ -124,7 +134,16 @@ class WorkflowAgentRuntimeRequestBuilder:
 
         metadata = self._build_metadata(context, agent_soul, node_job)
         workflow_context_prompt = self._build_workflow_context_prompt(context, node_job)
-        workflow_job_prompt = node_job.workflow_prompt.strip() or "Run this workflow Agent Node for the current run."
+        # ENG-616: expand slash-menu mention tokens into model-readable names.
+        # node_output mentions expand to their reference name only — the value
+        # stays in the Workflow context block (user_prompt) below.
+        workflow_job_prompt = (
+            expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job)).strip()
+            or "Run this workflow Agent Node for the current run."
+        )
+        soul_prompt = expand_prompt_mentions(
+            agent_soul.prompt.system_prompt, build_soul_mention_resolver(agent_soul)
+        ).strip()
         user_prompt = workflow_context_prompt.strip() or "Use the current workflow context."
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
@@ -170,6 +189,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
+                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
@@ -178,9 +198,10 @@ class WorkflowAgentRuntimeRequestBuilder:
                     conversation_id=get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID),
                     agent_id=context.agent.id,
                     agent_config_version_id=context.snapshot.id,
-                    invoke_from=self._agent_backend_invoke_from(context.dify_context.invoke_from),
+                    agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
+                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                 ),
-                agent_soul_prompt=agent_soul.prompt.system_prompt or None,
+                agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
@@ -202,7 +223,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         )
 
     @staticmethod
-    def _agent_backend_invoke_from(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
+    def _agent_backend_agent_mode(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.VALIDATION}:
             return "single_step"
         return "workflow_run"
@@ -387,14 +408,44 @@ class WorkflowAgentRuntimeRequestBuilder:
                 return schema
             case DeclaredOutputType.FILE:
                 return {
-                    "type": "object",
-                    "properties": {
-                        "file_id": {"type": "string"},
-                        "filename": {"type": "string"},
-                        "mime_type": {"type": "string"},
-                        "url": {"type": "string"},
-                    },
-                    "required": ["file_id"],
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.LOCAL_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.TOOL_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.DATASOURCE_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.REMOTE_URL.value},
+                                "url": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "url"],
+                        },
+                    ],
                 }
         assert_never(output_type)
 
@@ -457,7 +508,32 @@ def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
     name = data.get("name") or data.get("tool_name") or data.get("label")
     if not commands and not isinstance(name, str):
         return None
-    return DifyShellCliToolConfig(name=name if isinstance(name, str) else None, install_commands=commands)
+    tool_env = data.get("env") if isinstance(data.get("env"), Mapping) else {}
+    env = [
+        env_var
+        for env_var in (_shell_env_var(item) for item in _env_entries(tool_env, "variables"))
+        if env_var is not None
+    ]
+    secret_refs = [
+        secret_ref
+        for secret_ref in (_shell_secret_ref(item) for item in _env_entries(tool_env, "secret_refs"))
+        if secret_ref is not None
+    ]
+    return DifyShellCliToolConfig(
+        name=name if isinstance(name, str) else None,
+        install_commands=commands,
+        env=env,
+        secret_refs=secret_refs,
+    )
+
+
+def _env_entries(env: object, key: str) -> list[object]:
+    if not isinstance(env, Mapping):
+        return []
+    entries = env.get(key)
+    if not isinstance(entries, list):
+        return []
+    return entries
 
 
 def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
