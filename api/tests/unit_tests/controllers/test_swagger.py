@@ -1,20 +1,20 @@
-"""Swagger JSON rendering tests for Flask-RESTX API blueprints."""
+"""OpenAPI JSON rendering tests for Flask-RESTX API blueprints."""
 
 import pytest
 from flask import Flask
 
 
-def _definition_refs(value: object) -> set[str]:
+def _schema_refs(value: object) -> set[str]:
     refs: set[str] = set()
     if isinstance(value, dict):
         ref = value.get("$ref")
-        if isinstance(ref, str) and ref.startswith("#/definitions/"):
-            refs.add(ref.removeprefix("#/definitions/"))
+        if isinstance(ref, str) and ref.startswith("#/components/schemas/"):
+            refs.add(ref.removeprefix("#/components/schemas/"))
         for item in value.values():
-            refs.update(_definition_refs(item))
+            refs.update(_schema_refs(item))
     elif isinstance(value, list):
         for item in value:
-            refs.update(_definition_refs(item))
+            refs.update(_schema_refs(item))
     return refs
 
 
@@ -29,6 +29,18 @@ def _parameters_by_name(operation: dict[str, object]) -> dict[str, dict[str, obj
         if isinstance(name, str):
             result[name] = parameter
     return result
+
+
+def _multipart_form_schema(operation: dict[str, object]) -> dict[str, object]:
+    request_body = operation.get("requestBody")
+    assert isinstance(request_body, dict)
+    content = request_body.get("content")
+    assert isinstance(content, dict)
+    multipart = content.get("multipart/form-data")
+    assert isinstance(multipart, dict)
+    schema = multipart.get("schema")
+    assert isinstance(schema, dict)
+    return schema
 
 
 @pytest.mark.parametrize(
@@ -53,7 +65,7 @@ def test_inline_model_name_includes_list_constraints(
     assert _inline_model_name(first_inline_model) != _inline_model_name(second_inline_model)
 
 
-def test_swagger_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
+def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
     from controllers.console import bp as console_bp
     from controllers.service_api import bp as service_api_bp
@@ -70,17 +82,17 @@ def test_swagger_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
 
     client = app.test_client()
 
-    for route in ("/console/api/swagger.json", "/api/swagger.json", "/v1/swagger.json"):
+    for route in ("/console/api/openapi.json", "/api/openapi.json", "/v1/openapi.json"):
         response = client.get(route)
 
         assert response.status_code == 200
         payload = response.get_json()
-        assert payload["swagger"] == "2.0"
+        assert payload["openapi"].startswith("3.")
         assert "paths" in payload
-        assert "definitions" in payload
-        assert isinstance(payload["definitions"], dict)
-        missing_refs = _definition_refs(payload) - set(payload["definitions"])
-        assert not sorted(ref for ref in missing_refs if ref.startswith("_AnonymousInlineModel"))
+        assert "schemas" in payload["components"]
+        assert isinstance(payload["components"]["schemas"], dict)
+        missing_refs = _schema_refs(payload) - set(payload["components"]["schemas"])
+        assert not missing_refs
 
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
@@ -96,17 +108,17 @@ def test_service_document_file_routes_document_multipart_form_data(monkeypatch: 
     app.config["RESTX_INCLUDE_ALL_MODELS"] = True
     app.register_blueprint(service_api_bp)
 
-    payload = app.test_client().get("/v1/swagger.json").get_json()
+    payload = app.test_client().get("/v1/openapi.json").get_json()
     paths = payload["paths"]
 
     create_operation = paths["/datasets/{dataset_id}/document/create-by-file"]["post"]
-    create_params = _parameters_by_name(create_operation)
-    assert create_operation["consumes"] == ["multipart/form-data"]
-    assert create_params["file"]["in"] == "formData"
-    assert create_params["file"]["type"] == "file"
-    assert create_params["file"]["required"] is True
-    assert create_params["data"]["in"] == "formData"
-    assert create_params["data"]["type"] == "string"
+    create_schema = _multipart_form_schema(create_operation)
+    create_properties = create_schema["properties"]
+    assert isinstance(create_properties, dict)
+    assert create_properties["file"] == {"type": "string", "format": "binary"}
+    assert create_properties["data"] == {"type": "string"}
+    assert create_schema["required"] == ["file"]
+    assert create_operation["requestBody"]["required"] is True
 
     for path in (
         "/datasets/{dataset_id}/documents/{document_id}",
@@ -114,13 +126,13 @@ def test_service_document_file_routes_document_multipart_form_data(monkeypatch: 
         "/datasets/{dataset_id}/documents/{document_id}/update_by_file",
     ):
         update_operation = paths[path]["patch" if path.endswith("{document_id}") else "post"]
-        update_params = _parameters_by_name(update_operation)
-        assert update_operation["consumes"] == ["multipart/form-data"]
-        assert update_params["file"]["in"] == "formData"
-        assert update_params["file"]["type"] == "file"
-        assert update_params["file"]["required"] is False
-        assert update_params["data"]["in"] == "formData"
-        assert update_params["data"]["type"] == "string"
+        update_schema = _multipart_form_schema(update_operation)
+        update_properties = update_schema["properties"]
+        assert isinstance(update_properties, dict)
+        assert update_properties["file"] == {"type": "string", "format": "binary"}
+        assert update_properties["data"] == {"type": "string"}
+        assert "required" not in update_schema
+        assert update_operation["requestBody"]["required"] is False
 
 
 def test_service_document_list_documents_query_params_render(monkeypatch: pytest.MonkeyPatch):
@@ -134,7 +146,7 @@ def test_service_document_list_documents_query_params_render(monkeypatch: pytest
     app.config["RESTX_INCLUDE_ALL_MODELS"] = True
     app.register_blueprint(service_api_bp)
 
-    payload = app.test_client().get("/v1/swagger.json").get_json()
+    payload = app.test_client().get("/v1/openapi.json").get_json()
     operation = payload["paths"]["/datasets/{dataset_id}/documents"]["get"]
     params = _parameters_by_name(operation)
 
@@ -153,7 +165,7 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     app.config["RESTX_INCLUDE_ALL_MODELS"] = True
     app.register_blueprint(console_bp)
 
-    payload = app.test_client().get("/console/api/swagger.json").get_json()
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
     operation = payload["paths"]["/account/avatar"]["get"]
     params = _parameters_by_name(operation)
 
