@@ -14,6 +14,7 @@ from packaging.version import parse as parse_version
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
@@ -510,6 +511,19 @@ class AppDslService:
             case _:
                 raise ValueError("Invalid app mode")
         return app
+
+    @staticmethod
+    def assert_secret_export_allowed(*, include_secret: bool, account: Account) -> None:
+        """Guard plaintext-secret DSL export to workspace owners/admins.
+
+        Exporting with ``include_secret=True`` is the only path that returns plaintext
+        workflow secrets to the caller, which redaction cannot cover. Regular editors may
+        still build and run workflows that use the secret, but must not be able to extract
+        its value via DSL export. Raises ``Forbidden`` when a non-privileged account
+        requests a secret-bearing export.
+        """
+        if include_secret and not account.is_admin_or_owner:
+            raise Forbidden("Only workspace owners and admins can export with secrets included.")
 
     @classmethod
     def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: str | None = None) -> str:

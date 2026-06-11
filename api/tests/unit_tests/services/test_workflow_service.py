@@ -1936,6 +1936,45 @@ class TestWorkflowServiceExecutionHelpers:
         assert node_execution.status == WorkflowNodeExecutionStatus.EXCEPTION
         assert node_execution.error == "constraint violated"
 
+    def test_populate_execution_result_should_mask_code_outputs_when_inputs_contain_secret(
+        self, service: WorkflowService
+    ) -> None:
+        node_execution = MagicMock(error=None)
+        node_execution.node_type = BuiltinNodeTypes.CODE
+        node_run_result = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"api_key": "sk-secret"},
+            outputs={"encoded": "c2stc2VjcmV0"},
+        )
+
+        with patch("services.workflow_service.WorkflowEntry.handle_special_values", side_effect=lambda x: x):
+            service._populate_execution_result(
+                node_execution,
+                node_run_result,
+                True,
+                None,
+                secret_values=("sk-secret",),
+            )
+
+        assert node_execution.inputs == {"api_key": "[SECRET_REDACTED]"}
+        assert node_execution.outputs == {"encoded": "[SECRET_REDACTED]"}
+
+    def test_populate_execution_result_should_redact_secret_values_from_failed_error(
+        self, service: WorkflowService
+    ) -> None:
+        node_execution = MagicMock(error=None)
+
+        service._populate_execution_result(
+            node_execution,
+            None,
+            False,
+            "request failed with sk-secret",
+            secret_values=("sk-secret",),
+        )
+
+        assert node_execution.status == WorkflowNodeExecutionStatus.FAILED
+        assert node_execution.error == "request failed with [SECRET_REDACTED]"
+
     # --- _execute_node_safely ---
 
     def test_execute_node_safely_should_return_succeeded_result_on_happy_path(self, service: WorkflowService) -> None:
