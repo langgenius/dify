@@ -21,13 +21,23 @@ export const SubjectType = {
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType]
 
-export const AppRunnerLaunchProfileMode = {
-  APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED: 'APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED',
-  APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG: 'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG',
+export const AppRunnerLogStatus = {
+  APP_RUNNER_LOG_STATUS_UNSPECIFIED: 'APP_RUNNER_LOG_STATUS_UNSPECIFIED',
+  APP_RUNNER_LOG_STATUS_RUNNING: 'APP_RUNNER_LOG_STATUS_RUNNING',
+  APP_RUNNER_LOG_STATUS_SUCCEEDED: 'APP_RUNNER_LOG_STATUS_SUCCEEDED',
+  APP_RUNNER_LOG_STATUS_FAILED: 'APP_RUNNER_LOG_STATUS_FAILED',
+  APP_RUNNER_LOG_STATUS_PARTIAL_SUCCEEDED: 'APP_RUNNER_LOG_STATUS_PARTIAL_SUCCEEDED',
 } as const
 
-export type AppRunnerLaunchProfileMode
-  = (typeof AppRunnerLaunchProfileMode)[keyof typeof AppRunnerLaunchProfileMode]
+export type AppRunnerLogStatus = (typeof AppRunnerLogStatus)[keyof typeof AppRunnerLogStatus]
+
+export const AssignmentOperation = {
+  ASSIGNMENT_OPERATION_UNSPECIFIED: 'ASSIGNMENT_OPERATION_UNSPECIFIED',
+  ASSIGNMENT_OPERATION_LOAD: 'ASSIGNMENT_OPERATION_LOAD',
+  ASSIGNMENT_OPERATION_UNLOAD: 'ASSIGNMENT_OPERATION_UNLOAD',
+} as const
+
+export type AssignmentOperation = (typeof AssignmentOperation)[keyof typeof AssignmentOperation]
 
 export const EnvironmentMode = {
   ENVIRONMENT_MODE_UNSPECIFIED: 'ENVIRONMENT_MODE_UNSPECIFIED',
@@ -91,12 +101,22 @@ export const EnvVarValueSource = {
 
 export type EnvVarValueSource = (typeof EnvVarValueSource)[keyof typeof EnvVarValueSource]
 
+export const EnvVarValueType = {
+  ENV_VAR_VALUE_TYPE_UNSPECIFIED: 'ENV_VAR_VALUE_TYPE_UNSPECIFIED',
+  ENV_VAR_VALUE_TYPE_STRING: 'ENV_VAR_VALUE_TYPE_STRING',
+  ENV_VAR_VALUE_TYPE_NUMBER: 'ENV_VAR_VALUE_TYPE_NUMBER',
+  ENV_VAR_VALUE_TYPE_SECRET: 'ENV_VAR_VALUE_TYPE_SECRET',
+} as const
+
+export type EnvVarValueType = (typeof EnvVarValueType)[keyof typeof EnvVarValueType]
+
 export const EnvironmentStatus = {
   ENVIRONMENT_STATUS_UNSPECIFIED: 'ENVIRONMENT_STATUS_UNSPECIFIED',
   ENVIRONMENT_STATUS_ADMISSION: 'ENVIRONMENT_STATUS_ADMISSION',
   ENVIRONMENT_STATUS_BOOTSTRAPPING: 'ENVIRONMENT_STATUS_BOOTSTRAPPING',
   ENVIRONMENT_STATUS_READY: 'ENVIRONMENT_STATUS_READY',
   ENVIRONMENT_STATUS_FAILED: 'ENVIRONMENT_STATUS_FAILED',
+  ENVIRONMENT_STATUS_DELETING: 'ENVIRONMENT_STATUS_DELETING',
 } as const
 
 export type EnvironmentStatus = (typeof EnvironmentStatus)[keyof typeof EnvironmentStatus]
@@ -115,8 +135,16 @@ export const RuntimeInstanceStatus = {
 export type RuntimeInstanceStatus
   = (typeof RuntimeInstanceStatus)[keyof typeof RuntimeInstanceStatus]
 
+export const AppRunnerLaunchProfileMode = {
+  APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED: 'APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED',
+  APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG: 'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG',
+} as const
+
+export type AppRunnerLaunchProfileMode
+  = (typeof AppRunnerLaunchProfileMode)[keyof typeof AppRunnerLaunchProfileMode]
+
 export const OperatorType = {
-  OPERATOR_TYPE_UNKNOWN: 'OPERATOR_TYPE_UNKNOWN',
+  OPERATOR_TYPE_UNSPECIFIED: 'OPERATOR_TYPE_UNSPECIFIED',
   OPERATOR_TYPE_END_USER: 'OPERATOR_TYPE_END_USER',
   OPERATOR_TYPE_ACCOUNT: 'OPERATOR_TYPE_ACCOUNT',
   OPERATOR_TYPE_SERVICE_ACCOUNT: 'OPERATOR_TYPE_SERVICE_ACCOUNT',
@@ -145,6 +173,14 @@ export const ReleaseEnvironmentActionKind = {
 export type ReleaseEnvironmentActionKind
   = (typeof ReleaseEnvironmentActionKind)[keyof typeof ReleaseEnvironmentActionKind]
 
+export const AckStatus = {
+  ACK_STATUS_UNSPECIFIED: 'ACK_STATUS_UNSPECIFIED',
+  ACK_STATUS_READY: 'ACK_STATUS_READY',
+  ACK_STATUS_FAILED: 'ACK_STATUS_FAILED',
+} as const
+
+export type AckStatus = (typeof AckStatus)[keyof typeof AckStatus]
+
 export const SlotType = {
   SLOT_TYPE_UNSPECIFIED: 'SLOT_TYPE_UNSPECIFIED',
   SLOT_TYPE_PLUGIN_CREDENTIAL: 'SLOT_TYPE_PLUGIN_CREDENTIAL',
@@ -152,6 +188,14 @@ export const SlotType = {
 } as const
 
 export type SlotType = (typeof SlotType)[keyof typeof SlotType]
+
+export const RouteTargetKind = {
+  ROUTE_TARGET_KIND_UNSPECIFIED: 'ROUTE_TARGET_KIND_UNSPECIFIED',
+  ROUTE_TARGET_KIND_K8S_SERVICE: 'ROUTE_TARGET_KIND_K8S_SERVICE',
+  ROUTE_TARGET_KIND_DIRECT_UPSTREAM: 'ROUTE_TARGET_KIND_DIRECT_UPSTREAM',
+} as const
+
+export type RouteTargetKind = (typeof RouteTargetKind)[keyof typeof RouteTargetKind]
 
 export const PasswordChangeReason = {
   PASSWORD_CHANGE_REASON_UNSPECIFIED: 'PASSWORD_CHANGE_REASON_UNSPECIFIED',
@@ -230,7 +274,7 @@ export type AccessChannels = {
   appInstanceId: string
   webAppEnabled: boolean
   developerApiEnabled: boolean
-  updatedBy: string
+  updatedBy: Actor
   createdAt: string
   updatedAt: string
 }
@@ -257,18 +301,18 @@ export type AccessSubject = {
 
 export type Actor = {
   id: string
-  name: string
+  displayName: string
 }
 
 export type ApiKey = {
   id: string
   appInstanceId: string
   environmentId: string
-  name: string
+  displayName: string
   maskedToken: string
-  lastUsedAt: string
   createdBy: Actor
   createdAt: string
+  lastUsedAt?: string
 }
 
 export type ApiKeySummary = {
@@ -281,7 +325,7 @@ export type ApiKeySummary = {
 export type AppInstance = {
   id: string
   tenantId: string
-  name: string
+  displayName: string
   description: string
   createdBy: Actor
   updatedBy: Actor
@@ -298,31 +342,31 @@ export type AppInstanceSummary = {
 }
 
 export type AppRunnerLog = {
-  id?: string
-  timestamp?: string
-  workflowRunId?: string
-  status?: string
-  durationSeconds?: number
-  totalTokens?: string
-  workspace?: NamedRef
-  environment?: NamedRef
-  appInstance?: NamedRef
-  operator?: Operator
-  invokeFrom?: string
-  traceId?: string
-  difyTraceId?: string
-  gateCommitId?: string
+  id: string
+  timestamp: string
+  workflowRunId: string
+  status: AppRunnerLogStatus
+  durationSeconds: number
+  totalTokens: string
+  workspace: NamedRef
+  environment: NamedRef
+  appInstance: NamedRef
+  operator: Operator
+  invokeFrom: string
+  traceId: string
+  difyTraceId: string
+  gateCommitId: string
   body?: string
   attributesJson?: string
   resourceAttributesJson?: string
 }
 
-export type BatchResolveRuntimeArtifactsReply = {
-  results?: Array<RuntimeArtifactResult>
+export type BatchResolveRuntimeArtifactsRequest = {
+  requests?: Array<RuntimeArtifactRequest>
 }
 
-export type BatchResolveRuntimeArtifactsReq = {
-  artifacts?: Array<RuntimeArtifactRequest>
+export type BatchResolveRuntimeArtifactsResponse = {
+  results?: Array<RuntimeArtifactResult>
 }
 
 export type BootstrapAssignment = {
@@ -336,110 +380,94 @@ export type BootstrapAssignment = {
   executionTokenVersion?: string
   executionToken?: string
   releaseId?: string
-  operation?: string
+  operation?: AssignmentOperation
   deploymentId?: string
-  reportStatus?: boolean
+  requiresStatusReport?: boolean
 }
 
-export type BootstrapRunnerReply = {
+export type BootstrapRunnerRequest = {
+  runner?: RunnerInfo
+}
+
+export type BootstrapRunnerResponse = {
   runnerId?: string
   assignmentRevision?: string
   assignments?: Array<BootstrapAssignment>
 }
 
-export type BootstrapRunnerReq = {
-  runner?: RunnerInfo
-}
-
-export type CancelDeploymentReq = {
+export type CancelDeploymentRequest = {
   appInstanceId?: string
   environmentId?: string
 }
 
-export type CheckReleaseContentFromDslReq = {
+export type CancelDeploymentResponse = {
+  deployment: Deployment
+}
+
+export type ComputeDeploymentOptionsRequest = {
+  environmentId?: string
   appInstanceId?: string
-  dsl: string
+  dsl?: string
+  sourceAppId?: string
+  releaseId?: string
 }
 
-export type CheckReleaseContentFromSourceAppReq = {
+export type ComputeDeploymentOptionsResponse = {
+  options: DeploymentOptions
+}
+
+export type ComputeReleaseDeploymentViewResponse = {
+  releases: Array<Release>
+  environmentDeployments: Array<EnvironmentDeployment>
+  environmentActions: Array<ReleaseEnvironmentAction>
+  options?: DeploymentOptions
+}
+
+export type CreateApiKeyRequest = {
   appInstanceId?: string
-  sourceAppId: string
+  environmentId?: string
+  displayName: string
 }
 
-export type CheckReleaseContentReply = {
-  gateCommitId: string
-  matchedRelease?: ReleaseContentMatch
-}
-
-export type CreateApiKeyReply = {
+export type CreateApiKeyResponse = {
   apiKey: ApiKey
   token: string
 }
 
-export type CreateApiKeyReq = {
-  appInstanceId?: string
-  environmentId?: string
-  name: string
-}
-
-export type CreateAppInstanceReply = {
-  appInstance: AppInstance
-}
-
-export type CreateAppInstanceReq = {
-  name: string
+export type CreateAppInstanceRequest = {
+  displayName: string
   description?: string
 }
 
-export type CreateAppRunnerLaunchProfileReply = {
-  environmentId?: string
-  joinToken?: string
-  configYaml?: string
-  runtimeEndpoint?: string
-  sourceCommands?: Array<string>
-  dockerCommands?: Array<string>
+export type CreateAppInstanceResponse = {
+  appInstance: AppInstance
 }
 
-export type CreateAppRunnerLaunchProfileReq = {
-  environmentId?: string
-  mode?: AppRunnerLaunchProfileMode
-  controlEndpoint: string
-  pluginDaemonBaseUrl: string
-  runtimeListenAddr: string
-  debugListenAddr?: string
-}
-
-export type CreateEnvironmentReply = {
-  environment?: Environment
-}
-
-export type CreateEnvironmentReq = {
-  name: string
+export type CreateEnvironmentRequest = {
+  displayName: string
   description?: string
   mode?: EnvironmentMode
   backend?: RuntimeBackend
   k8s?: K8sEnvironmentConfig
   external?: ExternalAppRunnerConfig
   cpuCount?: number
+  idempotencyKey: string
 }
 
-export type CreateReleaseFromDslReq = {
+export type CreateEnvironmentResponse = {
+  environment?: Environment
+}
+
+export type CreateReleaseRequest = {
+  createAppInstance?: boolean
   appInstanceId?: string
-  dsl: string
-  name?: string
+  displayName?: string
   description?: string
-  createAppInstance: boolean
+  dsl?: string
+  sourceAppId?: string
 }
 
-export type CreateReleaseFromSourceAppReq = {
-  appInstanceId?: string
-  sourceAppId: string
-  name?: string
-  description?: string
-  createAppInstance: boolean
-}
-
-export type CreateReleaseReply = {
+export type CreateReleaseResponse = {
   release: Release
   appInstance: AppInstance
 }
@@ -465,32 +493,36 @@ export type CredentialSlot = {
   lastCredentialId: string
 }
 
-export type DeleteApiKeyReply = {
+export type DashboardListAppInstancesResponse = {
+  appInstances: Array<AppInstance>
+  pagination: Pagination
+}
+
+export type DashboardListEnvironmentDeploymentsResponse = {
+  deployments?: Array<EnvironmentDeploymentHistoryItem>
+  pagination?: Pagination
+}
+
+export type DeleteApiKeyResponse = {
   [key: string]: unknown
 }
 
-export type DeleteAppInstanceReply = {
+export type DeleteAppInstanceResponse = {
   [key: string]: unknown
 }
 
-export type DeleteEnvironmentReply = {
+export type DeleteEnvironmentResponse = {
   [key: string]: unknown
 }
 
-export type DeleteReleaseReply = {
+export type DeleteReleaseResponse = {
   [key: string]: unknown
 }
 
-export type DeployReply = {
-  appInstance: AppInstance
-  release: Release
-  deployment: Deployment
-}
-
-export type DeployReq = {
+export type DeployRequest = {
   dsl?: string
   sourceAppId?: string
-  new?: NewAppInstance
+  newAppInstance?: NewAppInstance
   environmentId: string
   releaseName?: string
   releaseDescription?: string
@@ -500,16 +532,23 @@ export type DeployReq = {
   expectedDslDigest?: string
 }
 
+export type DeployResponse = {
+  appInstance: AppInstance
+  release: Release
+  deployment: Deployment
+}
+
 export type Deployment = {
   id: string
+  appInstanceId: string
   status: DeploymentStatus
-  environment?: Environment
-  release?: Release
-  error?: Error
-  createdAt: string
-  finalizedAt: string
-  deployer: Actor
   action: DeploymentAction
+  environment: Environment
+  release: Release
+  error?: Error
+  createdBy: Actor
+  createdAt: string
+  finalizedAt?: string
 }
 
 export type DeploymentOptions = {
@@ -521,24 +560,19 @@ export type DeploymentOptions = {
 }
 
 export type DeploymentOptionsAppInstanceDefaults = {
-  name: string
+  displayName: string
   description: string
 }
 
 export type DeploymentOptionsReleaseDefaults = {
-  name: string
+  displayName: string
   description: string
-}
-
-export type DeploymentReply = {
-  deployment: Deployment
 }
 
 export type DeveloperApiUrl = {
   apiUrl: string
   status: DeveloperApiUrlStatus
-  errorCode: string
-  errorMessage: string
+  error?: Error
 }
 
 export type EnvVarInput = {
@@ -549,30 +583,28 @@ export type EnvVarInput = {
 
 export type EnvVarSlot = {
   key: string
-  hasDefaultValue: boolean
-  defaultValue: string
-  hasLastValue: boolean
-  lastValue: string
-  valueType: string
+  valueType: EnvVarValueType
   description: string
+  defaultValue?: string
+  lastValue?: string
 }
 
 export type Environment = {
   id: string
-  name: string
+  displayName: string
   description: string
   mode: EnvironmentMode
   backend: RuntimeBackend
-  namespace: string
-  apiServer: string
   status: EnvironmentStatus
   statusMessage: string
-  lastError?: EnvironmentError
-  managedBy: string
+  lastError?: Error
+  apiServer?: string
+  namespace?: string
+  managedBy?: string
+  runtimeEndpoint?: string
+  cpuCount: number
   createdAt: string
   updatedAt: string
-  runtimeEndpoint: string
-  cpuCount: number
 }
 
 export type EnvironmentAccessPolicy = {
@@ -610,45 +642,67 @@ export type EnvironmentDeploymentRecord = {
   id: string
   status: DeploymentStatus
   createdAt: string
-  finalizedAt: string
-}
-
-export type EnvironmentError = {
-  code: string
-  message: string
+  finalizedAt?: string
 }
 
 export type Error = {
-  phase: string
-  code: string
-  message: string
-  atUnix: string
+  code?: string
+  message?: string
+  phase?: string
+  occurredAt?: string
 }
 
-export type ExportReleaseDslReply = {
-  data: string
+export type ExchangeControlTokenRequest = {
+  joinToken?: string
+}
+
+export type ExchangeControlTokenResponse = {
+  accessToken?: string
+  expiresAt?: string
+}
+
+export type ExportReleaseDslResponse = {
+  dsl: string
 }
 
 export type ExternalAppRunnerConfig = {
   runtimeEndpoint?: string
 }
 
-export type GetAccessChannelsReply = {
+export type GenerateAppRunnerLaunchProfileRequest = {
+  environmentId?: string
+  mode?: AppRunnerLaunchProfileMode
+  controlEndpoint: string
+  pluginDaemonBaseUrl: string
+  runtimeListenAddr: string
+  debugListenAddr?: string
+}
+
+export type GenerateAppRunnerLaunchProfileResponse = {
+  environmentId?: string
+  joinToken?: string
+  configYaml?: string
+  runtimeEndpoint?: string
+  sourceCommands?: Array<string>
+  dockerCommands?: Array<string>
+}
+
+export type GetAccessChannelsResponse = {
   accessChannels: AccessChannels
 }
 
-export type GetAccessPolicyReply = {
+export type GetAccessPolicyResponse = {
   policy: AccessPolicy
 }
 
-export type GetAccessSettingsReply = {
+export type GetAccessSettingsResponse = {
   accessChannels: AccessChannels
   environmentPolicies: Array<EnvironmentAccessPolicy>
-  webAppEndpoints: Array<AccessEndpoint>
+  webAppEndpoints?: Array<AccessEndpoint>
   cliEndpoint?: AccessEndpoint
 }
 
-export type GetAppInstanceOverviewReply = {
+export type GetAppInstanceOverviewResponse = {
   appInstance: AppInstance
   environmentDeployments: Array<EnvironmentDeployment>
   recentReleases: Array<Release>
@@ -657,50 +711,27 @@ export type GetAppInstanceOverviewReply = {
   totalReleaseCount: number
 }
 
-export type GetAppInstanceReply = {
+export type GetAppInstanceResponse = {
   appInstance: AppInstance
 }
 
-export type GetAppRunnerLogReply = {
-  data?: AppRunnerLog
+export type GetAppRunnerLogResponse = {
+  appRunnerLog: AppRunnerLog
   lastArchived?: string
 }
 
-export type GetDeploymentOptionsFromDslReq = {
-  dsl: string
-  appInstanceId?: string
-  environmentId?: string
-}
-
-export type GetDeploymentOptionsFromSourceAppReq = {
-  sourceAppId: string
-  appInstanceId?: string
-  environmentId?: string
-}
-
-export type GetDeploymentOptionsReply = {
-  options: DeploymentOptions
-}
-
-export type GetDeveloperApiSettingsReply = {
+export type GetDeveloperApiSettingsResponse = {
   accessChannels: AccessChannels
   environments: Array<Environment>
   apiKeys: Array<ApiKey>
   developerApiUrl: DeveloperApiUrl
 }
 
-export type GetEnvironmentReply = {
+export type GetEnvironmentResponse = {
   environment?: Environment
 }
 
-export type GetReleaseDeploymentViewReply = {
-  releases: Array<Release>
-  environmentDeployments: Array<EnvironmentDeployment>
-  environmentActions: Array<ReleaseEnvironmentAction>
-  options?: DeploymentOptions
-}
-
-export type GetReleaseReply = {
+export type GetReleaseResponse = {
   release: Release
 }
 
@@ -711,94 +742,95 @@ export type K8sEnvironmentConfig = {
   bearerToken?: string
 }
 
-export type ListApiKeysReply = {
-  data: Array<ApiKey>
+export type ListApiKeysResponse = {
+  apiKeys: Array<ApiKey>
   apiUrl: string
 }
 
-export type ListAppInstanceSummariesReply = {
-  data: Array<AppInstanceSummary>
+export type ListAppInstanceSummariesResponse = {
+  appInstanceSummaries: Array<AppInstanceSummary>
   pagination: Pagination
 }
 
-export type ListAppInstancesForDashboardReply = {
-  data?: Array<AppInstance>
-  pagination?: Pagination
-}
-
-export type ListAppInstancesReply = {
-  data: Array<AppInstance>
+export type ListAppInstancesResponse = {
+  appInstances: Array<AppInstance>
   pagination: Pagination
 }
 
-export type ListAppRunnerLogsReply = {
-  data?: Array<AppRunnerLog>
-  pagination?: CursorPagination
+export type ListAppRunnerLogsResponse = {
+  appRunnerLogs: Array<AppRunnerLog>
+  pagination: CursorPagination
   lastArchived?: string
 }
 
-export type ListDeployableEnvironmentsReply = {
-  data: Array<Environment>
-}
-
-export type ListDeploymentsReply = {
-  data: Array<Deployment>
+export type ListDeploymentsResponse = {
+  deployments: Array<Deployment>
   pagination: Pagination
 }
 
-export type ListEnvironmentAppInstancesReply = {
-  data?: Array<EnvironmentAppInstance>
+export type ListEnvironmentAppInstancesResponse = {
+  appInstances?: Array<EnvironmentAppInstance>
   pagination?: Pagination
 }
 
-export type ListEnvironmentDeploymentHistoryReply = {
-  data?: Array<EnvironmentDeploymentHistoryItem>
-  pagination?: Pagination
+export type ListEnvironmentDeploymentsResponse = {
+  environmentDeployments: Array<EnvironmentDeployment>
 }
 
-export type ListEnvironmentDeploymentsReply = {
-  data: Array<EnvironmentDeployment>
+export type ListEnvironmentsResponse = {
+  environments: Array<Environment>
+  pagination: Pagination
 }
 
-export type ListEnvironmentsReply = {
-  data?: Array<Environment>
-}
-
-export type ListReleaseCredentialCandidatesReply = {
+export type ListReleaseCredentialCandidatesResponse = {
   slots: Array<CredentialSlot>
 }
 
-export type ListReleaseSummariesReply = {
-  data: Array<ReleaseSummary>
+export type ListReleaseSummariesResponse = {
+  releaseSummaries: Array<ReleaseSummary>
   pagination: Pagination
 }
 
-export type ListReleasesReply = {
-  data: Array<Release>
+export type ListReleasesResponse = {
+  releases: Array<Release>
   pagination: Pagination
 }
 
-export type ListRollbackTargetsReply = {
-  data: Array<RollbackTarget>
+export type ListRollbackTargetsResponse = {
+  rollbackTargets: Array<RollbackTarget>
+  pagination: Pagination
 }
 
 export type NamedRef = {
-  id?: string
-  name?: string
+  id: string
+  displayName: string
 }
 
 export type NewAppInstance = {
-  name?: string
+  displayName?: string
   description?: string
 }
 
 export type Operator = {
-  type?: OperatorType
-  id?: string
-  name?: string
+  type: OperatorType
+  id: string
+  displayName: string
 }
 
-export type PromoteReq = {
+export type PrecheckReleaseRequest = {
+  appInstanceId?: string
+  dsl?: string
+  sourceAppId?: string
+}
+
+export type PrecheckReleaseResponse = {
+  gateCommitId: string
+  canCreate: boolean
+  matchedRelease?: ReleaseContentMatch
+  unsupportedNodes: Array<UnsupportedDslNode>
+}
+
+export type PromoteRequest = {
   appInstanceId?: string
   releaseId: string
   environmentId?: string
@@ -807,24 +839,17 @@ export type PromoteReq = {
   idempotencyKey: string
 }
 
-export type PutAccessPolicyReply = {
-  policy: AccessPolicy
-}
-
-export type PutAccessPolicyReq = {
-  appInstanceId?: string
-  environmentId?: string
-  mode: AccessMode
-  subjects?: Array<AccessSubject>
+export type PromoteResponse = {
+  deployment: Deployment
 }
 
 export type Release = {
   id: string
   appInstanceId: string
-  name: string
+  displayName: string
   description: string
   source: ReleaseSource
-  sourceAppId: string
+  sourceAppId?: string
   gateCommitId: string
   requiredSlots: Array<RequiredSlot>
   createdBy: Actor
@@ -833,14 +858,14 @@ export type Release = {
 
 export type ReleaseContentMatch = {
   releaseId: string
-  name: string
+  displayName: string
   createdAt: string
 }
 
 export type ReleaseEnvironmentAction = {
   environment: Environment
   kind: ReleaseEnvironmentActionKind
-  disabledReason: string
+  disabledReason?: string
   requiresRuntimeInputs: boolean
   currentReleaseId: string
 }
@@ -857,54 +882,58 @@ export type ReleaseSummary = {
   activeEnvironmentCount: number
 }
 
-export type ReportRuntimeAssignmentStatusReply = {
-  accepted?: boolean
-  stale?: boolean
-}
-
-export type ReportRuntimeAssignmentStatusReq = {
+export type ReportRuntimeAssignmentStatusRequest = {
   deploymentId?: string
   runtimeInstanceId?: string
   releaseId?: string
-  status?: string
-  lastError?: RuntimeLastError
+  status?: AckStatus
+  lastError?: Error
   runnerId?: string
   assignmentRevision?: string
+}
+
+export type ReportRuntimeAssignmentStatusResponse = {
+  accepted?: boolean
+  stale?: boolean
 }
 
 export type RequiredSlot = {
   type: SlotType
   providerId: string
   category: PluginCategory
-  name: string
+  key: string
 }
 
-export type ResolveApiTokenRouteReply = {
+export type ResolveApiTokenRouteRequest = {
+  token?: string
+}
+
+export type ResolveApiTokenRouteResponse = {
   environmentId?: string
   namespace?: string
   serviceName?: string
   servicePort?: number
-  environmentStatus?: string
+  environmentStatus?: EnvironmentStatus
   appId?: string
   tenantId?: string
   runtimeInstanceId?: string
   observedReleaseId?: string
-  runtimeInstanceStatus?: string
+  runtimeInstanceStatus?: RuntimeInstanceStatus
   revoked?: boolean
   unavailableReason?: string
-  targetKind?: string
+  targetKind?: RouteTargetKind
   directUpstream?: string
 }
 
-export type ResolveApiTokenRouteReq = {
-  token?: string
-}
-
-export type RollbackReq = {
+export type RollbackRequest = {
   appInstanceId?: string
   environmentId?: string
   targetReleaseId: string
   idempotencyKey: string
+}
+
+export type RollbackResponse = {
+  deployment: Deployment
 }
 
 export type RollbackTarget = {
@@ -937,80 +966,83 @@ export type RuntimeArtifactResult = {
   runtimeInstanceId?: string
   releaseId?: string
   artifact?: RuntimeArtifact
-  errorCode?: string
-  errorMessage?: string
+  error?: Error
   deploymentId?: string
 }
 
-export type RuntimeLastError = {
-  phase?: string
-  code?: string
-  message?: string
-  releaseId?: string
-}
-
-export type TestEnvironmentConnectionReply = {
-  ok?: boolean
-  message?: string
-}
-
-export type TestEnvironmentConnectionReq = {
+export type TestConnectionRequest = {
   environmentId?: string
 }
 
-export type TokenExchangeReply = {
-  accessToken?: string
-  expiresAt?: string
+export type TestConnectionResponse = {
+  reachable?: boolean
+  message?: string
 }
 
-export type TokenExchangeReq = {
-  joinToken?: string
-}
-
-export type UndeployReq = {
+export type UndeployRequest = {
   appInstanceId?: string
   environmentId?: string
   idempotencyKey: string
 }
 
-export type UpdateAccessChannelsReply = {
-  accessChannels: AccessChannels
+export type UndeployResponse = {
+  deployment: Deployment
 }
 
-export type UpdateAccessChannelsReq = {
+export type UnsupportedDslNode = {
+  id: string
+  type: string
+}
+
+export type UpdateAccessChannelsRequest = {
   appInstanceId?: string
   webAppEnabled?: boolean
   developerApiEnabled?: boolean
 }
 
-export type UpdateAppInstanceReply = {
+export type UpdateAccessChannelsResponse = {
+  accessChannels: AccessChannels
+}
+
+export type UpdateAccessPolicyRequest = {
+  appInstanceId?: string
+  environmentId?: string
+  mode: AccessMode
+  subjects?: Array<AccessSubject>
+}
+
+export type UpdateAccessPolicyResponse = {
+  policy: AccessPolicy
+}
+
+export type UpdateAppInstanceRequest = {
+  appInstanceId?: string
+  displayName: string
+  description?: string
+}
+
+export type UpdateAppInstanceResponse = {
   appInstance: AppInstance
 }
 
-export type UpdateAppInstanceReq = {
-  appInstanceId?: string
-  name: string
+export type UpdateEnvironmentRequest = {
+  environmentId?: string
+  displayName: string
   description?: string
 }
 
-export type UpdateEnvironmentReply = {
+export type UpdateEnvironmentResponse = {
   environment?: Environment
 }
 
-export type UpdateEnvironmentReq = {
-  environmentId?: string
-  name: string
-  description?: string
-}
-
-export type UpdateReleaseReply = {
-  release: Release
-}
-
-export type UpdateReleaseReq = {
+export type UpdateReleaseRequest = {
   releaseId?: string
-  name: string
+  displayName: string
   description?: string
+}
+
+export type UpdateReleaseResponse = {
+  release: Release
 }
 
 export type Account = {
@@ -2080,36 +2112,20 @@ export type AccessSubjectServiceListAccessSubjectsResponses = {
 export type AccessSubjectServiceListAccessSubjectsResponse
   = AccessSubjectServiceListAccessSubjectsResponses[keyof AccessSubjectServiceListAccessSubjectsResponses]
 
-export type AccessServiceDeleteApiKeyData = {
-  body?: never
-  path: {
-    apiKeyId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/api-keys/{apiKeyId}'
-}
-
-export type AccessServiceDeleteApiKeyResponses = {
-  200: DeleteApiKeyReply
-}
-
-export type AccessServiceDeleteApiKeyResponse
-  = AccessServiceDeleteApiKeyResponses[keyof AccessServiceDeleteApiKeyResponses]
-
 export type AppInstanceServiceListAppInstanceSummariesData = {
   body?: never
   path?: never
   query?: {
     pageNumber?: number
     resultsPerPage?: number
-    name?: string
+    displayName?: string
     environmentId?: string
   }
-  url: '/enterprise/app-deploy/app-instance-summaries'
+  url: '/enterprise/app-deploy/appInstanceSummaries'
 }
 
 export type AppInstanceServiceListAppInstanceSummariesResponses = {
-  200: ListAppInstanceSummariesReply
+  200: ListAppInstanceSummariesResponse
 }
 
 export type AppInstanceServiceListAppInstanceSummariesResponse
@@ -2121,28 +2137,28 @@ export type AppInstanceServiceListAppInstancesData = {
   query?: {
     pageNumber?: number
     resultsPerPage?: number
-    name?: string
+    displayName?: string
     environmentId?: string
   }
-  url: '/enterprise/app-deploy/app-instances'
+  url: '/enterprise/app-deploy/appInstances'
 }
 
 export type AppInstanceServiceListAppInstancesResponses = {
-  200: ListAppInstancesReply
+  200: ListAppInstancesResponse
 }
 
 export type AppInstanceServiceListAppInstancesResponse
   = AppInstanceServiceListAppInstancesResponses[keyof AppInstanceServiceListAppInstancesResponses]
 
 export type AppInstanceServiceCreateAppInstanceData = {
-  body: CreateAppInstanceReq
+  body: CreateAppInstanceRequest
   path?: never
   query?: never
-  url: '/enterprise/app-deploy/app-instances'
+  url: '/enterprise/app-deploy/appInstances'
 }
 
 export type AppInstanceServiceCreateAppInstanceResponses = {
-  200: CreateAppInstanceReply
+  200: CreateAppInstanceResponse
 }
 
 export type AppInstanceServiceCreateAppInstanceResponse
@@ -2154,11 +2170,11 @@ export type AppInstanceServiceDeleteAppInstanceData = {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}'
 }
 
 export type AppInstanceServiceDeleteAppInstanceResponses = {
-  200: DeleteAppInstanceReply
+  200: DeleteAppInstanceResponse
 }
 
 export type AppInstanceServiceDeleteAppInstanceResponse
@@ -2170,27 +2186,27 @@ export type AppInstanceServiceGetAppInstanceData = {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}'
 }
 
 export type AppInstanceServiceGetAppInstanceResponses = {
-  200: GetAppInstanceReply
+  200: GetAppInstanceResponse
 }
 
 export type AppInstanceServiceGetAppInstanceResponse
   = AppInstanceServiceGetAppInstanceResponses[keyof AppInstanceServiceGetAppInstanceResponses]
 
 export type AppInstanceServiceUpdateAppInstanceData = {
-  body: UpdateAppInstanceReq
+  body: UpdateAppInstanceRequest
   path: {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}'
 }
 
 export type AppInstanceServiceUpdateAppInstanceResponses = {
-  200: UpdateAppInstanceReply
+  200: UpdateAppInstanceResponse
 }
 
 export type AppInstanceServiceUpdateAppInstanceResponse
@@ -2202,27 +2218,27 @@ export type AccessServiceGetAccessChannelsData = {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/access-channels'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/accessChannels'
 }
 
 export type AccessServiceGetAccessChannelsResponses = {
-  200: GetAccessChannelsReply
+  200: GetAccessChannelsResponse
 }
 
 export type AccessServiceGetAccessChannelsResponse
   = AccessServiceGetAccessChannelsResponses[keyof AccessServiceGetAccessChannelsResponses]
 
 export type AccessServiceUpdateAccessChannelsData = {
-  body: UpdateAccessChannelsReq
+  body: UpdateAccessChannelsRequest
   path: {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/access-channels'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/accessChannels'
 }
 
 export type AccessServiceUpdateAccessChannelsResponses = {
-  200: UpdateAccessChannelsReply
+  200: UpdateAccessChannelsResponse
 }
 
 export type AccessServiceUpdateAccessChannelsResponse
@@ -2234,11 +2250,11 @@ export type AccessServiceGetAccessSettingsData = {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/access-settings'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/accessSettings'
 }
 
 export type AccessServiceGetAccessSettingsResponses = {
-  200: GetAccessSettingsReply
+  200: GetAccessSettingsResponse
 }
 
 export type AccessServiceGetAccessSettingsResponse
@@ -2254,11 +2270,11 @@ export type DeploymentServiceListDeploymentsData = {
     resultsPerPage?: number
     environmentId?: string
   }
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/deployments'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/deployments'
 }
 
 export type DeploymentServiceListDeploymentsResponses = {
-  200: ListDeploymentsReply
+  200: ListDeploymentsResponse
 }
 
 export type DeploymentServiceListDeploymentsResponse
@@ -2270,11 +2286,11 @@ export type AccessServiceGetDeveloperApiSettingsData = {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/developer-api-settings'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/developerApiSettings'
 }
 
 export type AccessServiceGetDeveloperApiSettingsResponses = {
-  200: GetDeveloperApiSettingsReply
+  200: GetDeveloperApiSettingsResponse
 }
 
 export type AccessServiceGetDeveloperApiSettingsResponse
@@ -2286,11 +2302,11 @@ export type DeploymentServiceListEnvironmentDeploymentsData = {
     appInstanceId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environment-deployments'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environmentDeployments'
 }
 
 export type DeploymentServiceListEnvironmentDeploymentsResponses = {
-  200: ListEnvironmentDeploymentsReply
+  200: ListEnvironmentDeploymentsResponse
 }
 
 export type DeploymentServiceListEnvironmentDeploymentsResponse
@@ -2303,32 +2319,32 @@ export type AccessServiceGetAccessPolicyData = {
     environmentId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/access-policy'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/accessPolicy'
 }
 
 export type AccessServiceGetAccessPolicyResponses = {
-  200: GetAccessPolicyReply
+  200: GetAccessPolicyResponse
 }
 
 export type AccessServiceGetAccessPolicyResponse
   = AccessServiceGetAccessPolicyResponses[keyof AccessServiceGetAccessPolicyResponses]
 
-export type AccessServicePutAccessPolicyData = {
-  body: PutAccessPolicyReq
+export type AccessServiceUpdateAccessPolicyData = {
+  body: UpdateAccessPolicyRequest
   path: {
     appInstanceId: string
     environmentId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/access-policy'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/accessPolicy'
 }
 
-export type AccessServicePutAccessPolicyResponses = {
-  200: PutAccessPolicyReply
+export type AccessServiceUpdateAccessPolicyResponses = {
+  200: UpdateAccessPolicyResponse
 }
 
-export type AccessServicePutAccessPolicyResponse
-  = AccessServicePutAccessPolicyResponses[keyof AccessServicePutAccessPolicyResponses]
+export type AccessServiceUpdateAccessPolicyResponse
+  = AccessServiceUpdateAccessPolicyResponses[keyof AccessServiceUpdateAccessPolicyResponses]
 
 export type AccessServiceListApiKeysData = {
   body?: never
@@ -2337,83 +2353,50 @@ export type AccessServiceListApiKeysData = {
     environmentId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/api-keys'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/apiKeys'
 }
 
 export type AccessServiceListApiKeysResponses = {
-  200: ListApiKeysReply
+  200: ListApiKeysResponse
 }
 
 export type AccessServiceListApiKeysResponse
   = AccessServiceListApiKeysResponses[keyof AccessServiceListApiKeysResponses]
 
 export type AccessServiceCreateApiKeyData = {
-  body: CreateApiKeyReq
+  body: CreateApiKeyRequest
   path: {
     appInstanceId: string
     environmentId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/api-keys'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/apiKeys'
 }
 
 export type AccessServiceCreateApiKeyResponses = {
-  200: CreateApiKeyReply
+  200: CreateApiKeyResponse
 }
 
 export type AccessServiceCreateApiKeyResponse
   = AccessServiceCreateApiKeyResponses[keyof AccessServiceCreateApiKeyResponses]
 
-export type DeploymentServiceCancelDeploymentData = {
-  body: CancelDeploymentReq
+export type AccessServiceDeleteApiKeyData = {
+  body?: never
   path: {
     appInstanceId: string
     environmentId: string
+    apiKeyId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/cancel'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/apiKeys/{apiKeyId}'
 }
 
-export type DeploymentServiceCancelDeploymentResponses = {
-  200: DeploymentReply
+export type AccessServiceDeleteApiKeyResponses = {
+  200: DeleteApiKeyResponse
 }
 
-export type DeploymentServiceCancelDeploymentResponse
-  = DeploymentServiceCancelDeploymentResponses[keyof DeploymentServiceCancelDeploymentResponses]
-
-export type DeploymentServicePromoteData = {
-  body: PromoteReq
-  path: {
-    appInstanceId: string
-    environmentId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/promote'
-}
-
-export type DeploymentServicePromoteResponses = {
-  200: DeploymentReply
-}
-
-export type DeploymentServicePromoteResponse
-  = DeploymentServicePromoteResponses[keyof DeploymentServicePromoteResponses]
-
-export type DeploymentServiceRollbackData = {
-  body: RollbackReq
-  path: {
-    appInstanceId: string
-    environmentId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/rollback'
-}
-
-export type DeploymentServiceRollbackResponses = {
-  200: DeploymentReply
-}
-
-export type DeploymentServiceRollbackResponse
-  = DeploymentServiceRollbackResponses[keyof DeploymentServiceRollbackResponses]
+export type AccessServiceDeleteApiKeyResponse
+  = AccessServiceDeleteApiKeyResponses[keyof AccessServiceDeleteApiKeyResponses]
 
 export type DeploymentServiceListRollbackTargetsData = {
   body?: never
@@ -2421,68 +2404,87 @@ export type DeploymentServiceListRollbackTargetsData = {
     appInstanceId: string
     environmentId: string
   }
-  query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/rollback-targets'
+  query?: {
+    pageNumber?: number
+    resultsPerPage?: number
+  }
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/rollbackTargets'
 }
 
 export type DeploymentServiceListRollbackTargetsResponses = {
-  200: ListRollbackTargetsReply
+  200: ListRollbackTargetsResponse
 }
 
 export type DeploymentServiceListRollbackTargetsResponse
   = DeploymentServiceListRollbackTargetsResponses[keyof DeploymentServiceListRollbackTargetsResponses]
 
-export type DeploymentServiceUndeployData = {
-  body: UndeployReq
+export type DeploymentServiceCancelDeploymentData = {
+  body: CancelDeploymentRequest
   path: {
     appInstanceId: string
     environmentId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/environments/{environmentId}/undeploy'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}:cancelDeployment'
+}
+
+export type DeploymentServiceCancelDeploymentResponses = {
+  200: CancelDeploymentResponse
+}
+
+export type DeploymentServiceCancelDeploymentResponse
+  = DeploymentServiceCancelDeploymentResponses[keyof DeploymentServiceCancelDeploymentResponses]
+
+export type DeploymentServicePromoteData = {
+  body: PromoteRequest
+  path: {
+    appInstanceId: string
+    environmentId: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}:promote'
+}
+
+export type DeploymentServicePromoteResponses = {
+  200: PromoteResponse
+}
+
+export type DeploymentServicePromoteResponse
+  = DeploymentServicePromoteResponses[keyof DeploymentServicePromoteResponses]
+
+export type DeploymentServiceRollbackData = {
+  body: RollbackRequest
+  path: {
+    appInstanceId: string
+    environmentId: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}:rollback'
+}
+
+export type DeploymentServiceRollbackResponses = {
+  200: RollbackResponse
+}
+
+export type DeploymentServiceRollbackResponse
+  = DeploymentServiceRollbackResponses[keyof DeploymentServiceRollbackResponses]
+
+export type DeploymentServiceUndeployData = {
+  body: UndeployRequest
+  path: {
+    appInstanceId: string
+    environmentId: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}:undeploy'
 }
 
 export type DeploymentServiceUndeployResponses = {
-  200: DeploymentReply
+  200: UndeployResponse
 }
 
 export type DeploymentServiceUndeployResponse
   = DeploymentServiceUndeployResponses[keyof DeploymentServiceUndeployResponses]
-
-export type AppInstanceServiceGetAppInstanceOverviewData = {
-  body?: never
-  path: {
-    appInstanceId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/overview'
-}
-
-export type AppInstanceServiceGetAppInstanceOverviewResponses = {
-  200: GetAppInstanceOverviewReply
-}
-
-export type AppInstanceServiceGetAppInstanceOverviewResponse
-  = AppInstanceServiceGetAppInstanceOverviewResponses[keyof AppInstanceServiceGetAppInstanceOverviewResponses]
-
-export type ReleaseServiceGetReleaseDeploymentViewData = {
-  body?: never
-  path: {
-    appInstanceId: string
-  }
-  query?: {
-    releaseId?: string
-    environmentId?: string
-  }
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/release-deployment-view'
-}
-
-export type ReleaseServiceGetReleaseDeploymentViewResponses = {
-  200: GetReleaseDeploymentViewReply
-}
-
-export type ReleaseServiceGetReleaseDeploymentViewResponse
-  = ReleaseServiceGetReleaseDeploymentViewResponses[keyof ReleaseServiceGetReleaseDeploymentViewResponses]
 
 export type ReleaseServiceListReleaseSummariesData = {
   body?: never
@@ -2491,16 +2493,16 @@ export type ReleaseServiceListReleaseSummariesData = {
   }
   query?: {
     releaseId?: string
-    name?: string
+    displayName?: string
     pageNumber?: number
     resultsPerPage?: number
     environmentId?: string
   }
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/release-summaries'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/releaseSummaries'
 }
 
 export type ReleaseServiceListReleaseSummariesResponses = {
-  200: ListReleaseSummariesReply
+  200: ListReleaseSummariesResponse
 }
 
 export type ReleaseServiceListReleaseSummariesResponse
@@ -2513,135 +2515,102 @@ export type ReleaseServiceListReleasesData = {
   }
   query?: {
     releaseId?: string
-    name?: string
+    displayName?: string
     pageNumber?: number
     resultsPerPage?: number
     environmentId?: string
   }
-  url: '/enterprise/app-deploy/app-instances/{appInstanceId}/releases'
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}/releases'
 }
 
 export type ReleaseServiceListReleasesResponses = {
-  200: ListReleasesReply
+  200: ListReleasesResponse
 }
 
 export type ReleaseServiceListReleasesResponse
   = ReleaseServiceListReleasesResponses[keyof ReleaseServiceListReleasesResponses]
 
+export type ReleaseServiceComputeReleaseDeploymentViewData = {
+  body?: never
+  path: {
+    appInstanceId: string
+  }
+  query?: {
+    releaseId?: string
+    environmentId?: string
+  }
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}:computeReleaseDeploymentView'
+}
+
+export type ReleaseServiceComputeReleaseDeploymentViewResponses = {
+  200: ComputeReleaseDeploymentViewResponse
+}
+
+export type ReleaseServiceComputeReleaseDeploymentViewResponse
+  = ReleaseServiceComputeReleaseDeploymentViewResponses[keyof ReleaseServiceComputeReleaseDeploymentViewResponses]
+
+export type AppInstanceServiceGetAppInstanceOverviewData = {
+  body?: never
+  path: {
+    appInstanceId: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/appInstances/{appInstanceId}:getOverview'
+}
+
+export type AppInstanceServiceGetAppInstanceOverviewResponses = {
+  200: GetAppInstanceOverviewResponse
+}
+
+export type AppInstanceServiceGetAppInstanceOverviewResponse
+  = AppInstanceServiceGetAppInstanceOverviewResponses[keyof AppInstanceServiceGetAppInstanceOverviewResponses]
+
 export type DeploymentServiceDeployData = {
-  body: DeployReq
+  body: DeployRequest
   path?: never
   query?: never
-  url: '/enterprise/app-deploy/deploy'
+  url: '/enterprise/app-deploy/appInstances:deploy'
 }
 
 export type DeploymentServiceDeployResponses = {
-  200: DeployReply
+  200: DeployResponse
 }
 
 export type DeploymentServiceDeployResponse
   = DeploymentServiceDeployResponses[keyof DeploymentServiceDeployResponses]
 
-export type EnvironmentServiceListDeployableEnvironmentsData = {
+export type EnvironmentServiceListEnvironmentsData = {
   body?: never
   path?: never
   query?: {
     environmentId?: string
-    name?: string
+    displayName?: string
+    pageNumber?: number
+    resultsPerPage?: number
   }
-  url: '/enterprise/app-deploy/deployable-environments'
+  url: '/enterprise/app-deploy/environments'
 }
 
-export type EnvironmentServiceListDeployableEnvironmentsResponses = {
-  200: ListDeployableEnvironmentsReply
+export type EnvironmentServiceListEnvironmentsResponses = {
+  200: ListEnvironmentsResponse
 }
 
-export type EnvironmentServiceListDeployableEnvironmentsResponse
-  = EnvironmentServiceListDeployableEnvironmentsResponses[keyof EnvironmentServiceListDeployableEnvironmentsResponses]
+export type EnvironmentServiceListEnvironmentsResponse
+  = EnvironmentServiceListEnvironmentsResponses[keyof EnvironmentServiceListEnvironmentsResponses]
 
-export type ReleaseServiceGetDeploymentOptionsFromDslData = {
-  body: GetDeploymentOptionsFromDslReq
+export type ReleaseServiceCreateReleaseData = {
+  body: CreateReleaseRequest
   path?: never
   query?: never
-  url: '/enterprise/app-deploy/deployment-options/dsl'
+  url: '/enterprise/app-deploy/releases'
 }
 
-export type ReleaseServiceGetDeploymentOptionsFromDslResponses = {
-  200: GetDeploymentOptionsReply
+export type ReleaseServiceCreateReleaseResponses = {
+  200: CreateReleaseResponse
 }
 
-export type ReleaseServiceGetDeploymentOptionsFromDslResponse
-  = ReleaseServiceGetDeploymentOptionsFromDslResponses[keyof ReleaseServiceGetDeploymentOptionsFromDslResponses]
-
-export type ReleaseServiceGetDeploymentOptionsFromSourceAppData = {
-  body: GetDeploymentOptionsFromSourceAppReq
-  path?: never
-  query?: never
-  url: '/enterprise/app-deploy/deployment-options/source-app'
-}
-
-export type ReleaseServiceGetDeploymentOptionsFromSourceAppResponses = {
-  200: GetDeploymentOptionsReply
-}
-
-export type ReleaseServiceGetDeploymentOptionsFromSourceAppResponse
-  = ReleaseServiceGetDeploymentOptionsFromSourceAppResponses[keyof ReleaseServiceGetDeploymentOptionsFromSourceAppResponses]
-
-export type ReleaseServiceCheckReleaseContentFromDslData = {
-  body: CheckReleaseContentFromDslReq
-  path?: never
-  query?: never
-  url: '/enterprise/app-deploy/release-content-checks/dsl'
-}
-
-export type ReleaseServiceCheckReleaseContentFromDslResponses = {
-  200: CheckReleaseContentReply
-}
-
-export type ReleaseServiceCheckReleaseContentFromDslResponse
-  = ReleaseServiceCheckReleaseContentFromDslResponses[keyof ReleaseServiceCheckReleaseContentFromDslResponses]
-
-export type ReleaseServiceCheckReleaseContentFromSourceAppData = {
-  body: CheckReleaseContentFromSourceAppReq
-  path?: never
-  query?: never
-  url: '/enterprise/app-deploy/release-content-checks/source-app'
-}
-
-export type ReleaseServiceCheckReleaseContentFromSourceAppResponses = {
-  200: CheckReleaseContentReply
-}
-
-export type ReleaseServiceCheckReleaseContentFromSourceAppResponse
-  = ReleaseServiceCheckReleaseContentFromSourceAppResponses[keyof ReleaseServiceCheckReleaseContentFromSourceAppResponses]
-
-export type ReleaseServiceCreateReleaseFromDslData = {
-  body: CreateReleaseFromDslReq
-  path?: never
-  query?: never
-  url: '/enterprise/app-deploy/releases/dsl'
-}
-
-export type ReleaseServiceCreateReleaseFromDslResponses = {
-  200: CreateReleaseReply
-}
-
-export type ReleaseServiceCreateReleaseFromDslResponse
-  = ReleaseServiceCreateReleaseFromDslResponses[keyof ReleaseServiceCreateReleaseFromDslResponses]
-
-export type ReleaseServiceCreateReleaseFromSourceAppData = {
-  body: CreateReleaseFromSourceAppReq
-  path?: never
-  query?: never
-  url: '/enterprise/app-deploy/releases/source-app'
-}
-
-export type ReleaseServiceCreateReleaseFromSourceAppResponses = {
-  200: CreateReleaseReply
-}
-
-export type ReleaseServiceCreateReleaseFromSourceAppResponse
-  = ReleaseServiceCreateReleaseFromSourceAppResponses[keyof ReleaseServiceCreateReleaseFromSourceAppResponses]
+export type ReleaseServiceCreateReleaseResponse
+  = ReleaseServiceCreateReleaseResponses[keyof ReleaseServiceCreateReleaseResponses]
 
 export type ReleaseServiceDeleteReleaseData = {
   body?: never
@@ -2653,7 +2622,7 @@ export type ReleaseServiceDeleteReleaseData = {
 }
 
 export type ReleaseServiceDeleteReleaseResponses = {
-  200: DeleteReleaseReply
+  200: DeleteReleaseResponse
 }
 
 export type ReleaseServiceDeleteReleaseResponse
@@ -2669,14 +2638,14 @@ export type ReleaseServiceGetReleaseData = {
 }
 
 export type ReleaseServiceGetReleaseResponses = {
-  200: GetReleaseReply
+  200: GetReleaseResponse
 }
 
 export type ReleaseServiceGetReleaseResponse
   = ReleaseServiceGetReleaseResponses[keyof ReleaseServiceGetReleaseResponses]
 
 export type ReleaseServiceUpdateReleaseData = {
-  body: UpdateReleaseReq
+  body: UpdateReleaseRequest
   path: {
     releaseId: string
   }
@@ -2685,45 +2654,11 @@ export type ReleaseServiceUpdateReleaseData = {
 }
 
 export type ReleaseServiceUpdateReleaseResponses = {
-  200: UpdateReleaseReply
+  200: UpdateReleaseResponse
 }
 
 export type ReleaseServiceUpdateReleaseResponse
   = ReleaseServiceUpdateReleaseResponses[keyof ReleaseServiceUpdateReleaseResponses]
-
-export type ReleaseServiceListReleaseCredentialCandidatesData = {
-  body?: never
-  path: {
-    releaseId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/releases/{releaseId}/credential-candidates'
-}
-
-export type ReleaseServiceListReleaseCredentialCandidatesResponses = {
-  200: ListReleaseCredentialCandidatesReply
-}
-
-export type ReleaseServiceListReleaseCredentialCandidatesResponse
-  = ReleaseServiceListReleaseCredentialCandidatesResponses[keyof ReleaseServiceListReleaseCredentialCandidatesResponses]
-
-export type ReleaseServiceGetReleaseDeploymentOptionsData = {
-  body?: never
-  path: {
-    releaseId: string
-  }
-  query?: {
-    environmentId?: string
-  }
-  url: '/enterprise/app-deploy/releases/{releaseId}/deployment-options'
-}
-
-export type ReleaseServiceGetReleaseDeploymentOptionsResponses = {
-  200: GetDeploymentOptionsReply
-}
-
-export type ReleaseServiceGetReleaseDeploymentOptionsResponse
-  = ReleaseServiceGetReleaseDeploymentOptionsResponses[keyof ReleaseServiceGetReleaseDeploymentOptionsResponses]
 
 export type ReleaseServiceExportReleaseDslData = {
   body?: never
@@ -2731,15 +2666,59 @@ export type ReleaseServiceExportReleaseDslData = {
     releaseId: string
   }
   query?: never
-  url: '/enterprise/app-deploy/releases/{releaseId}/dsl'
+  url: '/enterprise/app-deploy/releases/{releaseId}:exportDsl'
 }
 
 export type ReleaseServiceExportReleaseDslResponses = {
-  200: ExportReleaseDslReply
+  200: ExportReleaseDslResponse
 }
 
 export type ReleaseServiceExportReleaseDslResponse
   = ReleaseServiceExportReleaseDslResponses[keyof ReleaseServiceExportReleaseDslResponses]
+
+export type ReleaseServiceListReleaseCredentialCandidatesData = {
+  body?: never
+  path: {
+    releaseId: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/releases/{releaseId}:listCredentialCandidates'
+}
+
+export type ReleaseServiceListReleaseCredentialCandidatesResponses = {
+  200: ListReleaseCredentialCandidatesResponse
+}
+
+export type ReleaseServiceListReleaseCredentialCandidatesResponse
+  = ReleaseServiceListReleaseCredentialCandidatesResponses[keyof ReleaseServiceListReleaseCredentialCandidatesResponses]
+
+export type ReleaseServiceComputeDeploymentOptionsData = {
+  body: ComputeDeploymentOptionsRequest
+  path?: never
+  query?: never
+  url: '/enterprise/app-deploy/releases:computeDeploymentOptions'
+}
+
+export type ReleaseServiceComputeDeploymentOptionsResponses = {
+  200: ComputeDeploymentOptionsResponse
+}
+
+export type ReleaseServiceComputeDeploymentOptionsResponse
+  = ReleaseServiceComputeDeploymentOptionsResponses[keyof ReleaseServiceComputeDeploymentOptionsResponses]
+
+export type ReleaseServicePrecheckReleaseData = {
+  body: PrecheckReleaseRequest
+  path?: never
+  query?: never
+  url: '/enterprise/app-deploy/releases:precheck'
+}
+
+export type ReleaseServicePrecheckReleaseResponses = {
+  200: PrecheckReleaseResponse
+}
+
+export type ReleaseServicePrecheckReleaseResponse
+  = ReleaseServicePrecheckReleaseResponses[keyof ReleaseServicePrecheckReleaseResponses]
 
 export type ConsoleSsoOAuth2LoginData = {
   body?: never

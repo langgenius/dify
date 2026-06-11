@@ -82,6 +82,7 @@ const stripConsoleApiPrefix = (routePath: string) => {
 const stripSchemaNamePrefix = (schemaName: string) => {
   return schemaName
     .replace(/^dify\.enterprise\.api\.enterprise\./, '')
+    .replace(/^dify\.enterprise\.api\.appdeploy\.v1\./, '')
     .replace(/^dify\.enterprise\.api\.appdeploy\./, '')
     .replace(/^pagination\./, '')
 }
