@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { DataType } from '../../types'
+import { DataType, isShowManageMetadataLocalStorageKey } from '../../types'
 import useEditDatasetMetadata from '../use-edit-dataset-metadata'
 
 const mockDoAddMetaData = vi.fn().mockResolvedValue({})
@@ -61,15 +61,6 @@ vi.mock('../use-check-metadata-name', () => ({
   }),
 }))
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-}
-Object.defineProperty(window, 'localStorage', { value: localStorageMock })
-
 describe('useEditDatasetMetadata', () => {
   const defaultProps = {
     datasetId: 'ds-1',
@@ -78,7 +69,7 @@ describe('useEditDatasetMetadata', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorageMock.getItem.mockReturnValue(null)
+    window.localStorage.clear()
   })
 
   describe('Hook Initialization', () => {
@@ -173,6 +164,17 @@ describe('useEditDatasetMetadata', () => {
 
       act(() => result.current.showEditModal())
       expect(result.current.isShowEditModal).toBe(true)
+    })
+
+    it('should show modal and clear manage metadata flag when stored', async () => {
+      window.localStorage.setItem(isShowManageMetadataLocalStorageKey, 'true')
+
+      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
+
+      await waitFor(() => {
+        expect(result.current.isShowEditModal).toBe(true)
+      })
+      expect(window.localStorage.getItem(isShowManageMetadataLocalStorageKey)).toBeNull()
     })
   })
 
