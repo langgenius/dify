@@ -345,6 +345,62 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
     provider_model.raise_for_status.assert_called_once()
 
 
+def test_fetch_model_config_reuses_validated_provider_model_from_dify_credentials_provider(
+    model_config: ModelConfigWithCredentialsEntity,
+):
+    mock_provider_manager = mock.MagicMock()
+    mock_configurations = mock.MagicMock()
+    mock_provider_configuration = mock.MagicMock()
+    mock_provider_model = mock.MagicMock()
+    mock_model_factory = mock.MagicMock(spec=DifyModelFactory)
+
+    mock_configurations.get.return_value = mock_provider_configuration
+    mock_provider_configuration.get_provider_model.return_value = mock_provider_model
+    mock_provider_configuration.get_current_credentials.return_value = {"api_key": "test"}
+    mock_provider_manager.get_configurations.return_value = mock_configurations
+
+    run_context = DifyRunContext(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+    credentials_provider = DifyCredentialsProvider(
+        run_context=run_context,
+        provider_manager=mock_provider_manager,
+    )
+
+    model_instance = mock.MagicMock(
+        model_type_instance=model_config.provider_model_bundle.model_type_instance,
+        provider_model_bundle=model_config.provider_model_bundle,
+    )
+    mock_model_factory.init_model_instance.return_value = model_instance
+
+    with mock.patch.object(
+        model_instance.model_type_instance.__class__,
+        "get_model_schema",
+        return_value=model_config.model_schema,
+        autospec=True,
+    ):
+        fetch_model_config(
+            node_data_model=ModelConfig(
+                provider="openai",
+                name="gpt-3.5-turbo",
+                mode="chat",
+                completion_params={},
+            ),
+            credentials_provider=credentials_provider,
+            model_factory=mock_model_factory,
+        )
+
+    mock_provider_configuration.get_provider_model.assert_called_once_with(
+        model_type=ModelType.LLM,
+        model="gpt-3.5-turbo",
+    )
+    mock_provider_model.raise_for_status.assert_called_once()
+
+
 def test_dify_model_access_adapters_call_managers():
     mock_provider_manager = mock.MagicMock()
     mock_model_manager = mock.MagicMock()
