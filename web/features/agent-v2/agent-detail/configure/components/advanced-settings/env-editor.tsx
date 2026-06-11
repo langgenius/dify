@@ -61,7 +61,7 @@ function EnvEditorScope({
     >
       <SelectTrigger
         aria-label={t('agentDetail.configure.advancedSettings.envEditor.scopeSelector')}
-        className="h-full w-full max-w-none rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover [&>*:last-child]:size-3.5"
+        className="h-7 w-full max-w-none rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover [&>*:last-child]:size-3.5"
       >
         {t(scopeLabelKeys[scope])}
       </SelectTrigger>
