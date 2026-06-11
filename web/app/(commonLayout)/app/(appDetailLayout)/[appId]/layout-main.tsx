@@ -124,7 +124,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }).finally(() => {
       setIsLoadingAppDetail(false)
     })
-  }, [appId, pathname])
+  }, [appId])
 
   useEffect(() => {
     if (!appDetailRes || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
@@ -146,7 +146,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setAppDetail({ ...res, enable_sso: false })
       setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
     }
-  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
+  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname])
 
   useUnmount(() => {
     setAppDetail()
