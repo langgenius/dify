@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createStore, Provider as JotaiProvider } from 'jotai'
+import { agentConfigurePromptAtom } from '../../atoms'
 import { AgentPromptEditor } from '../agent-prompt-editor'
 
 const mockPromptEditor = vi.hoisted(() => vi.fn())
@@ -22,6 +24,30 @@ vi.mock('@/app/components/base/infotip', () => ({
   Infotip: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }))
 
+const renderAgentPromptEditor = (value: string) => {
+  const store = createStore()
+  store.set(agentConfigurePromptAtom, value)
+
+  const view = render(
+    <JotaiProvider store={store}>
+      <AgentPromptEditor />
+    </JotaiProvider>,
+  )
+
+  return {
+    store,
+    ...view,
+    rerenderWithValue: (nextValue: string) => {
+      store.set(agentConfigurePromptAtom, nextValue)
+      view.rerender(
+        <JotaiProvider store={store}>
+          <AgentPromptEditor />
+        </JotaiProvider>,
+      )
+    },
+  }
+}
+
 describe('AgentPromptEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -30,14 +56,7 @@ describe('AgentPromptEditor', () => {
   // Prompt slash commands should use the Agent Roster category menu and replace it with submenus.
   describe('Slash Commands', () => {
     it('should open category menu, show skill submenu, and append the selected reference', async () => {
-      const onChange = vi.fn()
-
-      const { rerender } = render(
-        <AgentPromptEditor
-          value="Review these tenders"
-          onChange={onChange}
-        />,
-      )
+      const { store, rerenderWithValue } = renderAgentPromptEditor('Review these tenders')
 
       expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
         disableBracePicker: true,
@@ -48,12 +67,7 @@ describe('AgentPromptEditor', () => {
       }))
 
       expect(fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })).toBe(true)
-      rerender(
-        <AgentPromptEditor
-          value="Review these tenders/"
-          onChange={onChange}
-        />,
-      )
+      rerenderWithValue('Review these tenders/')
       expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
@@ -61,43 +75,26 @@ describe('AgentPromptEditor', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
 
-      expect(onChange).toHaveBeenCalledWith('Review these tenders [§skill:playwright:Playwright§]')
+      expect(store.get(agentConfigurePromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
       })
     })
 
     it('should close slash menu when slash is deleted or the user clicks outside', async () => {
-      const onChange = vi.fn()
-
-      const { rerender } = render(
-        <AgentPromptEditor
-          value="Review/"
-          onChange={onChange}
-        />,
-      )
+      const { rerenderWithValue } = renderAgentPromptEditor('Review/')
 
       fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
       expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
 
-      rerender(
-        <AgentPromptEditor
-          value="Review"
-          onChange={onChange}
-        />,
-      )
+      rerenderWithValue('Review')
       fireEvent.keyUp(screen.getByRole('textbox'), { key: 'Backspace' })
 
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).not.toBeInTheDocument()
       })
 
-      rerender(
-        <AgentPromptEditor
-          value="Review/"
-          onChange={onChange}
-        />,
-      )
+      rerenderWithValue('Review/')
       fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
       expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
 
@@ -109,14 +106,7 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should reopen slash menu when the cursor is positioned after slash', async () => {
-      const onChange = vi.fn()
-
-      render(
-        <AgentPromptEditor
-          value="Review/"
-          onChange={onChange}
-        />,
-      )
+      renderAgentPromptEditor('Review/')
 
       fireEvent.keyUp(screen.getByRole('textbox'), { key: 'ArrowRight' })
 

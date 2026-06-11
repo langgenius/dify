@@ -1,15 +1,17 @@
 'use client'
 
+import type { AgentConfigSnapshotDetailResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/client'
+import { useAgentConfigureCurrentModel, useAgentConfigureModel, useHydrateAgentConfigureDraft } from './atoms'
 import { AgentAdvancedSettings } from './components/advanced-settings'
 import { AgentFiles } from './components/agent-files'
 import { AgentKnowledgeRetrieval } from './components/agent-knowledge-retrieval'
@@ -62,10 +64,9 @@ export function AgentConfigurePage({
   agentId,
 }: AgentConfigurePageProps) {
   const { t } = useTranslation('agentV2')
-  const [selectedModel, setSelectedModel] = useState<DefaultModel>()
-  const [prompt, setPrompt] = useState('')
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [, setConfigureModel] = useAgentConfigureModel()
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
       params: {
@@ -73,15 +74,33 @@ export function AgentConfigurePage({
       },
     },
   }))
+  const activeVersionId = agentQuery.data?.active_config_snapshot_id
+  const versionQuery = useQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
+    input: activeVersionId
+      ? {
+          params: {
+            agent_id: agentId,
+            version_id: activeVersionId,
+          },
+        }
+      : skipToken,
+  }))
+  const agentSoulConfig = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined)?.config_snapshot
+  useHydrateAgentConfigureDraft({
+    agentId,
+    activeVersionId,
+    config: agentSoulConfig,
+  })
   const {
     data: defaultTextGenerationModel,
   } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const currentModel = selectedModel ?? (defaultTextGenerationModel
+  const defaultModel = defaultTextGenerationModel
     ? {
         provider: defaultTextGenerationModel.provider.provider,
         model: defaultTextGenerationModel.model,
       }
-    : undefined)
+    : undefined
+  const currentModel = useAgentConfigureCurrentModel(defaultModel)
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
@@ -116,11 +135,11 @@ export function AgentConfigurePage({
           <AgentModelField
             currentModel={currentModel}
             textGenerationModelList={textGenerationModelList}
-            onSelect={setSelectedModel}
+            onSelect={setConfigureModel}
           />
 
           {/* Prompt editor */}
-          <AgentPromptEditor value={prompt} onChange={setPrompt} />
+          <AgentPromptEditor />
 
           {/* Skills */}
           <AgentSkills agentId={agentId} files={agentFiles} />
@@ -156,11 +175,10 @@ export function AgentConfigurePage({
 
           <div className="min-h-0 flex-1">
             <AgentPreviewChat
-              agentId={agentId}
               appId={agentQuery.data?.app_id}
-              activeVersionId={agentQuery.data?.active_config_snapshot_id}
-              currentModel={currentModel}
-              prompt={prompt}
+              activeVersionId={activeVersionId}
+              agentSoulConfig={agentSoulConfig}
+              isConfigPending={versionQuery.isPending}
               clearChatList={clearPreviewChat}
               onClearChatListChange={setClearPreviewChat}
             />

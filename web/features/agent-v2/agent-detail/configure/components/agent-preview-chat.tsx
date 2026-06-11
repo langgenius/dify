@@ -2,7 +2,6 @@
 
 import type {
   AgentCliToolConfig,
-  AgentConfigSnapshotDetailResponse,
   AgentSoulConfig,
   AgentSoulDifyToolConfig,
 } from '@dify/contracts/api/console/agents/types.gen'
@@ -11,7 +10,6 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Inputs } from '@/models/debug'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -22,13 +20,13 @@ import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/
 import { useAppContext } from '@/context/app-context'
 import { PromptMode } from '@/models/debug'
 import dynamic from '@/next/dynamic'
-import { consoleQuery } from '@/service/client'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
 import { AgentStrategy, ModelModeType, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
+import { useAgentConfigureCurrentModel, useAgentConfigurePrompt } from '../atoms'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
@@ -227,36 +225,23 @@ const buildChatConfig = ({
 }
 
 export function AgentPreviewChat({
-  agentId,
   appId,
   activeVersionId,
-  currentModel,
-  prompt,
+  agentSoulConfig,
+  isConfigPending,
   clearChatList,
   onClearChatListChange,
 }: {
-  agentId: string
   appId?: string | null
   activeVersionId?: string | null
-  currentModel?: DefaultModel
-  prompt: string
+  agentSoulConfig?: AgentSoulConfig
+  isConfigPending: boolean
   clearChatList: boolean
   onClearChatListChange: (clearChatList: boolean) => void
 }) {
   const { userProfile } = useAppContext()
-  const versionQuery = useQuery({
-    ...consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
-      input: activeVersionId
-        ? {
-            params: {
-              agent_id: agentId,
-              version_id: activeVersionId,
-            },
-          }
-        : skipToken,
-    }),
-  })
-  const agentSoulConfig = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined)?.config_snapshot
+  const [prompt] = useAgentConfigurePrompt()
+  const currentModel = useAgentConfigureCurrentModel()
   const config = useMemo(() => buildChatConfig({
     appId,
     agentSoulConfig,
@@ -359,7 +344,7 @@ export function AgentPreviewChat({
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
-      inputDisabled={!appId || (!!activeVersionId && versionQuery.isPending)}
+      inputDisabled={!appId || (!!activeVersionId && isConfigPending)}
       noSpacing
     />
   )

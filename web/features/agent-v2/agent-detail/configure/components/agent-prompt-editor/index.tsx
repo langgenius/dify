@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
+import { useAgentConfigurePrompt } from '../../atoms'
 import {
   defaultAgentFiles,
   defaultAgentKnowledgeRetrievals,
@@ -15,11 +16,6 @@ import {
 import { AgentPromptOptionMenu } from './prompt-option-menu'
 import { appendToken, insertOptions, mentionOptions, replaceTrailingSlashWithToken } from './prompt-options'
 import { AgentPromptSlashMenu } from './slash-menu'
-
-type AgentPromptEditorProps = {
-  value: string
-  onChange: (value: string) => void
-}
 
 const subscribeHydrationState = () => () => {}
 
@@ -64,11 +60,9 @@ const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: s
   return previousChild ? getLastTextContent(previousChild).endsWith('/') : false
 }
 
-export function AgentPromptEditor({
-  value,
-  onChange,
-}: AgentPromptEditorProps) {
+export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
+  const [value, onChange] = useAgentConfigurePrompt()
   const isHydrated = useIsHydrated()
   const promptTip = t('agentDetail.configure.prompt.tip')
   const count = value.length
