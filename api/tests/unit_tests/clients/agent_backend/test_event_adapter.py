@@ -1,3 +1,4 @@
+import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import (
     DeferredToolCallPayload,
@@ -113,6 +114,75 @@ def test_event_adapter_maps_deferred_tool_call_success_to_internal_event():
             source_event_id="5-0",
             deferred_tool_call=deferred_tool_call,
             message="Need review",
+            session_snapshot=snapshot,
+        )
+    ]
+
+
+def test_event_adapter_rejects_deferred_tool_call_success_without_payload():
+    snapshot = CompositorSessionSnapshot(layers=[])
+
+    with pytest.raises(TypeError, match="deferred_tool_call branch is missing payload"):
+        _ = AgentBackendRunEventAdapter().adapt(
+            RunSucceededEvent(
+                id="5-1",
+                run_id="run-1",
+                data=RunSucceededEventData(deferred_tool_call=None, session_snapshot=snapshot),
+            )
+        )
+
+
+def test_event_adapter_uses_deferred_tool_call_title_as_pause_message_fallback():
+    snapshot = CompositorSessionSnapshot(layers=[])
+    deferred_tool_call = DeferredToolCallPayload(
+        tool_call_id="tool-call-1",
+        tool_name="ask_human",
+        args={"title": "Review required"},
+        metadata={},
+    )
+
+    adapted = AgentBackendRunEventAdapter().adapt(
+        RunSucceededEvent(
+            id="5-2",
+            run_id="run-1",
+            data=RunSucceededEventData(deferred_tool_call=deferred_tool_call, session_snapshot=snapshot),
+        )
+    )
+
+    assert adapted == [
+        AgentBackendDeferredToolCallInternalEvent(
+            run_id="run-1",
+            source_event_id="5-2",
+            deferred_tool_call=deferred_tool_call,
+            message="Review required",
+            session_snapshot=snapshot,
+        )
+    ]
+
+
+def test_event_adapter_uses_generic_deferred_tool_call_pause_message_when_args_have_no_label():
+    snapshot = CompositorSessionSnapshot(layers=[])
+    deferred_tool_call = DeferredToolCallPayload(
+        tool_call_id="tool-call-1",
+        tool_name="ask_human",
+        args={"question": "   ", "title": "   "},
+        metadata={},
+    )
+
+    adapted = AgentBackendRunEventAdapter().adapt(
+        RunSucceededEvent(
+            id="5-3",
+            run_id="run-1",
+            data=RunSucceededEventData(deferred_tool_call=deferred_tool_call, session_snapshot=snapshot),
+        )
+    )
+
+    assert adapted == [
+        AgentBackendDeferredToolCallInternalEvent(
+            run_id="run-1",
+            source_event_id="5-3",
+            deferred_tool_call=deferred_tool_call,
+            message="Agent backend requested external input via deferred tool 'ask_human'.",
             session_snapshot=snapshot,
         )
     ]
