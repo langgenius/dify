@@ -2,8 +2,7 @@
 
 import { useAtomValue, useSetAtom } from 'jotai'
 import {
-  useReleaseInstanceNameConflict,
-  useReleaseInstanceNameConflictChecking,
+  useReleaseInstanceNameConflictQuery,
 } from '../../models/release'
 import { useSourceReady } from '../../models/source'
 import { submittedReleaseFieldsAtom } from '../../state/release-atoms'
@@ -17,15 +16,18 @@ import {
   setStepAtom,
 } from '../../state/workflow-atoms'
 
-export function useReleaseCanEnterTargetStep() {
+function useReleaseTargetStepReady() {
   const sourceReady = useSourceReady()
   const {
     submittedInstanceName,
     submittedReleaseName,
   } = useAtomValue(submittedReleaseFieldsAtom)
-  const hasInstanceNameConflict = useReleaseInstanceNameConflict()
-  const isCheckingInstanceNameConflict = useReleaseInstanceNameConflictChecking()
+  const {
+    hasInstanceNameConflict,
+    instanceNameConflictQuery,
+  } = useReleaseInstanceNameConflictQuery()
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
+  const isCheckingInstanceNameConflict = Boolean(submittedInstanceName) && instanceNameConflictQuery.isLoading
 
   return sourceReady
     && Boolean(submittedInstanceName)
@@ -35,12 +37,17 @@ export function useReleaseCanEnterTargetStep() {
     && unsupportedDslNodes.length === 0
 }
 
-export function useReleaseNextAction(canEnterTargetStep: boolean) {
+export function useReleaseNextDisabled() {
+  return !useReleaseTargetStepReady()
+}
+
+export function useReleaseNextAction() {
   const setStep = useSetAtom(setStepAtom)
   const resetTargetOptions = useSetAtom(resetDeploymentTargetOptionsAtom)
+  const targetStepReady = useReleaseTargetStepReady()
 
   function handleNext() {
-    if (!canEnterTargetStep)
+    if (!targetStepReady)
       return
 
     resetTargetOptions()

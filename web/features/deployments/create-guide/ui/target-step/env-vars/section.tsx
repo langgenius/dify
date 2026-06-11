@@ -11,8 +11,7 @@ import {
   setEnvVarAtom,
 } from '../../../state/target-atoms'
 import {
-  useTargetEnvVarIsBindingError,
-  useTargetEnvVarIsBindingLoading,
+  useTargetEnvVarDeploymentOptionsQuery,
   useTargetEnvVarSlots,
 } from './section.data'
 
@@ -21,8 +20,9 @@ export function TargetEnvVarSection() {
   const envVarSlots = useTargetEnvVarSlots()
   const envVarValues = useAtomValue(envVarValuesAtom)
   const setEnvVar = useSetAtom(setEnvVarAtom)
-  const isBindingError = useTargetEnvVarIsBindingError()
-  const isBindingLoading = useTargetEnvVarIsBindingLoading()
+  const deploymentOptionsQuery = useTargetEnvVarDeploymentOptionsQuery()
+  const isBindingError = deploymentOptionsQuery.isError
+  const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
 
   function onSetEnvVar(key: string, value: EnvVarValueSelection) {
     setEnvVar({ key, value })

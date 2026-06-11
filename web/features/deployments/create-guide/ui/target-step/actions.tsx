@@ -9,18 +9,18 @@ import {
 } from '../../state/submission-atoms'
 import { setStepAtom } from '../../state/workflow-atoms'
 import {
-  useTargetCanDeploy,
-  useTargetCanSkipDeployment,
   useTargetDeployAction,
+  useTargetDeployDisabled,
   useTargetSkipDeploymentAction,
+  useTargetSkipDeploymentDisabled,
 } from './actions.data'
 
 export function TargetActionButtons() {
   const { t } = useTranslation('deployments')
-  const canDeploy = useTargetCanDeploy()
-  const canSkipDeployment = useTargetCanSkipDeployment()
+  const deployDisabled = useTargetDeployDisabled()
+  const skipDeploymentDisabled = useTargetSkipDeploymentDisabled()
   const handleDeploy = useTargetDeployAction()
-  const handleSkipDeployment = useTargetSkipDeploymentAction(canSkipDeployment)
+  const handleSkipDeployment = useTargetSkipDeploymentAction()
   const setStep = useSetAtom(setStepAtom)
   const isDeploying = useAtomValue(isSubmittingDeploymentGuideAtom)
   const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
@@ -41,10 +41,10 @@ export function TargetActionButtons() {
       <Button type="button" variant="secondary" onClick={handleBack} disabled={isDeploying}>
         {t('createGuide.actions.back')}
       </Button>
-      <Button type="button" variant="secondary" disabled={!canSkipDeployment || isDeploying} onClick={handleSkipDeployment}>
+      <Button type="button" variant="secondary" disabled={skipDeploymentDisabled || isDeploying} onClick={handleSkipDeployment}>
         {skipLabel}
       </Button>
-      <Button type="button" variant="primary" disabled={!canDeploy || isDeploying} onClick={handleDeploy}>
+      <Button type="button" variant="primary" disabled={deployDisabled || isDeploying} onClick={handleDeploy}>
         {primaryLabel}
       </Button>
     </>

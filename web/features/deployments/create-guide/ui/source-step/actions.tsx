@@ -3,17 +3,17 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import {
-  useSourceCanEnterReleaseStep,
   useSourceNextAction,
+  useSourceNextDisabled,
 } from './actions.data'
 
 export function SourceActionButtons() {
   const { t } = useTranslation('deployments')
-  const canEnterReleaseStep = useSourceCanEnterReleaseStep()
-  const handleNext = useSourceNextAction(canEnterReleaseStep)
+  const nextDisabled = useSourceNextDisabled()
+  const handleNext = useSourceNextAction()
 
   return (
-    <Button type="button" variant="primary" disabled={!canEnterReleaseStep} onClick={handleNext}>
+    <Button type="button" variant="primary" disabled={nextDisabled} onClick={handleNext}>
       {t('createGuide.actions.next')}
     </Button>
   )

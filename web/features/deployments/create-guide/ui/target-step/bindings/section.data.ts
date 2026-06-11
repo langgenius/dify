@@ -7,7 +7,6 @@ import { useDeploymentOptionsQuery } from '../../../queries/target-options'
 import {
   manualBindingSelectionsAtom,
 } from '../../../state/target-atoms'
-import { unsupportedDslNodesAtom } from '../../../state/unsupported-dsl-atoms'
 
 function useDeploymentOptionsForTargetBinding() {
   const {
@@ -23,6 +22,10 @@ function useDeploymentOptionsForTargetBinding() {
     method,
     queryGate,
   })
+}
+
+export function useTargetBindingDeploymentOptionsQuery() {
+  return useDeploymentOptionsForTargetBinding().deploymentOptionsQuery
 }
 
 export function useTargetBindingSelections() {
@@ -47,23 +50,4 @@ export function useTargetBindingSlots() {
     manualBindingSelections,
     shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
   }).bindingSlots
-}
-
-export function useTargetBindingIsError() {
-  return useDeploymentOptionsForTargetBinding().deploymentOptionsQuery.isError
-}
-
-export function useTargetBindingIsLoading() {
-  const { queryGate } = useDeploymentTargetQueryGate()
-  const deploymentOptionsQuery = useDeploymentOptionsForTargetBinding().deploymentOptionsQuery
-
-  return queryGate.shouldLoadDeploymentTarget
-    && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
-}
-
-export function useShouldRenderTargetBindingSection() {
-  const isBindingError = useTargetBindingIsError()
-  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
-
-  return !(isBindingError && unsupportedDslNodes.length > 0)
 }

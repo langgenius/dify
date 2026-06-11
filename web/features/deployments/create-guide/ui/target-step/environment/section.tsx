@@ -11,17 +11,14 @@ import { selectEnvironmentAtom } from '../../../state/target-atoms'
 import { TargetEnvironmentSkeleton } from '../skeletons'
 import {
   useTargetEffectiveSelectedEnvironmentId,
-  useTargetEnvironmentIsError,
-  useTargetEnvironmentIsLoading,
-  useTargetEnvironmentIsSelected,
   useTargetEnvironments,
+  useTargetEnvironmentsQuery,
 } from './section.data'
 
 function EnvironmentOptionRow({ environment }: {
   environment: Environment
 }) {
   const { t } = useTranslation('deployments')
-  const selected = useTargetEnvironmentIsSelected(environment.id)
   const summary = environment.description.trim() || `${t(`mode.${environment.mode}`)} · ${t(`backend.${environment.backend}`)}`
 
   return (
@@ -29,7 +26,7 @@ function EnvironmentOptionRow({ environment }: {
       value={environment.id}
       variant="unstyled"
       className={cn(
-        'flex cursor-pointer items-center gap-3 rounded-xl border p-3 outline-hidden',
+        'group flex cursor-pointer items-center gap-3 rounded-xl border p-3 outline-hidden',
         'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
         'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         'data-checked:border-state-accent-solid data-checked:bg-state-accent-hover data-checked:shadow-xs',
@@ -37,9 +34,9 @@ function EnvironmentOptionRow({ environment }: {
     >
       <RadioControl />
       <span className="flex min-w-0 grow flex-col gap-1">
-        <span className={cn('truncate system-sm-semibold', selected ? 'text-text-accent' : 'text-text-primary')}>{environment.name}</span>
+        <span className="truncate system-sm-semibold text-text-primary group-data-checked:text-text-accent">{environment.name}</span>
         <TitleTooltip content={summary}>
-          <span className={cn('line-clamp-1 system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>
+          <span className="line-clamp-1 system-xs-regular text-text-tertiary group-data-checked:text-text-secondary">
             {summary}
           </span>
         </TitleTooltip>
@@ -52,8 +49,9 @@ export function TargetEnvironmentSection() {
   const { t } = useTranslation('deployments')
   const effectiveSelectedEnvironmentId = useTargetEffectiveSelectedEnvironmentId()
   const environments = useTargetEnvironments()
-  const isEnvironmentError = useTargetEnvironmentIsError()
-  const isEnvironmentLoading = useTargetEnvironmentIsLoading()
+  const environmentsQuery = useTargetEnvironmentsQuery()
+  const isEnvironmentError = environmentsQuery.isError
+  const isEnvironmentLoading = environmentsQuery.isLoading || (environmentsQuery.isFetching && !environmentsQuery.data)
   const onSelectEnvironment = useSetAtom(selectEnvironmentAtom)
   const hasEnvironmentOptions = environments.length > 0
 

@@ -50,69 +50,22 @@ function useTargetSubmittedReleaseReady(sourceReady: boolean) {
   )
 }
 
-export function useTargetCanDeploy() {
-  const sourceReady = useSourceReady()
-  const dslContent = useAtomValue(dslContentAtom)
-  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
-  const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
-  const envVarValues = useAtomValue(envVarValuesAtom)
-  const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
-  const { method, queryGate } = useDeploymentTargetQueryGate()
-  const deploymentOptionsResult = useDeploymentOptionsForTargetActions()
-  const deployableEnvironmentsQuery = useDeployableEnvironmentsQuery(queryGate.shouldLoadDeploymentTarget)
-  const environments = queryGate.shouldLoadDeploymentTarget
-    ? deployableEnvironmentsQuery.data?.data ?? []
-    : []
-  const targetEnvironment = createDeploymentTargetEnvironment({
-    environments,
-    selectedEnvironmentId,
-  })
-  const targetBindings = createDeploymentTargetBindings({
-    credentialSlots: deploymentOptionsResult.deploymentOptions?.credentialSlots,
-    manualBindingSelections,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
-  })
-  const targetEnvVars = createDeploymentTargetEnvVars({
-    dslContent,
-    envVarValues,
-    method,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
-    slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
-  })
-  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
-  const deploymentTargetReady = queryGate.shouldLoadDeploymentTarget
-    && !(deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
-    && !deployableEnvironmentsQuery.isError
-    && !(deploymentOptionsResult.deploymentOptionsQuery.isLoading || (deploymentOptionsResult.deploymentOptionsQuery.isFetching && !deploymentOptionsResult.deploymentOptionsQuery.data))
-    && !deploymentOptionsResult.deploymentOptionsQuery.isError
-    && unsupportedDslNodes.length === 0
-
-  return Boolean(
-    targetEnvironment.selectedEnvironment?.id
-    && deploymentTargetReady
-    && targetBindings.requiredBindingsReady
-    && targetEnvVars.requiredEnvVarsReady
-    && submittedReleaseReady,
-  )
+type QueryFetchState = {
+  data: unknown
+  isError: boolean
+  isFetching: boolean
+  isLoading: boolean
 }
 
-export function useTargetCanSkipDeployment() {
-  const sourceReady = useSourceReady()
-  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
-  const deploymentOptionsResult = useDeploymentOptionsForTargetActions()
-  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
-
-  return Boolean(
-    submittedReleaseReady
-    && !deploymentOptionsResult.deploymentOptionsQuery.isError
-    && unsupportedDslNodes.length === 0,
-  )
+function queryIsLoading(query: QueryFetchState) {
+  return query.isLoading || (query.isFetching && !query.data)
 }
 
-export function useTargetDeployAction() {
+function useTargetActionDraft() {
   const sourceReady = useSourceReady()
   const selectedApp = useAtomValue(selectedAppAtom)
   const dslContent = useAtomValue(dslContentAtom)
+  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
   const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
   const envVarValues = useAtomValue(envVarValuesAtom)
   const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
@@ -139,79 +92,99 @@ export function useTargetDeployAction() {
     slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
   })
   const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
+
+  return {
+    deployableEnvironmentsQuery,
+    deploymentOptions: deploymentOptionsResult.deploymentOptions,
+    deploymentOptionsQuery: deploymentOptionsResult.deploymentOptionsQuery,
+    envVarValues,
+    queryGate,
+    selectedApp,
+    selectedEnvironmentId,
+    submittedReleaseReady,
+    targetBindings,
+    targetEnvironment,
+    targetEnvVars,
+    unsupportedDslNodes,
+  }
+}
+
+type TargetActionDraft = ReturnType<typeof useTargetActionDraft>
+
+function targetCanDeploy(draft: TargetActionDraft) {
+  const deploymentTargetReady = draft.queryGate.shouldLoadDeploymentTarget
+    && !queryIsLoading(draft.deployableEnvironmentsQuery)
+    && !draft.deployableEnvironmentsQuery.isError
+    && !queryIsLoading(draft.deploymentOptionsQuery)
+    && !draft.deploymentOptionsQuery.isError
+    && draft.unsupportedDslNodes.length === 0
+
+  return Boolean(
+    draft.targetEnvironment.selectedEnvironment?.id
+    && deploymentTargetReady
+    && draft.targetBindings.requiredBindingsReady
+    && draft.targetEnvVars.requiredEnvVarsReady
+    && draft.submittedReleaseReady,
+  )
+}
+
+function targetCanSkipDeployment(draft: TargetActionDraft) {
+  return Boolean(
+    draft.submittedReleaseReady
+    && !draft.deploymentOptionsQuery.isError
+    && draft.unsupportedDslNodes.length === 0,
+  )
+}
+
+function useTargetDeploymentSubmission(draft: TargetActionDraft) {
   const { createDeploymentAndRelease } = useCreateDeploymentSubmission({
-    effectiveSelectedApp: selectedApp,
+    effectiveSelectedApp: draft.selectedApp,
     hasInstanceNameConflict: false,
-    isInitialReleaseReady: submittedReleaseReady,
+    isInitialReleaseReady: draft.submittedReleaseReady,
     targetSubmissionState: {
-      bindingSelections: targetBindings.bindingSelections,
-      bindingSlots: targetBindings.bindingSlots,
-      deployableEnvironmentsQuery,
-      deploymentOptions: deploymentOptionsResult.deploymentOptions,
-      envVarSlots: targetEnvVars.envVarSlots,
-      envVarValues,
-      requiredEnvVarsReady: targetEnvVars.requiredEnvVarsReady,
-      selectedEnvironment: targetEnvironment.selectedEnvironment,
-      selectedEnvironmentId,
+      bindingSelections: draft.targetBindings.bindingSelections,
+      bindingSlots: draft.targetBindings.bindingSlots,
+      deployableEnvironmentsQuery: draft.deployableEnvironmentsQuery,
+      deploymentOptions: draft.deploymentOptions,
+      envVarSlots: draft.targetEnvVars.envVarSlots,
+      envVarValues: draft.envVarValues,
+      requiredEnvVarsReady: draft.targetEnvVars.requiredEnvVarsReady,
+      selectedEnvironment: draft.targetEnvironment.selectedEnvironment,
+      selectedEnvironmentId: draft.selectedEnvironmentId,
     },
   })
 
+  return createDeploymentAndRelease
+}
+
+export function useTargetDeployDisabled() {
+  return !targetCanDeploy(useTargetActionDraft())
+}
+
+export function useTargetSkipDeploymentDisabled() {
+  return !targetCanSkipDeployment(useTargetActionDraft())
+}
+
+export function useTargetDeployAction() {
+  const draft = useTargetActionDraft()
+  const createDeploymentAndRelease = useTargetDeploymentSubmission(draft)
+
   async function handleDeploy() {
+    if (!targetCanDeploy(draft))
+      return
+
     await createDeploymentAndRelease({ deployToEnvironment: true })
   }
 
   return handleDeploy
 }
 
-export function useTargetSkipDeploymentAction(canSkipDeployment: boolean) {
-  const sourceReady = useSourceReady()
-  const selectedApp = useAtomValue(selectedAppAtom)
-  const dslContent = useAtomValue(dslContentAtom)
-  const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
-  const envVarValues = useAtomValue(envVarValuesAtom)
-  const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
-  const { method, queryGate } = useDeploymentTargetQueryGate()
-  const deploymentOptionsResult = useDeploymentOptionsForTargetActions()
-  const deployableEnvironmentsQuery = useDeployableEnvironmentsQuery(queryGate.shouldLoadDeploymentTarget)
-  const environments = queryGate.shouldLoadDeploymentTarget
-    ? deployableEnvironmentsQuery.data?.data ?? []
-    : []
-  const targetEnvironment = createDeploymentTargetEnvironment({
-    environments,
-    selectedEnvironmentId,
-  })
-  const targetBindings = createDeploymentTargetBindings({
-    credentialSlots: deploymentOptionsResult.deploymentOptions?.credentialSlots,
-    manualBindingSelections,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
-  })
-  const targetEnvVars = createDeploymentTargetEnvVars({
-    dslContent,
-    envVarValues,
-    method,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
-    slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
-  })
-  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
-  const { createDeploymentAndRelease } = useCreateDeploymentSubmission({
-    effectiveSelectedApp: selectedApp,
-    hasInstanceNameConflict: false,
-    isInitialReleaseReady: submittedReleaseReady,
-    targetSubmissionState: {
-      bindingSelections: targetBindings.bindingSelections,
-      bindingSlots: targetBindings.bindingSlots,
-      deployableEnvironmentsQuery,
-      deploymentOptions: deploymentOptionsResult.deploymentOptions,
-      envVarSlots: targetEnvVars.envVarSlots,
-      envVarValues,
-      requiredEnvVarsReady: targetEnvVars.requiredEnvVarsReady,
-      selectedEnvironment: targetEnvironment.selectedEnvironment,
-      selectedEnvironmentId,
-    },
-  })
+export function useTargetSkipDeploymentAction() {
+  const draft = useTargetActionDraft()
+  const createDeploymentAndRelease = useTargetDeploymentSubmission(draft)
 
   async function handleSkipDeployment() {
-    if (!canSkipDeployment)
+    if (!targetCanSkipDeployment(draft))
       return
 
     await createDeploymentAndRelease({ deployToEnvironment: false })

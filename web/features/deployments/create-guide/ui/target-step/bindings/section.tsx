@@ -1,16 +1,15 @@
 'use client'
 
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   RuntimeCredentialBindingsPanel,
 } from '@/features/deployments/components/runtime-credential-bindings'
 import { selectBindingAtom } from '../../../state/target-atoms'
+import { unsupportedDslNodesAtom } from '../../../state/unsupported-dsl-atoms'
 import { TargetBindingSkeleton } from '../skeletons'
 import {
-  useShouldRenderTargetBindingSection,
-  useTargetBindingIsError,
-  useTargetBindingIsLoading,
+  useTargetBindingDeploymentOptionsQuery,
   useTargetBindingSelections,
   useTargetBindingSlots,
 } from './section.data'
@@ -19,10 +18,12 @@ export function TargetBindingSection() {
   const { t } = useTranslation('deployments')
   const bindingSelections = useTargetBindingSelections()
   const bindingSlots = useTargetBindingSlots()
-  const isBindingError = useTargetBindingIsError()
-  const isBindingLoading = useTargetBindingIsLoading()
+  const deploymentOptionsQuery = useTargetBindingDeploymentOptionsQuery()
+  const isBindingError = deploymentOptionsQuery.isError
+  const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
   const selectBinding = useSetAtom(selectBindingAtom)
-  const shouldRender = useShouldRenderTargetBindingSection()
+  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
+  const shouldRender = !(isBindingError && unsupportedDslNodes.length > 0)
 
   if (!shouldRender)
     return null

@@ -24,11 +24,14 @@ function filterSourceAppsBySearchText(sourceApps: App[], sourceSearchText: strin
   return sourceApps.filter(app => sourceAppSearchText(app).includes(searchText))
 }
 
-function useSourceApps() {
+export function useSourceAppListQuery() {
   const sourceSearchText = useAtomValue(sourceSearchTextAtom)
-  const sourceAppsQuery = useSourceAppsQuery({ sourceSearchText })
 
-  return sourceAppsFromQueryData(sourceAppsQuery.data)
+  return useSourceAppsQuery({ sourceSearchText })
+}
+
+export function useSourceApps() {
+  return sourceAppsFromQueryData(useSourceAppListQuery().data)
 }
 
 export function useFilteredSourceApps() {
@@ -36,14 +39,6 @@ export function useFilteredSourceApps() {
   const sourceApps = useSourceApps()
 
   return filterSourceAppsBySearchText(sourceApps, sourceSearchText)
-}
-
-export function useSourceAppsLoading() {
-  const sourceSearchText = useAtomValue(sourceSearchTextAtom)
-  const sourceAppsQuery = useSourceAppsQuery({ sourceSearchText })
-  const sourceApps = sourceAppsFromQueryData(sourceAppsQuery.data)
-
-  return sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)
 }
 
 export function useSourceAppSelected(appId: string) {

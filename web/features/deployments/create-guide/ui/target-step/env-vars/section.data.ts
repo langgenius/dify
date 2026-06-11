@@ -25,6 +25,10 @@ function useDeploymentOptionsForTargetEnvVars() {
   })
 }
 
+export function useTargetEnvVarDeploymentOptionsQuery() {
+  return useDeploymentOptionsForTargetEnvVars().deploymentOptionsQuery
+}
+
 export function useTargetEnvVarSlots() {
   const dslContent = useAtomValue(dslContentAtom)
   const envVarValues = useAtomValue(envVarValuesAtom)
@@ -38,16 +42,4 @@ export function useTargetEnvVarSlots() {
     shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
     slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
   }).envVarSlots
-}
-
-export function useTargetEnvVarIsBindingError() {
-  return useDeploymentOptionsForTargetEnvVars().deploymentOptionsQuery.isError
-}
-
-export function useTargetEnvVarIsBindingLoading() {
-  const { queryGate } = useDeploymentTargetQueryGate()
-  const deploymentOptionsQuery = useDeploymentOptionsForTargetEnvVars().deploymentOptionsQuery
-
-  return queryGate.shouldLoadDeploymentTarget
-    && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
 }

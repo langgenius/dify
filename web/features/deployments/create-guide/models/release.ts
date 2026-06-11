@@ -27,7 +27,7 @@ function hasReleaseInstanceNameConflict({
   )
 }
 
-function useReleaseInstanceNameConflictQueryFields() {
+export function useReleaseInstanceNameConflictQuery() {
   const appInstancesQuery = useExistingInstanceNamesQuery()
   const existingInstanceNames = existingInstanceNamesFromQueryData(appInstancesQuery.data)
   const submittedInstanceName = useAtomValue(submittedReleaseFieldsAtom).submittedInstanceName
@@ -43,17 +43,4 @@ function useReleaseInstanceNameConflictQueryFields() {
   })
 
   return { hasInstanceNameConflict, instanceNameConflictQuery, submittedInstanceName }
-}
-
-export function useReleaseInstanceNameConflict() {
-  return useReleaseInstanceNameConflictQueryFields().hasInstanceNameConflict
-}
-
-export function useReleaseInstanceNameConflictChecking() {
-  const {
-    instanceNameConflictQuery,
-    submittedInstanceName,
-  } = useReleaseInstanceNameConflictQueryFields()
-
-  return Boolean(submittedInstanceName) && instanceNameConflictQuery.isLoading
 }

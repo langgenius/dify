@@ -36,7 +36,7 @@ function effectiveSourceApp(selectedApp: WorkflowSourceApp | undefined, sourceAp
   return selectedApp ?? sourceApps[0]
 }
 
-export function useSourceCanEnterReleaseStep() {
+function useSourceReleaseStepReady() {
   const method = useAtomValue(methodAtom)
   const dslReadError = useAtomValue(dslReadErrorAtom)
   const isReadingDsl = useAtomValue(isReadingDslAtom)
@@ -60,7 +60,11 @@ export function useSourceCanEnterReleaseStep() {
   return (importDslReady || bindAppReady) && unsupportedDslNodes.length === 0
 }
 
-export function useSourceNextAction(canEnterReleaseStep: boolean) {
+export function useSourceNextDisabled() {
+  return !useSourceReleaseStepReady()
+}
+
+export function useSourceNextAction() {
   const { t } = useTranslation('deployments')
   const method = useAtomValue(methodAtom)
   const sourceSearchText = useAtomValue(sourceSearchTextAtom)
@@ -79,9 +83,10 @@ export function useSourceNextAction(canEnterReleaseStep: boolean) {
   const sourceName = method === 'importDsl'
     ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
     : effectiveSelectedApp?.name
+  const releaseStepReady = useSourceReleaseStepReady()
 
   function handleNext() {
-    if (!canEnterReleaseStep)
+    if (!releaseStepReady)
       return
 
     if (method === 'bindApp' && effectiveSelectedApp)

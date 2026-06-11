@@ -2,7 +2,7 @@
 
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useReleaseInstanceNameConflict } from '../../models/release'
+import { useReleaseInstanceNameConflictQuery } from '../../models/release'
 import { dslDefaultAppNameAtom } from '../../state/dsl-atoms'
 import { selectedAppAtom } from '../../state/source-atoms'
 import { methodAtom } from '../../state/workflow-atoms'
@@ -20,7 +20,7 @@ export function useReleaseInstanceNamePlaceholder() {
 
 export function useReleaseInstanceNameError() {
   const { t } = useTranslation('deployments')
-  const hasInstanceNameConflict = useReleaseInstanceNameConflict()
+  const { hasInstanceNameConflict } = useReleaseInstanceNameConflictQuery()
 
   return hasInstanceNameConflict ? t('createGuide.release.instanceNameConflict') : undefined
 }

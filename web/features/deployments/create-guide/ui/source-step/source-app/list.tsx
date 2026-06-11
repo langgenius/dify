@@ -10,8 +10,9 @@ import { DeploymentStateMessage } from '@/features/deployments/components/empty-
 import { selectSourceAppAtom } from '../../../state/source-atoms'
 import {
   useFilteredSourceApps,
+  useSourceAppListQuery,
+  useSourceApps,
   useSourceAppSelected,
-  useSourceAppsLoading,
 } from './list.data'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
@@ -19,8 +20,10 @@ const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-s
 export function SourceAppList() {
   const { t } = useTranslation('deployments')
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
+  const sourceAppsQuery = useSourceAppListQuery()
+  const sourceApps = useSourceApps()
   const filteredApps = useFilteredSourceApps()
-  const sourceAppsLoading = useSourceAppsLoading()
+  const sourceAppsLoading = sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
