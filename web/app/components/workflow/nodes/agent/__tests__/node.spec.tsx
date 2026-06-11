@@ -138,6 +138,24 @@ describe('agent/node', () => {
     expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
   })
 
+  it('keeps the graph roster draft visible when composer has no binding yet', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        agent: undefined,
+        binding: undefined,
+      },
+    })
+
+    render(
+      <AgentNode
+        id="agent-node"
+        data={createData()}
+      />,
+    )
+
+    expect(screen.getByText(/workflow.nodes.agent.roster.label:normal:/)).toHaveTextContent('Nadia')
+  })
+
   it('does not show stale graph roster data when composer binding is not roster-backed', () => {
     mockUseQuery.mockReturnValue({
       data: {

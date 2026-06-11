@@ -264,6 +264,26 @@ describe('agent/panel', () => {
     expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
   })
 
+  it('keeps the graph roster draft visible when composer has no binding yet', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        agent: undefined,
+        binding: undefined,
+      },
+    })
+
+    render(
+      <AgentPanel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('Nadia')).toBeInTheDocument()
+    expect(screen.getByText('Clarification Drafter')).toBeInTheDocument()
+  })
+
   it('does not show stale graph roster data when the composer binding is not roster-backed', () => {
     mockUseQuery.mockReturnValue({
       data: {
