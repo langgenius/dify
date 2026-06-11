@@ -146,8 +146,8 @@ describe('Blocks', () => {
           <Blocks
             searchText=""
             onSelect={vi.fn()}
-            availableBlocksTypes={[BlockEnum.Agent]}
-            blocks={[createBlock(BlockEnum.Agent, 'Agent')]}
+            availableBlocksTypes={[BlockEnum.AgentV2]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent')]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -203,10 +203,10 @@ describe('Blocks', () => {
           <Blocks
             searchText=""
             onSelect={onSelect}
-            availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Agent]}
+            availableBlocksTypes={[BlockEnum.LLM, BlockEnum.AgentV2]}
             blocks={[
               createBlock(BlockEnum.LLM, 'LLM', BlockClassificationEnum.Default, 0),
-              createBlock(BlockEnum.Agent, 'Agent', BlockClassificationEnum.Default, 3),
+              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3),
             ]}
           />
         </HooksStoreContext>
@@ -226,7 +226,7 @@ describe('Blocks', () => {
 
     await user.click(screen.getByRole('option', { name: 'Nadia Clarification Drafter' }))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.Agent, {
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_node_kind: 'dify_agent',
       agent_roster: {
         description: 'Clarification Drafter',
@@ -279,8 +279,8 @@ describe('Blocks', () => {
           <Blocks
             searchText=""
             onSelect={vi.fn()}
-            availableBlocksTypes={[BlockEnum.Agent]}
-            blocks={[createBlock(BlockEnum.Agent, 'Agent')]}
+            availableBlocksTypes={[BlockEnum.AgentV2]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent')]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,

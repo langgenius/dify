@@ -13,6 +13,7 @@ import type { ParameterExtractorNodeType } from '../../../parameter-extractor/ty
 import type { QuestionClassifierNodeType } from '../../../question-classifier/types'
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
 import type { ToolNodeType } from '../../../tool/types'
+import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
@@ -51,6 +52,7 @@ import {
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
+import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
@@ -592,6 +594,30 @@ const formatItem = (
     }
 
     case BlockEnum.Agent: {
+      if (isAgentV2NodeData(data)) {
+        res.vars = AGENT_OUTPUT_STRUCT
+        break
+      }
+
+      const payload = data as AgentNodeType
+      const outputs: Var[] = []
+      Object.keys(payload.output_schema?.properties || {}).forEach(
+        (outputKey) => {
+          const output = payload.output_schema.properties[outputKey]
+          outputs.push({
+            variable: outputKey,
+            type:
+              output.type === 'array'
+                ? (`Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]` as VarType)
+                : (`${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType),
+          })
+        },
+      )
+      res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
+      break
+    }
+
+    case BlockEnum.AgentV2: {
       res.vars = AGENT_OUTPUT_STRUCT
       break
     }
@@ -1435,7 +1461,27 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.Agent: {
+      if (isAgentV2NodeData(data)) {
+        const payload = data as AgentV2NodeType
+        res = matchNotSystemVars([payload.agent_task || ''])
+        break
+      }
+
       const payload = data as AgentNodeType
+      const valueSelectors: ValueSelector[] = []
+      if (!payload.agent_parameters)
+        break
+
+      Object.keys(payload.agent_parameters || {}).forEach((key) => {
+        const { value } = payload.agent_parameters![key]!
+        if (typeof value === 'string')
+          valueSelectors.push(...matchNotSystemVars([value]))
+      })
+      res = valueSelectors
+      break
+    }
+    case BlockEnum.AgentV2: {
+      const payload = data as AgentV2NodeType
       res = matchNotSystemVars([payload.agent_task || ''])
       break
     }
@@ -1859,7 +1905,57 @@ export const updateNodeVars = (
         break
       }
       case BlockEnum.Agent: {
+        if (isAgentV2NodeData(data)) {
+          const payload = data as AgentV2NodeType
+          payload.agent_task = replaceOldVarInText(
+            payload.agent_task || '',
+            oldVarSelector,
+            newVarSelector,
+          )
+          break
+        }
+
         const payload = data as AgentNodeType
+        if (payload.agent_parameters) {
+          Object.keys(payload.agent_parameters).forEach((key) => {
+            const value = payload.agent_parameters![key]!
+            const { type } = value!
+
+            if (
+              type === ToolVarType.variable
+              && Array.isArray(value!.value)
+              && value!.value.join('.') === oldVarSelector.join('.')
+            ) {
+              payload.agent_parameters![key] = {
+                ...value,
+                value: newVarSelector,
+              }
+            }
+
+            if (type === ToolVarType.mixed && typeof value!.value === 'string') {
+              payload.agent_parameters![key] = {
+                ...value,
+                value: replaceOldVarInText(
+                  value!.value,
+                  oldVarSelector,
+                  newVarSelector,
+                ),
+              }
+            }
+          })
+        }
+
+        if (payload.memory?.query_prompt_template) {
+          payload.memory.query_prompt_template = replaceOldVarInText(
+            payload.memory.query_prompt_template,
+            oldVarSelector,
+            newVarSelector,
+          )
+        }
+        break
+      }
+      case BlockEnum.AgentV2: {
+        const payload = data as AgentV2NodeType
         payload.agent_task = replaceOldVarInText(
           payload.agent_task || '',
           oldVarSelector,

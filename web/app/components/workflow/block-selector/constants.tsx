@@ -64,6 +64,11 @@ export const BLOCKS = [
   {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.Agent,
+    title: 'Old Agent',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.AgentV2,
     title: 'Agent',
   },
   {

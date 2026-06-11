@@ -1,72 +1,195 @@
+import type { FC } from 'react'
 import type { NodePanelProps } from '../../types'
 import type { AgentNodeType } from './types'
-import { skipToken, useQuery } from '@tanstack/react-query'
-import { produce } from 'immer'
-import { useCallback } from 'react'
+import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { StrategyParamItem } from '@/app/components/plugins/types'
+import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
-import { useHooksStore } from '../../hooks-store/store'
+import { toType } from '@/app/components/tools/utils/to-form-schema'
+import { isSupportMCP } from '@/utils/plugin-version-feature'
+import { useStore } from '../../store'
+import { AgentStrategy } from '../_base/components/agent-strategy'
+import Field from '../_base/components/field'
+import { MCPToolAvailabilityProvider } from '../_base/components/mcp-tool-availability'
+import MemoryConfig from '../_base/components/memory-config'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
-import useNodeCrud from '../_base/hooks/use-node-crud'
-import { AgentAdvancedSettings } from './components/agent-advanced-settings'
-import { AgentRosterField } from './components/agent-roster-field'
-import { AgentTaskField } from './components/agent-task-field'
-import { defaultDeclaredOutputs, getRosterAgentFromComposer, outputToVarItem } from './helpers'
+import Split from '../_base/components/split'
+import { AgentFeature } from './types'
+import useConfig from './use-config'
 
-export function AgentPanel({
-  id,
-  data,
-}: NodePanelProps<AgentNodeType>) {
-  const { t } = useTranslation()
-  const { inputs, setInputs } = useNodeCrud<AgentNodeType>(id, data)
-  const appId = useHooksStore(s => s.configsMap?.flowId)
-  const composerQuery = useQuery({
-    ...consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
-      input: appId
-        ? {
-            params: {
-              app_id: appId,
-              node_id: id,
-            },
-          }
-        : skipToken,
-    }),
-  })
-  const outputVars = (composerQuery.data?.effective_declared_outputs?.length
-    ? composerQuery.data.effective_declared_outputs
-    : defaultDeclaredOutputs).map(output => outputToVarItem(output, t))
-  const rosterAgent = getRosterAgentFromComposer(composerQuery.data, inputs.agent_roster)
+const i18nPrefix = 'nodes.agent'
 
-  const handleTaskChange = useCallback((value: string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.agent_task = value
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+function AgentRosterAvatar({
+  agent,
+}: {
+  agent: AgentRosterNodeData
+}) {
+  const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
 
   return (
-    <div className="pt-2">
-      {rosterAgent && (
-        <div className="border-b border-divider-subtle">
-          <AgentRosterField agent={rosterAgent} />
-        </div>
-      )}
-      <div className="border-b border-divider-subtle">
-        <AgentTaskField
-          id={id}
-          data={inputs}
-          onChange={handleTaskChange}
+    <AvatarRoot
+      size="lg"
+      className="border-[0.5px] border-divider-regular text-xl"
+      style={{ background: imageUrl ? undefined : (agent.icon_background || '#FFEAD5') }}
+    >
+      {imageUrl && (
+        <AvatarImage
+          src={imageUrl}
+          alt={agent.name}
         />
+      )}
+      <AvatarFallback size="lg" className="text-xl text-text-primary-on-surface">
+        {agent.icon_type === 'emoji' && agent.icon ? agent.icon : agent.name[0]?.toLocaleUpperCase()}
+      </AvatarFallback>
+    </AvatarRoot>
+  )
+}
+
+function AgentRosterField({
+  agent,
+}: {
+  agent?: AgentRosterNodeData
+}) {
+  const { t } = useTranslation()
+
+  if (!agent)
+    return null
+
+  return (
+    <FieldRoot name="agent_roster" className="gap-1 px-4 py-2">
+      <FieldLabel className="py-1 system-sm-semibold-uppercase">
+        {t('nodes.agent.roster.label', { ns: 'workflow' })}
+      </FieldLabel>
+      <div className="flex h-13 min-w-0 items-center gap-2 rounded-lg bg-components-input-bg-normal p-2">
+        <AgentRosterAvatar agent={agent} />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+          <div className="truncate system-sm-medium text-text-secondary">
+            {agent.name}
+          </div>
+          <div className="truncate system-xs-regular text-text-tertiary">
+            {agent.description}
+          </div>
+        </div>
       </div>
-      <AgentAdvancedSettings />
+    </FieldRoot>
+  )
+}
+
+function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
+  return {
+    ...param as any,
+    variable: param.name,
+    show_on: [],
+    type: toType(param.type),
+    tooltip: param.help,
+  }
+}
+
+const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
+  const {
+    inputs,
+    setInputs,
+    currentStrategy,
+    formData,
+    onFormChange,
+    isChatMode,
+    availableNodesWithParent,
+    availableVars,
+    readOnly,
+    outputSchema,
+    handleMemoryChange,
+  } = useConfig(props.id, props.data)
+  const { t } = useTranslation()
+  const isMCPVersionSupported = isSupportMCP(inputs.meta?.version)
+
+  const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
+  return (
+    <div className="my-2">
+      <AgentRosterField agent={inputs.agent_roster} />
+      <Field
+        required
+        title={t('nodes.agent.strategy.label', { ns: 'workflow' })}
+        className="px-4 py-2"
+        tooltip={t('nodes.agent.strategy.tooltip', { ns: 'workflow' })}
+      >
+        <MCPToolAvailabilityProvider versionSupported={isMCPVersionSupported}>
+          <AgentStrategy
+            strategy={inputs.agent_strategy_name
+              ? {
+                  agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
+                  agent_strategy_name: inputs.agent_strategy_name!,
+                  agent_strategy_label: inputs.agent_strategy_label!,
+                  agent_output_schema: inputs.output_schema,
+                  plugin_unique_identifier: inputs.plugin_unique_identifier!,
+                  meta: inputs.meta,
+                }
+              : undefined}
+            onStrategyChange={(strategy) => {
+              setInputs({
+                ...inputs,
+                agent_strategy_provider_name: strategy?.agent_strategy_provider_name,
+                agent_strategy_name: strategy?.agent_strategy_name,
+                agent_strategy_label: strategy?.agent_strategy_label,
+                output_schema: strategy!.agent_output_schema,
+                plugin_unique_identifier: strategy!.plugin_unique_identifier,
+                meta: strategy?.meta,
+              })
+              resetEditor(Date.now())
+            }}
+            formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
+            formValue={formData}
+            onFormValueChange={onFormChange}
+            nodeOutputVars={availableVars}
+            availableNodes={availableNodesWithParent}
+            nodeId={props.id}
+          />
+        </MCPToolAvailabilityProvider>
+      </Field>
+      <div className="px-4 py-2">
+        {isChatMode && currentStrategy?.features?.includes(AgentFeature.HISTORY_MESSAGES) && (
+          <>
+            <Split />
+            <MemoryConfig
+              className="mt-4"
+              readonly={readOnly}
+              config={{ data: inputs.memory }}
+              onChange={handleMemoryChange}
+              canSetRoleName={false}
+            />
+          </>
+        )}
+      </div>
       <div>
         <OutputVars>
-          {outputVars.map(output => (
+          <VarItem
+            name="text"
+            type="String"
+            description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
+          />
+          <VarItem
+            name="usage"
+            type="object"
+            description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
+          />
+          <VarItem
+            name="files"
+            type="Array[File]"
+            description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}
+          />
+          <VarItem
+            name="json"
+            type="Array[Object]"
+            description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
+          />
+          {outputSchema.map(({ name, type, description }) => (
             <VarItem
-              key={output.name}
-              name={output.name}
-              type={output.type}
-              description={output.description}
+              key={name}
+              name={name}
+              type={type}
+              description={description}
             />
           ))}
         </OutputVars>
@@ -74,3 +197,7 @@ export function AgentPanel({
     </div>
   )
 }
+
+AgentPanel.displayName = 'AgentPanel'
+
+export default memo(AgentPanel)

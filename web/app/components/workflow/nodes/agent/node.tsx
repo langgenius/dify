@@ -1,38 +1,133 @@
+import type { FC } from 'react'
 import type { NodeProps } from '../../types'
+import type { ToolIconProps } from './components/tool-icon'
 import type { AgentNodeType } from './types'
-import { skipToken, useQuery } from '@tanstack/react-query'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
-import { useHooksStore } from '../../hooks-store/store'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { Group, GroupLabel } from '../_base/components/group'
 import { SettingItem } from '../_base/components/setting-item'
-import { getRosterAgentFromComposer } from './helpers'
+import { ModelBar } from './components/model-bar'
+import { ToolIcon } from './components/tool-icon'
+import useConfig from './use-config'
 
-export function AgentNode({ id, data }: NodeProps<AgentNodeType>) {
+const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
+  const { inputs, currentStrategy, currentStrategyStatus, pluginDetail } = useConfig(props.id, props.data)
+  const renderI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
-  const appId = useHooksStore(s => s.configsMap?.flowId)
-  const composerQuery = useQuery({
-    ...consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
-      input: appId
-        ? {
-            params: {
-              app_id: appId,
-              node_id: id,
-            },
+  const models = useMemo(() => {
+    if (!inputs)
+      return []
+    // if selected, show in node
+    // if required and not selected, show empty selector
+    // if not required and not selected, show nothing
+    const models = currentStrategy?.parameters
+      .filter(param => param.type === FormTypeEnum.modelSelector)
+      .reduce((acc, param) => {
+        const item = inputs.agent_parameters?.[param.name]?.value
+        if (!item) {
+          if (param.required) {
+            acc.push({ param: param.name })
+            return acc
           }
-        : skipToken,
-    }),
-  })
-  const rosterAgent = getRosterAgentFromComposer(composerQuery.data, data.agent_roster)
+          else { return acc }
+        }
+        acc.push({ provider: item.provider, model: item.model, param: param.name })
+        return acc
+      }, [] as Array<{ param: string } | { provider: string, model: string, param: string }>) || []
+    return models
+  }, [currentStrategy, inputs])
 
+  const tools = useMemo(() => {
+    const tools: Array<ToolIconProps> = []
+    currentStrategy?.parameters.forEach((param, i) => {
+      if (param.type === FormTypeEnum.toolSelector) {
+        const field = param.name
+        const value = inputs.agent_parameters?.[field]?.value
+        if (value) {
+          tools.push({
+            id: `${param.name}-${i}`,
+            providerName: value.provider_name as any,
+          })
+        }
+      }
+      if (param.type === FormTypeEnum.multiToolSelector) {
+        const field = param.name
+        const value = inputs.agent_parameters?.[field]?.value
+        if (value) {
+          (value as unknown as any[]).forEach((item, idx) => {
+            tools.push({
+              id: `${param.name}-${idx}`,
+              providerName: item.provider_name,
+            })
+          })
+        }
+      }
+    })
+    return tools
+  }, [currentStrategy?.parameters, inputs.agent_parameters])
   return (
     <div className="mb-1 space-y-1 px-3">
-      <SettingItem
-        label={t('nodes.agent.roster.label', { ns: 'workflow' })}
-        status={rosterAgent ? undefined : 'error'}
-        tooltip={rosterAgent ? undefined : t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.agent.roster.label', { ns: 'workflow' }) })}
-      >
-        {rosterAgent?.name}
-      </SettingItem>
+      {inputs.agent_strategy_name
+        ? (
+            <SettingItem
+              label={t('nodes.agent.strategy.shortLabel', { ns: 'workflow' })}
+              status={
+                currentStrategyStatus && !currentStrategyStatus.isExistInPlugin
+                  ? 'error'
+                  : undefined
+              }
+              tooltip={
+                (currentStrategyStatus && !currentStrategyStatus.isExistInPlugin)
+                  ? t('nodes.agent.strategyNotInstallTooltip', {
+                      ns: 'workflow',
+                      plugin: pluginDetail?.declaration.label
+                        ? renderI18nObject(pluginDetail?.declaration.label)
+                        : undefined,
+                      strategy: inputs.agent_strategy_label,
+                    })
+                  : undefined
+              }
+            >
+              {inputs.agent_strategy_label}
+            </SettingItem>
+          )
+        : <SettingItem label={t('nodes.agent.strategyNotSet', { ns: 'workflow' })} />}
+      {models.length > 0 && (
+        <Group
+          label={(
+            <GroupLabel className="mt-1">
+              {t('nodes.agent.model', { ns: 'workflow' })}
+            </GroupLabel>
+          )}
+        >
+          {models.map((model) => {
+            return (
+              <ModelBar
+                {...model}
+                key={model.param}
+              />
+            )
+          })}
+        </Group>
+      )}
+      {tools.length > 0 && (
+        <Group label={(
+          <GroupLabel className="mt-1">
+            {t('nodes.agent.toolbox', { ns: 'workflow' })}
+          </GroupLabel>
+        )}
+        >
+          <div className="grid grid-cols-10 gap-0.5">
+            {tools.map((tool, i) => <ToolIcon {...tool} key={tool.id + i} />)}
+          </div>
+        </Group>
+      )}
     </div>
   )
 }
+
+AgentNode.displayName = 'AgentNode'
+
+export default memo(AgentNode)

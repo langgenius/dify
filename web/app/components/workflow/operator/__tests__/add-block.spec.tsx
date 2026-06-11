@@ -27,6 +27,7 @@ const {
   mockWorkflowStoreSetState,
   mockGenerateNewNode,
   mockGetNodeCustomTypeByNodeDataType,
+  mockGetNodesWithSameDefaultDataType,
 } = vi.hoisted(() => ({
   mockHandlePaneContextmenuCancel: vi.fn(),
   mockWorkflowStoreSetState: vi.fn(),
@@ -38,6 +39,22 @@ const {
     },
   })),
   mockGetNodeCustomTypeByNodeDataType: vi.fn((type: string) => `${type}-custom`),
+  mockGetNodesWithSameDefaultDataType: vi.fn((
+    nodes: Array<{ data: { agent_node_kind?: string, type?: BlockEnum, version?: string } }>,
+    type: BlockEnum,
+    defaultValue: { agent_node_kind?: string, type?: BlockEnum, version?: string },
+  ) => {
+    const dataType = defaultValue.type ?? type
+    if (dataType !== type && defaultValue.version) {
+      return nodes.filter(node =>
+        node.data.type === dataType
+        && node.data.version === defaultValue.version
+        && node.data.agent_node_kind === defaultValue.agent_node_kind,
+      )
+    }
+
+    return nodes.filter(node => node.data.type === dataType)
+  }),
 }))
 
 let latestBlockSelectorProps: BlockSelectorMockProps | null = null
@@ -46,7 +63,7 @@ let mockIsChatMode = false
 let mockFlowType: FlowType = FlowType.appFlow
 
 const mockAvailableNextBlocks = [BlockEnum.Answer, BlockEnum.Code]
-const mockNodesMetaDataMap = {
+const mockNodesMetaDataMap: Partial<Record<BlockEnum, { defaultValue: Record<string, unknown> }>> = {
   [BlockEnum.Answer]: {
     defaultValue: {
       title: 'Answer',
@@ -97,6 +114,7 @@ vi.mock('../../store', () => ({
 vi.mock('../../utils', () => ({
   generateNewNode: mockGenerateNewNode,
   getNodeCustomTypeByNodeDataType: mockGetNodeCustomTypeByNodeDataType,
+  getNodesWithSameDefaultDataType: mockGetNodesWithSameDefaultDataType,
 }))
 
 vi.mock('../tip-popup', () => ({
@@ -205,6 +223,55 @@ describe('AddBlock', () => {
             pluginId: 'plugin-1',
             _isCandidate: true,
           },
+        },
+      })
+    })
+
+    it('should count Agent v2 nodes by the final default data type without counting Old Agent nodes', async () => {
+      mockNodesMetaDataMap[BlockEnum.AgentV2] = {
+        defaultValue: {
+          title: 'Agent',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          type: BlockEnum.Agent,
+          version: '2',
+        },
+      }
+      renderWithReactFlow([
+        createNode({ id: 'old-agent', position: { x: 0, y: 0 }, data: { type: BlockEnum.Agent, version: '2' } }),
+        createNode({ id: 'agent-v2', position: { x: 80, y: 0 }, data: { agent_node_kind: 'dify_agent', type: BlockEnum.Agent, version: '2' } }),
+      ])
+
+      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+
+      act(() => {
+        latestBlockSelectorProps?.onSelect(BlockEnum.AgentV2)
+      })
+
+      expect(mockGetNodesWithSameDefaultDataType).toHaveBeenCalledWith(
+        expect.any(Array),
+        BlockEnum.AgentV2,
+        {
+          title: 'Agent',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          type: BlockEnum.Agent,
+          version: '2',
+        },
+      )
+      expect(mockGenerateNewNode).toHaveBeenCalledWith({
+        type: 'agent-v2-custom',
+        data: {
+          title: 'Agent 2',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          type: BlockEnum.Agent,
+          version: '2',
+          _isCandidate: true,
+        },
+        position: {
+          x: 0,
+          y: 0,
         },
       })
     })

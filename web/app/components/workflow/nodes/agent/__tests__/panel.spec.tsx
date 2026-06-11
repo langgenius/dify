@@ -1,61 +1,109 @@
 import type { ReactNode } from 'react'
 import type { AgentNodeType } from '../types'
-import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
+import type useConfig from '../use-config'
+import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AgentPanel } from '../panel'
+import Panel from '../panel'
+import { AgentFeature } from '../types'
 
-const {
-  mockEditorFocus,
-  mockEditorUpdate,
-  mockInsertNodes,
-  mockQueryOptions,
-  mockPromptEditorProps,
-  mockSetInputs,
-  mockUseQuery,
-  mockUseNodeCrud,
-} = vi.hoisted(() => ({
-  mockEditorFocus: vi.fn(),
-  mockEditorUpdate: vi.fn((callback: () => void) => callback()),
-  mockInsertNodes: vi.fn(),
-  mockQueryOptions: vi.fn((options: unknown) => ({ queryKey: ['agent-composer', options] })),
-  mockPromptEditorProps: [] as PromptEditorProps[],
-  mockSetInputs: vi.fn(),
-  mockUseQuery: vi.fn(),
-  mockUseNodeCrud: vi.fn(),
+const mockUseConfig = vi.hoisted(() => vi.fn())
+const mockResetEditor = vi.hoisted(() => vi.fn())
+const mockAgentStrategy = vi.hoisted(() => vi.fn())
+const mockMemoryConfig = vi.hoisted(() => vi.fn())
+
+vi.mock('../use-config', () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => mockUseConfig(...args),
 }))
 
-vi.mock('@tanstack/react-query', () => ({
-  skipToken: Symbol.for('skipToken'),
-  useQuery: (options: unknown) => mockUseQuery(options),
+vi.mock('../../../store', () => ({
+  useStore: (selector: (state: { setControlPromptEditorRerenderKey: typeof mockResetEditor }) => unknown) => selector({
+    setControlPromptEditorRerenderKey: mockResetEditor,
+  }),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        workflows: {
-          draft: {
-            nodes: {
-              byNodeId: {
-                agentComposer: {
-                  get: {
-                    queryOptions: mockQueryOptions,
-                  },
+vi.mock('../../_base/components/agent-strategy', () => ({
+  AgentStrategy: (props: {
+    strategy?: {
+      agent_strategy_provider_name: string
+      agent_strategy_name: string
+      agent_strategy_label: string
+      agent_output_schema: AgentNodeType['output_schema']
+      plugin_unique_identifier: string
+      meta?: AgentNodeType['meta']
+    }
+    formSchema: Array<{ variable: string, tooltip?: StrategyParamItem['help'] }>
+    formValue: Record<string, unknown>
+    onStrategyChange: (strategy: {
+      agent_strategy_provider_name: string
+      agent_strategy_name: string
+      agent_strategy_label: string
+      agent_output_schema: AgentNodeType['output_schema']
+      plugin_unique_identifier: string
+      meta?: AgentNodeType['meta']
+    }) => void
+    onFormValueChange: (value: Record<string, unknown>) => void
+  }) => {
+    mockAgentStrategy(props)
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => props.onStrategyChange({
+            agent_strategy_provider_name: 'provider/updated',
+            agent_strategy_name: 'updated',
+            agent_strategy_label: 'Updated Strategy',
+            agent_output_schema: {
+              properties: {
+                structured: {
+                  type: 'string',
+                  description: 'structured output',
                 },
               },
             },
-          },
-        },
-      },
-    },
+            plugin_unique_identifier: 'provider/updated:1.0.0',
+            meta: {
+              version: '2.0.0',
+            } as AgentNodeType['meta'],
+          })}
+        >
+          change-strategy
+        </button>
+        <button type="button" onClick={() => props.onFormValueChange({ instruction: 'Use the tool' })}>
+          change-form
+        </button>
+      </div>
+    )
   },
 }))
 
-vi.mock('../../../hooks-store/store', () => ({
-  useHooksStore: <T,>(selector: (state: { configsMap?: { flowId: string } }) => T) =>
-    selector({ configsMap: { flowId: 'app-1' } }),
+vi.mock('../../_base/components/memory-config', () => ({
+  __esModule: true,
+  default: (props: {
+    readonly?: boolean
+    config: { data?: AgentNodeType['memory'] }
+    onChange: (value?: AgentNodeType['memory']) => void
+  }) => {
+    mockMemoryConfig(props)
+    return (
+      <button
+        type="button"
+        onClick={() => props.onChange({
+          window: {
+            enabled: true,
+            size: 8,
+          },
+          query_prompt_template: 'history',
+        } as AgentNodeType['memory'])}
+      >
+        change-memory
+      </button>
+    )
+  },
 }))
 
 vi.mock('../../_base/components/output-vars', () => ({
@@ -66,86 +114,93 @@ vi.mock('../../_base/components/output-vars', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: (props: PromptEditorProps) => {
-    mockPromptEditorProps.push(props)
-
-    return (
-      <>
-        <textarea
-          aria-label="workflow.nodes.agent.task.label"
-          placeholder={typeof props.placeholder === 'string' ? props.placeholder : undefined}
-          value={props.value}
-          onChange={event => props.onChange?.(event.currentTarget.value)}
-        />
-        {props.children}
-      </>
-    )
-  },
-}))
-
-vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [{
-    focus: mockEditorFocus,
-    update: mockEditorUpdate,
-  }],
-}))
-
-vi.mock('lexical', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('lexical')>()
-
-  return {
-    ...actual,
-    $insertNodes: mockInsertNodes,
-  }
+const createStrategyParam = (overrides: Partial<StrategyParamItem> = {}): StrategyParamItem => ({
+  name: 'instruction',
+  type: FormTypeEnum.any,
+  required: true,
+  label: { en_US: 'Instruction' } as StrategyParamItem['label'],
+  help: { en_US: 'Instruction help' } as StrategyParamItem['help'],
+  placeholder: { en_US: 'Instruction placeholder' } as StrategyParamItem['placeholder'],
+  scope: 'global',
+  default: null,
+  options: [],
+  template: { enabled: false },
+  auto_generate: { type: 'none' },
+  ...overrides,
 })
-
-vi.mock('@/app/components/base/prompt-editor/plugins/custom-text/node', () => ({
-  $createCustomTextNode: (text: string) => ({
-    getTextContent: () => text,
-  }),
-}))
-
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  default: (id: string, data: AgentNodeType) => mockUseNodeCrud(id, data),
-}))
-
-vi.mock('../../_base/hooks/use-available-var-list', () => ({
-  default: () => ({
-    availableVars: [{
-      nodeId: 'start',
-      title: 'START',
-      vars: [{ variable: 'question', type: 'string' }],
-    }],
-    availableNodesWithParent: [{
-      id: 'start',
-      data: {
-        title: 'START',
-        type: BlockEnum.Start,
-      },
-      position: { x: 0, y: 0 },
-    }],
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowVariableType: () => vi.fn(),
-}))
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
   desc: '',
   type: BlockEnum.Agent,
-  agent_node_kind: 'dify_agent',
-  agent_roster: {
-    id: 'agent-1',
-    name: 'Nadia',
-    description: 'Clarification Drafter',
-    icon: 'N',
-    icon_background: '#E9D7FE',
-    icon_type: 'emoji',
+  output_schema: {
+    properties: {
+      summary: {
+        type: 'string',
+        description: 'summary output',
+      },
+    },
   },
-  version: '2',
+  agent_strategy_provider_name: 'provider/agent',
+  agent_strategy_name: 'react',
+  agent_strategy_label: 'React Agent',
+  plugin_unique_identifier: 'provider/agent:1.0.0',
+  meta: { version: '1.0.0' } as AgentNodeType['meta'],
+  memory: {
+    window: {
+      enabled: false,
+      size: 3,
+    },
+    query_prompt_template: '',
+  } as AgentNodeType['memory'],
+  ...overrides,
+})
+
+const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+  readOnly: false,
+  inputs: createData(),
+  setInputs: vi.fn(),
+  handleVarListChange: vi.fn(),
+  handleAddVariable: vi.fn(),
+  currentStrategy: {
+    identity: {
+      author: 'provider',
+      name: 'react',
+      icon: 'icon',
+      label: { en_US: 'React Agent' } as StrategyParamItem['label'],
+      provider: 'provider/agent',
+    },
+    parameters: [
+      createStrategyParam(),
+      createStrategyParam({
+        name: 'modelParam',
+        type: FormTypeEnum.modelSelector,
+        required: false,
+      }),
+    ],
+    description: { en_US: 'agent description' } as StrategyParamItem['label'],
+    output_schema: {},
+    features: [AgentFeature.HISTORY_MESSAGES],
+  },
+  formData: {
+    instruction: 'Plan and answer',
+  },
+  onFormChange: vi.fn(),
+  currentStrategyStatus: {
+    plugin: { source: 'marketplace', installed: true },
+    isExistInPlugin: true,
+  },
+  strategyProvider: undefined,
+  pluginDetail: undefined,
+  availableVars: [],
+  availableNodesWithParent: [],
+  outputSchema: [{
+    name: 'summary',
+    type: 'String',
+    description: 'summary output',
+  }],
+  handleMemoryChange: vi.fn(),
+  isChatMode: true,
   ...overrides,
 })
 
@@ -154,17 +209,87 @@ const panelProps = {} as NodePanelProps<AgentNodeType>['panelProps']
 describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPromptEditorProps.length = 0
-    mockUseQuery.mockReturnValue({ data: undefined })
-    mockUseNodeCrud.mockImplementation((_id: string, data: AgentNodeType) => ({
-      inputs: data,
-      setInputs: mockSetInputs,
-    }))
+    mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('renders selected roster agent trigger and default Agent v2 output vars', () => {
+  it('renders strategy data, forwards strategy and form updates, and exposes output vars', async () => {
+    const user = userEvent.setup()
+    const setInputs = vi.fn()
+    const onFormChange = vi.fn()
+    const handleMemoryChange = vi.fn()
+
+    mockUseConfig.mockReturnValue(createConfigResult({
+      setInputs,
+      onFormChange,
+      handleMemoryChange,
+    }))
+
     render(
-      <AgentPanel
+      <Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+    expect(screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage')).toBeInTheDocument()
+    expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
+    expect(screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
+    expect(screen.getByText('summary:String:summary output')).toBeInTheDocument()
+    expect(mockAgentStrategy).toHaveBeenCalledWith(expect.objectContaining({
+      formSchema: expect.arrayContaining([
+        expect.objectContaining({
+          variable: 'instruction',
+          tooltip: { en_US: 'Instruction help' },
+        }),
+        expect.objectContaining({
+          variable: 'modelParam',
+        }),
+      ]),
+      formValue: {
+        instruction: 'Plan and answer',
+      },
+    }))
+
+    await user.click(screen.getByRole('button', { name: 'change-strategy' }))
+    await user.click(screen.getByRole('button', { name: 'change-form' }))
+    await user.click(screen.getByRole('button', { name: 'change-memory' }))
+
+    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
+      agent_strategy_provider_name: 'provider/updated',
+      agent_strategy_name: 'updated',
+      agent_strategy_label: 'Updated Strategy',
+      plugin_unique_identifier: 'provider/updated:1.0.0',
+      output_schema: expect.objectContaining({
+        properties: expect.objectContaining({
+          structured: expect.any(Object),
+        }),
+      }),
+    }))
+    expect(onFormChange).toHaveBeenCalledWith({ instruction: 'Use the tool' })
+    expect(handleMemoryChange).toHaveBeenCalledWith(expect.objectContaining({
+      query_prompt_template: 'history',
+    }))
+    expect(mockResetEditor).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders selected roster agent information', () => {
+    mockUseConfig.mockReturnValue(createConfigResult({
+      inputs: createData({
+        agent_roster: {
+          id: 'agent-1',
+          name: 'Nadia',
+          description: 'Clarification Drafter',
+          icon: '🧑‍🚀',
+          icon_background: '#E9D7FE',
+          icon_type: 'emoji',
+        },
+      }),
+    }))
+
+    render(
+      <Panel
         id="agent-node"
         data={createData()}
         panelProps={panelProps}
@@ -173,232 +298,27 @@ describe('agent/panel', () => {
 
     expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
     expect(screen.getByText('Nadia')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
-    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.advancedSetting' })).toBeInTheDocument()
-    expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
-    expect(screen.queryByText('usage:object:workflow.nodes.agent.outputVars.usage')).not.toBeInTheDocument()
-    expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
-    expect(screen.getByText('json:Object:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
-    expect(mockQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          app_id: 'app-1',
-          node_id: 'agent-node',
-        },
+    expect(screen.getByText('Clarification Drafter')).toBeInTheDocument()
+  })
+
+  it('hides memory config when chat mode support is unavailable', () => {
+    mockUseConfig.mockReturnValue(createConfigResult({
+      isChatMode: false,
+      currentStrategy: {
+        ...createConfigResult().currentStrategy!,
+        features: [],
       },
-    })
-  })
-
-  it('renders effective declared outputs from the agent composer', () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        effective_declared_outputs: [
-          {
-            description: 'Short answer',
-            name: 'summary',
-            type: 'string',
-          },
-          {
-            name: 'attachments',
-            type: 'array',
-            array_item: {
-              type: 'file',
-            },
-          },
-          {
-            name: 'metadata',
-            type: 'object',
-          },
-        ],
-      },
-    })
-
-    render(
-      <AgentPanel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
-
-    expect(screen.getByText('summary:String:Short answer')).toBeInTheDocument()
-    expect(screen.getByText('attachments:Array[File]:')).toBeInTheDocument()
-    expect(screen.getByText('metadata:Object:')).toBeInTheDocument()
-    expect(screen.queryByText('text:String:workflow.nodes.agent.outputVars.text')).not.toBeInTheDocument()
-  })
-
-  it('uses the composer roster agent when the node is bound to a roster agent', () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        agent: {
-          active_config_snapshot_id: 'snapshot-1',
-          description: 'Backend-bound agent',
-          id: 'agent-1',
-          name: 'Composer Agent',
-          scope: 'roster',
-          status: 'active',
-        },
-        binding: {
-          agent_id: 'agent-1',
-          binding_type: 'roster_agent',
-          current_snapshot_id: 'snapshot-1',
-          id: 'binding-1',
-          node_id: 'agent-node',
-          workflow_id: 'workflow-1',
-        },
-      },
-    })
-
-    render(
-      <AgentPanel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
-
-    expect(screen.getByText('Composer Agent')).toBeInTheDocument()
-    expect(screen.getByText('Backend-bound agent')).toBeInTheDocument()
-    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
-  })
-
-  it('does not show stale graph roster data when the composer binding is not roster-backed', () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        agent: {
-          active_config_snapshot_id: 'snapshot-1',
-          description: 'Workflow-only agent',
-          id: 'agent-2',
-          name: 'Inline Agent',
-          scope: 'workflow_only',
-          status: 'active',
-        },
-        binding: {
-          agent_id: 'agent-2',
-          binding_type: 'inline_agent',
-          current_snapshot_id: 'snapshot-1',
-          id: 'binding-1',
-          node_id: 'agent-node',
-          workflow_id: 'workflow-1',
-        },
-      },
-    })
-
-    render(
-      <AgentPanel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
-
-    expect(screen.queryByText('workflow.nodes.agent.roster.label')).not.toBeInTheDocument()
-    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
-  })
-
-  it('uses composer descriptions for default composer outputs', () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        effective_declared_outputs: [
-          {
-            description: 'Free-form text answer.',
-            name: 'text',
-            type: 'string',
-          },
-          {
-            description: 'Files produced by the agent.',
-            name: 'files',
-            type: 'array',
-            array_item: {
-              type: 'file',
-            },
-          },
-          {
-            description: 'Free-form JSON object.',
-            name: 'json',
-            type: 'object',
-          },
-        ],
-      },
-    })
-
-    render(
-      <AgentPanel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
-
-    expect(screen.getByText('text:String:Free-form text answer.')).toBeInTheDocument()
-    expect(screen.getByText('files:Array[File]:Files produced by the agent.')).toBeInTheDocument()
-    expect(screen.getByText('json:Object:Free-form JSON object.')).toBeInTheDocument()
-    expect(screen.queryByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).not.toBeInTheDocument()
-  })
-
-  it('opens and closes the roster agent layered panel', () => {
-    render(
-      <AgentPanel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
-
-    const panel = screen.getByRole('dialog', { name: 'Nadia' })
-    expect(panel).toBeInTheDocument()
-    expect(within(panel).getByText('Clarification Drafter')).toBeInTheDocument()
-    expect(within(panel).getByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })).toHaveAttribute('href', '/roster/agent/agent-1/configure')
-    expect(within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' })).toBeInTheDocument()
-
-    fireEvent.keyDown(panel, { key: 'Escape' })
-
-    expect(screen.queryByRole('dialog', { name: 'Nadia' })).not.toBeInTheDocument()
-  })
-
-  it('does not render roster metadata when no roster agent is selected', () => {
-    render(
-      <AgentPanel
-        id="agent-node"
-        data={createData({ agent_roster: undefined })}
-        panelProps={panelProps}
-      />,
-    )
-
-    expect(screen.queryByText('workflow.nodes.agent.roster.label')).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
-    expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
-  })
-
-  it('updates agent task and opens prompt insertion shortcuts', () => {
-    render(
-      <AgentPanel
-        id="agent-node"
-        data={createData({ agent_task: 'Clarify tender' })}
-        panelProps={panelProps}
-      />,
-    )
-
-    const editor = screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })
-    fireEvent.change(editor, { target: { value: 'Clarify {{#start.question#}}' } })
-
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      agent_task: 'Clarify {{#start.question#}}',
     }))
-    expect(mockPromptEditorProps[0]?.workflowVariableBlock).toMatchObject({
-      show: true,
-    })
-    expect(mockPromptEditorProps[0]?.contextBlock).toBeUndefined()
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
-    expect(mockEditorFocus).toHaveBeenCalled()
-    expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
+    render(
+      <Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.mention' }))
-    expect(mockInsertNodes.mock.calls[1]?.[0]?.[0]?.getTextContent()).toBe('{')
+    expect(screen.queryByRole('button', { name: 'change-memory' })).not.toBeInTheDocument()
+    expect(mockMemoryConfig).not.toHaveBeenCalled()
   })
 })

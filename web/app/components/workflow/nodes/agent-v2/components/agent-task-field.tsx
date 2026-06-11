@@ -1,4 +1,4 @@
-import type { AgentNodeType } from '../types'
+import type { AgentV2NodeType } from '../types'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
@@ -68,7 +68,7 @@ export function AgentTaskField({
   onChange,
 }: {
   id: string
-  data: AgentNodeType
+  data: AgentV2NodeType
   readOnly?: boolean
   onChange: (value: string) => void
 }) {

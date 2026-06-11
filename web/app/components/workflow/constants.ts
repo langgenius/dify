@@ -121,6 +121,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.DocExtractor,
   BlockEnum.ListFilter,
   BlockEnum.Agent,
+  BlockEnum.AgentV2,
   BlockEnum.DataSource,
   BlockEnum.HumanInput,
 ]

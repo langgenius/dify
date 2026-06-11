@@ -1,3 +1,4 @@
+import type { AgentNodeType } from '../nodes/agent/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
@@ -36,6 +37,7 @@ import { useGetLanguage } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { fetchDatasets } from '@/service/datasets'
+import { useStrategyProviders } from '@/service/use-strategy'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -54,6 +56,7 @@ import {
 } from '../hooks'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
+import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '../nodes/llm/utils'
 import {
@@ -94,6 +97,10 @@ const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: Flo
     ...(moreDataForCheckValid ?? {}),
     flowType,
   }
+}
+
+const getNodeMetaType = (data: CommonNodeType) => {
+  return isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -149,6 +156,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
+  const { data: strategyProviders } = useStrategyProviders()
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
@@ -246,11 +254,25 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         moreDataForCheckValid = getTriggerCheckParams(node!.data as PluginTriggerNodeType, triggerPlugins, language)
 
       const toolIcon = getToolIcon(node!.data)
-      usedVars = getNodeUsedVars(node!).filter(v => v.length > 0)
+      if (node!.data.type === BlockEnum.Agent && !isAgentV2NodeData(node!.data)) {
+        const data = node!.data as AgentNodeType
+        const isReadyForCheckValid = !!strategyProviders
+        const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
+        const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
+        moreDataForCheckValid = {
+          provider,
+          strategy,
+          language,
+          isReadyForCheckValid,
+        }
+      }
+      else {
+        usedVars = getNodeUsedVars(node!).filter(v => v.length > 0)
+      }
 
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
-        const validator = nodesExtraData?.[node!.data.type as BlockEnum]?.checkValid
+        const validator = nodesExtraData?.[getNodeMetaType(node!.data) as BlockEnum]?.checkValid
         const isPluginMissing = isNodePluginMissing(node!.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
 
         const errorMessages: string[] = []
@@ -346,7 +368,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     })
 
     return list
-  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, getCheckData, t, map, modelProviders, options?.flowType])
+  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders, options?.flowType])
 
   useEffect(() => {
     const currentChecklistItems = workflowStore.getState().checklistItems
@@ -365,6 +387,7 @@ export const useChecklistBeforePublish = () => {
   const queryClient = useQueryClient()
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
+  const { data: strategyProviders } = useStrategyProviders()
   const modelProviders = useProviderContextSelector(s => s.modelProviders)
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
   const updateTimeRef = useRef(0)
@@ -502,7 +525,21 @@ export const useChecklistBeforePublish = () => {
       if (node!.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(node!.data as DataSourceNodeType, dataSourceList || [], language)
 
-      usedVars = getNodeUsedVars(node!).filter(v => v.length > 0)
+      if (node!.data.type === BlockEnum.Agent && !isAgentV2NodeData(node!.data)) {
+        const data = node!.data as AgentNodeType
+        const isReadyForCheckValid = !!strategyProviders
+        const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
+        const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
+        moreDataForCheckValid = {
+          provider,
+          strategy,
+          language,
+          isReadyForCheckValid,
+        }
+      }
+      else {
+        usedVars = getNodeUsedVars(node!).filter(v => v.length > 0)
+      }
 
       if (node!.data.type === BlockEnum.LLM) {
         const modelProvider = (node!.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
@@ -517,7 +554,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![node!.data.type as BlockEnum].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
+      const { errorMessage } = nodesExtraData![getNodeMetaType(node!.data) as BlockEnum].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
 
       if (errorMessage) {
         toast.error(`[${node!.data.title}] ${errorMessage}`)
@@ -580,7 +617,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, queryClient, modelProviders, flowType])
+  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, queryClient, strategyProviders, modelProviders, flowType])
 
   return {
     handleCheckBeforePublish,

@@ -28,6 +28,7 @@ import { useWorkflowStore } from '../store'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
+  getNodesWithSameDefaultDataType,
 } from '../utils'
 import TipPopup from './tip-popup'
 
@@ -65,11 +66,11 @@ const AddBlock = ({
     const {
       getNodes,
     } = store.getState()
-    const nodes = getNodes()
-    const nodesWithSameType = nodes.filter(node => node.data.type === type)
     const {
       defaultValue,
     } = nodesMetaDataMap![type]
+    const nodes = getNodes()
+    const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, type, defaultValue)
     const { newNode } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(type),
       data: {

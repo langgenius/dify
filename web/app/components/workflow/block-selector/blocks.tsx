@@ -81,9 +81,9 @@ const Blocks = ({
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {
     const list = [...groups[classification]!].sort((a, b) => {
-      if (a.metaData.type === BlockEnum.Agent)
+      if (a.metaData.type === BlockEnum.AgentV2)
         return -1
-      if (b.metaData.type === BlockEnum.Agent)
+      if (b.metaData.type === BlockEnum.AgentV2)
         return 1
       return (a.metaData.sort || 0) - (b.metaData.sort || 0)
     })
@@ -110,13 +110,13 @@ const Blocks = ({
         }
         {
           filteredList.map((block) => {
-            if (block.metaData.type === BlockEnum.Agent) {
+            if (block.metaData.type === BlockEnum.AgentV2) {
               return (
                 <AgentBlockItem
                   key={block.metaData.type}
                   block={block}
                   onSelect={agent =>
-                    onSelect(BlockEnum.Agent, {
+                    onSelect(BlockEnum.AgentV2, {
                       agent_node_kind: 'dify_agent',
                       agent_roster: agent,
                       version: '2',

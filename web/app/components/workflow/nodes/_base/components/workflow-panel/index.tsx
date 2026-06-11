@@ -58,6 +58,7 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
@@ -224,6 +225,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
+  const nodeMetaType = isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore(state => state.appDetail)
 
@@ -288,7 +290,7 @@ const BasePanel: FC<BasePanelProps> = ({
     flowId: configsMap?.flowId || '',
     flowType: configsMap?.flowType || FlowType.appFlow,
     data,
-    defaultRunInputData: nodesMap?.[data.type]?.defaultRunInputData || {},
+    defaultRunInputData: nodesMap?.[nodeMetaType]?.defaultRunInputData || {},
     isPaused,
   })
 
@@ -581,7 +583,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   </Tooltip>
                 )
               }
-              <HelpLink nodeType={data.type} />
+              <HelpLink nodeType={nodeMetaType} />
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <button

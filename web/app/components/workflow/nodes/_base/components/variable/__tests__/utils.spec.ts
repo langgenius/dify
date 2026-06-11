@@ -1,4 +1,4 @@
-import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
+import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
@@ -45,7 +45,7 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 describe('variable utils', () => {
   describe('toNodeAvailableVars', () => {
     it('uses Agent v2 default declared outputs for agent nodes', () => {
-      const node = createNode<AgentNodeType>({
+      const node = createNode<AgentV2NodeType>({
         type: BlockEnum.Agent,
         title: 'Agent',
         desc: '',
@@ -147,7 +147,7 @@ describe('variable utils', () => {
     })
 
     it('should read variables from agent task', () => {
-      const node = createNode<AgentNodeType>({
+      const node = createNode<AgentV2NodeType>({
         type: BlockEnum.Agent,
         title: 'Agent',
         desc: '',
@@ -195,7 +195,7 @@ describe('variable utils', () => {
     })
 
     it('should replace agent task references', () => {
-      const node = createNode<AgentNodeType>({
+      const node = createNode<AgentV2NodeType>({
         type: BlockEnum.Agent,
         title: 'Agent',
         desc: '',
@@ -206,7 +206,7 @@ describe('variable utils', () => {
 
       const updatedNode = updateNodeVars(node, ['start', 'tender'], ['start', 'question'])
 
-      expect((updatedNode.data as AgentNodeType).agent_task).toBe('Clarify {{#start.question#}}')
+      expect((updatedNode.data as AgentV2NodeType).agent_task).toBe('Clarify {{#start.question#}}')
     })
 
     it('should replace human input email template references', () => {

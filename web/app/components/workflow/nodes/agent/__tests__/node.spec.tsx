@@ -1,47 +1,48 @@
 import type { ReactNode } from 'react'
 import type { AgentNodeType } from '../types'
+import type useConfig from '../use-config'
+import type { StrategyParamItem } from '@/app/components/plugins/types'
 import { render, screen } from '@testing-library/react'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AgentNode } from '../node'
+import { VarType } from '../../tool/types'
+import Node from '../node'
 
-const {
-  mockQueryOptions,
-  mockUseQuery,
-} = vi.hoisted(() => ({
-  mockQueryOptions: vi.fn((options: unknown) => ({ queryKey: ['agent-composer', options] })),
-  mockUseQuery: vi.fn(),
+const mockUseConfig = vi.hoisted(() => vi.fn())
+const mockModelBar = vi.hoisted(() => vi.fn())
+const mockToolIcon = vi.hoisted(() => vi.fn())
+
+vi.mock('../use-config', () => ({
+  __esModule: true,
+  default: (...args: unknown[]) => mockUseConfig(...args),
 }))
 
-vi.mock('@tanstack/react-query', () => ({
-  skipToken: Symbol.for('skipToken'),
-  useQuery: (options: unknown) => mockUseQuery(options),
+vi.mock('@/hooks/use-i18n', () => ({
+  useRenderI18nObject: () => (value: string | { en_US?: string }) => typeof value === 'string' ? value : value.en_US || '',
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        workflows: {
-          draft: {
-            nodes: {
-              byNodeId: {
-                agentComposer: {
-                  get: {
-                    queryOptions: mockQueryOptions,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+vi.mock('../components/model-bar', () => ({
+  ModelBar: (props: { provider?: string, model?: string, param: string }) => {
+    mockModelBar(props)
+    return <div>{props.provider ? `${props.param}:${props.provider}/${props.model}` : `${props.param}:empty-model`}</div>
   },
 }))
 
-vi.mock('../../../hooks-store/store', () => ({
-  useHooksStore: <T,>(selector: (state: { configsMap?: { flowId: string } }) => T) =>
-    selector({ configsMap: { flowId: 'app-1' } }),
+vi.mock('../components/tool-icon', () => ({
+  ToolIcon: (props: { providerName: string }) => {
+    mockToolIcon(props)
+    return <div>{`tool:${props.providerName}`}</div>
+  },
+}))
+
+vi.mock('../../_base/components/group', () => ({
+  Group: ({ label, children }: { label: ReactNode, children: ReactNode }) => (
+    <div>
+      <div>{label}</div>
+      {children}
+    </div>
+  ),
+  GroupLabel: ({ className, children }: { className?: string, children: ReactNode }) => <div className={className}>{children}</div>,
 }))
 
 vi.mock('../../_base/components/setting-item', () => ({
@@ -63,122 +64,186 @@ vi.mock('../../_base/components/setting-item', () => ({
   ),
 }))
 
+const createStrategyParam = (overrides: Partial<StrategyParamItem> = {}): StrategyParamItem => ({
+  name: 'requiredModel',
+  type: FormTypeEnum.modelSelector,
+  required: true,
+  label: { en_US: 'Required Model' } as StrategyParamItem['label'],
+  help: { en_US: 'Required model help' } as StrategyParamItem['help'],
+  placeholder: { en_US: 'Required model placeholder' } as StrategyParamItem['placeholder'],
+  scope: 'global',
+  default: null,
+  options: [],
+  template: { enabled: false },
+  auto_generate: { type: 'none' },
+  ...overrides,
+})
+
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
   desc: '',
   type: BlockEnum.Agent,
-  agent_node_kind: 'dify_agent',
-  agent_roster: {
-    id: 'agent-1',
-    name: 'Nadia',
-    description: 'Clarification Drafter',
-    icon: 'N',
-    icon_background: '#E9D7FE',
-    icon_type: 'emoji',
+  output_schema: {},
+  agent_strategy_provider_name: 'provider/agent',
+  agent_strategy_name: 'react',
+  agent_strategy_label: 'React Agent',
+  plugin_unique_identifier: 'provider/agent:1.0.0',
+  agent_parameters: {
+    optionalModel: {
+      type: VarType.constant,
+      value: { provider: 'openai', model: 'gpt-4o' },
+    },
+    toolParam: {
+      type: VarType.constant,
+      value: { provider_name: 'author/tool-a' },
+    },
+    multiToolParam: {
+      type: VarType.constant,
+      value: [
+        { provider_name: 'author/tool-b' },
+        { provider_name: 'author/tool-c' },
+      ],
+    },
   },
-  version: '2',
+  ...overrides,
+})
+
+const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+  readOnly: false,
+  inputs: createData(),
+  setInputs: vi.fn(),
+  handleVarListChange: vi.fn(),
+  handleAddVariable: vi.fn(),
+  currentStrategy: {
+    identity: {
+      author: 'provider',
+      name: 'react',
+      icon: 'icon',
+      label: { en_US: 'React Agent' } as StrategyParamItem['label'],
+      provider: 'provider/agent',
+    },
+    parameters: [
+      createStrategyParam(),
+      createStrategyParam({
+        name: 'optionalModel',
+        required: false,
+      }),
+      createStrategyParam({
+        name: 'toolParam',
+        type: FormTypeEnum.toolSelector,
+        required: false,
+      }),
+      createStrategyParam({
+        name: 'multiToolParam',
+        type: FormTypeEnum.multiToolSelector,
+        required: false,
+      }),
+    ],
+    description: { en_US: 'agent description' } as StrategyParamItem['label'],
+    output_schema: {},
+    features: [],
+  },
+  formData: {},
+  onFormChange: vi.fn(),
+  currentStrategyStatus: {
+    plugin: { source: 'marketplace', installed: true },
+    isExistInPlugin: false,
+  },
+  strategyProvider: undefined,
+  pluginDetail: ({
+    declaration: {
+      label: { en_US: 'Plugin Marketplace' } as never,
+    },
+  } as never),
+  availableVars: [],
+  availableNodesWithParent: [],
+  outputSchema: [],
+  handleMemoryChange: vi.fn(),
+  isChatMode: true,
   ...overrides,
 })
 
 describe('agent/node', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseQuery.mockReturnValue({ data: undefined })
+    mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('renders the selected roster agent', () => {
+  it('renders the not-set state when no strategy is configured', () => {
+    mockUseConfig.mockReturnValue(createConfigResult({
+      inputs: createData({
+        agent_strategy_name: undefined,
+        agent_strategy_label: undefined,
+        agent_parameters: {},
+      }),
+      currentStrategy: undefined,
+    }))
+
     render(
-      <AgentNode
+      <Node
         id="agent-node"
         data={createData()}
       />,
     )
 
-    expect(screen.getByText(/workflow.nodes.agent.roster.label:normal:/)).toHaveTextContent('Nadia')
-    expect(mockQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          app_id: 'app-1',
-          node_id: 'agent-node',
-        },
-      },
-    })
+    expect(screen.getByText('workflow.nodes.agent.strategyNotSet:normal:')).toBeInTheDocument()
+    expect(mockModelBar).not.toHaveBeenCalled()
+    expect(mockToolIcon).not.toHaveBeenCalled()
   })
 
-  it('uses the composer roster agent when available', () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        agent: {
-          active_config_snapshot_id: 'snapshot-1',
-          description: 'Backend-bound agent',
-          id: 'agent-1',
-          name: 'Composer Agent',
-          scope: 'roster',
-          status: 'active',
-        },
-        binding: {
-          agent_id: 'agent-1',
-          binding_type: 'roster_agent',
-          current_snapshot_id: 'snapshot-1',
-          id: 'binding-1',
-          node_id: 'agent-node',
-          workflow_id: 'workflow-1',
-        },
-      },
-    })
-
+  it('renders strategy status, required and selected model bars, and tool icons', () => {
     render(
-      <AgentNode
+      <Node
         id="agent-node"
         data={createData()}
       />,
     )
 
-    expect(screen.getByText(/workflow.nodes.agent.roster.label:normal:/)).toHaveTextContent('Composer Agent')
-    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
+    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent('React Agent')
+    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent('Plugin Marketplace')
+    expect(screen.getByText('requiredModel:empty-model')).toBeInTheDocument()
+    expect(screen.getByText('optionalModel:openai/gpt-4o')).toBeInTheDocument()
+    expect(screen.getByText('tool:author/tool-a')).toBeInTheDocument()
+    expect(screen.getByText('tool:author/tool-b')).toBeInTheDocument()
+    expect(screen.getByText('tool:author/tool-c')).toBeInTheDocument()
+    expect(mockModelBar).toHaveBeenCalledTimes(2)
+    expect(mockToolIcon).toHaveBeenCalledTimes(3)
   })
 
-  it('does not show stale graph roster data when composer binding is not roster-backed', () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        agent: {
-          active_config_snapshot_id: 'snapshot-1',
-          description: 'Workflow-only agent',
-          id: 'agent-2',
-          name: 'Inline Agent',
-          scope: 'workflow_only',
-          status: 'active',
-        },
-        binding: {
-          agent_id: 'agent-2',
-          binding_type: 'inline_agent',
-          current_snapshot_id: 'snapshot-1',
-          id: 'binding-1',
-          node_id: 'agent-node',
-          workflow_id: 'workflow-1',
-        },
+  it('skips optional models and empty tool values when no configuration is provided', () => {
+    mockUseConfig.mockReturnValue(createConfigResult({
+      inputs: createData({
+        agent_parameters: {},
+      }),
+      currentStrategy: {
+        ...createConfigResult().currentStrategy!,
+        parameters: [
+          createStrategyParam({
+            name: 'optionalModel',
+            required: false,
+          }),
+          createStrategyParam({
+            name: 'toolParam',
+            type: FormTypeEnum.toolSelector,
+            required: false,
+          }),
+        ],
       },
-    })
+      currentStrategyStatus: {
+        plugin: { source: 'marketplace', installed: true },
+        isExistInPlugin: true,
+      },
+    }))
 
     render(
-      <AgentNode
+      <Node
         id="agent-node"
         data={createData()}
       />,
     )
 
-    expect(screen.getByText(/workflow.nodes.agent.roster.label:error:/)).toHaveTextContent('workflow.errorMsg.fieldRequired')
-    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
-  })
-
-  it('renders an error state when no roster agent is selected', () => {
-    render(
-      <AgentNode
-        id="agent-node"
-        data={createData({ agent_roster: undefined })}
-      />,
-    )
-
-    expect(screen.getByText(/workflow.nodes.agent.roster.label:error:/)).toHaveTextContent('workflow.errorMsg.fieldRequired')
+    expect(mockModelBar).not.toHaveBeenCalled()
+    expect(mockToolIcon).not.toHaveBeenCalled()
+    expect(screen.queryByText('optionalModel:empty-model')).not.toBeInTheDocument()
   })
 })

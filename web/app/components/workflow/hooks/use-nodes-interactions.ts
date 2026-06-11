@@ -36,6 +36,7 @@ import {
   Y_OFFSET,
 } from '../constants'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -50,6 +51,7 @@ import {
   getNestedNodePosition,
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
+  getNodesWithSameDefaultDataType,
   getTopLeftNodePosition,
   isClipboardEdgeStructurallyValid,
   isClipboardNodeStructurallyValid,
@@ -880,13 +882,11 @@ export const useNodesInteractions = () => {
         return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      const nodesWithSameType = nodes.filter(
-        node => node.data.type === nodeType,
-      )
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData)
         return
       const { defaultValue } = nodeMetaData
+      const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
       const { newNode, newIterationStartNode, newLoopStartNode }
         = generateNewNode({
           type: getNodeCustomTypeByNodeDataType(nodeType),
@@ -1447,13 +1447,11 @@ export const useNodesInteractions = () => {
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const currentNode = nodes.find(node => node.id === currentNodeId)!
       const connectedEdges = getConnectedEdges([currentNode], edges)
-      const nodesWithSameType = nodes.filter(
-        node => node.data.type === nodeType,
-      )
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData)
         return
       const { defaultValue } = nodeMetaData
+      const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
       const {
         newNode: newCurrentNode,
         newIterationStartNode,
@@ -1729,7 +1727,7 @@ export const useNodesInteractions = () => {
     if (node.type === CUSTOM_NOTE_NODE)
       return true
 
-    const nodeMeta = nodesMetaDataMap?.[node.data.type as BlockEnum]
+    const nodeMeta = nodesMetaDataMap?.[isAgentV2NodeData(node.data) ? BlockEnum.AgentV2 : node.data.type as BlockEnum]
     if (!nodeMeta)
       return false
 
@@ -1741,7 +1739,7 @@ export const useNodesInteractions = () => {
     if (node.type === CUSTOM_NOTE_NODE)
       return {}
 
-    const nodeMeta = nodesMetaDataMap?.[node.data.type as BlockEnum]
+    const nodeMeta = nodesMetaDataMap?.[isAgentV2NodeData(node.data) ? BlockEnum.AgentV2 : node.data.type as BlockEnum]
     return nodeMeta?.defaultValue
   }, [nodesMetaDataMap])
 
