@@ -33,12 +33,12 @@ import { PluginCategoryEnum, PluginSource } from '../../types'
 import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
   isReadmeView?: boolean
   onHide?: () => void
   onUpdate?: (isDelete?: boolean) => void
-}
+}>
 
 const getIconSrc = (icon: string | undefined, iconDark: string | undefined, theme: string, tenantId: string): string => {
   const iconFileName = theme === 'dark' && iconDark ? iconDark : icon

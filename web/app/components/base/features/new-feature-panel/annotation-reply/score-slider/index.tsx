@@ -4,11 +4,11 @@ import { Slider } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value: number
   onChange: (value: number) => void
-}
+}>
 
 const clamp = (value: number, min: number, max: number) => {
   if (!Number.isFinite(value))

@@ -14,7 +14,11 @@ vi.mock('@/next/link', () => ({
 vi.mock('@/utils/var', async importOriginal => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
   getMarketplaceUrl: (path = '', params?: Record<string, string | undefined>) => {
-    const searchParams = new URLSearchParams(params)
+    const searchParams = new URLSearchParams()
+    Object.entries(params ?? {}).forEach(([key, value]) => {
+      if (value !== undefined)
+        searchParams.append(key, value)
+    })
     const query = searchParams.toString()
     return `https://marketplace.test${path}${query ? `?${query}` : ''}`
   },

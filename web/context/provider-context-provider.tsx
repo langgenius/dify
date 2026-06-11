@@ -5,6 +5,7 @@ import type { ProviderContextState } from './provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
@@ -16,7 +17,6 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import {
   useModelListByType,

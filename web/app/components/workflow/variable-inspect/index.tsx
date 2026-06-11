@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { debounce } from 'es-toolkit/compat'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import {
   useCallback,
   useMemo,
 } from 'react'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
 import { useStore } from '../store'
 import Panel from './panel'

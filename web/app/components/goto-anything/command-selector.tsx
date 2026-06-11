@@ -5,14 +5,14 @@ import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { slashCommandRegistry } from './actions/commands/registry'
 
-type Props = {
+type Props = Readonly<{
   actions: Record<string, ActionItem>
   onCommandSelect: (commandKey: string) => void
   searchFilter?: string
   commandValue?: string
   onCommandValueChange?: (value: string) => void
   originalQuery?: string
-}
+}>
 
 const slashCommandDescriptionKeys = {
   '/create': 'gotoAnything.actions.createCategoryDesc',

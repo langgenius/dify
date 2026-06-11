@@ -8,7 +8,7 @@ import Installed from '../base/installed'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import Install from './steps/install'
 
-type Props = {
+type Props = Readonly<{
   step: InstallStep
   onStepChange: (step: InstallStep) => void
   onStartToInstall: () => void
@@ -19,7 +19,7 @@ type Props = {
   errorMsg: string | null
   installContextCategory?: PluginCategoryEnum
   onError: (errorMsg: string) => void
-}
+}>
 
 const ReadyToInstall: FC<Props> = ({
   step,

@@ -16,9 +16,9 @@ import { useGotoAnythingNavigation } from './hooks/use-goto-anything-navigation'
 import { useGotoAnythingResults } from './hooks/use-goto-anything-results'
 import { useGotoAnythingSearch } from './hooks/use-goto-anything-search'
 
-type Props = {
+type Props = Readonly<{
   onHide?: () => void
-}
+}>
 
 const GotoAnythingDialog: FC<Props> = ({
   onHide,

@@ -4,10 +4,10 @@ import { AUTO_UPDATE_STRATEGY } from './types'
 
 const i18nPrefix = 'autoUpdate.strategy'
 
-type Props = {
+type Props = Readonly<{
   value: AUTO_UPDATE_STRATEGY
   onChange: (value: AUTO_UPDATE_STRATEGY) => void
-}
+}>
 const StrategyPicker = ({
   value,
   onChange,

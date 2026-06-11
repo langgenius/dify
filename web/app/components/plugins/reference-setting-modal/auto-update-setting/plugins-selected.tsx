@@ -6,10 +6,10 @@ import Icon from '@/app/components/plugins/card/base/card-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 
 const MAX_DISPLAY_COUNT = 14
-type Props = {
+type Props = Readonly<{
   className?: string
   plugins: string[]
-}
+}>
 
 const PluginsSelected: FC<Props> = ({
   className,

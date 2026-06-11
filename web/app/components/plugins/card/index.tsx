@@ -27,7 +27,7 @@ export type CardPayload = Omit<Plugin, 'icon' | 'icon_dark'> & {
   icon_dark?: string | { content: string, background: string }
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: CardPayload
   titleLeft?: React.ReactNode
@@ -41,7 +41,7 @@ type Props = {
   limitedInstall?: boolean
   compact?: boolean
   variant?: 'default' | 'marketplace'
-}
+}>
 
 const Card = ({
   className,

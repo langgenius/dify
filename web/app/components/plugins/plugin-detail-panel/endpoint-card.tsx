@@ -31,11 +31,11 @@ import { NAME_FIELD } from './utils'
 
 type EndpointModalFormSchemas = ComponentProps<typeof EndpointModal>['formSchemas']
 
-type Props = {
+type Props = Readonly<{
   pluginDetail: PluginDetail
   data: EndpointListItem
   handleChange: () => void
-}
+}>
 
 const EndpointCard = ({
   pluginDetail,

@@ -1,8 +1,8 @@
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { NOTICE_I18N } from '@/i18n-config/language'
 
 const MaintenanceNotice = () => {

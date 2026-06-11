@@ -32,9 +32,9 @@ import { List } from './list'
 import { AnnotationEnableStatus, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
 
-type Props = {
+type Props = Readonly<{
   appDetail: App
-}
+}>
 
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props

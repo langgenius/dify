@@ -22,10 +22,10 @@ import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds,
 
 const i18nPrefix = 'autoUpdate'
 
-type Props = {
+type Props = Readonly<{
   payload: AutoUpdateConfig
   onChange: (payload: AutoUpdateConfig) => void
-}
+}>
 
 const SettingTimeZone: FC<{
   children?: React.ReactNode

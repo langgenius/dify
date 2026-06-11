@@ -9,9 +9,9 @@ import { PageType } from '@/app/components/base/features/new-feature-panel/annot
 import Loading from '@/app/components/base/loading'
 import { AppModeEnum } from '@/types/app'
 
-type Props = {
+type Props = Readonly<{
   pageType: PageType
-}
+}>
 
 const LogAnnotation: FC<Props> = ({
   pageType,

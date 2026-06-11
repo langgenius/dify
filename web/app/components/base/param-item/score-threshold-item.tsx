@@ -4,14 +4,14 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ParamItem from '.'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value?: number
   onChange: (key: string, value: number) => void
   enable: boolean
   hasSwitch?: boolean
   onSwitchChange?: (key: string, enable: boolean) => void
-}
+}>
 
 const VALUE_LIMIT = {
   default: 0.7,

@@ -13,11 +13,11 @@ import { ChangeType } from '@/app/components/workflow/types'
 import { hasDuplicateStr } from '@/utils/var'
 import VarItem from './var-item'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   list: InputVar[]
   onChange: (list: InputVar[], moreInfo?: { index: number, payload: MoreInfo }) => void
-}
+}>
 
 const VarList: FC<Props> = ({
   readonly,
