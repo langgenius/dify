@@ -11854,6 +11854,7 @@ composer/publish validators and skipped by runtime request builders.
 | description | string |  | No |
 | enabled | boolean |  | No |
 | env | [AgentCliToolEnvConfig](#agentclitoolenvconfig) |  | No |
+| id | string |  | No |
 | install | string |  | No |
 | install_command | string |  | No |
 | install_commands | [ string ] |  | No |
@@ -11920,11 +11921,13 @@ Risk marker for CLI tool bootstrap commands.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
+| granularity | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
+| tools_count | integer |  | No |
 
 #### AgentComposerFileCandidateResponse
 
@@ -11985,7 +11988,7 @@ Risk marker for CLI tool bootstrap commands.
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
-| skills_files | [ [AgentComposerSkillCandidateResponse](#agentcomposerskillcandidateresponse) ]<br>[ [AgentComposerFileCandidateResponse](#agentcomposerfilecandidateresponse) ] |  | No |
+| skills_files | [  ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -12076,33 +12079,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
-
-#### AgentComposerFileCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| file_id | string |  | No |
-| id | string |  | No |
-| kind | string |  | No |
-| name | string |  | No |
-| reference | string |  | No |
-| remote_url | string |  | No |
-| tenant_id | string |  | No |
-| transfer_method | string |  | No |
-| type | string |  | No |
-| upload_file_id | string |  | No |
-| url | string |  | No |
-
-#### AgentComposerSkillCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| id | string |  | No |
-| kind | string |  | No |
-| name | string |  | No |
-| path | string |  | No |
 
 #### AgentFileRefConfig
 
@@ -12438,7 +12414,7 @@ new callers should send ``plugin_id`` + ``provider`` when available.
 | provider_id | string |  | No |
 | provider_type | string |  | No |
 | runtime_parameters | object |  | No |
-| tool_name | string |  | Yes |
+| tool_name | string |  | No |
 
 #### AgentSoulDifyToolCredentialRef
 
