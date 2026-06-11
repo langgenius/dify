@@ -47,6 +47,10 @@ The codebase is split into:
 
 ## Agent V2 Frontend Constraints
 
+- Treat workflow Agent and Agent v2 as separate product surfaces. The existing workflow `agent` node is the legacy Old Agent and should keep its current strategy/plugin-based behavior. Do not refactor legacy Agent code to support Agent v2 unless explicitly requested.
+- New Agent work must use the Agent v2 surface and code path: `web/features/agent-v2`, `web/app/components/workflow/nodes/agent-v2`, `BlockEnum.AgentV2`, and the `agentV2` i18n namespace where applicable. Do not add new Agent behavior to legacy `web/app/components/workflow/nodes/agent`.
+- Do not mix, alias, or compatibility-bridge Old Agent and Agent v2 data shapes. Keep fields such as `agent_strategy_*` on legacy Agent only, and fields such as `agent_roster`, `agent_task`, and Agent v2 backend bindings on Agent v2 only.
+- Shared workflow utilities may branch on the explicit node type/discriminator when necessary, but they must preserve the boundary: legacy Agent behavior must not depend on Agent v2 data, and Agent v2 behavior must not fall back to legacy Agent strategy/plugin behavior.
 - For Agent v2 frontend work under `web/features/agent-v2`, use generated contracts and `consoleQuery` from `@/service/client` for all Agent v2 backend APIs. Do not add ad hoc REST helpers, mock data, compatibility shims, or handwritten API types for new Agent v2 interfaces.
 - Use existing `@langgenius/dify-ui/*` primitives before adding feature-local UI chrome. Prefer primitive default styles; add call-site CSS only for real design deltas.
 - Prefer primitive data/CSS selectors for visual states instead of mirroring state in React only to choose classes.
