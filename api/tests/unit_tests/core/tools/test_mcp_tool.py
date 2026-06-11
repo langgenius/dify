@@ -230,7 +230,9 @@ def test_inject_forwarded_identity_sends_end_user_type_for_webapp():
         "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
         return_value=("forwarded.jwt", 1900000000),
     ) as issue:
-        tool._inject_forwarded_identity(headers, user_id="eu-1", app_id="app-1", audience="https://mcp.example.com/mcp/")
+        tool._inject_forwarded_identity(
+            headers, user_id="eu-1", app_id="app-1", audience="https://mcp.example.com/mcp/"
+        )
 
     assert issue.call_args.kwargs["user_type"] == "end_user"
 
