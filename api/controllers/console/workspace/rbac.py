@@ -116,7 +116,7 @@ class _PaginationQuery(BaseModel):
 
     page_number: int | None = Field(default=None, ge=1, validation_alias=AliasChoices("page", "page_number"))
     results_per_page: int | None = Field(
-        default=None, ge=1, le=100, validation_alias=AliasChoices("limit", "results_per_page")
+        default=None, ge=1, le=99999, validation_alias=AliasChoices("limit", "results_per_page")
     )
     reverse: bool | None = None
 
