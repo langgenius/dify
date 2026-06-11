@@ -3,12 +3,10 @@
 import type { SnippetListItem } from '@/types/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import dynamic from '@/next/dynamic'
@@ -16,7 +14,6 @@ import Link from '@/next/link'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
 import Empty from '../apps/empty'
-import Footer from '../apps/footer'
 import { StudioListHeader } from '../apps/studio-list-header'
 import SnippetCard from './components/snippet-card'
 import SnippetCreateButton from './components/snippet-create-button'
@@ -48,7 +45,6 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 
 const SnippetList = () => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
@@ -193,9 +189,6 @@ const SnippetList = () => {
           <SnippetCardSkeleton count={3} />
         )}
       </div>
-      {!systemFeatures.branding.enabled && (
-        <Footer />
-      )}
       <div ref={anchorRef} className="h-0"> </div>
       <TagManagementModal
         type="snippet"

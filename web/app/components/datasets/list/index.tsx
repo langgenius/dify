@@ -1,6 +1,5 @@
 'use client'
 
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 
 // Libraries
@@ -8,7 +7,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -16,14 +14,12 @@ import { useDatasetApiBaseUrl, useDatasetList, useInvalidDatasetList } from '@/s
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
 import ExternalAPIPanel from '../external-api/external-api-panel'
-import DatasetFooter from './dataset-footer'
 import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
 
 const List = () => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { push } = useRouter()
   const { isCurrentWorkspaceOwner } = useAppContext()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
@@ -123,7 +119,6 @@ const List = () => {
                 isPlaceholderData={datasetListQuery.isPlaceholderData}
                 onOpenTagManagement={() => setShowTagManagementModal(true)}
               />
-              {!systemFeatures.branding.enabled && <DatasetFooter />}
             </>
           )}
       <TagManagementModal

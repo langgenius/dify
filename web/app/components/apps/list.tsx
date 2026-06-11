@@ -23,7 +23,6 @@ import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_GRID_CLASS_NAME, APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
-import Footer from './footer'
 import { useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
@@ -291,9 +290,6 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
             <span className="i-ri-drag-drop-line size-4" />
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
-        )}
-        {!systemFeatures.branding.enabled && !showFirstEmptyState && (
-          <Footer />
         )}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>
