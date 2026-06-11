@@ -72,7 +72,7 @@ function CreateReleaseDefaultSourceApp({ formValues }: {
     },
     enabled: isDialogOpen,
   }))
-  const latestSourceAppId = latestReleaseQuery.data?.data[0]?.sourceAppId
+  const latestSourceAppId = latestReleaseQuery.data?.releases[0]?.sourceAppId
   const defaultSourceAppInput = isDialogOpen && latestSourceAppId
     ? { params: { app_id: latestSourceAppId } }
     : undefined

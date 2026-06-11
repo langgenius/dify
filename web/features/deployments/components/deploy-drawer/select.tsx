@@ -123,7 +123,7 @@ export function EnvironmentRow({ env }: { env: Environment }) {
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-2">
           <EnvironmentHealthDot status={env.status} />
-          <span className="truncate system-sm-semibold text-text-primary">{env.name}</span>
+          <span className="truncate system-sm-semibold text-text-primary">{env.displayName}</span>
           <ModeBadge mode={env.mode} />
         </div>
         <span className="line-clamp-1 system-xs-regular text-text-tertiary">{summary}</span>

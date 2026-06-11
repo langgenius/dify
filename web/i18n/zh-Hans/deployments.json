@@ -387,6 +387,7 @@
   "filter.searchPlaceholder": "搜索部署",
   "health.ENVIRONMENT_STATUS_ADMISSION": "准入中",
   "health.ENVIRONMENT_STATUS_BOOTSTRAPPING": "启动中",
+  "health.ENVIRONMENT_STATUS_DELETING": "删除中",
   "health.ENVIRONMENT_STATUS_FAILED": "不可用",
   "health.ENVIRONMENT_STATUS_READY": "可用",
   "health.ENVIRONMENT_STATUS_UNSPECIFIED": "未知",

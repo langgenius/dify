@@ -1,6 +1,6 @@
 'use client'
 
-import type { CreateReleaseReply } from '@dify/contracts/enterprise/types.gen'
+import type { CreateReleaseResponse } from '@dify/contracts/enterprise/types.gen'
 import type { CreateReleaseFormValues } from './types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
@@ -26,19 +26,17 @@ export function useCreateReleaseSubmission(formValues: CreateReleaseFormValues) 
   const sourceSelection = useCreateReleaseSourceSelection(formValues)
   const releaseContent = useReleaseContentCheck(sourceSelection)
   const closeDialog = useSetAtom(closeCreateReleaseDialogAtom)
-  const createReleaseFromSourceApp = useMutation(consoleQuery.enterprise.releaseService.createReleaseFromSourceApp.mutationOptions())
-  const createReleaseFromDsl = useMutation(consoleQuery.enterprise.releaseService.createReleaseFromDsl.mutationOptions())
+  const createReleaseMutation = useMutation(consoleQuery.enterprise.releaseService.createRelease.mutationOptions())
   const clearSubmitError = useSetAtom(clearCreateReleaseSubmissionErrorAtom)
   const setUnsupportedDslNodes = useSetAtom(createReleaseSubmitUnsupportedDslNodesAtom)
 
   function clearSubmissionError() {
-    createReleaseFromSourceApp.reset()
-    createReleaseFromDsl.reset()
+    createReleaseMutation.reset()
     clearSubmitError()
   }
 
-  function handleSuccess(response: CreateReleaseReply) {
-    const createdName = response.release.name
+  function handleSuccess(response: CreateReleaseResponse) {
+    const createdName = response.release.displayName
     toast.success(t('versions.createSuccess', { name: createdName }))
     closeDialog()
   }
@@ -73,11 +71,11 @@ export function useCreateReleaseSubmission(formValues: CreateReleaseFormValues) 
           return
         }
 
-        const response = await createReleaseFromDsl.mutateAsync({
+        const response = await createReleaseMutation.mutateAsync({
           body: {
             appInstanceId,
             dsl: sourceSelection.encodedDslContent,
-            name: submittedReleaseName,
+            displayName: submittedReleaseName,
             description: value.releaseDescription.trim() || undefined,
             createAppInstance: false,
           },
@@ -89,11 +87,11 @@ export function useCreateReleaseSubmission(formValues: CreateReleaseFormValues) 
       if (!sourceSelection.selectedSourceAppId)
         return
 
-      const response = await createReleaseFromSourceApp.mutateAsync({
+      const response = await createReleaseMutation.mutateAsync({
         body: {
           appInstanceId,
           sourceAppId: sourceSelection.selectedSourceAppId,
-          name: submittedReleaseName,
+          displayName: submittedReleaseName,
           description: value.releaseDescription.trim() || undefined,
           createAppInstance: false,
         },

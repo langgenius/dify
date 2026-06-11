@@ -54,7 +54,7 @@ function EditDeploymentForm({
   onSubmit: (values: EditDeploymentFormValues) => void
 }) {
   const { t } = useTranslation('deployments')
-  const initialName = app.name
+  const initialName = app.displayName
   const initialDescription = app.description
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
@@ -137,7 +137,7 @@ export function EditDeploymentDialog({
       : skipToken,
   }))
   const app = instanceQuery.data?.appInstance
-  const formKey = app ? `${app.id}-${app.name}-${app.description}` : 'loading'
+  const formKey = app ? `${app.id}-${app.displayName}-${app.description}` : 'loading'
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && updateInstance.isPending)
@@ -157,7 +157,7 @@ export function EditDeploymentDialog({
         },
         body: {
           appInstanceId,
-          name: values.name,
+          displayName: values.name,
           description: values.description || undefined,
         },
       },

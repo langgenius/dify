@@ -40,7 +40,7 @@ function ReleaseTitleTooltip({ release }: {
       <TooltipTrigger
         render={(
           <span className="inline-flex max-w-full cursor-default truncate text-text-primary">
-            {release.name}
+            {release.displayName}
           </span>
         )}
       />
@@ -133,7 +133,7 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 system-xs-regular text-text-secondary">
                     <CreatedAtCell createdAt={release.createdAt} />
                     <span aria-hidden>·</span>
-                    <span>{row.createdBy.name}</span>
+                    <span>{row.createdBy.displayName}</span>
                     {(release.sourceAppId || release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD) && (
                       <>
                         <span aria-hidden>·</span>
@@ -212,7 +212,7 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDelete
                     <CreatedAtCell createdAt={release.createdAt} />
                   </DetailTableCell>
                   <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author} truncate text-text-secondary`}>
-                    {row.createdBy.name}
+                    {row.createdBy.displayName}
                   </DetailTableCell>
                   <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>
                     <div className="flex flex-wrap gap-1">

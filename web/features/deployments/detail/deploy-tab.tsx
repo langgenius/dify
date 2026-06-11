@@ -95,10 +95,10 @@ export function DeployTab({ appInstanceId }: {
     input: {
       params: { appInstanceId },
     },
-    refetchInterval: query => deploymentStatusPollingInterval(query.state.data?.data),
+    refetchInterval: query => deploymentStatusPollingInterval(query.state.data?.environmentDeployments),
   }))
   const environmentDeployments = environmentDeploymentsQuery.data
-  const rows = environmentDeployments?.data.filter(hasRuntimeInstanceDeployment) ?? []
+  const rows = environmentDeployments?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
   const isLoading = environmentDeploymentsQuery.isLoading
   const hasError = environmentDeploymentsQuery.isError
 

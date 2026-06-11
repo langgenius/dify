@@ -15,9 +15,15 @@ import { TitleTooltip } from './title-tooltip'
 
 export type EnvVarValueSource = NonNullable<EnvVarInput['valueSource']>
 type EnvVarValueType = 'string' | 'number' | 'secret'
-export type EnvVarBindingSlot = EnvVarSlot & {
+// Contract EnvVarSlot carries an EnvVarValueType enum and signals default/last
+// presence via optional fields; binding slots keep the legacy lowercase value
+// type plus explicit has* flags because DSL-metadata slots share this shape.
+// Adapters live in env-var-bindings-utils.ts.
+export type EnvVarBindingSlot = Omit<EnvVarSlot, 'valueType'> & {
   key: string
   valueType: EnvVarValueType
+  hasDefaultValue?: boolean
+  hasLastValue?: boolean
 }
 export type EnvVarValueSelection = {
   valueSource: EnvVarValueSource

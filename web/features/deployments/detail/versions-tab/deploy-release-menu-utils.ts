@@ -63,7 +63,7 @@ function buildDeployMenuRow({
   t: TFunction<'deployments'>
 }): DeployMenuRow {
   const envId = env.id
-  const envName = env.name
+  const envName = env.displayName
   const row = deploymentRows.find(item => item.environment.id === envId)
   const currentRelease = row?.currentRelease
   const isCurrent = currentRelease?.id === releaseId

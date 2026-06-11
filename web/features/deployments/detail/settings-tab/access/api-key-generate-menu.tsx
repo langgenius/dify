@@ -107,7 +107,7 @@ export function ApiKeyGenerateMenu({
         body: {
           appInstanceId,
           environmentId: selectedEnvironmentId,
-          name,
+          displayName: name,
         },
       },
       {
@@ -191,12 +191,12 @@ export function ApiKeyGenerateMenu({
                     {t('access.api.table.environment')}
                   </SelectLabel>
                   <SelectTrigger>
-                    {selectedEnvironment?.name ?? '—'}
+                    {selectedEnvironment?.displayName ?? '—'}
                   </SelectTrigger>
                   <SelectContent>
                     {selectableEnvironments.map(env => (
                       <SelectItem key={env.id} value={env.id}>
-                        <SelectItemText>{env.name}</SelectItemText>
+                        <SelectItemText>{env.displayName}</SelectItemText>
                         <SelectItemIndicator />
                       </SelectItem>
                     ))}

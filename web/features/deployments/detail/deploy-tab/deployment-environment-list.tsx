@@ -25,7 +25,7 @@ function EnvironmentSummary({ environment }: {
 }) {
   return (
     <span className="block truncate text-text-primary">
-      {environment.name}
+      {environment.displayName}
     </span>
   )
 }
@@ -42,7 +42,7 @@ function CurrentReleaseSummary({ release }: {
     <div className="flex min-w-0 flex-col gap-1">
       <div className="flex min-w-0 items-baseline gap-1.5">
         <span className="truncate text-text-primary">
-          {release.name}
+          {release.displayName}
         </span>
         {commit !== '—' && (
           <span className="shrink-0 font-mono system-xs-regular text-text-tertiary">

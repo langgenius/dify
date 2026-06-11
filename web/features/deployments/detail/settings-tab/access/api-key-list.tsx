@@ -38,7 +38,7 @@ function ApiKeyName({ apiKey }: {
 }) {
   return (
     <span className="block truncate text-text-primary">
-      {apiKey.name}
+      {apiKey.displayName}
     </span>
   )
 }
@@ -48,7 +48,7 @@ function EnvironmentBadge({ environment }: {
 }) {
   return (
     <span className="inline-flex h-5 max-w-36 items-center rounded-md bg-background-section-burn px-1.5 text-xs text-text-tertiary">
-      <span className="truncate">{environment?.name ?? '—'}</span>
+      <span className="truncate">{environment?.displayName ?? '—'}</span>
     </span>
   )
 }
@@ -72,7 +72,7 @@ function RevokeApiKeyButton({ apiKey }: {
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
   const revokeApiKey = useMutation(consoleQuery.enterprise.accessService.deleteApiKey.mutationOptions())
   const isRevoking = revokeApiKey.isPending
-  const apiKeyName = apiKey.name
+  const apiKeyName = apiKey.displayName
 
   function handleRevoke() {
     if (isRevoking)
@@ -81,6 +81,8 @@ function RevokeApiKeyButton({ apiKey }: {
     revokeApiKey.mutate(
       {
         params: {
+          appInstanceId: apiKey.appInstanceId,
+          environmentId: apiKey.environmentId,
           apiKeyId: apiKey.id,
         },
       },

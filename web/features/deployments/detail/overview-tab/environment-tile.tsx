@@ -97,7 +97,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
             <span className="i-ri-server-line size-4" />
           </span>
           <h4 className="truncate system-sm-medium text-text-primary">
-            {row.environment.name}
+            {row.environment.displayName}
           </h4>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -113,7 +113,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-2">
             <span className="min-w-0 truncate system-sm-semibold text-text-primary">
-              {showRelease ? showRelease.name : '—'}
+              {showRelease ? showRelease.displayName : '—'}
             </span>
             {showRelease && commit !== '—' && (
               <span className="shrink-0 rounded bg-background-section-burn px-1.5 py-0.5 font-mono system-xs-regular text-text-tertiary">

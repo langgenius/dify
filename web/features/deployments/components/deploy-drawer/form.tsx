@@ -233,7 +233,7 @@ export function DeployForm({
   presetReleaseId,
 }: DeployFormProps) {
   const { t } = useTranslation('deployments')
-  const releaseDeploymentViewQuery = useQuery(consoleQuery.enterprise.releaseService.getReleaseDeploymentView.queryOptions({
+  const releaseDeploymentViewQuery = useQuery(consoleQuery.enterprise.releaseService.computeReleaseDeploymentView.queryOptions({
     input: {
       params: { appInstanceId },
     },

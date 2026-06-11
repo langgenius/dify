@@ -52,55 +52,45 @@ export function useReleaseContentCheck(releaseSource: CreateReleaseSourceSelecti
   const { appInstanceId } = useCreateReleaseConfig()
   const isDialogOpen = useAtomValue(createReleaseDialogOpenAtom)
   const canCheckReleaseContent = isDialogOpen && canCheckReleaseSourceContent(releaseSource)
-  const sourceAppReleaseContentInput = canCheckReleaseContent && releaseSource.releaseSourceMode === 'sourceApp' && releaseSource.selectedSourceAppId
+  // PrecheckRelease takes exactly one source arm (dsl | sourceAppId).
+  const precheckSource = releaseSource.releaseSourceMode === 'sourceApp'
+    ? (releaseSource.selectedSourceAppId ? { sourceAppId: releaseSource.selectedSourceAppId } : undefined)
+    : { dsl: releaseSource.encodedDslContent }
+  const precheckInput = canCheckReleaseContent && precheckSource
     ? {
         body: {
           appInstanceId,
-          sourceAppId: releaseSource.selectedSourceAppId,
+          ...precheckSource,
         },
       }
     : undefined
-  const dslReleaseContentInput = canCheckReleaseContent && releaseSource.releaseSourceMode === 'dsl'
-    ? {
-        body: {
-          appInstanceId,
-          dsl: releaseSource.encodedDslContent,
-        },
-      }
-    : undefined
-  const sourceAppReleaseContentQuery = useQuery({
-    ...(sourceAppReleaseContentInput
-      ? consoleQuery.enterprise.releaseService.checkReleaseContentFromSourceApp.queryOptions({
-          input: sourceAppReleaseContentInput,
+  const precheckQuery = useQuery({
+    ...(precheckInput
+      ? consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
+          input: precheckInput,
         })
       : {
           queryFn: skipToken,
-          queryKey: ['create-release', 'release-content', 'source-app'],
+          queryKey: ['create-release', 'release-precheck'],
         }),
     retry: false,
   })
-  const dslReleaseContentQuery = useQuery({
-    ...(dslReleaseContentInput
-      ? consoleQuery.enterprise.releaseService.checkReleaseContentFromDsl.queryOptions({
-          input: dslReleaseContentInput,
-        })
-      : {
-          queryFn: skipToken,
-          queryKey: ['create-release', 'release-content', 'dsl'],
-        }),
-    retry: false,
-  })
-  const activeReleaseContentQuery = releaseSource.releaseSourceMode === 'dsl' ? dslReleaseContentQuery : sourceAppReleaseContentQuery
-  const matchedRelease = canCheckReleaseContent ? activeReleaseContentQuery.data?.matchedRelease : undefined
-  const isCheckingReleaseContent = canCheckReleaseContent && (activeReleaseContentQuery.isLoading || activeReleaseContentQuery.isFetching)
-  const releaseContentCheckFailed = canCheckReleaseContent && activeReleaseContentQuery.isError
-  const releaseContentReady = canCheckReleaseContent && activeReleaseContentQuery.isSuccess && !isCheckingReleaseContent && !matchedRelease && !releaseContentCheckFailed
+  const matchedRelease = canCheckReleaseContent ? precheckQuery.data?.matchedRelease : undefined
+  const unsupportedNodes = (canCheckReleaseContent ? precheckQuery.data?.unsupportedNodes : undefined) ?? []
+  const isCheckingReleaseContent = canCheckReleaseContent && (precheckQuery.isLoading || precheckQuery.isFetching)
+  const releaseContentCheckFailed = canCheckReleaseContent && precheckQuery.isError
+  const releaseContentReady = canCheckReleaseContent
+    && precheckQuery.isSuccess
+    && !isCheckingReleaseContent
+    && !releaseContentCheckFailed
+    && Boolean(precheckQuery.data?.canCreate)
 
   return {
     isCheckingReleaseContent,
     matchedRelease,
     releaseContentCheckFailed,
     releaseContentReady,
+    unsupportedNodes,
   }
 }
 

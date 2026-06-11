@@ -28,7 +28,7 @@ function dedupeReleaseDeployments(items: ReleaseDeployment[]) {
 function releaseSummaryEnvironmentDeployment(environment: Environment, status: RuntimeInstanceStatusValue): ReleaseDeployment {
   return {
     environmentId: environment.id,
-    environmentName: environment.name,
+    environmentName: environment.displayName,
     status,
   }
 }

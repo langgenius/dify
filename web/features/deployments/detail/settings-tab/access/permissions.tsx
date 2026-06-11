@@ -52,7 +52,7 @@ export function EnvironmentPermissionRow({
 }: EnvironmentPermissionRowProps) {
   const { t } = useTranslation('deployments')
   const environmentId = environment.id
-  const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
+  const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.updateAccessPolicy.mutationOptions())
   const policy = summaryPolicy
   const policyKind = accessModeToPermissionKey(policy?.mode)
   const policyFingerprint = policy
@@ -78,7 +78,7 @@ export function EnvironmentPermissionRow({
   const subjectSelection = accessControlSelectionFromSubjects(subjects)
   const isSaving = setEnvironmentAccessPolicy.isPending
   const controlsDisabled = disabled || isSaving
-  const envName = environment.name
+  const envName = environment.displayName
 
   const persistPolicy = (
     nextKind: AccessPermissionKind,

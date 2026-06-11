@@ -6,7 +6,7 @@ import { getReleaseSummaryDeployments } from '../release-deployments'
 function environment(id: string, name: string): ReleaseSummary['deployedEnvironments'][number]['environment'] {
   return {
     id,
-    name,
+    displayName: name,
     description: '',
     mode: 'ENVIRONMENT_MODE_SHARED',
     backend: 'RUNTIME_BACKEND_K8S',
@@ -30,7 +30,7 @@ describe('release-deployments', () => {
         release: {
           id: 'release',
           appInstanceId: 'app-instance',
-          name: 'Release',
+          displayName: 'Release',
           description: '',
           source: 'RELEASE_SOURCE_UPLOAD',
           sourceAppId: '',
@@ -38,7 +38,7 @@ describe('release-deployments', () => {
           requiredSlots: [],
           createdBy: {
             id: 'account',
-            name: 'Account',
+            displayName: 'Account',
           },
           createdAt: '',
         },

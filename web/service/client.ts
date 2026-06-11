@@ -1,7 +1,8 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type {
-  GetReleaseReply,
-  ListReleasesReply,
+  GetReleaseResponse,
+  ListReleasesResponse,
+  PrecheckReleaseRequest,
 } from '@dify/contracts/enterprise/types.gen'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
@@ -147,7 +148,7 @@ function releaseSummariesQueryKey(query: ConsoleQueryUtils, appInstanceId: strin
 }
 
 function releaseDeploymentViewQueryKey(query: ConsoleQueryUtils, appInstanceId: string) {
-  return query.enterprise.releaseService.getReleaseDeploymentView.key({
+  return query.enterprise.releaseService.computeReleaseDeploymentView.key({
     type: 'query',
     input: { params: { appInstanceId } },
   })
@@ -165,16 +166,16 @@ function cachedReleaseAppInstanceId(
   client: QueryClient,
   releaseId: string,
 ) {
-  const listQueries = client.getQueriesData<ListReleasesReply>({
+  const listQueries = client.getQueriesData<ListReleasesResponse>({
     queryKey: query.enterprise.releaseService.listReleases.key({ type: 'query' }),
   })
   for (const [, data] of listQueries) {
-    const appInstanceId = data?.data?.find(release => release.id === releaseId)?.appInstanceId
+    const appInstanceId = data?.releases?.find(release => release.id === releaseId)?.appInstanceId
     if (appInstanceId)
       return appInstanceId
   }
 
-  const releaseQueries = client.getQueriesData<GetReleaseReply>({
+  const releaseQueries = client.getQueriesData<GetReleaseResponse>({
     queryKey: query.enterprise.releaseService.getRelease.key({ type: 'query' }),
   })
   for (const [, data] of releaseQueries) {
@@ -184,27 +185,10 @@ function cachedReleaseAppInstanceId(
   }
 }
 
-function releaseContentFromDslQueryKey(query: ConsoleQueryUtils, appInstanceId: string, dsl: string) {
-  return query.enterprise.releaseService.checkReleaseContentFromDsl.key({
+function precheckReleaseQueryKey(query: ConsoleQueryUtils, body: PrecheckReleaseRequest) {
+  return query.enterprise.releaseService.precheckRelease.key({
     type: 'query',
-    input: {
-      body: {
-        appInstanceId,
-        dsl,
-      },
-    },
-  })
-}
-
-function releaseContentFromSourceAppQueryKey(query: ConsoleQueryUtils, appInstanceId: string, sourceAppId: string) {
-  return query.enterprise.releaseService.checkReleaseContentFromSourceApp.key({
-    type: 'query',
-    input: {
-      body: {
-        appInstanceId,
-        sourceAppId,
-      },
-    },
+    input: { body },
   })
 }
 
@@ -331,7 +315,7 @@ async function invalidateReleaseMutationQueries(
     query.enterprise.appInstanceService.listAppInstanceSummaries.key(),
     query.enterprise.releaseService.listReleases.key({ type: 'query' }),
     query.enterprise.releaseService.listReleaseSummaries.key({ type: 'query' }),
-    query.enterprise.releaseService.getReleaseDeploymentView.key({ type: 'query' }),
+    query.enterprise.releaseService.computeReleaseDeploymentView.key({ type: 'query' }),
     query.enterprise.appInstanceService.getAppInstance.key({ type: 'query' }),
     query.enterprise.appInstanceService.getAppInstanceOverview.key({ type: 'query' }),
   ])
@@ -482,7 +466,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                     }))
                     .catch(() => undefined)
 
-                  if (listResponse?.data?.some(app => app.id === appInstanceId))
+                  if (listResponse?.appInstances?.some(app => app.id === appInstanceId))
                     break
                 }
               }
@@ -527,11 +511,11 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
       releaseService: {
-        createReleaseFromDsl: {
+        createRelease: {
           mutationOptions: {
             onSuccess: (data, variables, _result, context) => {
               const appInstanceId = data.release?.appInstanceId ?? data.appInstance?.id ?? variables.body.appInstanceId
-              const dsl = variables.body.dsl
+              const { dsl, sourceAppId } = variables.body
               if (!appInstanceId) {
                 return Promise.all([
                   context.client.invalidateQueries({
@@ -547,45 +531,16 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                 environmentDeployments: false,
                 accessChannels: false,
               })
-              if (!dsl)
+              if (!dsl && !sourceAppId)
                 return appDeployInvalidation
 
               return Promise.all([
                 appDeployInvalidation,
                 context.client.invalidateQueries({
-                  queryKey: releaseContentFromDslQueryKey(consoleQuery, appInstanceId, dsl),
-                }),
-              ])
-            },
-          },
-        },
-        createReleaseFromSourceApp: {
-          mutationOptions: {
-            onSuccess: (data, variables, _result, context) => {
-              const appInstanceId = data.release?.appInstanceId ?? data.appInstance?.id ?? variables.body.appInstanceId
-              const sourceAppId = variables.body.sourceAppId
-              if (!appInstanceId) {
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
+                  queryKey: precheckReleaseQueryKey(consoleQuery, {
+                    appInstanceId,
+                    ...(dsl ? { dsl } : { sourceAppId }),
                   }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
-                  }),
-                ])
-              }
-
-              const appDeployInvalidation = invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
-                environmentDeployments: false,
-                accessChannels: false,
-              })
-              if (!sourceAppId)
-                return appDeployInvalidation
-
-              return Promise.all([
-                appDeployInvalidation,
-                context.client.invalidateQueries({
-                  queryKey: releaseContentFromSourceAppQueryKey(consoleQuery, appInstanceId, sourceAppId),
                 }),
               ])
             },
@@ -709,7 +664,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
-        putAccessPolicy: {
+        updateAccessPolicy: {
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const { appInstanceId, environmentId } = variables.params

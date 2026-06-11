@@ -1,7 +1,7 @@
 'use client'
 
 import type {
-  DeployReq,
+  DeployRequest,
   EnvVarInput,
 } from '@dify/contracts/enterprise/types.gen'
 import type { Getter } from 'jotai/vanilla'
@@ -14,6 +14,7 @@ import { keepPreviousData } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { unwrap } from 'jotai/utils'
+import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/components/env-var-bindings-utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
@@ -244,7 +245,7 @@ const instanceNameConflictQueryAtom = atomWithQuery((get) => {
       query: {
         pageNumber: 1,
         resultsPerPage: 1,
-        name: submittedInstanceName,
+        displayName: submittedInstanceName,
       },
     },
     enabled: Boolean(submittedInstanceName),
@@ -252,22 +253,32 @@ const instanceNameConflictQueryAtom = atomWithQuery((get) => {
 })
 
 export const deployableEnvironmentsQueryAtom = atomWithQuery((get) => {
-  return consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
+  return consoleQuery.enterprise.environmentService.listEnvironments.queryOptions({
     input: {
-      query: {},
+      query: {
+        // The guide offers every deployable environment at once; environment
+        // count is capped well below the 100-per-page maximum.
+        pageNumber: 1,
+        resultsPerPage: 100,
+      },
     },
     enabled: sourceReady(get),
   })
 })
 
+// TODO: precheckRelease before options — the guide currently surfaces
+// unsupported-node findings by parsing the computeDeploymentOptions error
+// (deploymentOptionsUnsupportedDslNodesAtom below); a dedicated precheck query
+// would report them from response data instead.
 export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
   const method = get(methodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
   const enabled = sourceReady(get)
 
+  // ComputeDeploymentOptions takes exactly one source arm (dsl | sourceAppId | releaseId).
   const deploymentOptionsQueryOptions = method === 'importDsl'
-    ? consoleQuery.enterprise.releaseService.getDeploymentOptionsFromDsl.queryOptions({
+    ? consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
         input: {
           body: {
             dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
@@ -275,7 +286,7 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
         },
         enabled,
       })
-    : consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
+    : consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
         input: {
           body: {
             sourceAppId: effectiveSelectedApp?.id ?? '',
@@ -365,8 +376,8 @@ export const continueFromSourceAtom = atom(null, (get, set, {
     const existingInstanceNamesQuery = get(existingInstanceNamesQueryAtom)
     const existingNameSet = new Set(
       existingInstanceNamesQuery.data?.pages.flatMap(page =>
-        page.data.flatMap((appInstance) => {
-          const name = appInstance.name.trim()
+        page.appInstances.flatMap((appInstance) => {
+          const name = appInstance.displayName.trim()
 
           return name ? [name] : []
         }),
@@ -434,8 +445,8 @@ export const hasInstanceNameConflictAtom = atom((get) => {
   const instanceNameConflictQuery = get(instanceNameConflictQueryAtom)
   const existingInstanceNamesQuery = get(existingInstanceNamesQueryAtom)
   const existingInstanceNames = existingInstanceNamesQuery.data?.pages.flatMap(page =>
-    page.data.flatMap((appInstance) => {
-      const name = appInstance.name.trim()
+    page.appInstances.flatMap((appInstance) => {
+      const name = appInstance.displayName.trim()
 
       return name ? [name] : []
     }),
@@ -445,7 +456,7 @@ export const hasInstanceNameConflictAtom = atom((get) => {
     submittedInstanceName
     && (
       existingInstanceNames.includes(submittedInstanceName)
-      || (instanceNameConflictQuery.data?.data.some(appInstance => appInstance.name.trim() === submittedInstanceName) ?? false)
+      || (instanceNameConflictQuery.data?.appInstances.some(appInstance => appInstance.displayName.trim() === submittedInstanceName) ?? false)
     ),
   )
 })
@@ -501,7 +512,7 @@ export const deployableEnvironmentsAtom = atom((get) => {
   const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
 
   return sourceReady(get)
-    ? deployableEnvironmentsQuery.data?.data ?? []
+    ? deployableEnvironmentsQuery.data?.environments ?? []
     : []
 })
 
@@ -543,21 +554,11 @@ export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
   const slots = sourceReady(get) ? deploymentOptionsQuery.data?.options?.envVarSlots : undefined
   const dslContent = get(dslContentAtom)
-  const valueType = (value?: string): EnvVarBindingSlot['valueType'] => (
-    value === 'number' || value === 'secret' ? value : 'string'
-  )
 
   // Deployment options own the canonical slot list; DSL metadata only enriches import-DSL defaults.
   const deploymentOptionEnvVarSlots = slots?.flatMap((slot): EnvVarBindingSlot[] => {
-    const key = slot.key.trim()
-    if (!key)
-      return []
-
-    return [{
-      ...slot,
-      key,
-      valueType: valueType(slot.valueType),
-    }]
+    const bindingSlot = envVarBindingSlotFromContract(slot)
+    return bindingSlot ? [bindingSlot] : []
   }) ?? []
   const dslEnvVarMetadataSlots = method === 'importDsl' && dslContent
     ? dslEnvVarSlots(dslContent).flatMap((slot) => {
@@ -569,7 +570,7 @@ export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
           key,
           ...(slot.description ? { description: slot.description } : {}),
           ...(slot.defaultValue !== undefined ? { defaultValue: slot.defaultValue, hasDefaultValue: true } : {}),
-          ...(slot.valueType ? { valueType: valueType(slot.valueType) } : {}),
+          ...(slot.valueType ? { valueType: envVarBindingValueType(slot.valueType) } : {}),
         }]
       })
     : []
@@ -658,12 +659,8 @@ const createAppInstanceMutationAtom = atomWithMutation(() =>
   consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions(),
 )
 
-const createReleaseFromDslMutationAtom = atomWithMutation(() =>
-  consoleQuery.enterprise.releaseService.createReleaseFromDsl.mutationOptions(),
-)
-
-const createReleaseFromSourceAppMutationAtom = atomWithMutation(() =>
-  consoleQuery.enterprise.releaseService.createReleaseFromSourceApp.mutationOptions(),
+const createReleaseMutationAtom = atomWithMutation(() =>
+  consoleQuery.enterprise.releaseService.createRelease.mutationOptions(),
 )
 
 const createInitialDeploymentMutationAtom = atomWithMutation(() =>
@@ -728,18 +725,18 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
       try {
         const createdAppInstance = await get(createAppInstanceMutationAtom).mutateAsync({
           body: {
-            name: submittedInstanceName,
+            displayName: submittedInstanceName,
             description: get(instanceDescriptionAtom).trim() || undefined,
           },
         })
         const appInstanceId = createdAppInstance.appInstance.id
 
         if (method === 'importDsl') {
-          await get(createReleaseFromDslMutationAtom).mutateAsync({
+          await get(createReleaseMutationAtom).mutateAsync({
             body: {
               appInstanceId,
               dsl: encodeDslContent(dslContent),
-              name: submittedReleaseName,
+              displayName: submittedReleaseName,
               description: submittedReleaseDescription || undefined,
               createAppInstance: false,
             },
@@ -751,11 +748,11 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
         if (!effectiveSelectedApp?.id)
           return undefined
 
-        await get(createReleaseFromSourceAppMutationAtom).mutateAsync({
+        await get(createReleaseMutationAtom).mutateAsync({
           body: {
             appInstanceId,
             sourceAppId: effectiveSelectedApp.id,
-            name: submittedReleaseName,
+            displayName: submittedReleaseName,
             description: submittedReleaseDescription || undefined,
             createAppInstance: false,
           },
@@ -777,7 +774,7 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
       const selectedEnvironmentIdentifier = selectedEnvironmentId.trim()
       const freshSelectedEnvironment = selectedEnvironment || (
         selectedEnvironmentIdentifier
-          ? (await deployableEnvironmentsQuery.refetch()).data?.data.find(environment =>
+          ? (await deployableEnvironmentsQuery.refetch()).data?.environments.find(environment =>
               environmentMatchesIdentifier(environment, selectedEnvironmentIdentifier),
             )
           : undefined
@@ -793,8 +790,8 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
 
       const envVars = envVarSlots.flatMap(slot => envVarInput(slot, envVarValues[slot.key]))
       const commonDeploymentRequest = {
-        new: {
-          name: submittedInstanceName,
+        newAppInstance: {
+          displayName: submittedInstanceName,
           description: get(instanceDescriptionAtom).trim() || undefined,
         },
         environmentId: targetEnvironmentId,
@@ -804,7 +801,7 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
         envVars,
         idempotencyKey: createDeploymentIdempotencyKey(),
         expectedDslDigest: deploymentOptions?.dslDigest,
-      } satisfies Omit<DeployReq, 'dsl' | 'sourceAppId'>
+      } satisfies Omit<DeployRequest, 'dsl' | 'sourceAppId'>
       const deploymentRequest = method === 'importDsl'
         ? {
             ...commonDeploymentRequest,

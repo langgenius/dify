@@ -34,7 +34,7 @@ function EnvironmentOptionRow({ environment }: {
     >
       <RadioControl />
       <span className="flex min-w-0 grow flex-col gap-1">
-        <span className="truncate system-sm-semibold text-text-primary group-data-checked:text-text-accent">{environment.name}</span>
+        <span className="truncate system-sm-semibold text-text-primary group-data-checked:text-text-accent">{environment.displayName}</span>
         <TitleTooltip content={summary}>
           <span className="line-clamp-1 system-xs-regular text-text-tertiary group-data-checked:text-text-secondary">
             {summary}

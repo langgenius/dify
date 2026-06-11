@@ -45,7 +45,7 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
     )
   }
 
-  const author = latestRelease.createdBy.name
+  const author = latestRelease.createdBy.displayName
   const ago = formatTimeFromNow(new Date(latestRelease.createdAt).getTime())
   const createdAtTitle = formatDate(latestRelease.createdAt)
   const commit = releaseCommit(latestRelease)
@@ -59,7 +59,7 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex min-w-0 items-center gap-2">
             <h4 className="truncate system-sm-semibold text-text-primary">
-              {latestRelease.name}
+              {latestRelease.displayName}
             </h4>
             {commit !== '—' && (
               <TitleTooltip content={t('versions.commitTooltip', { commit })}>

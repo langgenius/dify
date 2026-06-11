@@ -41,7 +41,7 @@ export function UndeployDeploymentDialog({
       <AlertDialogContent className="w-120">
         <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t('deployTab.undeployConfirmTitle', { name: row.environment.name })}
+            {t('deployTab.undeployConfirmTitle', { name: row.environment.displayName })}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-sm-regular text-text-tertiary">
             {t('deployTab.undeployConfirmDesc')}

@@ -34,9 +34,9 @@ export function NewDeploymentHeaderAction({ appInstanceId }: {
     input: {
       params: { appInstanceId },
     },
-    refetchInterval: query => deploymentStatusPollingInterval(query.state.data?.data),
+    refetchInterval: query => deploymentStatusPollingInterval(query.state.data?.environmentDeployments),
   }))
-  const rows = environmentDeploymentsQuery.data?.data.filter(hasRuntimeInstanceDeployment) ?? []
+  const rows = environmentDeploymentsQuery.data?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
 
   if (environmentDeploymentsQuery.isLoading || environmentDeploymentsQuery.isError || rows.length === 0)
     return null

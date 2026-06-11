@@ -31,15 +31,20 @@ export function EnvironmentFilter({ className }: {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
   const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const environmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
+  const environmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listEnvironments.queryOptions({
     input: {
-      query: {},
+      query: {
+        // The filter lists every deployable environment; environment count is
+        // capped well below the 100-per-page maximum.
+        pageNumber: 1,
+        resultsPerPage: 100,
+      },
     },
   }))
-  const environmentOptions: EnvironmentFilterOption[] = environmentsQuery.data?.data
+  const environmentOptions: EnvironmentFilterOption[] = environmentsQuery.data?.environments
     ?.map(environment => ({
       value: environment.id,
-      text: environment.name,
+      text: environment.displayName,
       icon: <EnvironmentOptionIcon />,
     })) ?? []
   const filterOptions: EnvironmentFilterOption[] = [

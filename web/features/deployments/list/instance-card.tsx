@@ -31,7 +31,7 @@ export function InstanceCard({ summary }: {
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const appInstance = summary.appInstance
   const appInstanceId = appInstance.id
-  const appName = appInstance.name
+  const appName = appInstance.displayName
   const detailHref = getInstanceTabHref(appInstanceId, 'overview')
   const description = appInstance.description.trim()
   const access = summary.accessChannels
@@ -44,7 +44,7 @@ export function InstanceCard({ summary }: {
   const latestReleaseDeployed = isReleaseDeployed(latestRelease, activeDeploymentRows)
   const releaseMeta = latestRelease
     ? [
-        latestRelease.name,
+        latestRelease.displayName,
         Number.isNaN(latestReleaseTimeMs) ? undefined : formatTimeFromNow(latestReleaseTimeMs),
       ].filter(Boolean).join(' · ')
     : t('card.notDeployed')

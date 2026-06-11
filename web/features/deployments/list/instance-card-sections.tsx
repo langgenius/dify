@@ -40,7 +40,7 @@ export function ReleaseMetaTooltip({ release, deployed, children }: {
     return children
 
   const rows = [
-    { label: t('card.tooltip.releaseName'), value: release.name },
+    { label: t('card.tooltip.releaseName'), value: release.displayName },
     { label: t('card.tooltip.deploymentStatus'), value: deployed ? t('card.tooltip.deployed') : t('card.tooltip.notDeployedShort') },
     { label: t('card.tooltip.source'), value: releaseSourceLabel(release, t) },
     { label: t('card.tooltip.createdAt'), value: formatDate(release.createdAt) },
@@ -67,12 +67,12 @@ function EnvironmentChip({ row }: {
   row: EnvironmentDeployment
 }) {
   const { t } = useTranslation('deployments')
-  const name = row.environment.name
+  const name = row.environment.displayName
   const status = row.status
   const statusLabel = t(deploymentStatusLabelKey(status))
   const tooltipSummary = [
     name,
-    row.currentRelease ? row.currentRelease.name : undefined,
+    row.currentRelease ? row.currentRelease.displayName : undefined,
     statusLabel,
   ].filter(Boolean).join(' · ')
 
@@ -117,8 +117,8 @@ function EnvironmentOverflow({ rows }: {
           {rows.map((row) => {
             const status = row.status
             const summary = [
-              row.environment.name,
-              row.currentRelease ? row.currentRelease.name : undefined,
+              row.environment.displayName,
+              row.currentRelease ? row.currentRelease.displayName : undefined,
               t(deploymentStatusLabelKey(status)),
             ].filter(Boolean).join(' · ')
 

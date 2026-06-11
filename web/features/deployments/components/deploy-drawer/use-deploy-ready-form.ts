@@ -6,7 +6,6 @@ import type {
   Environment,
   EnvironmentDeployment,
   EnvVarInput,
-  EnvVarSlot,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type { Getter } from 'jotai'
@@ -25,6 +24,7 @@ import { consoleQuery } from '@/service/client'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
 import { releaseDeploymentAction } from '../../release-action'
 import { closeDeployDrawerAtom } from '../../store'
+import { envVarBindingSlotFromContract } from '../env-var-bindings-utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
@@ -64,22 +64,6 @@ function formConfig(get: Getter) {
     throw new Error('Missing deploy ready form config.')
 
   return config
-}
-
-function envVarBindingValueType(value: string): EnvVarBindingSlot['valueType'] {
-  return value === 'number' || value === 'secret' ? value : 'string'
-}
-
-function deploymentEnvVarBindingSlot(slot: EnvVarSlot): EnvVarBindingSlot | undefined {
-  const key = slot.key.trim()
-  if (!key)
-    return undefined
-
-  return {
-    ...slot,
-    key,
-    valueType: envVarBindingValueType(slot.valueType),
-  }
 }
 
 const resetDeployBindingsAtom = atom(null, (_get, set) => {
@@ -202,13 +186,11 @@ export function useReleaseDeploymentOptions() {
   const selectedEnvironmentId = useAtomValue(deploySelectedEnvironmentIdAtom)
   const shouldLoadDeploymentOptions = Boolean(releaseId && selectedEnvironmentId && hasSelectedEnvironment)
   const deploymentOptionsQuery = useQuery({
-    ...consoleQuery.enterprise.releaseService.getReleaseDeploymentOptions.queryOptions({
+    ...consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
       input: shouldLoadDeploymentOptions && releaseId && selectedEnvironmentId
         ? {
-            params: {
+            body: {
               releaseId,
-            },
-            query: {
               environmentId: selectedEnvironmentId,
             },
           }
@@ -218,7 +200,7 @@ export function useReleaseDeploymentOptions() {
   })
   const bindingSlots = deploymentOptionsQuery.data?.options.credentialSlots.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
   const envVarSlots = deploymentOptionsQuery.data?.options.envVarSlots.flatMap((slot): EnvVarBindingSlot[] => {
-    const bindingSlot = deploymentEnvVarBindingSlot(slot)
+    const bindingSlot = envVarBindingSlotFromContract(slot)
     return bindingSlot ? [bindingSlot] : []
   }) ?? []
   const deploymentOptionsLoading = deploymentOptionsQuery.isLoading || deploymentOptionsQuery.isFetching

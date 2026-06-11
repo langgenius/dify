@@ -35,7 +35,7 @@ function EditReleaseForm({
   onSubmit: (values: EditReleaseFormValues) => void
 }) {
   const { t } = useTranslation('deployments')
-  const initialName = release.name
+  const initialName = release.displayName
   const initialDescription = release.description
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
@@ -128,7 +128,7 @@ export function EditReleaseDialog({
 }) {
   const { t } = useTranslation('deployments')
   const updateRelease = useMutation(consoleQuery.enterprise.releaseService.updateRelease.mutationOptions())
-  const formKey = `${release.id}-${release.name}-${release.description}`
+  const formKey = `${release.id}-${release.displayName}-${release.description}`
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && updateRelease.isPending)
@@ -144,13 +144,13 @@ export function EditReleaseDialog({
         },
         body: {
           releaseId: release.id,
-          name: values.name,
+          displayName: values.name,
           description: values.description,
         },
       },
       {
         onSuccess: (data) => {
-          const updatedName = data.release.name
+          const updatedName = data.release.displayName
           toast.success(t('versions.editSuccess', { name: updatedName }))
           onOpenChange(false)
         },

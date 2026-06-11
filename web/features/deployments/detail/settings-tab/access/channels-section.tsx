@@ -178,7 +178,7 @@ export function AccessChannelsSection({
                             {webappRows.map(({ endpoint, endpointUrl }) => (
                               <EndpointRow
                                 key={`webapp-${endpoint.environment?.id ?? endpointUrl}`}
-                                envName={endpoint.environment?.name ?? '—'}
+                                envName={endpoint.environment?.displayName ?? '—'}
                                 label={t('access.runAccess.urlLabel')}
                                 value={endpointUrl}
                                 openLabel={t('access.runAccess.openWebapp')}

@@ -5,5 +5,5 @@ export function environmentMatchesIdentifier(environment: Environment, identifie
   if (!normalizedIdentifier)
     return false
 
-  return environment.id === normalizedIdentifier || environment.name === normalizedIdentifier
+  return environment.id === normalizedIdentifier || environment.displayName === normalizedIdentifier
 }

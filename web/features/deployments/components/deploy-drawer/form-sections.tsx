@@ -23,9 +23,9 @@ export const DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME = 'max-h-none overflow-visibl
 function environmentOptionLabel(env: Environment, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
   const description = env.description.trim()
   if (description)
-    return `${env.name} · ${description}`
+    return `${env.displayName} · ${description}`
 
-  return `${env.name} · ${t(`mode.${env.mode}`)} · ${t(`backend.${env.backend}`)}`
+  return `${env.displayName} · ${t(`mode.${env.mode}`)} · ${t(`backend.${env.backend}`)}`
 }
 
 export function BindingOptionsPanel({
@@ -118,7 +118,7 @@ export function ReleaseField() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between rounded-lg border border-components-panel-border bg-components-panel-bg-blur px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 font-mono system-sm-semibold text-text-primary">{displayedRelease.name}</span>
+                  <span className="shrink-0 font-mono system-sm-semibold text-text-primary">{displayedRelease.displayName}</span>
                   <span className="shrink-0 system-xs-regular text-text-tertiary">·</span>
                   <span className="shrink-0 font-mono system-xs-regular text-text-tertiary">{releaseCommit(displayedRelease)}</span>
                 </div>
@@ -141,7 +141,7 @@ export function ReleaseField() {
                 onChange={selectRelease}
                 options={releases.map(release => ({
                   value: release.id,
-                  label: `${release.name} · ${releaseCommit(release)}`,
+                  label: `${release.displayName} · ${releaseCommit(release)}`,
                 }))}
                 placeholder={t('deployDrawer.selectRelease')}
               />

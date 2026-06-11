@@ -63,7 +63,7 @@ export function EnvironmentDeploymentBadge({
   ...props
 }: EnvironmentDeploymentBadgeProps) {
   const { t } = useTranslation('deployments')
-  const name = row.environment.name
+  const name = row.environment.displayName
   const status = row.status
   const toneClassNames = deploymentStatusToneClassNames(status)
   const isInProgress = isRuntimeDeploymentInProgress(status)

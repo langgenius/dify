@@ -14,7 +14,7 @@ function navItemFromListApp(app: AppInstance): NavItem {
 
   return {
     id,
-    name: app.name,
+    name: app.displayName,
     link: `/deployments/${id}/overview`,
     icon_type: 'emoji',
     icon: '🚀',
@@ -30,7 +30,7 @@ function navItemFromOverview(instance?: AppInstance, fallbackId?: string): NavIt
 
   return {
     id,
-    name: instance ? instance.name : id,
+    name: instance ? instance.displayName : id,
     link: `/deployments/${id}/overview`,
     icon_type: 'emoji',
     icon: '🚀',
@@ -72,7 +72,7 @@ export function DeploymentsNav() {
     enabled: isActive,
   })
   const appNavItems = listQuery.data?.pages.flatMap(page =>
-    page.data.map(navItemFromListApp),
+    page.appInstances.map(navItemFromListApp),
   ) ?? []
   const currentNavItem = navItemFromOverview(currentInstance, appInstanceId)
 

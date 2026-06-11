@@ -46,7 +46,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t('deployTab.status.deployingRelease', { release: targetRelease.name })}
+        label={t('deployTab.status.deployingRelease', { release: targetRelease.displayName })}
       />
     )
   }

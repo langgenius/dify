@@ -49,7 +49,7 @@ export function ReleaseHistoryTable({ appInstanceId }: {
     )
   }
 
-  const releaseRows = releaseHistory.data.map(releaseRowFromSummary)
+  const releaseRows = releaseHistory.releaseSummaries.map(releaseRowFromSummary)
   const totalReleases = releaseHistory.pagination.totalCount ?? releaseRows.length
   const totalReleasePages = Math.ceil(totalReleases / RELEASE_HISTORY_PAGE_SIZE)
 

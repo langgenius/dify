@@ -9,7 +9,7 @@ import {
 
 const environment = {
   id: 'env-undeploying',
-  name: 'Test CPU',
+  displayName: 'Test CPU',
   description: '',
   mode: 'ENVIRONMENT_MODE_SHARED',
   backend: 'RUNTIME_BACKEND_K8S',

@@ -42,7 +42,7 @@ export function DeleteReleaseDialog({
             {t('versions.deleteConfirmTitle')}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-            {t('versions.deleteConfirmDesc', { name: release.name })}
+            {t('versions.deleteConfirmDesc', { name: release.displayName })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions className="pt-3">

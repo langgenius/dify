@@ -1,6 +1,6 @@
 'use client'
 
-import type { ListAppInstanceSummariesReply } from '@dify/contracts/enterprise/types.gen'
+import type { ListAppInstanceSummariesResponse } from '@dify/contracts/enterprise/types.gen'
 import type { InfiniteData } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
@@ -25,9 +25,9 @@ import {
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
 
-function listDeploymentStatusPollingInterval(data?: InfiniteData<ListAppInstanceSummariesReply>) {
+function listDeploymentStatusPollingInterval(data?: InfiniteData<ListAppInstanceSummariesResponse>) {
   const rows = data?.pages?.flatMap(page =>
-    page.data.flatMap(summary => summary.environmentDeployments),
+    page.appInstanceSummaries.flatMap(summary => summary.environmentDeployments),
   ) ?? []
 
   return deploymentStatusPollingInterval(rows)
@@ -176,7 +176,7 @@ export function DeploymentsList() {
           pageNumber: Number(pageParam),
           resultsPerPage: SOURCE_APPS_PAGE_SIZE,
           ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
-          ...(queryKeywords ? { name: queryKeywords } : {}),
+          ...(queryKeywords ? { displayName: queryKeywords } : {}),
         },
       }),
       getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
@@ -186,7 +186,7 @@ export function DeploymentsList() {
     refetchInterval: query => listDeploymentStatusPollingInterval(query.state.data),
   })
   const pages = data?.pages ?? []
-  const appInstanceSummaries = pages.flatMap(page => page.data)
+  const appInstanceSummaries = pages.flatMap(page => page.appInstanceSummaries)
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
   const showEmptyState = !showSkeleton && !isError && appInstanceSummaries.length === 0
 

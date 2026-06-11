@@ -29,7 +29,13 @@ function ReleaseContentFeedbackContent({ formValues }: {
   const { t } = useTranslation('deployments')
   const sourceSelection = useCreateReleaseSourceSelection(formValues)
   const releaseContent = useReleaseContentCheck(sourceSelection)
-  const unsupportedDslNodes = useAtomValue(createReleaseSubmitUnsupportedDslNodesAtom)
+  const submitUnsupportedDslNodes = useAtomValue(createReleaseSubmitUnsupportedDslNodesAtom)
+  // Precheck reports unsupported nodes at pick time; the post-submit atom stays
+  // as the TOCTOU fallback when the content changes server-side between
+  // precheck and create.
+  const unsupportedDslNodes = releaseContent.unsupportedNodes.length > 0
+    ? releaseContent.unsupportedNodes
+    : submitUnsupportedDslNodes
 
   return (
     <>
@@ -43,7 +49,7 @@ function ReleaseContentFeedbackContent({ formValues }: {
 
       {releaseContent.matchedRelease && (
         <div role="alert" className="rounded-lg border border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 px-3 py-2 system-sm-regular text-util-colors-warning-warning-700">
-          {t('versions.releaseAlreadyExists', { name: releaseContent.matchedRelease.name })}
+          {t('versions.releaseAlreadyExists', { name: releaseContent.matchedRelease.displayName })}
         </div>
       )}
 

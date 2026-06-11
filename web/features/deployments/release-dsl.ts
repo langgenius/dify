@@ -5,8 +5,8 @@ export async function fetchReleaseDsl(releaseId: string) {
     params: { releaseId },
   })
 
-  if (!response.data)
+  if (!response.dsl)
     throw new Error('Invalid release DSL response')
 
-  return response.data
+  return response.dsl
 }

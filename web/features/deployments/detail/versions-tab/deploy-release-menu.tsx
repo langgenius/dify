@@ -52,16 +52,16 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   }))
   const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
 
-  const environments = (environmentDeploymentsQuery.data?.data ?? [])
+  const environments = (environmentDeploymentsQuery.data?.environmentDeployments ?? [])
     .map(row => row.environment)
-  const deploymentRows = environmentDeploymentsQuery.data?.data.filter(row => !isUndeployedDeploymentRow(row)) ?? []
+  const deploymentRows = environmentDeploymentsQuery.data?.environmentDeployments.filter(row => !isUndeployedDeploymentRow(row)) ?? []
   const targetRelease = releaseRows.find(release => release.id === releaseId)
-  const appInstanceName = appInstanceData?.appInstance.name
+  const appInstanceName = appInstanceData?.appInstance.displayName
 
   if (!targetRelease)
     return null
 
-  const targetReleaseName = targetRelease.name
+  const targetReleaseName = targetRelease.displayName
   const deleteUsageCount = releaseUsageCount(releaseId, deploymentRows)
   const isCheckingDeleteUsage = open && environmentDeploymentsQuery.isLoading
   const isReleaseInUse = deleteUsageCount > 0
@@ -115,7 +115,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
 
   const groupedRows = buildDeployMenuSections({
     environments,
-    environmentDeployments: environmentDeploymentsQuery.data?.data ?? [],
+    environmentDeployments: environmentDeploymentsQuery.data?.environmentDeployments ?? [],
     releaseRows,
     releaseId,
     targetRelease,
