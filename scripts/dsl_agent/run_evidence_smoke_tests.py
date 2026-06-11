@@ -20,6 +20,7 @@ class EvidenceCase:
     required_template_refs: list[str]
     required_link_plugins: list[str]
     forbidden_template_refs: list[str] | None = None
+    expected_top_official_plugin_id: str | None = None
 
 
 CASES = [
@@ -33,6 +34,7 @@ CASES = [
         ],
         required_link_plugins=["langgenius/typeform_trigger", "langgenius/dify-gmail"],
         forbidden_template_refs=["extracted/tools/yaxuanm_qdrant__qdrant_upsert_text.yml"],
+        expected_top_official_plugin_id="langgenius/typeform_trigger",
     ),
     EvidenceCase(
         name="gmail_oauth_setup",
@@ -40,6 +42,18 @@ CASES = [
         required_official_plugin_ids=["langgenius/dify-gmail"],
         required_template_refs=["extracted/tools/langgenius_dify_gmail__draft_message.yml"],
         required_link_plugins=["langgenius/dify-gmail"],
+        expected_top_official_plugin_id="langgenius/dify-gmail",
+    ),
+    EvidenceCase(
+        name="google_drive_trigger_template_priority",
+        request="Google Drive file change trigger download file and upsert to Qdrant",
+        required_official_plugin_ids=["langgenius/google_drive_trigger"],
+        required_template_refs=[
+            "extracted/triggers/langgenius_google_drive_trigger__drive_change_detected.yml",
+            "extracted/tools/yaxuanm_qdrant__qdrant_upsert_text.yml",
+        ],
+        required_link_plugins=["langgenius/google_drive_trigger"],
+        expected_top_official_plugin_id="langgenius/google_drive_trigger",
     ),
 ]
 
@@ -49,15 +63,27 @@ def fail(message: str) -> None:
 
 
 def official_by_id(result: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    return {str(item.get("plugin_id")): item for item in result.get("official_candidates") or [] if item.get("plugin_id")}
+    return {
+        str(item.get("plugin_id")): item
+        for item in result.get("official_candidates") or []
+        if item.get("plugin_id")
+    }
 
 
 def template_refs(result: dict[str, Any]) -> set[str]:
-    return {str(item.get("template_ref")) for item in result.get("extracted_template_candidates") or [] if item.get("template_ref")}
+    return {
+        str(item.get("template_ref"))
+        for item in result.get("extracted_template_candidates") or []
+        if item.get("template_ref")
+    }
 
 
 def link_plugin_ids(result: dict[str, Any]) -> set[str]:
-    return {str(item.get("official_plugin_id")) for item in result.get("official_template_links") or [] if item.get("official_plugin_id")}
+    return {
+        str(item.get("official_plugin_id"))
+        for item in result.get("official_template_links") or []
+        if item.get("official_plugin_id")
+    }
 
 
 def model_provider_by_id(result: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -164,6 +190,15 @@ def run_case(resolver: PluginResolver, case: EvidenceCase) -> dict[str, Any]:
         if plugin_id not in links:
             fail(f"{case.name}: missing official-template link for {plugin_id}")
 
+    official_candidates = result.get("official_candidates") or []
+    if case.expected_top_official_plugin_id:
+        top_plugin_id = official_candidates[0].get("plugin_id") if official_candidates else None
+        if top_plugin_id != case.expected_top_official_plugin_id:
+            fail(
+                f"{case.name}: expected top official plugin {case.expected_top_official_plugin_id}, "
+                f"got {top_plugin_id}"
+            )
+
     return {
         "name": case.name,
         "request": case.request,
@@ -180,7 +215,7 @@ def run(args: argparse.Namespace) -> int:
     report = {"valid": True, "cases": results, "model_provider_evidence": assert_model_provider_evidence(resolver)}
     if args.output:
         args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
-    print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else "PASS evidence smoke tests")
+    print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else "PASS evidence smoke tests")  # noqa: T201
     return 0
 
 
@@ -195,10 +230,10 @@ def main() -> int:
     try:
         return run(parse_args())
     except AssertionError as exc:
-        print(f"FAIL: {exc}", file=sys.stderr)
+        print(f"FAIL: {exc}", file=sys.stderr)  # noqa: T201
         return 1
     except Exception as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        print(f"ERROR: {exc}", file=sys.stderr)  # noqa: T201
         return 2
 
 

@@ -10,7 +10,6 @@ from typing import Any
 
 import yaml
 
-
 # This module now lives at <repo>/dify/api/core/dsl_agent/plugin_resolver.py.
 # parents[4] == the repo root that holds dify/ and dify-official-plugins/.
 ROOT = Path(__file__).resolve().parents[4]
@@ -63,7 +62,7 @@ def identity_match_score(request: str, identities: list[str]) -> int:
     return score
 
 
-def plugin_identity_terms(candidate: "PluginCandidate") -> list[str]:
+def plugin_identity_terms(candidate: PluginCandidate) -> list[str]:
     terms = [
         candidate.name,
         candidate.label,
@@ -229,11 +228,15 @@ class PluginResolver:
             if candidate.plugin_id in linked_official_ids and candidate.plugin_id not in official_by_id:
                 official.append(candidate)
                 official_by_id[candidate.plugin_id] = candidate
+        official = self.rank_resolved_official_candidates(request, official)
         return {
             "resolution_policy": [
                 "Prefer official Dify plugins.",
                 "Use extracted templates for node shape and dependency evidence when available.",
-                "Only use plugin dependency hashes from exact_dependency_evidence or extracted templates; do not fabricate hashes from manifest versions.",
+                (
+                    "Only use plugin dependency hashes from exact_dependency_evidence or extracted templates; "
+                    "do not fabricate hashes from manifest versions."
+                ),
                 "Use third-party plugins only when no official plugin covers the requirement.",
                 "Use raw HTTP only when no suitable plugin exists or when explicitly requested.",
             ],
@@ -242,6 +245,27 @@ class PluginResolver:
             "extracted_template_candidates": extracted,
             "official_template_links": links,
         }
+
+    def rank_resolved_official_candidates(
+        self,
+        request: str,
+        candidates: list[PluginCandidate],
+    ) -> list[PluginCandidate]:
+        return sorted(
+            candidates,
+            key=lambda item: (
+                -self.resolved_official_score(request, item),
+                item.kind,
+                item.name,
+            ),
+        )
+
+    def resolved_official_score(self, request: str, candidate: PluginCandidate) -> int:
+        score = candidate.score
+        identity_score = identity_match_score(request, plugin_identity_terms(candidate))
+        if candidate.exact_dependency_evidence and identity_score > 0:
+            score += 400
+        return score
 
     def search_official_plugins(self, request: str, limit: int = 8) -> list[PluginCandidate]:
         candidates: list[PluginCandidate] = []
@@ -268,7 +292,10 @@ class PluginResolver:
                     " ".join(" ".join(model.get("supported_model_types", [])) for model in candidate.models),
                 ]
             )
-            candidate.score = token_score(request, searchable) + identity_match_score(request, plugin_identity_terms(candidate))
+            candidate.score = token_score(request, searchable) + identity_match_score(
+                request,
+                plugin_identity_terms(candidate),
+            )
             if candidate.author == "langgenius":
                 candidate.score += 2
             if candidate.score > 0:
@@ -409,6 +436,7 @@ class PluginResolver:
 
     def _credential_requirements(self, provider_path: Path, provider: dict[str, Any]) -> list[dict[str, Any]]:
         groups: list[dict[str, Any]] = []
+        oauth_schema = provider.get("oauth_schema") if isinstance(provider.get("oauth_schema"), dict) else {}
         for name, fields in [
             ("credentials_schema", provider.get("credentials_schema")),
             (
@@ -423,8 +451,8 @@ class PluginResolver:
                 if isinstance(provider.get("model_credential_schema"), dict)
                 else None,
             ),
-            ("oauth_schema.client_schema", (provider.get("oauth_schema") or {}).get("client_schema") if isinstance(provider.get("oauth_schema"), dict) else None),
-            ("oauth_schema.credentials_schema", (provider.get("oauth_schema") or {}).get("credentials_schema") if isinstance(provider.get("oauth_schema"), dict) else None),
+            ("oauth_schema.client_schema", oauth_schema.get("client_schema")),
+            ("oauth_schema.credentials_schema", oauth_schema.get("credentials_schema")),
             ("subscription_schema", provider.get("subscription_schema")),
         ]:
             group = schema_group(name, fields)
@@ -446,7 +474,10 @@ class PluginResolver:
             if isinstance(oauth_schema, dict):
                 for name, fields in [
                     ("subscription_constructor.oauth_schema.client_schema", oauth_schema.get("client_schema")),
-                    ("subscription_constructor.oauth_schema.credentials_schema", oauth_schema.get("credentials_schema")),
+                    (
+                        "subscription_constructor.oauth_schema.credentials_schema",
+                        oauth_schema.get("credentials_schema"),
+                    ),
                 ]:
                     group = schema_group(name, fields)
                     if group:
@@ -461,7 +492,7 @@ class PluginResolver:
             "provider_path": str(provider_path),
             "supported_model_types": provider.get("supported_model_types") or [],
             "configurate_methods": provider.get("configurate_methods") or [],
-            "model_groups": sorted(str(key) for key in models.keys()),
+            "model_groups": sorted(str(key) for key in models),
         }
 
     def _oauth_scopes(self, provider: dict[str, Any]) -> list[str]:
@@ -544,7 +575,10 @@ class PluginResolver:
         strong_matches: list[dict[str, Any]] = []
         weak_matches: list[dict[str, Any]] = []
         for template in self.all_extracted_templates():
-            score = token_score(request, str(template.get("_searchable") or "")) + identity_match_score(request, template_identity_terms(template))
+            score = token_score(request, str(template.get("_searchable") or "")) + identity_match_score(
+                request,
+                template_identity_terms(template),
+            )
             if score <= 0:
                 continue
             item = {key: value for key, value in template.items() if key != "_searchable"}
@@ -619,7 +653,8 @@ class PluginResolver:
                     "name": raw.get("name") or template_path.stem,
                     "node_type": data.get("type"),
                     "title": data.get("title"),
-                    "plugin_id": data.get("plugin_id") or plugin_id_from_unique_identifier(data.get("plugin_unique_identifier")),
+                    "plugin_id": data.get("plugin_id")
+                    or plugin_id_from_unique_identifier(data.get("plugin_unique_identifier")),
                     "provider_id": data.get("provider_id"),
                     "tool_name": data.get("tool_name"),
                     "event_name": data.get("event_name"),
@@ -764,7 +799,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=8)
     args = parser.parse_args()
     result = PluginResolver().resolve(args.request, limit=args.limit)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    print(json.dumps(result, ensure_ascii=False, indent=2))  # noqa: T201
     return 0
 
 
