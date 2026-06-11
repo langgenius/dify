@@ -31,11 +31,6 @@ class TestConvertToWorkflowApi:
 
         monkeypatch.setattr(
             workflow_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "tenant-1"),
-        )
-        monkeypatch.setattr(
-            workflow_module,
             "WorkflowService",
             lambda: SimpleNamespace(convert_to_workflow=lambda **_kwargs: SimpleNamespace(id="new-app-1")),
         )
@@ -51,6 +46,7 @@ class TestConvertToWorkflowApi:
             json={},
         ):
             response = method(
+                current_tenant_id="tenant-1",
                 current_user=SimpleNamespace(id="u1"),
                 app_model=SimpleNamespace(id="app-1"),
             )

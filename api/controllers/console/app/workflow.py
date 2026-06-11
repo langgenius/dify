@@ -1113,14 +1113,14 @@ class ConvertToWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
     @with_current_user
+    @with_current_tenant_id
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
         """
         Convert basic mode of chatbot app to workflow mode
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-        _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ConvertToWorkflowPayload.model_validate(payload).model_dump(exclude_none=True)
 
