@@ -500,8 +500,23 @@ class TestIssueMCPToken:
                 "tenant_id": "tenant-uuid",
                 "app_id": "app-uuid",
                 "audience": "https://mcp.example.com/mcp/",
+                "user_type": "account",
             },
         )
+
+    def test_end_user_type_is_forwarded(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": 1900000000}
+            EnterpriseService.issue_mcp_token(
+                user_id="end-user-uuid",
+                tenant_id="tenant-uuid",
+                app_id="app-uuid",
+                audience="https://mcp.example.com/mcp/",
+                user_type="end_user",
+            )
+        body = req.send_request.call_args.kwargs["json"]
+        assert body["user_type"] == "end_user"
+        assert body["app_id"] == "app-uuid"
 
     def test_401_maps_to_identity_refresh_error(self):
         from services.enterprise.base import MCPIdentityRefreshError
