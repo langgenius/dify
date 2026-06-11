@@ -100,6 +100,7 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
   desc: '',
   type: BlockEnum.Agent,
+  agent_node_kind: 'dify_agent',
   agent_roster: {
     id: 'agent-1',
     name: 'Nadia',
@@ -108,6 +109,7 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
     icon_background: '#E9D7FE',
     icon_type: 'emoji',
   },
+  version: '2',
   ...overrides,
 })
 
@@ -123,7 +125,7 @@ describe('agent/panel', () => {
     }))
   })
 
-  it('renders selected roster agent trigger and fixed output vars', () => {
+  it('renders selected roster agent trigger and default Agent v2 output vars', () => {
     render(
       <AgentPanel
         id="agent-node"
@@ -139,7 +141,7 @@ describe('agent/panel', () => {
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
     expect(screen.getByRole('button', { name: 'workflow.nodes.agent.advancedSetting' })).toBeInTheDocument()
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
-    expect(screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage')).toBeInTheDocument()
+    expect(screen.queryByText('usage:object:workflow.nodes.agent.outputVars.usage')).not.toBeInTheDocument()
     expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
     expect(screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
   })

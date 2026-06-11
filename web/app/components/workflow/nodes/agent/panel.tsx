@@ -48,11 +48,6 @@ export function AgentPanel({
             description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
           />
           <VarItem
-            name="usage"
-            type="object"
-            description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
-          />
-          <VarItem
             name="files"
             type="Array[File]"
             description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}

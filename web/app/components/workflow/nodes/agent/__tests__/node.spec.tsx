@@ -27,6 +27,7 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
   desc: '',
   type: BlockEnum.Agent,
+  agent_node_kind: 'dify_agent',
   agent_roster: {
     id: 'agent-1',
     name: 'Nadia',
@@ -35,6 +36,7 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
     icon_background: '#E9D7FE',
     icon_type: 'emoji',
   },
+  version: '2',
   ...overrides,
 })
 

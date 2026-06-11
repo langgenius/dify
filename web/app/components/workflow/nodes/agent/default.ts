@@ -10,7 +10,10 @@ const metaData = genNodeMetaData({
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
   metaData,
-  defaultValue: {},
+  defaultValue: {
+    agent_node_kind: 'dify_agent',
+    version: '2',
+  },
   checkValid(payload, t) {
     if (!payload.agent_roster) {
       return {

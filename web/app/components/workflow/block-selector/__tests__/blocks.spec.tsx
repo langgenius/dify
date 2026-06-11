@@ -227,6 +227,7 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('option', { name: 'Nadia Clarification Drafter' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.Agent, {
+      agent_node_kind: 'dify_agent',
       agent_roster: {
         description: 'Clarification Drafter',
         icon: 'A',
@@ -235,6 +236,7 @@ describe('Blocks', () => {
         id: 'agent-1',
         name: 'Nadia',
       },
+      version: '2',
     })
     expect(queryMocks.inviteOptionsQueryFn).toHaveBeenCalledWith({
       input: {

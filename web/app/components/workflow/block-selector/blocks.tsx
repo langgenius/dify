@@ -115,7 +115,12 @@ const Blocks = ({
                 <AgentBlockItem
                   key={block.metaData.type}
                   block={block}
-                  onSelect={agent => onSelect(BlockEnum.Agent, { agent_roster: agent })}
+                  onSelect={agent =>
+                    onSelect(BlockEnum.Agent, {
+                      agent_node_kind: 'dify_agent',
+                      agent_roster: agent,
+                      version: '2',
+                    })}
                 />
               )
             }

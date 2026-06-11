@@ -115,7 +115,9 @@ describe('variable utils', () => {
         type: BlockEnum.Agent,
         title: 'Agent',
         desc: '',
+        agent_node_kind: 'dify_agent',
         agent_task: 'Clarify {{#start.tender#}}',
+        version: '2',
       })
 
       expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
@@ -161,7 +163,9 @@ describe('variable utils', () => {
         type: BlockEnum.Agent,
         title: 'Agent',
         desc: '',
+        agent_node_kind: 'dify_agent',
         agent_task: 'Clarify {{#start.tender#}}',
+        version: '2',
       })
 
       const updatedNode = updateNodeVars(node, ['start', 'tender'], ['start', 'question'])

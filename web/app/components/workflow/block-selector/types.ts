@@ -82,7 +82,9 @@ export type AgentRosterNodeData = Pick<
 >
 
 export type AgentDefaultValue = {
+  agent_node_kind: 'dify_agent'
   agent_roster: AgentRosterNodeData
+  version: '2'
 }
 
 export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | TriggerDefaultValue
