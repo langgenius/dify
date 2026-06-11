@@ -1630,7 +1630,7 @@ requires-dist = [
     { name = "flask-login", specifier = "==0.6.3" },
     { name = "flask-migrate", specifier = ">=4.1.0,<5.0.0" },
     { name = "flask-orjson", specifier = ">=2.0.0,<3.0.0" },
-    { name = "flask-restx", editable = "../../flask-restx" },
+    { name = "flask-restx", git = "https://github.com/asukaminato0721/flask-restx?rev=3fbc8ca95e1c52dc13fe7257ad6bfc7173a312ed" },
     { name = "gevent", specifier = ">=26.4.0,<26.5.0" },
     { name = "gevent-websocket", specifier = "==0.10.1" },
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
@@ -2571,7 +2571,7 @@ wheels = [
 [[package]]
 name = "flask-restx"
 version = "1.3.3.dev0"
-source = { editable = "../../flask-restx" }
+source = { git = "https://github.com/asukaminato0721/flask-restx?rev=3fbc8ca95e1c52dc13fe7257ad6bfc7173a312ed#3fbc8ca95e1c52dc13fe7257ad6bfc7173a312ed" }
 dependencies = [
     { name = "aniso8601" },
     { name = "flask" },
@@ -2580,46 +2580,6 @@ dependencies = [
     { name = "referencing" },
     { name = "werkzeug" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "alabaster", marker = "extra == 'doc'", specifier = "==0.7.12" },
-    { name = "aniso8601", specifier = ">=0.82" },
-    { name = "black", marker = "extra == 'dev'" },
-    { name = "blinker", marker = "extra == 'dev'" },
-    { name = "blinker", marker = "extra == 'test'" },
-    { name = "faker", marker = "extra == 'dev'", specifier = "==2.0.0" },
-    { name = "faker", marker = "extra == 'test'", specifier = "==2.0.0" },
-    { name = "flask", specifier = ">=0.8,!=2.0.0" },
-    { name = "importlib-resources" },
-    { name = "invoke", marker = "extra == 'dev'", specifier = "==2.2.0" },
-    { name = "invoke", marker = "extra == 'test'", specifier = "==2.2.0" },
-    { name = "jsonschema" },
-    { name = "mock", marker = "extra == 'dev'", specifier = "==3.0.5" },
-    { name = "mock", marker = "extra == 'test'", specifier = "==3.0.5" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = "==8.4.2" },
-    { name = "pytest", marker = "extra == 'test'", specifier = "==8.4.2" },
-    { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = "==5.2.3" },
-    { name = "pytest-benchmark", marker = "extra == 'test'", specifier = "==5.2.3" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = "==4.0.0" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = "==4.0.0" },
-    { name = "pytest-flask", marker = "extra == 'dev'", specifier = "==1.3.0" },
-    { name = "pytest-flask", marker = "extra == 'test'", specifier = "==1.3.0" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = "==3.6.1" },
-    { name = "pytest-mock", marker = "extra == 'test'", specifier = "==3.6.1" },
-    { name = "pytest-profiling", marker = "extra == 'dev'", specifier = "==1.8.1" },
-    { name = "pytest-profiling", marker = "extra == 'test'", specifier = "==1.8.1" },
-    { name = "referencing" },
-    { name = "setuptools", marker = "extra == 'dev'" },
-    { name = "setuptools", marker = "extra == 'test'" },
-    { name = "sphinx", marker = "extra == 'doc'", specifier = "==5.3.0" },
-    { name = "sphinx-issues", marker = "extra == 'doc'", specifier = "==3.0.1" },
-    { name = "tox", marker = "extra == 'dev'" },
-    { name = "twine", marker = "extra == 'dev'", specifier = "==6.2.0" },
-    { name = "twine", marker = "extra == 'test'", specifier = "==6.2.0" },
-    { name = "werkzeug", specifier = "!=2.0.0" },
-]
-provides-extras = ["test", "doc", "dev"]
 
 [[package]]
 name = "flask-sqlalchemy"
