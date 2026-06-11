@@ -425,11 +425,7 @@ def _upsert(
     # PostgreSQL's ON CONFLICT doesn't support partial unique indexes (those with WHERE clauses),
     # so we use a manual revoke-then-insert pattern instead.
     if prior:
-        session.execute(
-            update(OAuthAccessToken)
-            .where(OAuthAccessToken.id == prior.id)
-            .values(revoked_at=func.now())
-        )
+        session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=func.now()))
 
     # Insert the new token.
     new_token = OAuthAccessToken(
