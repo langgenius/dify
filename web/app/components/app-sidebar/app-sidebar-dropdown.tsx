@@ -21,7 +21,7 @@ import AppInfo from './app-info'
 import { getAppModeLabel } from './app-info/app-mode-labels'
 import NavLink from './nav-link'
 
-type Props = {
+type Props = Readonly<{
   navigation: Array<{
     name: string
     href: string
@@ -29,7 +29,7 @@ type Props = {
     selectedIcon: NavIcon
   }>
   appInfoActions?: AppInfoActions
-}
+}>
 
 const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
   const { t } = useTranslation()
