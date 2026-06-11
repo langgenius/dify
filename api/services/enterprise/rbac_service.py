@@ -215,6 +215,14 @@ class ResourcePermissionSnapshot(_RBACModel):
     default_permission_keys: list[str] = Field(default_factory=list)
     overrides: list[ResourcePermissionKeys] = Field(default_factory=list)
 
+    def permission_keys_by_resource_ids(self, resource_ids: list[str]) -> dict[str, list[str]]:
+        result = {str(resource_id): list(self.default_permission_keys) for resource_id in resource_ids}
+        for override in self.overrides:
+            resource_id = str(override.resource_id)
+            if resource_id in result:
+                result[resource_id] = list(override.permission_keys)
+        return result
+
 
 class MyPermissionsResponse(_RBACModel):
     workspace: WorkspacePermissionSnapshot = Field(default_factory=WorkspacePermissionSnapshot)

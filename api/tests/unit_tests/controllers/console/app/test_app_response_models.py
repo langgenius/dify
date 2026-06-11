@@ -480,9 +480,18 @@ def test_app_list_uses_injected_session_for_draft_workflows(
         SimpleNamespace(get_system_features=lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
     )
     monkeypatch.setattr(
-        app_module.enterprise_rbac_service.RBACService.AppPermissions,
-        "batch_get",
-        lambda tenant_id, account_id, app_ids: {"app-1": ["app.acl.edit"]},
+        app_module.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+            app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                overrides=[
+                    app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="app-1",
+                        permission_keys=["app.acl.edit"],
+                    )
+                ]
+            )
+        ),
     )
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=scoped_session))
 
@@ -566,9 +575,19 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
                 lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             )
             monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppPermissions,
-                "batch_get",
-                lambda tenant_id, account_id, app_ids: {"app-1": ["app.acl.view_layout", "app.acl.edit"]},
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                        default_permission_keys=["app.acl.view_layout"],
+                        overrides=[
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-1",
+                                permission_keys=["app.acl.view_layout", "app.acl.edit"],
+                            )
+                        ],
+                    )
+                ),
             )
 
             session = MagicMock()
@@ -579,7 +598,7 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
     assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
 
-def test_app_detail_api_attaches_permission_keys_from_batch_get(app, app_module):
+def test_app_detail_api_attaches_current_user_permission_keys(app, app_module):
     method = app_module.AppApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -603,16 +622,27 @@ def test_app_detail_api_attaches_permission_keys_from_batch_get(app, app_module)
                 "get_system_features",
                 lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             )
+            get_permissions = MagicMock(
+                return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                        overrides=[
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-1",
+                                permission_keys=["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"],
+                            )
+                        ]
+                    )
+                )
+            )
             monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppPermissions,
-                "batch_get",
-                lambda tenant_id, account_id, app_ids: {
-                    "app-1": ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
-                },
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                get_permissions,
             )
 
             resp = method(app_module.AppApi(), "tenant-1", SimpleNamespace(id="acct-1"), app_model=app_obj)
 
+    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1")
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
 
 

@@ -558,11 +558,11 @@ class AppListApi(Resource):
 
         if app_pagination.items:
             app_ids = [str(app.id) for app in app_pagination.items]
-            permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+            permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
                 str(current_tenant_id),
                 current_user_id,
-                app_ids,
             )
+            permission_keys_map = permissions.app.permission_keys_by_resource_ids(app_ids)
         else:
             permission_keys_map = {}
 
@@ -672,11 +672,12 @@ class AppApi(Resource):
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
             app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
-        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             str(current_tenant_id),
             current_user.id,
-            [str(app_model.id)],
+            app_id=str(app_model.id),
         )
+        permission_keys_map = permissions.app.permission_keys_by_resource_ids([str(app_model.id)])
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True).model_copy(
             update={"permission_keys": permission_keys_map.get(str(app_model.id), [])}

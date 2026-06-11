@@ -421,11 +421,11 @@ class DatasetListApi(Resource):
         permission_keys_map = {}
         if datasets:
             dataset_ids = [str(dataset.id) for dataset in datasets]
-            permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+            permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
                 str(current_tenant_id),
                 current_user.id,
-                dataset_ids,
             )
+            permission_keys_map = permissions.dataset.permission_keys_by_resource_ids(dataset_ids)
 
         # check embedding setting
         provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
@@ -556,11 +556,12 @@ class DatasetApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             str(current_tenant_id),
             current_user.id,
-            [dataset_id_str],
+            dataset_id=dataset_id_str,
         )
+        permission_keys_map = permissions.dataset.permission_keys_by_resource_ids([dataset_id_str])
         data = dump_response(DatasetDetailResponse, dataset)
         data["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:

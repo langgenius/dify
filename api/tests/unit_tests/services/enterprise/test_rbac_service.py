@@ -423,6 +423,22 @@ class TestWorkspaceAccess:
 
 
 class TestMyPermissions:
+    def test_resource_snapshot_maps_defaults_and_overrides(self):
+        snapshot = svc.ResourcePermissionSnapshot(
+            default_permission_keys=["app.acl.view_layout"],
+            overrides=[
+                svc.ResourcePermissionKeys(
+                    resource_id="app-2",
+                    permission_keys=["app.acl.view_layout", "app.acl.edit"],
+                )
+            ],
+        )
+
+        assert snapshot.permission_keys_by_resource_ids(["app-1", "app-2"]) == {
+            "app-1": ["app.acl.view_layout"],
+            "app-2": ["app.acl.view_layout", "app.acl.edit"],
+        }
+
     def test_get_without_payload_uses_get(self, mock_send: MagicMock):
         mock_send.return_value = {
             "workspace": {"permission_keys": ["workspace.member.manage"]},

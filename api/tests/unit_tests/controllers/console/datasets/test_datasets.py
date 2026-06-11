@@ -39,6 +39,7 @@ from models.dataset import Dataset, DatasetQuery, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import ApiToken, App, AppMode, IconType, UploadFile
 from services.dataset_service import DatasetPermissionService, DatasetService
+from services.enterprise import rbac_service as enterprise_rbac_service
 
 
 @pytest.fixture(autouse=True)
@@ -210,6 +211,42 @@ class TestDatasetList:
         by_ids_mock.assert_called_once()
         assert status == 200
         assert resp["total"] == 2
+
+    def test_get_attaches_current_user_permission_keys(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        dataset = make_dataset(id="dataset-1")
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
+                default_permission_keys=["dataset.acl.readonly"],
+                overrides=[
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-1",
+                        permission_keys=["dataset.acl.readonly", "dataset.acl.edit"],
+                    )
+                ],
+            )
+        )
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch.object(DatasetService, "get_datasets", return_value=([dataset], 1)),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ) as get_permissions,
+            ):
+                resp, status = method(api, "tenant-1", current_user)
+
+        get_permissions.assert_called_once_with("tenant-1", current_user.id)
+        assert status == 200
+        assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
     def test_get_with_tag_ids(self, app: Flask):
         api = DatasetListApi()
@@ -516,10 +553,6 @@ class TestDatasetApiGet:
         with (
             app.test_request_context(f"/datasets/{dataset_id}"),
             patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
             patch.object(
                 DatasetService,
                 "get_dataset",
@@ -531,16 +564,25 @@ class TestDatasetApiGet:
                 return_value=None,
             ),
             patch(
-                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetPermissions.batch_get",
-                return_value={dataset_id: ["dataset.acl.readonly", "dataset.acl.edit"]},
-            ) as batch_get_mock,
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=enterprise_rbac_service.MyPermissionsResponse(
+                    dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
+                        overrides=[
+                            enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id=dataset_id,
+                                permission_keys=["dataset.acl.readonly", "dataset.acl.edit"],
+                            )
+                        ]
+                    )
+                ),
+            ) as get_permissions,
             patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
 
-            data, status = method(api, dataset_id)
+            data, status = method(api, tenant_id, user, dataset_id)
 
-        batch_get_mock.assert_called_once_with(tenant_id, user.id, [dataset_id])
+        get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id)
         assert status == 200
         assert data["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
