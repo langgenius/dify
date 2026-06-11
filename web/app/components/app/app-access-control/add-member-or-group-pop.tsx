@@ -16,7 +16,7 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
+import { RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,6 +28,7 @@ import Loading from '../../base/loading'
 
 export default function AddMemberOrGroupDialog() {
   const { t } = useTranslation()
+  const addLabel = t('operation.add', { ns: 'common' })
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const scrollRootRef = useRef<HTMLDivElement>(null)
@@ -106,13 +107,15 @@ export default function AddMemberOrGroupDialog() {
       onValueChange={handleValueChange}
     >
       <ComboboxTrigger
-        aria-label={t('operation.add', { ns: 'common' })}
+        aria-label={addLabel}
         icon={false}
         size="small"
-        className="flex h-6 w-auto shrink-0 items-center gap-x-0.5 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
+        className="h-6 w-auto min-w-max shrink-0 gap-x-0.5 border-0 bg-transparent px-2 py-0 text-xs leading-4 font-medium whitespace-nowrap text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-placeholder:text-components-button-secondary-accent-text data-popup-open:bg-state-accent-hover"
       >
-        <RiAddCircleFill className="size-4" aria-hidden="true" />
-        <span>{t('operation.add', { ns: 'common' })}</span>
+        <span className="flex h-4 items-center gap-x-0.5 leading-4 whitespace-nowrap">
+          <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
+          <span className="leading-4">{addLabel}</span>
+        </span>
       </ComboboxTrigger>
       <ComboboxContent
         placement="bottom-end"
