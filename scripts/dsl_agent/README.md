@@ -478,6 +478,29 @@ gate without failing the live CE loop.
 
 To iterate on one failing case, pass `--case-id <id>`; the flag may be repeated.
 
+Full local CE lifecycle for one generated case:
+
+```bash
+cd dify/api
+uv run python ../scripts/dsl_agent/run_generation_eval.py \
+  --case-id structured_json_postprocess \
+  --debug-loop \
+  --console-base http://localhost \
+  --install-missing-dependencies \
+  --skip-run-records \
+  --publish \
+  --enable-api \
+  --create-api-key \
+  --service-regression \
+  --export-backup \
+  --json
+```
+
+This extends the draft loop with workflow publish, App API enablement, App API
+key creation, Service API regression, and DSL backup export. The report includes
+a redacted `post_success` summary plus artifact paths for the Service API
+response and exported backup.
+
 ## Validate DSL
 
 ```bash

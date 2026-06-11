@@ -154,6 +154,54 @@ def debug_loop_skip_reason(case: dict[str, Any]) -> str | None:
     return None
 
 
+def append_post_success_args(cmd: list[str], args: argparse.Namespace) -> None:
+    if args.publish:
+        cmd.append("--publish")
+    if args.publish_name:
+        cmd.extend(["--publish-name", args.publish_name])
+    if args.publish_comment:
+        cmd.extend(["--publish-comment", args.publish_comment])
+    if args.enable_api:
+        cmd.append("--enable-api")
+    if args.create_api_key:
+        cmd.append("--create-api-key")
+    if args.list_api_keys:
+        cmd.append("--list-api-keys")
+    if args.export_backup:
+        cmd.append("--export-backup")
+    if args.export_include_secret:
+        cmd.append("--export-include-secret")
+    if args.service_regression:
+        cmd.append("--service-regression")
+    if args.service_api_base:
+        cmd.extend(["--service-api-base", args.service_api_base])
+    if args.service_api_key:
+        cmd.extend(["--service-api-key", args.service_api_key])
+    if args.service_response_mode:
+        cmd.extend(["--service-response-mode", args.service_response_mode])
+
+
+def summarize_post_success(report: dict[str, Any]) -> dict[str, Any] | None:
+    post_success = report.get("post_success")
+    if not isinstance(post_success, dict):
+        return None
+    service_regression = post_success.get("service_regression")
+    service_status = service_regression.get("status") if isinstance(service_regression, dict) else None
+    export = post_success.get("export")
+    export_artifact = export.get("artifact") if isinstance(export, dict) else None
+    return {
+        "ok": post_success.get("ok"),
+        "errors": post_success.get("errors", []),
+        "published": post_success.get("publish") is not None,
+        "api_enabled": post_success.get("api_enable") is not None,
+        "api_key_token_available": post_success.get("api_key_token_available"),
+        "export_artifact": export_artifact,
+        "service_regression_status": service_status,
+        "service_regression_ok": service_regression.get("ok") if isinstance(service_regression, dict) else None,
+        "service_regression_artifact": post_success.get("service_regression_artifact"),
+    }
+
+
 def run_debug_loop_for_case(
     *,
     case: dict[str, Any],
@@ -203,6 +251,7 @@ def run_debug_loop_for_case(
         cmd.append("--skip-run-records")
     if args.no_repair:
         cmd.append("--no-repair")
+    append_post_success_args(cmd, args)
 
     started = time.perf_counter()
     try:
@@ -239,6 +288,7 @@ def run_debug_loop_for_case(
         "report": str(report_path),
         "app_id": report.get("app_id") if isinstance(report, dict) else None,
         "final_yaml": report.get("final_yaml") if isinstance(report, dict) else None,
+        "post_success": summarize_post_success(report) if isinstance(report, dict) else None,
         "errors": errors,
         "stdout": completed.stdout.strip(),
         "stderr": completed.stderr.strip(),
@@ -385,6 +435,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-wait-plugin-install", action="store_true")
     parser.add_argument("--skip-run-records", action="store_true")
     parser.add_argument("--no-repair", action="store_true")
+    parser.add_argument("--publish", action="store_true", help="Publish after draft debug succeeds.")
+    parser.add_argument("--publish-name")
+    parser.add_argument("--publish-comment")
+    parser.add_argument("--enable-api", action="store_true", help="Enable App Service API after draft debug succeeds.")
+    parser.add_argument(
+        "--create-api-key",
+        action="store_true",
+        help="Create an App API key for Service API regression.",
+    )
+    parser.add_argument(
+        "--list-api-keys",
+        action="store_true",
+        help="List existing App API keys for Service API regression.",
+    )
+    parser.add_argument("--export-backup", action="store_true", help="Export a backup DSL after draft debug succeeds.")
+    parser.add_argument("--export-include-secret", action="store_true")
+    parser.add_argument("--service-regression", action="store_true", help="Run the published app through Service API.")
+    parser.add_argument("--service-api-base")
+    parser.add_argument("--service-api-key")
+    parser.add_argument("--service-response-mode", choices=["blocking", "streaming"], default="blocking")
     return parser.parse_args()
 
 
