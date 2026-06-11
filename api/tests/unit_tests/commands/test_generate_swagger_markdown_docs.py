@@ -62,7 +62,7 @@ def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_con
     assert not list(openapi_dir.glob("*.json"))
 
     console_markdown = (markdown_dir / "console-openapi.md").read_text(encoding="utf-8")
-    assert "## FastOpenAPI Preview (OpenAPI 3.0)" in console_markdown
+    assert "## FastOpenAPI Preview (OpenAPI 3.1)" in console_markdown
     assert "### fastopenapi-console-openapi" in console_markdown
     assert "#### Routes" in console_markdown
     assert "FastOpenAPI Preview" not in (markdown_dir / "web-openapi.md").read_text(encoding="utf-8")

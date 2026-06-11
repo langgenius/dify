@@ -38,6 +38,13 @@ def _operation_ids(payload):
                 yield operation["operationId"]
 
 
+def _get_operations(payload):
+    for path_item in payload["paths"].values():
+        operation = path_item.get("get")
+        if isinstance(operation, dict):
+            yield operation
+
+
 def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
     module = _load_generate_swagger_specs_module()
 
@@ -86,6 +93,17 @@ def test_generate_specs_writes_unique_operation_ids(tmp_path):
         operation_ids = list(_operation_ids(payload))
 
         assert len(operation_ids) == len(set(operation_ids))
+
+
+def test_generate_specs_moves_get_request_bodies_to_query_parameters(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+
+    for path in written_paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+
+        assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
 def test_generate_specs_is_idempotent(tmp_path):

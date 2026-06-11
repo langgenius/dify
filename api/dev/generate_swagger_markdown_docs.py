@@ -232,7 +232,7 @@ def _append_fastopenapi_markdown(console_markdown_path: Path, fastopenapi_markdo
         "\n\n".join(
             [
                 console_markdown,
-                "## FastOpenAPI Preview (OpenAPI 3.0)",
+                "## FastOpenAPI Preview (OpenAPI 3.1)",
                 fastopenapi_markdown,
             ]
         )
