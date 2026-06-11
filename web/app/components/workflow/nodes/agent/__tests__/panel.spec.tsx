@@ -10,16 +10,52 @@ const {
   mockEditorFocus,
   mockEditorUpdate,
   mockInsertNodes,
+  mockQueryOptions,
   mockPromptEditorProps,
   mockSetInputs,
+  mockUseQuery,
   mockUseNodeCrud,
 } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockInsertNodes: vi.fn(),
+  mockQueryOptions: vi.fn((options: unknown) => ({ queryKey: ['agent-composer', options] })),
   mockPromptEditorProps: [] as PromptEditorProps[],
   mockSetInputs: vi.fn(),
+  mockUseQuery: vi.fn(),
   mockUseNodeCrud: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  skipToken: Symbol.for('skipToken'),
+  useQuery: (options: unknown) => mockUseQuery(options),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        workflows: {
+          draft: {
+            nodes: {
+              byNodeId: {
+                agentComposer: {
+                  get: {
+                    queryOptions: mockQueryOptions,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}))
+
+vi.mock('../../../hooks-store/store', () => ({
+  useHooksStore: <T,>(selector: (state: { configsMap?: { flowId: string } }) => T) =>
+    selector({ configsMap: { flowId: 'app-1' } }),
 }))
 
 vi.mock('../../_base/components/output-vars', () => ({
@@ -119,6 +155,7 @@ describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPromptEditorProps.length = 0
+    mockUseQuery.mockReturnValue({ data: undefined })
     mockUseNodeCrud.mockImplementation((_id: string, data: AgentNodeType) => ({
       inputs: data,
       setInputs: mockSetInputs,
@@ -143,7 +180,162 @@ describe('agent/panel', () => {
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.queryByText('usage:object:workflow.nodes.agent.outputVars.usage')).not.toBeInTheDocument()
     expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
-    expect(screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
+    expect(screen.getByText('json:Object:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
+    expect(mockQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          app_id: 'app-1',
+          node_id: 'agent-node',
+        },
+      },
+    })
+  })
+
+  it('renders effective declared outputs from the agent composer', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        effective_declared_outputs: [
+          {
+            description: 'Short answer',
+            name: 'summary',
+            type: 'string',
+          },
+          {
+            name: 'attachments',
+            type: 'array',
+            array_item: {
+              type: 'file',
+            },
+          },
+          {
+            name: 'metadata',
+            type: 'object',
+          },
+        ],
+      },
+    })
+
+    render(
+      <AgentPanel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('summary:String:Short answer')).toBeInTheDocument()
+    expect(screen.getByText('attachments:Array[File]:')).toBeInTheDocument()
+    expect(screen.getByText('metadata:Object:')).toBeInTheDocument()
+    expect(screen.queryByText('text:String:workflow.nodes.agent.outputVars.text')).not.toBeInTheDocument()
+  })
+
+  it('uses the composer roster agent when the node is bound to a roster agent', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        agent: {
+          active_config_snapshot_id: 'snapshot-1',
+          description: 'Backend-bound agent',
+          id: 'agent-1',
+          name: 'Composer Agent',
+          scope: 'roster',
+          status: 'active',
+        },
+        binding: {
+          agent_id: 'agent-1',
+          binding_type: 'roster_agent',
+          current_snapshot_id: 'snapshot-1',
+          id: 'binding-1',
+          node_id: 'agent-node',
+          workflow_id: 'workflow-1',
+        },
+      },
+    })
+
+    render(
+      <AgentPanel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('Composer Agent')).toBeInTheDocument()
+    expect(screen.getByText('Backend-bound agent')).toBeInTheDocument()
+    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
+  })
+
+  it('does not show stale graph roster data when the composer binding is not roster-backed', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        agent: {
+          active_config_snapshot_id: 'snapshot-1',
+          description: 'Workflow-only agent',
+          id: 'agent-2',
+          name: 'Inline Agent',
+          scope: 'workflow_only',
+          status: 'active',
+        },
+        binding: {
+          agent_id: 'agent-2',
+          binding_type: 'inline_agent',
+          current_snapshot_id: 'snapshot-1',
+          id: 'binding-1',
+          node_id: 'agent-node',
+          workflow_id: 'workflow-1',
+        },
+      },
+    })
+
+    render(
+      <AgentPanel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.queryByText('workflow.nodes.agent.roster.label')).not.toBeInTheDocument()
+    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
+  })
+
+  it('uses composer descriptions for default composer outputs', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        effective_declared_outputs: [
+          {
+            description: 'Free-form text answer.',
+            name: 'text',
+            type: 'string',
+          },
+          {
+            description: 'Files produced by the agent.',
+            name: 'files',
+            type: 'array',
+            array_item: {
+              type: 'file',
+            },
+          },
+          {
+            description: 'Free-form JSON object.',
+            name: 'json',
+            type: 'object',
+          },
+        ],
+      },
+    })
+
+    render(
+      <AgentPanel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('text:String:Free-form text answer.')).toBeInTheDocument()
+    expect(screen.getByText('files:Array[File]:Files produced by the agent.')).toBeInTheDocument()
+    expect(screen.getByText('json:Object:Free-form JSON object.')).toBeInTheDocument()
+    expect(screen.queryByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).not.toBeInTheDocument()
   })
 
   it('opens and closes the roster agent layered panel', () => {

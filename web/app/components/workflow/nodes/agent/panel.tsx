@@ -1,15 +1,17 @@
 import type { NodePanelProps } from '../../types'
 import type { AgentNodeType } from './types'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/client'
+import { useHooksStore } from '../../hooks-store/store'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
-
-const i18nPrefix = 'nodes.agent'
+import { defaultDeclaredOutputs, getRosterAgentFromComposer, outputToVarItem } from './helpers'
 
 export function AgentPanel({
   id,
@@ -17,6 +19,23 @@ export function AgentPanel({
 }: NodePanelProps<AgentNodeType>) {
   const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentNodeType>(id, data)
+  const appId = useHooksStore(s => s.configsMap?.flowId)
+  const composerQuery = useQuery({
+    ...consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
+      input: appId
+        ? {
+            params: {
+              app_id: appId,
+              node_id: id,
+            },
+          }
+        : skipToken,
+    }),
+  })
+  const outputVars = (composerQuery.data?.effective_declared_outputs?.length
+    ? composerQuery.data.effective_declared_outputs
+    : defaultDeclaredOutputs).map(output => outputToVarItem(output, t))
+  const rosterAgent = getRosterAgentFromComposer(composerQuery.data, inputs.agent_roster)
 
   const handleTaskChange = useCallback((value: string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -27,9 +46,9 @@ export function AgentPanel({
 
   return (
     <div className="pt-2">
-      {inputs.agent_roster && (
+      {rosterAgent && (
         <div className="border-b border-divider-subtle">
-          <AgentRosterField agent={inputs.agent_roster} />
+          <AgentRosterField agent={rosterAgent} />
         </div>
       )}
       <div className="border-b border-divider-subtle">
@@ -42,21 +61,14 @@ export function AgentPanel({
       <AgentAdvancedSettings />
       <div>
         <OutputVars>
-          <VarItem
-            name="text"
-            type="String"
-            description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
-          />
-          <VarItem
-            name="files"
-            type="Array[File]"
-            description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}
-          />
-          <VarItem
-            name="json"
-            type="Array[Object]"
-            description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
-          />
+          {outputVars.map(output => (
+            <VarItem
+              key={output.name}
+              name={output.name}
+              type={output.type}
+              description={output.description}
+            />
+          ))}
         </OutputVars>
       </div>
     </div>
