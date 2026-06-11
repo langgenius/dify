@@ -1,283 +1,33 @@
 'use client'
 
 import type { TdHTMLAttributes, ThHTMLAttributes } from 'react'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type {
+  PeriodKey,
+  SourceKey,
+} from './mock-data'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import Sort from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
-
-type PeriodKey = 'last7days' | 'last30days' | 'allTime'
-type SourceKey = 'all' | 'webapp' | 'workflow'
-
-type FilterOption<T extends string> = {
-  value: T
-  labelKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.logs.'>
-}
-
-type AgentLogRow = {
-  id: string
-  title: string
-  endUser: string
-  messageCount: number
-  userRate: string
-  operationRate: string
-  updatedTime: string
-  createdTime: string
-  source: Exclude<SourceKey, 'all'>
-  unread?: boolean
-}
-
-const periodOptions: Array<FilterOption<PeriodKey>> = [
-  { value: 'last7days', labelKey: 'agentDetail.logs.filters.period.last7days' },
-  { value: 'last30days', labelKey: 'agentDetail.logs.filters.period.last30days' },
-  { value: 'allTime', labelKey: 'agentDetail.logs.filters.period.allTime' },
-]
-
-const sourceOptions: Array<FilterOption<SourceKey>> = [
-  { value: 'all', labelKey: 'agentDetail.logs.filters.source.all' },
-  { value: 'webapp', labelKey: 'agentDetail.logs.filters.source.webapp' },
-  { value: 'workflow', labelKey: 'agentDetail.logs.filters.source.workflow' },
-]
-
-const logRows: AgentLogRow[] = [
-  {
-    id: 'log_001',
-    title: 'Asking about Dify agent orchestration best practices',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_002',
-    title: 'Alice, our user, talks about prompt orchestration techniques',
-    endUser: 'N/A',
-    messageCount: 3,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_003',
-    title: 'How to self-host a Dify chatbot for an internal team',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 5,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_004',
-    title: 'Requesting information about dataset retrieval settings',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 1,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_005',
-    title: 'Exploring options for connecting external knowledge bases',
-    endUser: 'N/A',
-    messageCount: 3,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_006',
-    title: 'What types of plugin tools can be used in workflows?',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_007',
-    title: 'Querying about Dify cloud deployment requirements',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_008',
-    title: 'Seeking assistance with YAML file setup',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_009',
-    title: 'Inquiring about compatibility with external APIs',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 5,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_010',
-    title: 'Can Dify integrate with my existing CRM?',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_011',
-    title: 'Exploring options for customizing chatbot responses',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_012',
-    title: 'Understanding data management and security in Dify',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_013',
-    title: 'Learning about available resources for getting started with Dify',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_014',
-    title: 'What are the best practices for optimizing prompts?',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_015',
-    title: 'How do I monitor the performance of my AI applications?',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_016',
-    title: 'Is there a free trial available for Dify?',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_017',
-    title: 'How can I improve user satisfaction metrics with Dify?',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-  {
-    id: 'log_018',
-    title: 'Are there any upcoming features or improvements in Dify?',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'workflow',
-    unread: true,
-  },
-  {
-    id: 'log_019',
-    title: 'What are the recommended steps to deploy a Dify chatbot?',
-    endUser: '94924171-e6b0-4076-8f54-71d4370af8ef',
-    messageCount: 2,
-    userRate: 'N/A',
-    operationRate: 'N/A',
-    updatedTime: '2023-03-21 10:25',
-    createdTime: '2023-03-21 10:25',
-    source: 'webapp',
-    unread: true,
-  },
-]
-
-function getOption<T extends string>(options: Array<FilterOption<T>>, value: T) {
-  return options.find(option => option.value === value) ?? options[0]!
-}
+import {
+  getAgentLogRowsView,
+  getOption,
+  getSortParts,
+  periodOptions,
+  sourceOptions,
+} from './mock-data'
 
 export function AgentLogsPage() {
   const { t } = useTranslation('agentV2')
@@ -290,22 +40,33 @@ export function AgentLogsPage() {
   const [page, setPage] = useState(2)
   const [limit, setLimit] = useState(25)
 
-  const selectedPeriod = getOption(periodOptions, period)
   const selectedSource = getOption(sourceOptions, source)
-  const sortOrder = sortBy.startsWith('-') ? '-' : ''
-  const sortValue = sortBy.replace('-', '') || 'created_at'
-  const normalizedKeyword = keyword.trim().toLowerCase()
-  const filteredRows = logRows.filter((log) => {
-    const matchesSource = source === 'all' || log.source === source
-    const matchesKeyword = !normalizedKeyword || [
-      log.title,
-      log.endUser,
-      String(log.messageCount),
-      log.updatedTime,
-      log.createdTime,
-    ].some(value => value.toLowerCase().includes(normalizedKeyword))
-
-    return matchesSource && matchesKeyword
+  const { sortOrder, sortValue } = getSortParts(sortBy)
+  const tableHeaderLabels = {
+    unread: t('agentDetail.logs.table.unread'),
+    title: t('agentDetail.logs.table.title'),
+    endUser: t('agentDetail.logs.table.endUser'),
+    messageCount: t('agentDetail.logs.table.messageCount'),
+    userRate: t('agentDetail.logs.table.userRate'),
+    operationRate: t('agentDetail.logs.table.operationRate'),
+    updatedTime: t('agentDetail.logs.table.updatedTime'),
+    createdTime: t('agentDetail.logs.table.createdTime'),
+  }
+  const periodItems = periodOptions.map(option => ({
+    value: option.value,
+    name: t(option.labelKey),
+  }))
+  const {
+    currentPage,
+    totalPages,
+    rows,
+  } = getAgentLogRowsView({
+    period,
+    source,
+    keyword,
+    sortBy,
+    page,
+    limit,
   })
 
   return (
@@ -334,37 +95,28 @@ export function AgentLogsPage() {
 
         <div className="mt-3 flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Select
+            <Chip
               value={period}
-              onValueChange={(nextValue) => {
-                if (nextValue)
-                  setPeriod(nextValue as PeriodKey)
+              items={periodItems}
+              leftIcon={<span aria-hidden className="i-ri-calendar-line block size-4 text-text-secondary" />}
+              className="min-w-32"
+              onSelect={(item) => {
+                setPage(1)
+                setPeriod(item.value)
               }}
-            >
-              <SelectTrigger
-                aria-label={t('agentDetail.logs.filters.period.label')}
-                className="mt-0 w-fit max-w-full min-w-32"
-              >
-                <span className="inline-flex min-w-0 items-center gap-1.5">
-                  <span aria-hidden className="i-ri-calendar-line size-4 shrink-0 text-text-tertiary" />
-                  <span className="truncate">{t(selectedPeriod.labelKey)}</span>
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                {periodOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <SelectItemText>{t(option.labelKey)}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onClear={() => {
+                setPage(1)
+                setPeriod('allTime')
+              }}
+            />
 
             <Select
               value={source}
               onValueChange={(nextValue) => {
-                if (nextValue)
+                if (nextValue) {
+                  setPage(1)
                   setSource(nextValue as SourceKey)
+                }
               }}
             >
               <SelectTrigger
@@ -388,7 +140,10 @@ export function AgentLogsPage() {
               value={keyword}
               placeholder={t('agentDetail.logs.filters.search.placeholder')}
               className="w-50 shrink-0"
-              onValueChange={setKeyword}
+              onValueChange={(nextKeyword) => {
+                setPage(1)
+                setKeyword(nextKeyword)
+              }}
             />
           </div>
 
@@ -400,83 +155,91 @@ export function AgentLogsPage() {
               { value: 'updated_at', name: t('agentDetail.logs.filters.sort.lastUpdatedTime') },
             ]}
             onSelect={(value) => {
+              setPage(1)
               setSortBy(value)
             }}
           />
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-auto px-6 pt-2 pb-3">
-        <div className="min-w-[1212px]">
-          <table className="w-full table-fixed border-collapse">
-            <colgroup>
-              <col className="w-5" />
-              <col className="w-[42%]" />
-              <col className="w-[14%]" />
-              <col className="w-24" />
-              <col className="w-20" />
-              <col className="w-18" />
-              <col className="w-34" />
-              <col className="w-34" />
-            </colgroup>
-            <thead>
-              <tr className="h-7 bg-background-section-burn text-left system-xs-medium-uppercase text-text-tertiary">
-                <th scope="col" className="rounded-l-lg px-0">
-                  <span className="sr-only">{t('agentDetail.logs.table.unread')}</span>
-                </th>
-                <TableHead>{t('agentDetail.logs.table.title')}</TableHead>
-                <TableHead>{t('agentDetail.logs.table.endUser')}</TableHead>
-                <TableHead>{t('agentDetail.logs.table.messageCount')}</TableHead>
-                <TableHead>{t('agentDetail.logs.table.userRate')}</TableHead>
-                <TableHead>{t('agentDetail.logs.table.operationRate')}</TableHead>
-                <TableHead>{t('agentDetail.logs.table.updatedTime')}</TableHead>
-                <TableHead className="rounded-r-lg">{t('agentDetail.logs.table.createdTime')}</TableHead>
-              </tr>
-            </thead>
-            <tbody className="system-sm-regular text-text-secondary">
-              {filteredRows.map(log => (
-                <tr
-                  key={log.id}
-                  className="h-10 border-b border-divider-subtle hover:bg-background-default-hover"
-                >
-                  <td className="px-0">
-                    <span className={cn(
-                      'mx-auto block size-1.5 rounded-full',
-                      log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
-                    )}
-                    />
-                  </td>
-                  <TableCell className="system-sm-medium text-text-secondary">
-                    {log.title}
-                  </TableCell>
-                  <TableCell translate="no">
-                    {log.endUser}
-                  </TableCell>
-                  <TableCell>
-                    {log.messageCount}
-                  </TableCell>
-                  <TableCell className="text-text-quaternary">
-                    {log.userRate}
-                  </TableCell>
-                  <TableCell className="text-text-quaternary">
-                    {log.operationRate}
-                  </TableCell>
-                  <TableCell>
-                    {log.updatedTime}
-                  </TableCell>
-                  <TableCell>
-                    {log.createdTime}
-                  </TableCell>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="min-h-0 flex-1 px-6 pt-2 pb-3">
+        <div className="flex h-full min-w-0 flex-col overflow-x-auto">
+          <div className="min-w-[1212px] shrink-0">
+            <table aria-hidden="true" className="w-full table-fixed border-collapse">
+              <LogsTableColGroup />
+              <LogsTableHeader labels={tableHeaderLabels} />
+            </table>
+          </div>
+
+          <ScrollAreaRoot className="relative min-h-0 min-w-[1212px] flex-1 overflow-hidden">
+            <ScrollAreaViewport
+              aria-label={t('agentDetail.logs.title')}
+              role="region"
+              tabIndex={-1}
+              className="overscroll-contain"
+            >
+              <ScrollAreaContent>
+                <table className="w-full table-fixed border-collapse">
+                  <LogsTableColGroup />
+                  <LogsTableHeader labels={tableHeaderLabels} rowClassName="sr-only" />
+                  <tbody className="system-sm-regular text-text-secondary">
+                    {rows.length > 0
+                      ? rows.map(log => (
+                          <tr
+                            key={log.id}
+                            className="h-10 border-b border-divider-subtle hover:bg-background-default-hover"
+                          >
+                            <td className="px-0">
+                              <span className={cn(
+                                'mx-auto block size-1.5 rounded-full',
+                                log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
+                              )}
+                              />
+                            </td>
+                            <TableCell className="system-sm-medium text-text-secondary">
+                              {log.title}
+                            </TableCell>
+                            <TableCell translate="no">
+                              {log.endUser}
+                            </TableCell>
+                            <TableCell>
+                              {log.messageCount}
+                            </TableCell>
+                            <TableCell className="text-text-quaternary">
+                              {log.userRate}
+                            </TableCell>
+                            <TableCell className="text-text-quaternary">
+                              {log.operationRate}
+                            </TableCell>
+                            <TableCell>
+                              {log.updatedTime}
+                            </TableCell>
+                            <TableCell>
+                              {log.createdTime}
+                            </TableCell>
+                          </tr>
+                        ))
+                      : (
+                          <tr className="h-20 border-b border-divider-subtle">
+                            <td colSpan={8} className="px-3 text-center text-text-tertiary">
+                              {t('agentDetail.logs.empty')}
+                            </td>
+                          </tr>
+                        )}
+                  </tbody>
+                </table>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar className="data-[orientation=vertical]:translate-x-1">
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollAreaRoot>
         </div>
       </div>
 
       <Pagination
-        page={page}
-        totalPages={200}
+        page={currentPage}
+        totalPages={totalPages}
         onPageChange={setPage}
         className="h-14 shrink-0 px-6 py-3"
         labels={{
@@ -488,12 +251,66 @@ export function AgentLogsPage() {
         pageSize={{
           value: limit,
           options: [10, 25, 50],
-          onValueChange: setLimit,
+          onValueChange: (nextLimit) => {
+            setPage(1)
+            setLimit(nextLimit)
+          },
           label: tCommon('pagination.perPage'),
           ariaLabel: tCommon('pagination.perPage'),
         }}
       />
     </section>
+  )
+}
+
+type LogsTableHeaderLabels = {
+  unread: string
+  title: string
+  endUser: string
+  messageCount: string
+  userRate: string
+  operationRate: string
+  updatedTime: string
+  createdTime: string
+}
+
+function LogsTableHeader({
+  labels,
+  rowClassName,
+}: {
+  labels: LogsTableHeaderLabels
+  rowClassName?: string
+}) {
+  return (
+    <thead>
+      <tr className={cn('h-7 bg-background-section-burn text-left system-xs-medium-uppercase text-text-tertiary', rowClassName)}>
+        <th scope="col" className="rounded-l-lg px-0">
+          <span className="sr-only">{labels.unread}</span>
+        </th>
+        <TableHead>{labels.title}</TableHead>
+        <TableHead>{labels.endUser}</TableHead>
+        <TableHead>{labels.messageCount}</TableHead>
+        <TableHead>{labels.userRate}</TableHead>
+        <TableHead>{labels.operationRate}</TableHead>
+        <TableHead>{labels.updatedTime}</TableHead>
+        <TableHead className="rounded-r-lg">{labels.createdTime}</TableHead>
+      </tr>
+    </thead>
+  )
+}
+
+function LogsTableColGroup() {
+  return (
+    <colgroup>
+      <col className="w-5" />
+      <col className="w-[42%]" />
+      <col className="w-[14%]" />
+      <col className="w-24" />
+      <col className="w-20" />
+      <col className="w-18" />
+      <col className="w-34" />
+      <col className="w-34" />
+    </colgroup>
   )
 }
 

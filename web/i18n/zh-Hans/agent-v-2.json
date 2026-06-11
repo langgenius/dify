@@ -102,6 +102,7 @@
   "agentDetail.documentTitle": "智能体",
   "agentDetail.history": "历史记录",
   "agentDetail.logs.description": "完整日志记录应用运行状态，包括用户输入、智能体回复、规划和工具使用。",
+  "agentDetail.logs.empty": "暂无日志",
   "agentDetail.logs.filters.period.allTime": "全部时间",
   "agentDetail.logs.filters.period.label": "日志时间范围",
   "agentDetail.logs.filters.period.last30days": "最近 30 天",

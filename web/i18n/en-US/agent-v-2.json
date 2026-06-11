@@ -102,6 +102,7 @@
   "agentDetail.documentTitle": "Agent",
   "agentDetail.history": "History",
   "agentDetail.logs.description": "Full logs record the running status of the application, including user inputs, agent replies, planning and tool uses.",
+  "agentDetail.logs.empty": "No logs found",
   "agentDetail.logs.filters.period.allTime": "All time",
   "agentDetail.logs.filters.period.label": "Log period",
   "agentDetail.logs.filters.period.last30days": "Last 30 days",
