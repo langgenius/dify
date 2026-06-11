@@ -472,6 +472,14 @@ export const zAgentCliToolAuthorizationStatus = z.enum([
 ])
 
 /**
+ * AgentCliToolEnvConfig
+ */
+export const zAgentCliToolEnvConfig = z.object({
+  secret_refs: z.array(zAgentSecretRefConfig).optional(),
+  variables: z.array(zAgentEnvVariableConfig).optional(),
+})
+
+/**
  * AgentCliToolRiskLevel
  *
  * Risk marker for CLI tool bootstrap commands.
@@ -491,6 +499,7 @@ export const zAgentCliToolConfig = z.object({
   dangerous_command: z.boolean().optional().default(false),
   description: z.string().nullish(),
   enabled: z.boolean().optional().default(true),
+  env: zAgentCliToolEnvConfig.optional(),
   install: z.string().nullish(),
   install_command: z.string().nullish(),
   install_commands: z.array(z.string()).optional(),

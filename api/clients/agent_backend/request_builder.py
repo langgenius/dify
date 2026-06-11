@@ -11,6 +11,7 @@ composition-driven.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import ClassVar, cast
 
 from agenton.compositor import CompositorSessionSnapshot
@@ -140,6 +141,30 @@ class AgentBackendModelConfig(BaseModel):
     model_settings: dict[str, JsonValue] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+# ``DifyPluginLLMLayerConfig.model_settings`` is pydantic_ai's ``ModelSettings``
+# TypedDict (closed: unknown keys are rejected, explicit ``None`` values fail the
+# per-field type checks). Agent Soul model settings carry a wider, nullable shape
+# (``stop`` / ``response_format`` plus null-padded fields), so the layer config
+# only receives the keys the runtime contract accepts.
+_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
+    "temperature",
+    "top_p",
+    "presence_penalty",
+    "frequency_penalty",
+    "max_tokens",
+)
+
+
+def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonValue] | None:
+    sanitized: dict[str, JsonValue] = {
+        key: settings[key] for key in _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS if settings.get(key) is not None
+    }
+    stop = settings.get("stop")
+    if isinstance(stop, list) and stop:
+        sanitized["stop_sequences"] = stop
+    return sanitized or None
 
 
 class AgentBackendOutputConfig(BaseModel):
@@ -283,7 +308,7 @@ class AgentBackendRunRequestBuilder:
                     model_provider=run_input.model.model_provider,
                     model=run_input.model.model,
                     credentials=run_input.model.credentials,
-                    model_settings=run_input.model.model_settings or None,
+                    model_settings=_agent_model_settings(run_input.model.model_settings),
                 ),
             )
         )
@@ -300,12 +325,14 @@ class AgentBackendRunRequestBuilder:
             )
 
         if run_input.include_shell:
-            # Sandboxed bash workspace (dify.shell). The layer declares NoLayerDeps,
-            # so the spec carries no deps; shellctl connection is server-injected.
+            # Sandboxed bash workspace (dify.shell). Depends on execution_context so
+            # the agent server can mint per-command Agent Stub env (back proxy);
+            # shellctl connection itself is server-injected.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_SHELL_LAYER_ID,
                     type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.shell_config or DifyShellLayerConfig(),
                 )
@@ -437,7 +464,7 @@ class AgentBackendRunRequestBuilder:
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
                         credentials=run_input.model.credentials,
-                        model_settings=run_input.model.model_settings or None,
+                        model_settings=_agent_model_settings(run_input.model.model_settings),
                     ),
                 ),
             ]
@@ -455,12 +482,14 @@ class AgentBackendRunRequestBuilder:
             )
 
         if run_input.include_shell:
-            # Sandboxed bash workspace (dify.shell). The layer declares NoLayerDeps,
-            # so the spec carries no deps; shellctl connection is server-injected.
+            # Sandboxed bash workspace (dify.shell). Depends on execution_context so
+            # the agent server can mint per-command Agent Stub env (back proxy);
+            # shellctl connection itself is server-injected.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_SHELL_LAYER_ID,
                     type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.shell_config or DifyShellLayerConfig(),
                 )

@@ -24,6 +24,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Health check | [HealthResponse](#healthresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /_version
 
@@ -33,6 +34,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server version | [ServerVersionResponse](#serverversionresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /account
 
@@ -42,6 +44,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account info | [AccountResponse](#accountresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /account/sessions
 
@@ -58,6 +61,8 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Session list | [SessionListResponse](#sessionlistresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /account/sessions/self
 
@@ -67,6 +72,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Session revoked | [RevokeResponse](#revokeresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /account/sessions/{session_id}
 
@@ -82,6 +88,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Session revoked | [RevokeResponse](#revokeresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps
 
@@ -102,6 +109,8 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App list | [AppListResponse](#applistresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/check-dependencies
 
@@ -117,6 +126,7 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dependencies checked | [CheckDependenciesResult](#checkdependenciesresult) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/describe
 
@@ -133,6 +143,8 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App description | [AppDescribeResponse](#appdescriberesponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/export
 
@@ -150,6 +162,8 @@ User-scoped operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Export successful | [AppDslExportResponse](#appdslexportresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/files/upload
 
@@ -173,6 +187,7 @@ Upload a file to use as an input variable when running the app
 | 401 | Unauthorized — invalid or expired bearer token |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type or blocked extension |  |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/form/human_input/{form_token}
 
@@ -204,6 +219,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted | [FormSubmitResponse](#formsubmitresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/run
 
@@ -217,9 +234,10 @@ Upload a file to use as an input variable when running the app
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Run result (SSE stream) |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) |  |
+| 422 | Validation error | [ErrorBody](#errorbody) |
 
 ### /apps/{app_id}/tasks/{task_id}/events
 
@@ -252,6 +270,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped | [TaskStopResponse](#taskstopresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /oauth/device/approve
 
@@ -345,6 +364,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Permitted external apps list | [PermittedExternalAppsListResponse](#permittedexternalappslistresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces
 
@@ -354,6 +375,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace list | [WorkspaceListResponse](#workspacelistresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}
 
@@ -369,6 +391,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace detail | [WorkspaceDetailResponse](#workspacedetailresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/apps/imports
 
@@ -387,6 +410,8 @@ Upload a file to use as an input variable when running the app
 | 200 | Import completed | [Import](#import) |
 | 202 | Import pending confirmation | [Import](#import) |
 | 400 | Import failed | [Import](#import) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/apps/imports/{import_id}/confirm
 
@@ -404,6 +429,7 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | [Import](#import) |
 | 400 | Import failed | [Import](#import) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/members
 
@@ -421,6 +447,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Member list | [MemberListResponse](#memberlistresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 #### POST
 ##### Parameters
@@ -435,6 +463,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Member invited | [MemberInviteResponse](#memberinviteresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/members/{member_id}
 
@@ -451,6 +481,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Member removed | [MemberActionResponse](#memberactionresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/members/{member_id}/role
 
@@ -468,6 +499,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Role updated | [MemberActionResponse](#memberactionresponse) |
+| 422 | Validation error | [ErrorBody](#errorbody) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ### /workspaces/{workspace_id}/switch
 
@@ -483,6 +516,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace detail | [WorkspaceDetailResponse](#workspacedetailresponse) |
+| default | Error | [ErrorBody](#errorbody) |
 
 ---
 ### Models
@@ -693,6 +727,28 @@ mode is a closed enum.
 | client_id | string |  | Yes |
 | device_code | string |  | Yes |
 
+#### ErrorBody
+
+Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
+generated client schema stays an open enum — old CLIs keep parsing when a
+future server adds a code. Formatter tests pin emitted values to the enum.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | [ [ErrorDetail](#errordetail) ] |  | No |
+| hint | string |  | No |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### ErrorDetail
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| loc | [  ] |  | No |
+| msg | string |  | Yes |
+| type | string |  | Yes |
+
 #### FileResponse
 
 | Name | Type | Description | Required |
@@ -843,6 +899,12 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | retriever_resources | [ object ] |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
+
+#### OpenApiErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenApiErrorCode | string |  |  |
 
 #### Package
 

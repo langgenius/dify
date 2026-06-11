@@ -70,7 +70,7 @@ class ModelProviderService:
         provider_responses = []
         for provider_configuration in provider_configurations.values():
             if model_type:
-                model_type_entity = ModelType.value_of(model_type)
+                model_type_entity = ModelType(model_type)
                 if model_type_entity not in provider_configuration.provider.supported_model_types:
                     continue
 
@@ -273,7 +273,7 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         return provider_configuration.get_custom_model_credential(
-            model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
+            model_type=ModelType(model_type), model=model, credential_id=credential_id
         )
 
     def validate_model_credentials(
@@ -291,7 +291,7 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.validate_custom_model_credentials(
-            model_type=ModelType.value_of(model_type), model=model, credentials=credentials
+            model_type=ModelType(model_type), model=model, credentials=credentials
         )
 
     def create_model_credential(
@@ -316,7 +316,7 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.create_custom_model_credential(
-            model_type=ModelType.value_of(model_type),
+            model_type=ModelType(model_type),
             model=model,
             credentials=credentials,
             credential_name=credential_name,
@@ -346,7 +346,7 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.update_custom_model_credential(
-            model_type=ModelType.value_of(model_type),
+            model_type=ModelType(model_type),
             model=model,
             credentials=credentials,
             credential_id=credential_id,
@@ -366,7 +366,7 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.delete_custom_model_credential(
-            model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
+            model_type=ModelType(model_type), model=model, credential_id=credential_id
         )
 
     def switch_active_custom_model_credential(
@@ -384,7 +384,7 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.switch_custom_model_credential(
-            model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
+            model_type=ModelType(model_type), model=model, credential_id=credential_id
         )
 
     def add_model_credential_to_model_list(
@@ -402,7 +402,7 @@ class ModelProviderService:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.add_model_credential_to_model(
-            model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
+            model_type=ModelType(model_type), model=model, credential_id=credential_id
         )
 
     def remove_model(self, tenant_id: str, provider: str, model_type: str, model: str):
@@ -416,7 +416,7 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        provider_configuration.delete_custom_model(model_type=ModelType.value_of(model_type), model=model)
+        provider_configuration.delete_custom_model(model_type=ModelType(model_type), model=model)
 
     def get_models_by_model_type(self, tenant_id: str, model_type: str) -> list[ProviderWithModelsResponse]:
         """
@@ -430,7 +430,7 @@ class ModelProviderService:
         provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider available models
-        models = provider_configurations.get_models(model_type=ModelType.value_of(model_type), only_active=True)
+        models = provider_configurations.get_models(model_type=ModelType(model_type), only_active=True)
 
         # Group models by provider
         provider_models: dict[str, list[ModelWithProviderEntity]] = {}
@@ -509,7 +509,7 @@ class ModelProviderService:
         :param model_type: model type
         :return:
         """
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         try:
             result = self._get_provider_manager(tenant_id).get_default_model(
@@ -544,7 +544,7 @@ class ModelProviderService:
         :param model: model name
         :return:
         """
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
         self._get_provider_manager(tenant_id).update_default_model_record(
             tenant_id=tenant_id, model_type=model_type_enum, provider=provider, model=model
         )
@@ -594,7 +594,7 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        provider_configuration.enable_model(model=model, model_type=ModelType.value_of(model_type))
+        provider_configuration.enable_model(model=model, model_type=ModelType(model_type))
 
     def disable_model(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
@@ -607,4 +607,4 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        provider_configuration.disable_model(model=model, model_type=ModelType.value_of(model_type))
+        provider_configuration.disable_model(model=model, model_type=ModelType(model_type))
