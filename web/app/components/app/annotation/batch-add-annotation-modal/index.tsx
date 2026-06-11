@@ -45,6 +45,10 @@ const BatchModal: FC<IBatchModalProps> = ({
   }, [isShow])
 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const getRunErrorMessage = (message?: string) => {
+    const runError = t('batchModal.runError', { ns: 'appAnnotation' })
+    return message ? `${runError}: ${message}` : `${runError}`
+  }
   const checkProcess = async (jobID: string) => {
     try {
       const res = await checkAnnotationBatchImportProgress({ jobID, appId })
@@ -52,15 +56,15 @@ const BatchModal: FC<IBatchModalProps> = ({
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
       if (res.job_status === ProcessStatus.ERROR)
-        toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}`)
+        toast.error(getRunErrorMessage(res.error_msg))
       if (res.job_status === ProcessStatus.COMPLETED) {
         toast.success(`${t('batchModal.completed', { ns: 'appAnnotation' })}`)
         onAdded()
         onCancel()
       }
     }
-    catch (e: any) {
-      toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
+    catch (e: unknown) {
+      toast.error(getRunErrorMessage(e instanceof Error ? e.message : undefined))
     }
   }
 
@@ -72,11 +76,16 @@ const BatchModal: FC<IBatchModalProps> = ({
         url: `/apps/${appId}/annotations/batch-import`,
         body: formData,
       })
+      if (res.error_msg || !res.job_id || !res.job_status) {
+        setImportStatus(ProcessStatus.ERROR)
+        toast.error(getRunErrorMessage(res.error_msg))
+        return
+      }
       setImportStatus(res.job_status)
       checkProcess(res.job_id)
     }
-    catch (e: any) {
-      toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
+    catch (e: unknown) {
+      toast.error(getRunErrorMessage(e instanceof Error ? e.message : undefined))
     }
   }
 
