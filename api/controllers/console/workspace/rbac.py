@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.console import console_ns
+from controllers.console.wraps import rbac_permission_required
 from core.db.session_factory import session_factory
 from libs.login import current_account_with_tenant, login_required
 from models import Account
@@ -239,6 +240,7 @@ class _RoleUpsertRequest(BaseModel):
 @console_ns.route("/workspaces/current/rbac/roles")
 class RBACRolesApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def get(self):
         tenant_id, account_id = _current_ids()
         query = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
@@ -253,6 +255,7 @@ class RBACRolesApi(Resource):
         return _dump(result)
 
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def post(self):
         tenant_id, account_id = _current_ids()
         request = _payload(_RoleUpsertRequest)
@@ -263,11 +266,13 @@ class RBACRolesApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>")
 class RBACRoleItemApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.Roles.get(tenant_id, account_id, str(role_id)))
 
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def put(self, role_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_RoleUpsertRequest)
@@ -275,6 +280,7 @@ class RBACRoleItemApi(Resource):
         return _dump(role)
 
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def delete(self, role_id):
         tenant_id, account_id = _current_ids()
         svc.RBACService.Roles.delete(tenant_id, account_id, str(role_id))
@@ -284,6 +290,7 @@ class RBACRoleItemApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/copy")
 class RBACRoleCopyApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def post(self, role_id):
         tenant_id, account_id = _current_ids()
         request = _payload(CopyRoleParam)
@@ -294,6 +301,7 @@ class RBACRoleCopyApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/members")
 class RBACRoleMembersApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
         return _dump(
@@ -327,6 +335,7 @@ class _AccessPolicyUpdateRequest(BaseModel):
 @console_ns.route("/workspaces/current/rbac/access-policies")
 class RBACAccessPoliciesApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def get(self):
         tenant_id, account_id = _current_ids()
         # `resource_type` is exposed as a query argument so the UI can show
@@ -342,6 +351,7 @@ class RBACAccessPoliciesApi(Resource):
         )
 
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def post(self):
         tenant_id, account_id = _current_ids()
         request = _payload(_AccessPolicyCreateRequest)
@@ -361,11 +371,13 @@ class RBACAccessPoliciesApi(Resource):
 @console_ns.route("/workspaces/current/rbac/access-policies/<uuid:policy_id>")
 class RBACAccessPolicyItemApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.AccessPolicies.get(tenant_id, account_id, str(policy_id)))
 
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def put(self, policy_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_AccessPolicyUpdateRequest)
@@ -382,6 +394,7 @@ class RBACAccessPolicyItemApi(Resource):
         return _dump(policy)
 
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def delete(self, policy_id):
         tenant_id, account_id = _current_ids()
         svc.RBACService.AccessPolicies.delete(tenant_id, account_id, str(policy_id))
@@ -391,6 +404,7 @@ class RBACAccessPolicyItemApi(Resource):
 @console_ns.route("/workspaces/current/rbac/access-policies/<uuid:policy_id>/copy")
 class RBACAccessPolicyCopyApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def post(self, policy_id):
         tenant_id, account_id = _current_ids()
         policy = svc.RBACService.AccessPolicies.copy(tenant_id, account_id, str(policy_id))
@@ -400,6 +414,7 @@ class RBACAccessPolicyCopyApi(Resource):
 @console_ns.route("/workspaces/current/rbac/access-policy-bindings/<uuid:binding_id>/lock")
 class RBACAccessPolicyBindingLockApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def put(self, binding_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.AccessPolicyBindings.lock(tenant_id, account_id, str(binding_id)))
@@ -408,6 +423,7 @@ class RBACAccessPolicyBindingLockApi(Resource):
 @console_ns.route("/workspaces/current/rbac/access-policy-bindings/<uuid:binding_id>/unlock")
 class RBACAccessPolicyBindingUnlockApi(Resource):
     @login_required
+    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
     def put(self, binding_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.AccessPolicyBindings.unlock(tenant_id, account_id, str(binding_id)))

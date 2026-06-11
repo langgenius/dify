@@ -22,7 +22,7 @@ from libs.login import current_account_with_tenant
 from models import Account
 from models.account import AccountStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import DifySetup
+from models.model import App, DifySetup
 from services.enterprise.rbac_service import RBACService
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService, UtmInfo
@@ -367,7 +367,7 @@ def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
 
 
 def rbac_permission_required[**P, R](
-    resource_type: Literal["app", "dataset"],
+    resource_type: Literal["app", "dataset", "workspace"],
     scene: str,
     *,
     resource_required: bool = True,
@@ -382,7 +382,7 @@ def rbac_permission_required[**P, R](
     the RBAC request omits ``resource_id``.
 
     Args:
-        resource_type: ``"app"`` or ``"dataset"``.
+        resource_type: ``"app"``, ``"dataset"``, or ``"workspace"``.
         scene: The RBAC scene name, e.g. ``"app_delete"``.
         resource_required: Whether a concrete resource ID is required.
     """
@@ -394,12 +394,17 @@ def rbac_permission_required[**P, R](
                 return view(*args, **kwargs)
 
             current_user, current_tenant_id = current_account_with_tenant()
-            resource_id = _extract_resource_id(resource_type, kwargs) if resource_required else None
+            check_resource_type = None if resource_type == "workspace" else resource_type
+            resource_id = None
+            if resource_required and check_resource_type:
+                resource_id = _extract_resource_id(resource_type, kwargs)
+                if _is_resource_owned_by_current_user(current_tenant_id, current_user.id, resource_type, resource_id):
+                    return view(*args, **kwargs)
             allowed = RBACService.CheckAccess.check(
                 current_tenant_id,
                 current_user.id,
                 scene=scene,
-                resource_type=resource_type,
+                resource_type=check_resource_type,
                 resource_id=resource_id,
             )
 
@@ -411,6 +416,29 @@ def rbac_permission_required[**P, R](
         return decorated
 
     return decorator
+
+
+def _is_resource_owned_by_current_user(tenant_id: str, account_id: str, resource_type: str, resource_id: str) -> bool:
+    if resource_type == "app":
+        created_by = db.session.scalar(
+            select(App.created_by).where(
+                App.id == resource_id,
+                App.tenant_id == tenant_id,
+                App.status == "normal",
+            )
+        )
+        return created_by == account_id
+
+    if resource_type == "dataset":
+        created_by = db.session.scalar(
+            select(Dataset.created_by).where(
+                Dataset.id == resource_id,
+                Dataset.tenant_id == tenant_id,
+            )
+        )
+        return created_by == account_id
+
+    return False
 
 
 def _extract_resource_id(resource_type: str, path_args: dict[str, object] | None = None) -> str:

@@ -181,11 +181,13 @@ class TestRbacPermissionRequired:
             patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-1")),
             patch("controllers.console.wraps._extract_resource_id", return_value="app-123") as mock_extract,
+            patch("controllers.console.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
             patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
         ):
             assert protected_view(app_id="app-123") == "ok"
 
         mock_extract.assert_called_once_with("app", {"app_id": "app-123"})
+        mock_owned.assert_called_once_with("tenant-1", "account-1", "app", "app-123")
         mock_check.assert_called_once_with(
             "tenant-1",
             "account-1",
@@ -205,11 +207,13 @@ class TestRbacPermissionRequired:
             patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-2")),
             patch("controllers.console.wraps._extract_resource_id") as mock_extract,
+            patch("controllers.console.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
             patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
         ):
             assert protected_view() == "ok"
 
         mock_extract.assert_not_called()
+        mock_owned.assert_not_called()
         mock_check.assert_called_once_with(
             "tenant-2",
             "account-2",
@@ -217,6 +221,66 @@ class TestRbacPermissionRequired:
             resource_type="dataset",
             resource_id=None,
         )
+
+    def test_workspace_scene_omits_resource_type(self):
+        current_user = make_account("account-3")
+
+        @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+        def protected_view():
+            return "ok"
+
+        with (
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-3")),
+            patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+        ):
+            assert protected_view() == "ok"
+
+        mock_check.assert_called_once_with(
+            "tenant-3",
+            "account-3",
+            scene="workspace_role_manage",
+            resource_type=None,
+            resource_id=None,
+        )
+
+    def test_resource_owned_app_skips_rbac_check(self):
+        current_user = make_account("account-4")
+
+        @rbac_permission_required("app", "app_delete")
+        def protected_view(**kwargs):
+            return "ok"
+
+        with (
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-4")),
+            patch("controllers.console.wraps._extract_resource_id", return_value="app-123"),
+            patch("controllers.console.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
+            patch("controllers.console.wraps.RBACService.CheckAccess.check") as mock_check,
+        ):
+            assert protected_view(app_id="app-123") == "ok"
+
+        mock_owned.assert_called_once_with("tenant-4", "account-4", "app", "app-123")
+        mock_check.assert_not_called()
+
+    def test_resource_owned_dataset_skips_rbac_check(self):
+        current_user = make_account("account-5")
+
+        @rbac_permission_required("dataset", "dataset_edit")
+        def protected_view(**kwargs):
+            return "ok"
+
+        with (
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-5")),
+            patch("controllers.console.wraps._extract_resource_id", return_value="dataset-123"),
+            patch("controllers.console.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
+            patch("controllers.console.wraps.RBACService.CheckAccess.check") as mock_check,
+        ):
+            assert protected_view(dataset_id="dataset-123") == "ok"
+
+        mock_owned.assert_called_once_with("tenant-5", "account-5", "dataset", "dataset-123")
+        mock_check.assert_not_called()
 
     def test_extract_resource_id_prefers_path_args(self):
         app = Flask(__name__)

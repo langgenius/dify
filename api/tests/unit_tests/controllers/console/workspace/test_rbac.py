@@ -22,7 +22,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console.workspace import rbac as rbac_mod
 
@@ -347,6 +347,50 @@ class TestRoleCopy:
             inspect.unwrap(rbac_mod.RBACRoleCopyApi.post)(rbac_mod.RBACRoleCopyApi(), "role-1")
 
         mock_copy.assert_called_once_with("tenant-1", "acct-1", "role-1", copy_member=True)
+
+
+class TestWorkspaceRbacGuards:
+    def test_role_create_requires_workspace_role_manage(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/roles",
+                method="POST",
+                json={"name": "test_role", "permission_keys": []},
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+            ),
+            patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
+        ):
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACRolesApi().post()
+
+        mock_create.assert_not_called()
+
+    def test_access_policy_create_requires_workspace_role_manage(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/access-policies",
+                method="POST",
+                json={"name": "full_access", "resource_type": "app", "permission_keys": []},
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+            ),
+            patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,
+        ):
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACAccessPoliciesApi().post()
+
+        mock_create.assert_not_called()
 
 
 class TestDumpHelper:
