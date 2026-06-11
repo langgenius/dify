@@ -1,10 +1,8 @@
 import type { ToolVarInputs } from '../tool/types'
 import type { PluginMeta } from '@/app/components/plugins/types'
-import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType, Memory } from '@/app/components/workflow/types'
 
 export type AgentNodeType = CommonNodeType & {
-  agent_roster?: AgentRosterNodeData
   agent_strategy_provider_name?: string
   agent_strategy_name?: string
   agent_strategy_label?: string
