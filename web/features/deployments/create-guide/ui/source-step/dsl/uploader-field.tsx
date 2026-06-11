@@ -2,10 +2,7 @@
 
 import { useAtomValue, useSetAtom } from 'jotai'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
-import { selectDslFileAtom } from '../../../state/dsl-action-atoms'
-import {
-  dslFileAtom,
-} from '../../../state/dsl-atoms'
+import { dslFileAtom, selectDslFileAtom } from '@/features/deployments/create-guide/state'
 
 export function DslUploaderField() {
   const dslFile = useAtomValue(dslFileAtom)

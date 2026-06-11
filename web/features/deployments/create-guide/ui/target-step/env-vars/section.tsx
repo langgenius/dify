@@ -6,14 +6,12 @@ import { useTranslation } from 'react-i18next'
 import {
   EnvVarBindingsPanel,
 } from '@/features/deployments/components/env-var-bindings'
-import { deploymentOptionsQueryAtom } from '../../../state/query-atoms'
 import {
-  envVarValuesAtom,
-} from '../../../state/target-atoms'
-import {
+  deploymentOptionsQueryAtom,
   deploymentTargetEnvVarSlotsAtom,
-} from '../../../state/target-derived-atoms'
-import { setEnvVarAtom } from '../../../state/target-env-var-action-atoms'
+  envVarValuesAtom,
+  setEnvVarAtom,
+} from '@/features/deployments/create-guide/state'
 
 export function TargetEnvVarSection() {
   const { t } = useTranslation('deployments')

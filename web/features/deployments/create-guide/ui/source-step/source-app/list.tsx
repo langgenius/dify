@@ -8,13 +8,11 @@ import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
 import {
+  effectiveSelectedAppAtom,
+  selectSourceAppAtom,
   sourceAppsAtom,
   sourceAppsQueryAtom,
-} from '../../../state/query-atoms'
-import {
-  effectiveSelectedAppAtom,
-} from '../../../state/source-derived-atoms'
-import { selectSourceAppAtom } from '../../../state/source-selection-action-atoms'
+} from '@/features/deployments/create-guide/state'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 

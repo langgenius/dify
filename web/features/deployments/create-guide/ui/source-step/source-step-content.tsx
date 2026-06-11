@@ -1,7 +1,7 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { methodAtom } from '../../state/workflow-atoms'
+import { methodAtom } from '@/features/deployments/create-guide/state'
 import { DslUploadSection } from './dsl/upload-section'
 import { SourceAppSelectionSection } from './source-app/selection-section'
 import { SourceMethodSection } from './source-method-section'

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { ScopeProvider } from 'jotai-scope'
-import { createDeploymentGuideScopedAtoms } from './scoped-atoms'
+import { createDeploymentGuideScopedAtoms } from './index'
 
 export function CreateDeploymentGuideProvider({ children }: {
   children: ReactNode

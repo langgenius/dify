@@ -7,14 +7,12 @@ import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { deployableEnvironmentsQueryAtom } from '../../../state/query-atoms'
-import {
-  selectedEnvironmentIdAtom,
-} from '../../../state/target-atoms'
 import {
   deployableEnvironmentsAtom,
+  deployableEnvironmentsQueryAtom,
   effectiveSelectedEnvironmentIdAtom,
-} from '../../../state/target-derived-atoms'
+  selectedEnvironmentIdAtom,
+} from '@/features/deployments/create-guide/state'
 import { TargetEnvironmentSkeleton } from '../skeletons'
 
 function EnvironmentOptionRow({ environment }: {

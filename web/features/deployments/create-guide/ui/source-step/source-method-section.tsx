@@ -1,16 +1,13 @@
 'use client'
 
-import type { GuideMethod } from '../../state/types'
+import type { GuideMethod } from '@/features/deployments/create-guide/state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { selectMethodAtom } from '../../state/workflow-action-atoms'
-import {
-  methodAtom,
-} from '../../state/workflow-atoms'
+import { methodAtom, selectMethodAtom } from '@/features/deployments/create-guide/state'
 import { StepShell } from '../shell/layout'
 
 function SourceMethodCard({ value, icon, title, description, badge }: {

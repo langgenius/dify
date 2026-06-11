@@ -4,12 +4,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
+  continueFromReleaseAtom,
   releaseCanGoNextAtom,
-} from '../../state/release-derived-atoms'
-import { continueFromReleaseAtom } from '../../state/release-next-action-atoms'
-import {
   stepAtom,
-} from '../../state/workflow-atoms'
+} from '@/features/deployments/create-guide/state'
 
 export function ReleaseActionButtons() {
   const { t } = useTranslation('deployments')

@@ -1,7 +1,7 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { stepAtom } from '../../state/workflow-atoms'
+import { stepAtom } from '@/features/deployments/create-guide/state'
 import { ReleaseStepContent } from '../release-step/release-step-content'
 import { SourceStepContent } from '../source-step/source-step-content'
 import { TargetStepContent } from '../target-step'

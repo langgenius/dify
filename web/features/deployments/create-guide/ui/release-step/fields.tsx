@@ -3,24 +3,20 @@
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { dslDefaultAppNameAtom } from '../../state/dsl-atoms'
 import {
+  dslDefaultAppNameAtom,
+  hasInstanceNameConflictAtom,
   instanceDescriptionAtom,
   instanceNameAtom,
+  methodAtom,
   releaseDescriptionAtom,
   releaseNameAtom,
-} from '../../state/release-atoms'
-import {
-  hasInstanceNameConflictAtom,
-} from '../../state/release-derived-atoms'
-import {
+  selectedAppAtom,
   setInstanceDescriptionAtom,
   setInstanceNameAtom,
   setReleaseDescriptionAtom,
   setReleaseNameAtom,
-} from '../../state/release-field-action-atoms'
-import { selectedAppAtom } from '../../state/source-atoms'
-import { methodAtom } from '../../state/workflow-atoms'
+} from '@/features/deployments/create-guide/state'
 
 const releaseTextareaClassName = 'min-h-16 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
 

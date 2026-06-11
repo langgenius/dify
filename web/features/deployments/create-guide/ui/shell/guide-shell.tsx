@@ -1,7 +1,7 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { stepAtom } from '../../state/workflow-atoms'
+import { stepAtom } from '@/features/deployments/create-guide/state'
 import { CreateDeploymentGuideActionBar } from './action-bar'
 import { GuideCard, GuideFrame } from './layout'
 import { CreateDeploymentGuideStepContent } from './step-content'

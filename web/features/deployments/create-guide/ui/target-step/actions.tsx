@@ -4,21 +4,17 @@ import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { deploymentErrorMessage } from '@/features/deployments/error'
-import { useRouter } from '@/next/navigation'
-import {
-  createDeploymentGuideSubmissionAtom,
-  CreateDeploymentGuideSubmissionBlockedError,
-} from '../../state/submission-atoms'
-import {
-  isCreatingReleaseOnlyAtom,
-  isSubmittingDeploymentGuideAtom,
-} from '../../state/submission-busy-atoms'
 import {
   canDeployAtom,
   canSkipDeploymentAtom,
-} from '../../state/target-derived-atoms'
-import { stepAtom } from '../../state/workflow-atoms'
+  createDeploymentGuideSubmissionAtom,
+  CreateDeploymentGuideSubmissionBlockedError,
+  isCreatingReleaseOnlyAtom,
+  isSubmittingDeploymentGuideAtom,
+  stepAtom,
+} from '@/features/deployments/create-guide/state'
+import { deploymentErrorMessage } from '@/features/deployments/error'
+import { useRouter } from '@/next/navigation'
 
 export function TargetActionButtons() {
   return (

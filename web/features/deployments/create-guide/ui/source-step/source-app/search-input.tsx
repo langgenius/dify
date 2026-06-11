@@ -5,7 +5,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   sourceSearchTextAtom,
-} from '../../../state/source-atoms'
+} from '@/features/deployments/create-guide/state'
 
 export function SourceSearchInput() {
   const { t } = useTranslation('deployments')

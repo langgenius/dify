@@ -4,11 +4,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
-  sourceCanGoNextAtom,
-} from '../../state/source-derived-atoms'
-import {
   continueFromSourceAtom,
-} from '../../state/source-next-action-atoms'
+  sourceCanGoNextAtom,
+} from '@/features/deployments/create-guide/state'
 
 export function SourceActionButtons() {
   const { t } = useTranslation('deployments')
