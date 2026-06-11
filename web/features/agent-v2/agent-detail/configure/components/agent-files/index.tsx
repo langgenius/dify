@@ -5,15 +5,9 @@ import type { AgentFileNode } from '../configured-data'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   FileTreeFile,
-  FileTreeFolder,
-  FileTreeFolderPanel,
-  FileTreeFolderTrigger,
-  FileTreeIcon,
-  FileTreeLabel,
-  FileTreeList,
-  FileTreeRoot,
 } from '@langgenius/dify-ui/file-tree'
 import { useTranslation } from 'react-i18next'
+import { AgentFileTree } from '../agent-file-tree'
 import { AgentSkillDetailDialog } from '../agent-skills/agent-skill-detail-dialog'
 import { ConfigureSection } from '../configure-section'
 import { defaultAgentFiles } from '../configured-data'
@@ -45,40 +39,6 @@ function createFileDetail(file: AgentFileNode, files: AgentFileNode[]): AgentSki
   }
 }
 
-function AgentFileRows({
-  files,
-  rootFiles,
-}: {
-  files: AgentFileNode[]
-  rootFiles: AgentFileNode[]
-}) {
-  return files.map((file) => {
-    if (file.children?.length) {
-      return (
-        <FileTreeFolder key={file.id} defaultOpen>
-          <FileTreeFolderTrigger>
-            <FileTreeIcon type="folder" />
-            <FileTreeLabel>{file.name}</FileTreeLabel>
-          </FileTreeFolderTrigger>
-          <FileTreeFolderPanel>
-            <AgentFileRows files={file.children} rootFiles={rootFiles} />
-          </FileTreeFolderPanel>
-        </FileTreeFolder>
-      )
-    }
-
-    return (
-      <Dialog key={file.id}>
-        <DialogTrigger render={<FileTreeFile />}>
-          <FileTreeIcon type={file.icon} />
-          <FileTreeLabel title={file.name}>{file.name}</FileTreeLabel>
-        </DialogTrigger>
-        <AgentSkillDetailDialog skillName={file.name} detail={createFileDetail(file, rootFiles)} />
-      </Dialog>
-    )
-  })
-}
-
 export function AgentFiles({
   files = defaultAgentFiles,
 }: {
@@ -106,15 +66,21 @@ export function AgentFiles({
         </button>
       )}
     >
-      <FileTreeRoot
+      <AgentFileTree
         id={filesTreeId}
-        aria-label={t('agentDetail.configure.files.treeLabel')}
-        className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3"
-      >
-        <FileTreeList>
-          <AgentFileRows files={files} rootFiles={files} />
-        </FileTreeList>
-      </FileTreeRoot>
+        files={files}
+        treeLabel={t('agentDetail.configure.files.treeLabel')}
+        className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+        scrollAreaClassName="max-h-[250px] flex-none"
+        renderFile={({ file, selected, children }) => (
+          <Dialog>
+            <DialogTrigger render={<FileTreeFile selected={selected} />}>
+              {children}
+            </DialogTrigger>
+            <AgentSkillDetailDialog skillName={file.name} detail={createFileDetail(file, files)} />
+          </Dialog>
+        )}
+      />
     </ConfigureSection>
   )
 }

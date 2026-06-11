@@ -14,6 +14,7 @@ import { consoleQuery } from '@/service/client'
 import { formatFileSize } from '@/utils/format'
 import { ConfigureSection } from '../configure-section'
 import { defaultAgentFiles, defaultAgentSkills } from '../configured-data'
+import { getFirstAgentFileId } from '../utils'
 import { AgentSkillItem } from './agent-skill-item'
 
 const skillPackageAccept = '.zip,.skill'
@@ -42,20 +43,9 @@ type DataTransferItemWithEntry = {
   webkitGetAsEntry?: () => SkillUploadEntry | null
 }
 
-function getFirstFileId(files: AgentSkillFileNode[]): string | undefined {
-  for (const file of files) {
-    if (!file.children?.length)
-      return file.id
-
-    const childFileId = getFirstFileId(file.children)
-    if (childFileId)
-      return childFileId
-  }
-}
-
 const createSkillDetail = (skillName: string, files: AgentSkillFileNode[]) => ({
   description: 'Dify brand executor rules, voice, typography, layout patterns, and visual design system. Use when generating any Dify brand material including web pages, social graphics, presentations, one-pagers, and pitch decks.',
-  selectedFileId: getFirstFileId(files),
+  selectedFileId: getFirstAgentFileId(files),
   files,
   sections: [
     {
