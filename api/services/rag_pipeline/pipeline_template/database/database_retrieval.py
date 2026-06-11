@@ -1,4 +1,4 @@
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 import yaml
 from sqlalchemy import select
@@ -39,12 +39,16 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval pipeline   template from database
     """
 
-    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
+    @override
+    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+        del current_tenant_id
         return self.fetch_pipeline_templates_from_db(language)
 
+    @override
     def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
         return self.fetch_pipeline_template_detail_from_db(template_id)
 
+    @override
     def get_type(self) -> str:
         return PipelineTemplateType.DATABASE
 

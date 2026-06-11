@@ -3,11 +3,11 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   data?: any
   value: string
   onChange: (value: string) => void
-}
+}>
 
 const MCPServerParamItem = ({
   data,

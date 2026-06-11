@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import {
   memo,
   useCallback,
@@ -19,7 +20,6 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useStore } from '@/app/components/workflow/store'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   useWorkflowInteractions,
 } from '../../hooks'

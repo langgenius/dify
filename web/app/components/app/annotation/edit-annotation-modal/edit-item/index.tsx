@@ -13,12 +13,12 @@ export enum EditItemType {
   Query = 'query',
   Answer = 'answer',
 }
-type Props = {
+type Props = Readonly<{
   type: EditItemType
   content: string
   readonly?: boolean
   onSave: (content: string) => Promise<void>
-}
+}>
 
 export const EditTitle: FC<{ className?: string, title: string }> = ({ className, title }) => (
   <div className={cn(className, 'flex h-[18px] items-center system-xs-medium text-text-tertiary')}>

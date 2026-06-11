@@ -22,7 +22,7 @@ import OrgInfo from './base/org-info'
 import Placeholder from './base/placeholder'
 import Title from './base/title'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: Plugin
   titleLeft?: React.ReactNode
@@ -34,7 +34,7 @@ type Props = {
   isLoading?: boolean
   loadingFileName?: string
   limitedInstall?: boolean
-}
+}>
 
 const Card = ({
   className,

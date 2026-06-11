@@ -190,10 +190,10 @@ describe('scroll-area wrapper', () => {
         'size-full',
         'min-h-0',
         'min-w-0',
-        'outline-hidden',
-        'focus-visible:ring-2',
-        'focus-visible:ring-inset',
-        'focus-visible:ring-state-accent-solid',
+        'focus-visible:outline-2',
+        'focus-visible:-outline-offset-1',
+        'focus-visible:outline-solid',
+        'focus-visible:outline-state-accent-solid',
         'custom-viewport-class',
       )
     })

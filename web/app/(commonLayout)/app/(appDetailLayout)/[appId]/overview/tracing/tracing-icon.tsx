@@ -4,10 +4,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { TracingIcon as Icon } from '@/app/components/base/icons/src/public/tracing'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   size: 'lg' | 'md'
-}
+}>
 
 const sizeClassMap = {
   lg: 'w-9 h-9 p-2 rounded-[10px]',

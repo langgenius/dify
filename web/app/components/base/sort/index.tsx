@@ -15,12 +15,12 @@ type Item = {
   name: string
 } & Record<string, unknown>
 
-type Props = {
+type Props = Readonly<{
   order?: string
   value: number | string
   items: Item[]
   onSelect: (value: string) => void
-}
+}>
 
 function Sort({
   order,

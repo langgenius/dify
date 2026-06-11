@@ -25,13 +25,13 @@ import DowngradeWarningModal from './downgrade-warning'
 
 const i18nPrefix = 'upgrade'
 
-type Props = {
+type Props = Readonly<{
   payload: UpdateFromMarketPlacePayload
   pluginId?: string
   onSave: () => void
   onCancel: () => void
   isShowDowngradeWarningModal?: boolean
-}
+}>
 
 type FailedUpgradeResponse = {
   task?: {

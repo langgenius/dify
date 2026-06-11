@@ -2,7 +2,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   icon: any
   title: any
   tooltip?: any
@@ -13,7 +13,7 @@ type Props = {
   onChange?: (state: any) => void
   onMouseEnter?: () => void
   onMouseLeave?: () => void
-}
+}>
 
 const FeatureCard = ({
   icon,

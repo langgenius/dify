@@ -19,8 +19,43 @@ export const zAccountPayload = z.object({
  * Empty / omitted → all blocks. Unknown member → ValidationError → 422.
  */
 export const zAppDescribeQuery = z.object({
-  fields: z.array(z.string()).nullish(),
-  workspace_id: z.string().nullish(),
+  fields: z.string().optional(),
+})
+
+/**
+ * AppDslExportQuery
+ *
+ * Query parameters for GET /apps/<app_id>/export.
+ */
+export const zAppDslExportQuery = z.object({
+  include_secret: z.boolean().optional().default(false),
+  workflow_id: z.string().nullish(),
+})
+
+/**
+ * AppDslExportResponse
+ *
+ * Export DSL response.
+ */
+export const zAppDslExportResponse = z.object({
+  data: z.string(),
+})
+
+/**
+ * AppDslImportPayload
+ *
+ * Request body for POST /workspaces/<workspace_id>/apps/imports.
+ */
+export const zAppDslImportPayload = z.object({
+  app_id: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  mode: z.enum(['yaml-content', 'yaml-url']),
+  name: z.string().nullish(),
+  yaml_content: z.string().nullish(),
+  yaml_url: z.string().nullish(),
 })
 
 /**
@@ -135,10 +170,57 @@ export const zFileResponse = z.object({
   name: z.string(),
   original_url: z.string().nullish(),
   preview_url: z.string().nullish(),
+  reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
   tenant_id: z.string().nullish(),
   user_id: z.string().nullish(),
+})
+
+/**
+ * FormSubmitResponse
+ *
+ * Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+ * pins `additionalProperties: false` so the generated contract is an exact `{}` rather
+ * than an under-annotated open object.
+ */
+export const zFormSubmitResponse = z.record(z.string(), z.never())
+
+/**
+ * Github
+ */
+export const zGithub = z.object({
+  github_plugin_unique_identifier: z.string(),
+  package: z.string(),
+  repo: z.string(),
+  version: z.string(),
+})
+
+/**
+ * HealthResponse
+ *
+ * Liveness payload for `GET /openapi/v1/_health` — no auth required.
+ */
+export const zHealthResponse = z.object({
+  ok: z.boolean(),
+})
+
+/**
+ * ImportStatus
+ */
+export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
+
+/**
+ * Import
+ */
+export const zImport = z.object({
+  app_id: z.string().nullish(),
+  app_mode: z.string().nullish(),
+  current_dsl_version: z.string().optional().default('0.6.0'),
+  error: z.string().optional().default(''),
+  id: z.string(),
+  imported_dsl_version: z.string().optional().default(''),
+  status: zImportStatus,
 })
 
 export const zJsonValue = z.unknown()
@@ -149,6 +231,14 @@ export const zJsonValue = z.unknown()
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
   inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * Marketplace
+ */
+export const zMarketplace = z.object({
+  marketplace_plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
 })
 
 /**
@@ -219,6 +309,14 @@ export const zMemberRoleUpdatePayload = z.object({
 })
 
 /**
+ * Package
+ */
+export const zPackage = z.object({
+  plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
  * PermittedExternalAppsListQuery
  *
  * Strict (extra='forbid').
@@ -245,6 +343,16 @@ export const zRevokeResponse = z.object({
 export const zServerVersionResponse = z.object({
   edition: z.enum(['CLOUD', 'SELF_HOSTED']),
   version: z.string(),
+})
+
+/**
+ * SessionListQuery
+ *
+ * Pagination for GET /account/sessions. Strict (extra='forbid').
+ */
+export const zSessionListQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(100),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**
@@ -352,6 +460,38 @@ export const zPermittedExternalAppsListResponse = z.object({
 })
 
 /**
+ * TaskStopResponse
+ *
+ * 200 body for POST /apps/<id>/tasks/<task_id>/stop. The handler always returns
+ * {"result": "success"}, so `result` is required (no default) — the generated contract
+ * types it as a required `'success'` rather than an optional field.
+ */
+export const zTaskStopResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * Type
+ */
+export const zType = z.enum(['github', 'marketplace', 'package'])
+
+/**
+ * PluginDependency
+ */
+export const zPluginDependency = z.object({
+  current_identifier: z.string().nullish(),
+  type: zType,
+  value: z.unknown(),
+})
+
+/**
+ * CheckDependenciesResult
+ */
+export const zCheckDependenciesResult = z.object({
+  leaked_dependencies: z.array(zPluginDependency).optional(),
+})
+
+/**
  * UsageInfo
  */
 export const zUsageInfo = z.object({
@@ -436,9 +576,9 @@ export const zWorkspaceListResponse = z.object({
 })
 
 /**
- * Success
+ * Health check
  */
-export const zGetHealthResponse = z.record(z.string(), z.unknown())
+export const zGetHealthResponse = zHealthResponse
 
 /**
  * Server version
@@ -449,6 +589,11 @@ export const zGetVersionResponse = zServerVersionResponse
  * Account info
  */
 export const zGetAccountResponse = zAccountResponse
+
+export const zGetAccountSessionsQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(100),
+  page: z.int().gte(1).optional().default(1),
+})
 
 /**
  * Session list
@@ -483,19 +628,41 @@ export const zGetAppsQuery = z.object({
  */
 export const zGetAppsResponse = zAppListResponse
 
+export const zGetAppsByAppIdCheckDependenciesPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Dependencies checked
+ */
+export const zGetAppsByAppIdCheckDependenciesResponse = zCheckDependenciesResult
+
 export const zGetAppsByAppIdDescribePath = z.object({
   app_id: z.string(),
 })
 
 export const zGetAppsByAppIdDescribeQuery = z.object({
-  fields: z.array(z.string()).optional(),
-  workspace_id: z.string().optional(),
+  fields: z.string().optional(),
 })
 
 /**
  * App description
  */
 export const zGetAppsByAppIdDescribeResponse = zAppDescribeResponse
+
+export const zGetAppsByAppIdExportPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdExportQuery = z.object({
+  include_secret: z.boolean().optional().default(false),
+  workflow_id: z.string().optional(),
+})
+
+/**
+ * Export successful
+ */
+export const zGetAppsByAppIdExportResponse = zAppDslExportResponse
 
 export const zPostAppsByAppIdFilesUploadPath = z.object({
   app_id: z.string(),
@@ -526,7 +693,7 @@ export const zPostAppsByAppIdFormHumanInputByFormTokenPath = z.object({
 /**
  * Form submitted
  */
-export const zPostAppsByAppIdFormHumanInputByFormTokenResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdFormHumanInputByFormTokenResponse = zFormSubmitResponse
 
 export const zPostAppsByAppIdRunBody = zAppRunRequest
 
@@ -557,7 +724,7 @@ export const zPostAppsByAppIdTasksByTaskIdStopPath = z.object({
 /**
  * Task stopped
  */
-export const zPostAppsByAppIdTasksByTaskIdStopResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdTasksByTaskIdStopResponse = zTaskStopResponse
 
 export const zPostOauthDeviceApproveBody = zDeviceMutateRequest
 
@@ -596,6 +763,13 @@ export const zPostOauthDeviceTokenBody = zDevicePollRequest
  */
 export const zPostOauthDeviceTokenResponse = z.record(z.string(), z.unknown())
 
+export const zGetPermittedExternalAppsQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  mode: z.string().optional(),
+  name: z.string().max(200).optional(),
+  page: z.int().gte(1).optional().default(1),
+})
+
 /**
  * Permitted external apps list
  */
@@ -614,6 +788,27 @@ export const zGetWorkspacesByWorkspaceIdPath = z.object({
  * Workspace detail
  */
 export const zGetWorkspacesByWorkspaceIdResponse = zWorkspaceDetailResponse
+
+export const zPostWorkspacesByWorkspaceIdAppsImportsBody = zAppDslImportPayload
+
+export const zPostWorkspacesByWorkspaceIdAppsImportsPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Import completed
+ */
+export const zPostWorkspacesByWorkspaceIdAppsImportsResponse = zImport
+
+export const zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmPath = z.object({
+  import_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Import confirmed
+ */
+export const zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse = zImport
 
 export const zGetWorkspacesByWorkspaceIdMembersPath = z.object({
   workspace_id: z.string(),

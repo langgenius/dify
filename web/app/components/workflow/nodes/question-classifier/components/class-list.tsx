@@ -5,13 +5,13 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDraggable } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
@@ -20,14 +20,14 @@ import { getDefaultClassLabel, isDefaultClassLabel } from './class-label-utils'
 const i18nPrefix = 'nodes.questionClassifiers'
 const INLINE_LABEL_HINT_STORAGE_KEY = 'question-classifier-inline-label-hint-dismissed'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   list: Topic[]
   onChange: (list: Topic[]) => void
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
   handleSortTopic?: (newTopics: (Topic & { id: string })[]) => void
-}
+}>
 
 const ClassList: FC<Props> = ({
   nodeId,

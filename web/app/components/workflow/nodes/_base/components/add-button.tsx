@@ -7,11 +7,11 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   text: string
   onClick: () => void
-}
+}>
 
 const AddButton: FC<Props> = ({
   className,

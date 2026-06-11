@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, cast, override
 
 from sqlalchemy import select
 
@@ -67,6 +67,7 @@ class WorkflowTool(Tool):
 
         super().__init__(entity=entity, runtime=runtime)
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         """
         get the tool provider type
@@ -75,6 +76,7 @@ class WorkflowTool(Tool):
         """
         return ToolProviderType.WORKFLOW
 
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -206,6 +208,7 @@ class WorkflowTool(Tool):
                             return found
         return None
 
+    @override
     def fork_tool_runtime(self, runtime: ToolRuntime) -> WorkflowTool:
         """
         fork a new tool with metadata
