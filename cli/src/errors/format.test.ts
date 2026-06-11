@@ -1,29 +1,41 @@
+import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
 import { describe, expect, it } from 'vitest'
+
 import { HttpClientError } from './base'
 import { ErrorCode } from './codes'
 import { formatErrorForCli } from './format'
 
-function validationError(): HttpClientError {
+type ValidationErrorOverrides = {
+  readonly cliHint?: string
+  readonly serverHint?: string
+  readonly details?: ErrorBody['details']
+}
+
+function validationError(overrides: ValidationErrorOverrides = {}): HttpClientError {
+  const details
+    = overrides.details
+      ?? [
+        { type: 'int_parsing', loc: ['page'], msg: 'must be >= 1' },
+        { type: 'missing', loc: ['inputs', 'query'], msg: 'field required' },
+      ]
   return new HttpClientError({
     code: ErrorCode.Server4xxOther,
     message: 'Request validation failed',
     httpStatus: 422,
+    hint: overrides.cliHint,
     serverError: {
       code: 'invalid_param',
       message: 'Request validation failed',
       status: 422,
-      hint: 'check the page parameter',
-      details: [
-        { type: 'int_parsing', loc: ['page'], msg: 'must be >= 1' },
-        { type: 'missing', loc: ['inputs', 'query'], msg: 'field required' },
-      ],
+      hint: overrides.serverHint,
+      details,
     },
   })
 }
 
 describe('formatErrorForCli — human', () => {
   it('prints server code, message, and details without verbose', () => {
-    const out = formatErrorForCli(validationError(), { isErrTTY: false })
+    const out = formatErrorForCli(validationError({ serverHint: 'check the page parameter' }), { isErrTTY: false })
 
     expect(out).toContain('invalid_param: Request validation failed')
     expect(out).toContain('- page: must be >= 1 (int_parsing)')
@@ -41,20 +53,7 @@ describe('formatErrorForCli — human', () => {
   })
 
   it('server hint wins over cli hint; cli hint fills when server sent none', () => {
-    // validationError has server hint "check the page parameter"; cli hint is ignored
-    const withCliHint = new HttpClientError({
-      code: ErrorCode.Server4xxOther,
-      message: 'Request validation failed',
-      httpStatus: 422,
-      hint: 'cli fallback hint',
-      serverError: {
-        code: 'invalid_param',
-        message: 'Request validation failed',
-        status: 422,
-        hint: 'check the page parameter',
-        details: [],
-      },
-    })
+    const withCliHint = validationError({ cliHint: 'cli fallback hint', serverHint: 'check the page parameter', details: [] })
     expect(formatErrorForCli(withCliHint, { isErrTTY: false })).toContain('check the page parameter')
     expect(formatErrorForCli(withCliHint, { isErrTTY: false })).not.toContain('cli fallback hint')
 
@@ -68,19 +67,10 @@ describe('formatErrorForCli — human', () => {
   })
 
   it('omits the loc prefix when a detail has no loc', () => {
-    const err = new HttpClientError({
-      code: ErrorCode.Server4xxOther,
-      message: 'Request validation failed',
-      httpStatus: 422,
-      serverError: {
-        code: 'invalid_param',
-        message: 'Request validation failed',
-        status: 422,
-        details: [{ type: 'invalid', loc: [], msg: 'body required' }],
-      },
-    })
-
-    const out = formatErrorForCli(err, { isErrTTY: false })
+    const out = formatErrorForCli(
+      validationError({ details: [{ type: 'invalid', loc: [], msg: 'body required' }] }),
+      { isErrTTY: false },
+    )
 
     expect(out).toContain('- body required (invalid)')
     expect(out).not.toContain('- : body required')

@@ -42,6 +42,11 @@ from controllers.service_api.app.error import (
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 
 
+@pytest.fixture
+def fmt() -> OpenApiErrorFormatter:
+    return OpenApiErrorFormatter()
+
+
 class TestErrorBodyModel:
     def test_minimal_body_serializes_without_optional_fields(self):
         body = ErrorBody(code=OpenApiErrorCode.NOT_FOUND, message="app not found", status=404)
@@ -73,10 +78,6 @@ class TestErrorBodyModel:
 
 
 class TestOpenApiErrorFormatter:
-    @pytest.fixture
-    def fmt(self):
-        return OpenApiErrorFormatter()
-
     def test_plain_werkzeug_exception_maps_code_from_status(self, fmt):
         e = NotFound("app not found")
         data = {"code": "not_found", "message": "app not found", "status": 404}
@@ -222,10 +223,6 @@ class TestOpenApiErrorFormatter:
 
 
 class TestQuotaExceptions:
-    @pytest.fixture
-    def fmt(self):
-        return OpenApiErrorFormatter()
-
     @pytest.mark.parametrize("exc_class", [MemberLimitExceeded, MemberLicenseExceeded])
     def test_quota_exception_carries_declared_code_and_message(self, fmt, exc_class):
         # Single source: assertions read the class attributes, no re-typed strings.
@@ -329,8 +326,7 @@ class TestErrorMatrix:
         ERROR_MATRIX,
         ids=lambda v: type(v).__name__ if isinstance(v, Exception) else str(v),
     )
-    def test_every_known_error_path_yields_canonical_code(self, exc, status, expected_code):
-        fmt = OpenApiErrorFormatter()
+    def test_every_known_error_path_yields_canonical_code(self, fmt, exc, status, expected_code):
         data = dict(getattr(exc, "data", None) or {"message": str(exc), "status": status})
 
         wire = fmt.finalize(exc, data, status)

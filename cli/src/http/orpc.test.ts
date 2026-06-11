@@ -1,4 +1,5 @@
 import type { StubServer } from '@test/fixtures/stub-server'
+import type { HttpClientError } from '@/errors/base'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
 import { isHttpClientError } from '@/errors/base'
@@ -33,64 +34,49 @@ describe('createOpenApiClient error mapping', () => {
     await stub?.stop()
   })
 
-  it('recovers Dify message from a canonical ErrorBody 4xx response', async () => {
-    stub = await startStubServer(cap => jsonResponder(403, { code: 'access_denied', message: 'no access', status: 403 }, cap))
+  async function classifiedError(status: number, body: unknown): Promise<HttpClientError> {
+    stub = await startStubServer(cap => jsonResponder(status, body, cap))
     const orpc = orpcClient(stub.url)
-
     const caught = await catchErr(() => orpc.account.get())
+    if (!isHttpClientError(caught))
+      throw new Error(`expected HttpClientError, got: ${String(caught)}`)
+    return caught
+  }
 
-    expect(isHttpClientError(caught)).toBe(true)
-    if (isHttpClientError(caught)) {
-      expect(caught.code).toBe(ErrorCode.Server4xxOther)
-      expect(caught.httpStatus).toBe(403)
-      expect(caught.message).toBe('no access')
-      // Parity with the transport path: the migrated endpoint's error keeps the request
-      // method/url and the raw body, so formatted errors still print the `request:` line
-      // and the raw-response dump (not just message/hint).
-      expect(caught.method).toBe('GET')
-      expect(caught.url).toContain('/account')
-      expect(caught.rawResponse).toContain('no access')
-    }
+  it('recovers Dify message from a canonical ErrorBody 4xx response', async () => {
+    const caught = await classifiedError(403, { code: 'access_denied', message: 'no access', status: 403 })
+
+    expect(caught.code).toBe(ErrorCode.Server4xxOther)
+    expect(caught.httpStatus).toBe(403)
+    expect(caught.message).toBe('no access')
+    // Parity with the transport path: the migrated endpoint's error keeps the request
+    // method/url and the raw body, so formatted errors still print the `request:` line
+    // and the raw-response dump (not just message/hint).
+    expect(caught.method).toBe('GET')
+    expect(caught.url).toContain('/account')
+    expect(caught.rawResponse).toContain('no access')
   })
 
   it('reads server message from canonical ErrorBody on 401 and keeps the auth code', async () => {
-    stub = await startStubServer(cap => jsonResponder(401, { code: 'unauthorized', message: 'expired', status: 401 }, cap))
-    const orpc = orpcClient(stub.url)
+    const caught = await classifiedError(401, { code: 'unauthorized', message: 'expired', status: 401 })
 
-    const caught = await catchErr(() => orpc.account.get())
-
-    expect(isHttpClientError(caught)).toBe(true)
-    if (isHttpClientError(caught)) {
-      expect(caught.code).toBe(ErrorCode.AuthExpired)
-      expect(caught.httpStatus).toBe(401)
-      expect(caught.message).toBe('expired')
-    }
+    expect(caught.code).toBe(ErrorCode.AuthExpired)
+    expect(caught.httpStatus).toBe(401)
+    expect(caught.message).toBe('expired')
   })
 
   it('uses CLI default auth-login hint for non-conforming 401 body', async () => {
-    stub = await startStubServer(cap => jsonResponder(401, { error: 'expired' }, cap))
-    const orpc = orpcClient(stub.url)
+    const caught = await classifiedError(401, { error: 'expired' })
 
-    const caught = await catchErr(() => orpc.account.get())
-
-    expect(isHttpClientError(caught)).toBe(true)
-    if (isHttpClientError(caught)) {
-      expect(caught.code).toBe(ErrorCode.AuthExpired)
-      expect(caught.hint).toContain('difyctl auth login')
-    }
+    expect(caught.code).toBe(ErrorCode.AuthExpired)
+    expect(caught.hint).toContain('difyctl auth login')
   })
 
   it('maps 5xx to Server5xx with message from canonical ErrorBody', async () => {
-    stub = await startStubServer(cap => jsonResponder(503, { code: 'service_unavailable', message: 'down for maintenance', status: 503 }, cap))
-    const orpc = orpcClient(stub.url)
+    const caught = await classifiedError(503, { code: 'service_unavailable', message: 'down for maintenance', status: 503 })
 
-    const caught = await catchErr(() => orpc.account.get())
-
-    expect(isHttpClientError(caught)).toBe(true)
-    if (isHttpClientError(caught)) {
-      expect(caught.code).toBe(ErrorCode.Server5xx)
-      expect(caught.httpStatus).toBe(503)
-      expect(caught.message).toBe('down for maintenance')
-    }
+    expect(caught.code).toBe(ErrorCode.Server5xx)
+    expect(caught.httpStatus).toBe(503)
+    expect(caught.message).toBe('down for maintenance')
   })
 })
