@@ -96,7 +96,8 @@ function AgentRosterItem({
     ? formatTime(agent.updated_at, t('roster.dateTimeFormat'))
     : null
   const sourceLabel = t(getSourceLabelKey(agent.source))
-  const referenceCount = Number(Boolean(agent.app_id)) + Number(Boolean(agent.workflow_id))
+  // TODO: replace with real reference count when API is ready
+  const referenceCount = 0
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
   const iconType = imageUrl ? 'image' : agent.icon_type
 
@@ -138,7 +139,7 @@ function AgentRosterItem({
         <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <div className="flex shrink-0 items-center gap-1">
-              <span aria-hidden className="i-ri-node-tree size-3 shrink-0 text-text-tertiary" />
+              <span aria-hidden className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary" />
               <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
             </div>
             {updatedAt && (
