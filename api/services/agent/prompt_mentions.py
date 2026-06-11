@@ -57,6 +57,15 @@ _RESIDUAL_MENTION_PATTERN = re.compile(r"\[§([A-Za-z_][A-Za-z0-9_]*:[^§]*?)§\
 MAX_MENTIONS_PER_PROMPT = 200
 MAX_MENTION_FIELD_LENGTH = 255
 
+# Reserved ``tool`` mention id suffix meaning "every configured tool under one
+# provider" — a Dify tool provider groups many concrete tools, like an MCP server.
+# ``<provider>/*`` references the whole group; ``<provider>/<tool_name>`` stays the
+# single-tool form. The prefix accepts the same provider/provider_id/plugin_id
+# aliases as single-tool ids, and ``*`` is never a valid tool name, so the wildcard
+# cannot collide with a real tool id. It resolves against the configured
+# ``tools.dify_tools`` like any other mention (unconfigured provider → dangling).
+TOOL_PROVIDER_WILDCARD_SUFFIX = "/*"
+
 # Per-surface allowlists (design §2.4): the soul prompt may only reference
 # soul-owned entities; the workflow job prompt may only reference run-scoped ones.
 SOUL_PROMPT_ALLOWED_KINDS = frozenset(
@@ -177,6 +186,8 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
                     if mention.ref_id in (file.id, file.name):
                         return file.name or file.id
             case MentionKind.TOOL:
+                if mention.ref_id.endswith(TOOL_PROVIDER_WILDCARD_SUFFIX):
+                    return _resolve_tool_provider_wildcard(agent_soul, mention.ref_id)
                 for tool in agent_soul.tools.dify_tools:
                     aliases = {tool.tool_name} | {
                         f"{prefix}/{tool.tool_name}"
@@ -187,8 +198,10 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
                         return tool.name or tool.tool_name
             case MentionKind.CLI_TOOL:
                 for cli_tool in agent_soul.tools.cli_tools:
-                    if cli_tool.name and mention.ref_id == cli_tool.name:
-                        return cli_tool.name
+                    # id is the stable reference; name stays as an alias so tokens
+                    # minted before ids existed (or hand-written ones) keep working.
+                    if mention.ref_id in (cli_tool.id, cli_tool.name):
+                        return cli_tool.name or cli_tool.id
             case MentionKind.KNOWLEDGE:
                 for dataset in agent_soul.knowledge.datasets:
                     if mention.ref_id == dataset.id:
@@ -200,6 +213,19 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
         return None
 
     return _resolve
+
+
+def _resolve_tool_provider_wildcard(agent_soul: AgentSoulConfig, ref_id: str) -> str | None:
+    """Expand ``<provider>/*`` to a readable phrase when that provider has at least
+    one configured tool; unconfigured providers dangle like any other mention."""
+    prefix = ref_id[: -len(TOOL_PROVIDER_WILDCARD_SUFFIX)]
+    if not prefix:
+        return None
+    for tool in agent_soul.tools.dify_tools:
+        if prefix in (tool.provider, tool.provider_id, tool.plugin_id):
+            display = tool.provider or prefix.rsplit("/", 1)[-1]
+            return f"all {display} tools"
+    return None
 
 
 def build_node_job_mention_resolver(node_job: WorkflowNodeJobConfig) -> MentionResolver:
@@ -252,6 +278,7 @@ __all__ = [
     "MENTION_PATTERN",
     "NODE_JOB_PROMPT_ALLOWED_KINDS",
     "SOUL_PROMPT_ALLOWED_KINDS",
+    "TOOL_PROVIDER_WILDCARD_SUFFIX",
     "MentionKind",
     "MentionResolver",
     "PromptMention",

@@ -101,7 +101,7 @@ def soul() -> AgentSoulConfig:
                         "credential_type": "unauthorized",
                     },
                 ],
-                "cli_tools": [{"name": "ffmpeg"}],
+                "cli_tools": [{"id": "ct-1", "name": "ffmpeg"}],
             },
             "knowledge": {"datasets": [{"id": "ds-1", "name": "产品手册"}]},
             "human": {"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
@@ -113,7 +113,7 @@ def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
     resolver = build_soul_mention_resolver(soul)
     prompt = (
         "Use [§skill:sk-1§] with [§file:f-1§], search via "
-        "[§tool:tavily/tavily_search:tavily§], run [§cli_tool:ffmpeg§], "
+        "[§tool:tavily/tavily_search:tavily§], run [§cli_tool:ct-1:ffmpeg§], "
         "ground in [§knowledge:ds-1§], ask [§human:c-1§]."
     )
 
@@ -128,6 +128,31 @@ def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
 def test_soul_resolver_unknown_ids_degrade(soul: AgentSoulConfig):
     expanded = expand_prompt_mentions("[§knowledge:missing:旧产品手册§]", build_soul_mention_resolver(soul))
     assert expanded == "旧产品手册"
+
+
+def test_soul_resolver_cli_tool_resolves_by_id_and_keeps_name_alias(soul: AgentSoulConfig):
+    resolver = build_soul_mention_resolver(soul)
+    # id is the contract; the name alias keeps tokens minted before ids existed working
+    assert expand_prompt_mentions("[§cli_tool:ct-1§]", resolver) == "ffmpeg"
+    assert expand_prompt_mentions("[§cli_tool:ffmpeg§]", resolver) == "ffmpeg"
+    # a rename only changes the expansion, never breaks the id reference
+    soul.tools.cli_tools[0].name = "ffmpeg-v7"
+    assert expand_prompt_mentions("[§cli_tool:ct-1§]", build_soul_mention_resolver(soul)) == "ffmpeg-v7"
+
+
+def test_soul_resolver_provider_wildcard_references_all_tools_of_one_provider(soul: AgentSoulConfig):
+    # a provider groups many concrete tools (like an MCP server); `<provider>/*`
+    # references the whole group while `<provider>/<tool_name>` stays single-tool
+    resolver = build_soul_mention_resolver(soul)
+    assert expand_prompt_mentions("Use [§tool:tavily/*:ALL TAVILY TOOLS§].", resolver) == "Use all tavily tools."
+    # the wildcard prefix accepts the same plugin_id/provider_id aliases as single-tool ids
+    assert expand_prompt_mentions("[§tool:langgenius/tavily/*§]", resolver) == "all tavily tools"
+
+
+def test_soul_resolver_provider_wildcard_dangles_when_provider_not_configured(soul: AgentSoulConfig):
+    # unconfigured provider degrades to label, exactly like a dangling single-tool mention
+    resolver = build_soul_mention_resolver(soul)
+    assert expand_prompt_mentions("[§tool:github/*:GITHUB TOOLS§]", resolver) == "GITHUB TOOLS"
 
 
 # ── node-job resolver ─────────────────────────────────────────────────────────

@@ -118,6 +118,9 @@ class AgentPermissionConfig(BaseModel):
 
 
 class AgentCliToolConfig(AgentFlexibleConfig):
+    # Stable mention/reference id (minted by the frontend on creation, backfilled at
+    # composer save) so renaming a CLI tool never breaks `[§cli_tool:<id>§]` mentions.
+    id: str | None = Field(default=None, max_length=255)
     enabled: bool = True
     name: str | None = Field(default=None, max_length=255)
     tool_name: str | None = Field(default=None, max_length=255)
