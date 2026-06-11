@@ -35,6 +35,9 @@ const createNodeTracing = (overrides: Partial<NodeTracing> = {}): NodeTracing =>
     total_tokens: 0,
     total_price: 0,
     currency: 'USD',
+    tool_info: {
+      agent_strategy: 'Plan and execute',
+    },
   },
   metadata: {
     iterator_length: 0,
@@ -58,9 +61,9 @@ describe('AgentLogTrigger', () => {
     vi.clearAllMocks()
   })
 
-  // Agent triggers should open the log stack payload.
+  // Agent triggers should expose strategy text and open the log stack payload.
   describe('User Interactions', () => {
-    it('should show the agent entry and pass the log payload on click', async () => {
+    it('should show the legacy agent strategy and pass the log payload on click', async () => {
       const user = userEvent.setup()
       const onShowAgentOrToolLog = vi.fn()
       const agentLog = [createAgentLogItem({ message_id: 'message-1' })]
@@ -72,10 +75,11 @@ describe('AgentLogTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.agent.strategy.label')).toBeInTheDocument()
+      expect(screen.getByText('Plan and execute')).toBeInTheDocument()
       expect(screen.getByText('runLog.detail')).toBeInTheDocument()
 
-      await user.click(screen.getByText('runLog.detail'))
+      await user.click(screen.getByText('Plan and execute'))
 
       expect(onShowAgentOrToolLog).toHaveBeenCalledWith({
         message_id: 'trace-1',

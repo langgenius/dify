@@ -23,7 +23,7 @@ describe('AgentLogNav', () => {
     const user = userEvent.setup()
     const onShowAgentOrToolLog = vi.fn()
     const stack = [
-      createLogItem({ message_id: 'root', label: 'Agent' }),
+      createLogItem({ message_id: 'root', label: 'Strategy' }),
       createLogItem({ message_id: 'mid', label: 'Tool A' }),
       createLogItem({ message_id: 'tail', label: 'Tool B' }),
     ]
@@ -36,7 +36,7 @@ describe('AgentLogNav', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /^AGENT$/i }))
-    await user.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.label$/ }))
+    await user.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.strategy\.label$/ }))
     await user.click(screen.getAllByRole('button')[2]!)
     await user.click(screen.getByText('Tool A'))
 

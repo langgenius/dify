@@ -95,7 +95,7 @@ const NodePanel: FC<Props> = ({
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration && !!nodeInfo.details?.length
   const isLoopNode = nodeInfo.node_type === BlockEnum.Loop && !!nodeInfo.details?.length
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
-  const isAgentNode = (nodeInfo.node_type === BlockEnum.Agent || nodeInfo.node_type === BlockEnum.AgentV2) && !!nodeInfo.agentLog?.length
+  const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
