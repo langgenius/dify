@@ -316,9 +316,7 @@ def test_publish_validation_rejects_cli_tool_scoped_env_conflicts_and_unauthoriz
                 {
                     "name": "github",
                     "env": {
-                        "secret_refs": [
-                            {"name": "GITHUB_TOKEN", "id": "credential-1", "permission_status": "denied"}
-                        ]
+                        "secret_refs": [{"name": "GITHUB_TOKEN", "id": "credential-1", "permission_status": "denied"}]
                     },
                 }
             ]

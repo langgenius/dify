@@ -384,6 +384,7 @@ export type AgentCliToolConfig = {
   dangerous_command?: boolean
   description?: string | null
   enabled?: boolean
+  env?: AgentCliToolEnvConfig
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
@@ -446,6 +447,11 @@ export type AgentCliToolAuthorizationStatus
     | 'pending'
     | 'pre_authorized'
     | 'unauthorized'
+
+export type AgentCliToolEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
 
 export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
 
