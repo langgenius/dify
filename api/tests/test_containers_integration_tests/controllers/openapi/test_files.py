@@ -1,12 +1,3 @@
-"""Testcontainers integration tests for /openapi/v1/apps/<app_id>/files/upload.
-
-Exercises ``AppFileUploadApi`` against the real ``FileService`` (storage write +
-DB row) and a live DB. The upload contract is pinned end-to-end: a multipart
-``file`` part flows through ``require_app_context`` into
-``FileService.upload_file`` and back as a ``FileResponse`` — so a signature
-change to ``upload_file`` surfaces here.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable

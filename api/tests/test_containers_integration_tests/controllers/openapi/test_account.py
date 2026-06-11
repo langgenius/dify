@@ -1,13 +1,3 @@
-"""Testcontainers integration tests for /openapi/v1/account.
-
-Exercises ``AccountApi`` against the real ``AccountService`` / ``TenantService``
-and a live DB+Redis (the rate-limit guard runs against the containerized
-Redis). This pins the account-info contract: the response reflects the real
-account record plus every workspace the caller is a member of, with a
-deterministic ``default_workspace_id`` pick — so a change to
-``get_account_by_id`` / ``get_account_memberships`` surfaces here.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable

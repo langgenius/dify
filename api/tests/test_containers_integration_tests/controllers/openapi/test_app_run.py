@@ -1,12 +1,3 @@
-"""Testcontainers integration tests for /openapi/v1 app-run side endpoints.
-
-Covers ``AppRunTaskStopApi`` against a live Redis. The streaming ``/run`` path
-is intentionally out of scope (it needs a full model runtime), but task-stop is
-a self-contained contract: ``require_app_context`` resolves the caller and the
-stop flag / graph-engine stop command are issued against the real Redis, so a
-signature change to those collaborators surfaces here.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable

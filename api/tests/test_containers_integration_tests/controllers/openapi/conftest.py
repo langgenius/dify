@@ -1,13 +1,3 @@
-"""Shared fixtures for /openapi/v1 controller integration tests.
-
-These tests exercise the controllers against the **real** service layer and a
-containerized Postgres/Redis, so a change to a service method's signature or
-behavior surfaces here (unlike mock-based unit tests, which silently accept any
-call). Auth is supplied directly as an ``AuthData`` object and the auth-pipeline
-guard is bypassed by calling the view through ``inspect.unwrap`` — auth itself
-is covered by the dedicated pipeline tests.
-"""
-
 from __future__ import annotations
 
 import uuid

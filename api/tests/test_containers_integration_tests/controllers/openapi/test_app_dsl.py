@@ -1,13 +1,3 @@
-"""Testcontainers integration tests for /openapi/v1 DSL import/export.
-
-Exercises ``AppDslImportApi`` / ``AppDslImportConfirmApi`` / ``AppDslExportApi``
-/ ``AppDslCheckDependenciesApi`` against the real ``AppDslService`` and a live
-DB+Redis. The status->HTTP contract (FAILED->400, PENDING->202, else->200) and
-the export-not-found->404 mapping are pinned through the real service, so a
-change to ``import_app`` / ``confirm_import`` / ``export_dsl`` /
-``check_dependencies`` surfaces here.
-"""
-
 from __future__ import annotations
 
 import json

@@ -1,14 +1,3 @@
-"""Testcontainers integration tests for /openapi/v1/account/sessions*.
-
-Exercises ``AccountSessionsApi`` / ``AccountSessionsSelfApi`` /
-``AccountSessionByIdApi`` against the real ``oauth_device_flow`` service and a
-live DB+Redis. Real ``dfoa_`` token rows are minted via ``mint_oauth_token`` so
-the list/revoke/cross-subject paths run through
-``list_active_sessions`` / ``revoke_oauth_token`` / ``token_belongs_to_subject``
-— a signature or behavior change in any of those surfaces here rather than
-being silently absorbed by a mock.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable

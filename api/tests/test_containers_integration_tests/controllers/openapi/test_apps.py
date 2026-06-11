@@ -1,14 +1,3 @@
-"""Testcontainers integration tests for /openapi/v1 app discovery endpoints.
-
-Exercises ``AppListApi`` and ``AppDescribeApi`` against the real ``AppService``
-and a live DB. The openapi-surface visibility gate (``enable_api``) is the key
-invariant pinned here: api-disabled apps must be invisible to both the list and
-the per-app describe path, so a regression in
-``AppService.get_paginate_apps`` / ``get_visible_app_by_id`` /
-``find_visible_apps_by_name`` surfaces here rather than leaking apps to the
-openapi caller.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
