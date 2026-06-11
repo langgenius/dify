@@ -1,6 +1,6 @@
 import type { GenerateWorkflowResponse } from './types'
 import { useSessionStorageState } from 'ahooks'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 const KEY_PREFIX = 'workflow-gen-'
 
@@ -37,14 +37,23 @@ const useGenGraph = ({ storageKey }: Params) => {
   const safeIndex = Math.min(currentVersionIndex ?? 0, Math.max((versions?.length ?? 0) - 1, 0))
   const current = versions?.[safeIndex]
 
+  // Version count including adds React hasn't committed yet. addVersion can
+  // run twice inside one batch (the functional setVersions appends both), so
+  // the selected-index math must not read `versions` from the render closure
+  // — it would be one add behind and select the wrong entry.
+  const versionCountRef = useRef(versions?.length ?? 0)
+  useEffect(() => {
+    versionCountRef.current = versions?.length ?? 0
+  }, [versions])
+
   const addVersion = useCallback((version: GenerateWorkflowResponse) => {
-    // Compute the next list once so the selected index always points at the
-    // entry we just appended — even when the cap drops the oldest version
-    // (the old length-based index would then be off by one).
-    const next = [...(versions ?? []), version].slice(-MAX_VERSIONS)
-    setVersions(next)
-    setCurrentVersionIndex(next.length - 1)
-  }, [setVersions, setCurrentVersionIndex, versions])
+    const nextCount = Math.min(versionCountRef.current + 1, MAX_VERSIONS)
+    versionCountRef.current = nextCount
+    // Functional update so batched adds append instead of clobbering each
+    // other; the slice keeps the retained history under the cap.
+    setVersions(prev => [...(prev ?? []), version].slice(-MAX_VERSIONS))
+    setCurrentVersionIndex(nextCount - 1)
+  }, [setVersions, setCurrentVersionIndex])
 
   return {
     versions,
