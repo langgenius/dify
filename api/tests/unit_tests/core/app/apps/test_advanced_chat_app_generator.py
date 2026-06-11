@@ -196,7 +196,7 @@ def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch: pytest.Mo
         def start(self):
             self.started = True
 
-    def fake_thread(*args, **kwargs):
+    def fake_thread[**P](*args: P.args, **kwargs: P.kwargs):
         thread = DummyThread(**kwargs)
         captured["thread"] = thread
         return thread

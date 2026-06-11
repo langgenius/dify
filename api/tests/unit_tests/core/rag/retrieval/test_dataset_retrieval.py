@@ -108,7 +108,9 @@ def create_side_effect_for_search(documents: list[Document]):
         modify a shared all_documents list. This pattern simulates that behavior.
     """
 
-    def side_effect(flask_app, dataset_id, query, top_k, *args, all_documents, exceptions, **kwargs):
+    def side_effect(
+        flask_app: Flask, dataset_id, query, top_k: int, *args, all_documents: list[Document], exceptions, **kwargs
+    ):
         """
         Side effect function that mimics search method behavior.
 
@@ -142,7 +144,9 @@ def create_side_effect_with_exception(error_message: str):
         >>> mock_search.side_effect = create_side_effect_with_exception("Search failed")
     """
 
-    def side_effect(flask_app, dataset_id, query, top_k, *args, all_documents, exceptions, **kwargs):
+    def side_effect(
+        flask_app: Flask, dataset_id, query, top_k: int, *args, all_documents: list[Document], exceptions, **kwargs
+    ):
         """Add error message to exceptions list."""
         exceptions.append(error_message)
 
@@ -358,8 +362,8 @@ class TestRetrievalService:
                 future = Mock()
                 try:
                     # Execute immediately - this modifies all_documents in place
-                    # The function signature is: fn(flask_app, dataset_id, query,
-                    #                             top_k, all_documents, exceptions, ...)
+                    # The function signature is: fn(flask_app: Flask, dataset_id, query,
+                    #                             top_k, all_documents: list[Document], exceptions, ...)
                     fn(*args, **kwargs)
                     future.result.return_value = None
                     future.exception.return_value = None
@@ -423,7 +427,7 @@ class TestRetrievalService:
         # Create a side effect function that simulates _retrieve behavior
         # _retrieve modifies the all_documents list in place
         def side_effect_retrieve(
-            flask_app,
+            flask_app: Flask,
             retrieval_method,
             dataset,
             query=None,
@@ -494,7 +498,7 @@ class TestRetrievalService:
         filtered_docs = [sample_documents[0]]
 
         def side_effect_retrieve(
-            flask_app,
+            flask_app: Flask,
             retrieval_method,
             dataset,
             query=None,
@@ -573,7 +577,7 @@ class TestRetrievalService:
         mock_get_dataset.return_value = mock_dataset
 
         def side_effect_retrieve(
-            flask_app,
+            flask_app: Flask,
             retrieval_method,
             dataset,
             query=None,
@@ -642,7 +646,7 @@ class TestRetrievalService:
     @patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_keyword_search_with_document_filter(
-        self, mock_get_dataset, mock_keyword_search, mock_dataset, sample_documents
+        self, mock_get_dataset, mock_keyword_search, mock_dataset, sample_documents: list[Document]
     ):
         """
         Test keyword search with document ID filtering.
@@ -656,7 +660,13 @@ class TestRetrievalService:
         filtered_docs = [sample_documents[1]]
 
         def side_effect_keyword_search(
-            flask_app, dataset_id, query, top_k, all_documents, exceptions, document_ids_filter=None
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            exceptions,
+            document_ids_filter=None,
         ):
             all_documents.extend(filtered_docs)
 
@@ -689,7 +699,7 @@ class TestRetrievalService:
         mock_fulltext_search,
         mock_data_processor_class,
         mock_dataset,
-        sample_documents,
+        sample_documents: list[Document],
     ):
         """
         Test basic hybrid search combining vector and full-text search.
@@ -704,13 +714,13 @@ class TestRetrievalService:
 
         # Vector search returns first 2 docs
         def side_effect_embedding(
-            flask_app,
+            flask_app: Flask,
             dataset_id,
             query,
             top_k,
             score_threshold,
             reranking_model,
-            all_documents,
+            all_documents: list[Document],
             retrieval_method,
             exceptions,
             document_ids_filter=None,
@@ -721,13 +731,13 @@ class TestRetrievalService:
 
         # Full-text search returns last 2 docs (with overlap)
         def side_effect_fulltext(
-            flask_app,
+            flask_app: Flask,
             dataset_id,
             query,
             top_k,
             score_threshold,
             reranking_model,
-            all_documents,
+            all_documents: list[Document],
             retrieval_method,
             exceptions,
             document_ids_filter=None,
@@ -824,13 +834,13 @@ class TestRetrievalService:
 
         # Simulate vector search returning high-score duplicate + unique doc
         def side_effect_embedding(
-            flask_app,
+            flask_app: Flask,
             dataset_id,
             query,
             top_k,
             score_threshold,
             reranking_model,
-            all_documents,
+            all_documents: list[Document],
             retrieval_method,
             exceptions,
             document_ids_filter=None,
@@ -842,13 +852,13 @@ class TestRetrievalService:
 
         # Simulate full-text search returning low-score duplicate
         def side_effect_fulltext(
-            flask_app,
+            flask_app: Flask,
             dataset_id,
             query,
             top_k,
             score_threshold,
             reranking_model,
-            all_documents,
+            all_documents: list[Document],
             retrieval_method,
             exceptions,
             document_ids_filter=None,
@@ -901,7 +911,7 @@ class TestRetrievalService:
         mock_fulltext_search,
         mock_data_processor_class,
         mock_dataset,
-        sample_documents,
+        sample_documents: list[Document],
     ):
         """
         Test hybrid search with custom weights for score merging.
@@ -914,13 +924,13 @@ class TestRetrievalService:
         mock_get_dataset.return_value = mock_dataset
 
         def side_effect_embedding(
-            flask_app,
+            flask_app: Flask,
             dataset_id,
             query,
             top_k,
             score_threshold,
             reranking_model,
-            all_documents,
+            all_documents: list[Document],
             retrieval_method,
             exceptions,
             document_ids_filter=None,
@@ -930,13 +940,13 @@ class TestRetrievalService:
         mock_embedding_search.side_effect = side_effect_embedding
 
         def side_effect_fulltext(
-            flask_app,
+            flask_app: Flask,
             dataset_id,
             query,
             top_k,
             score_threshold,
             reranking_model,
-            all_documents,
+            all_documents: list[Document],
             retrieval_method,
             exceptions,
             document_ids_filter=None,
@@ -1062,13 +1072,13 @@ class TestRetrievalService:
         mock_get_dataset.return_value = mock_dataset
 
         def side_effect_fulltext(
-            flask_app,
+            flask_app: Flask,
             dataset_id,
             query,
             top_k,
             score_threshold,
             reranking_model,
-            all_documents,
+            all_documents: list[Document],
             retrieval_method,
             exceptions,
             document_ids_filter=None,
@@ -1308,7 +1318,7 @@ class TestRetrievalService:
         filtered_doc.metadata["category"] = "programming"
 
         def side_effect_retrieve(
-            flask_app,
+            flask_app: Flask,
             retrieval_method,
             dataset,
             query=None,
@@ -1403,7 +1413,7 @@ class TestRetrievalService:
 
         # Make _retrieve add an exception to the exceptions list
         def side_effect_with_exception(
-            flask_app,
+            flask_app: Flask,
             retrieval_method,
             dataset,
             query=None,
@@ -1456,7 +1466,7 @@ class TestRetrievalService:
         )
 
         def side_effect_retrieve(
-            flask_app,
+            flask_app: Flask,
             retrieval_method,
             dataset,
             query=None,
@@ -1516,7 +1526,7 @@ class TestRetrievalService:
         ]
 
         def side_effect_retrieve(
-            flask_app,
+            flask_app: Flask,
             retrieval_method,
             dataset,
             query=None,
@@ -1595,7 +1605,7 @@ class TestRetrievalService:
         reranked_docs = list(reversed(sample_documents))
 
         def side_effect_retrieve(
-            flask_app,
+            flask_app: Flask,
             retrieval_method,
             dataset,
             query=None,
@@ -1673,7 +1683,14 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1748,7 +1765,14 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1858,7 +1882,14 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -3710,14 +3741,21 @@ class TestKnowledgeRetrievalRegression:
         )
 
         def fake_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app: Flask,
+            dataset_id,
+            query,
+            top_k: int,
+            all_documents: list[Document],
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.append(document)
 
         called = {"init": 0, "invoke": 0}
 
         class ContextRequiredPostProcessor:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 called["init"] += 1
                 # will raise RuntimeError if no Flask app context exists
                 _ = current_app.name

@@ -33,7 +33,7 @@ register_schema_models(console_ns, WorkflowStatisticQuery)
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-conversations")
 class WorkflowDailyRunsStatistic(Resource):
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         super().__init__(*args, **kwargs)
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -72,7 +72,7 @@ class WorkflowDailyRunsStatistic(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-terminals")
 class WorkflowDailyTerminalsStatistic(Resource):
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         super().__init__(*args, **kwargs)
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -111,7 +111,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/token-costs")
 class WorkflowDailyTokenCostStatistic(Resource):
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         super().__init__(*args, **kwargs)
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -150,7 +150,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/average-app-interactions")
 class WorkflowAverageAppInteractionStatistic(Resource):
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         super().__init__(*args, **kwargs)
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)

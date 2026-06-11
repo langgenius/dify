@@ -19,7 +19,7 @@ class DummyGenerateEntity:
 
 
 class DummyQueueManager:
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         self.published = []
 
     def publish_error(self, error, pub_from):
