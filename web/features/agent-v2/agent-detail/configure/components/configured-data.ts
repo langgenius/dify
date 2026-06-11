@@ -63,37 +63,100 @@ export const defaultAgentSkills: AgentSkill[] = [
 export const defaultAgentFiles: AgentFileNode[] = [
   {
     id: 'index-json',
-    name: '_index.json',
+    name: '_index.generated.agent-runtime-manifest.json',
     icon: 'json',
   },
   {
     id: 'web-game',
-    name: 'web-game',
+    name: 'web-game-playwright-fixture-with-long-project-name',
     icon: 'folder',
     children: [
       {
         id: 'web-game-public',
         name: 'public',
         icon: 'folder',
+        children: [
+          {
+            id: 'web-game-public-assets',
+            name: 'static-assets-exported-from-designer',
+            icon: 'folder',
+            children: [
+              {
+                id: 'web-game-public-assets-preview',
+                name: 'agent-roster-skill-detail-dialog-preview-image.png',
+                icon: 'image',
+              },
+            ],
+          },
+        ],
       },
       {
         id: 'web-game-assets',
-        name: 'assets',
+        name: 'assets-with-generated-runtime-metadata',
         icon: 'folder',
+        children: [
+          {
+            id: 'web-game-assets-schemas',
+            name: 'schemas',
+            icon: 'folder',
+            children: [
+              {
+                id: 'web-game-assets-schemas-tools',
+                name: 'tool-call-response-schema-with-extra-long-name.json',
+                icon: 'json',
+              },
+            ],
+          },
+        ],
       },
       {
         id: 'web-game-src',
         name: 'src',
         icon: 'folder',
+        children: [
+          {
+            id: 'web-game-src-features',
+            name: 'features',
+            icon: 'folder',
+            children: [
+              {
+                id: 'web-game-src-features-agent-roster',
+                name: 'agent-roster-skill-detail-file-tree',
+                icon: 'folder',
+                children: [
+                  {
+                    id: 'web-game-src-features-agent-roster-state',
+                    name: 'state-machines',
+                    icon: 'folder',
+                    children: [
+                      {
+                        id: 'web-game-src-features-agent-roster-state-dialog',
+                        name: 'open-file-detail-dialog-from-current-tree.ts',
+                        icon: 'code',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       },
       {
         id: 'web-game-styles',
-        name: 'styles',
+        name: 'styles-and-theme-token-overrides',
         icon: 'folder',
+        children: [
+          {
+            id: 'web-game-styles-tailwind',
+            name: 'file-tree-truncation-and-scroll-area-layout.css',
+            icon: 'text',
+          },
+        ],
       },
       {
         id: 'web-game-readme',
-        name: 'README.md',
+        name: 'README-agent-runtime-file-tree-behavior.md',
         icon: 'markdown',
       },
     ],
