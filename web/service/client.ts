@@ -100,6 +100,9 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
             context.client.invalidateQueries({
               queryKey: consoleQuery.agents.get.key(),
             })
+            context.client.invalidateQueries({
+              queryKey: consoleQuery.agents.inviteOptions.get.key(),
+            })
           },
         },
       },
@@ -148,14 +151,15 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 }),
                 updatedAgent,
               )
+              context.client.invalidateQueries({
+                queryKey: consoleQuery.agents.inviteOptions.get.key(),
+              })
             },
           },
         },
         delete: {
           mutationOptions: {
             onSuccess: (_data, variables, _onMutateResult, context) => {
-              const agentListQueryKey = consoleQuery.agents.get.key()
-
               context.client.setQueriesData(
                 {
                   queryKey: consoleQuery.agents.get.key({ type: 'query' }),
@@ -195,7 +199,10 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 },
               )
               context.client.invalidateQueries({
-                queryKey: agentListQueryKey,
+                queryKey: consoleQuery.agents.get.key(),
+              })
+              context.client.invalidateQueries({
+                queryKey: consoleQuery.agents.inviteOptions.get.key(),
               })
             },
           },

@@ -1,3 +1,4 @@
+import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { MutationFunctionContext } from '@tanstack/react-query'
 import type { Tag } from '@/contract/console/tags'
@@ -40,6 +41,17 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
   name: 'Weather',
   api_endpoint: 'https://api.example.com/weather',
   api_key: 'secret-key',
+  ...overrides,
+})
+
+const createAgent = (overrides: Partial<AgentRosterResponse> = {}): AgentRosterResponse => ({
+  agent_kind: 'dify_agent',
+  description: 'Agent description',
+  id: 'agent-1',
+  name: 'Agent',
+  scope: 'roster',
+  source: 'agent_app',
+  status: 'active',
   ...overrides,
 })
 
@@ -109,6 +121,93 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('https://api.example.com/console/api')
     expect(warnSpy).not.toHaveBeenCalled()
+  })
+})
+
+// Scenario: oRPC mutation defaults own shared Agent roster cache behavior.
+describe('consoleQuery agent mutation defaults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should invalidate roster and invite option lists after creating an agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const createdAgent = createAgent()
+
+    const mutationOptions = consoleQuery.agents.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      createdAgent,
+      {
+        body: {
+          name: createdAgent.name,
+          description: createdAgent.description,
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agents.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agents.inviteOptions.get.key(),
+    })
+  })
+
+  it('should invalidate invite option lists after updating an agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const updatedAgent = createAgent({ name: 'Updated Agent' })
+
+    const mutationOptions = consoleQuery.agents.byAgentId.patch.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      updatedAgent,
+      {
+        params: {
+          agent_id: updatedAgent.id,
+        },
+        body: {
+          name: updatedAgent.name,
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agents.inviteOptions.get.key(),
+    })
+  })
+
+  it('should invalidate invite option lists after deleting an agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const deletedAgent = createAgent()
+
+    const mutationOptions = consoleQuery.agents.byAgentId.delete.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      undefined,
+      {
+        params: {
+          agent_id: deletedAgent.id,
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agents.inviteOptions.get.key(),
+    })
   })
 })
 
