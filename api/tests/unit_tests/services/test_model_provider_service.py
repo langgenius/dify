@@ -368,6 +368,70 @@ class TestModelProviderServiceDelegation:
         if method_name == "get_model_credential":
             assert result == {"api_key": "x"}
 
+    @pytest.mark.parametrize(
+        ("method_name", "method_kwargs", "provider_method_name", "expected_kwargs"),
+        [
+            (
+                "get_model_credential",
+                {
+                    "tenant_id": "tenant-1",
+                    "provider": "openai",
+                    "model_type": "text-generation",
+                    "model": "gpt-4o",
+                    "credential_id": "cred-1",
+                },
+                "get_custom_model_credential",
+                {"model_type": ModelType.LLM, "model": "gpt-4o", "credential_id": "cred-1"},
+            ),
+            (
+                "create_model_credential",
+                {
+                    "tenant_id": "tenant-1",
+                    "provider": "openai",
+                    "model_type": "text-generation",
+                    "model": "gpt-4o",
+                    "credentials": {"api_key": "x"},
+                    "credential_name": "cred-a",
+                },
+                "create_custom_model_credential",
+                {
+                    "model_type": ModelType.LLM,
+                    "model": "gpt-4o",
+                    "credentials": {"api_key": "x"},
+                    "credential_name": "cred-a",
+                },
+            ),
+            (
+                "remove_model",
+                {
+                    "tenant_id": "tenant-1",
+                    "provider": "openai",
+                    "model_type": "text-generation",
+                    "model": "gpt-4o",
+                },
+                "delete_custom_model",
+                {"model_type": ModelType.LLM, "model": "gpt-4o"},
+            ),
+        ],
+    )
+    def test_custom_model_methods_use_model_type_constructor_directly(
+        self,
+        method_name: str,
+        method_kwargs: dict[str, Any],
+        provider_method_name: str,
+        expected_kwargs: dict[str, Any],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        service = ModelProviderService()
+        provider_configuration = MagicMock()
+        get_provider_config_mock = MagicMock(return_value=provider_configuration)
+        monkeypatch.setattr(service, "_get_provider_configuration", get_provider_config_mock)
+
+        getattr(service, method_name)(**method_kwargs)
+
+        get_provider_config_mock.assert_called_once_with("tenant-1", "openai")
+        getattr(provider_configuration, provider_method_name).assert_called_once_with(**expected_kwargs)
+
 
 class TestModelProviderServiceListingsAndDefaults:
     def test_get_models_by_model_type_should_group_active_non_deprecated_models(self) -> None:
