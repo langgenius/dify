@@ -75,13 +75,15 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
-const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
+const mockAppContext = vi.hoisted(() => ({
+  userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
+  workspacePermissionKeys: ['credential.manage', 'credential.use'] as string[],
+}))
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: typeof mockUserProfile, workspacePermissionKeys: string[] }) => unknown) =>
-    selector({
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: ['credential.manage', 'credential.use'],
-    }),
+  useSelector: (selector: (state: {
+    userProfile: typeof mockAppContext.userProfile
+    workspacePermissionKeys: string[]
+  }) => unknown) => selector(mockAppContext),
 }))
 
 // Mock service/use-triggers
@@ -139,6 +141,7 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
 describe('Authorized Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContext.workspacePermissionKeys = ['credential.manage', 'credential.use']
     mockDeletePluginCredential.mockResolvedValue({})
     mockSetPluginDefaultCredential.mockResolvedValue({})
     mockUpdatePluginCredential.mockResolvedValue({})
@@ -1454,22 +1457,20 @@ describe('Authorized Component', () => {
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
-    it('should pass disabled to Item components', () => {
+    it('should disable credential management actions when credential.manage is missing', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ is_default: false })]
+      mockAppContext.workspacePermissionKeys = ['credential.use']
 
       render(
         <Authorized
           pluginPayload={pluginPayload}
           credentials={credentials}
           isOpen={true}
-          disabled={true}
         />,
         { wrapper: createWrapper() },
       )
 
-      // When disabled is true, action buttons should be disabled
-      // Look for the set default button which should have disabled attribute
       const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
       if (setDefaultButton) {
         const button = setDefaultButton.closest('button')
