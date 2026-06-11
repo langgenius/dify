@@ -16,6 +16,7 @@ import {
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useUnmount } from 'ahooks'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
