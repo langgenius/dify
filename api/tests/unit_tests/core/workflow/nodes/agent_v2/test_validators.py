@@ -277,6 +277,60 @@ def test_publish_validation_rejects_unauthorized_secret_ref():
         )
 
 
+def test_publish_validation_rejects_cli_tool_scoped_env_conflicts_and_unauthorized_secret_refs():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        env={"variables": [{"name": "TOKEN", "value": "agent"}]},
+        tools={
+            "cli_tools": [
+                {
+                    "name": "github",
+                    "env": {"secret_refs": [{"name": "TOKEN", "id": "credential-1"}]},
+                }
+            ]
+        },
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate env/secret name TOKEN"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={
+            "cli_tools": [
+                {
+                    "name": "github",
+                    "env": {
+                        "secret_refs": [{"name": "GITHUB_TOKEN", "id": "credential-1", "permission_status": "denied"}]
+                    },
+                }
+            ]
+        },
+    )
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized secret reference GITHUB_TOKEN"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
 def test_publish_validation_rejects_missing_previous_node():
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "missing-node", "output": "text"}]}

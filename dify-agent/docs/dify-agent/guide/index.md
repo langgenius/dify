@@ -136,8 +136,10 @@ Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`. Event envelopes retain `id`,
 `run_id`, `type`, `data`, and `created_at`; `data` is typed per event type,
 including Pydantic AI's `AgentStreamEvent` payload for `pydantic_ai_event` and a
-terminal `run_succeeded.data` object containing JSON-safe `output` plus a
-`CompositorSessionSnapshot` for resumption.
+terminal `run_succeeded.data` object containing a `CompositorSessionSnapshot` for
+resumption. A successful run has exactly one active result branch: JSON-safe
+`output` for final answers, or `deferred_tool_call` when a layer such as
+`dify.ask_human` ends the current agent run with an external deferred tool call.
 
 ## Examples
 

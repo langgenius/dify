@@ -363,8 +363,37 @@ class WorkflowAgentNodeValidator:
         agent_soul: AgentSoulConfig,
     ) -> None:
         seen_names: set[str] = set()
-        for env_var in agent_soul.env.variables:
-            name = env_var.name
+        cls._validate_env_entries(
+            binding=binding,
+            seen_names=seen_names,
+            variables=agent_soul.env.variables,
+            secret_refs=agent_soul.env.secret_refs,
+            label="agent",
+        )
+        for cli_tool in agent_soul.tools.cli_tools:
+            if not cli_tool.enabled:
+                continue
+            name = cli_tool.get("name") or cli_tool.get("tool_name") or cli_tool.get("label") or "<unnamed>"
+            cls._validate_env_entries(
+                binding=binding,
+                seen_names=seen_names,
+                variables=cli_tool.env.variables,
+                secret_refs=cli_tool.env.secret_refs,
+                label=f"CLI Tool {name}",
+            )
+
+    @classmethod
+    def _validate_env_entries(
+        cls,
+        *,
+        binding: WorkflowAgentNodeBinding,
+        seen_names: set[str],
+        variables: list[Any],
+        secret_refs: list[Any],
+        label: str,
+    ) -> None:
+        for env_var in variables:
+            name = cls._env_name(env_var)
             if not name:
                 continue
             if name in seen_names:
@@ -372,19 +401,28 @@ class WorkflowAgentNodeValidator:
                     f"Workflow Agent node {binding.node_id} has duplicate env/secret name {name}."
                 )
             seen_names.add(name)
-        for secret_ref in agent_soul.env.secret_refs:
-            name = secret_ref.name
+        for secret_ref in secret_refs:
+            name = cls._env_name(secret_ref)
             if not name:
                 continue
             if cls._permission_denied(secret_ref.model_dump(mode="python", exclude_none=True, exclude_defaults=True)):
                 raise WorkflowAgentNodeValidationError(
-                    f"Workflow Agent node {binding.node_id} has unauthorized secret reference {name}."
+                    f"Workflow Agent node {binding.node_id} has unauthorized secret reference {name} in {label}."
                 )
             if name in seen_names:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has duplicate env/secret name {name}."
                 )
             seen_names.add(name)
+
+    @staticmethod
+    def _env_name(value: Any) -> str | None:
+        if hasattr(value, "get"):
+            for key in ("name", "key", "env_name", "variable"):
+                item = value.get(key)
+                if isinstance(item, str) and item.strip():
+                    return item.strip()
+        return None
 
     @classmethod
     def _validate_tool_node_agentic_mode(cls, *, node_id: str, node_data: Mapping[str, Any]) -> None:
