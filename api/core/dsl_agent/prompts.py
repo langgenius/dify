@@ -21,14 +21,18 @@ Hard rules:
 - Selector arrays use [node_id, field].
 - Workflow user inputs belong in the start node data.variables, not workflow.conversation_variables.
 - Use workflow.conversation_variables: [] unless the app really needs persisted chat state.
-- Start node variables must use fields like {variable, label, type, required}; do not use key/name for start inputs. Text input type is "text-input", not "text".
+- Start node variables must use fields like {variable, label, type, required}.
+  Do not use key/name for start inputs. Text input type is "text-input", not "text".
 - End node outputs must use fields like {variable, value_type, value_selector}; do not use key/value for end outputs.
 - Never hardcode API keys, OAuth tokens, credentials, or secrets.
 - Put required plugins/model providers in top-level dependencies when known.
 - Prefer official Dify plugins. Use third-party plugins only when no official plugin fits.
-- For plugin-backed nodes, use Plugin Resolver evidence. Do not invent provider_id, tool_name, event_name, or parameter schema.
-- For plugin dependencies, use exact_dependency_evidence or extracted template dependencies when available. Do not fabricate package hashes from manifest versions.
-- For LLM/model-backed nodes, use model_provider_candidates for provider ids, setup requirements, and top-level dependencies.
+- For plugin-backed nodes, use Plugin Resolver evidence. Do not invent provider_id,
+  tool_name, event_name, or parameter schema.
+- For plugin dependencies, use exact_dependency_evidence or extracted template dependencies
+  when available. Do not fabricate package hashes from manifest versions.
+- For LLM/model-backed nodes, use model_provider_candidates for provider ids, setup
+  requirements, and top-level dependencies.
 """
 
 
@@ -41,6 +45,21 @@ Return JSON only.
 
 Plan the workflow before YAML authoring.
 Do not generate YAML in this step.
+
+Node selection policy:
+- Do not collapse every request into a single LLM node.
+- For strict JSON, schema extraction, table formatting, parsing, normalization,
+  or post-processing, plan an LLM node followed by a code node before the end node.
+- For fixed-label classification or routing, prefer question-classifier. If the
+  user only needs a category output, the question-classifier can feed end nodes;
+  if they also need a written explanation, route to short LLM nodes per class or
+  add one LLM after classification.
+- For deterministic branching on known conditions, use if-else.
+- For knowledge-base/RAG requests, use knowledge-retrieval before the answer/LLM node.
+- For external APIs or SaaS actions, use official tool/plugin nodes only when
+  plugin evidence is available; otherwise add an open question or setup note.
+- Use code only for deterministic transforms, validation, parsing, formatting,
+  and lightweight post-processing. Do not put secrets or network calls in code.
 """
 )
 
@@ -78,6 +97,7 @@ Return a JSON object with this shape:
 }}
 
 Only include open_questions that block DSL generation. Prefer making reasonable assumptions.
+When the user request clearly matches a native node above, include that node in graph_plan.
 """
 
 
@@ -89,6 +109,9 @@ You are the DSL Authoring Agent for Dify.
 Generate a complete Dify app DSL YAML file.
 
 Follow the graph plan and plugin evidence. Use complete node data blocks.
+Every graph_plan node must appear in the YAML unless local source context proves
+the node type is unsupported. Do not simplify a planned code, question-classifier,
+if-else, knowledge-retrieval, tool, or iteration node back into a single LLM.
 Output YAML only. Do not wrap in markdown fences.
 """
 )
@@ -112,18 +135,26 @@ Local Dify source facts:
 - import requires the parsed version to be a string.
 - app import supports workflow and advanced-chat apps.
 - dependencies are checked from top-level dependencies when present.
-- knowledge-retrieval dataset_ids may be encrypted in exported DSL, but user-provided dataset ids are deployment-specific.
+- knowledge-retrieval dataset_ids may be encrypted in exported DSL, but user-provided
+  dataset ids are deployment-specific.
 
 Generate a complete import-oriented Dify DSL YAML.
 Use stable readable node ids.
+Preserve graph_plan node ids and edges as much as possible.
+If graph_plan includes code, question-classifier, if-else, knowledge-retrieval,
+tool, trigger-plugin, iteration, or loop nodes, generate those nodes with full
+Dify node data blocks rather than replacing them with an LLM.
 Include graph.viewport.
 Include workflow.environment_variables and workflow.conversation_variables.
 Include workflow.features with common fields.
 For a simple workflow input named query, use start.data.variables with
 `variable: query`, `label: query`, `type: text-input`, and end.data.outputs with
 `variable: query`, `value_type: string`, `value_selector: [start, query]`.
-If a plugin unique identifier or dependency hash is not available in evidence, still generate the node from official schema and add a setup note in app description rather than inventing a fake hash.
-If a model provider exact dependency hash is unavailable, include the provider package_identity without a fake hash rather than omitting the model provider dependency.
+If a plugin unique identifier or dependency hash is not available in evidence, still generate
+the node from official schema and add a setup note in app description rather than inventing
+a fake hash.
+If a model provider exact dependency hash is unavailable, include the provider package_identity
+without a fake hash rather than omitting the model provider dependency.
 Use credential_requirements only to explain required setup; never place credential values in YAML.
 """
 
@@ -163,10 +194,15 @@ Local Dify source context JSON:
 {source_context_json}
 
 Available compiler capabilities:
-- direct built-in node types: start, trigger-schedule, trigger-webhook, llm, code, template-transform, answer, end, assigner, http-request, question-classifier, document-extractor, knowledge-retrieval, if-else, list-operator, variable-assigner, iteration, loop, tool, trigger-plugin
-- template-backed nodes may use other Dify node types when a template is available, for example agent, parameter-extractor, or human-input
+- direct built-in node types: start, trigger-schedule, trigger-webhook, llm, code,
+  template-transform, answer, end, assigner, http-request, question-classifier,
+  document-extractor, knowledge-retrieval, if-else, list-operator, variable-assigner,
+  iteration, loop, tool, trigger-plugin
+- template-backed nodes may use other Dify node types when a template is available,
+  for example agent, parameter-extractor, or human-input
 - for official_template_links, prefer `template_ref` as the node `template`
-- tool and trigger-plugin nodes can also auto-match extracted templates when provider_id+tool_name or provider_id+event_name are present
+- tool and trigger-plugin nodes can also auto-match extracted templates when provider_id+tool_name
+  or provider_id+event_name are present
 - put custom routing in workflow.edges with source, target, and source_handle when needed
 
 Generate a simplified compiler spec. Keep node ids stable and readable.

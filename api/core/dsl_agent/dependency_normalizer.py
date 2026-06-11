@@ -10,6 +10,8 @@ from typing import Any
 import yaml
 
 from .validator import (
+    DEPENDENCY_IDENTIFIER_KEY_BY_TYPE,
+    dependency_identifier_key,
     dependency_unique_identifier,
     model_provider_entries,
     node_type,
@@ -17,6 +19,10 @@ from .validator import (
     plugin_id_from_unique_identifier,
     plugin_identity_from_node,
 )
+
+DEPENDENCY_TYPE_BY_IDENTIFIER_KEY = {
+    value: key for key, value in DEPENDENCY_IDENTIFIER_KEY_BY_TYPE.items()
+}
 
 
 def dependency_from_identifier(identifier: str, dep_type: str = "marketplace") -> dict[str, Any]:
@@ -107,6 +113,45 @@ def existing_dependency_plugin_ids(dependencies: list[Any]) -> set[str]:
     return {plugin_id for plugin_id in (dependency_plugin_id(item) for item in dependencies) if plugin_id}
 
 
+def normalize_existing_dependencies(dependencies: list[Any], report: dict[str, Any]) -> None:
+    for index, dependency in enumerate(dependencies):
+        if not isinstance(dependency, dict):
+            continue
+        value = dependency.get("value")
+        if not isinstance(value, dict):
+            continue
+
+        identifier = dependency_unique_identifier(dependency)
+        if not identifier:
+            continue
+
+        dep_type = str(dependency.get("type") or "").strip()
+        identifier_key = dependency_identifier_key(dependency)
+        normalized_type = dep_type if dep_type in DEPENDENCY_IDENTIFIER_KEY_BY_TYPE else ""
+        if not normalized_type and identifier_key:
+            normalized_type = DEPENDENCY_TYPE_BY_IDENTIFIER_KEY.get(identifier_key, "")
+        if not normalized_type:
+            normalized_type = "marketplace"
+
+        expected_key = DEPENDENCY_IDENTIFIER_KEY_BY_TYPE[normalized_type]
+        if dep_type == normalized_type and identifier_key == expected_key:
+            continue
+
+        dependency["type"] = normalized_type
+        dependency["value"] = {expected_key: identifier}
+        dependency.setdefault("current_identifier", None)
+        report["normalized"].append(
+            {
+                "index": index,
+                "old_type": dep_type or None,
+                "old_identifier_key": identifier_key or None,
+                "type": normalized_type,
+                "identifier_key": expected_key,
+                "unique_identifier": identifier,
+            }
+        )
+
+
 def best_dependency_for_plugin(
     plugin_id: str,
     *,
@@ -127,7 +172,10 @@ def best_dependency_for_plugin(
 
     package = package_by_plugin.get(plugin_id)
     if package and package.get("identifier"):
-        return dependency_from_identifier(str(package["identifier"]), str(package.get("type") or "marketplace")), "package_identity"
+        return (
+            dependency_from_identifier(str(package["identifier"]), str(package.get("type") or "marketplace")),
+            "package_identity",
+        )
 
     return None, ""
 
@@ -178,10 +226,13 @@ def add_dependency_if_missing(
     )
 
 
-def normalize_dependency_dict(data: dict[str, Any], plugin_evidence: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+def normalize_dependency_dict(
+    data: dict[str, Any], plugin_evidence: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
     report: dict[str, Any] = {
         "changed": False,
         "added": [],
+        "normalized": [],
         "already_present": [],
         "skipped": [],
         "errors": [],
@@ -194,6 +245,7 @@ def normalize_dependency_dict(data: dict[str, Any], plugin_evidence: dict[str, A
         report["errors"].append({"code": "dependencies_not_list", "message": "dependencies must be a list"})
         return data, report
 
+    normalize_existing_dependencies(dependencies, report)
     evidence = collect_dependency_evidence(plugin_evidence)
     present_plugin_ids = existing_dependency_plugin_ids(dependencies)
     workflow = data.get("workflow") if isinstance(data.get("workflow"), dict) else {}
@@ -231,7 +283,7 @@ def normalize_dependency_dict(data: dict[str, Any], plugin_evidence: dict[str, A
                 report=report,
             )
 
-    report["changed"] = bool(report["added"])
+    report["changed"] = bool(report["added"] or report["normalized"])
     return data, report
 
 
@@ -277,7 +329,7 @@ def main() -> int:
     if args.report_output:
         args.report_output.write_text(json.dumps(report, ensure_ascii=False, indent=2))
     else:
-        print(json.dumps(report, ensure_ascii=False, indent=2))
+        print(json.dumps(report, ensure_ascii=False, indent=2))  # noqa: T201
     return 0 if not report.get("errors") else 1
 
 

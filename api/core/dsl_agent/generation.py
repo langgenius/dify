@@ -30,7 +30,6 @@ from .prompts import (
     YAML_USER_TEMPLATE,
 )
 
-
 PLUGIN_NODE_TYPES = {
     "agent",
     "datasource",
@@ -76,7 +75,9 @@ def chat(
 
 def extract_yaml(text: str) -> str:
     stripped = text.strip()
-    fenced = re.search(r"```(?:yaml|yml)?\s*(.*?)```", stripped, flags=re.DOTALL | re.IGNORECASE)
+    fenced = re.match(r"^```(?:yaml|yml)?\s*\n?(.*?)\n?```\s*$", stripped, flags=re.DOTALL | re.IGNORECASE)
+    if not fenced:
+        fenced = re.search(r"```(?:yaml|yml)\s*\n(.*?)\n?```", stripped, flags=re.DOTALL | re.IGNORECASE)
     if fenced:
         stripped = fenced.group(1).strip()
     return stripped + "\n"
@@ -169,15 +170,26 @@ def plan_needs_plugin_evidence(plan: dict[str, Any]) -> bool:
     return bool(explicit_needs or (planned_node_types(plan) & PLUGIN_NODE_TYPES))
 
 
-def truncate_prompt_value(value: Any, *, string_limit: int = PROMPT_STRING_LIMIT, list_limit: int = PROMPT_LIST_LIMIT) -> Any:
+def truncate_prompt_value(
+    value: Any,
+    *,
+    string_limit: int = PROMPT_STRING_LIMIT,
+    list_limit: int = PROMPT_LIST_LIMIT,
+) -> Any:
     if isinstance(value, str):
         if len(value) <= string_limit:
             return value
         return value[:string_limit] + "\n... [truncated for prompt] ..."
     if isinstance(value, list):
-        return [truncate_prompt_value(item, string_limit=string_limit, list_limit=list_limit) for item in value[:list_limit]]
+        return [
+            truncate_prompt_value(item, string_limit=string_limit, list_limit=list_limit)
+            for item in value[:list_limit]
+        ]
     if isinstance(value, dict):
-        return {key: truncate_prompt_value(item, string_limit=string_limit, list_limit=list_limit) for key, item in value.items()}
+        return {
+            key: truncate_prompt_value(item, string_limit=string_limit, list_limit=list_limit)
+            for key, item in value.items()
+        }
     return value
 
 

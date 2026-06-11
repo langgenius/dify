@@ -26,6 +26,25 @@ DEFAULT_INPUT_VARIABLE = "input"
 DEFAULT_APP_NAME = "DSL Agent App"
 GENERATION_BACKEND_DETERMINISTIC = "deterministic_starter"
 GENERATION_BACKEND_OPENAI = "openai"
+POSTPROCESS_CODE_KEYWORDS = (
+    "csv",
+    "extract",
+    "field",
+    "format",
+    "json",
+    "normalize",
+    "parse",
+    "schema",
+    "structured",
+    "table",
+    "字段",
+    "格式化",
+    "结构化",
+    "解析",
+    "表格",
+    "提取",
+    "转换",
+)
 DSL_AGENT_STAGE_PLAN = "plan"
 DSL_AGENT_STAGE_SOURCE_EVIDENCE = "source_evidence"
 DSL_AGENT_STAGE_RESOLVE_DEPENDENCIES = "resolve_dependencies"
@@ -468,13 +487,41 @@ class DslAgentOrchestrator:
             emit(DSL_AGENT_STAGE_VALIDATE, "completed", "Generated YAML is valid.")
             emit(DSL_AGENT_STAGE_REPAIR, "skipped", "No repair was needed for this workflow.")
         else:
-            emit(DSL_AGENT_STAGE_VALIDATE, "completed", "Generated YAML needs deterministic repair.")
+            emit(DSL_AGENT_STAGE_VALIDATE, "completed", "Generated YAML needs repair.")
             emit(DSL_AGENT_STAGE_REPAIR, "running", "Repairing generated YAML.")
-            yaml_content, repair_report = self.repair_yaml(yaml_content, validation_report)
+            yaml_content, repair_report = self.repair_generated_yaml(
+                yaml_content, validation_report, plan, source_evidence
+            )
             emit(DSL_AGENT_STAGE_REPAIR, "completed", "Generated YAML repair completed.")
             emit(DSL_AGENT_STAGE_VALIDATE, "running", "Validating repaired YAML.")
-            validation_report = self.validate_yaml(yaml_content)
-            emit(DSL_AGENT_STAGE_VALIDATE, "completed", "Repaired YAML is valid.")
+            validation_report = self.validate_yaml(yaml_content, raise_on_error=False)
+            if self._validation_report_valid(validation_report):
+                emit(DSL_AGENT_STAGE_VALIDATE, "completed", "Repaired YAML is valid.")
+            elif plan.get("generation_backend") == GENERATION_BACKEND_OPENAI:
+                fallback_reason = self._validation_error_message(validation_report)
+                emit(DSL_AGENT_STAGE_REPAIR, "running", "Falling back to deterministic starter YAML.")
+                fallback_data = self.generate_dsl_mapping(plan, dependencies)
+                yaml_content = yaml.safe_dump(fallback_data, allow_unicode=True, sort_keys=False)
+                yaml_content, fallback_normalization_report = self.normalize_yaml(yaml_content, source_evidence)
+                validation_report = self.validate_yaml(yaml_content)
+                normalization_report["fallback_normalization"] = fallback_normalization_report
+                generation_report = {
+                    "backend": GENERATION_BACKEND_DETERMINISTIC,
+                    "fallback_from": GENERATION_BACKEND_OPENAI,
+                    "fallback_reason": fallback_reason,
+                    "previous_generation": generation_report,
+                }
+                repair_report = {
+                    "changed": True,
+                    "fixes": [{"type": "openai_validation_fallback", "reason": fallback_reason}],
+                    "errors": [],
+                    "backend": "deterministic_starter_fallback",
+                    "previous_repair": repair_report,
+                }
+                emit(DSL_AGENT_STAGE_REPAIR, "completed", "Deterministic starter fallback completed.")
+                emit(DSL_AGENT_STAGE_VALIDATE, "completed", "Fallback YAML is valid.")
+            else:
+                self.validate_yaml(yaml_content)
 
         return AppDslAgentGenerateResult(
             yaml_content=yaml_content,
@@ -513,6 +560,7 @@ class DslAgentOrchestrator:
         generation_backend = self._normalize_generation_backend(args.generation_backend)
         input_variable = self._normalize_variable(args.input_variable)
         plugin_id = (args.marketplace_plugin_id or self._plugin_id_from_provider(provider)).strip()
+        graph_plan = self._deterministic_graph_plan(prompt)
         plan = {
             "app_name": app_name,
             "app_description": app_description,
@@ -524,18 +572,7 @@ class DslAgentOrchestrator:
             "input_variable": input_variable,
             "plugin_id": plugin_id,
             "resolve_dependencies": args.resolve_dependencies,
-            "graph_plan": {
-                "mode": "workflow",
-                "nodes": [
-                    {"id": "start", "type": "start"},
-                    {"id": "llm", "type": "llm"},
-                    {"id": "end", "type": "end"},
-                ],
-                "edges": [
-                    {"source": "start", "target": "llm"},
-                    {"source": "llm", "target": "end"},
-                ],
-            },
+            "graph_plan": graph_plan,
         }
         if generation_backend == GENERATION_BACKEND_OPENAI:
             self._attach_openai_plan(plan)
@@ -631,12 +668,7 @@ class DslAgentOrchestrator:
                     "sensitive_word_avoidance": {"enabled": False},
                     "text_to_speech": {"enabled": False, "language": "", "voice": ""},
                 },
-                "graph": self._build_graph(
-                    plan["prompt"],
-                    plan["provider"],
-                    plan["model"],
-                    plan["input_variable"],
-                ),
+                "graph": self._build_graph(plan),
                 "rag_pipeline_variables": [],
             },
         }
@@ -803,6 +835,53 @@ class DslAgentOrchestrator:
                 "errors": [{"message": str(exc)}],
                 "backend": "fallback",
             }
+
+    def repair_generated_yaml(
+        self,
+        yaml_content: str,
+        validation_report: dict,
+        plan: dict,
+        source_evidence: dict,
+    ) -> tuple[str, dict]:
+        if plan.get("generation_backend") == GENERATION_BACKEND_OPENAI and os.environ.get("OPENAI_API_KEY"):
+            try:
+                llm_plan = (
+                    plan.get("llm_plan") if isinstance(plan.get("llm_plan"), dict) else self._fallback_llm_plan(plan)
+                )
+                plugin_evidence = (
+                    source_evidence.get("plugin_evidence")
+                    if isinstance(source_evidence.get("plugin_evidence"), dict)
+                    else {}
+                )
+                prompt_plugin_evidence = dsl_generation.compact_plugin_evidence_for_prompt(plugin_evidence, llm_plan)
+                source_context = (
+                    source_evidence.get("_source_context_full")
+                    if isinstance(source_evidence.get("_source_context_full"), dict)
+                    else {}
+                )
+                repaired = dsl_generation.repair_yaml(
+                    client=self._openai_client(),
+                    model=plan["generation_model"],
+                    request=self._generation_request(plan),
+                    plan=llm_plan,
+                    plugin_evidence=prompt_plugin_evidence,
+                    source_context=source_context,
+                    yaml_text=yaml_content,
+                    validation=validation_report,
+                )
+                return repaired, {
+                    "changed": repaired != yaml_content,
+                    "fixes": [{"type": "llm_validation_repair"}],
+                    "errors": [],
+                    "backend": "core.dsl_agent.generation.repair_yaml",
+                    "model": plan["generation_model"],
+                }
+            except Exception as exc:
+                repaired, report = self.repair_yaml(yaml_content, validation_report)
+                report["llm_repair_error"] = self._safe_generation_error_message(exc)
+                return repaired, report
+
+        return self.repair_yaml(yaml_content, validation_report)
 
     def _normalize_generation_backend(self, generation_backend: str | None) -> str:
         return normalize_generation_backend(generation_backend)
@@ -1004,98 +1083,190 @@ class DslAgentOrchestrator:
 
         return emit
 
-    def _build_graph(self, prompt: str, provider: str, model: str, input_variable: str) -> dict:
+    def _deterministic_graph_plan(self, prompt: str) -> dict:
+        nodes = [
+            {"id": "start", "type": "start"},
+            {"id": "llm", "type": "llm"},
+        ]
+        edges = [{"source": "start", "target": "llm"}]
+        data_flow_notes = ["The start input is sent to the LLM node."]
+        if self._needs_postprocess_code_node(prompt):
+            nodes.append({"id": "postprocess", "type": "code"})
+            edges.append({"source": "llm", "target": "postprocess"})
+            data_flow_notes.append("A code node normalizes structured output before the end node.")
+        nodes.append({"id": "end", "type": "end"})
+        edges.append({"source": nodes[-2]["id"], "target": "end"})
+        return {
+            "mode": "workflow",
+            "nodes": nodes,
+            "edges": edges,
+            "data_flow_notes": data_flow_notes,
+        }
+
+    def _needs_postprocess_code_node(self, prompt: str) -> bool:
+        lowered = prompt.lower()
+        return any(keyword in lowered for keyword in POSTPROCESS_CODE_KEYWORDS)
+
+    def _build_graph(self, plan: dict) -> dict:
+        prompt = str(plan["prompt"])
+        provider = str(plan["provider"])
+        model = str(plan["model"])
+        input_variable = str(plan["input_variable"])
+        postprocess_with_code = self._plan_has_node_type(plan, "code")
         system_prompt = (
             "You are a Dify workflow app generated from this requirement.\n"
             f"Requirement:\n{prompt}\n\n"
             "Use the user input to complete the requirement. Return only the final answer."
         )
+        if postprocess_with_code:
+            system_prompt += "\nIf the task asks for structured output, return valid JSON without markdown fences."
+        edges = [
+            self._graph_edge("start", "llm", "start", "llm"),
+        ]
+        if postprocess_with_code:
+            edges.extend(
+                [
+                    self._graph_edge("llm", "postprocess", "llm", "code"),
+                    self._graph_edge("postprocess", "end", "code", "end"),
+                ]
+            )
+        else:
+            edges.append(self._graph_edge("llm", "end", "llm", "end"))
+
+        nodes = [
+            self._start_node(input_variable),
+            self._llm_node(prompt=system_prompt, provider=provider, model=model, input_variable=input_variable),
+        ]
+        if postprocess_with_code:
+            nodes.append(self._postprocess_code_node())
+        nodes.append(self._end_node(source_node_id="postprocess" if postprocess_with_code else "llm"))
         return {
-            "edges": [
-                {
-                    "data": {"isInLoop": False, "sourceType": "start", "targetType": "llm"},
-                    "id": "start-source-llm-target",
-                    "source": "start",
-                    "sourceHandle": "source",
-                    "target": "llm",
-                    "targetHandle": "target",
-                    "type": "custom",
-                },
-                {
-                    "data": {"isInLoop": False, "sourceType": "llm", "targetType": "end"},
-                    "id": "llm-source-end-target",
-                    "source": "llm",
-                    "sourceHandle": "source",
-                    "target": "end",
-                    "targetHandle": "target",
-                    "type": "custom",
-                },
-            ],
-            "nodes": [
-                {
-                    "data": {
-                        "title": "Start",
-                        "type": "start",
-                        "variables": [
-                            {
-                                "label": "Input",
-                                "max_length": 8000,
-                                "required": True,
-                                "type": "paragraph",
-                                "variable": input_variable,
-                            }
-                        ],
-                    },
-                    "id": "start",
-                    "position": {"x": 80, "y": 120},
-                    "sourcePosition": "right",
-                    "targetPosition": "left",
-                    "type": "start",
-                },
-                {
-                    "data": {
-                        "context": {"enabled": False, "variable_selector": []},
-                        "model": {
-                            "completion_params": {"temperature": 0.2},
-                            "mode": "chat",
-                            "name": model,
-                            "provider": provider,
-                        },
-                        "prompt_template": [
-                            {"role": "system", "text": system_prompt},
-                            {"role": "user", "text": f"{{{{#start.{input_variable}#}}}}"},
-                        ],
-                        "title": "Reason With Model",
-                        "type": "llm",
-                        "variables": [],
-                        "vision": {"enabled": False},
-                    },
-                    "id": "llm",
-                    "position": {"x": 420, "y": 120},
-                    "sourcePosition": "right",
-                    "targetPosition": "left",
-                    "type": "llm",
-                },
-                {
-                    "data": {
-                        "outputs": [
-                            {
-                                "value_selector": ["llm", "text"],
-                                "value_type": "string",
-                                "variable": "answer",
-                            }
-                        ],
-                        "title": "End",
-                        "type": "end",
-                    },
-                    "id": "end",
-                    "position": {"x": 760, "y": 120},
-                    "sourcePosition": "right",
-                    "targetPosition": "left",
-                    "type": "end",
-                },
-            ],
+            "edges": edges,
+            "nodes": nodes,
             "viewport": {"x": 0, "y": 0, "zoom": 1},
+        }
+
+    def _plan_has_node_type(self, plan: dict, node_type: str) -> bool:
+        graph_plan = plan.get("graph_plan") if isinstance(plan.get("graph_plan"), dict) else {}
+        nodes = graph_plan.get("nodes") if isinstance(graph_plan.get("nodes"), list) else []
+        return any(isinstance(node, dict) and node.get("type") == node_type for node in nodes)
+
+    def _graph_edge(self, source: str, target: str, source_type: str, target_type: str) -> dict:
+        return {
+            "data": {"isInLoop": False, "sourceType": source_type, "targetType": target_type},
+            "id": f"{source}-source-{target}-target",
+            "source": source,
+            "sourceHandle": "source",
+            "target": target,
+            "targetHandle": "target",
+            "type": "custom",
+        }
+
+    def _start_node(self, input_variable: str) -> dict:
+        return {
+            "data": {
+                "title": "Start",
+                "type": "start",
+                "variables": [
+                    {
+                        "label": "Input",
+                        "max_length": 8000,
+                        "required": True,
+                        "type": "paragraph",
+                        "variable": input_variable,
+                    }
+                ],
+            },
+            "id": "start",
+            "position": {"x": 80, "y": 120},
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "type": "start",
+        }
+
+    def _llm_node(self, *, prompt: str, provider: str, model: str, input_variable: str) -> dict:
+        return {
+            "data": {
+                "context": {"enabled": False, "variable_selector": []},
+                "model": {
+                    "completion_params": {"temperature": 0.2},
+                    "mode": "chat",
+                    "name": model,
+                    "provider": provider,
+                },
+                "prompt_template": [
+                    {"role": "system", "text": prompt},
+                    {"role": "user", "text": f"{{{{#start.{input_variable}#}}}}"},
+                ],
+                "title": "Reason With Model",
+                "type": "llm",
+                "variables": [],
+                "vision": {"enabled": False},
+            },
+            "id": "llm",
+            "position": {"x": 420, "y": 120},
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "type": "llm",
+        }
+
+    def _postprocess_code_node(self) -> dict:
+        return {
+            "data": {
+                "code": (
+                    "import json\n\n"
+                    "def main(text: str) -> dict:\n"
+                    "    value = text.strip() if isinstance(text, str) else str(text)\n"
+                    "    try:\n"
+                    "        parsed = json.loads(value)\n"
+                    "        value = json.dumps(parsed, ensure_ascii=False, indent=2)\n"
+                    "    except Exception:\n"
+                    "        pass\n"
+                    "    return {\"result\": value}\n"
+                ),
+                "code_language": "python3",
+                "desc": "",
+                "outputs": {
+                    "result": {
+                        "children": None,
+                        "type": "string",
+                    }
+                },
+                "title": "Postprocess",
+                "type": "code",
+                "variables": [
+                    {
+                        "value_selector": ["llm", "text"],
+                        "variable": "text",
+                    }
+                ],
+            },
+            "id": "postprocess",
+            "position": {"x": 760, "y": 120},
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "type": "code",
+        }
+
+    def _end_node(self, *, source_node_id: str) -> dict:
+        output_selector = [source_node_id, "result"] if source_node_id == "postprocess" else [source_node_id, "text"]
+        return {
+            "data": {
+                "outputs": [
+                    {
+                        "value_selector": output_selector,
+                        "value_type": "string",
+                        "variable": "answer",
+                    }
+                ],
+                "title": "End",
+                "type": "end",
+            },
+            "id": "end",
+            "position": {"x": 1100 if source_node_id == "postprocess" else 760, "y": 120},
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "type": "end",
         }
 
     def _resolve_marketplace_dependency(

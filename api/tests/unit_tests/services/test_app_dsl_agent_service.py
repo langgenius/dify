@@ -379,6 +379,24 @@ workflow:
     }
 
 
+def test_openai_yaml_extractor_preserves_code_fence_regex():
+    yaml_text = """version: "0.6.0"
+kind: app
+workflow:
+  graph:
+    nodes:
+    - data:
+        code: |
+          cleaned = re.sub(r"```(?:json)?\\s*", "", text)
+        type: code
+"""
+
+    extracted = app_dsl_agent_service.dsl_generation.extract_yaml(yaml_text)
+
+    assert extracted == yaml_text
+    assert 're.sub(r"```(?:json)?\\s*"' in extracted
+
+
 def test_format_stream_result_extracts_workflow_runtime_errors():
     raw = "\n".join(
         [

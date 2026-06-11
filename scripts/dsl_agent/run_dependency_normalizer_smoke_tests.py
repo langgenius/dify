@@ -6,11 +6,9 @@ from copy import deepcopy
 from typing import Any
 
 import yaml
-
 from dependency_normalizer import normalize_yaml_text
 from run_validator_smoke_tests import GMAIL_UID, OPENAI_UID, base_workflow_doc, llm_workflow_doc
 from validator import validate_yaml_text
-
 
 OPENAI_PACKAGE_IDENTITY = "langgenius/openai:0.4.2"
 
@@ -90,13 +88,39 @@ def assert_skips_without_evidence() -> dict[str, Any]:
     }
 
 
+def assert_repairs_invalid_dependency_type() -> dict[str, Any]:
+    doc = deepcopy(llm_workflow_doc())
+    doc["dependencies"] = [
+        {
+            "current_identifier": None,
+            "type": "model",
+            "value": {
+                "marketplace_plugin_unique_identifier": OPENAI_UID,
+            },
+        }
+    ]
+    normalized, normalizer_report = normalize_yaml_text(yaml.safe_dump(doc, sort_keys=False), plugin_evidence())
+    validation = validate_yaml_text(normalized).to_dict()
+    if not validation["valid"]:
+        raise AssertionError(f"repaired dependency type should validate; issues={validation['issues']}")
+    if not normalizer_report["normalized"]:
+        raise AssertionError(f"expected dependency normalization report; report={normalizer_report}")
+    return {
+        "name": "invalid_dependency_type_repaired",
+        "valid": validation["valid"],
+        "issues": validation["issues"],
+        "normalizer_report": normalizer_report,
+    }
+
+
 def main() -> int:
     cases = [
         assert_normalizes("tool_dependency", base_workflow_doc(), {"langgenius/dify-gmail"}),
         assert_normalizes("model_provider_dependency", llm_workflow_doc(), {"langgenius/openai"}),
+        assert_repairs_invalid_dependency_type(),
         assert_skips_without_evidence(),
     ]
-    print(json.dumps({"valid": True, "cases": cases}, ensure_ascii=False, indent=2))
+    print(json.dumps({"valid": True, "cases": cases}, ensure_ascii=False, indent=2))  # noqa: T201
     return 0
 
 
