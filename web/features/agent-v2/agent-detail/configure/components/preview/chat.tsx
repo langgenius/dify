@@ -26,7 +26,7 @@ import {
   stopChatMessageResponding,
 } from '@/service/debug'
 import { AgentStrategy, ModelModeType, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
-import { useAgentConfigureCurrentModel, useAgentConfigurePrompt } from '../atoms'
+import { useAgentConfigureCurrentModel, useAgentConfigurePrompt } from '../../atoms'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 

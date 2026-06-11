@@ -1,15 +1,15 @@
 'use client'
 
-import type { AgentSkillFileNode } from './agent-skill-detail-dialog'
-import type { AgentSkillWithDetail } from './agent-skill-item'
+import type { AgentSkillFileNode } from './detail-dialog'
+import type { AgentSkillWithDetail } from './item'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAgentConfigureFiles, useAgentConfigureSkills, useRemoveAgentConfigureSkill } from '../../atoms'
-import { ConfigureSection } from '../configure-section'
-import { ConfigureSectionAddButton } from '../configure-section-add-button'
+import { useAgentConfigureFiles, useAgentConfigureSkills, useRemoveAgentConfigureSkill } from '../../../atoms'
+import { ConfigureSectionAddButton } from '../add-button'
+import { ConfigureSection } from '../section'
 import { getFirstAgentFileId } from '../utils'
-import { AgentSkillItem } from './agent-skill-item'
-import { AgentSkillUploadDialog } from './agent-skill-upload-dialog'
+import { AgentSkillItem } from './item'
+import { AgentSkillUploadDialog } from './upload-dialog'
 
 const createSkillDetail = (skillName: string, files: AgentSkillFileNode[]) => ({
   description: 'Dify brand executor rules, voice, typography, layout patterns, and visual design system. Use when generating any Dify brand material including web pages, social graphics, presentations, one-pagers, and pitch decks.',

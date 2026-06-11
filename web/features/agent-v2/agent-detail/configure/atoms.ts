@@ -1,9 +1,8 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
-import type { EnvVariable } from './components/advanced-settings/env-editor'
-import type { AgentFileNode } from './components/agent-files'
-import type { AgentSkill } from './components/agent-skills/agent-skill-item'
-import type { AgentTool } from './components/agent-tools'
-import type { AgentKnowledgeRetrievalItem } from './components/configured-data'
+import type { EnvVariable } from './components/orchestrate/advanced/env'
+import type { AgentFileNode, AgentKnowledgeRetrievalItem } from './components/orchestrate/data'
+import type { AgentSkill } from './components/orchestrate/skills/item'
+import type { AgentTool } from './components/orchestrate/tools'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -12,7 +11,7 @@ import {
   defaultAgentKnowledgeRetrievals,
   defaultAgentSkills,
   defaultAgentTools,
-} from './components/configured-data'
+} from './components/orchestrate/data'
 
 type AgentConfigureDraft = {
   prompt: string

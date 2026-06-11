@@ -8,10 +8,10 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/client'
 import { useAgentConfigureCurrentModel, useAgentConfigureModel, useHydrateAgentConfigureDraft } from './atoms'
-import { AgentOrchestratePanel } from './components/agent-orchestrate-panel'
-import { AgentPreviewChat } from './components/agent-preview-chat'
-import { AgentPreviewHeader } from './components/agent-preview-header'
-import { AgentPreviewVersionsPanel } from './components/agent-preview-versions-panel'
+import { AgentOrchestratePanel } from './components/orchestrate'
+import { AgentPreviewChat } from './components/preview/chat'
+import { AgentPreviewHeader } from './components/preview/header'
+import { AgentPreviewVersionsPanel } from './components/preview/versions-panel'
 
 type AgentConfigurePageProps = {
   agentId: string

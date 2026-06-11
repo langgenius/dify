@@ -1,6 +1,6 @@
 'use client'
 
-import type { InsertOption } from './prompt-options'
+import type { InsertOption } from './options'
 import {
   DropdownMenu,
   DropdownMenuContent,

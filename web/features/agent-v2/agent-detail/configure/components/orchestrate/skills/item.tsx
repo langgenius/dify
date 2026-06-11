@@ -1,9 +1,9 @@
 'use client'
 
-import type { AgentSkillDetail } from './agent-skill-detail-dialog'
+import type { AgentSkillDetail } from './detail-dialog'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
-import { AgentSkillDetailDialog } from './agent-skill-detail-dialog'
+import { AgentSkillDetailDialog } from './detail-dialog'
 
 export type AgentSkill = {
   id: string

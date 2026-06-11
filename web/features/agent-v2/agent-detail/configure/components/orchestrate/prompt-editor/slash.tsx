@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { AgentSkill } from '../agent-skills/agent-skill-item'
-import type { AgentFileNode, AgentKnowledgeRetrievalItem, AgentTool } from '../configured-data'
+import type { AgentFileNode, AgentKnowledgeRetrievalItem, AgentTool } from '../data'
+import type { AgentSkill } from '../skills/item'
 import { useTranslation } from 'react-i18next'
 
 export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'

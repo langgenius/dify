@@ -1,8 +1,8 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import { ConfigureSection } from '../configure-section'
-import { AgentEnvEditor } from './env-editor'
+import { ConfigureSection } from '../section'
+import { AgentEnvEditor } from './env'
 
 export function AgentAdvancedSettings() {
   const { t } = useTranslation('agentV2')

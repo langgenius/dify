@@ -4,9 +4,9 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
-import { useAgentConfigureEnvVariables } from '../../atoms'
-import { ConfigureSection } from '../configure-section'
-import { ConfigureSectionAddButton } from '../configure-section-add-button'
+import { useAgentConfigureEnvVariables } from '../../../atoms'
+import { ConfigureSectionAddButton } from '../add-button'
+import { ConfigureSection } from '../section'
 
 export type EnvScope = 'secret' | 'plain'
 

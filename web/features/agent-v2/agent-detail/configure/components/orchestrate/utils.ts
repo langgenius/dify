@@ -1,4 +1,4 @@
-import type { AgentFileNode } from './configured-data'
+import type { AgentFileNode } from './data'
 
 export function countAgentFileNodes(files: AgentFileNode[]): number {
   return files.reduce((count, file) => count + 1 + (file.children ? countAgentFileNodes(file.children) : 0), 0)

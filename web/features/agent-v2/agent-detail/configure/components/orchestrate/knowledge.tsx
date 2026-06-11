@@ -1,10 +1,10 @@
 'use client'
 
-import type { AgentKnowledgeRetrievalItem } from './configured-data'
+import type { AgentKnowledgeRetrievalItem } from './data'
 import { useTranslation } from 'react-i18next'
-import { useAgentConfigureKnowledgeRetrievals } from '../atoms'
-import { ConfigureSection } from './configure-section'
-import { ConfigureSectionAddButton } from './configure-section-add-button'
+import { useAgentConfigureKnowledgeRetrievals } from '../../atoms'
+import { ConfigureSectionAddButton } from './add-button'
+import { ConfigureSection } from './section'
 
 function KnowledgeRetrievalIcon() {
   return (

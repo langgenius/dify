@@ -3,7 +3,7 @@ import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { agentConfigurePromptAtom } from '../../atoms'
-import { AgentPromptEditor } from '../agent-prompt-editor'
+import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 

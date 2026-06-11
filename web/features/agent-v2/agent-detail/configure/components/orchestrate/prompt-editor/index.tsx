@@ -1,7 +1,7 @@
 'use client'
 
 import type { KeyboardEvent, MouseEvent } from 'react'
-import type { SlashMenuCategory, SlashMenuView } from './slash-menu'
+import type { SlashMenuCategory, SlashMenuView } from './slash'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -12,10 +12,10 @@ import {
   useAgentConfigurePrompt,
   useAgentConfigureSkills,
   useAgentConfigureTools,
-} from '../../atoms'
-import { AgentPromptOptionMenu } from './prompt-option-menu'
-import { appendToken, insertOptions, mentionOptions, replaceTrailingSlashWithToken } from './prompt-options'
-import { AgentPromptSlashMenu } from './slash-menu'
+} from '../../../atoms'
+import { AgentPromptOptionMenu } from './option-menu'
+import { appendToken, insertOptions, mentionOptions, replaceTrailingSlashWithToken } from './options'
+import { AgentPromptSlashMenu } from './slash'
 
 const subscribeHydrationState = () => () => {}
 

@@ -4,7 +4,7 @@ import type { AgentConfigSnapshotDetailResponse } from '@dify/contracts/api/cons
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { isAgentConfigureDirtyAtom, useAgentConfigurePublishPayload } from '../atoms'
+import { isAgentConfigureDirtyAtom, useAgentConfigurePublishPayload } from '../../atoms'
 
 type AgentConfigurePublishBarProps = {
   agentId: string
