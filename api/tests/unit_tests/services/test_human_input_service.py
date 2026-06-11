@@ -81,7 +81,7 @@ def sample_form_record():
     )
 
 
-def test_enqueue_resume_dispatches_task_for_workflow(mocker, mock_session_factory):
+def test_enqueue_resume_dispatches_task_for_workflow(mocker: MockerFixture, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -108,7 +108,9 @@ def test_enqueue_resume_dispatches_task_for_workflow(mocker, mock_session_factor
     assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
 
 
-def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_record, mock_session_factory):
+def test_ensure_form_active_respects_global_timeout(
+    monkeypatch: pytest.MonkeyPatch, sample_form_record: HumanInputFormRecord, mock_session_factory
+):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
     expired_record = dataclasses.replace(
@@ -122,7 +124,7 @@ def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_rec
         service.ensure_form_active(Form(expired_record))
 
 
-def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker, mock_session_factory):
+def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker: MockerFixture, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -149,7 +151,7 @@ def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker, mock_session_f
     assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
 
 
-def test_enqueue_resume_skips_unsupported_app_mode(mocker, mock_session_factory):
+def test_enqueue_resume_skips_unsupported_app_mode(mocker: MockerFixture, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -174,7 +176,9 @@ def test_enqueue_resume_skips_unsupported_app_mode(mocker, mock_session_factory)
     resume_task.apply_async.assert_not_called()
 
 
-def test_get_form_definition_by_token_for_console_uses_repository(sample_form_record, mock_session_factory):
+def test_get_form_definition_by_token_for_console_uses_repository(
+    sample_form_record: HumanInputFormRecord, mock_session_factory
+):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     console_record = dataclasses.replace(sample_form_record, recipient_type=RecipientType.CONSOLE)
@@ -215,7 +219,9 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
     return context.dumps().encode()
 
 
-def test_resolve_form_inputs_uses_runtime_select_options(sample_form_record, mock_session_factory, mocker):
+def test_resolve_form_inputs_uses_runtime_select_options(
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
+):
     session_factory, _ = mock_session_factory
     configured_input = SelectInputConfig(
         output_variable_name="decision",
@@ -253,7 +259,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(sample_form_record, moc
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -282,7 +288,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(
 
 
 def test_submit_form_by_token_skips_enqueue_for_delivery_test(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -307,7 +313,7 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(
 
 
 def test_submit_form_by_token_passes_submission_user_id(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -330,7 +336,7 @@ def test_submit_form_by_token_passes_submission_user_id(
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
-def test_submit_form_by_token_invalid_action(sample_form_record, mock_session_factory):
+def test_submit_form_by_token_invalid_action(sample_form_record: HumanInputFormRecord, mock_session_factory):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = dataclasses.replace(sample_form_record)
@@ -348,7 +354,7 @@ def test_submit_form_by_token_invalid_action(sample_form_record, mock_session_fa
     repo.mark_submitted.assert_not_called()
 
 
-def test_submit_form_by_token_missing_inputs(sample_form_record, mock_session_factory):
+def test_submit_form_by_token_missing_inputs(sample_form_record: HumanInputFormRecord, mock_session_factory):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
 
@@ -492,7 +498,7 @@ def test_validate_human_input_submission_rejects_invalid_select_and_file_payload
     repo.mark_submitted.assert_not_called()
 
 
-def test_form_properties(sample_form_record):
+def test_form_properties(sample_form_record: HumanInputFormRecord):
     form = Form(sample_form_record)
     assert form.id == "form-id"
     assert form.workflow_run_id == "workflow-run-id"
@@ -529,7 +535,7 @@ def test_get_form_by_token_none(mock_session_factory):
     assert service.get_form_by_token("invalid") is None
 
 
-def test_get_form_definition_by_token_mismatch(sample_form_record, mock_session_factory):
+def test_get_form_definition_by_token_mismatch(sample_form_record: HumanInputFormRecord, mock_session_factory):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
@@ -539,7 +545,7 @@ def test_get_form_definition_by_token_mismatch(sample_form_record, mock_session_
     assert service.get_form_definition_by_token(RecipientType.CONSOLE, "token") is None
 
 
-def test_get_form_definition_by_token_success(sample_form_record, mock_session_factory):
+def test_get_form_definition_by_token_success(sample_form_record: HumanInputFormRecord, mock_session_factory):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
@@ -550,7 +556,9 @@ def test_get_form_definition_by_token_success(sample_form_record, mock_session_f
     assert form.id == sample_form_record.form_id
 
 
-def test_get_form_definition_by_token_for_console_mismatch(sample_form_record, mock_session_factory):
+def test_get_form_definition_by_token_for_console_mismatch(
+    sample_form_record: HumanInputFormRecord, mock_session_factory
+):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record  # is STANDALONE_WEB_APP
@@ -569,7 +577,9 @@ def test_submit_form_by_token_delivery_not_enabled(mock_session_factory):
         service.submit_form_by_token(RecipientType.STANDALONE_WEB_APP, "token", "action", {})
 
 
-def test_submit_form_by_token_no_workflow_run_id(sample_form_record, mock_session_factory, mocker: MockerFixture):
+def test_submit_form_by_token_no_workflow_run_id(
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
+):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
@@ -585,7 +595,7 @@ def test_submit_form_by_token_no_workflow_run_id(sample_form_record, mock_sessio
     enqueue_spy.assert_not_called()
 
 
-def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
+def test_ensure_form_active_errors(sample_form_record: HumanInputFormRecord, mock_session_factory):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -607,7 +617,7 @@ def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
         service.ensure_form_active(Form(expired_time_record))
 
 
-def test_ensure_not_submitted_raises(sample_form_record, mock_session_factory):
+def test_ensure_not_submitted_raises(sample_form_record: HumanInputFormRecord, mock_session_factory):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
     submitted_record = dataclasses.replace(sample_form_record, submitted_at=naive_utc_now())
@@ -616,7 +626,7 @@ def test_ensure_not_submitted_raises(sample_form_record, mock_session_factory):
         service._ensure_not_submitted(Form(submitted_record))
 
 
-def test_enqueue_resume_workflow_not_found(mocker, mock_session_factory):
+def test_enqueue_resume_workflow_not_found(mocker: MockerFixture, mock_session_factory):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -632,7 +642,7 @@ def test_enqueue_resume_workflow_not_found(mocker, mock_session_factory):
     assert "WorkflowRun not found" in str(excinfo.value)
 
 
-def test_enqueue_resume_app_not_found(mocker, mock_session_factory):
+def test_enqueue_resume_app_not_found(mocker: MockerFixture, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -653,7 +663,9 @@ def test_enqueue_resume_app_not_found(mocker, mock_session_factory):
     logger_spy.error.assert_called_once()
 
 
-def test_is_globally_expired_zero_timeout(monkeypatch, sample_form_record, mock_session_factory):
+def test_is_globally_expired_zero_timeout(
+    monkeypatch: pytest.MonkeyPatch, sample_form_record: HumanInputFormRecord, mock_session_factory
+):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -661,7 +673,9 @@ def test_is_globally_expired_zero_timeout(monkeypatch, sample_form_record, mock_
     assert service._is_globally_expired(Form(sample_form_record)) is False
 
 
-def test_submit_form_by_token_normalizes_select_and_files(sample_form_record, mock_session_factory, mocker) -> None:
+def test_submit_form_by_token_normalizes_select_and_files(
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
+) -> None:
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
@@ -742,7 +756,9 @@ def test_submit_form_by_token_normalizes_select_and_files(sample_form_record, mo
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
-def test_submit_form_by_token_invalid_select_value(sample_form_record, mock_session_factory) -> None:
+def test_submit_form_by_token_invalid_select_value(
+    sample_form_record: HumanInputFormRecord, mock_session_factory
+) -> None:
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
@@ -769,7 +785,9 @@ def test_submit_form_by_token_invalid_select_value(sample_form_record, mock_sess
         )
 
 
-def test_submit_form_by_token_invalid_file_list_item(sample_form_record, mock_session_factory) -> None:
+def test_submit_form_by_token_invalid_file_list_item(
+    sample_form_record: HumanInputFormRecord, mock_session_factory
+) -> None:
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
@@ -794,7 +812,9 @@ def test_submit_form_by_token_invalid_file_list_item(sample_form_record, mock_se
         )
 
 
-def test_submit_form_by_token_rejects_cross_tenant_file(sample_form_record, mock_session_factory, mocker) -> None:
+def test_submit_form_by_token_rejects_cross_tenant_file(
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
+) -> None:
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
@@ -825,7 +845,9 @@ def test_submit_form_by_token_rejects_cross_tenant_file(sample_form_record, mock
     repo.mark_submitted.assert_not_called()
 
 
-def test_submit_form_by_token_rejects_cross_tenant_file_list(sample_form_record, mock_session_factory, mocker) -> None:
+def test_submit_form_by_token_rejects_cross_tenant_file_list(
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
+) -> None:
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(

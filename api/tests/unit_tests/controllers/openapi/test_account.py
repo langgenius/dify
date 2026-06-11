@@ -167,14 +167,14 @@ def _session_auth_data() -> AuthData:
     )
 
 
-def _stub_session_deps(monkeypatch, rows):
+def _stub_session_deps(monkeypatch: pytest.MonkeyPatch, rows):
     mod = sys.modules[_ACCOUNT_MOD]
     monkeypatch.setattr(mod, "get_auth_ctx", lambda: SimpleNamespace())
     monkeypatch.setattr(mod, "list_active_sessions", lambda *args, **kwargs: rows)
     monkeypatch.setattr(mod, "db", MagicMock())
 
 
-def test_sessions_list_valid_query_parses_page_and_limit(app, monkeypatch):
+def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch):
     """A valid ?page&limit round-trips through SessionListQuery into the response envelope."""
     api = AccountSessionsApi()
     _stub_session_deps(monkeypatch, [])
@@ -187,7 +187,7 @@ def test_sessions_list_valid_query_parses_page_and_limit(app, monkeypatch):
     assert body["data"] == []
 
 
-def test_sessions_list_defaults_when_query_omitted(app, monkeypatch):
+def test_sessions_list_defaults_when_query_omitted(app: Flask, monkeypatch: pytest.MonkeyPatch):
     """No query → the model's defaults (page=1, limit=100) drive the envelope."""
     api = AccountSessionsApi()
     _stub_session_deps(monkeypatch, [])

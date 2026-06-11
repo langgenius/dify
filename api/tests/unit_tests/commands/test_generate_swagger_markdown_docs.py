@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _load_generate_swagger_markdown_docs_module():
     api_dir = Path(__file__).resolve().parents[3]
@@ -20,7 +22,9 @@ def _load_generate_swagger_markdown_docs_module():
     return module
 
 
-def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_console(tmp_path, monkeypatch):
+def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_console(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     module = _load_generate_swagger_markdown_docs_module()
     swagger_dir = tmp_path / "openapi"
     markdown_dir = tmp_path / "markdown"
@@ -69,7 +73,9 @@ def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_con
     assert "FastOpenAPI Preview" not in (markdown_dir / "service-swagger.md").read_text(encoding="utf-8")
 
 
-def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagger_dir(tmp_path, monkeypatch):
+def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagger_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     module = _load_generate_swagger_markdown_docs_module()
     swagger_dir = tmp_path / "swagger"
     markdown_dir = tmp_path / "markdown"
@@ -105,7 +111,7 @@ def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagg
     assert not list(swagger_dir.glob("*.json"))
 
 
-def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path):
+def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-swagger.json"
     spec_path.write_text(
@@ -188,7 +194,7 @@ def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path
     assert "| allowed_file_types | [ [FileType](#filetype) ] |  | No |" in patched
 
 
-def test_patch_union_schema_markdown_fills_regular_definition_union_property(tmp_path):
+def test_patch_union_schema_markdown_fills_regular_definition_union_property(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "service-swagger.json"
     spec_path.write_text(
@@ -227,7 +233,7 @@ def test_patch_union_schema_markdown_fills_regular_definition_union_property(tmp
     assert "| value | string<br>integer<br>number<br>boolean |  | No |" in patched
 
 
-def test_patch_union_schema_markdown_ignores_specs_without_definitions(tmp_path):
+def test_patch_union_schema_markdown_ignores_specs_without_definitions(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-swagger.json"
     spec_path.write_text("{}", encoding="utf-8")
@@ -235,7 +241,7 @@ def test_patch_union_schema_markdown_ignores_specs_without_definitions(tmp_path)
     assert module._patch_union_schema_markdown("unchanged", spec_path) == "unchanged"
 
 
-def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
+def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-swagger.json"
     spec_path.write_text(
@@ -278,7 +284,7 @@ def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
     assert module._patch_union_schema_markdown("#### BrokenUnion\n", spec_path) == "#### BrokenUnion\n"
 
 
-def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monkeypatch):
+def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-swagger.json"
     output_path = tmp_path / "console-swagger.md"

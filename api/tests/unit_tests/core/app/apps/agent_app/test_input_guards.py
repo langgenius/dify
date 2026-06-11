@@ -11,6 +11,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
 from core.app.apps.agent_app.app_generator import AgentAppGenerator
@@ -42,7 +44,7 @@ def _make_entity(query: str = "hello") -> SimpleNamespace:
     )
 
 
-def _patch_moderation(monkeypatch, *, returns=None, raises: Exception | None = None) -> None:
+def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: Exception | None = None) -> None:
     class _FakeModeration:
         def check(self, **kwargs: Any):
             if raises is not None:
@@ -52,7 +54,7 @@ def _patch_moderation(monkeypatch, *, returns=None, raises: Exception | None = N
     monkeypatch.setattr(input_moderation_mod, "InputModeration", _FakeModeration)
 
 
-def _patch_annotation(monkeypatch, *, reply=None) -> None:
+def _patch_annotation(monkeypatch: pytest.MonkeyPatch, *, reply=None) -> None:
     class _FakeAnnotation:
         def query(self, **kwargs: Any):
             return reply
@@ -66,7 +68,7 @@ def _answer_text(events: list[Any]) -> str:
 
 
 class TestRunInputGuards:
-    def test_no_guards_passes_through(self, monkeypatch):
+    def test_no_guards_passes_through(self, monkeypatch: pytest.MonkeyPatch):
         _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
@@ -82,7 +84,7 @@ class TestRunInputGuards:
         assert query == "hello"
         assert qm.events == []
 
-    def test_moderation_override_sanitizes_query(self, monkeypatch):
+    def test_moderation_override_sanitizes_query(self, monkeypatch: pytest.MonkeyPatch):
         _patch_moderation(monkeypatch, returns=(True, {}, "[redacted]"))
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
@@ -98,7 +100,7 @@ class TestRunInputGuards:
         assert query == "[redacted]"
         assert qm.events == []
 
-    def test_moderation_block_short_circuits(self, monkeypatch):
+    def test_moderation_block_short_circuits(self, monkeypatch: pytest.MonkeyPatch):
         _patch_moderation(monkeypatch, raises=ModerationError("blocked preset answer"))
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
@@ -114,7 +116,7 @@ class TestRunInputGuards:
         assert any(isinstance(e, QueueLLMChunkEvent) for e in qm.events)
         assert _answer_text(qm.events) == "blocked preset answer"
 
-    def test_annotation_hit_short_circuits(self, monkeypatch):
+    def test_annotation_hit_short_circuits(self, monkeypatch: pytest.MonkeyPatch):
         _patch_moderation(monkeypatch, returns=(False, {}, "what is your name"))
         _patch_annotation(monkeypatch, reply=SimpleNamespace(id="anno-1", content="I am the annotated Iris."))
         qm = _FakeQueueManager()

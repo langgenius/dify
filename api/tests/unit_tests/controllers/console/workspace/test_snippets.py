@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.console.workspace import snippets as snippets_module
@@ -469,7 +470,7 @@ def test_increment_use_count_raises_when_snippet_missing(app, monkeypatch):
             handler(api, "tenant-1", snippet_id="snippet-1")
 
 
-def test_increment_use_count_returns_refreshed_count(app, monkeypatch):
+def test_increment_use_count_returns_refreshed_count(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", use_count=2)
     merged_snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", use_count=3)
     session = SimpleNamespace(merge=Mock(return_value=merged_snippet), commit=Mock(), refresh=Mock())

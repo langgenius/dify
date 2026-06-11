@@ -266,7 +266,7 @@ def test_update_role_rejects_invalid_body_with_422(app, bypass_pipeline):
 # ---------------------------------------------------------------------------
 
 
-def test_switch_returns_workspace_detail_with_current_true(app, bypass_pipeline, monkeypatch):
+def test_switch_returns_workspace_detail_with_current_true(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """Happy path: switch service is called, then the workspace+membership
     row is re-queried so the returned `current` reflects post-commit state.
     """
@@ -297,7 +297,7 @@ def test_switch_returns_workspace_detail_with_current_true(app, bypass_pipeline,
     assert switch_mock.called
 
 
-def test_switch_404s_when_service_raises_account_not_link_tenant(app, bypass_pipeline, monkeypatch):
+def test_switch_404s_when_service_raises_account_not_link_tenant(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """If switch_tenant raises (e.g. Tenant.status != NORMAL), the body
     surfaces as NotFound, not 500."""
     ws_id = str(uuid.uuid4())
@@ -325,7 +325,7 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(app, bypass_pip
 # ---------------------------------------------------------------------------
 
 
-def test_members_list_returns_normalized_rows(app, bypass_pipeline, monkeypatch):
+def test_members_list_returns_normalized_rows(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
@@ -363,7 +363,7 @@ def test_members_list_returns_normalized_rows(app, bypass_pipeline, monkeypatch)
     assert body["data"][0]["status"] == "active"
 
 
-def test_members_list_paginates_with_query_params(app, bypass_pipeline, monkeypatch):
+def test_members_list_paginates_with_query_params(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """`?page=2&limit=2` slices service output and reports total/has_more."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
@@ -424,7 +424,7 @@ def test_members_list_rejects_unknown_query_param(app, bypass_pipeline, monkeypa
 # ---------------------------------------------------------------------------
 
 
-def test_invite_happy_path_returns_invite_url_and_member_id(app, bypass_pipeline, monkeypatch):
+def test_invite_happy_path_returns_invite_url_and_member_id(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
@@ -506,7 +506,7 @@ def _invite_request(app, ws_id: str, acct_id: uuid.UUID):
     )
 
 
-def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
+def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """SaaS billing plan member cap → 403 with `members.limit_exceeded`.
 
     Verifies the envelope shape the CLI error-mapper relies on (code +
@@ -548,7 +548,7 @@ def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
     invite_mock.assert_not_called()
 
 
-def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, monkeypatch):
+def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """EE License workspace_members cap → 403 with `workspace_members.license_exceeded`.
 
     Note: billing.enabled is False (EE without SaaS billing); only the
@@ -594,7 +594,7 @@ def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, mo
     invite_mock.assert_not_called()
 
 
-def test_invite_ce_passes_when_both_caps_disabled(app, bypass_pipeline, monkeypatch):
+def test_invite_ce_passes_when_both_caps_disabled(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """CE deployment (no billing, no license) → quota gate is a no-op,
     invite proceeds normally."""
     ws_id = str(uuid.uuid4())
@@ -630,7 +630,7 @@ def test_invite_ce_passes_when_both_caps_disabled(app, bypass_pipeline, monkeypa
     assert body["email"] == "new@example.com"
 
 
-def test_invite_400_when_already_in_tenant(app, bypass_pipeline, monkeypatch):
+def test_invite_400_when_already_in_tenant(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
@@ -661,7 +661,7 @@ def test_invite_400_when_already_in_tenant(app, bypass_pipeline, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_delete_member_happy_path(app, bypass_pipeline, monkeypatch):
+def test_delete_member_happy_path(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
@@ -736,7 +736,7 @@ def test_delete_member_exception_mapping(app, bypass_pipeline, monkeypatch, exc,
             )
 
 
-def test_delete_member_404_when_member_missing(app, bypass_pipeline, monkeypatch):
+def test_delete_member_404_when_member_missing(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
@@ -768,7 +768,7 @@ def test_delete_member_404_when_member_missing(app, bypass_pipeline, monkeypatch
 # ---------------------------------------------------------------------------
 
 
-def test_update_role_happy_path(app, bypass_pipeline, monkeypatch):
+def test_update_role_happy_path(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberRoleApi()
@@ -852,7 +852,7 @@ def test_update_role_exception_mapping(app, bypass_pipeline, monkeypatch, exc, e
 # ---------------------------------------------------------------------------
 
 
-def test_load_tenant_rejects_archived_workspace(app, bypass_pipeline, monkeypatch):
+def test_load_tenant_rejects_archived_workspace(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """Member management against an archived workspace → 404."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
@@ -880,7 +880,7 @@ def test_load_tenant_rejects_archived_workspace(app, bypass_pipeline, monkeypatc
 # ---------------------------------------------------------------------------
 
 
-def test_invite_400_when_register_error(app, bypass_pipeline, monkeypatch):
+def test_invite_400_when_register_error(app, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """AccountRegisterError (frozen email, workspace creation blocked) → 400."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()

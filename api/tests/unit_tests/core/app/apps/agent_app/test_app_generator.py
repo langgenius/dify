@@ -36,7 +36,7 @@ def generator(mocker: MockerFixture) -> AgentAppGenerator:
 
 
 class TestGenerateGuards:
-    def test_rejects_blocking_mode(self, generator, mocker: MockerFixture):
+    def test_rejects_blocking_mode(self, generator: AgentAppGenerator, mocker: MockerFixture):
         with pytest.raises(AgentAppGeneratorError, match="only supports streaming"):
             generator.generate(
                 app_model=mocker.MagicMock(),
@@ -46,7 +46,7 @@ class TestGenerateGuards:
                 streaming=False,
             )
 
-    def test_requires_query(self, generator, mocker: MockerFixture):
+    def test_requires_query(self, generator: AgentAppGenerator, mocker: MockerFixture):
         with pytest.raises(AgentAppGeneratorError, match="query is required"):
             generator.generate(
                 app_model=mocker.MagicMock(),
@@ -55,7 +55,7 @@ class TestGenerateGuards:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_rejects_blank_query(self, generator, mocker: MockerFixture):
+    def test_rejects_blank_query(self, generator: AgentAppGenerator, mocker: MockerFixture):
         with pytest.raises(AgentAppGeneratorError, match="query is required"):
             generator.generate(
                 app_model=mocker.MagicMock(),
@@ -66,7 +66,7 @@ class TestGenerateGuards:
 
 
 class TestGenerateSuccess:
-    def test_generate_orchestrates_and_starts_worker(self, generator, mocker: MockerFixture):
+    def test_generate_orchestrates_and_starts_worker(self, generator: AgentAppGenerator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         user = DummyAccount("user")
 
@@ -103,7 +103,7 @@ class TestGenerateSuccess:
         thread_obj.start.assert_called_once()
         generator._resolve_agent.assert_called_once_with(app_model)
 
-    def test_generate_loads_existing_conversation(self, generator, mocker: MockerFixture):
+    def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         generator._resolve_agent = mocker.MagicMock(
             return_value=(mocker.MagicMock(id="a"), mocker.MagicMock(id="s"), mocker.MagicMock())
@@ -134,7 +134,9 @@ class TestGenerateSuccess:
 
         get_conv.assert_called_once()
 
-    def test_generate_does_not_include_trace_session_id_in_extras(self, generator, mocker: MockerFixture):
+    def test_generate_does_not_include_trace_session_id_in_extras(
+        self, generator: AgentAppGenerator, mocker: MockerFixture
+    ):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         user = DummyAccount("user")
 
@@ -180,7 +182,7 @@ class TestGenerateWorker:
 
         mocker.patch("libs.flask_utils.preserve_flask_contexts", ctx_manager)
 
-    def _wire(self, generator, mocker: MockerFixture, *, run_side_effect=None, handled=False):
+    def _wire(self, generator: AgentAppGenerator, mocker: MockerFixture, *, run_side_effect=None, handled=False):
         generator._get_conversation = mocker.MagicMock(return_value=mocker.MagicMock(id="conv"))
         generator._get_message = mocker.MagicMock(return_value=mocker.MagicMock(id="msg"))
         generator._run_input_guards = mocker.MagicMock(return_value=(handled, "query"))
@@ -201,7 +203,7 @@ class TestGenerateWorker:
         mocker.patch(f"{MODULE}.AgentAppRunner", return_value=runner)
         return runner
 
-    def _call(self, generator, mocker: MockerFixture, queue_manager):
+    def _call(self, generator: AgentAppGenerator, mocker: MockerFixture, queue_manager):
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
             context=mocker.MagicMock(),
@@ -214,26 +216,26 @@ class TestGenerateWorker:
             user_from=UserFrom.END_USER,
         )
 
-    def test_happy_path_runs_backend(self, generator, mocker: MockerFixture):
+    def test_happy_path_runs_backend(self, generator: AgentAppGenerator, mocker: MockerFixture):
         runner = self._wire(generator, mocker)
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         runner.run.assert_called_once()
         queue_manager.publish_error.assert_not_called()
 
-    def test_input_guard_short_circuit_skips_backend(self, generator, mocker: MockerFixture):
+    def test_input_guard_short_circuit_skips_backend(self, generator: AgentAppGenerator, mocker: MockerFixture):
         runner = self._wire(generator, mocker, handled=True)
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         runner.run.assert_not_called()
 
-    def test_generate_task_stopped_is_swallowed(self, generator, mocker: MockerFixture):
+    def test_generate_task_stopped_is_swallowed(self, generator: AgentAppGenerator, mocker: MockerFixture):
         self._wire(generator, mocker, run_side_effect=GenerateTaskStoppedError())
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         queue_manager.publish_error.assert_not_called()
 
-    def test_unexpected_error_is_published(self, generator, mocker: MockerFixture):
+    def test_unexpected_error_is_published(self, generator: AgentAppGenerator, mocker: MockerFixture):
         self._wire(generator, mocker, run_side_effect=ValueError("boom"))
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
