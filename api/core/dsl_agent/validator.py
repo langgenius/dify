@@ -17,6 +17,7 @@ import yaml
 TRIGGER_NODE_TYPES = {"trigger-plugin", "trigger-schedule", "trigger-webhook"}
 SYSTEM_SELECTOR_ROOTS = {"sys", "env", "conversation", "rag"}
 VAR_REF_RE = re.compile(r"\{\{#([^.#]+)\.[^#]*#\}\}")
+VAR_REF_PATH_RE = re.compile(r"\{\{#([^#]+)#\}\}")
 GENERIC_PROVIDER_RE = re.compile(r"^[a-z0-9_-]+(?:/[a-z0-9_-]+/[a-z0-9_-]+)?$")
 SUSPICIOUS_MODEL_NAME_RE = re.compile(r"(definitely|fake|invalid|not[-_ ]?a[-_ ]?real|placeholder|unknown)", re.IGNORECASE)
 PLACEHOLDER_DATASET_IDS = {"REPLACE_WITH_DATASET_ID", "YOUR_DATASET_ID", "DATASET_ID"}
@@ -59,6 +60,14 @@ class ValidationReport:
     issues: list[ValidationIssue] = field(default_factory=list)
 
     def add(self, severity: str, code: str, path: str, message: str) -> None:
+        if any(
+            issue.severity == severity
+            and issue.code == code
+            and issue.path == path
+            and issue.message == message
+            for issue in self.issues
+        ):
+            return
         self.issues.append(ValidationIssue(severity, code, path, message))
         if severity == "error":
             self.valid = False
@@ -327,6 +336,22 @@ def model_provider_entries(data_block: dict[str, Any], typ: str, path: str) -> l
     return entries
 
 
+def selector_references(value: Any) -> list[tuple[list[str], str]]:
+    found: list[tuple[list[str], str]] = []
+    if isinstance(value, str):
+        for match in VAR_REF_PATH_RE.finditer(value):
+            selector = [part.strip() for part in match.group(1).split(".") if part.strip()]
+            if selector:
+                found.append((selector, match.group(0)))
+    elif isinstance(value, dict):
+        for nested in value.values():
+            found.extend(selector_references(nested))
+    elif isinstance(value, list):
+        for nested in value:
+            found.extend(selector_references(nested))
+    return found
+
+
 def selector_roots(value: Any) -> list[tuple[str, str]]:
     found: list[tuple[str, str]] = []
     if isinstance(value, str):
@@ -341,7 +366,70 @@ def selector_roots(value: Any) -> list[tuple[str, str]]:
     return found
 
 
-def validate_selector(report: ValidationReport, selector: Any, path: str, node_ids: set[str]) -> None:
+def known_node_output_variables(node: dict[str, Any]) -> set[str] | None:
+    data_block = node.get("data") or {}
+    if not isinstance(data_block, dict):
+        return None
+
+    typ = node_type(node)
+    if typ == "start":
+        variables = data_block.get("variables")
+        if not isinstance(variables, list):
+            return set()
+        return {
+            variable["variable"]
+            for variable in variables
+            if isinstance(variable, dict) and isinstance(variable.get("variable"), str) and variable["variable"]
+        }
+    if typ == "code":
+        outputs = data_block.get("outputs")
+        if not isinstance(outputs, dict):
+            return set()
+        return {name for name in outputs if isinstance(name, str) and name}
+    if typ == "llm":
+        return {"text"}
+    if typ == "knowledge-retrieval":
+        return {"result"}
+    if typ == "iteration":
+        return {"item", "index", "output"}
+    if typ == "template-transform":
+        return {"output"}
+    return None
+
+
+def validate_selector_output(
+    report: ValidationReport,
+    selector: list[Any],
+    path: str,
+    node_by_id: dict[str, dict[str, Any]],
+) -> None:
+    if len(selector) < 2:
+        return
+    root = selector[0]
+    output_name = selector[1]
+    if not isinstance(root, str) or not isinstance(output_name, str):
+        return
+    node = node_by_id.get(root)
+    if not node:
+        return
+    known_outputs = known_node_output_variables(node)
+    if known_outputs is None or output_name in known_outputs:
+        return
+    report.add(
+        "error",
+        "selector_output_missing",
+        path,
+        f"selector references `{root}.{output_name}`, but `{root}` only exposes {sorted(known_outputs)}",
+    )
+
+
+def validate_selector(
+    report: ValidationReport,
+    selector: Any,
+    path: str,
+    node_ids: set[str],
+    node_by_id: dict[str, dict[str, Any]] | None = None,
+) -> None:
     if not isinstance(selector, list) or len(selector) < 2:
         report.add("error", "selector_shape_invalid", path, "selector must be a list with at least two items")
         return
@@ -351,21 +439,30 @@ def validate_selector(report: ValidationReport, selector: Any, path: str, node_i
         return
     if root not in node_ids and root not in SYSTEM_SELECTOR_ROOTS:
         report.add("error", "selector_target_missing", path, f"selector references unknown root `{root}`")
+        return
+    if node_by_id is not None and root in node_ids:
+        validate_selector_output(report, selector, path, node_by_id)
 
 
-def validate_nested_selectors(report: ValidationReport, value: Any, path: str, node_ids: set[str]) -> None:
+def validate_nested_selectors(
+    report: ValidationReport,
+    value: Any,
+    path: str,
+    node_ids: set[str],
+    node_by_id: dict[str, dict[str, Any]] | None = None,
+) -> None:
     if isinstance(value, dict):
         for key, item in value.items():
             item_path = f"{path}.{key}"
             if key in SELECTOR_KEYS:
                 if item == []:
                     continue
-                validate_selector(report, item, item_path, node_ids)
+                validate_selector(report, item, item_path, node_ids, node_by_id)
             else:
-                validate_nested_selectors(report, item, item_path, node_ids)
+                validate_nested_selectors(report, item, item_path, node_ids, node_by_id)
     elif isinstance(value, list):
         for index, item in enumerate(value):
-            validate_nested_selectors(report, item, f"{path}[{index}]", node_ids)
+            validate_nested_selectors(report, item, f"{path}[{index}]", node_ids, node_by_id)
 
 
 def validate_code_node(report: ValidationReport, data_block: dict[str, Any], path: str, node_ids: set[str]) -> None:
@@ -671,7 +768,10 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
         for root, ref in selector_roots(node):
             if root not in node_ids and root not in SYSTEM_SELECTOR_ROOTS:
                 report.add("error", "variable_ref_root_missing", path, f"variable reference `{ref}` points to unknown root `{root}`")
-        validate_nested_selectors(report, data_block, f"{path}.data", node_ids)
+        for selector, ref in selector_references(node):
+            if selector[0] in node_ids:
+                validate_selector_output(report, selector, path, node_by_id)
+        validate_nested_selectors(report, data_block, f"{path}.data", node_ids, node_by_id)
 
         if typ == "if-else":
             cases = data_block.get("cases")
@@ -687,7 +787,13 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
                     for cond_index, condition in enumerate(case.get("conditions") or []):
                         selector = condition.get("variable_selector")
                         if selector is not None:
-                            validate_selector(report, selector, f"{path}.data.cases[{case_index}].conditions[{cond_index}].variable_selector", node_ids)
+                            validate_selector(
+                                report,
+                                selector,
+                                f"{path}.data.cases[{case_index}].conditions[{cond_index}].variable_selector",
+                                node_ids,
+                                node_by_id,
+                            )
                 for handle in sorted(outgoing_handles.get(str(node_id), set())):
                     if handle not in allowed:
                         report.add("error", "if_else_handle_unknown", f"$.workflow.graph.edges[source={node_id}]", f"edge sourceHandle `{handle}` does not match if-else cases")
@@ -766,7 +872,7 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
                         "end output should include value_type in current DSL exports",
                     )
                 if output.get("value_selector") is not None:
-                    validate_selector(report, output.get("value_selector"), f"{output_path}.value_selector", node_ids)
+                    validate_selector(report, output.get("value_selector"), f"{output_path}.value_selector", node_ids, node_by_id)
 
         if typ == "question-classifier":
             classes = data_block.get("classes")
@@ -815,11 +921,11 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
             if iterator_selector is None:
                 report.add("error", "iteration_iterator_selector_missing", f"{path}.data.iterator_selector", "iteration requires iterator_selector")
             else:
-                validate_selector(report, iterator_selector, f"{path}.data.iterator_selector", node_ids)
+                validate_selector(report, iterator_selector, f"{path}.data.iterator_selector", node_ids, node_by_id)
             if output_selector is None:
                 report.add("error", "iteration_output_selector_missing", f"{path}.data.output_selector", "iteration requires output_selector")
             else:
-                validate_selector(report, output_selector, f"{path}.data.output_selector", node_ids)
+                validate_selector(report, output_selector, f"{path}.data.output_selector", node_ids, node_by_id)
             for key in ("iterator_input_type", "output_type"):
                 if not isinstance(data_block.get(key), str) or not data_block.get(key):
                     report.add("error", f"iteration_{key}_missing", f"{path}.data.{key}", f"iteration requires {key}")
@@ -842,7 +948,7 @@ def validate_yaml_text(yaml_text: str) -> ValidationReport:
                     continue
                 selector = condition.get("variable_selector")
                 if selector is not None:
-                    validate_selector(report, selector, f"{path}.data.break_conditions[{condition_index}].variable_selector", node_ids)
+                    validate_selector(report, selector, f"{path}.data.break_conditions[{condition_index}].variable_selector", node_ids, node_by_id)
 
         for provider_path, provider in model_provider_entries(data_block, typ, path):
             validate_model_provider_dependency(

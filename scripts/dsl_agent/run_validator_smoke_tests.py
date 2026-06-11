@@ -486,6 +486,54 @@ def knowledge_retrieval_placeholder_doc() -> dict[str, Any]:
     return doc
 
 
+def code_workflow_doc() -> dict[str, Any]:
+    doc = base_workflow_doc()
+    doc["dependencies"] = []
+    graph = doc["workflow"]["graph"]
+    graph["edges"] = [
+        {
+            "id": "start-source-code-target",
+            "source": "start",
+            "sourceHandle": "source",
+            "target": "code",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "start", "targetType": "code", "isInLoop": False},
+        },
+        {
+            "id": "code-source-end-target",
+            "source": "code",
+            "sourceHandle": "source",
+            "target": "end",
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"sourceType": "code", "targetType": "end", "isInLoop": False},
+        },
+    ]
+    graph["nodes"][0]["data"]["variables"] = [
+        {"variable": "input", "label": "Input", "type": "paragraph", "required": True}
+    ]
+    graph["nodes"][1] = {
+        "id": "code",
+        "type": "custom",
+        "sourcePosition": "right",
+        "targetPosition": "left",
+        "position": {"x": 300, "y": 0},
+        "data": {
+            "title": "Postprocess",
+            "type": "code",
+            "variables": [{"variable": "text", "value_selector": ["start", "input"]}],
+            "code_language": "python3",
+            "code": "def main(text: str) -> dict:\n    return {\"result\": text}\n",
+            "outputs": {"result": {"type": "string", "children": None}},
+        },
+    }
+    graph["nodes"][2]["data"]["outputs"] = [
+        {"variable": "result", "value_type": "string", "value_selector": ["code", "result"]}
+    ]
+    return doc
+
+
 def malformed_native_shape_doc() -> dict[str, Any]:
     return {
         "version": "0.6.0",
@@ -620,6 +668,7 @@ def main() -> int:
     valid_human_input_doc = human_input_workflow_doc()
     valid_iteration_doc = iteration_workflow_doc()
     valid_knowledge_placeholder_doc = knowledge_retrieval_placeholder_doc()
+    valid_code_doc = code_workflow_doc()
 
     missing_dependency_doc = deepcopy(valid_doc)
     missing_dependency_doc["dependencies"] = []
@@ -655,12 +704,22 @@ def main() -> int:
     invalid_iteration_edge_doc = deepcopy(valid_iteration_doc)
     invalid_iteration_edge_doc["workflow"]["graph"]["edges"][2]["data"]["iteration_id"] = "missing_iteration"
 
+    invalid_start_selector_doc = deepcopy(valid_llm_doc)
+    invalid_start_selector_doc["workflow"]["graph"]["nodes"][1]["data"]["prompt_template"][0]["text"] = "{{#start.missing#}}"
+
+    invalid_code_output_doc = deepcopy(valid_code_doc)
+    invalid_code_output_doc["workflow"]["graph"]["nodes"][2]["data"]["outputs"][0]["value_selector"] = [
+        "code",
+        "missing",
+    ]
+
     cases = [
         assert_case("valid_plugin_dependency", valid_doc, set(), True),
         assert_case("valid_model_dependency", valid_llm_doc, set(), True),
         assert_case("valid_agent_dependency", valid_agent_doc, set(), True),
         assert_case("valid_human_input_actions", valid_human_input_doc, set(), True),
         assert_case("valid_iteration_container", valid_iteration_doc, set(), True),
+        assert_case("valid_code_selector_outputs", valid_code_doc, set(), True),
         assert_case(
             "knowledge_retrieval_dataset_placeholder",
             valid_knowledge_placeholder_doc,
@@ -686,6 +745,18 @@ def main() -> int:
             "edge_iteration_id_invalid",
             invalid_iteration_edge_doc,
             {"edge_iteration_id_invalid"},
+            False,
+        ),
+        assert_case(
+            "start_selector_output_missing",
+            invalid_start_selector_doc,
+            {"selector_output_missing"},
+            False,
+        ),
+        assert_case(
+            "code_selector_output_missing",
+            invalid_code_output_doc,
+            {"selector_output_missing"},
             False,
         ),
         assert_case(
