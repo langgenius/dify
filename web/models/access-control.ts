@@ -105,6 +105,11 @@ export type UpdateRolesRequest = {
   permission_keys?: PermissionKey[]
 }
 
+export type CopyWorkspaceRoleRequest = {
+  roleId: string
+  copy_member: boolean
+}
+
 export type WorkspaceAccessRulesRequest = {
   language?: AccessControlTemplateLanguage
 } & PaginationParameters
@@ -219,4 +224,18 @@ export type PermissionKeysResponse = {
   workspace: WorkspacePermissionKeys
   app: ResourcePermissionKeys
   dataset: ResourcePermissionKeys
+}
+
+export type GetMembersOfRoleRequest = {
+  roleId: string
+} & PaginationParameters
+
+type Account = {
+  account_id: string
+  account_name: string
+}
+
+export type GetMembersOfRoleResponse = {
+  data: Account[]
+  pagination: Pagination
 }

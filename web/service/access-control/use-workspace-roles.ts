@@ -1,12 +1,15 @@
 import type {
+  CopyWorkspaceRoleRequest,
   CreateRoleRequest,
+  GetMembersOfRoleRequest,
+  GetMembersOfRoleResponse,
   Role,
   RoleListRequest,
   RoleListResponse,
   UpdateRolesRequest,
 } from '@/models/access-control'
 import type { CommonResponse } from '@/models/common'
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, post, put } from '../base'
 import { commonQueryKeys } from '../use-common'
 
@@ -84,10 +87,32 @@ export const useCopyWorkspaceRole = () => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'copy-workspace-role'],
-    mutationFn: (id: string) =>
-      post<Role>(`/workspaces/current/rbac/roles/${id}/copy`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'workspace-role-list'] })
+    mutationFn: ({ roleId, copy_member }: CopyWorkspaceRoleRequest) =>
+      post<Role>(`/workspaces/current/rbac/roles/${roleId}/copy`, {
+        body: { copy_member },
+      }),
+    onSuccess: (_role, variables) => {
+      const invalidations = [
+        queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'workspace-role-list'] }),
+      ]
+
+      if (variables.copy_member)
+        invalidations.push(queryClient.invalidateQueries({ queryKey: commonQueryKeys.members }))
+
+      return Promise.all(invalidations)
     },
+  })
+}
+
+export const useGetMembersOfRole = (params: GetMembersOfRoleRequest) => {
+  const { roleId, ...paginationParams } = params
+  return useQuery({
+    queryKey: [NAME_SPACE, 'members-of-role', roleId, paginationParams],
+    queryFn: () => get<GetMembersOfRoleResponse>(`/workspaces/current/rbac/roles/${roleId}/members`, {
+      params: {
+        ...paginationParams,
+      },
+    }),
+    enabled: !!roleId,
   })
 }

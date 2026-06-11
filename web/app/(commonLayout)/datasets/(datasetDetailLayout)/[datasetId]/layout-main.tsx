@@ -13,8 +13,8 @@ import {
   RiUserSettingsFill,
   RiUserSettingsLine,
 } from '@remixicon/react'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'

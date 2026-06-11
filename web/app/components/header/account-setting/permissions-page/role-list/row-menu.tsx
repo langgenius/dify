@@ -24,6 +24,7 @@ import ActionButton from '@/app/components/base/action-button'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useCopyWorkspaceRole, useDeleteWorkspaceRole } from '@/service/access-control/use-workspace-roles'
 import { hasPermission } from '@/utils/permission'
+import { CopyMembersConfirmDialog } from './copy-members-confirm-dialog'
 
 type RowMenuProps = {
   roleCategory: RoleCategory
@@ -41,6 +42,7 @@ const RowMenu = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showCopyMembersConfirm, setShowCopyMembersConfirm] = useState(false)
 
   const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
   const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
@@ -54,16 +56,27 @@ const RowMenu = ({
     onEdit?.(role)
   }, [canManageRoles, onEdit, role])
 
-  const { mutateAsync: copyRole } = useCopyWorkspaceRole()
+  const { mutate: copyRole, isPending: isCopyingRole } = useCopyWorkspaceRole()
 
-  const handleDuplicate = useCallback(() => {
+  const openCopyMembersConfirm = useCallback(() => {
     if (!canManageRoles)
       return
 
-    copyRole(role.id, {
+    setShowCopyMembersConfirm(true)
+    setOpen(false)
+  }, [canManageRoles])
+
+  const handleDuplicate = useCallback((copyMember: boolean) => {
+    if (!canManageRoles)
+      return
+
+    copyRole({
+      roleId: role.id,
+      copy_member: copyMember,
+    }, {
       onSuccess: () => {
         toast.success(t('role.duplicated', { ns: 'permission' }))
-        setOpen(false)
+        setShowCopyMembersConfirm(false)
       },
     })
   }, [canManageRoles, copyRole, role.id, t])
@@ -122,7 +135,7 @@ const RowMenu = ({
           <DropdownMenuItem
             disabled={!canManageRoles}
             className="system-sm-semibold text-text-secondary"
-            onClick={handleDuplicate}
+            onClick={openCopyMembersConfirm}
           >
             {t('common.duplicateAction', { ns: 'permission' })}
           </DropdownMenuItem>
@@ -164,6 +177,14 @@ const RowMenu = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
+      {showCopyMembersConfirm && (
+        <CopyMembersConfirmDialog
+          role={role}
+          isCopyingRole={isCopyingRole}
+          onOpenChange={setShowCopyMembersConfirm}
+          onDuplicate={handleDuplicate}
+        />
+      )}
     </>
   )
 }

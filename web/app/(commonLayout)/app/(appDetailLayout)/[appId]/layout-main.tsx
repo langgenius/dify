@@ -29,7 +29,6 @@ import { useAppContext, useSelector as useAppContextWithSelector } from '@/conte
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'

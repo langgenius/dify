@@ -20,6 +20,18 @@ vi.mock('@/service/access-control/use-workspace-roles', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useGetMembersOfRole: () => ({
+    data: {
+      data: [],
+      pagination: {
+        total_count: 0,
+        per_page: 1,
+        current_page: 1,
+        total_pages: 1,
+      },
+    },
+    isPending: false,
+  }),
 }))
 
 const createRole = (overrides: Partial<Role> = {}): Role => ({
