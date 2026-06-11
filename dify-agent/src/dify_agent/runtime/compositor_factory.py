@@ -2,8 +2,9 @@
 
 Only explicitly allowed provider type ids are constructible here. The default
 provider set contains prompt layers, the optional pydantic-ai history layer, the
-state-free Dify structured output layer, the Dify execution-context layer, the
-stateful Dify shell layer, and the Dify plugin business-layer family:
+state-free Dify structured output layer, the optional Dify ask-human layer, the
+Dify execution-context layer, the stateful Dify shell layer, and the Dify
+plugin business-layer family:
 
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
 - ``dify.shell`` for shellctl-backed shell job control,
@@ -33,6 +34,7 @@ from agenton_collections.layers.plain.basic import PromptLayer
 from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
 from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
+from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
@@ -80,6 +82,7 @@ def create_default_layer_providers(
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
+        LayerProvider.from_layer_type(DifyAskHumanLayer),
         LayerProvider.from_factory(
             layer_type=DifyExecutionContextLayer,
             create=lambda config: DifyExecutionContextLayer.from_config_with_settings(
