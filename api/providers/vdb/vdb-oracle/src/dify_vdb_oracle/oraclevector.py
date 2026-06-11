@@ -24,6 +24,37 @@ logger = logging.getLogger(__name__)
 
 oracledb.defaults.fetch_lobs = False
 
+ORACLE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+MAX_TOP_K = 10000
+ORACLE_TEXT_SAFE_TOKEN = re.compile(r"[\w\u4e00-\u9fff]+", re.UNICODE)
+ORACLE_TEXT_RESERVED_TOKENS = {
+    "ABOUT",
+    "ACCUM",
+    "AND",
+    "BT",
+    "BTG",
+    "BTI",
+    "EQUIV",
+    "FUZZY",
+    "HASPATH",
+    "INPATH",
+    "MINUS",
+    "NEAR",
+    "NOT",
+    "NT",
+    "NTG",
+    "NTI",
+    "OR",
+    "PT",
+    "RT",
+    "SQE",
+    "SYN",
+    "TR",
+    "TRSYN",
+    "WITHIN",
+}
+ORACLE_TEXT_PARSER_ERROR_CODES = ("DRG-50901", "DRG-50902", "DRG-50906", "DRG-50907")
+
 
 class _OraclePoolParams(TypedDict, total=False):
     user: str
@@ -49,11 +80,12 @@ class OracleVectorConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def validate_config(cls, values: dict[str, Any]):
-        if not values["user"]:
+        values = dict(values)
+        if not values.get("user"):
             raise ValueError("config ORACLE_USER is required")
-        if not values["password"]:
+        if not values.get("password"):
             raise ValueError("config ORACLE_PASSWORD is required")
-        if not values["dsn"]:
+        if not values.get("dsn"):
             raise ValueError("config ORACLE_DSN is required")
         if values.get("is_autonomous", False):
             if not values.get("config_dir"):
@@ -67,7 +99,7 @@ class OracleVectorConfig(BaseModel):
 
 SQL_CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table_name} (
-    id varchar2(100)
+    id varchar2(100) PRIMARY KEY
     ,text CLOB NOT NULL
     ,meta JSON
     ,embedding vector NOT NULL
@@ -80,12 +112,96 @@ INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS
 """
 
 
+def validate_identifier(value: str, name: str) -> str:
+    if not value or len(value) > 128 or ORACLE_IDENTIFIER.fullmatch(value) is None:
+        raise ValueError(f"Invalid Oracle identifier for {name}: {value}")
+    return value
+
+
+def validate_json_key(value: str) -> str:
+    if not value or ORACLE_IDENTIFIER.fullmatch(value) is None:
+        raise ValueError(f"Invalid Oracle JSON metadata key: {value}")
+    return value
+
+
+def validate_top_k(value: Any, default: int) -> int:
+    if isinstance(value, bool):
+        return default
+    try:
+        top_k = int(value)
+    except (TypeError, ValueError):
+        return default
+    if top_k <= 0 or top_k > MAX_TOP_K:
+        return default
+    return top_k
+
+
+def validate_document_embeddings(documents: list[Document], embeddings: list[list[float]]) -> int:
+    if not documents:
+        return 0
+    if not embeddings:
+        raise ValueError("embeddings must not be empty when documents are provided.")
+    if len(documents) != len(embeddings):
+        raise ValueError("documents and embeddings must have the same length.")
+
+    try:
+        dimension = len(embeddings[0])
+    except TypeError as exc:
+        raise ValueError("each embedding must be a sequence of numeric values.") from exc
+
+    if dimension <= 0:
+        raise ValueError("embeddings must contain at least one dimension.")
+
+    for index, embedding in enumerate(embeddings):
+        try:
+            embedding_dimension = len(embedding)
+        except TypeError as exc:
+            raise ValueError(f"embedding at index {index} must be a sequence of numeric values.") from exc
+        if embedding_dimension != dimension:
+            raise ValueError("all embeddings must have the same dimension.")
+
+    return dimension
+
+
+def sanitize_oracle_text_token(token: str) -> str | None:
+    parts = ORACLE_TEXT_SAFE_TOKEN.findall(str(token))
+    if not parts:
+        return None
+    sanitized = "".join(parts)
+    if sanitized.upper() in ORACLE_TEXT_RESERVED_TOKENS:
+        return None
+    return sanitized
+
+
+def build_oracle_text_query(tokens: list[str]) -> str | None:
+    safe_tokens = []
+    seen = set()
+    for token in tokens:
+        sanitized = sanitize_oracle_text_token(token)
+        if not sanitized:
+            continue
+        normalized = sanitized.casefold()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        safe_tokens.append(sanitized)
+
+    if not safe_tokens:
+        return None
+    return " ACCUM ".join(safe_tokens)
+
+
+def is_oracle_text_parser_error(exc: Exception) -> bool:
+    message = str(exc)
+    return any(code in message for code in ORACLE_TEXT_PARSER_ERROR_CODES)
+
+
 class OracleVector(BaseVector):
     def __init__(self, collection_name: str, config: OracleVectorConfig):
         super().__init__(collection_name)
-        self.pool = self._create_connection_pool(config)
-        self.table_name = f"embedding_{collection_name}"
+        self.table_name = validate_identifier(f"embedding_{collection_name}", "table_name")
         self.config = config
+        self.pool = self._create_connection_pool(config)
 
     @override
     def get_type(self) -> str:
@@ -125,19 +241,7 @@ class OracleVector(BaseVector):
             )
 
     def _get_connection(self) -> Connection:
-        if self.config.is_autonomous:
-            connection = oracledb.connect(
-                user=self.config.user,
-                password=self.config.password,
-                dsn=self.config.dsn,
-                config_dir=self.config.config_dir,
-                wallet_location=self.config.wallet_location,
-                wallet_password=self.config.wallet_password,
-            )
-            return connection
-        else:
-            connection = oracledb.connect(user=self.config.user, password=self.config.password, dsn=self.config.dsn)
-            return connection
+        return self.pool.acquire()
 
     def _create_connection_pool(self, config: OracleVectorConfig):
         pool_params = _OraclePoolParams(
@@ -156,12 +260,16 @@ class OracleVector(BaseVector):
 
     @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        dimension = len(embeddings[0])
+        dimension = validate_document_embeddings(texts, embeddings)
+        if dimension == 0:
+            return []
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)
 
     @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+        validate_document_embeddings(documents, embeddings)
+
         values = []
         pks = []
         for i, doc in enumerate(documents):
@@ -177,26 +285,41 @@ class OracleVector(BaseVector):
                         numpy.array(embeddings[i]),
                     )
                 )
+        if not values:
+            return pks
+
+        delete_sql = f"DELETE FROM {self.table_name} WHERE id = :1"
+        insert_sql = f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)"
         with self._get_connection() as conn:
             conn.inputtypehandler = self.input_type_handler
             conn.outputtypehandler = self.output_type_handler
-            # with conn.cursor() as cur:
-            #    cur.executemany(
-            #        f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)", values
-            #    )
-            # conn.commit()
-            for value in values:
-                with conn.cursor() as cur:
+            with conn.cursor() as cur:
+                try:
+                    cur.executemany(delete_sql, [(value[0],) for value in values])
+                    cur.executemany(insert_sql, values)
+                    conn.commit()
+                except Exception:
+                    if hasattr(conn, "rollback"):
+                        conn.rollback()
+                    logger.exception("Batch upsert failed into %s; falling back to row upserts", self.table_name)
+                    successful_pks = []
+                    for value in values:
+                        try:
+                            cur.execute("SAVEPOINT oracle_vector_row_upsert")
+                            cur.execute(delete_sql, (value[0],))
+                            cur.execute(insert_sql, value)
+                            successful_pks.append(value[0])
+                        except Exception:
+                            try:
+                                cur.execute("ROLLBACK TO SAVEPOINT oracle_vector_row_upsert")
+                            except Exception:
+                                logger.exception("Failed to roll back row upsert savepoint for %s", value[0])
+                            logger.exception("Failed to upsert record %s into %s", value[0], self.table_name)
                     try:
-                        cur.execute(
-                            f"""INSERT INTO {self.table_name} (id, text, meta, embedding)
-                        VALUES (:1, :2, :3, :4)""",
-                            value,
-                        )
                         conn.commit()
                     except Exception:
-                        logger.exception("Failed to insert record %s into %s", value[0], self.table_name)
-            conn.close()
+                        logger.exception("Failed to commit upserts into %s", self.table_name)
+                    return successful_pks
         return pks
 
     @override
@@ -205,7 +328,6 @@ class OracleVector(BaseVector):
             with conn.cursor() as cur:
                 cur.execute(f"SELECT id FROM {self.table_name} WHERE id = :1", (id,))
                 return cur.fetchone() is not None
-            conn.close()
 
     def get_by_ids(self, ids: list[str]) -> list[Document]:
         if not ids:
@@ -217,8 +339,6 @@ class OracleVector(BaseVector):
                 docs = []
                 for record in cur:
                     docs.append(Document(page_content=record[1], metadata=record[0]))
-            self.pool.release(connection=conn)
-            conn.close()
         return docs
 
     @override
@@ -230,15 +350,14 @@ class OracleVector(BaseVector):
                 placeholders = ", ".join(f":{i + 1}" for i in range(len(ids)))
                 cur.execute(f"DELETE FROM {self.table_name} WHERE id IN ({placeholders})", ids)
             conn.commit()
-            conn.close()
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
+        key = validate_json_key(key)
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_VALUE(meta, '$." + key + "') = :1", (value,))
             conn.commit()
-            conn.close()
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -249,10 +368,7 @@ class OracleVector(BaseVector):
         :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
-        # Validate and sanitize top_k to prevent SQL injection
-        top_k = kwargs.get("top_k", 4)
-        if not isinstance(top_k, int) or top_k <= 0 or top_k > 10000:
-            top_k = 4  # Use default if invalid
+        top_k = validate_top_k(kwargs.get("top_k", 4), 4)
 
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
@@ -281,79 +397,83 @@ class OracleVector(BaseVector):
                     metadata["score"] = score
                     if score >= score_threshold:
                         docs.append(Document(page_content=text, metadata=metadata))
-            conn.close()
         return docs
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # lazy import
-        import nltk  # type: ignore
-        from nltk.corpus import stopwords  # type: ignore
+        top_k = validate_top_k(kwargs.get("top_k", 5), 5)
+        if not query.strip():
+            return []
 
-        # Validate and sanitize top_k to prevent SQL injection
-        top_k = kwargs.get("top_k", 5)
-        if not isinstance(top_k, int) or top_k <= 0 or top_k > 10000:
-            top_k = 5  # Use default if invalid
-        # just not implement fetch by score_threshold now, may be later
-        if len(query) > 0:
-            # Check which language the query is in
-            zh_pattern = re.compile("[\u4e00-\u9fa5]+")
-            match = zh_pattern.search(query)
-            entities = []
-            #  match: query condition maybe is a chinese sentence, so using Jieba split,else using nltk split
-            if match:
-                words = pseg.cut(query)
-                current_entity = ""
-                for word, pos in words:
-                    # `nr`: Person, `ns`: Location, `nt`: Organization
-                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:
-                        current_entity += word
-                    else:
-                        if current_entity:
-                            entities.append(current_entity)
-                            current_entity = ""
-                if current_entity:
-                    entities.append(current_entity)
-            else:
+        # Check which language the query is in.
+        zh_pattern = re.compile("[\u4e00-\u9fa5]+")
+        match = zh_pattern.search(query)
+        entities = []
+        # If the query has Chinese text, use Jieba; otherwise use NLTK word tokenization.
+        if match:
+            words = pseg.cut(query)
+            current_entity = ""
+            for word, pos in words:
+                # `nr`: Person, `ns`: Location, `nt`: Organization
+                if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:
+                    current_entity += word
+                else:
+                    if current_entity:
+                        entities.append(current_entity)
+                        current_entity = ""
+            if current_entity:
+                entities.append(current_entity)
+        else:
+            # lazy import for English tokenization only
+            import nltk  # type: ignore
+            from nltk.corpus import stopwords  # type: ignore
+
+            try:
+                nltk.data.find("tokenizers/punkt")
+                nltk.data.find("corpora/stopwords")
+            except LookupError:
+                raise LookupError("Unable to find the required NLTK data package: punkt and stopwords")
+            all_tokens = nltk.word_tokenize(query)
+            stop_words = set(stopwords.words("english"))
+            for token in all_tokens:
+                if token.casefold() not in stop_words:
+                    entities.append(token)
+
+        text_query = build_oracle_text_query(entities)
+        if text_query is None:
+            return []
+
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                document_ids_filter = kwargs.get("document_ids_filter")
+                where_clause = ""
+                params: dict[str, Any] = {"kk": text_query}
+
+                if document_ids_filter:
+                    placeholders = []
+                    for i, doc_id in enumerate(document_ids_filter):
+                        param_name = f"doc_id_{i}"
+                        placeholders.append(f":{param_name}")
+                        params[param_name] = doc_id
+                    where_clause = f" AND JSON_VALUE(meta, '$.document_id') IN ({', '.join(placeholders)}) "
+
                 try:
-                    nltk.data.find("tokenizers/punkt")
-                    nltk.data.find("corpora/stopwords")
-                except LookupError:
-                    raise LookupError("Unable to find the required NLTK data package: punkt and stopwords")
-                e_str = re.sub(r"[^\w ]", "", query)
-                all_tokens = nltk.word_tokenize(e_str)
-                stop_words = stopwords.words("english")
-                for token in all_tokens:
-                    if token not in stop_words:
-                        entities.append(token)
-            with self._get_connection() as conn:
-                with conn.cursor() as cur:
-                    document_ids_filter = kwargs.get("document_ids_filter")
-                    where_clause = ""
-                    params: dict[str, Any] = {"kk": " ACCUM ".join(entities)}
-
-                    if document_ids_filter:
-                        placeholders = []
-                        for i, doc_id in enumerate(document_ids_filter):
-                            param_name = f"doc_id_{i}"
-                            placeholders.append(f":{param_name}")
-                            params[param_name] = doc_id
-                        where_clause = f" AND JSON_VALUE(meta, '$.document_id') IN ({', '.join(placeholders)}) "
-
                     cur.execute(
                         f"""select meta, text, embedding FROM {self.table_name}
                     WHERE CONTAINS(text, :kk, 1) > 0  {where_clause}
                     order by score(1) desc fetch first {top_k} rows only""",
                         params,
                     )
-                    docs = []
-                    for record in cur:
-                        metadata, text, embedding = record
-                        docs.append(Document(page_content=text, vector=embedding, metadata=metadata))
-                conn.close()
-            return docs
-        else:
-            return [Document(page_content="", metadata={})]
+                except Exception as exc:
+                    if is_oracle_text_parser_error(exc):
+                        logger.warning("Oracle Text rejected query %r for %s: %s", text_query, self.table_name, exc)
+                        return []
+                    raise
+                docs = []
+                for record in cur:
+                    metadata, text, embedding = record
+                    docs.append(Document(page_content=text, vector=embedding, metadata=metadata))
+        return docs
 
     @override
     def delete(self):
@@ -361,7 +481,6 @@ class OracleVector(BaseVector):
             with conn.cursor() as cur:
                 cur.execute(f"DROP TABLE IF EXISTS {self.table_name} cascade constraints")
             conn.commit()
-            conn.close()
 
     def _create_collection(self, dimension: int):
         cache_key = f"vector_indexing_{self._collection_name}"
@@ -378,7 +497,6 @@ class OracleVector(BaseVector):
                 with conn.cursor() as cur:
                     cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
                 conn.commit()
-                conn.close()
 
 
 class OracleVectorFactory(AbstractVectorFactory):
