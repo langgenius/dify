@@ -18,6 +18,7 @@ from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from extensions.otel import trace_span
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
 
@@ -274,6 +275,10 @@ class Vector:
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
         query_vector = self._embeddings.embed_query(query)
+        return self._search_by_vector_traced(query_vector, **kwargs)
+
+    @trace_span()
+    def _search_by_vector_traced(self, query_vector: list[float], **kwargs) -> list[Document]:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
@@ -290,7 +295,7 @@ class Vector:
                 "file_id": file_id,
             }
         )
-        return self._vector_processor.search_by_vector(multimodal_vector, **kwargs)
+        return self._search_by_vector_traced(multimodal_vector, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
