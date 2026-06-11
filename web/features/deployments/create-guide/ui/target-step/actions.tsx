@@ -15,31 +15,41 @@ import {
 } from './actions.data'
 
 export function TargetActionButtons() {
+  return (
+    <>
+      <TargetBackButton />
+      <TargetSkipDeploymentButton />
+      <TargetDeployButton />
+    </>
+  )
+}
+
+function TargetBackButton() {
   const { t } = useTranslation('deployments')
-  const canDeploy = useTargetCanDeploy()
-  const canSkipDeployment = useTargetCanSkipDeployment()
-  const createDeploymentAndRelease = useTargetDeploymentSubmissionAction()
   const setStep = useSetAtom(setStepAtom)
-  const isDeploying = useAtomValue(isSubmittingDeploymentGuideAtom)
-  const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
-  const primaryLabel = isDeploying && !isSkippingDeployment
-    ? t('createGuide.actions.deploying')
-    : t('createGuide.actions.createAndDeploy')
-  const skipLabel = isSkippingDeployment
-    ? t('createGuide.actions.creating')
-    : t('createGuide.actions.skipDeploy')
+  const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
 
   function handleBack() {
-    if (!isDeploying)
+    if (!isSubmitting)
       setStep('release')
   }
 
-  async function handleDeploy() {
-    if (!canDeploy)
-      return
+  return (
+    <Button type="button" variant="secondary" onClick={handleBack} disabled={isSubmitting}>
+      {t('createGuide.actions.back')}
+    </Button>
+  )
+}
 
-    await createDeploymentAndRelease({ deployToEnvironment: true })
-  }
+function TargetSkipDeploymentButton() {
+  const { t } = useTranslation('deployments')
+  const canSkipDeployment = useTargetCanSkipDeployment()
+  const createDeploymentAndRelease = useTargetDeploymentSubmissionAction()
+  const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
+  const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
+  const label = isSkippingDeployment
+    ? t('createGuide.actions.creating')
+    : t('createGuide.actions.skipDeploy')
 
   async function handleSkipDeployment() {
     if (!canSkipDeployment)
@@ -49,16 +59,32 @@ export function TargetActionButtons() {
   }
 
   return (
-    <>
-      <Button type="button" variant="secondary" onClick={handleBack} disabled={isDeploying}>
-        {t('createGuide.actions.back')}
-      </Button>
-      <Button type="button" variant="secondary" disabled={!canSkipDeployment || isDeploying} onClick={handleSkipDeployment}>
-        {skipLabel}
-      </Button>
-      <Button type="button" variant="primary" disabled={!canDeploy || isDeploying} onClick={handleDeploy}>
-        {primaryLabel}
-      </Button>
-    </>
+    <Button type="button" variant="secondary" disabled={!canSkipDeployment || isSubmitting} onClick={handleSkipDeployment}>
+      {label}
+    </Button>
+  )
+}
+
+function TargetDeployButton() {
+  const { t } = useTranslation('deployments')
+  const canDeploy = useTargetCanDeploy()
+  const createDeploymentAndRelease = useTargetDeploymentSubmissionAction()
+  const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
+  const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
+  const label = isSubmitting && !isSkippingDeployment
+    ? t('createGuide.actions.deploying')
+    : t('createGuide.actions.createAndDeploy')
+
+  async function handleDeploy() {
+    if (!canDeploy)
+      return
+
+    await createDeploymentAndRelease({ deployToEnvironment: true })
+  }
+
+  return (
+    <Button type="button" variant="primary" disabled={!canDeploy || isSubmitting} onClick={handleDeploy}>
+      {label}
+    </Button>
   )
 }
