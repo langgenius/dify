@@ -508,7 +508,32 @@ def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
     name = data.get("name") or data.get("tool_name") or data.get("label")
     if not commands and not isinstance(name, str):
         return None
-    return DifyShellCliToolConfig(name=name if isinstance(name, str) else None, install_commands=commands)
+    tool_env = data.get("env") if isinstance(data.get("env"), Mapping) else {}
+    env = [
+        env_var
+        for env_var in (_shell_env_var(item) for item in _env_entries(tool_env, "variables"))
+        if env_var is not None
+    ]
+    secret_refs = [
+        secret_ref
+        for secret_ref in (_shell_secret_ref(item) for item in _env_entries(tool_env, "secret_refs"))
+        if secret_ref is not None
+    ]
+    return DifyShellCliToolConfig(
+        name=name if isinstance(name, str) else None,
+        install_commands=commands,
+        env=env,
+        secret_refs=secret_refs,
+    )
+
+
+def _env_entries(env: object, key: str) -> list[object]:
+    if not isinstance(env, Mapping):
+        return []
+    entries = env.get(key)
+    if not isinstance(entries, list):
+        return []
+    return entries
 
 
 def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
