@@ -43,37 +43,38 @@ const createAgentNavIcon = (iconClassName: string) => {
   return AgentNavIcon
 }
 
-const nodeTreeIcon = createAgentNavIcon('i-ri-node-tree')
-const shareForwardLineIcon = createAgentNavIcon('i-ri-share-forward-line')
-const shareForwardFillIcon = createAgentNavIcon('i-ri-share-forward-fill')
-const listCheckIcon = createAgentNavIcon('i-ri-list-check-2')
-const pulseLineIcon = createAgentNavIcon('i-ri-pulse-line')
-const pulseFillIcon = createAgentNavIcon('i-ri-pulse-fill')
+const terminalWindowLineIcon = createAgentNavIcon('i-ri-terminal-window-line')
+const terminalWindowFillIcon = createAgentNavIcon('i-ri-terminal-window-fill')
+const accessPointIcon = createAgentNavIcon('i-custom-vender-agent-v2-access-point')
+const fileListLineIcon = createAgentNavIcon('i-ri-file-list-3-line')
+const fileListFillIcon = createAgentNavIcon('i-ri-file-list-3-fill')
+const dashboardLineIcon = createAgentNavIcon('i-ri-dashboard-2-line')
+const dashboardFillIcon = createAgentNavIcon('i-ri-dashboard-2-fill')
 
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
-    icon: nodeTreeIcon,
-    activeIcon: nodeTreeIcon,
+    icon: terminalWindowLineIcon,
+    activeIcon: terminalWindowFillIcon,
   },
   {
     labelKey: 'agentDetail.sections.access',
     href: getAgentDetailPath(agentId, 'access'),
-    icon: shareForwardLineIcon,
-    activeIcon: shareForwardFillIcon,
+    icon: accessPointIcon,
+    activeIcon: accessPointIcon,
   },
   {
     labelKey: 'agentDetail.sections.logs',
     href: getAgentDetailPath(agentId, 'logs'),
-    icon: listCheckIcon,
-    activeIcon: listCheckIcon,
+    icon: fileListLineIcon,
+    activeIcon: fileListFillIcon,
   },
   {
     labelKey: 'agentDetail.sections.monitoring',
     href: getAgentDetailPath(agentId, 'monitoring'),
-    icon: pulseLineIcon,
-    activeIcon: pulseFillIcon,
+    icon: dashboardLineIcon,
+    activeIcon: dashboardFillIcon,
   },
 ]
 
