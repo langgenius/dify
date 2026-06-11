@@ -17,7 +17,7 @@ export type CreateReleaseSourceSelection = CreateReleaseDslState & {
   selectedSourceAppId?: string
 }
 
-export function createReleaseSourceSelection(
+function createReleaseSourceSelection(
   formValues: CreateReleaseFormValues,
   dslState: CreateReleaseDslState,
 ): CreateReleaseSourceSelection {

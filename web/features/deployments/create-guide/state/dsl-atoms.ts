@@ -8,7 +8,7 @@ export const dslFileAtom = atom<File | undefined>(undefined)
 export const dslContentAtom = atom('')
 export const isReadingDslAtom = atom(false)
 export const dslReadErrorAtom = atom(false)
-export const dslReadTokenAtom = atom(0)
+const dslReadTokenAtom = atom(0)
 
 export const dslLocalAtoms = [
   dslFileAtom,
@@ -51,14 +51,4 @@ export const selectDslFileAtom = atom(null, async (get, set, dslFile?: File) => 
     if (get(dslReadTokenAtom) === dslReadToken)
       set(isReadingDslAtom, false)
   }
-})
-
-export const resetDslFileAtom = atom(null, (get, set) => {
-  set(dslReadTokenAtom, get(dslReadTokenAtom) + 1)
-  set(dslFileAtom, undefined)
-  set(dslContentAtom, '')
-  set(isReadingDslAtom, false)
-  set(dslReadErrorAtom, false)
-  set(resetDeploymentTargetOptionsAtom)
-  set(clearCreateDeploymentGuideUnsupportedDslNodesAtom)
 })

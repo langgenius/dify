@@ -3,8 +3,8 @@
 import type { UnsupportedDslNode } from '@/features/deployments/error'
 import { atom } from 'jotai'
 
-export const deploymentOptionsUnsupportedDslNodesAtom = atom<UnsupportedDslNode[]>([])
-export const submissionUnsupportedDslNodesAtom = atom<UnsupportedDslNode[]>([])
+const deploymentOptionsUnsupportedDslNodesAtom = atom<UnsupportedDslNode[]>([])
+const submissionUnsupportedDslNodesAtom = atom<UnsupportedDslNode[]>([])
 
 export const unsupportedDslLocalAtoms = [
   deploymentOptionsUnsupportedDslNodesAtom,
