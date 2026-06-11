@@ -16,11 +16,11 @@ const today = dayjs()
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
-type Props = {
+type Props = Readonly<{
   ranges: { value: number, name: TimePeriodName }[]
   onSelect: (payload: PeriodParams) => void
   queryDateFormat: string
-}
+}>
 
 const TimeRangePicker: FC<Props> = ({
   ranges,

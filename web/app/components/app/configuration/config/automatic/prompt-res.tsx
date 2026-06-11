@@ -5,10 +5,10 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import PromptEditor from '@/app/components/base/prompt-editor'
 
-type Props = {
+type Props = Readonly<{
   value: string
   workflowVariableBlock: WorkflowVariableBlockType
-}
+}>
 
 const keyIdPrefix = 'prompt-res-editor'
 const PromptRes: FC<Props> = ({

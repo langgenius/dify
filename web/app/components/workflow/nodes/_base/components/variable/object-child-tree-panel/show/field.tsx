@@ -10,13 +10,13 @@ import { Type } from '../../../../../llm/types'
 import { getFieldType } from '../../../../../llm/utils'
 import TreeIndentLine from '../tree-indent-line'
 
-type Props = {
+type Props = Readonly<{
   name: string
   payload: FieldType
   required: boolean
   depth?: number
   rootClassName?: string
-}
+}>
 
 const Field: FC<Props> = ({
   name,

@@ -1,12 +1,12 @@
 'use client'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClipboard } from '@/hooks/use-clipboard'
 
-type Props = {
+type Props = Readonly<{
   content: string
-}
+}>
 
 const prefixEmbedded = 'overview.appInfo.embedded'
 

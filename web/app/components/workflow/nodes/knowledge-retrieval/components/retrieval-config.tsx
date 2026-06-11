@@ -20,7 +20,7 @@ import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-c
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 
-type Props = {
+type Props = Readonly<{
   payload: {
     retrieval_mode: RETRIEVE_TYPE
     multiple_retrieval_config?: MultipleRetrievalConfig
@@ -35,7 +35,7 @@ type Props = {
   rerankModalOpen: boolean
   onRerankModelOpenChange: (open: boolean) => void
   selectedDatasets: DataSet[]
-}
+}>
 
 const RetrievalConfig: FC<Props> = ({
   payload,
