@@ -1,3 +1,4 @@
+import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
 import { isVerbose } from '@/framework/context'
 import { redactBearer } from '@/http/sanitize'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
@@ -16,6 +17,7 @@ export type ErrorEnvelope = {
     method?: string
     url?: string
     raw_response?: string
+    server?: ErrorBody
   }
 }
 
@@ -45,9 +47,16 @@ function renderEnvelope(env: ErrorEnvelope): string {
 function renderHuman(env: ErrorEnvelope, isErrTTY: boolean): string {
   const cs = colorScheme(colorEnabled(isErrTTY))
   const e = env.error
-  const lines: string[] = [`${e.code}: ${e.message}`]
-  if (e.hint !== undefined)
-    lines.push(`${cs.magenta('hint:')} ${cs.cyan(e.hint)}`)
+  const server = e.server
+  const headerCode = server?.code ?? e.code
+  const lines: string[] = [`${headerCode}: ${e.message}`]
+  for (const d of server?.details ?? []) {
+    const loc = (d.loc ?? []).join('.')
+    lines.push(`  - ${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`)
+  }
+  const hint = server?.hint ?? e.hint
+  if (hint !== undefined && hint !== null)
+    lines.push(`${cs.magenta('hint:')} ${cs.cyan(hint)}`)
   if (e.method !== undefined && e.url !== undefined)
     lines.push(`request: ${e.method} ${e.url}`)
   if (e.http_status !== undefined)

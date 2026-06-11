@@ -14,13 +14,13 @@ from __future__ import annotations
 from itertools import starmap
 from urllib import parse
 
-from flask import jsonify, make_response
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
+from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
@@ -77,34 +77,16 @@ def _load_account(account_id: object) -> Account:
     return account
 
 
-def _quota_error(*, code: str, message: str, hint: str) -> Forbidden:
-    err = Forbidden(message)
-    err.response = make_response(
-        jsonify({"code": code, "message": message, "hint": hint}),
-        403,
-    )
-    return err
-
-
 def _check_member_invite_quota(tenant_id: str) -> None:
     features = FeatureService.get_features(tenant_id)
 
     if features.billing.enabled:
         members = features.members
         if 0 < members.limit <= members.size:
-            raise _quota_error(
-                code="members.limit_exceeded",
-                message="Subscription member limit reached.",
-                hint="Upgrade your plan to invite more members or remove an existing member first.",
-            )
+            raise MemberLimitExceeded()
 
-    if features.workspace_members.enabled:
-        if not features.workspace_members.is_available(1):
-            raise _quota_error(
-                code="workspace_members.license_exceeded",
-                message="Workspace member license capacity reached.",
-                hint="Contact your workspace administrator to expand the license seat count.",
-            )
+    if features.workspace_members.enabled and not features.workspace_members.is_available(1):
+        raise MemberLicenseExceeded()
 
 
 @openapi_ns.route("/workspaces")
