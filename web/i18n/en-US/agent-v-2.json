@@ -46,6 +46,7 @@
   "agentDetail.configure.knowledgeRetrieval.retrievalTwo": "Retrieval 2",
   "agentDetail.configure.knowledgeRetrieval.tip": "Knowledge retrieval sources this agent can use while orchestrating tasks.",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Toggle knowledge retrieval",
+  "agentDetail.configure.model.label": "Model",
   "agentDetail.configure.orchestrate": "Orchestrate",
   "agentDetail.configure.preview.endUserAuth": "End-user authentication",
   "agentDetail.configure.preview.restart": "Restart preview",

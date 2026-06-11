@@ -46,6 +46,7 @@
   "agentDetail.configure.knowledgeRetrieval.retrievalTwo": "Retrieval 2",
   "agentDetail.configure.knowledgeRetrieval.tip": "此智能体在编排任务时可使用的知识检索来源。",
   "agentDetail.configure.knowledgeRetrieval.toggle": "展开或收起知识检索",
+  "agentDetail.configure.model.label": "模型",
   "agentDetail.configure.orchestrate": "编排",
   "agentDetail.configure.preview.endUserAuth": "终端用户认证",
   "agentDetail.configure.preview.restart": "重新开始预览",

@@ -1,6 +1,7 @@
 'use client'
 
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -22,6 +23,39 @@ import { defaultAgentFiles } from './components/configured-data'
 
 type AgentConfigurePageProps = {
   agentId: string
+}
+
+function AgentModelField({
+  currentModel,
+  textGenerationModelList,
+  onSelect,
+}: {
+  currentModel?: DefaultModel
+  textGenerationModelList: Model[]
+  onSelect: (model: DefaultModel) => void
+}) {
+  const { t } = useTranslation('agentV2')
+
+  return (
+    <FieldRoot name="model" className="gap-1 pb-4">
+      <FieldLabel className="py-0 system-sm-semibold-uppercase! text-text-secondary">
+        {t('agentDetail.configure.model.label')}
+      </FieldLabel>
+      <div className="relative h-8 min-w-0">
+        <ModelSelector
+          defaultModel={currentModel}
+          modelList={textGenerationModelList}
+          triggerClassName="h-8! w-full rounded-lg! pr-10! [&_.i-ri-arrow-down-s-line]:hidden"
+          popupClassName="w-(--anchor-width) max-w-[min(var(--anchor-width),var(--available-width),calc(100vw-32px))]"
+          showModelMeta={false}
+          onSelect={onSelect}
+        />
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-r-lg bg-components-button-tertiary-bg">
+          <span aria-hidden="true" className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
+        </div>
+      </div>
+    </FieldRoot>
+  )
 }
 
 export function AgentConfigurePage({
@@ -69,16 +103,6 @@ export function AgentConfigurePage({
               {t('agentDetail.configure.orchestrate')}
             </h2>
           </div>
-          <div className="shrink-0">
-            <ModelSelector
-              defaultModel={currentModel}
-              modelList={textGenerationModelList}
-              triggerClassName="h-8! max-w-48 rounded-lg!"
-              popupClassName="w-[432px] max-w-[min(432px,calc(100vw-32px))]"
-              showModelMeta={false}
-              onSelect={setSelectedModel}
-            />
-          </div>
         </div>
 
         <ScrollArea
@@ -89,6 +113,12 @@ export function AgentConfigurePage({
             content: 'min-h-full px-4 py-3',
           }}
         >
+          <AgentModelField
+            currentModel={currentModel}
+            textGenerationModelList={textGenerationModelList}
+            onSelect={setSelectedModel}
+          />
+
           {/* Prompt editor */}
           <AgentPromptEditor value={prompt} onChange={setPrompt} />
 
