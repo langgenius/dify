@@ -126,14 +126,23 @@ describe('AppCard', () => {
     it('should render enabled try button in cloud explore mode', () => {
       renderComponent({ canCreate: true, isExplore: true })
 
-      expect(screen.getByRole('button', { name: 'explore.appCard.try' })).toBeEnabled()
+      const createButton = screen.getByRole('button', { name: 'explore.appCard.addToWorkspace' })
+      const tryButton = screen.getByRole('button', { name: 'explore.appCard.try' })
+
+      expect(tryButton).toBeEnabled()
+      expect(tryButton.parentElement).toBe(createButton.parentElement)
+      expect(createButton.parentElement).toHaveClass('grid-cols-2')
     })
 
     it('should hide try button outside cloud edition', () => {
       mockConfig.isCloudEdition = false
       renderComponent({ canCreate: true, isExplore: true })
 
+      const createButton = screen.getByRole('button', { name: 'explore.appCard.addToWorkspace' })
+
       expect(screen.queryByRole('button', { name: 'explore.appCard.try' })).not.toBeInTheDocument()
+      expect(createButton.parentElement).toHaveClass('grid-cols-1')
+      expect(createButton.parentElement).not.toHaveClass('grid-cols-2')
       expect(onTry).not.toHaveBeenCalled()
     })
   })

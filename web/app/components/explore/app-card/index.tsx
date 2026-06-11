@@ -77,7 +77,7 @@ const AppCard = ({
       </div>
       {isExplore && (
         <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className="grid h-8 w-full grid-cols-2 space-x-2">
+          <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canViewApp && 'grid-cols-2')}>
             <Button disabled={!canCreate} variant="primary" className="h-7" onClick={() => onCreate()}>
               <PlusIcon className="mr-1 size-4" />
               <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
