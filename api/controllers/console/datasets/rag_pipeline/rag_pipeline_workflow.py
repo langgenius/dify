@@ -48,7 +48,7 @@ from fields.workflow_run_fields import (
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
-from libs.login import current_user, login_required
+from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
@@ -835,7 +835,7 @@ class RagPipelineWorkflowRunListApi(Resource):
             }
         )
         args = {
-            "last_id": str(query.last_id) if query.last_id else None,
+            "last_id": query.last_id or None,
             "limit": query.limit,
         }
 
@@ -881,7 +881,8 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline, run_id: UUID):
+    @with_current_user
+    def get(self, current_user: Account, pipeline: Pipeline, run_id: UUID):
         """
         Get workflow run node execution list
         """
@@ -988,9 +989,11 @@ class RagPipelineRecommendedPluginApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
         query = RagPipelineRecommendedPluginQuery.model_validate(request.args.to_dict())
 
         rag_pipeline_service = RagPipelineService()
-        recommended_plugins = rag_pipeline_service.get_recommended_plugins(query.type)
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins(query.type, current_user, current_tenant_id)
         return recommended_plugins
