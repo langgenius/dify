@@ -13,9 +13,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
+import { useAgentConfigureTools, useAgentConfigureToolSettings } from '../../atoms'
 import { ConfigureSection } from '../configure-section'
 import { ConfigureSectionAddButton } from '../configure-section-add-button'
-import { defaultAgentTools } from '../configured-data'
 
 type AgentToolBase = {
   id: string
@@ -279,14 +279,11 @@ function AgentToolItem({
   return <AgentCliToolItem tool={tool} />
 }
 
-export function AgentTools({
-  tools = defaultAgentTools,
-}: {
-  tools?: AgentTool[]
-}) {
+export function AgentTools() {
   const { t } = useTranslation('agentV2')
+  const [tools] = useAgentConfigureTools()
+  const [toolSettings, setToolSettings] = useAgentConfigureToolSettings()
   const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())
-  const [toolSettings, setToolSettings] = useState<Record<string, Record<string, unknown>>>({})
   const [settingTarget, setSettingTarget] = useState<ToolSettingTarget | null>(null)
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
@@ -338,10 +335,10 @@ export function AgentTools({
           collection={currentSettingCollection}
           isModel={false}
           onSave={(value) => {
-            setToolSettings(currentSettings => ({
-              ...currentSettings,
+            setToolSettings({
+              ...toolSettings,
               [settingTarget.action.id]: value,
-            }))
+            })
             setSettingTarget(null)
           }}
           onHide={() => setSettingTarget(null)}

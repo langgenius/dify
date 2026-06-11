@@ -2,16 +2,18 @@
 
 import type { AgentConfigSnapshotDetailResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { Button } from '@langgenius/dify-ui/button'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/client'
-import { useAgentConfigureCurrentModel, useAgentConfigureModel, useHydrateAgentConfigureDraft } from './atoms'
+import { isAgentConfigureDirtyAtom, useAgentConfigureCurrentModel, useAgentConfigureModel, useAgentConfigurePrompt, useHydrateAgentConfigureDraft } from './atoms'
 import { AgentAdvancedSettings } from './components/advanced-settings'
 import { AgentFiles } from './components/agent-files'
 import { AgentKnowledgeRetrieval } from './components/agent-knowledge-retrieval'
@@ -21,7 +23,6 @@ import { AgentPreviewVersionsPanel } from './components/agent-preview-versions-p
 import { AgentPromptEditor } from './components/agent-prompt-editor'
 import { AgentSkills } from './components/agent-skills'
 import { AgentTools } from './components/agent-tools'
-import { defaultAgentFiles } from './components/configured-data'
 
 type AgentConfigurePageProps = {
   agentId: string
@@ -57,6 +58,87 @@ function AgentModelField({
         </div>
       </div>
     </FieldRoot>
+  )
+}
+
+function AgentConfigurePublishBar({
+  agentId,
+  agentSoulConfig,
+  currentModel,
+  onOpenVersions,
+}: {
+  agentId: string
+  agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
+  currentModel?: {
+    provider: string
+    model: string
+  }
+  onOpenVersions: () => void
+}) {
+  const { t } = useTranslation('agentV2')
+  const [prompt] = useAgentConfigurePrompt()
+  const isDirty = useAtomValue(isAgentConfigureDirtyAtom)
+
+  const handlePublish = () => {
+    const publishPayload = {
+      agent_id: agentId,
+      config_snapshot: {
+        ...agentSoulConfig,
+        prompt: {
+          ...agentSoulConfig?.prompt,
+          system_prompt: prompt,
+        },
+        model: currentModel
+          ? {
+              ...agentSoulConfig?.model,
+              model_provider: currentModel.provider,
+              model: currentModel.model,
+              plugin_id: agentSoulConfig?.model?.plugin_id ?? '',
+            }
+          : agentSoulConfig?.model,
+      },
+    }
+
+    // eslint-disable-next-line no-console -- Requested temporary publish payload inspection.
+    console.log('[Agent Roster] publish payload', publishPayload)
+  }
+
+  return (
+    <div className="flex h-14 shrink-0 items-center justify-end border-t border-divider-subtle px-4">
+      <div className="flex min-w-0 items-center gap-3 rounded-xl border border-divider-subtle bg-components-panel-bg px-4 py-2 shadow-lg shadow-shadow-shadow-5">
+        <div className="flex min-w-0 items-center gap-2 system-sm-regular text-text-tertiary">
+          <span aria-hidden className="size-1.5 shrink-0 rounded-[2px] bg-text-tertiary" />
+          <span className="shrink-0 text-text-secondary">{t('agentDetail.configure.publishBar.draft')}</span>
+          <span aria-hidden className="shrink-0">·</span>
+          <span className="min-w-0 truncate">
+            {isDirty
+              ? t('agentDetail.configure.publishBar.unsaved')
+              : t('agentDetail.configure.publishBar.saved')}
+          </span>
+        </div>
+        <button
+          type="button"
+          aria-label={t('agentDetail.configure.publishBar.versionHistory')}
+          className="flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          onClick={onOpenVersions}
+        >
+          <span aria-hidden className="i-ri-history-line size-4" />
+        </button>
+        <Button
+          type="button"
+          variant="primary"
+          className="h-8 gap-2 rounded-lg px-3"
+          onClick={handlePublish}
+        >
+          <span>{t('agentDetail.publish')}</span>
+          <span aria-hidden className="flex items-center gap-0.5">
+            <span className="flex size-4 items-center justify-center rounded-[4px] bg-components-button-primary-bg-hover system-2xs-medium text-text-primary-on-surface">⌘</span>
+            <span className="flex size-4 items-center justify-center rounded-[4px] bg-components-button-primary-bg-hover system-2xs-medium text-text-primary-on-surface">⇧</span>
+            <span className="flex size-4 items-center justify-center rounded-[4px] bg-components-button-primary-bg-hover system-2xs-medium text-text-primary-on-surface">P</span>
+          </span>
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -105,7 +187,6 @@ export function AgentConfigurePage({
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
-  const agentFiles = defaultAgentFiles
 
   return (
     <section
@@ -142,10 +223,10 @@ export function AgentConfigurePage({
           <AgentPromptEditor />
 
           {/* Skills */}
-          <AgentSkills agentId={agentId} files={agentFiles} />
+          <AgentSkills agentId={agentId} />
 
           {/* Files */}
-          <AgentFiles files={agentFiles} />
+          <AgentFiles />
 
           {/* Tools */}
           <AgentTools />
@@ -158,10 +239,12 @@ export function AgentConfigurePage({
         </ScrollArea>
 
         {/* Save and publish actions */}
-        <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-4">
-          <div className="h-8 w-36 rounded-xl bg-components-panel-on-panel-item-bg shadow-md shadow-shadow-shadow-5" />
-          <div className="h-8 w-20 rounded-lg bg-components-button-primary-bg shadow-xs shadow-shadow-shadow-3" />
-        </div>
+        <AgentConfigurePublishBar
+          agentId={agentId}
+          agentSoulConfig={agentSoulConfig}
+          currentModel={currentModel}
+          onOpenVersions={() => setShowPreviewVersions(true)}
+        />
       </div>
 
       {/* Preview area */}

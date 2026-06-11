@@ -11,7 +11,9 @@ import { AgentFileTree } from '../agent-file-tree'
 import { AgentSkillDetailDialog } from '../agent-skills/agent-skill-detail-dialog'
 import { ConfigureSection } from '../configure-section'
 import { ConfigureSectionAddButton } from '../configure-section-add-button'
-import { defaultAgentFiles } from '../configured-data'
+import { useAgentConfigureFiles } from '../../atoms'
+
+export type { AgentFileNode } from '../configured-data'
 
 function createFileDetail(file: AgentFileNode, files: AgentFileNode[]): AgentSkillDetail {
   return {
@@ -40,12 +42,9 @@ function createFileDetail(file: AgentFileNode, files: AgentFileNode[]): AgentSki
   }
 }
 
-export function AgentFiles({
-  files = defaultAgentFiles,
-}: {
-  files?: AgentFileNode[]
-}) {
+export function AgentFiles() {
   const { t } = useTranslation('agentV2')
+  const [files] = useAgentConfigureFiles()
   const filesTip = t('agentDetail.configure.files.tip')
   const filesTreeId = 'agent-configure-files-tree'
 

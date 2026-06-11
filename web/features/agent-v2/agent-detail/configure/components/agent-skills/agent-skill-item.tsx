@@ -16,8 +16,10 @@ export type AgentSkillWithDetail = AgentSkill & {
 
 export function AgentSkillItem({
   skill,
+  onRemove,
 }: {
   skill: AgentSkillWithDetail
+  onRemove: (skillId: string) => void
 }) {
   const { t } = useTranslation('agentV2')
 
@@ -41,6 +43,7 @@ export function AgentSkillItem({
           <button
             type="button"
             aria-label={t('agentDetail.configure.skills.remove', { name: skill.name })}
+            onClick={() => onRemove(skill.id)}
             className="peer pointer-events-none absolute z-10 flex size-5 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span aria-hidden className="i-ri-delete-bin-line size-3.5" />

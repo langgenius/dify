@@ -1,12 +1,12 @@
 'use client'
 
 import type { AgentSkillFileNode } from './agent-skill-detail-dialog'
-import type { AgentSkill } from './agent-skill-item'
+import type { AgentSkillWithDetail } from './agent-skill-item'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAgentConfigureFiles, useAgentConfigureSkills, useRemoveAgentConfigureSkill } from '../../atoms'
 import { ConfigureSection } from '../configure-section'
 import { ConfigureSectionAddButton } from '../configure-section-add-button'
-import { defaultAgentFiles, defaultAgentSkills } from '../configured-data'
 import { getFirstAgentFileId } from '../utils'
 import { AgentSkillItem } from './agent-skill-item'
 import { AgentSkillUploadDialog } from './agent-skill-upload-dialog'
@@ -86,14 +86,17 @@ const createSkillDetail = (skillName: string, files: AgentSkillFileNode[]) => ({
 
 export function AgentSkills({
   agentId,
-  skills = defaultAgentSkills,
-  files = defaultAgentFiles,
 }: {
   agentId: string
-  skills?: AgentSkill[]
-  files?: AgentSkillFileNode[]
 }) {
   const { t } = useTranslation('agentV2')
+  const [skills] = useAgentConfigureSkills()
+  const [files] = useAgentConfigureFiles()
+  const removeSkill = useRemoveAgentConfigureSkill()
+  const skillsWithDetail = skills.map<AgentSkillWithDetail>(skill => ({
+    ...skill,
+    detail: createSkillDetail(skill.name, files),
+  }))
   const skillsTip = t('agentDetail.configure.skills.tip')
   const skillsListId = 'agent-configure-skills-list'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
@@ -115,14 +118,8 @@ export function AgentSkills({
           />
         )}
       >
-        {skills.map(skill => (
-          <AgentSkillItem
-            key={skill.id}
-            skill={{
-              ...skill,
-              detail: createSkillDetail(skill.name, files),
-            }}
-          />
+        {skillsWithDetail.map(skill => (
+          <AgentSkillItem key={skill.id} skill={skill} onRemove={removeSkill} />
         ))}
       </ConfigureSection>
       <AgentSkillUploadDialog

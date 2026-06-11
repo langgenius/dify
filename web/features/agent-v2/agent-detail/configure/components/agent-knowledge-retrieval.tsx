@@ -2,9 +2,9 @@
 
 import type { AgentKnowledgeRetrievalItem } from './configured-data'
 import { useTranslation } from 'react-i18next'
+import { useAgentConfigureKnowledgeRetrievals } from '../atoms'
 import { ConfigureSection } from './configure-section'
 import { ConfigureSectionAddButton } from './configure-section-add-button'
-import { defaultAgentKnowledgeRetrievals } from './configured-data'
 
 function KnowledgeRetrievalIcon() {
   return (
@@ -33,12 +33,9 @@ function AgentKnowledgeRetrievalRow({
   )
 }
 
-export function AgentKnowledgeRetrieval({
-  retrievals = defaultAgentKnowledgeRetrievals,
-}: {
-  retrievals?: AgentKnowledgeRetrievalItem[]
-}) {
+export function AgentKnowledgeRetrieval() {
   const { t } = useTranslation('agentV2')
+  const [retrievals] = useAgentConfigureKnowledgeRetrievals()
   const knowledgeRetrievalTip = t('agentDetail.configure.knowledgeRetrieval.tip')
   const retrievalListId = 'agent-configure-knowledge-retrieval-list'
 

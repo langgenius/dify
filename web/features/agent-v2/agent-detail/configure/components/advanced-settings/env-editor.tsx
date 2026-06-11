@@ -3,36 +3,20 @@
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAgentConfigureEnvVariables } from '../../atoms'
 import { ConfigureSection } from '../configure-section'
 import { ConfigureSectionAddButton } from '../configure-section-add-button'
 
-type EnvScope = 'secret' | 'plain'
+export type EnvScope = 'secret' | 'plain'
 
-type EnvVariable = {
+export type EnvVariable = {
   id: string
   key: string
   value: string
   scope: EnvScope
   masked?: boolean
 }
-
-const defaultEnvVariables: EnvVariable[] = [
-  {
-    id: 'openai-api-key',
-    key: 'OPENAI_API_KEY',
-    value: '••••••••••••',
-    scope: 'secret',
-    masked: true,
-  },
-  {
-    id: 'tender-corpus-id',
-    key: 'TENDER_CORPUS_ID',
-    value: 'tender-corpus-2025',
-    scope: 'plain',
-  },
-]
 
 const scopeLabelKeys: Record<EnvScope, I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>> = {
   plain: 'agentDetail.configure.advancedSettings.envEditor.scopePlain',
@@ -166,22 +150,18 @@ function EnvEditorDraftRow() {
   )
 }
 
-export function AgentEnvEditor({
-  variables = defaultEnvVariables,
-}: {
-  variables?: EnvVariable[]
-}) {
+export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
-  const [envVariables, setEnvVariables] = useState<EnvVariable[]>(() => variables)
+  const [envVariables, setEnvVariables] = useAgentConfigureEnvVariables()
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
   const envEditorTableId = 'agent-configure-env-editor-table'
   const updateVariableScope = (id: string, scope: EnvScope) => {
-    setEnvVariables(currentVariables => currentVariables.map(variable => (
+    setEnvVariables(envVariables.map(variable => (
       variable.id === id ? { ...variable, scope } : variable
     )))
   }
   const deleteVariable = (id: string) => {
-    setEnvVariables(currentVariables => currentVariables.filter(variable => variable.id !== id))
+    setEnvVariables(envVariables.filter(variable => variable.id !== id))
   }
 
   return (
