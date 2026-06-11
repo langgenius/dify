@@ -85,7 +85,6 @@ export function AgentConfigurePage({
           slotClassNames={{
             viewport: 'overscroll-contain',
             content: 'min-h-full px-4 py-3',
-            scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
           }}
         >
           {/* Prompt editor */}
