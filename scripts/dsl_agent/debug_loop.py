@@ -8,11 +8,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from openai import OpenAI
-
+import yaml
 from console_lifecycle import (
-    DEFAULT_COOKIE_JAR,
     DEFAULT_CONSOLE_BASE,
+    DEFAULT_COOKIE_JAR,
     ConsoleApiError,
     DifyConsoleClient,
     console_error_to_dict,
@@ -24,6 +23,7 @@ from console_lifecycle import (
 )
 from dependency_normalizer import normalize_yaml_text
 from deterministic_repair import repair_yaml_text as deterministic_repair_yaml_text
+from openai import OpenAI
 from run_dify_app import post_json
 from runtime_repair import (
     load_runtime_evidence,
@@ -33,7 +33,6 @@ from runtime_repair import (
 )
 from shape_normalizer import normalize_shape_yaml_text
 from validator import validate_yaml_text
-
 
 PUBLISH_MARKED_NAME_MAX_LENGTH = 20
 PUBLISH_MARKED_COMMENT_MAX_LENGTH = 100
@@ -382,6 +381,102 @@ def run_dependency_install_stage(
     }
 
 
+def dependency_unique_identifier_from_report_item(dependency: Any) -> str:
+    if not isinstance(dependency, dict):
+        return ""
+    value = dependency.get("value")
+    if not isinstance(value, dict):
+        return ""
+    for key in (
+        "marketplace_plugin_unique_identifier",
+        "github_plugin_unique_identifier",
+        "plugin_unique_identifier",
+    ):
+        identifier = value.get(key)
+        if isinstance(identifier, str) and identifier:
+            return identifier
+    return ""
+
+
+def plugin_id_from_dependency_identifier(identifier: str) -> str:
+    return identifier.split(":", 1)[0].strip()
+
+
+def collect_current_identifier_replacements(dependencies: Any) -> dict[str, str]:
+    replacements: dict[str, str] = {}
+    for dependency in extract_leaked_dependencies(dependencies):
+        requested = dependency_unique_identifier_from_report_item(dependency)
+        current = dependency.get("current_identifier") if isinstance(dependency, dict) else None
+        if not requested or not isinstance(current, str) or not current:
+            continue
+        if plugin_id_from_dependency_identifier(requested) != plugin_id_from_dependency_identifier(current):
+            continue
+        if requested != current:
+            replacements[requested] = current
+    return replacements
+
+
+def align_yaml_dependencies_to_current_identifiers(
+    yaml_text: str,
+    dependencies: Any,
+) -> tuple[str, dict[str, Any]]:
+    replacements = collect_current_identifier_replacements(dependencies)
+    report: dict[str, Any] = {
+        "changed": False,
+        "replacements": [],
+        "errors": [],
+    }
+    if not replacements:
+        return yaml_text, report
+
+    try:
+        data = yaml.safe_load(yaml_text)
+    except yaml.YAMLError as exc:
+        report["errors"].append({"code": "yaml_parse_failed", "message": str(exc)})
+        return yaml_text, report
+    if not isinstance(data, dict):
+        report["errors"].append({"code": "yaml_not_mapping", "message": "YAML document must be a mapping"})
+        return yaml_text, report
+
+    dependencies_list = data.get("dependencies")
+    if not isinstance(dependencies_list, list):
+        report["errors"].append({"code": "dependencies_not_list", "message": "dependencies must be a list"})
+        return yaml_text, report
+
+    for index, dependency in enumerate(dependencies_list):
+        if not isinstance(dependency, dict):
+            continue
+        value = dependency.get("value")
+        if not isinstance(value, dict):
+            continue
+        for key in (
+            "marketplace_plugin_unique_identifier",
+            "github_plugin_unique_identifier",
+            "plugin_unique_identifier",
+        ):
+            identifier = value.get(key)
+            if not isinstance(identifier, str):
+                continue
+            current_identifier = replacements.get(identifier)
+            if not current_identifier:
+                continue
+            value[key] = current_identifier
+            dependency["current_identifier"] = None
+            report["replacements"].append(
+                {
+                    "index": index,
+                    "plugin_id": plugin_id_from_dependency_identifier(identifier),
+                    "from": identifier,
+                    "to": current_identifier,
+                }
+            )
+
+    report["changed"] = bool(report["replacements"])
+    if not report["changed"]:
+        return yaml_text, report
+    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True), report
+
+
 def run_repair(
     *,
     run_dir: Path,
@@ -684,6 +779,27 @@ def run(args: argparse.Namespace) -> int:
                 "errors": dependency_install.get("errors", []),
             }
             if not dependency_install.get("ok"):
+                aligned_yaml, alignment_report = align_yaml_dependencies_to_current_identifiers(
+                    yaml_file.read_text(),
+                    dependency_install.get("dependencies_after") or dependency_install.get("dependencies_before"),
+                )
+                alignment_report_path = run_dir / f"dependency_alignment.loop{iteration}.json"
+                write_json(alignment_report_path, alignment_report)
+                record["dependency_alignment"] = {
+                    "artifact": str(alignment_report_path),
+                    "changed": alignment_report.get("changed"),
+                    "replacements": alignment_report.get("replacements", []),
+                    "errors": alignment_report.get("errors", []),
+                }
+                if alignment_report.get("changed"):
+                    aligned_yaml_path = run_dir / f"generated.loop{iteration}.dependency_aligned.yml"
+                    aligned_yaml_path.write_text(aligned_yaml)
+                    record["dependency_alignment"]["output_yaml"] = str(aligned_yaml_path)
+                    summary["iterations"].append(record)
+                    yaml_file = aligned_yaml_path
+                    summary["app_id"] = app_id
+                    summary["final_yaml"] = str(yaml_file)
+                    continue
                 summary["iterations"].append(record)
                 summary["status"] = "dependency_install_failed"
                 summary["app_id"] = app_id

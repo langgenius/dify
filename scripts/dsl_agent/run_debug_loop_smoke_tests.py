@@ -9,6 +9,7 @@ from typing import Any
 
 import debug_loop
 from debug_loop import (
+    align_yaml_dependencies_to_current_identifiers,
     draft_debug_succeeded,
     extract_api_key_token,
     redact_sensitive_values,
@@ -275,6 +276,50 @@ def assert_post_success_arg_validation() -> dict[str, Any]:
     return {"name": "post_success_arg_validation", "valid": True}
 
 
+def assert_dependency_alignment() -> dict[str, Any]:
+    yaml_text = """dependencies:
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai:0.4.2@newhash
+  current_identifier: null
+kind: app
+"""
+    dependency_report = {
+        "leaked_dependencies": [
+            {
+                "type": "marketplace",
+                "value": {
+                    "marketplace_plugin_unique_identifier": "langgenius/openai:0.4.2@newhash",
+                    "version": "0.4.2",
+                },
+                "current_identifier": "langgenius/openai:0.0.19@oldhash",
+            }
+        ]
+    }
+    aligned, report = align_yaml_dependencies_to_current_identifiers(yaml_text, dependency_report)
+    if not report.get("changed"):
+        raise AssertionError(f"expected dependency alignment to change YAML: {report}")
+    if "langgenius/openai:0.0.19@oldhash" not in aligned:
+        raise AssertionError(f"expected current identifier in aligned YAML: {aligned}")
+    if "langgenius/openai:0.4.2@newhash" in aligned:
+        raise AssertionError(f"stale requested identifier remained in aligned YAML: {aligned}")
+
+    mismatched_report = {
+        "leaked_dependencies": [
+            {
+                "type": "marketplace",
+                "value": {"marketplace_plugin_unique_identifier": "langgenius/openai:0.4.2@newhash"},
+                "current_identifier": "langgenius/anthropic:0.1.0@otherhash",
+            }
+        ]
+    }
+    unchanged, unchanged_report = align_yaml_dependencies_to_current_identifiers(yaml_text, mismatched_report)
+    if unchanged != yaml_text or unchanged_report.get("changed"):
+        raise AssertionError(f"must not align dependencies across plugin ids: {unchanged_report}")
+
+    return {"name": "dependency_alignment", "valid": True, "replacements": report.get("replacements")}
+
+
 def main() -> int:
     cases = [
         assert_api_key_helpers(),
@@ -282,6 +327,7 @@ def main() -> int:
         assert_draft_success_summary(),
         assert_post_success_lifecycle(),
         assert_post_success_arg_validation(),
+        assert_dependency_alignment(),
     ]
     print(json.dumps({"valid": True, "cases": cases}, ensure_ascii=False, indent=2))
     return 0
