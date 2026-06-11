@@ -1,13 +1,13 @@
 import type { DeployReq } from '@dify/contracts/enterprise/types.gen'
-import type { GuideMethod, WorkflowSourceApp } from '../types'
-import type { DeploymentTargetSubmissionState } from './types'
+import type { DeploymentTargetSubmissionState } from './target-submission-state'
+import type { GuideMethod, WorkflowSourceApp } from './types'
 import {
   selectedDeploymentRuntimeCredentials,
 } from '@/features/deployments/components/runtime-credential-bindings-utils'
 import { createDeploymentIdempotencyKey } from '@/features/deployments/idempotency'
 import {
   createDeploymentEnvVarInputs,
-} from './env-vars'
+} from './submission-env-vars'
 
 export function createInitialDeploymentRequest({
   effectiveSelectedApp,

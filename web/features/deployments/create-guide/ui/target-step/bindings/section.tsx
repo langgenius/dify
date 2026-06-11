@@ -6,29 +6,21 @@ import {
   RuntimeCredentialBindingsPanel,
 } from '@/features/deployments/components/runtime-credential-bindings'
 import {
-  runtimeCredentialSlotKey,
-  selectedRuntimeCredentialSelections,
-} from '@/features/deployments/components/runtime-credential-bindings-utils'
+  deploymentTargetBindingSelectionsAtom,
+  deploymentTargetBindingSlotsAtom,
+  unsupportedDslNodesAtom,
+} from '../../../state/guide-derived-atoms'
+import { deploymentOptionsQueryAtom } from '../../../state/query-atoms'
 import {
-  useCreateGuideDeploymentOptionsQuery,
-} from '../../../models/deployment-target/query-config'
-import { deploymentTargetQueryEnabledAtom } from '../../../state/deployment-target-query-atoms'
-import {
-  manualBindingSelectionsAtom,
   selectBindingAtom,
 } from '../../../state/target-atoms'
-import { unsupportedDslNodesAtom } from '../../../state/unsupported-dsl-atoms'
 import { TargetBindingSkeleton } from '../skeletons'
 
 export function TargetBindingSection() {
   const { t } = useTranslation('deployments')
-  const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
-  const enabled = useAtomValue(deploymentTargetQueryEnabledAtom)
-  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
-  const bindingSlots = enabled
-    ? deploymentOptionsQuery.data?.options?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
-    : []
-  const bindingSelections = selectedRuntimeCredentialSelections(bindingSlots, manualBindingSelections)
+  const deploymentOptionsQuery = useAtomValue(deploymentOptionsQueryAtom)
+  const bindingSlots = useAtomValue(deploymentTargetBindingSlotsAtom)
+  const bindingSelections = useAtomValue(deploymentTargetBindingSelectionsAtom)
   const isBindingError = deploymentOptionsQuery.isError
   const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
   const selectBinding = useSetAtom(selectBindingAtom)

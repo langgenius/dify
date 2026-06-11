@@ -7,23 +7,25 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
-import { useSourceAppsQuery } from '../../../queries/source'
 import {
-  selectedAppAtom,
+  effectiveSelectedAppAtom,
+} from '../../../state/guide-derived-atoms'
+import {
+  sourceAppsAtom,
+  sourceAppsQueryAtom,
+} from '../../../state/query-atoms'
+import {
   selectSourceAppAtom,
-  sourceSearchTextAtom,
 } from '../../../state/source-atoms'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 
 export function SourceAppList() {
   const { t } = useTranslation('deployments')
-  const selectedApp = useAtomValue(selectedAppAtom)
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
-  const sourceSearchText = useAtomValue(sourceSearchTextAtom)
-  const sourceAppsQuery = useSourceAppsQuery({ sourceSearchText })
-  const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []
-  const effectiveSelectedApp = selectedApp ?? sourceApps[0]
+  const sourceAppsQuery = useAtomValue(sourceAppsQueryAtom)
+  const sourceApps = useAtomValue(sourceAppsAtom)
+  const effectiveSelectedApp = useAtomValue(effectiveSelectedAppAtom)
   const sourceAppsLoading = sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)
 
   return (

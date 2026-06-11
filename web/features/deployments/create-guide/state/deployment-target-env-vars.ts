@@ -1,5 +1,5 @@
 import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
-import type { GuideMethod } from '../../types'
+import type { GuideMethod } from './types'
 import type {
   EnvVarBindingSlot,
   EnvVarValues,

@@ -1,18 +1,22 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { deploymentErrorMessage } from '@/features/deployments/error'
+import { useRouter } from '@/next/navigation'
 import {
+  canDeployAtom,
+  canSkipDeploymentAtom,
+} from '../../state/guide-derived-atoms'
+import {
+  createDeploymentGuideSubmissionAtom,
+  CreateDeploymentGuideSubmissionBlockedError,
   isCreatingReleaseOnlyAtom,
   isSubmittingDeploymentGuideAtom,
 } from '../../state/submission-atoms'
 import { setStepAtom } from '../../state/workflow-atoms'
-import {
-  useTargetCanDeploy,
-  useTargetCanSkipDeployment,
-  useTargetDeploymentSubmissionAction,
-} from './actions.data'
 
 export function TargetActionButtons() {
   return (
@@ -43,8 +47,9 @@ function TargetBackButton() {
 
 function TargetSkipDeploymentButton() {
   const { t } = useTranslation('deployments')
-  const canSkipDeployment = useTargetCanSkipDeployment()
-  const createDeploymentAndRelease = useTargetDeploymentSubmissionAction()
+  const router = useRouter()
+  const canSkipDeployment = useAtomValue(canSkipDeploymentAtom)
+  const submitCreateDeploymentGuide = useSetAtom(createDeploymentGuideSubmissionAtom)
   const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
   const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
   const label = isSkippingDeployment
@@ -55,7 +60,18 @@ function TargetSkipDeploymentButton() {
     if (!canSkipDeployment)
       return
 
-    await createDeploymentAndRelease({ deployToEnvironment: false })
+    try {
+      const appInstanceId = await submitCreateDeploymentGuide({ deployToEnvironment: false })
+      if (appInstanceId)
+        router.push(`/deployments/${appInstanceId}/overview`)
+    }
+    catch (error) {
+      await showSubmissionError({
+        error,
+        fallbackMessage: t('createGuide.errors.createReleaseFailed'),
+        unsupportedDslModeMessage: t('createGuide.dsl.unsupportedMode'),
+      })
+    }
   }
 
   return (
@@ -67,8 +83,9 @@ function TargetSkipDeploymentButton() {
 
 function TargetDeployButton() {
   const { t } = useTranslation('deployments')
-  const canDeploy = useTargetCanDeploy()
-  const createDeploymentAndRelease = useTargetDeploymentSubmissionAction()
+  const router = useRouter()
+  const canDeploy = useAtomValue(canDeployAtom)
+  const submitCreateDeploymentGuide = useSetAtom(createDeploymentGuideSubmissionAtom)
   const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
   const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
   const label = isSubmitting && !isSkippingDeployment
@@ -79,7 +96,18 @@ function TargetDeployButton() {
     if (!canDeploy)
       return
 
-    await createDeploymentAndRelease({ deployToEnvironment: true })
+    try {
+      const appInstanceId = await submitCreateDeploymentGuide({ deployToEnvironment: true })
+      if (appInstanceId)
+        router.push(`/deployments/${appInstanceId}/overview`)
+    }
+    catch (error) {
+      await showSubmissionError({
+        error,
+        fallbackMessage: t('createGuide.errors.deployFailed'),
+        unsupportedDslModeMessage: t('createGuide.dsl.unsupportedMode'),
+      })
+    }
   }
 
   return (
@@ -87,4 +115,21 @@ function TargetDeployButton() {
       {label}
     </Button>
   )
+}
+
+async function showSubmissionError({
+  error,
+  fallbackMessage,
+  unsupportedDslModeMessage,
+}: {
+  error: unknown
+  fallbackMessage: string
+  unsupportedDslModeMessage: string
+}) {
+  if (error instanceof CreateDeploymentGuideSubmissionBlockedError) {
+    toast.error(error.reason === 'unsupportedDslMode' ? unsupportedDslModeMessage : fallbackMessage)
+    return
+  }
+
+  toast.error(await deploymentErrorMessage(error) || fallbackMessage)
 }

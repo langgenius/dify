@@ -4,16 +4,15 @@ import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { consoleQuery } from '@/service/client'
 import {
-  deploymentTargetQueryEnabledAtom,
-} from '../../../state/deployment-target-query-atoms'
+  deployableEnvironmentsAtom,
+  effectiveSelectedEnvironmentIdAtom,
+} from '../../../state/guide-derived-atoms'
+import { deployableEnvironmentsQueryAtom } from '../../../state/query-atoms'
 import {
-  selectedEnvironmentIdAtom,
   selectEnvironmentAtom,
 } from '../../../state/target-atoms'
 import { TargetEnvironmentSkeleton } from '../skeletons'
@@ -50,18 +49,9 @@ function EnvironmentOptionRow({ environment }: {
 
 export function TargetEnvironmentSection() {
   const { t } = useTranslation('deployments')
-  const enabled = useAtomValue(deploymentTargetQueryEnabledAtom)
-  const environmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
-    input: {
-      query: {},
-    },
-    enabled,
-  }))
-  const environments = enabled
-    ? environmentsQuery.data?.data ?? []
-    : []
-  const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
-  const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id
+  const environmentsQuery = useAtomValue(deployableEnvironmentsQueryAtom)
+  const environments = useAtomValue(deployableEnvironmentsAtom)
+  const effectiveSelectedEnvironmentId = useAtomValue(effectiveSelectedEnvironmentIdAtom)
   const isEnvironmentError = environmentsQuery.isError
   const isEnvironmentLoading = environmentsQuery.isLoading || (environmentsQuery.isFetching && !environmentsQuery.data)
   const onSelectEnvironment = useSetAtom(selectEnvironmentAtom)

@@ -1,6 +1,6 @@
 'use client'
 
-import type { GuideMethod } from '../../types'
+import type { GuideMethod } from '../../state/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'

@@ -8,12 +8,6 @@ export const selectedEnvironmentIdAtom = atom('')
 export const manualBindingSelectionsAtom = atom<RuntimeCredentialBindingSelections>({})
 export const envVarValuesAtom = atom<EnvVarValues>({})
 
-export const targetLocalAtoms = [
-  selectedEnvironmentIdAtom,
-  manualBindingSelectionsAtom,
-  envVarValuesAtom,
-] as const
-
 export const resetDeploymentTargetOptionsAtom = atom(null, (_get, set) => {
   set(selectedEnvironmentIdAtom, '')
   set(manualBindingSelectionsAtom, {})

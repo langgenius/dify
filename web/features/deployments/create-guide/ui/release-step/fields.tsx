@@ -3,13 +3,10 @@
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import {
-  existingInstanceNamesFromQueryData,
-  instanceNameConflictFromQueryData,
-  useExistingInstanceNamesQuery,
-  useInstanceNameConflictQuery,
-} from '../../queries/source'
 import { dslDefaultAppNameAtom } from '../../state/dsl-atoms'
+import {
+  hasInstanceNameConflictAtom,
+} from '../../state/guide-derived-atoms'
 import {
   instanceDescriptionAtom,
   instanceNameAtom,
@@ -19,7 +16,6 @@ import {
   setInstanceNameAtom,
   setReleaseDescriptionAtom,
   setReleaseNameAtom,
-  submittedReleaseFieldsAtom,
 } from '../../state/release-atoms'
 import { selectedAppAtom } from '../../state/source-atoms'
 import { methodAtom } from '../../state/workflow-atoms'
@@ -64,21 +60,7 @@ function InstanceNameField() {
   const instanceNamePlaceholder = method === 'importDsl'
     ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
     : selectedApp?.name
-  const appInstancesQuery = useExistingInstanceNamesQuery()
-  const existingInstanceNames = existingInstanceNamesFromQueryData(appInstancesQuery.data)
-  const submittedInstanceName = useAtomValue(submittedReleaseFieldsAtom).submittedInstanceName
-  const instanceNameConflictQuery = useInstanceNameConflictQuery({
-    enabled: Boolean(submittedInstanceName),
-    submittedInstanceName,
-  })
-  const remoteInstanceNameConflict = instanceNameConflictFromQueryData(instanceNameConflictQuery.data, submittedInstanceName)
-  const hasInstanceNameConflict = Boolean(
-    submittedInstanceName
-    && (
-      existingInstanceNames.includes(submittedInstanceName)
-      || remoteInstanceNameConflict
-    ),
-  )
+  const hasInstanceNameConflict = useAtomValue(hasInstanceNameConflictAtom)
   const instanceNameError = hasInstanceNameConflict
     ? t('createGuide.release.instanceNameConflict')
     : undefined

@@ -22,7 +22,3 @@ export const deploymentTargetQueryEnabledAtom = atom((get) => {
       && !get(dslUnsupportedModeAtom)
     )
 })
-
-export const deploymentTargetQueryLocalAtoms = [
-  deploymentTargetQueryEnabledAtom,
-] as const

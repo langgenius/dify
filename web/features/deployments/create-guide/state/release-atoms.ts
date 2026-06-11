@@ -48,13 +48,6 @@ export const instanceDescriptionAtom = atom('')
 export const releaseNameAtom = atom('')
 export const releaseDescriptionAtom = atom('')
 
-export const releaseLocalAtoms = [
-  instanceNameAtom,
-  instanceDescriptionAtom,
-  releaseNameAtom,
-  releaseDescriptionAtom,
-] as const
-
 export const submittedReleaseFieldsAtom = atom((get): CreateGuideSubmittedReleaseFields => ({
   submittedInstanceName: get(instanceNameAtom).trim(),
   submittedReleaseDescription: get(releaseDescriptionAtom).trim(),
