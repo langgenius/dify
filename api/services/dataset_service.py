@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal, TypedDict, cast
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import delete, exists, func, select, update
+from sqlalchemy import ColumnElement, delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -259,7 +259,7 @@ class DatasetService:
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
-            accessible_filter = Dataset.id.in_(accessible_dataset_ids)
+            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
             if include_own_datasets and user:
                 accessible_filter = sa.or_(Dataset.created_by == user.id, accessible_filter)
             query = query.where(accessible_filter)
@@ -385,7 +385,7 @@ class DatasetService:
             accessible_dataset_ids = [
                 dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
             ]
-            accessible_filter = Dataset.id.in_(accessible_dataset_ids)
+            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
             if include_own_datasets and user:
                 accessible_filter = sa.or_(Dataset.created_by == user.id, accessible_filter)
             stmt = stmt.where(accessible_filter)

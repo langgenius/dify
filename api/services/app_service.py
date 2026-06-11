@@ -6,7 +6,7 @@ from typing import Any, Literal, TypedDict, cast, override
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
@@ -142,7 +142,7 @@ class AppService:
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
         elif params.accessible_app_ids is not None:
-            accessible_filter = App.id.in_(params.accessible_app_ids)
+            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
             if params.include_own_apps:
                 accessible_filter = sa.or_(App.created_by == user_id, accessible_filter)
             filters.append(accessible_filter)
