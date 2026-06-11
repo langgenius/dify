@@ -248,6 +248,103 @@ class TestDatasetList:
         assert status == 200
         assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
+    def test_get_limits_to_own_datasets_without_default_read_permission(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            workspace=enterprise_rbac_service.WorkspacePermissionSnapshot(
+                permission_keys=["dataset.create_and_management"]
+            )
+        )
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                method(api, "tenant-1", current_user)
+
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == []
+        assert get_datasets.call_args.kwargs["include_own_datasets"] is True
+
+    def test_get_limits_to_dataset_read_overrides(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
+                overrides=[
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-shared",
+                        permission_keys=["dataset.acl.readonly"],
+                    ),
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-hidden",
+                        permission_keys=[],
+                    ),
+                ]
+            )
+        )
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                method(api, "tenant-1", current_user)
+
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == ["dataset-shared"]
+        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
+
+    def test_get_with_ids_applies_dataset_visibility(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse()
+
+        with app.test_request_context("/datasets?ids=dataset-1"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets_by_ids", return_value=([], 0)) as get_datasets_by_ids,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                method(api, "tenant-1", current_user)
+
+        get_datasets_by_ids.assert_called_once_with(
+            ["dataset-1"],
+            "tenant-1",
+            user=current_user,
+            accessible_dataset_ids=[],
+            include_own_datasets=False,
+        )
+
     def test_get_with_tag_ids(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)

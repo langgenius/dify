@@ -560,6 +560,7 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
         permission_keys=[],
     )
     pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_obj])
+    get_paginate_apps = MagicMock(return_value=pagination)
 
     with app.test_request_context("/apps"):
         with pytest.MonkeyPatch.context() as monkeypatch:
@@ -567,7 +568,7 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
             monkeypatch.setattr(
                 app_module.AppService,
                 "get_paginate_apps",
-                lambda self, user_id, tenant_id, args_dict: pagination,
+                get_paginate_apps,
             )
             monkeypatch.setattr(
                 app_module.FeatureService,
@@ -595,7 +596,116 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
             resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", session)
 
     assert status == 200
+    assert get_paginate_apps.call_args.args[2].is_created_by_me is None
     assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+
+def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permission(app, app_module):
+    method = app_module.AppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
+    get_paginate_apps = MagicMock(return_value=pagination)
+
+    with app.test_request_context("/apps"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
+                        permission_keys=["app.create_and_management"]
+                    )
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+
+            session = MagicMock()
+            resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", session)
+
+    assert status == 200
+    assert resp["data"] == []
+    assert get_paginate_apps.call_args.args[2].is_created_by_me is True
+
+
+def test_app_list_api_limits_to_view_layout_overrides_without_manage_own_permission(app, app_module):
+    method = app_module.AppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
+    get_paginate_apps = MagicMock(return_value=pagination)
+
+    with app.test_request_context("/apps"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                        overrides=[
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-shared",
+                                permission_keys=["app.acl.view_layout"],
+                            )
+                        ]
+                    )
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+
+            session = MagicMock()
+            method(app_module.AppListApi(), "tenant-1", "acct-1", session)
+
+    params = get_paginate_apps.call_args.args[2]
+    assert params.accessible_app_ids == ["app-shared"]
+    assert params.include_own_apps is False
+    assert params.is_created_by_me is None
+
+
+def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permission(app, app_module):
+    method = app_module.AppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
+    get_paginate_apps = MagicMock(return_value=pagination)
+
+    with app.test_request_context("/apps"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(),
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+
+            session = MagicMock()
+            method(app_module.AppListApi(), "tenant-1", "acct-1", session)
+
+    params = get_paginate_apps.call_args.args[2]
+    assert params.accessible_app_ids == []
+    assert params.include_own_apps is False
+    assert params.is_created_by_me is None
 
 
 def test_app_detail_api_attaches_current_user_permission_keys(app, app_module):

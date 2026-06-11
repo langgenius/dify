@@ -539,6 +539,25 @@ class AppListApi(Resource):
             is_created_by_me=args.is_created_by_me,
         )
 
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            str(current_tenant_id),
+            current_user_id,
+        )
+        if dify_config.RBAC_ENABLED:
+            if "app.acl.view_layout" not in permissions.app.default_permission_keys:
+                accessible_app_ids = [
+                    override.resource_id
+                    for override in permissions.app.overrides
+                    if "app.acl.view_layout" in override.permission_keys
+                ]
+                if accessible_app_ids:
+                    params.accessible_app_ids = accessible_app_ids
+                    params.include_own_apps = "app.create_and_management" in permissions.workspace.permission_keys
+                elif "app.create_and_management" in permissions.workspace.permission_keys:
+                    params.is_created_by_me = True
+                else:
+                    params.accessible_app_ids = []
+
         # get app list
         app_service = AppService()
         app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params)
@@ -546,8 +565,10 @@ class AppListApi(Resource):
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
 
+        app_ids = [str(app.id) for app in app_pagination.items]
+        permission_keys_map = permissions.app.permission_keys_by_resource_ids(app_ids)
+
         if FeatureService.get_system_features().webapp_auth.enabled:
-            app_ids = [str(app.id) for app in app_pagination.items]
             res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
             if len(res) != len(app_ids):
                 raise BadRequest("Invalid app id in webapp auth")
@@ -555,16 +576,6 @@ class AppListApi(Resource):
             for app in app_pagination.items:
                 if str(app.id) in res:
                     app.access_mode = res[str(app.id)].access_mode
-
-        if app_pagination.items:
-            app_ids = [str(app.id) for app in app_pagination.items]
-            permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-                str(current_tenant_id),
-                current_user_id,
-            )
-            permission_keys_map = permissions.app.permission_keys_by_resource_ids(app_ids)
-        else:
-            permission_keys_map = {}
 
         workflow_capable_app_ids = [
             str(app.id) for app in app_pagination.items if app.mode in {"workflow", "advanced-chat"}

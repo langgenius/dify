@@ -338,7 +338,7 @@ class TestAccessPolicyBindingLockUnlock:
 class TestRoleCopy:
     def test_role_copy_forwards_path_id(self, app):
         with (
-            app.test_request_context("/workspaces/current/rbac/roles/role-1/copy", method="POST"),
+            app.test_request_context("/workspaces/current/rbac/roles/role-1/copy", method="POST", json={}),
             _enabled(True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.copy") as mock_copy,
@@ -346,7 +346,7 @@ class TestRoleCopy:
         ):
             inspect.unwrap(rbac_mod.RBACRoleCopyApi.post)(rbac_mod.RBACRoleCopyApi(), "role-1")
 
-        mock_copy.assert_called_once_with("tenant-1", "acct-1", "role-1")
+        mock_copy.assert_called_once_with("tenant-1", "acct-1", "role-1", copy_member=True)
 
 
 class TestDumpHelper:

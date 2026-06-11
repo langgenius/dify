@@ -404,9 +404,30 @@ class DatasetListApi(Resource):
         if "tag_ids" in request.args:
             query_params["tag_ids"] = request.args.getlist("tag_ids")
         query = ConsoleDatasetListQuery.model_validate(query_params)
-        # provider = request.args.get("provider", default="vendor")
+
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            str(current_tenant_id),
+            current_user.id,
+        )
+
+        accessible_dataset_ids: list[str] | None = None
+        include_own_datasets = False
+        if dify_config.RBAC_ENABLED and "dataset.acl.readonly" not in permissions.dataset.default_permission_keys:
+            accessible_dataset_ids = [
+                override.resource_id
+                for override in permissions.dataset.overrides
+                if "dataset.acl.readonly" in override.permission_keys
+            ]
+            include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
+
         if query.ids:
-            datasets, total = DatasetService.get_datasets_by_ids(query.ids, current_tenant_id)
+            datasets, total = DatasetService.get_datasets_by_ids(
+                query.ids,
+                current_tenant_id,
+                user=current_user,
+                accessible_dataset_ids=accessible_dataset_ids,
+                include_own_datasets=include_own_datasets,
+            )
         else:
             datasets, total = DatasetService.get_datasets(
                 query.page,
@@ -416,15 +437,13 @@ class DatasetListApi(Resource):
                 query.keyword,
                 query.tag_ids,
                 query.include_all,
+                accessible_dataset_ids=accessible_dataset_ids,
+                include_own_datasets=include_own_datasets,
             )
 
         permission_keys_map = {}
         if datasets:
             dataset_ids = [str(dataset.id) for dataset in datasets]
-            permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-                str(current_tenant_id),
-                current_user.id,
-            )
             permission_keys_map = permissions.dataset.permission_keys_by_resource_ids(dataset_ids)
 
         # check embedding setting
