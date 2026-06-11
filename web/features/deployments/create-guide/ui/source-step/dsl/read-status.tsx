@@ -4,17 +4,15 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   dslReadErrorAtom,
+  dslUnsupportedModeAtom,
   isReadingDslAtom,
 } from '../../../state/dsl-atoms'
-import {
-  useDslUnsupportedMode,
-} from './read-status.data'
 
 export function DslReadStatus() {
   const { t } = useTranslation('deployments')
   const isReadingDsl = useAtomValue(isReadingDslAtom)
   const dslReadError = useAtomValue(dslReadErrorAtom)
-  const dslUnsupportedMode = useDslUnsupportedMode()
+  const dslUnsupportedMode = useAtomValue(dslUnsupportedModeAtom)
 
   return (
     <>

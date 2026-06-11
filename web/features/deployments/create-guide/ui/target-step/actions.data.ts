@@ -5,11 +5,12 @@ import { createDeploymentTargetBindings } from '../../models/deployment-target/b
 import { createDeploymentTargetEnvVars } from '../../models/deployment-target/env-vars'
 import { createDeploymentTargetEnvironment } from '../../models/deployment-target/environment'
 import { useDeploymentTargetQueryGate } from '../../models/deployment-target/query-gate'
-import { useSubmittedReleaseFieldsStatus } from '../../models/release'
-import { useSelectedSourceStatus } from '../../models/source'
+import { useSourceReady } from '../../models/source'
 import { useDeployableEnvironmentsQuery } from '../../queries/target-environments'
 import { useDeploymentOptionsQuery } from '../../queries/target-options'
 import { dslContentAtom } from '../../state/dsl-atoms'
+import { submittedReleaseFieldsAtom } from '../../state/release-atoms'
+import { selectedAppAtom } from '../../state/source-atoms'
 import {
   envVarValuesAtom,
   manualBindingSelectionsAtom,
@@ -22,32 +23,35 @@ import { useCreateDeploymentSubmission } from '../../submission'
 
 function useDeploymentOptionsForTargetActions() {
   const {
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp,
     method,
     queryGate,
   } = useDeploymentTargetQueryGate()
 
   return useDeploymentOptionsQuery({
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp,
     method,
     queryGate,
   })
 }
 
-function useTargetSubmittedReleaseReady(isSourceReady: boolean) {
-  const releaseFields = useSubmittedReleaseFieldsStatus()
+function useTargetSubmittedReleaseReady(sourceReady: boolean) {
+  const {
+    submittedInstanceName,
+    submittedReleaseName,
+  } = useAtomValue(submittedReleaseFieldsAtom)
 
   return Boolean(
-    isSourceReady
-    && releaseFields.hasInstanceName
-    && releaseFields.hasReleaseName,
+    sourceReady
+    && submittedInstanceName
+    && submittedReleaseName,
   )
 }
 
 export function useTargetCanDeploy() {
-  const source = useSelectedSourceStatus()
+  const sourceReady = useSourceReady()
   const dslContent = useAtomValue(dslContentAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
   const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
@@ -75,7 +79,7 @@ export function useTargetCanDeploy() {
     shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
     slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
   })
-  const submittedReleaseReady = useTargetSubmittedReleaseReady(source.isReady)
+  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
   const deploymentTargetReady = queryGate.shouldLoadDeploymentTarget
     && !(deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
     && !deployableEnvironmentsQuery.isError
@@ -93,10 +97,10 @@ export function useTargetCanDeploy() {
 }
 
 export function useTargetCanSkipDeployment() {
-  const source = useSelectedSourceStatus()
+  const sourceReady = useSourceReady()
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
   const deploymentOptionsResult = useDeploymentOptionsForTargetActions()
-  const submittedReleaseReady = useTargetSubmittedReleaseReady(source.isReady)
+  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
 
   return Boolean(
     submittedReleaseReady
@@ -106,7 +110,8 @@ export function useTargetCanSkipDeployment() {
 }
 
 export function useTargetDeployAction() {
-  const source = useSelectedSourceStatus()
+  const sourceReady = useSourceReady()
+  const selectedApp = useAtomValue(selectedAppAtom)
   const dslContent = useAtomValue(dslContentAtom)
   const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
   const envVarValues = useAtomValue(envVarValuesAtom)
@@ -133,9 +138,9 @@ export function useTargetDeployAction() {
     shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
     slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
   })
-  const submittedReleaseReady = useTargetSubmittedReleaseReady(source.isReady)
+  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
   const { createDeploymentAndRelease } = useCreateDeploymentSubmission({
-    effectiveSelectedApp: source.effectiveSelectedApp,
+    effectiveSelectedApp: selectedApp,
     hasInstanceNameConflict: false,
     isInitialReleaseReady: submittedReleaseReady,
     targetSubmissionState: {
@@ -159,7 +164,8 @@ export function useTargetDeployAction() {
 }
 
 export function useTargetSkipDeploymentAction(canSkipDeployment: boolean) {
-  const source = useSelectedSourceStatus()
+  const sourceReady = useSourceReady()
+  const selectedApp = useAtomValue(selectedAppAtom)
   const dslContent = useAtomValue(dslContentAtom)
   const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
   const envVarValues = useAtomValue(envVarValuesAtom)
@@ -186,9 +192,9 @@ export function useTargetSkipDeploymentAction(canSkipDeployment: boolean) {
     shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
     slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
   })
-  const submittedReleaseReady = useTargetSubmittedReleaseReady(source.isReady)
+  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
   const { createDeploymentAndRelease } = useCreateDeploymentSubmission({
-    effectiveSelectedApp: source.effectiveSelectedApp,
+    effectiveSelectedApp: selectedApp,
     hasInstanceNameConflict: false,
     isInitialReleaseReady: submittedReleaseReady,
     targetSubmissionState: {

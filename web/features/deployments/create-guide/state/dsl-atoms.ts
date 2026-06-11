@@ -1,8 +1,14 @@
 'use client'
 
 import { atom } from 'jotai'
+import {
+  dslAppName,
+  encodeDslContent,
+  isWorkflowDsl,
+} from '@/features/deployments/dsl'
 import { resetDeploymentTargetOptionsAtom } from './target-atoms'
 import { clearCreateDeploymentGuideUnsupportedDslNodesAtom } from './unsupported-dsl-atoms'
+import { methodAtom } from './workflow-atoms'
 
 export const dslFileAtom = atom<File | undefined>(undefined)
 export const dslContentAtom = atom('')
@@ -10,12 +16,41 @@ export const isReadingDslAtom = atom(false)
 export const dslReadErrorAtom = atom(false)
 const dslReadTokenAtom = atom(0)
 
+export const hasDslContentAtom = atom(get => Boolean(get(dslContentAtom).trim()))
+
+export const dslUnsupportedModeAtom = atom((get) => {
+  const dslContent = get(dslContentAtom)
+  const hasDslContent = get(hasDslContentAtom)
+
+  return get(methodAtom) === 'importDsl'
+    && hasDslContent
+    && !get(isReadingDslAtom)
+    && !get(dslReadErrorAtom)
+    && !isWorkflowDsl(dslContent)
+})
+
+export const dslDefaultAppNameAtom = atom((get) => {
+  const dslContent = get(dslContentAtom)
+
+  return dslContent ? dslAppName(dslContent) : ''
+})
+
+export const encodedDslContentAtom = atom((get) => {
+  const dslContent = get(dslContentAtom)
+
+  return get(hasDslContentAtom) ? encodeDslContent(dslContent) : ''
+})
+
 export const dslLocalAtoms = [
   dslFileAtom,
   dslContentAtom,
   isReadingDslAtom,
   dslReadErrorAtom,
   dslReadTokenAtom,
+  hasDslContentAtom,
+  dslUnsupportedModeAtom,
+  dslDefaultAppNameAtom,
+  encodedDslContentAtom,
 ] as const
 
 export const selectDslFileAtom = atom(null, async (get, set, dslFile?: File) => {

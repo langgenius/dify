@@ -38,7 +38,7 @@ export function useCreateReleaseOnlySubmission({
         await createReleaseFromDsl.mutateAsync({
           body: {
             appInstanceId,
-            dsl: submissionDraft.dslState.encodedDslContent,
+            dsl: submissionDraft.encodedDslContent,
             name: submissionDraft.submittedReleaseName,
             description: submissionDraft.submittedReleaseDescription || undefined,
             createAppInstance: false,

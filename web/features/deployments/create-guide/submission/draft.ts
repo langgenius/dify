@@ -3,12 +3,9 @@
 import { useAtomValue } from 'jotai'
 import {
   dslContentAtom,
-  dslReadErrorAtom,
-  isReadingDslAtom,
+  encodedDslContentAtom,
+  hasDslContentAtom,
 } from '../state/dsl-atoms'
-import {
-  createDslState,
-} from '../state/dsl-derived'
 import {
   instanceDescriptionAtom,
   submittedReleaseFieldsAtom,
@@ -20,20 +17,15 @@ import {
 export function useCreateDeploymentSubmissionDraft() {
   const method = useAtomValue(methodAtom)
   const dslContent = useAtomValue(dslContentAtom)
-  const dslReadError = useAtomValue(dslReadErrorAtom)
-  const isReadingDsl = useAtomValue(isReadingDslAtom)
+  const encodedDslContent = useAtomValue(encodedDslContentAtom)
+  const hasDslContent = useAtomValue(hasDslContentAtom)
   const instanceDescription = useAtomValue(instanceDescriptionAtom)
   const releaseFields = useAtomValue(submittedReleaseFieldsAtom)
-  const dslState = createDslState({
-    dslContent,
-    dslReadError,
-    isReadingDsl,
-    method,
-  })
 
   return {
     dslContent,
-    dslState,
+    encodedDslContent,
+    hasDslContent,
     instanceDescription,
     method,
     ...releaseFields,

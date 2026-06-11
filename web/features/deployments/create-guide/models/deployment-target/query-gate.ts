@@ -1,15 +1,16 @@
 'use client'
 
-import type { CreateGuideDslState } from '../../state/dsl-derived'
 import type { GuideMethod, WorkflowSourceApp } from '../../types'
 import { useAtomValue } from 'jotai'
 import {
   dslReadErrorAtom,
+  dslUnsupportedModeAtom,
+  encodedDslContentAtom,
+  hasDslContentAtom,
   isReadingDslAtom,
 } from '../../state/dsl-atoms'
 import { selectedAppAtom } from '../../state/source-atoms'
 import { methodAtom } from '../../state/workflow-atoms'
-import { useCreateGuideDslModel } from '../dsl'
 
 type DeploymentTargetQueryGate = {
   shouldLoadDeploymentTarget: boolean
@@ -19,23 +20,25 @@ type DeploymentTargetQueryGate = {
 
 function createDeploymentTargetQueryGate({
   dslReadError,
-  dslState,
+  dslUnsupportedMode,
   effectiveSelectedApp,
+  hasDslContent,
   isReadingDsl,
   method,
 }: {
   dslReadError: boolean
-  dslState: CreateGuideDslState
+  dslUnsupportedMode: boolean
   effectiveSelectedApp?: WorkflowSourceApp
+  hasDslContent: boolean
   isReadingDsl: boolean
   method: GuideMethod
 }): DeploymentTargetQueryGate {
   const shouldLoadSourceDeploymentOptions = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
   const shouldLoadDslDeploymentOptions = method === 'importDsl'
-    && dslState.hasDslContent
+    && hasDslContent
     && !isReadingDsl
     && !dslReadError
-    && !dslState.dslUnsupportedMode
+    && !dslUnsupportedMode
 
   return {
     shouldLoadDeploymentTarget: shouldLoadSourceDeploymentOptions || shouldLoadDslDeploymentOptions,
@@ -47,20 +50,23 @@ function createDeploymentTargetQueryGate({
 export function useDeploymentTargetQueryGate() {
   const method = useAtomValue(methodAtom)
   const dslReadError = useAtomValue(dslReadErrorAtom)
+  const dslUnsupportedMode = useAtomValue(dslUnsupportedModeAtom)
+  const encodedDslContent = useAtomValue(encodedDslContentAtom)
+  const hasDslContent = useAtomValue(hasDslContentAtom)
   const isReadingDsl = useAtomValue(isReadingDslAtom)
   const selectedApp = useAtomValue(selectedAppAtom)
-  const dslState = useCreateGuideDslModel()
   // Target sections must share the same source/DSL gates so their query observers stay consistent.
   const queryGate = createDeploymentTargetQueryGate({
     dslReadError,
-    dslState,
+    dslUnsupportedMode,
     effectiveSelectedApp: selectedApp,
+    hasDslContent,
     isReadingDsl,
     method,
   })
 
   return {
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp: selectedApp,
     method,
     queryGate,

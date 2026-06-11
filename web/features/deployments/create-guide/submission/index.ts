@@ -63,7 +63,7 @@ export function useCreateDeploymentSubmission({
       return
     if (submissionDraft.method === 'bindApp' && !effectiveSelectedApp?.id)
       return
-    if (submissionDraft.method === 'importDsl' && !submissionDraft.dslState.hasDslContent)
+    if (submissionDraft.method === 'importDsl' && !submissionDraft.hasDslContent)
       return
     if (submissionDraft.method === 'importDsl' && !isWorkflowDsl(submissionDraft.dslContent)) {
       toast.error(t('createGuide.dsl.unsupportedMode'))
@@ -90,7 +90,7 @@ export function useCreateDeploymentSubmission({
 
       const deploymentRequest = createInitialDeploymentRequest({
         effectiveSelectedApp,
-        encodedDslContent: submissionDraft.dslState.encodedDslContent,
+        encodedDslContent: submissionDraft.encodedDslContent,
         instanceDescription: submissionDraft.instanceDescription,
         method: submissionDraft.method,
         submittedInstanceName: submissionDraft.submittedInstanceName,

@@ -11,14 +11,14 @@ import {
 
 function useDeploymentOptionsForTargetEnvVars() {
   const {
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp,
     method,
     queryGate,
   } = useDeploymentTargetQueryGate()
 
   return useDeploymentOptionsQuery({
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp,
     method,
     queryGate,

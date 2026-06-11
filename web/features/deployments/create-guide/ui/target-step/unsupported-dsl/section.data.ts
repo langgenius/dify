@@ -9,14 +9,14 @@ import { setDeploymentOptionsUnsupportedDslNodesAtom } from '../../../state/unsu
 
 export function useDeploymentOptionsUnsupportedDslNodeSync() {
   const {
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp,
     method,
     queryGate,
   } = useDeploymentTargetQueryGate()
   const setDeploymentOptionsUnsupportedDslNodes = useSetAtom(setDeploymentOptionsUnsupportedDslNodesAtom)
   const deploymentOptionsQuery = useDeploymentOptionsQuery({
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp,
     method,
     queryGate,

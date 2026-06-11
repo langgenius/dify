@@ -11,14 +11,14 @@ import { unsupportedDslNodesAtom } from '../../../state/unsupported-dsl-atoms'
 
 function useDeploymentOptionsForTargetBinding() {
   const {
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp,
     method,
     queryGate,
   } = useDeploymentTargetQueryGate()
 
   return useDeploymentOptionsQuery({
-    dslState,
+    encodedDslContent,
     effectiveSelectedApp,
     method,
     queryGate,

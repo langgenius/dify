@@ -4,16 +4,16 @@ import type { WorkflowSourceApp } from '../../types'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
-  useCreateGuideDslModel,
-} from '../../models/dsl'
-import {
   existingInstanceNamesFromQueryData,
   sourceAppsFromQueryData,
   useExistingInstanceNamesQuery,
   useSourceAppsQuery,
 } from '../../queries/source'
 import {
+  dslDefaultAppNameAtom,
   dslReadErrorAtom,
+  dslUnsupportedModeAtom,
+  hasDslContentAtom,
   isReadingDslAtom,
 } from '../../state/dsl-atoms'
 import {
@@ -43,17 +43,18 @@ export function useSourceCanEnterReleaseStep() {
   const sourceSearchText = useAtomValue(sourceSearchTextAtom)
   const selectedApp = useAtomValue(selectedAppAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
+  const hasDslContent = useAtomValue(hasDslContentAtom)
+  const dslUnsupportedMode = useAtomValue(dslUnsupportedModeAtom)
   const sourceAppsQuery = useSourceAppsQuery({
     enabled: method === 'bindApp',
     sourceSearchText,
   })
-  const dslModel = useCreateGuideDslModel()
   const effectiveSelectedApp = effectiveSourceApp(selectedApp, sourceAppsFromQueryData(sourceAppsQuery.data))
   const importDslReady = method === 'importDsl'
-    && dslModel.hasDslContent
+    && hasDslContent
     && !isReadingDsl
     && !dslReadError
-    && !dslModel.dslUnsupportedMode
+    && !dslUnsupportedMode
   const bindAppReady = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
 
   return (importDslReady || bindAppReady) && unsupportedDslNodes.length === 0
@@ -67,16 +68,16 @@ export function useSourceNextAction(canEnterReleaseStep: boolean) {
   const setStep = useSetAtom(setStepAtom)
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
   const applyReleaseDefaults = useSetAtom(applyReleaseDefaultsAtom)
+  const dslDefaultAppName = useAtomValue(dslDefaultAppNameAtom)
   const sourceAppsQuery = useSourceAppsQuery({
     enabled: method === 'bindApp',
     sourceSearchText,
   })
   const appInstancesQuery = useExistingInstanceNamesQuery()
   const existingInstanceNames = existingInstanceNamesFromQueryData(appInstancesQuery.data)
-  const dslModel = useCreateGuideDslModel()
   const effectiveSelectedApp = effectiveSourceApp(selectedApp, sourceAppsFromQueryData(sourceAppsQuery.data))
   const sourceName = method === 'importDsl'
-    ? dslModel.dslDefaultAppName || t('createGuide.dsl.defaultAppName')
+    ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
     : effectiveSelectedApp?.name
 
   function handleNext() {

@@ -1,6 +1,5 @@
 'use client'
 
-import type { CreateGuideDslState } from '../state/dsl-derived'
 import type { GuideMethod, WorkflowSourceApp } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
@@ -11,12 +10,12 @@ type DeploymentTargetQueryGate = {
 }
 
 export function useDeploymentOptionsQuery({
-  dslState,
+  encodedDslContent,
   effectiveSelectedApp,
   method,
   queryGate,
 }: {
-  dslState: CreateGuideDslState
+  encodedDslContent: string
   effectiveSelectedApp?: WorkflowSourceApp
   method: GuideMethod
   queryGate: DeploymentTargetQueryGate
@@ -37,7 +36,7 @@ export function useDeploymentOptionsQuery({
     ...consoleQuery.enterprise.releaseService.getDeploymentOptionsFromDsl.queryOptions({
       input: {
         body: {
-          dsl: dslState.encodedDslContent,
+          dsl: encodedDslContent,
         },
       },
       enabled: queryGate.shouldLoadDslDeploymentOptions,
