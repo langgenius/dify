@@ -44,6 +44,8 @@ class AppListParams(BaseModel):
     tag_ids: list[str] | None = None
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
+    accessible_app_ids: list[str] | None = None
+    include_own_apps: bool = False
     status: str | None = None
     openapi_visible: bool = False
 
@@ -139,6 +141,11 @@ class AppService:
             filters.append(App.enable_api.is_(True))
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
+        elif params.accessible_app_ids is not None:
+            accessible_filter = App.id.in_(params.accessible_app_ids)
+            if params.include_own_apps:
+                accessible_filter = sa.or_(App.created_by == user_id, accessible_filter)
+            filters.append(accessible_filter)
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:

@@ -245,8 +245,24 @@ class DatasetService:
         return "dataset.create_and_management" in workspace_permission_keys
 
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
+    def get_datasets(
+        page,
+        per_page,
+        tenant_id=None,
+        user=None,
+        search=None,
+        tag_ids=None,
+        include_all=False,
+        accessible_dataset_ids: list[str] | None = None,
+        include_own_datasets: bool = False,
+    ):
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
+
+        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+            accessible_filter = Dataset.id.in_(accessible_dataset_ids)
+            if include_own_datasets and user:
+                accessible_filter = sa.or_(Dataset.created_by == user.id, accessible_filter)
+            query = query.where(accessible_filter)
 
         if user:
             # get permitted dataset ids
@@ -352,11 +368,27 @@ class DatasetService:
         return {"mode": mode, "rules": rules}
 
     @staticmethod
-    def get_datasets_by_ids(ids, tenant_id):
+    def get_datasets_by_ids(
+        ids,
+        tenant_id,
+        user=None,
+        accessible_dataset_ids: list[str] | None = None,
+        include_own_datasets: bool = False,
+    ):
         # Check if ids is not empty to avoid WHERE false condition
         if not ids or len(ids) == 0:
             return [], 0
         stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
+
+        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+            requested_dataset_ids = set(ids)
+            accessible_dataset_ids = [
+                dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
+            ]
+            accessible_filter = Dataset.id.in_(accessible_dataset_ids)
+            if include_own_datasets and user:
+                accessible_filter = sa.or_(Dataset.created_by == user.id, accessible_filter)
+            stmt = stmt.where(accessible_filter)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
 
