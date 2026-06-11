@@ -159,14 +159,6 @@ const importDslReadyAtom = atom((get) => {
     && !get(dslUnsupportedModeAtom)
 })
 
-function sourceReady(get: Getter) {
-  const method = get(methodAtom)
-
-  return method === 'importDsl'
-    ? get(importDslReadyAtom)
-    : Boolean(get(selectedAppAtom)?.id)
-}
-
 // Release primitives
 export const instanceNameAtom = atom('')
 export const instanceDescriptionAtom = atom('')
@@ -211,6 +203,25 @@ export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   }
 })
 
+export const effectiveSelectedAppAtom = atom((get) => {
+  const selectedApp = get(selectedAppAtom)
+  if (selectedApp)
+    return selectedApp
+
+  const sourceAppsQuery = get(sourceAppsQueryAtom)
+  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
+
+  return sourceApps[0]
+})
+
+function sourceReady(get: Getter) {
+  const method = get(methodAtom)
+
+  return method === 'importDsl'
+    ? get(importDslReadyAtom)
+    : Boolean(get(effectiveSelectedAppAtom)?.id)
+}
+
 const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
   ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
     input: pageParam => ({
@@ -251,7 +262,7 @@ export const deployableEnvironmentsQueryAtom = atomWithQuery((get) => {
 
 export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
   const method = get(methodAtom)
-  const selectedApp = get(selectedAppAtom)
+  const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
   const enabled = sourceReady(get)
 
@@ -267,10 +278,10 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
     : consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
         input: {
           body: {
-            sourceAppId: selectedApp?.id ?? '',
+            sourceAppId: effectiveSelectedApp?.id ?? '',
           },
         },
-        enabled: enabled && Boolean(selectedApp?.id),
+        enabled: enabled && Boolean(effectiveSelectedApp?.id),
       })
 
   // oRPC encodes input before TanStack can skip work, so keep a valid input shape and gate requests with enabled.
@@ -313,13 +324,11 @@ const deploymentOptionsReadyAtom = atom((get) => {
 
 export const sourceCanGoNextAtom = atom((get) => {
   const method = get(methodAtom)
-  const sourceAppsQuery = get(sourceAppsQueryAtom)
-  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
-  const effectiveSelectedApp = get(selectedAppAtom) ?? sourceApps[0]
+  const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const importDslReady = method === 'importDsl' && get(importDslReadyAtom)
   const bindAppReady = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
 
-  return (importDslReady || bindAppReady) && get(unsupportedDslNodesAtom).length === 0
+  return (importDslReady || bindAppReady) && get(deploymentOptionsReadyAtom)
 })
 
 export const selectSourceAppAtom = atom(null, (_get, set, app: WorkflowSourceApp) => {
@@ -341,9 +350,7 @@ export const continueFromSourceAtom = atom(null, (get, set, {
     return
 
   const method = get(methodAtom)
-  const sourceAppsQuery = get(sourceAppsQueryAtom)
-  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
-  const effectiveSelectedApp = get(selectedAppAtom) ?? sourceApps[0]
+  const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   if (method === 'bindApp' && effectiveSelectedApp)
     set(selectSourceAppAtom, effectiveSelectedApp)
 
@@ -454,7 +461,7 @@ export const releaseCanGoNextAtom = atom((get) => {
   return Boolean(get(submittedReleaseReadyAtom))
     && !get(hasInstanceNameConflictAtom)
     && !(Boolean(submittedInstanceName) && instanceNameConflictQuery.isLoading)
-    && get(unsupportedDslNodesAtom).length === 0
+    && get(deploymentOptionsReadyAtom)
 })
 
 export const setInstanceNameAtom = atom(null, (_get, set, value: string) => {
@@ -687,7 +694,7 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
   if (get(isSubmittingDeploymentGuideAtom) || !get(submittedReleaseReadyAtom))
     return undefined
 
-  const effectiveSelectedApp = get(selectedAppAtom)
+  const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
   const deploymentOptions = get(deploymentOptionsQueryAtom).data?.options
   const envVarSlots = get(deploymentTargetEnvVarSlotsAtom)
