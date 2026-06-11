@@ -101,8 +101,8 @@ export function AgentSkillDetailDialog({
 
   return (
     <DialogContent className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl p-0">
-      <DialogCloseButton className="top-4 right-4" />
-      <div className="shrink-0 px-4 pt-4 pr-12 pb-3">
+      <DialogCloseButton className="top-5 right-5" />
+      <div className="shrink-0 border-b-[0.5px] border-components-panel-border-subtle pt-6 pr-14 pb-3 pl-6">
         <DialogTitle className="title-xl-semi-bold text-text-primary">
           {skillName}
         </DialogTitle>
@@ -117,7 +117,7 @@ export function AgentSkillDetailDialog({
           label={t('agentDetail.configure.skills.detail.contentRegion')}
           slotClassNames={{
             viewport: 'overscroll-contain outline-none focus-visible:outline-none mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
-            content: 'flex min-h-full w-full max-w-full min-w-0 flex-col gap-2 pl-4 pr-6 pt-4 pb-0',
+            content: 'flex min-h-full w-full max-w-full min-w-0 flex-col gap-2 px-6 pt-4 pb-0',
             scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
           }}
         >
