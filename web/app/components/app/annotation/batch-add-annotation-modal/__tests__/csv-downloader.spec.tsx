@@ -60,7 +60,10 @@ describe('CSVDownload', () => {
 
     expect(screen.getByText('appAnnotation.batchModal.tip')).toBeInTheDocument()
     expect(screen.getByText('appAnnotation.batchModal.jsonlTip')).toBeInTheDocument()
-    expect(screen.getByText('{"question":"question1","answer":"answer1"}')).toBeInTheDocument()
+    expect(screen.getByText((_, element) =>
+      element?.tagName === 'PRE'
+      && element.textContent?.trim() === jsonlTemplate,
+    )).toBeInTheDocument()
     expect(screen.getByText('appAnnotation.batchModal.csvTemplate')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.jsonlTemplate' })).toBeInTheDocument()
 
