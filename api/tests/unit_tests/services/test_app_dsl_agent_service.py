@@ -30,8 +30,10 @@ class _Dependency:
 
 
 @pytest.fixture(autouse=True)
-def disable_real_dsl_agent_script_modules(monkeypatch):
-    monkeypatch.setattr(DslAgentOrchestrator, "_load_dsl_agent_module", lambda self, module_name: None)
+def reset_dsl_agent_resolver_cache():
+    DslAgentOrchestrator._plugin_resolver_instance = None
+    yield
+    DslAgentOrchestrator._plugin_resolver_instance = None
 
 
 def test_generate_builds_importable_workflow_yaml(monkeypatch):
@@ -82,7 +84,7 @@ def test_generate_builds_importable_workflow_yaml(monkeypatch):
     assert result.metadata["repair"]["backend"] == "not_needed"
 
 
-def test_generate_uses_dsl_agent_script_modules_when_available(monkeypatch):
+def test_generate_uses_core_dsl_agent_modules(monkeypatch):
     class FakePluginResolver:
         def resolve(self, request: str, limit: int = 8):
             return {
@@ -99,9 +101,6 @@ def test_generate_uses_dsl_agent_script_modules_when_available(monkeypatch):
                 "extracted_template_candidates": [],
                 "official_template_links": [],
             }
-
-    class FakePluginResolverModule:
-        PluginResolver = FakePluginResolver
 
     class FakeShapeNormalizerModule:
         @staticmethod
@@ -142,21 +141,19 @@ def test_generate_uses_dsl_agent_script_modules_when_available(monkeypatch):
                 ],
             }
 
-    class FakeSourceContextModule:
-        SourceContextCollector = FakeSourceContextCollector
-
-    fake_modules = {
-        "plugin_resolver": FakePluginResolverModule,
-        "source_context": FakeSourceContextModule,
-        "shape_normalizer": FakeShapeNormalizerModule,
-        "dependency_normalizer": FakeDependencyNormalizerModule,
-        "validator": FakeValidatorModule,
-    }
+    monkeypatch.setattr(app_dsl_agent_service.dsl_plugin_resolver, "PluginResolver", FakePluginResolver)
+    monkeypatch.setattr(app_dsl_agent_service.dsl_source_context, "SourceContextCollector", FakeSourceContextCollector)
     monkeypatch.setattr(
-        DslAgentOrchestrator,
-        "_load_dsl_agent_module",
-        lambda self, module_name: fake_modules.get(module_name),
+        app_dsl_agent_service.dsl_shape_normalizer,
+        "normalize_shape_yaml_text",
+        FakeShapeNormalizerModule.normalize_shape_yaml_text,
     )
+    monkeypatch.setattr(
+        app_dsl_agent_service.dsl_dependency_normalizer,
+        "normalize_yaml_text",
+        FakeDependencyNormalizerModule.normalize_yaml_text,
+    )
+    monkeypatch.setattr(app_dsl_agent_service.dsl_validator, "validate_yaml_text", FakeValidatorModule.validate_yaml_text)
 
     result = AppDslAgentService().generate(
         AppDslAgentGenerateArgs(
@@ -167,22 +164,22 @@ def test_generate_uses_dsl_agent_script_modules_when_available(monkeypatch):
     )
 
     assert result.metadata["source_evidence"]["plugin_resolver"] == {
-        "backend": "scripts.dsl_agent.plugin_resolver",
+        "backend": "core.dsl_agent.plugin_resolver",
         "official_candidates_count": 1,
         "model_provider_candidates_count": 0,
         "extracted_template_candidates_count": 0,
         "official_template_links_count": 0,
     }
     assert result.metadata["source_evidence"]["source_context"] == {
-        "backend": "scripts.dsl_agent.source_context",
+        "backend": "core.dsl_agent.source_context",
         "current_app_dsl_version": "0.6.0",
         "facts": ["fake source fact"],
         "node_types": ["start", "llm", "end"],
         "snippet_count": 1,
         "snippet_paths": ["/tmp/llm/entities.py"],
     }
-    assert result.metadata["normalization"]["normalizers"][0]["backend"] == "scripts.dsl_agent.shape_normalizer"
-    assert result.metadata["normalization"]["normalizers"][1]["backend"] == "scripts.dsl_agent.dependency_normalizer"
+    assert result.metadata["normalization"]["normalizers"][0]["backend"] == "core.dsl_agent.shape_normalizer"
+    assert result.metadata["normalization"]["normalizers"][1]["backend"] == "core.dsl_agent.dependency_normalizer"
     assert result.metadata["normalization"]["normalizers"][1]["report"]["official_candidate_count"] == 1
     assert result.metadata["validation"] == {
         "valid": True,
@@ -190,48 +187,44 @@ def test_generate_uses_dsl_agent_script_modules_when_available(monkeypatch):
     }
 
 
-def test_generate_can_use_openai_script_backend_without_real_network(monkeypatch):
+def test_generate_can_use_openai_backend_without_real_network(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(DslAgentOrchestrator, "_openai_client", lambda self: object())
 
-    class FakeAgentModule:
-        @staticmethod
-        def generate_plan(client, model: str, request: str):
-            assert model == "gpt-test"
-            assert "Preferred model provider: langgenius/openai/openai" in request
-            return {
-                "app": {
-                    "name": "LLM Planned App",
-                    "mode": "workflow",
-                    "description": "LLM planned description.",
-                },
-                "requirements": {
-                    "goal": "test",
-                    "inputs": ["input"],
-                    "outputs": ["answer"],
-                    "needs_plugins": ["langgenius/openai"],
-                },
-                "graph_plan": {
-                    "nodes": [
-                        {"id": "start", "type": "start"},
-                        {"id": "llm", "type": "llm"},
-                        {"id": "end", "type": "end"},
-                    ],
-                    "edges": [
-                        {"source": "start", "target": "llm"},
-                        {"source": "llm", "target": "end"},
-                    ],
-                },
-            }
+    def fake_generate_plan(client, model: str, request: str):
+        assert model == "gpt-test"
+        assert "Preferred model provider: langgenius/openai/openai" in request
+        return {
+            "app": {
+                "name": "LLM Planned App",
+                "mode": "workflow",
+                "description": "LLM planned description.",
+            },
+            "requirements": {
+                "goal": "test",
+                "inputs": ["input"],
+                "outputs": ["answer"],
+                "needs_plugins": ["langgenius/openai"],
+            },
+            "graph_plan": {
+                "nodes": [
+                    {"id": "start", "type": "start"},
+                    {"id": "llm", "type": "llm"},
+                    {"id": "end", "type": "end"},
+                ],
+                "edges": [
+                    {"source": "start", "target": "llm"},
+                    {"source": "llm", "target": "end"},
+                ],
+            },
+        }
 
-        @staticmethod
-        def compact_plugin_evidence_for_prompt(plugin_evidence: dict, plan: dict):
-            return plugin_evidence
+    def fake_compact_plugin_evidence_for_prompt(plugin_evidence: dict, plan: dict):
+        return plugin_evidence
 
-        @staticmethod
-        def generate_yaml(*, client, model: str, request: str, plan: dict, plugin_evidence: dict, source_context: dict):
-            assert model == "gpt-test"
-            return """
+    def fake_generate_yaml(*, client, model: str, request: str, plan: dict, plugin_evidence: dict, source_context: dict):
+        assert model == "gpt-test"
+        return """
 app:
   description: LLM generated description.
   mode: workflow
@@ -249,18 +242,83 @@ workflow:
     - id: llm
       type: llm
       data:
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: gpt-4o-mini
+          provider: langgenius/openai/openai
         type: llm
     - id: end
       type: end
       data:
         type: end
-    edges: []
+    edges:
+    - id: start-source-llm-target
+      source: start
+      sourceHandle: source
+      target: llm
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: start
+        targetType: llm
+    - id: llm-source-end-target
+      source: llm
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: llm
+        targetType: end
 """
+
+    class _ValidReport:
+        def to_dict(self):
+            return {"valid": True, "issues": []}
+
+    fake_plugin_evidence = {
+        "resolution_policy": ["Prefer official Dify plugins."],
+        "official_candidates": [
+            {
+                "plugin_id": "langgenius/openai",
+                "source": "official",
+                "package_identity": "langgenius/openai:1.0.0@abc",
+                "exact_dependency_evidence": [],
+            }
+        ],
+        "model_provider_candidates": [
+            {
+                "plugin_id": "langgenius/openai",
+                "source": "model_provider",
+                "package_identity": "langgenius/openai:1.0.0@abc",
+                "exact_dependency_evidence": [],
+            }
+        ],
+        "extracted_template_candidates": [],
+        "official_template_links": [],
+    }
 
     monkeypatch.setattr(
         DslAgentOrchestrator,
-        "_load_dsl_agent_module",
-        lambda self, module_name: FakeAgentModule if module_name == "agent" else None,
+        "_get_plugin_resolver",
+        lambda self: SimpleNamespace(resolve=lambda request, limit=6: fake_plugin_evidence),
+    )
+    monkeypatch.setattr(app_dsl_agent_service.dsl_generation, "generate_plan", fake_generate_plan)
+    monkeypatch.setattr(
+        app_dsl_agent_service.dsl_generation,
+        "compact_plugin_evidence_for_prompt",
+        fake_compact_plugin_evidence_for_prompt,
+    )
+    monkeypatch.setattr(app_dsl_agent_service.dsl_generation, "generate_yaml", fake_generate_yaml)
+    # This test exercises the OpenAI backend wiring and result metadata, not the
+    # validator; keep validation deterministic so it stays focused on backend
+    # selection (the validator has its own dedicated unit tests).
+    monkeypatch.setattr(
+        app_dsl_agent_service.dsl_validator,
+        "validate_yaml_text",
+        lambda yaml_text: _ValidReport(),
     )
 
     result = AppDslAgentService().generate(
@@ -397,15 +455,12 @@ def test_debug_service_repairs_yaml_from_runtime_evidence(monkeypatch):
         def validate_yaml_text(yaml_text: str):
             return FakeValidationReport(valid="raise Exception('broken')" not in yaml_text)
 
-    fake_modules = {
-        "deterministic_repair": FakeRepairModule,
-        "validator": FakeValidatorModule,
-    }
     monkeypatch.setattr(
-        DslAgentOrchestrator,
-        "_load_dsl_agent_module",
-        lambda self, module_name: fake_modules.get(module_name),
+        app_dsl_agent_service.dsl_deterministic_repair,
+        "repair_yaml_text",
+        FakeRepairModule.repair_yaml_text,
     )
+    monkeypatch.setattr(app_dsl_agent_service.dsl_validator, "validate_yaml_text", FakeValidatorModule.validate_yaml_text)
 
     result = AppDslAgentDebugService().repair_yaml(
         AppDslAgentRepairArgs(
@@ -419,7 +474,7 @@ def test_debug_service_repairs_yaml_from_runtime_evidence(monkeypatch):
     assert result["yaml_content"] == "code: return {'result': input}"
     assert result["input_validation"] == {"valid": True, "issues": []}
     assert result["validation"] == {"valid": True, "issues": []}
-    assert result["repair"]["backend"] == "scripts.dsl_agent.deterministic_repair"
+    assert result["repair"]["backend"] == "core.dsl_agent.deterministic_repair"
     assert result["repair"]["fixes"] == [{"type": "runtime_code_node_failed", "node_id": "code"}]
 
 
@@ -457,16 +512,13 @@ def test_debug_service_runs_draft_then_repairs_from_runtime_evidence(monkeypatch
         def validate_yaml_text(yaml_text: str):
             return FakeValidationReport()
 
-    fake_modules = {
-        "deterministic_repair": FakeRepairModule,
-        "validator": FakeValidatorModule,
-    }
     monkeypatch.setattr(AppGenerateService, "generate", fake_generate)
     monkeypatch.setattr(
-        DslAgentOrchestrator,
-        "_load_dsl_agent_module",
-        lambda self, module_name: fake_modules.get(module_name),
+        app_dsl_agent_service.dsl_deterministic_repair,
+        "repair_yaml_text",
+        FakeRepairModule.repair_yaml_text,
     )
+    monkeypatch.setattr(app_dsl_agent_service.dsl_validator, "validate_yaml_text", FakeValidatorModule.validate_yaml_text)
 
     result = AppDslAgentDebugService().run_draft_workflow_and_repair(
         app_model=SimpleNamespace(mode=AppMode.WORKFLOW),

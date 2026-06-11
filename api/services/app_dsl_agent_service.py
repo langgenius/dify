@@ -1,21 +1,23 @@
-import importlib
-import importlib.util
 import json
 import os
 import re
-import sys
 import threading
 import uuid
 from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
-from types import ModuleType
 from typing import Any, Callable
 
 import yaml
 
+from core.dsl_agent import dependency_normalizer as dsl_dependency_normalizer
+from core.dsl_agent import deterministic_repair as dsl_deterministic_repair
+from core.dsl_agent import generation as dsl_generation
+from core.dsl_agent import plugin_resolver as dsl_plugin_resolver
+from core.dsl_agent import shape_normalizer as dsl_shape_normalizer
+from core.dsl_agent import source_context as dsl_source_context
+from core.dsl_agent import validator as dsl_validator
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 
 DEFAULT_MODEL_PROVIDER = "langgenius/openai/openai"
@@ -423,7 +425,6 @@ class AppDslAgentDebugService:
 class DslAgentOrchestrator:
     backend = GENERATION_BACKEND_DETERMINISTIC
     _plugin_resolver_lock = threading.RLock()
-    _plugin_resolver_class: type | None = None
     _plugin_resolver_instance: Any = None
 
     def run(
@@ -560,49 +561,33 @@ class DslAgentOrchestrator:
             },
         }
         plugin_evidence = self._fallback_plugin_evidence(plugin_id)
-        resolver_module = self._load_dsl_agent_module("plugin_resolver")
-        if resolver_module and hasattr(resolver_module, "PluginResolver"):
-            try:
-                resolver = self._get_plugin_resolver(resolver_module.PluginResolver)
-                plugin_evidence = resolver.resolve(str(plan.get("prompt") or ""), limit=6)
-                evidence["plugin_resolver"] = {
-                    "backend": "scripts.dsl_agent.plugin_resolver",
-                    **self._summarize_plugin_evidence(plugin_evidence),
-                }
-            except Exception as exc:
-                evidence["plugin_resolver"] = {
-                    "backend": "fallback",
-                    "error": str(exc),
-                    **self._summarize_plugin_evidence(plugin_evidence),
-                }
-        else:
+        try:
+            resolver = self._get_plugin_resolver()
+            plugin_evidence = resolver.resolve(str(plan.get("prompt") or ""), limit=6)
+            evidence["plugin_resolver"] = {
+                "backend": "core.dsl_agent.plugin_resolver",
+                **self._summarize_plugin_evidence(plugin_evidence),
+            }
+        except Exception as exc:
             evidence["plugin_resolver"] = {
                 "backend": "fallback",
-                "error": "scripts/dsl_agent/plugin_resolver.py is unavailable",
+                "error": str(exc),
                 **self._summarize_plugin_evidence(plugin_evidence),
             }
         evidence["plugin_evidence"] = plugin_evidence
 
-        source_context_module = self._load_dsl_agent_module("source_context")
         source_context_plan = plan.get("llm_plan") if isinstance(plan.get("llm_plan"), dict) else plan
-        if source_context_module and hasattr(source_context_module, "SourceContextCollector"):
-            try:
-                source_context = source_context_module.SourceContextCollector().collect(source_context_plan)
-                evidence["source_context"] = {
-                    "backend": "scripts.dsl_agent.source_context",
-                    **self._summarize_source_context(source_context),
-                }
-                evidence["_source_context_full"] = source_context
-            except Exception as exc:
-                evidence["source_context"] = {
-                    "backend": "fallback",
-                    "error": str(exc),
-                    **self._summarize_source_context(self._fallback_source_context(source_context_plan)),
-                }
-        else:
+        try:
+            source_context = dsl_source_context.SourceContextCollector().collect(source_context_plan)
+            evidence["source_context"] = {
+                "backend": "core.dsl_agent.source_context",
+                **self._summarize_source_context(source_context),
+            }
+            evidence["_source_context_full"] = source_context
+        except Exception as exc:
             evidence["source_context"] = {
                 "backend": "fallback",
-                "error": "scripts/dsl_agent/source_context.py is unavailable",
+                "error": str(exc),
                 **self._summarize_source_context(self._fallback_source_context(source_context_plan)),
             }
         return evidence
@@ -669,21 +654,16 @@ class DslAgentOrchestrator:
         }, []
 
     def _generate_openai_yaml_content(self, plan: dict, source_evidence: dict) -> tuple[str | None, dict]:
-        agent_module = self._load_dsl_agent_module("agent")
-        if not agent_module:
-            return None, {"backend": GENERATION_BACKEND_OPENAI, "error": "scripts/dsl_agent/agent.py is unavailable"}
         if not os.environ.get("OPENAI_API_KEY"):
             return None, {"backend": GENERATION_BACKEND_OPENAI, "error": "OPENAI_API_KEY is not configured"}
-        if not all(hasattr(agent_module, name) for name in ("generate_yaml", "compact_plugin_evidence_for_prompt")):
-            return None, {"backend": GENERATION_BACKEND_OPENAI, "error": "agent.py is missing generation helpers"}
 
         try:
             client = self._openai_client()
             llm_plan = plan.get("llm_plan") if isinstance(plan.get("llm_plan"), dict) else self._fallback_llm_plan(plan)
             plugin_evidence = source_evidence.get("plugin_evidence") if isinstance(source_evidence.get("plugin_evidence"), dict) else {}
-            prompt_plugin_evidence = agent_module.compact_plugin_evidence_for_prompt(plugin_evidence, llm_plan)
+            prompt_plugin_evidence = dsl_generation.compact_plugin_evidence_for_prompt(plugin_evidence, llm_plan)
             source_context = source_evidence.get("_source_context_full") if isinstance(source_evidence.get("_source_context_full"), dict) else {}
-            yaml_content = agent_module.generate_yaml(
+            yaml_content = dsl_generation.generate_yaml(
                 client=client,
                 model=plan["generation_model"],
                 request=self._generation_request(plan),
@@ -709,48 +689,44 @@ class DslAgentOrchestrator:
         current = yaml_content
         normalizers: list[dict[str, Any]] = []
 
-        shape_module = self._load_dsl_agent_module("shape_normalizer")
-        if shape_module and hasattr(shape_module, "normalize_shape_yaml_text"):
-            try:
-                current, report = shape_module.normalize_shape_yaml_text(current)
-                normalizers.append(
-                    {
-                        "name": "shape_normalizer",
-                        "backend": "scripts.dsl_agent.shape_normalizer",
-                        "report": report,
-                    }
-                )
-            except Exception as exc:
-                normalizers.append(
-                    {
-                        "name": "shape_normalizer",
-                        "backend": "fallback",
-                        "error": str(exc),
-                    }
-                )
+        try:
+            current, report = dsl_shape_normalizer.normalize_shape_yaml_text(current)
+            normalizers.append(
+                {
+                    "name": "shape_normalizer",
+                    "backend": "core.dsl_agent.shape_normalizer",
+                    "report": report,
+                }
+            )
+        except Exception as exc:
+            normalizers.append(
+                {
+                    "name": "shape_normalizer",
+                    "backend": "fallback",
+                    "error": str(exc),
+                }
+            )
 
-        dependency_module = self._load_dsl_agent_module("dependency_normalizer")
-        if dependency_module and hasattr(dependency_module, "normalize_yaml_text"):
-            try:
-                plugin_evidence = {}
-                if isinstance(source_evidence, dict):
-                    plugin_evidence = source_evidence.get("plugin_evidence") or {}
-                current, report = dependency_module.normalize_yaml_text(current, plugin_evidence)
-                normalizers.append(
-                    {
-                        "name": "dependency_normalizer",
-                        "backend": "scripts.dsl_agent.dependency_normalizer",
-                        "report": report,
-                    }
-                )
-            except Exception as exc:
-                normalizers.append(
-                    {
-                        "name": "dependency_normalizer",
-                        "backend": "fallback",
-                        "error": str(exc),
-                    }
-                )
+        try:
+            plugin_evidence = {}
+            if isinstance(source_evidence, dict):
+                plugin_evidence = source_evidence.get("plugin_evidence") or {}
+            current, report = dsl_dependency_normalizer.normalize_yaml_text(current, plugin_evidence)
+            normalizers.append(
+                {
+                    "name": "dependency_normalizer",
+                    "backend": "core.dsl_agent.dependency_normalizer",
+                    "report": report,
+                }
+            )
+        except Exception as exc:
+            normalizers.append(
+                {
+                    "name": "dependency_normalizer",
+                    "backend": "fallback",
+                    "error": str(exc),
+                }
+            )
 
         try:
             data = yaml.safe_load(current)
@@ -779,15 +755,8 @@ class DslAgentOrchestrator:
         }
 
     def validate_yaml(self, yaml_content: str, *, raise_on_error: bool = True) -> dict:
-        validator_module = self._load_dsl_agent_module("validator")
-        if validator_module and hasattr(validator_module, "validate_yaml_text"):
-            report_obj = validator_module.validate_yaml_text(yaml_content)
-            report = report_obj.to_dict() if hasattr(report_obj, "to_dict") else report_obj
-            if raise_on_error and not self._validation_report_valid(report):
-                raise ValueError(f"Generated DSL failed validation: {self._validation_error_message(report)}")
-            return report
-
-        report = self._validate_yaml_fallback(yaml_content)
+        report_obj = dsl_validator.validate_yaml_text(yaml_content)
+        report = report_obj.to_dict() if hasattr(report_obj, "to_dict") else report_obj
         if raise_on_error and not self._validation_report_valid(report):
             raise ValueError(f"Generated DSL failed validation: {self._validation_error_message(report)}")
         return report
@@ -799,44 +768,32 @@ class DslAgentOrchestrator:
         *,
         runtime_evidence: dict[str, Any] | None = None,
     ) -> tuple[str, dict]:
-        repair_module = self._load_dsl_agent_module("deterministic_repair")
-        if repair_module and hasattr(repair_module, "repair_yaml_text"):
-            try:
-                repaired, report = repair_module.repair_yaml_text(
-                    yaml_content,
-                    validation=validation_report,
-                    runtime_evidence=runtime_evidence,
-                )
-                report["backend"] = "scripts.dsl_agent.deterministic_repair"
-                return repaired, report
-            except Exception as exc:
-                return yaml_content, {
-                    "changed": False,
-                    "fixes": [],
-                    "errors": [{"message": str(exc)}],
-                    "backend": "fallback",
-                }
-        return yaml_content, {
-            "changed": False,
-            "fixes": [],
-            "errors": [{"message": "scripts/dsl_agent/deterministic_repair.py is unavailable"}],
-            "backend": "fallback",
-        }
+        try:
+            repaired, report = dsl_deterministic_repair.repair_yaml_text(
+                yaml_content,
+                validation=validation_report,
+                runtime_evidence=runtime_evidence,
+            )
+            report["backend"] = "core.dsl_agent.deterministic_repair"
+            return repaired, report
+        except Exception as exc:
+            return yaml_content, {
+                "changed": False,
+                "fixes": [],
+                "errors": [{"message": str(exc)}],
+                "backend": "fallback",
+            }
 
     def _normalize_generation_backend(self, generation_backend: str | None) -> str:
         return normalize_generation_backend(generation_backend)
 
     def _attach_openai_plan(self, plan: dict) -> None:
-        agent_module = self._load_dsl_agent_module("agent")
-        if not agent_module or not hasattr(agent_module, "generate_plan"):
-            plan["generation_plan_error"] = "scripts/dsl_agent/agent.py planner is unavailable"
-            return
         if not os.environ.get("OPENAI_API_KEY"):
             plan["generation_plan_error"] = "OPENAI_API_KEY is not configured"
             return
 
         try:
-            llm_plan = agent_module.generate_plan(
+            llm_plan = dsl_generation.generate_plan(
                 self._openai_client(),
                 plan["generation_model"],
                 self._generation_request(plan),
@@ -928,98 +885,13 @@ class DslAgentOrchestrator:
         if isinstance(app.get("description"), str) and app["description"].strip():
             plan["app_description"] = app["description"].strip()
 
-    def _validate_yaml_fallback(self, yaml_content: str) -> dict:
-        data = yaml.safe_load(yaml_content)
-        issues: list[dict] = []
-        if not isinstance(data, dict):
-            issues.append({"severity": "error", "code": "root_not_mapping", "message": "DSL root must be a mapping."})
-        else:
-            if data.get("kind") != "app":
-                issues.append({"severity": "error", "code": "kind_invalid", "message": "DSL kind must be app."})
-            app = data.get("app")
-            if not isinstance(app, dict):
-                issues.append({"severity": "error", "code": "app_missing", "message": "DSL app block is required."})
-            workflow = data.get("workflow")
-            if not isinstance(workflow, dict):
-                issues.append({"severity": "error", "code": "workflow_missing", "message": "DSL workflow block is required."})
-            graph = workflow.get("graph") if isinstance(workflow, dict) else None
-            if not isinstance(graph, dict):
-                issues.append({"severity": "error", "code": "graph_missing", "message": "workflow.graph is required."})
-            else:
-                nodes = graph.get("nodes")
-                node_types = {
-                    str((node.get("data") or {}).get("type") or node.get("type"))
-                    for node in nodes
-                    if isinstance(node, dict)
-                } if isinstance(nodes, list) else set()
-                for required_type in ("start", "llm", "end"):
-                    if required_type not in node_types:
-                        issues.append(
-                            {
-                                "severity": "error",
-                                "code": "required_node_missing",
-                                "message": f"workflow.graph must include a {required_type} node.",
-                            }
-                        )
-        return {"valid": not any(issue for issue in issues if issue["severity"] == "error"), "issues": issues}
-
-    def _load_dsl_agent_module(self, module_name: str) -> ModuleType | None:
-        scripts_dir = Path(__file__).resolve().parents[2] / "scripts" / "dsl_agent"
-        if not scripts_dir.exists():
-            return None
-        module_path = scripts_dir / f"{module_name}.py"
-        if not module_path.exists():
-            return None
-        qualified_name = f"dify_dsl_agent_runtime.{module_name}"
-        dependency_module_names = {
-            "agent",
-            "console_lifecycle",
-            "debug_loop",
-            "dependency_normalizer",
-            "deterministic_repair",
-            "plugin_resolver",
-            "prompts",
-            "runtime_repair",
-            "shape_normalizer",
-            "source_context",
-            "validator",
-        }
-        existing_dependency_modules = {
-            name: sys.modules.get(name)
-            for name in dependency_module_names
-        }
-        scripts_path = str(scripts_dir)
-        inserted_scripts_path = False
-        try:
-            if scripts_path not in sys.path:
-                sys.path.insert(0, scripts_path)
-                inserted_scripts_path = True
-            spec = importlib.util.spec_from_file_location(qualified_name, module_path)
-            if not spec or not spec.loader:
-                return None
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[qualified_name] = module
-            spec.loader.exec_module(module)
-            return module
-        except Exception:
-            return None
-        finally:
-            if inserted_scripts_path:
-                try:
-                    sys.path.remove(scripts_path)
-                except ValueError:
-                    pass
-            for name, existing_module in existing_dependency_modules.items():
-                if existing_module is None:
-                    sys.modules.pop(name, None)
-                else:
-                    sys.modules[name] = existing_module
-
-    def _get_plugin_resolver(self, resolver_class: type) -> Any:
+    def _get_plugin_resolver(self) -> Any:
+        # One resolver instance per process: PluginResolver caches its filesystem
+        # scan in instance attributes, so reusing it avoids re-scanning the
+        # official plugins repo on every generation request.
         with self._plugin_resolver_lock:
-            if self._plugin_resolver_class is not resolver_class or self._plugin_resolver_instance is None:
-                self._plugin_resolver_class = resolver_class
-                self._plugin_resolver_instance = resolver_class()
+            if self._plugin_resolver_instance is None:
+                DslAgentOrchestrator._plugin_resolver_instance = dsl_plugin_resolver.PluginResolver()
             return self._plugin_resolver_instance
 
     def _fallback_plugin_evidence(self, plugin_id: str) -> dict:
