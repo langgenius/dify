@@ -10,6 +10,7 @@ from typing import Any
 import debug_loop
 from debug_loop import (
     align_yaml_dependencies_to_current_identifiers,
+    cleanup_created_app,
     draft_debug_succeeded,
     extract_api_key_token,
     redact_sensitive_values,
@@ -118,6 +119,10 @@ class FakeClient:
     def export_dsl(self, app_id: str, include_secret: bool = False) -> dict[str, Any]:
         self.calls.append({"method": "export_dsl", "app_id": app_id, "include_secret": include_secret})
         return {"data": MINIMAL_DSL}
+
+    def delete_app(self, app_id: str) -> dict[str, Any]:
+        self.calls.append({"method": "delete_app", "app_id": app_id})
+        return {"result": "success"}
 
 
 def assert_api_key_helpers() -> dict[str, Any]:
@@ -320,6 +325,23 @@ kind: app
     return {"name": "dependency_alignment", "valid": True, "replacements": report.get("replacements")}
 
 
+def assert_cleanup_created_app() -> dict[str, Any]:
+    client = FakeClient()
+    disabled = cleanup_created_app(client=client, app_id="app-1", initial_app_id=None, enabled=False)  # type: ignore[arg-type]
+    if disabled.get("skipped") is not True or client.calls:
+        raise AssertionError(f"disabled cleanup should not call delete_app: {disabled}, calls={client.calls}")
+
+    existing = cleanup_created_app(client=client, app_id="app-1", initial_app_id="app-1", enabled=True)  # type: ignore[arg-type]
+    if existing.get("skipped") is not True or client.calls:
+        raise AssertionError(f"existing app cleanup should be skipped: {existing}, calls={client.calls}")
+
+    deleted = cleanup_created_app(client=client, app_id="app-2", initial_app_id=None, enabled=True)  # type: ignore[arg-type]
+    if deleted.get("ok") is not True or client.calls[-1] != {"method": "delete_app", "app_id": "app-2"}:
+        raise AssertionError(f"created app cleanup did not delete app: {deleted}, calls={client.calls}")
+
+    return {"name": "cleanup_created_app", "valid": True}
+
+
 def main() -> int:
     cases = [
         assert_api_key_helpers(),
@@ -328,6 +350,7 @@ def main() -> int:
         assert_post_success_lifecycle(),
         assert_post_success_arg_validation(),
         assert_dependency_alignment(),
+        assert_cleanup_created_app(),
     ]
     print(json.dumps({"valid": True, "cases": cases}, ensure_ascii=False, indent=2))
     return 0

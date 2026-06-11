@@ -21,6 +21,7 @@ def assert_post_success_args() -> dict[str, object]:
         service_api_base="http://localhost/v1",
         service_api_key=None,
         service_response_mode="blocking",
+        cleanup_app=True,
     )
     cmd: list[str] = []
     append_post_success_args(cmd, args)
@@ -38,6 +39,7 @@ def assert_post_success_args() -> dict[str, object]:
         "http://localhost/v1",
         "--service-response-mode",
         "blocking",
+        "--cleanup-app",
     ]
     if cmd != expected:
         raise AssertionError(f"unexpected post-success args: {cmd}")

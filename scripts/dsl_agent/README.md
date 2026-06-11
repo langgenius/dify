@@ -490,6 +490,8 @@ uv run python ../scripts/dsl_agent/run_generation_eval.py \
   --install-missing-dependencies \
   --skip-run-records \
   --bootstrap-rag-dataset \
+  --cleanup-app \
+  --cleanup-rag-dataset \
   --json
 ```
 
@@ -508,6 +510,7 @@ uv run python ../scripts/dsl_agent/run_generation_eval.py \
   --create-api-key \
   --service-regression \
   --export-backup \
+  --cleanup-app \
   --json
 ```
 
@@ -515,6 +518,10 @@ This extends the draft loop with workflow publish, App API enablement, App API
 key creation, Service API regression, and DSL backup export. The report includes
 a redacted `post_success` summary plus artifact paths for the Service API
 response and exported backup.
+
+For repeated local CE runs, add `--cleanup-app` to delete generated test apps.
+For RAG bootstrap runs, pair it with `--cleanup-rag-dataset` so the temporary
+dataset is removed after the app no longer references it.
 
 ## Validate DSL
 

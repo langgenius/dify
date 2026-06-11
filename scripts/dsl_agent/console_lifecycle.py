@@ -260,6 +260,12 @@ class DifyConsoleClient:
     def app_detail(self, app_id: str) -> Any:
         return self.request("GET", f"/console/api/apps/{app_id}")
 
+    def delete_app(self, app_id: str) -> Any:
+        return self.request("DELETE", f"/console/api/apps/{app_id}")
+
+    def delete_dataset(self, dataset_id: str) -> Any:
+        return self.request("DELETE", f"/console/api/datasets/{dataset_id}")
+
     def check_dependencies(self, app_id: str) -> Any:
         return self.request("GET", f"/console/api/apps/imports/{app_id}/check-dependencies")
 
@@ -1041,6 +1047,12 @@ def parse_args() -> argparse.Namespace:
     detail = subparsers.add_parser("app-detail")
     detail.add_argument("app_id")
 
+    delete_app = subparsers.add_parser("delete-app")
+    delete_app.add_argument("app_id")
+
+    delete_dataset = subparsers.add_parser("delete-dataset")
+    delete_dataset.add_argument("dataset_id")
+
     deps = subparsers.add_parser("check-dependencies")
     deps.add_argument("app_id")
 
@@ -1212,6 +1224,10 @@ def run(args: argparse.Namespace) -> Any:
         return client.confirm_import(args.import_id)
     if args.command == "app-detail":
         return client.app_detail(args.app_id)
+    if args.command == "delete-app":
+        return client.delete_app(args.app_id)
+    if args.command == "delete-dataset":
+        return client.delete_dataset(args.dataset_id)
     if args.command == "check-dependencies":
         return client.check_dependencies(args.app_id)
     if args.command == "install-missing-dependencies":

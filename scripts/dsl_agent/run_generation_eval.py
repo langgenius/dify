@@ -234,6 +234,27 @@ def append_post_success_args(cmd: list[str], args: argparse.Namespace) -> None:
         cmd.extend(["--service-api-key", args.service_api_key])
     if args.service_response_mode:
         cmd.extend(["--service-response-mode", args.service_response_mode])
+    if args.cleanup_app:
+        cmd.append("--cleanup-app")
+
+
+def cleanup_rag_dataset(dataset_bootstrap: dict[str, Any] | None, args: argparse.Namespace) -> dict[str, Any] | None:
+    if not args.cleanup_rag_dataset or not dataset_bootstrap:
+        return None
+    dataset_id = dataset_bootstrap.get("dataset_id")
+    if not isinstance(dataset_id, str) or not dataset_id:
+        return {"enabled": True, "ok": False, "reason": "Dataset bootstrap report did not include dataset_id."}
+    client = DifyConsoleClient(console_base=args.console_base, cookie_jar_path=args.cookie_jar)
+    try:
+        result = client.delete_dataset(dataset_id)
+        return {"enabled": True, "ok": True, "dataset_id": dataset_id, "result": result}
+    except ConsoleApiError as exc:
+        return {
+            "enabled": True,
+            "ok": False,
+            "dataset_id": dataset_id,
+            "error": console_error_to_dict("delete_dataset", exc),
+        }
 
 
 def summarize_post_success(report: dict[str, Any]) -> dict[str, Any] | None:
@@ -336,6 +357,7 @@ def run_debug_loop_for_case(
         }
 
     report = read_json(report_path) if report_path.exists() else {"status": "missing_report"}
+    dataset_cleanup = cleanup_rag_dataset(dataset_bootstrap, args)
     expect_debug = case.get("expect_debug") if isinstance(case.get("expect_debug"), dict) else {}
     expected_status = str(expect_debug.get("status") or "succeeded")
     status = str(report.get("status") or "unknown") if isinstance(report, dict) else "unknown"
@@ -344,6 +366,8 @@ def run_debug_loop_for_case(
         errors.append(f"debug status expected {expected_status}, got {status}")
     if completed.returncode != 0 and status == expected_status:
         errors.append(f"debug_loop.py returned {completed.returncode}")
+    if dataset_cleanup and dataset_cleanup.get("ok") is False:
+        errors.append("RAG dataset cleanup failed")
 
     return {
         "enabled": True,
@@ -355,6 +379,8 @@ def run_debug_loop_for_case(
         "app_id": report.get("app_id") if isinstance(report, dict) else None,
         "final_yaml": report.get("final_yaml") if isinstance(report, dict) else None,
         "dataset_bootstrap": dataset_bootstrap,
+        "dataset_cleanup": dataset_cleanup,
+        "cleanup": report.get("cleanup") if isinstance(report, dict) else None,
         "post_success": summarize_post_success(report) if isinstance(report, dict) else None,
         "errors": errors,
         "stdout": completed.stdout.strip(),
@@ -526,6 +552,12 @@ def parse_args() -> argparse.Namespace:
         "--bootstrap-rag-dataset",
         action="store_true",
         help="Create an empty local CE dataset and replace REPLACE_WITH_DATASET_ID before debug loop.",
+    )
+    parser.add_argument("--cleanup-app", action="store_true", help="Delete each generated app after debug loop.")
+    parser.add_argument(
+        "--cleanup-rag-dataset",
+        action="store_true",
+        help="Delete the temporary RAG dataset after debug loop. Use with --cleanup-app to avoid in-use datasets.",
     )
     return parser.parse_args()
 

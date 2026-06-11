@@ -624,6 +624,26 @@ def build_client(args: argparse.Namespace) -> DifyConsoleClient:
     )
 
 
+def cleanup_created_app(
+    *,
+    client: DifyConsoleClient,
+    app_id: str | None,
+    initial_app_id: str | None,
+    enabled: bool,
+) -> dict[str, Any]:
+    if not enabled:
+        return {"enabled": False, "skipped": True, "reason": "--cleanup-app was not set"}
+    if not app_id:
+        return {"enabled": True, "skipped": True, "reason": "No app_id was created."}
+    if initial_app_id:
+        return {"enabled": True, "skipped": True, "reason": "Refusing to delete an existing --app-id target."}
+    try:
+        result = client.delete_app(app_id)
+        return {"enabled": True, "ok": True, "app_id": app_id, "result": result}
+    except ConsoleApiError as exc:
+        return {"enabled": True, "ok": False, "app_id": app_id, "error": console_error_to_dict("delete_app", exc)}
+
+
 def run(args: argparse.Namespace) -> int:
     run_dir = args.run_dir
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -632,6 +652,7 @@ def run(args: argparse.Namespace) -> int:
 
     yaml_file = args.yaml_file or run_dir / "generated.yml"
     app_id = args.app_id
+    initial_app_id = args.app_id
     summary: dict[str, Any] = {
         "run_dir": str(run_dir),
         "mode": mode,
@@ -888,6 +909,17 @@ def run(args: argparse.Namespace) -> int:
         summary["app_id"] = app_id
         summary["final_yaml"] = str(yaml_file)
 
+    cleanup = cleanup_created_app(
+        client=client,
+        app_id=str(app_id) if app_id else None,
+        initial_app_id=initial_app_id,
+        enabled=args.cleanup_app,
+    )
+    if args.cleanup_app:
+        summary["cleanup"] = {"app": cleanup}
+        if cleanup.get("ok") is False and summary["status"] == "succeeded":
+            summary["status"] = "cleanup_failed"
+
     report_path = args.output or run_dir / "debug_loop_report.json"
     write_json(report_path, summary)
     print(f"Debug loop report: {report_path}")
@@ -939,6 +971,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--service-api-base", help="Dify Service API base. Defaults to <console-base>/v1.")
     parser.add_argument("--service-api-key", help="Existing App API key for Service API regression.")
     parser.add_argument("--service-response-mode", choices=["blocking", "streaming"], default="blocking")
+    parser.add_argument("--cleanup-app", action="store_true", help="Delete the created app after the debug loop finishes.")
     parser.add_argument("--output", type=Path, help="Defaults to <run_dir>/debug_loop_report.json.")
     return parser.parse_args()
 
