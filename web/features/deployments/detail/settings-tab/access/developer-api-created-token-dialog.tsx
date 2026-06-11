@@ -4,8 +4,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useClipboard } from 'foxact/use-clipboard'
 import { useTranslation } from 'react-i18next'
-import { useClipboard } from '@/hooks/use-clipboard'
 import { CopyPill } from './common'
 
 function buildCurlExample(apiUrl: string, token: string) {

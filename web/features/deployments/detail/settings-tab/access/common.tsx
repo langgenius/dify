@@ -3,8 +3,8 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useClipboard } from 'foxact/use-clipboard'
 import { useTranslation } from 'react-i18next'
-import { useClipboard } from '@/hooks/use-clipboard'
 
 type CopyPillProps = {
   label: string
