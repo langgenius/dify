@@ -307,9 +307,7 @@ const deploymentOptionsReadyAtom = atom((get) => {
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
 
   return sourceReady(get)
-    && Boolean(deploymentOptionsQuery.data)
-    && !(deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
-    && !deploymentOptionsQuery.isError
+    && deploymentOptionsQuery.isSuccess
     && get(unsupportedDslNodesAtom).length === 0
 })
 
@@ -503,10 +501,7 @@ export const deployableEnvironmentsAtom = atom((get) => {
 const deployableEnvironmentsReadyAtom = atom((get) => {
   const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
 
-  return sourceReady(get)
-    && Boolean(deployableEnvironmentsQuery.data)
-    && !(deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
-    && !deployableEnvironmentsQuery.isError
+  return sourceReady(get) && deployableEnvironmentsQuery.isSuccess
 })
 
 export const effectiveSelectedEnvironmentIdAtom = atom((get) => {
