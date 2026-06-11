@@ -436,8 +436,11 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
         assert "export PROJECT_NAME='demo project'" in script
         assert "export QUOTED='it'\\''s ok'" in script
         assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
+        assert "export RG_CONFIG_PATH='.ripgreprc'" in script
+        assert 'export GITHUB_TOKEN="${GITHUB_TOKEN:-}"' in script
         assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
         assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
+        assert '. ".dify/env.sh"' in script
         assert "apt-get install -y ripgrep" in script
         return _job_result("bootstrap-job", status=JobStatusName.EXITED, done=True, exit_code=0)
 
@@ -445,7 +448,14 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
     layer = _shell_layer(
         client_factory=lambda _entrypoint: client,
         config=DifyShellLayerConfig(
-            cli_tools=[DifyShellCliToolConfig(name="ripgrep", install_commands=["apt-get install -y ripgrep"])],
+            cli_tools=[
+                DifyShellCliToolConfig(
+                    name="ripgrep",
+                    install_commands=["apt-get install -y ripgrep"],
+                    env=[DifyShellEnvVarConfig(name="RG_CONFIG_PATH", value=".ripgreprc")],
+                    secret_refs=[DifyShellSecretRefConfig(name="GITHUB_TOKEN", ref="secret-2")],
+                )
+            ],
             env=[
                 DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo project"),
                 DifyShellEnvVarConfig(name="QUOTED", value="it's ok"),
