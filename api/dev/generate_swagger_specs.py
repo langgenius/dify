@@ -445,7 +445,7 @@ def _deduplicate_operation_ids(payload: dict[str, object]) -> dict[str, object]:
         if len(operations) < 2:
             continue
         for method, path, operation in operations:
-            digest = hashlib.sha1(f"{method}:{path}".encode("utf-8")).hexdigest()[:8]
+            digest = hashlib.sha1(f"{method}:{path}".encode()).hexdigest()[:8]
             operation["operationId"] = f"{operation_id}_{digest}"
 
     return payload
