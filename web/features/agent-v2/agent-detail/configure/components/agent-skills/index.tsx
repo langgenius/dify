@@ -13,6 +13,7 @@ import ActionButton from '@/app/components/base/action-button'
 import { consoleQuery } from '@/service/client'
 import { formatFileSize } from '@/utils/format'
 import { ConfigureSection } from '../configure-section'
+import { ConfigureSectionAddButton } from '../configure-section-add-button'
 import { defaultAgentFiles, defaultAgentSkills } from '../configured-data'
 import { getFirstAgentFileId } from '../utils'
 import { AgentSkillItem } from './agent-skill-item'
@@ -141,14 +142,10 @@ export function AgentSkills({
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={(
-          <button
-            type="button"
-            aria-label={t('agentDetail.configure.skills.add')}
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          <ConfigureSectionAddButton
+            ariaLabel={t('agentDetail.configure.skills.add')}
             onClick={() => setIsUploadOpen(true)}
-          >
-            <span aria-hidden className="i-ri-add-line size-4" />
-          </button>
+          />
         )}
       >
         {skills.map(skill => (

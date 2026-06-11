@@ -3,6 +3,7 @@
 import type { AgentKnowledgeRetrievalItem } from './configured-data'
 import { useTranslation } from 'react-i18next'
 import { ConfigureSection } from './configure-section'
+import { ConfigureSectionAddButton } from './configure-section-add-button'
 import { defaultAgentKnowledgeRetrievals } from './configured-data'
 
 function KnowledgeRetrievalIcon() {
@@ -51,13 +52,7 @@ export function AgentKnowledgeRetrieval({
       rootClassName="border-b border-divider-subtle pt-4"
       panelContentClassName="flex flex-col gap-1 pb-4"
       actions={(
-        <button
-          type="button"
-          aria-label={t('agentDetail.configure.knowledgeRetrieval.add')}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-add-line size-4" />
-        </button>
+        <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.knowledgeRetrieval.add')} />
       )}
     >
       {retrievals.map(item => (

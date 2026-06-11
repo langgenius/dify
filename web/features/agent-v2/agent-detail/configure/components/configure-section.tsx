@@ -60,25 +60,30 @@ export function ConfigureSection({
     >
       <div className={cn('mb-2 flex min-h-6 items-center gap-2', headerClassName)}>
         <div className="min-w-0 flex-1">
-          <div className={cn('flex min-w-0 items-center gap-0.5', titleRowClassName)}>
-            <Heading id={labelId} className="min-w-0">
+          <div className={cn('flex min-w-0 items-center', titleRowClassName)}>
+            <Heading id={labelId} className="min-w-0 shrink-0">
               <CollapsibleTrigger
-                className="group/collapse h-6 min-h-0 justify-start gap-0 rounded-sm px-0 text-text-secondary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary"
+                className="h-6 min-h-0 w-auto max-w-full justify-start gap-0 rounded-sm px-0 text-text-secondary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary"
               >
                 <span className="min-w-0 truncate system-sm-semibold-uppercase">
                   {label}
                 </span>
-                <span
-                  aria-hidden="true"
-                  className="i-custom-vender-solid-general-arrow-down-round-fill size-4 rotate-270 cursor-pointer text-text-quaternary transition-transform group-hover/collapse:text-text-secondary group-data-panel-open/collapse:rotate-0 motion-reduce:transition-none"
-                />
               </CollapsibleTrigger>
             </Heading>
             {tip && (
-              <Infotip aria-label={tipAriaLabel} popupClassName="max-w-64">
+              <Infotip aria-label={tipAriaLabel} className="ml-0.5 size-3.5" popupClassName="max-w-64">
                 {tip}
               </Infotip>
             )}
+            <CollapsibleTrigger
+              aria-labelledby={labelId}
+              className="group/collapse-icon h-6 min-h-0 w-3.5 shrink-0 justify-center rounded-sm p-0 text-text-quaternary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-quaternary"
+            >
+              <span
+                aria-hidden="true"
+                className="i-custom-vender-solid-general-arrow-down-round-fill size-3.5 rotate-270 transition-transform group-data-panel-open/collapse-icon:rotate-0 motion-reduce:transition-none"
+              />
+            </CollapsibleTrigger>
           </div>
           {description && (
             <p className="system-xs-regular text-text-tertiary">

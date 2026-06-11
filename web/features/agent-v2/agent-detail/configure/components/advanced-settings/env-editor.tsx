@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ConfigureSection } from '../configure-section'
+import { ConfigureSectionAddButton } from '../configure-section-add-button'
 
 type EnvScope = 'secret' | 'plain'
 
@@ -204,13 +205,7 @@ export function AgentEnvEditor({
             <span className="system-xs-medium">{t('agentDetail.configure.advancedSettings.envEditor.importEnv')}</span>
           </button>
           <div className="mx-1 h-3 w-px shrink-0 bg-divider-regular" />
-          <button
-            type="button"
-            aria-label={t('agentDetail.configure.advancedSettings.envEditor.add')}
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-add-line size-4" />
-          </button>
+          <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.advancedSettings.envEditor.add')} />
         </>
       )}
     >
