@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from console_lifecycle import ConsoleApiError, DifyConsoleClient, console_error_to_dict
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
@@ -21,6 +22,7 @@ DEFAULT_OUTPUT_ROOT = SCRIPT_DIR / "outputs"
 DEFAULT_COOKIE_JAR = Path.home() / ".dify_console_cookies.txt"
 DEFAULT_CONSOLE_BASE = "http://localhost"
 DEFAULT_DEBUG_INPUTS = {"input": "hello"}
+RAG_DATASET_PLACEHOLDER = "REPLACE_WITH_DATASET_ID"
 
 
 def load_app_dsl_agent_service():
@@ -145,13 +147,66 @@ def case_inputs(case: dict[str, Any], args: argparse.Namespace) -> dict[str, Any
     return dict(DEFAULT_DEBUG_INPUTS)
 
 
-def debug_loop_skip_reason(case: dict[str, Any]) -> str | None:
+def debug_loop_skip_reason(case: dict[str, Any], args: argparse.Namespace) -> str | None:
     debug_config = case.get("debug")
     if not isinstance(debug_config, dict):
         return None
     if debug_config.get("skip"):
+        if args.bootstrap_rag_dataset and debug_config.get("bootstrap_rag_dataset"):
+            return None
         return str(debug_config.get("reason") or "debug loop disabled for this case")
     return None
+
+
+def bootstrap_rag_dataset(case_dir: Path, args: argparse.Namespace) -> dict[str, Any] | None:
+    yaml_file = case_dir / "generated.yml"
+    yaml_text = yaml_file.read_text()
+    if RAG_DATASET_PLACEHOLDER not in yaml_text:
+        return None
+
+    client = DifyConsoleClient(console_base=args.console_base, cookie_jar_path=args.cookie_jar)
+    dataset_name = f"dsl-agent-rag-{int(time.time()) % 1_000_000:06d}"
+    report: dict[str, Any] = {
+        "ok": False,
+        "placeholder": RAG_DATASET_PLACEHOLDER,
+        "dataset_name": dataset_name,
+        "dataset_id": None,
+        "artifact": str(case_dir / "rag_dataset_bootstrap.json"),
+        "errors": [],
+    }
+    try:
+        result = client.request(
+            "POST",
+            "/console/api/datasets",
+            body={
+                "name": dataset_name,
+                "description": "Temporary dataset for DSL agent RAG live evaluation.",
+                "indexing_technique": "economy",
+                "permission": "only_me",
+                "provider": "vendor",
+            },
+        )
+    except ConsoleApiError as exc:
+        report["errors"].append(console_error_to_dict("bootstrap_rag_dataset", exc))
+        write_json(case_dir / "rag_dataset_bootstrap.json", report)
+        return report
+
+    dataset_id = result.get("id") if isinstance(result, dict) else None
+    if not isinstance(dataset_id, str) or not dataset_id:
+        report["errors"].append({"stage": "bootstrap_rag_dataset", "message": "Dataset create response missing id."})
+        write_json(case_dir / "rag_dataset_bootstrap.json", report)
+        return report
+
+    yaml_file.write_text(yaml_text.replace(RAG_DATASET_PLACEHOLDER, dataset_id))
+    report.update(
+        {
+            "ok": True,
+            "dataset_id": dataset_id,
+            "replacement_count": yaml_text.count(RAG_DATASET_PLACEHOLDER),
+        }
+    )
+    write_json(case_dir / "rag_dataset_bootstrap.json", report)
+    return report
 
 
 def append_post_success_args(cmd: list[str], args: argparse.Namespace) -> None:
@@ -208,7 +263,7 @@ def run_debug_loop_for_case(
     case_dir: Path,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
-    skip_reason = debug_loop_skip_reason(case)
+    skip_reason = debug_loop_skip_reason(case, args)
     if skip_reason:
         return {
             "enabled": True,
@@ -219,6 +274,17 @@ def run_debug_loop_for_case(
 
     yaml_file = case_dir / "generated.yml"
     report_path = case_dir / "debug_loop_report.json"
+    dataset_bootstrap = bootstrap_rag_dataset(case_dir, args) if args.bootstrap_rag_dataset else None
+    if dataset_bootstrap and not dataset_bootstrap.get("ok"):
+        return {
+            "enabled": True,
+            "ok": False,
+            "status": "rag_dataset_bootstrap_failed",
+            "dataset_bootstrap": dataset_bootstrap,
+            "report": str(report_path),
+            "errors": ["RAG dataset bootstrap failed"],
+        }
+
     inputs = case_inputs(case, args)
     cmd = [
         sys.executable,
@@ -288,6 +354,7 @@ def run_debug_loop_for_case(
         "report": str(report_path),
         "app_id": report.get("app_id") if isinstance(report, dict) else None,
         "final_yaml": report.get("final_yaml") if isinstance(report, dict) else None,
+        "dataset_bootstrap": dataset_bootstrap,
         "post_success": summarize_post_success(report) if isinstance(report, dict) else None,
         "errors": errors,
         "stdout": completed.stdout.strip(),
@@ -455,6 +522,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--service-api-base")
     parser.add_argument("--service-api-key")
     parser.add_argument("--service-response-mode", choices=["blocking", "streaming"], default="blocking")
+    parser.add_argument(
+        "--bootstrap-rag-dataset",
+        action="store_true",
+        help="Create an empty local CE dataset and replace REPLACE_WITH_DATASET_ID before debug loop.",
+    )
     return parser.parse_args()
 
 

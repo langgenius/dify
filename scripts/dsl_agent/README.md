@@ -478,6 +478,21 @@ gate without failing the live CE loop.
 
 To iterate on one failing case, pass `--case-id <id>`; the flag may be repeated.
 
+To include the RAG case in a local CE live loop, let the runner create an empty
+temporary dataset and replace `REPLACE_WITH_DATASET_ID` before import:
+
+```bash
+cd dify/api
+uv run python ../scripts/dsl_agent/run_generation_eval.py \
+  --case-id rag_answer_with_citations \
+  --debug-loop \
+  --console-base http://localhost \
+  --install-missing-dependencies \
+  --skip-run-records \
+  --bootstrap-rag-dataset \
+  --json
+```
+
 Full local CE lifecycle for one generated case:
 
 ```bash

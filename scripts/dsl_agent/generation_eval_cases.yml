@@ -81,6 +81,7 @@ cases:
       input: What is our refund policy for annual enterprise contracts?
     debug:
       skip: true
+      bootstrap_rag_dataset: true
       reason: Requires replacing REPLACE_WITH_DATASET_ID with a real workspace dataset id.
     expect:
       required_node_types:
