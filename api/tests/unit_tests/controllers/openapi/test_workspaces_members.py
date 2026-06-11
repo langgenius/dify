@@ -142,8 +142,8 @@ def _tenant_service(**overrides) -> SimpleNamespace:
 
     Read getters (`get_tenant_by_id`, `find_workspace_for_account`) delegate
     to the session they're handed, so tests keep driving entity loads through
-    ``mock_db.session.get`` / ``.execute`` and their existing side_effect
-    ordering — the SQL those methods run is covered in test_account_service.py.
+    ``session.get`` / ``.execute`` and their existing side_effect ordering —
+    the SQL those methods run is covered in test_account_service.py.
     Domain mutators default to no-op Mocks; override per test as needed.
     """
     methods: dict = {
@@ -168,17 +168,9 @@ def _account_service(**overrides) -> SimpleNamespace:
     return SimpleNamespace(**methods)
 
 
-def _patch_write_session(monkeypatch, session: MagicMock) -> MagicMock:
-    """Keep the auth decorator bypassed while preserving `with_session`."""
-    from controllers.console.app import wraps as wraps_module
-
-    session_context = MagicMock()
-    session_context.__enter__.return_value = session
-    session_context.__exit__.return_value = None
-    session_maker = MagicMock()
-    session_maker.begin.return_value = session_context
-    monkeypatch.setattr(wraps_module.session_factory, "get_session_maker", lambda: session_maker)
-    return session_maker
+def _call_with_session(method, resource, session: MagicMock, /, *args, **kwargs):
+    """Bypass auth and `with_session`, while keeping contract wrappers."""
+    return method.__wrapped__.__wrapped__(resource, session, *args, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +238,7 @@ def test_invite_rejects_invalid_body_with_422(app, bypass_pipeline):
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
+    session = MagicMock()
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members",
@@ -255,7 +248,7 @@ def test_invite_rejects_invalid_body_with_422(app, bypass_pipeline):
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(UnprocessableEntity):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 def test_update_role_rejects_invalid_body_with_422(app, bypass_pipeline):
@@ -263,6 +256,7 @@ def test_update_role_rejects_invalid_body_with_422(app, bypass_pipeline):
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberRoleApi()
+    session = MagicMock()
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members/{member_id}/role",
@@ -272,7 +266,14 @@ def test_update_role_rejects_invalid_body_with_422(app, bypass_pipeline):
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(UnprocessableEntity):
-            api.put.__wrapped__(api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id))
+            _call_with_session(
+                api.put,
+                api,
+                session,
+                workspace_id=ws_id,
+                member_id=member_id,
+                auth_data=_auth_data(acct_id),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +291,6 @@ def test_switch_returns_workspace_detail_with_current_true(app, bypass_pipeline,
     api = WorkspaceSwitchApi()
 
     session = MagicMock()
-    session_maker = _patch_write_session(monkeypatch, session)
     account = _account(account_id=str(acct_id))
     session.get.return_value = account
     membership = SimpleNamespace(role=TenantAccountRole.OWNER, current=True)
@@ -305,12 +305,11 @@ def test_switch_returns_workspace_detail_with_current_true(app, bypass_pipeline,
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+        body, status = _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 200
     assert body["id"] == ws_id
     assert body["current"] is True
-    session_maker.begin.assert_called_once()
     switch_mock.assert_called_once_with(account, ws_id, session=session)
 
 
@@ -322,7 +321,6 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(app, bypass_pip
     api = WorkspaceSwitchApi()
 
     session = MagicMock()
-    _patch_write_session(monkeypatch, session)
     session.get.return_value = _account(account_id=str(acct_id))
 
     monkeypatch.setattr(
@@ -334,7 +332,7 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(app, bypass_pip
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(NotFound):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -356,19 +354,18 @@ def test_members_list_returns_normalized_rows(app, bypass_pipeline, monkeypatch)
         role=TenantAccountRole.ADMIN,
     )
 
-    mock_db = MagicMock()
-    mock_db.session.get.return_value = _tenant(ws_id)
+    session = MagicMock()
+    session.get.return_value = _tenant(ws_id)
 
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
         _tenant_service(get_tenant_members=Mock(return_value=[member])),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+        body, status = _call_with_session(api.get, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 200
     assert body["page"] == 1
@@ -398,19 +395,18 @@ def test_members_list_paginates_with_query_params(app, bypass_pipeline, monkeypa
         for i in range(5)
     ]
 
-    mock_db = MagicMock()
-    mock_db.session.get.return_value = _tenant(ws_id)
+    session = MagicMock()
+    session.get.return_value = _tenant(ws_id)
 
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
         _tenant_service(get_tenant_members=Mock(return_value=members)),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?page=2&limit=2"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+        body, status = _call_with_session(api.get, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 200
     assert body["page"] == 2
@@ -425,15 +421,12 @@ def test_members_list_rejects_unknown_query_param(app, bypass_pipeline, monkeypa
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
-
-    mock_db = MagicMock()
-    mock_db.session.get.return_value = _tenant(ws_id)
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
+    session = MagicMock()
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?pg=2"):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(UnprocessableEntity):
-            api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            _call_with_session(api.get, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -448,21 +441,22 @@ def test_invite_happy_path_returns_invite_url_and_member_id(app, bypass_pipeline
 
     invited = _account(account_id="new-1", email="new@example.com")
 
-    mock_db = MagicMock()
+    session = MagicMock()
     # session.get is called twice: once for inviter Account, once for Tenant
-    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+    session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+    invite_mock = Mock(return_value="tok-123")
+    get_member_mock = Mock(return_value=invited)
 
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "RegisterService",
-        SimpleNamespace(invite_new_member=Mock(return_value="tok-123")),
+        SimpleNamespace(invite_new_member=invite_mock),
     )
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "AccountService",
-        _account_service(get_account_by_email_with_case_fallback=Mock(return_value=invited)),
+        _account_service(get_account_by_email_with_case_fallback=get_member_mock),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members",
@@ -471,7 +465,7 @@ def test_invite_happy_path_returns_invite_url_and_member_id(app, bypass_pipeline
         content_type="application/json",
     ):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+        body, status = _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 201
     assert body["result"] == "success"
@@ -481,6 +475,9 @@ def test_invite_happy_path_returns_invite_url_and_member_id(app, bypass_pipeline
     assert "token=tok-123" in body["invite_url"]
     assert "email=new%40example.com" in body["invite_url"]
     assert body["tenant_id"] == ws_id
+    invite_mock.assert_called_once()
+    assert invite_mock.call_args.kwargs["session"] is session
+    get_member_mock.assert_called_once_with("new@example.com", session=session)
 
 
 def _features(
@@ -529,8 +526,8 @@ def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+    session = MagicMock()
+    session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     invite_mock = Mock()
     monkeypatch.setattr(
@@ -538,7 +535,6 @@ def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
         "RegisterService",
         SimpleNamespace(invite_new_member=invite_mock),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "FeatureService",
@@ -552,7 +548,7 @@ def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
     with _invite_request(app, ws_id, acct_id):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(MemberLimitExceeded):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     invite_mock.assert_not_called()
 
@@ -567,8 +563,8 @@ def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, mo
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+    session = MagicMock()
+    session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     invite_mock = Mock()
     monkeypatch.setattr(
@@ -576,7 +572,6 @@ def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, mo
         "RegisterService",
         SimpleNamespace(invite_new_member=invite_mock),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "FeatureService",
@@ -594,7 +589,7 @@ def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, mo
     with _invite_request(app, ws_id, acct_id):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(MemberLicenseExceeded):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     invite_mock.assert_not_called()
 
@@ -607,20 +602,20 @@ def test_invite_ce_passes_when_both_caps_disabled(app, bypass_pipeline, monkeypa
     api = WorkspaceMembersApi()
 
     invited = _account(account_id="new-1", email="new@example.com")
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+    session = MagicMock()
+    session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+    invite_mock = Mock(return_value="tok-ce")
 
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "RegisterService",
-        SimpleNamespace(invite_new_member=Mock(return_value="tok-ce")),
+        SimpleNamespace(invite_new_member=invite_mock),
     )
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "AccountService",
         _account_service(get_account_by_email_with_case_fallback=Mock(return_value=invited)),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "FeatureService",
@@ -629,10 +624,11 @@ def test_invite_ce_passes_when_both_caps_disabled(app, bypass_pipeline, monkeypa
 
     with _invite_request(app, ws_id, acct_id):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+        body, status = _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 201
     assert body["email"] == "new@example.com"
+    assert invite_mock.call_args.kwargs["session"] is session
 
 
 def test_invite_400_when_already_in_tenant(app, bypass_pipeline, monkeypatch):
@@ -640,15 +636,14 @@ def test_invite_400_when_already_in_tenant(app, bypass_pipeline, monkeypatch):
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+    session = MagicMock()
+    session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "RegisterService",
         SimpleNamespace(invite_new_member=Mock(side_effect=AccountAlreadyInTenantError("already in tenant"))),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members",
@@ -658,7 +653,7 @@ def test_invite_400_when_already_in_tenant(app, bypass_pipeline, monkeypatch):
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(BadRequest):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -671,8 +666,8 @@ def test_delete_member_happy_path(app, bypass_pipeline, monkeypatch):
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [
+    session = MagicMock()
+    session.get.side_effect = [
         _account(account_id=str(acct_id)),  # operator
         _tenant(ws_id),  # tenant
         _account(account_id=member_id),  # target member
@@ -684,20 +679,20 @@ def test_delete_member_happy_path(app, bypass_pipeline, monkeypatch):
         "TenantService",
         _tenant_service(remove_member_from_tenant=remove_mock),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members/{member_id}",
         method="DELETE",
     ):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.delete.__wrapped__(
-            api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id)
+        body, status = _call_with_session(
+            api.delete, api, session, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id)
         )
 
     assert status == 200
     assert body == {"result": "success"}
-    assert remove_mock.called
+    remove_mock.assert_called_once()
+    assert remove_mock.call_args.kwargs["session"] is session
 
 
 @pytest.mark.parametrize(
@@ -713,8 +708,8 @@ def test_delete_member_exception_mapping(app, bypass_pipeline, monkeypatch, exc,
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [
+    session = MagicMock()
+    session.get.side_effect = [
         _account(account_id=str(acct_id)),
         _tenant(ws_id),
         _account(account_id=member_id),
@@ -725,7 +720,6 @@ def test_delete_member_exception_mapping(app, bypass_pipeline, monkeypatch, exc,
         "TenantService",
         _tenant_service(remove_member_from_tenant=Mock(side_effect=exc)),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members/{member_id}",
@@ -733,8 +727,10 @@ def test_delete_member_exception_mapping(app, bypass_pipeline, monkeypatch, exc,
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(expected):
-            api.delete.__wrapped__(
+            _call_with_session(
+                api.delete,
                 api,
+                session,
                 workspace_id=ws_id,
                 member_id=member_id,
                 auth_data=_auth_data(acct_id),
@@ -746,13 +742,12 @@ def test_delete_member_404_when_member_missing(app, bypass_pipeline, monkeypatch
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [
+    session = MagicMock()
+    session.get.side_effect = [
         _account(account_id=str(acct_id)),
         _tenant(ws_id),
         None,  # member not found
     ]
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members/{member_id}",
@@ -760,8 +755,10 @@ def test_delete_member_404_when_member_missing(app, bypass_pipeline, monkeypatch
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(NotFound):
-            api.delete.__wrapped__(
+            _call_with_session(
+                api.delete,
                 api,
+                session,
                 workspace_id=ws_id,
                 member_id=member_id,
                 auth_data=_auth_data(acct_id),
@@ -778,8 +775,8 @@ def test_update_role_happy_path(app, bypass_pipeline, monkeypatch):
     acct_id = uuid.uuid4()
     api = WorkspaceMemberRoleApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [
+    session = MagicMock()
+    session.get.side_effect = [
         _account(account_id=str(acct_id)),
         _tenant(ws_id),
         _account(account_id=member_id),
@@ -791,7 +788,6 @@ def test_update_role_happy_path(app, bypass_pipeline, monkeypatch):
         "TenantService",
         _tenant_service(update_member_role=update_mock),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members/{member_id}/role",
@@ -800,12 +796,15 @@ def test_update_role_happy_path(app, bypass_pipeline, monkeypatch):
         content_type="application/json",
     ):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.put.__wrapped__(api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id))
+        body, status = _call_with_session(
+            api.put, api, session, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id)
+        )
 
     assert status == 200
     assert body == {"result": "success"}
     args = update_mock.call_args.args
     assert args[2] == "admin"
+    assert update_mock.call_args.kwargs["session"] is session
 
 
 @pytest.mark.parametrize(
@@ -822,8 +821,8 @@ def test_update_role_exception_mapping(app, bypass_pipeline, monkeypatch, exc, e
     acct_id = uuid.uuid4()
     api = WorkspaceMemberRoleApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [
+    session = MagicMock()
+    session.get.side_effect = [
         _account(account_id=str(acct_id)),
         _tenant(ws_id),
         _account(account_id=member_id),
@@ -834,7 +833,6 @@ def test_update_role_exception_mapping(app, bypass_pipeline, monkeypatch, exc, e
         "TenantService",
         _tenant_service(update_member_role=Mock(side_effect=exc)),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members/{member_id}/role",
@@ -844,8 +842,10 @@ def test_update_role_exception_mapping(app, bypass_pipeline, monkeypatch, exc, e
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(expected):
-            api.put.__wrapped__(
+            _call_with_session(
+                api.put,
                 api,
+                session,
                 workspace_id=ws_id,
                 member_id=member_id,
                 auth_data=_auth_data(acct_id),
@@ -864,20 +864,19 @@ def test_load_tenant_rejects_archived_workspace(app, bypass_pipeline, monkeypatc
     api = WorkspaceMembersApi()
 
     archived = SimpleNamespace(id=ws_id, name="WS", status="archive", created_at=datetime(2026, 5, 18, tzinfo=UTC))
-    mock_db = MagicMock()
-    mock_db.session.get.return_value = archived
+    session = MagicMock()
+    session.get.return_value = archived
 
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
         _tenant_service(),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members"):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(NotFound):
-            api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            _call_with_session(api.get, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -891,8 +890,8 @@ def test_invite_400_when_register_error(app, bypass_pipeline, monkeypatch):
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
+    session = MagicMock()
+    session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
@@ -901,7 +900,6 @@ def test_invite_400_when_register_error(app, bypass_pipeline, monkeypatch):
             invite_new_member=Mock(side_effect=AccountRegisterError("Workspace is not allowed to create.")),
         ),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members",
@@ -911,4 +909,4 @@ def test_invite_400_when_register_error(app, bypass_pipeline, monkeypatch):
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(BadRequest):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            _call_with_session(api.post, api, session, workspace_id=ws_id, auth_data=_auth_data(acct_id))
