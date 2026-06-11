@@ -112,7 +112,7 @@ const Panel: FC<NodePanelProps<StartPlaceholderNodeType>> = ({
 
     setNodes(nextNodes)
     setHasSelectedStartNode?.(true)
-    setShouldAutoOpenStartNodeSelector?.(false)
+    setShouldAutoOpenStartNodeSelector?.(true)
 
     handleSyncWorkflowDraft(true, false, {
       onSuccess: () => {
