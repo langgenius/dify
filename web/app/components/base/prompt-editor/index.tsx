@@ -16,6 +16,7 @@ import type {
   LastRunBlockType,
   QueryBlockType,
   RequestURLBlockType,
+  RosterReferenceBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
@@ -60,6 +61,7 @@ import {
 import {
   RequestURLBlockNode,
 } from './plugins/request-url-block'
+import { RosterReferenceBlockNode } from './plugins/roster-reference-block/node'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import {
   WorkflowVariableBlockNode,
@@ -125,6 +127,7 @@ export type PromptEditorProps = {
   requestURLBlock?: RequestURLBlockType
   historyBlock?: HistoryBlockType
   variableBlock?: VariableBlockType
+  rosterReferenceBlock?: RosterReferenceBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
   hitlInputBlock?: HITLInputBlockType
@@ -160,6 +163,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   requestURLBlock,
   historyBlock,
   variableBlock,
+  rosterReferenceBlock,
   externalToolBlock,
   workflowVariableBlock,
   hitlInputBlock,
@@ -190,6 +194,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       RequestURLBlockNode,
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
+      RosterReferenceBlockNode,
       HITLInputNode,
       CurrentBlockNode,
       ErrorMessageBlockNode,
@@ -248,6 +253,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           requestURLBlock={requestURLBlock}
           historyBlock={historyBlock}
           variableBlock={variableBlock}
+          rosterReferenceBlock={rosterReferenceBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
           hitlInputBlock={hitlInputBlock}

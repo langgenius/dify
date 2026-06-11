@@ -127,6 +127,9 @@ export function AgentPromptEditor({
               variableBlock={{
                 show: true,
               }}
+              rosterReferenceBlock={{
+                show: true,
+              }}
               disableSlashPicker
               disableBracePicker
             />

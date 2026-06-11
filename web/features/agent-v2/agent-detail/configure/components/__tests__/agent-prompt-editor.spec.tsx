@@ -42,6 +42,9 @@ describe('AgentPromptEditor', () => {
       expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
         disableBracePicker: true,
         disableSlashPicker: true,
+        rosterReferenceBlock: {
+          show: true,
+        },
       }))
 
       expect(fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })).toBe(true)

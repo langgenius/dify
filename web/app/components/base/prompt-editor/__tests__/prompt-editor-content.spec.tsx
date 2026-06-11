@@ -26,6 +26,7 @@ import { HITLInputNode } from '../plugins/hitl-input-block'
 import { LastRunBlockNode } from '../plugins/last-run-block'
 import { QueryBlockNode } from '../plugins/query-block'
 import { RequestURLBlockNode } from '../plugins/request-url-block'
+import { RosterReferenceBlockNode } from '../plugins/roster-reference-block/node'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../plugins/update-block'
 import { VariableValueBlockNode } from '../plugins/variable-value-block/node'
 import { WorkflowVariableBlockNode } from '../plugins/workflow-variable-block'
@@ -108,6 +109,7 @@ const PromptEditorContentHarness = ({
           RequestURLBlockNode,
           WorkflowVariableBlockNode,
           VariableValueBlockNode,
+          RosterReferenceBlockNode,
           HITLInputNode,
           CurrentBlockNode,
           ErrorMessageBlockNode,
@@ -290,6 +292,30 @@ describe('PromptEditorContent', () => {
 
       expect(screen.queryByTestId('draggable-target-line')).not.toBeInTheDocument()
       expect(screen.getByText('common.promptEditor.placeholder')).toBeInTheDocument()
+    })
+
+    it('should render roster references as inline token pills when enabled', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      const { container } = render(
+        <PromptEditorContentHarness
+          captures={captures}
+          shortcutPopups={[]}
+          initialText="Use [§file:file-1:qna_report.pdf§]"
+          floatingAnchorElem={null}
+          onEditorChange={vi.fn()}
+          rosterReferenceBlock={{ show: true }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(captures.editor).not.toBeNull()
+      })
+
+      const token = container.querySelector('[data-roster-reference-kind="file"]') as HTMLElement
+      expect(token).toBeInTheDocument()
+      expect(token).toHaveTextContent('qna_report.pdf')
+      expect(token.querySelector('.i-ri-file-pdf-2-line')).toBeInTheDocument()
     })
   })
 })

@@ -11,6 +11,7 @@ import type {
   LastRunBlockType,
   QueryBlockType,
   RequestURLBlockType,
+  RosterReferenceBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
@@ -57,6 +58,7 @@ import {
   RequestURLBlock,
   RequestURLBlockReplacementBlock,
 } from './plugins/request-url-block'
+import RosterReferenceBlock from './plugins/roster-reference-block'
 import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
 import UpdateBlock from './plugins/update-block'
 import VariableBlock from './plugins/variable-block'
@@ -84,6 +86,7 @@ type PromptEditorContentProps = {
   requestURLBlock?: RequestURLBlockType
   historyBlock?: HistoryBlockType
   variableBlock?: VariableBlockType
+  rosterReferenceBlock?: RosterReferenceBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
   hitlInputBlock?: HITLInputBlockType
@@ -112,6 +115,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   requestURLBlock,
   historyBlock,
   variableBlock,
+  rosterReferenceBlock,
   externalToolBlock,
   workflowVariableBlock,
   hitlInputBlock,
@@ -209,6 +213,9 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           <VariableBlock />
           <VariableValueBlock />
         </>
+      )}
+      {rosterReferenceBlock?.show && (
+        <RosterReferenceBlock />
       )}
       {workflowVariableBlock?.show && (
         <>

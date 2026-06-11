@@ -59,6 +59,10 @@ export type VariableBlockType = {
   variables?: Option[]
 }
 
+export type RosterReferenceBlockType = {
+  show?: boolean
+}
+
 export type ExternalToolBlockType = {
   show?: boolean
   externalTools?: ExternalToolOption[]
