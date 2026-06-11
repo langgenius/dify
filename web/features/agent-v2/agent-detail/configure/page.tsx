@@ -42,6 +42,7 @@ export function AgentConfigurePage({
         }
       : skipToken,
   }))
+  const activeConfigSnapshot = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined) ?? agentQuery.data?.active_config_snapshot
   const agentSoulConfig = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined)?.config_snapshot
   useHydrateAgentConfigureDraft({
     agentId,
@@ -70,6 +71,7 @@ export function AgentConfigurePage({
     >
       <AgentOrchestratePanel
         agentId={agentId}
+        activeConfigSnapshot={activeConfigSnapshot}
         agentSoulConfig={agentSoulConfig}
         currentModel={currentModel}
         textGenerationModelList={textGenerationModelList}

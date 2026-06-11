@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { AgentAdvancedSettings } from './advanced'
@@ -15,6 +15,7 @@ import { AgentTools } from './tools'
 
 type AgentOrchestratePanelProps = {
   agentId: string
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   currentModel?: DefaultModel
   textGenerationModelList: Model[]
@@ -24,6 +25,7 @@ type AgentOrchestratePanelProps = {
 
 export function AgentOrchestratePanel({
   agentId,
+  activeConfigSnapshot,
   agentSoulConfig,
   currentModel,
   textGenerationModelList,
@@ -59,6 +61,7 @@ export function AgentOrchestratePanel({
 
       <AgentConfigurePublishBar
         agentId={agentId}
+        activeConfigSnapshot={activeConfigSnapshot}
         agentSoulConfig={agentSoulConfig}
         currentModel={currentModel}
         onOpenVersions={onOpenVersions}
