@@ -195,7 +195,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
     const mutationOptions = consoleQuery.agents.byAgentId.delete.mutationOptions()
     await mutationOptions.onSuccess?.(
-      undefined,
+      {},
       {
         params: {
           agent_id: deletedAgent.id,
