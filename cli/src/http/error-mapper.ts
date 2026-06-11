@@ -1,4 +1,5 @@
 import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
+import type { ErrorCodeValue } from '@/errors/codes'
 import { zErrorBody } from '@dify/contracts/api/openapi/zod.gen'
 import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
@@ -6,6 +7,42 @@ import { redactBearer } from './sanitize'
 
 const AUTH_EXPIRED_MESSAGE = 'session expired or revoked'
 const AUTH_LOGIN_HINT = 'run \'difyctl auth login\' to sign in again'
+
+// How one HTTP status bucket classifies: CLI code, message fallback when the
+// body is not a canonical ErrorBody, optional CLI hint, raw-body retention.
+type StatusClass = {
+  readonly code: ErrorCodeValue
+  readonly fallbackMessage: (status: number) => string
+  readonly hint?: string
+  readonly includeRaw: boolean
+}
+
+const AUTH_EXPIRED_CLASS: StatusClass = {
+  code: ErrorCode.AuthExpired,
+  fallbackMessage: () => AUTH_EXPIRED_MESSAGE,
+  hint: AUTH_LOGIN_HINT,
+  includeRaw: false,
+}
+
+const SERVER_5XX_CLASS: StatusClass = {
+  code: ErrorCode.Server5xx,
+  fallbackMessage: status => `server error (HTTP ${status})`,
+  includeRaw: true,
+}
+
+const SERVER_4XX_CLASS: StatusClass = {
+  code: ErrorCode.Server4xxOther,
+  fallbackMessage: status => `request failed (HTTP ${status})`,
+  includeRaw: true,
+}
+
+function statusClass(status: number): StatusClass {
+  if (status === 401)
+    return AUTH_EXPIRED_CLASS
+  if (status >= 500)
+    return SERVER_5XX_CLASS
+  return SERVER_4XX_CLASS
+}
 
 function parseServerError(raw: string): ErrorBody | undefined {
   if (raw === '')
@@ -21,7 +58,7 @@ function parseServerError(raw: string): ErrorBody | undefined {
   return result.success ? result.data : undefined
 }
 
-export async function classifyResponse(request: Request, response: Response): Promise<BaseError> {
+export async function classifyResponse(request: Request, response: Response): Promise<HttpClientError> {
   let raw = ''
   try {
     raw = await response.clone().text()
@@ -32,39 +69,17 @@ export async function classifyResponse(request: Request, response: Response): Pr
 
   const serverError = parseServerError(raw)
   const status = response.status
-  const url = redactBearer(response.url || request.url)
-  const method = request.method
-
-  if (status === 401) {
-    const base = HttpClientError.from(newError(
-      ErrorCode.AuthExpired,
-      serverError?.message ?? AUTH_EXPIRED_MESSAGE,
-    ))
-      .withHint(AUTH_LOGIN_HINT)
-      .withHttpStatus(status)
-      .withRequest(method, url)
-    return serverError !== undefined ? base.withServerError(serverError) : base
-  }
-
-  if (status >= 500) {
-    const base = HttpClientError.from(newError(
-      ErrorCode.Server5xx,
-      serverError?.message ?? `server error (HTTP ${status})`,
-    ))
-      .withHttpStatus(status)
-      .withRequest(method, url)
-      .withRawResponse(raw)
-    return serverError !== undefined ? base.withServerError(serverError) : base
-  }
-
-  const base = HttpClientError.from(newError(
-    ErrorCode.Server4xxOther,
-    serverError?.message ?? `request failed (HTTP ${status})`,
-  ))
-    .withHttpStatus(status)
-    .withRequest(method, url)
-    .withRawResponse(raw)
-  return serverError !== undefined ? base.withServerError(serverError) : base
+  const c = statusClass(status)
+  return new HttpClientError({
+    code: c.code,
+    message: serverError?.message ?? c.fallbackMessage(status),
+    hint: c.hint,
+    httpStatus: status,
+    method: request.method,
+    url: redactBearer(response.url || request.url),
+    rawResponse: c.includeRaw && raw !== '' ? raw : undefined,
+    serverError,
+  })
 }
 
 export function classifyTransportError(err: unknown): BaseError {
