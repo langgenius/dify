@@ -4,13 +4,13 @@ import type { AppListQuery, AppListSortBy } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -23,15 +23,21 @@ import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_GRID_CLASS_NAME, APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
-import Footer from './footer'
 import { useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import { StarredAppList } from './starred-app-list'
+import { StudioListHeader } from './studio-list-header'
 
 const STARRED_APP_LIMIT = 100
 
-function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
+type Props = Readonly<{
+  controlRefreshList?: number
+}>
+
+function List({
+  controlRefreshList = 0,
+}: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -214,12 +220,13 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
-          <div className="flex h-6 items-center">
+        <StudioListHeader
+          title={(
             <div className="flex items-center">
               <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.apps', { ns: 'common' })}</h1>
             </div>
-          </div>
+          )}
+        >
           <AppListHeaderFilters
             category={category}
             tagIDs={tagIDs}
@@ -237,7 +244,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
             onOpenTagManagement={() => setShowTagManagementModal(true)}
             showCreateButton={isCurrentWorkspaceEditor}
           />
-        </div>
+        </StudioListHeader>
         {showFirstEmptyState
           ? (
               <FirstEmptyState
@@ -289,9 +296,6 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
             <span className="i-ri-drag-drop-line size-4" />
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
-        )}
-        {!systemFeatures.branding.enabled && !showFirstEmptyState && (
-          <Footer />
         )}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>

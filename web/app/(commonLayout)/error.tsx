@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import { isLegacyBase401 } from '@/features/account-profile/client'
 
-type Props = {
+type Props = Readonly<{
   error: Error & { digest?: string }
   unstable_retry: () => void
-}
+}>
 
 export default function CommonLayoutError({ error, unstable_retry }: Props) {
   const { t } = useTranslation('common')

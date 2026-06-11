@@ -12,12 +12,12 @@ import * as React from 'react'
 import { useState } from 'react'
 import ConfigPopup from './config-popup'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   className?: string
   hasConfigured: boolean
   children?: React.ReactNode
-} & PopupProps
+}> & PopupProps
 
 const ConfigBtn: FC<Props> = ({
   className,

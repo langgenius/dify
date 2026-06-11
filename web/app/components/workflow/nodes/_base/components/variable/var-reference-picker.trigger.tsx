@@ -25,7 +25,7 @@ export type HoverPopup
   = | { kind: 'full-path', panel: ReactElement }
     | { kind: 'invalid-variable', message: string }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   controlFocus: number
   currentProvider?: ToolWithProvider | TriggerWithProvider
@@ -70,7 +70,7 @@ type Props = {
   varKindTypes: Array<{ label: string, value: VarKindType }>
   varName: string
   variableCategory: string
-}
+}>
 
 const VarReferencePickerTrigger: FC<Props> = ({
   className,

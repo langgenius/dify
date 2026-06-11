@@ -2,8 +2,9 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import IntegrationsPage from '../page'
 
-const { mockRouterPush } = vi.hoisted(() => ({
+const { mockRouterPush, mockWindowOpen } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
+  mockWindowOpen: vi.fn(),
 }))
 
 const {
@@ -226,13 +227,21 @@ vi.mock('../plugin-category-page', () => ({
   },
 }))
 
-const renderIntegrationsPage = (searchParams?: Record<string, string>, section?: React.ComponentProps<typeof IntegrationsPage>['section']) => {
-  return renderWithNuqs(<IntegrationsPage section={section} />, { searchParams })
+const renderIntegrationsPage = (
+  searchParams?: Record<string, string>,
+  sectionOrProps?: React.ComponentProps<typeof IntegrationsPage>['section'] | Partial<React.ComponentProps<typeof IntegrationsPage>>,
+) => {
+  const props = typeof sectionOrProps === 'string'
+    ? { section: sectionOrProps }
+    : sectionOrProps
+
+  return renderWithNuqs(<IntegrationsPage {...props} />, { searchParams })
 }
 
 describe('IntegrationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('open', mockWindowOpen)
     mockCanManagement.mockReturnValue(true)
     mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
@@ -330,7 +339,22 @@ describe('IntegrationsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'empty marketplace' }))
 
-    expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=extension')
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      expect.stringContaining('/plugins/extension?source='),
+      '_blank',
+      'noopener,noreferrer',
+    )
+    expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+
+  it('passes marketplace platform paths to external marketplace callbacks', () => {
+    const onSwitchToMarketplace = vi.fn()
+    renderIntegrationsPage({ section: 'trigger' }, { onSwitchToMarketplace })
+
+    fireEvent.click(screen.getByRole('button', { name: 'empty marketplace' }))
+
+    expect(onSwitchToMarketplace).toHaveBeenCalledWith('/plugins/trigger')
+    expect(mockRouterPush).not.toHaveBeenCalled()
   })
 
   it('renders migrated legacy setting sections', () => {
@@ -438,6 +462,8 @@ describe('IntegrationsPage', () => {
   it('toggles the tools submenu without other nav items closing it', () => {
     const onSectionChange = vi.fn()
     renderWithNuqs(<IntegrationsPage section="provider" onSectionChange={onSectionChange} />)
+
+    expect(screen.getByRole('button', { name: 'common.settings.provider' })).toHaveClass('bg-state-base-active')
 
     const toolsButton = screen.getByRole('button', { name: 'common.menus.tools' })
 
@@ -607,7 +633,12 @@ describe('IntegrationsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin install' }))
 
-    expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=tool')
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      expect.stringContaining('/plugins/tool?source='),
+      '_blank',
+      'noopener,noreferrer',
+    )
+    expect(mockRouterPush).not.toHaveBeenCalled()
   })
 
   it('hides the install action and category installs when install permission is unavailable', () => {

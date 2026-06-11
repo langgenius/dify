@@ -2,9 +2,9 @@
 import type { InputProps } from '../input'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useClipboard } from 'foxact/use-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClipboard } from '@/hooks/use-clipboard'
 import ActionButton from '../action-button'
 
 type InputWithCopyProps = {

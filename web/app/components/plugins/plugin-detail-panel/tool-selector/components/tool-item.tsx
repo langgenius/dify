@@ -20,7 +20,7 @@ import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/co
 import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 
-type Props = {
+type Props = Readonly<{
   icon?: string | { content?: string, background?: string }
   providerName?: string
   isMCPTool?: boolean
@@ -39,7 +39,7 @@ type Props = {
   versionMismatch?: boolean
   open: boolean
   authRemoved?: boolean
-}
+}>
 
 const ToolItem = ({
   open,

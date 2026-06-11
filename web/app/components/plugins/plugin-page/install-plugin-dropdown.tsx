@@ -25,7 +25,7 @@ import {
   MarketplaceInstallSourceIcon,
 } from './install-source-icons'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onSwitchToMarketplaceTab: () => void
   popupClassName?: string
@@ -36,7 +36,7 @@ type Props = {
   triggerVariant?: ButtonProps['variant']
   installContextCategory?: PluginCategoryEnum
   showTriggerArrow?: boolean
-}
+}>
 
 type InstallMethod = {
   icon: React.ComponentType<{ className?: string }>

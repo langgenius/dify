@@ -7,10 +7,10 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import SelectDataset from '@/app/components/app/configuration/dataset-config/select-dataset'
 
-type Props = {
+type Props = Readonly<{
   selectedIds: string[]
   onChange: (dataSets: DataSet[]) => void
-}
+}>
 
 const AddDataset: FC<Props> = ({
   selectedIds,

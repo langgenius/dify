@@ -23,11 +23,11 @@ import { usePluginStore } from './store'
 import { SubscriptionList } from './subscription-list'
 import { TriggerEventsList } from './trigger/event-list'
 
-type Props = {
+type Props = Readonly<{
   detail?: PluginDetail
   onUpdate: () => void
   onHide: () => void
-}
+}>
 
 const PluginDetailPanel: FC<Props> = ({
   detail,

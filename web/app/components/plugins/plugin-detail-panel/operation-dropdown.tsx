@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PluginSource } from '../types'
 
-type Props = {
+type Props = Readonly<{
   source: PluginSource
   onInfo: () => void
   onCheckVersion: () => void
@@ -28,7 +28,7 @@ type Props = {
   popupClassName?: string
   triggerSize?: 'm' | 'xs'
   destructiveRemove?: boolean
-}
+}>
 
 const operationMenuPopupClassName = 'w-[192px] py-1'
 const operationMenuItemClassName = 'px-2 py-1 text-text-secondary system-md-regular'

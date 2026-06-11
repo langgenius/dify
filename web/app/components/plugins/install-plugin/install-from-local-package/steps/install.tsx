@@ -19,14 +19,14 @@ import { pluginManifestToCardPluginProps } from '../../utils'
 
 const i18nPrefix = 'installModal'
 
-type Props = {
+type Props = Readonly<{
   uniqueIdentifier: string
   payload: PluginDeclaration
   onCancel: () => void
   onStartToInstall?: () => void
   onInstalled: (notRefresh?: boolean) => void
   onFailed: (message?: string) => void
-}
+}>
 
 const Installed: FC<Props> = ({
   uniqueIdentifier,

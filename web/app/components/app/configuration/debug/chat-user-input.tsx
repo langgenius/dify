@@ -10,9 +10,9 @@ import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 
-type Props = {
+type Props = Readonly<{
   inputs: Inputs
-}
+}>
 
 const ChatUserInput = ({
   inputs,

@@ -8,11 +8,11 @@ import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { renderI18nObject } from '@/i18n-config'
 
-type Props = {
+type Props = Readonly<{
   payload: PluginDetail
   isChecked?: boolean
   onCheckChange: () => void
-}
+}>
 
 const ToolItem: FC<Props> = ({
   payload,

@@ -33,6 +33,7 @@ from controllers.console.explore.error import (
     NotWorkflowAppError,
 )
 from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
+from controllers.console.wraps import with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -63,7 +64,6 @@ from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
-from libs.login import current_user
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
@@ -155,7 +155,8 @@ register_schema_models(console_ns, WorkflowRunRequest, ChatRequest, TextToSpeech
 class TrialAppWorkflowRunApi(TrialAppResource):
     @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         """
         Run workflow
         """
@@ -168,7 +169,6 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
         request_data = WorkflowRunRequest.model_validate(console_ns.payload)
         args = request_data.model_dump()
-        assert current_user is not None
         try:
             app_id = app_model.id
             user_id = current_user.id
@@ -206,7 +206,6 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
-        assert current_user is not None
 
         # Stop using both mechanisms for backward compatibility
         # Legacy stop flag mechanism (without user check)
@@ -221,7 +220,8 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @trial_feature_enable
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -239,9 +239,6 @@ class TrialChatApi(TrialAppResource):
         args["auto_generate_name"] = False
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
-
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
@@ -276,7 +273,8 @@ class TrialChatApi(TrialAppResource):
 
 
 class TrialMessageSuggestedQuestionApi(TrialAppResource):
-    def get(self, trial_app, message_id):
+    @with_current_user
+    def get(self, current_user: Account, trial_app, message_id):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -285,8 +283,6 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
         message_id = str(message_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
@@ -313,15 +309,13 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
 class TrialChatAudioApi(TrialAppResource):
     @trial_feature_enable
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         app_model = trial_app
 
         file = request.files["file"]
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
-
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
@@ -358,7 +352,8 @@ class TrialChatAudioApi(TrialAppResource):
 class TrialChatTextApi(TrialAppResource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @trial_feature_enable
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         app_model = trial_app
         try:
             request_data = TextToSpeechRequest.model_validate(console_ns.payload)
@@ -366,8 +361,6 @@ class TrialChatTextApi(TrialAppResource):
             message_id = request_data.message_id
             text = request_data.text
             voice = request_data.voice
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
 
             # Get IDs before they might be detached from session
             app_id = app_model.id
@@ -405,7 +398,8 @@ class TrialChatTextApi(TrialAppResource):
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @trial_feature_enable
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -417,9 +411,6 @@ class TrialCompletionApi(TrialAppResource):
         args["auto_generate_name"] = False
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
-
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id

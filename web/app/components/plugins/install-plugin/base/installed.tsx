@@ -11,14 +11,14 @@ import Card from '../../card'
 import { PluginCategoryEnum } from '../../types'
 import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 
-type Props = {
+type Props = Readonly<{
   payload?: Plugin | PluginDeclaration | PluginManifestInMarket | null
   isMarketPayload?: boolean
   isFailed: boolean
   errMsg?: string | null
   installContextCategory?: PluginCategoryEnum
   onCancel: () => void
-}
+}>
 
 type CategoryTarget = {
   labelKey: 'menus.tools' | 'settings.agentStrategy' | 'settings.dataSource' | 'settings.extension' | 'settings.provider' | 'settings.trigger'

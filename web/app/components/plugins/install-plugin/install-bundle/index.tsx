@@ -18,12 +18,12 @@ export enum InstallType {
   fromDSL = 'fromDSL',
 }
 
-type Props = {
+type Props = Readonly<{
   installType?: InstallType
   fromDSLPayload: Dependency[]
   // plugins?: PluginDeclaration[]
   onClose: () => void
-}
+}>
 
 const InstallBundle: FC<Props> = ({
   installType = InstallType.fromMarketplace,

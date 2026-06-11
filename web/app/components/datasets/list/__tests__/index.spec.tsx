@@ -1,13 +1,7 @@
-import type { ReactElement, ReactNode } from 'react'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import List from '../index'
-
-let mockBrandingEnabled = false
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: { branding: { enabled: mockBrandingEnabled } },
-})
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -79,11 +73,6 @@ vi.mock('../datasets', () => ({
   ),
 }))
 
-// Mock DatasetFooter component
-vi.mock('../dataset-footer', () => ({
-  default: () => <footer data-testid="dataset-footer">Footer</footer>,
-}))
-
 // Mock ExternalAPIPanel component
 vi.mock('../../external-api/external-api-panel', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
@@ -134,7 +123,6 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-    mockBrandingEnabled = false
     const { useDatasetList } = await import('@/service/knowledge/use-dataset')
     vi.mocked(useDatasetList).mockReturnValue({
       data: { pages: [{ data: [], total: 1 }] },
@@ -153,7 +141,7 @@ describe('List', () => {
 
     it('should render the search input', () => {
       render(<List />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox')).toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -164,11 +152,6 @@ describe('List', () => {
     it('should render external API panel button', () => {
       render(<List />)
       expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
-    })
-
-    it('should render dataset footer when branding is disabled', () => {
-      render(<List />)
-      expect(screen.getByTestId('dataset-footer')).toBeInTheDocument()
     })
   })
 
@@ -217,7 +200,7 @@ describe('List', () => {
     it('should update search input value', () => {
       render(<List />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(input).toHaveValue('test search')
@@ -269,7 +252,6 @@ describe('List', () => {
 
       expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('dataset-footer')).not.toBeInTheDocument()
     })
 
     it('should not render first empty state before the first dataset page resolves', async () => {
@@ -333,7 +315,7 @@ describe('List', () => {
     it('should clear search input when onClear is called', () => {
       render(<List />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
       // First set a value
       fireEvent.change(input, { target: { value: 'test search' } })
       expect(input).toHaveValue('test search')
@@ -387,14 +369,6 @@ describe('List', () => {
       fireEvent.click(screen.getByText('Manage Tags'))
 
       expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
-    })
-
-    it('should not show DatasetFooter when branding is enabled', async () => {
-      mockBrandingEnabled = true
-
-      render(<List />)
-
-      expect(screen.queryByTestId('dataset-footer')).not.toBeInTheDocument()
     })
 
     it('should not show include all checkbox when not workspace owner', async () => {

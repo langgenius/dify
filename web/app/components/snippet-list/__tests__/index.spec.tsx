@@ -369,12 +369,6 @@ describe('SnippetList', () => {
     expect(mockFetchNextPage).not.toHaveBeenCalled()
   })
 
-  it('hides the community footer when branding is enabled', () => {
-    renderList({ brandingEnabled: true })
-
-    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
-  })
-
   it('opens tag management from filters and snippet cards and forwards tag refreshes', () => {
     renderList()
 

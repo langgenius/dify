@@ -45,14 +45,14 @@ import SchemaModal from './schema-modal'
 
 export type ReasoningConfigValue = ReasoningConfigValueShape
 
-type Props = {
+type Props = Readonly<{
   value: ReasoningConfigValue
   onChange: (val: ReasoningConfigValue) => void
   schemas: ToolFormSchema[]
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId: string
-}
+}>
 
 const ReasoningConfigForm: React.FC<Props> = ({
   value,

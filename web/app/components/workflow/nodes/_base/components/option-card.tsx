@@ -20,7 +20,7 @@ const variants = cva([], {
   },
 })
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title: string
   onSelect: () => void
@@ -28,7 +28,7 @@ type Props = {
   disabled?: boolean
   align?: 'left' | 'center' | 'right'
   tooltip?: string
-} & VariantProps<typeof variants>
+}> & VariantProps<typeof variants>
 
 const OptionCard: FC<Props> = ({
   className,

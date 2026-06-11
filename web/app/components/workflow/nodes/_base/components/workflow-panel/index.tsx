@@ -13,6 +13,7 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import {
   cloneElement,
@@ -68,7 +69,6 @@ import {
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'

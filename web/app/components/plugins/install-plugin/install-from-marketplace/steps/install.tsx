@@ -20,7 +20,7 @@ import { pluginManifestInMarketToPluginProps } from '../../utils'
 
 const i18nPrefix = 'installModal'
 
-type Props = {
+type Props = Readonly<{
   uniqueIdentifier: string
   payload: PluginManifestInMarket | Plugin
   onCancel: () => void
@@ -28,7 +28,7 @@ type Props = {
   onTaskStarted: () => void
   onInstalled: (notRefresh?: boolean) => void
   onFailed: (message?: string) => void
-}
+}>
 
 const Installed: FC<Props> = ({
   uniqueIdentifier,

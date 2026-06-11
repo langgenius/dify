@@ -2,11 +2,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import DownloadCount from './base/download-count'
 
-type Props = {
+type Props = Readonly<{
   downloadCount?: number
   tags: string[]
   variant?: 'default' | 'marketplace'
-}
+}>
 
 const CardMoreInfoComponent = ({
   downloadCount,

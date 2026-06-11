@@ -298,12 +298,6 @@ vi.mock('@/app/components/explore/learn-dify', () => ({
   default: ({ title }: { title?: string }) => React.createElement('section', null, title),
 }))
 
-vi.mock('../footer', () => ({
-  default: () => {
-    return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
-  },
-}))
-
 const intersectionCallbacks: IntersectionObserverCallback[] = []
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
@@ -496,11 +490,6 @@ describe('List', () => {
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
-    it('should render footer when branding is disabled', () => {
-      renderList()
-      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
-    })
-
     it('should render drop DSL hint for editors', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
@@ -517,7 +506,6 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
     })
 
     it('should not render first empty state before the first app list page resolves', () => {
@@ -894,13 +882,6 @@ describe('List', () => {
 
       expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
       expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Footer Visibility', () => {
-    it('should render footer when branding is disabled', () => {
-      renderList()
-      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
     })
   })
 

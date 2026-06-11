@@ -12,15 +12,23 @@ import { PermissionType } from '@/app/components/plugins/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import AutoUpdateSetting from './auto-update-setting'
+import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from './auto-update-setting/types'
 import Label from './label'
 
 const i18nPrefix = 'privilege'
+const autoUpdateDefaultValue: AutoUpdateConfig = {
+  strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+  upgrade_time_of_day: 36000,
+  upgrade_mode: AUTO_UPDATE_MODE.update_all,
+  exclude_plugins: [],
+  include_plugins: [],
+}
 
-type Props = {
+type Props = Readonly<{
   payload: ReferenceSetting
   onHide: () => void
   onSave: (payload: ReferenceSetting) => void
-}
+}>
 
 const PluginSettingModal: FC<Props> = ({
   payload,
@@ -28,9 +36,9 @@ const PluginSettingModal: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload
+  const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
-  const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig)
+  const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,

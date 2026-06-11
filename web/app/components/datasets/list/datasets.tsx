@@ -9,7 +9,7 @@ import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
 
-type Props = {
+type Props = Readonly<{
   datasetList: ReturnType<typeof useDatasetList>['data'] | null
   fetchNextPage: ReturnType<typeof useDatasetList>['fetchNextPage']
   hasNextPage: ReturnType<typeof useDatasetList>['hasNextPage']
@@ -19,7 +19,7 @@ type Props = {
   isPlaceholderData: ReturnType<typeof useDatasetList>['isPlaceholderData']
   emptyElement?: ReactNode
   onOpenTagManagement?: () => void
-}
+}>
 
 const Datasets = ({
   datasetList,

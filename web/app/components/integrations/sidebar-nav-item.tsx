@@ -86,7 +86,7 @@ export function IntegrationSidebarNavItem({
         type="button"
         aria-label={item.label}
         aria-pressed={isActive}
-        className={cn(className, 'border-none bg-transparent')}
+        className={cn('border-none bg-transparent', className)}
         onClick={() => onSelect(item.section!)}
       >
         {content}
