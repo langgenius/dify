@@ -292,6 +292,37 @@ export type MessageMetadata = {
   usage?: UsageInfo
 }
 
+export type OpenApiErrorCode
+  = | 'app_unavailable'
+    | 'bad_gateway'
+    | 'bad_request'
+    | 'completion_request_error'
+    | 'conflict'
+    | 'conversation_completed'
+    | 'file_extension_blocked'
+    | 'file_too_large'
+    | 'filename_not_exists'
+    | 'forbidden'
+    | 'internal_server_error'
+    | 'invalid_param'
+    | 'member_license_exceeded'
+    | 'member_limit_exceeded'
+    | 'method_not_allowed'
+    | 'model_currently_not_support'
+    | 'no_file_uploaded'
+    | 'not_acceptable'
+    | 'not_found'
+    | 'provider_not_initialize'
+    | 'provider_quota_exceeded'
+    | 'rate_limit_error'
+    | 'request_entity_too_large'
+    | 'too_many_files'
+    | 'too_many_requests'
+    | 'unauthorized'
+    | 'unknown'
+    | 'unsupported_file_type'
+    | 'unsupported_media_type'
+
 export type Package = {
   plugin_unique_identifier: string
   version?: string | null
