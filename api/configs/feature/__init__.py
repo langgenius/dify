@@ -435,7 +435,7 @@ class FileUploadConfig(BaseSettings):
 
     # Annotation Import Security Configurations
     ANNOTATION_IMPORT_FILE_SIZE_LIMIT: NonNegativeInt = Field(
-        description="Maximum allowed CSV file size for annotation import in megabytes",
+        description="Maximum allowed CSV or JSONL file size for annotation import in megabytes",
         default=2,
     )
 

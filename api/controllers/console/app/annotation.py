@@ -343,7 +343,7 @@ class AnnotationUpdateDeleteApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
 class AnnotationBatchImportApi(Resource):
     @console_ns.doc("batch_import_annotations")
-    @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
+    @console_ns.doc(description="Batch import annotations from CSV or JSONL file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(200, "Batch import started successfully")
     @console_ns.response(403, "Insufficient permissions")
@@ -371,8 +371,8 @@ class AnnotationBatchImportApi(Resource):
         file = request.files["file"]
 
         # check file type
-        if not file.filename or not file.filename.lower().endswith(".csv"):
-            raise ValueError("Invalid file type. Only CSV files are allowed")
+        if not file.filename or not file.filename.lower().endswith((".csv", ".jsonl")):
+            raise ValueError("Invalid file type. Only CSV and JSONL files are allowed")
 
         # Check file size before processing
         file.stream.seek(0, 2)  # Seek to end of file

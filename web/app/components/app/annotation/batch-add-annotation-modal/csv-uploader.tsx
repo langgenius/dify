@@ -14,6 +14,17 @@ export type Props = Readonly<{
   updateFile: (file?: File) => void
 }>
 
+function getFileNameParts(fileName: string) {
+  const extensionStart = fileName.lastIndexOf('.')
+  if (extensionStart <= 0)
+    return { name: fileName, extension: '' }
+
+  return {
+    name: fileName.slice(0, extensionStart),
+    extension: fileName.slice(extensionStart),
+  }
+}
+
 const CSVUploader: FC<Props> = ({
   file,
   updateFile,
@@ -66,6 +77,7 @@ const CSVUploader: FC<Props> = ({
     const currentFile = e.target.files?.[0]
     updateFile(currentFile)
   }
+  const selectedFileName = file ? getFileNameParts(file.name) : undefined
 
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
@@ -87,7 +99,7 @@ const CSVUploader: FC<Props> = ({
         style={{ display: 'none' }}
         type="file"
         id="fileUploader"
-        accept=".csv"
+        accept=".csv,.jsonl"
         onChange={fileChangeHandle}
       />
       <div ref={dropRef}>
@@ -113,8 +125,8 @@ const CSVUploader: FC<Props> = ({
           <div className={cn('group flex h-20 items-center rounded-xl border border-components-panel-border bg-components-panel-bg px-6 text-sm font-normal', 'hover:border-components-panel-bg-blur hover:bg-components-panel-bg-blur')}>
             <CSVIcon className="shrink-0" />
             <div className="ml-2 flex w-0 grow">
-              <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.name.replace(/.csv$/, '')}</span>
-              <span className="shrink-0 text-text-tertiary">.csv</span>
+              <span className="max-w-[calc(100%-48px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{selectedFileName?.name}</span>
+              <span className="shrink-0 text-text-tertiary">{selectedFileName?.extension}</span>
             </div>
             <div className="hidden items-center group-hover:flex">
               <Button variant="secondary" onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>

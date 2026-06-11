@@ -21,6 +21,11 @@ const CSV_TEMPLATE_QA_CN = [
   ['问题 2', '答案 2'],
 ]
 
+const JSONL_TEMPLATE_QA = [
+  '{"question":"question1","answer":"answer1"}',
+  '{"question":"question2","answer":"answer2"}',
+].join('\n')
+
 const CSVDownload: FC = () => {
   const { t } = useTranslation()
 
@@ -33,7 +38,7 @@ const CSVDownload: FC = () => {
 
   return (
     <div className="mt-6">
-      <div className="system-sm-medium text-text-primary">{t('generation.csvStructureTitle', { ns: 'share' })}</div>
+      <div className="system-sm-medium text-text-primary">{t('batchModal.tip', { ns: 'appAnnotation' })}</div>
       <div className="mt-2 max-h-[500px] overflow-auto">
         <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs">
           <thead className="text-text-tertiary">
@@ -69,6 +74,9 @@ const CSVDownload: FC = () => {
             </tr>
           </tbody>
         </table>
+        <pre className="mt-2 overflow-auto rounded-lg border border-divider-regular bg-components-panel-bg p-3 text-xs text-text-secondary">
+          {JSONL_TEMPLATE_QA}
+        </pre>
       </div>
       <CSVDownloader
         className="mt-2 block cursor-pointer"

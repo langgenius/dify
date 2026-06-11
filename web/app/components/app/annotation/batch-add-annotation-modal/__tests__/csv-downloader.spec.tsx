@@ -47,7 +47,8 @@ describe('CSVDownload', () => {
   it('should render the structure preview and pass English template data by default', () => {
     renderWithLocale('en-US' as Locale)
 
-    expect(screen.getByText('share.generation.csvStructureTitle')).toBeInTheDocument()
+    expect(screen.getByText('appAnnotation.batchModal.tip')).toBeInTheDocument()
+    expect(screen.getByText('{"question":"question1","answer":"answer1"}')).toBeInTheDocument()
     expect(screen.getByText('appAnnotation.batchModal.template')).toBeInTheDocument()
 
     expect(downloaderProps[0]).toMatchObject({
