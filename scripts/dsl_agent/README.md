@@ -48,6 +48,8 @@ generated YAML into concrete Console API commands for internal testing.
 - `run_agent_context_smoke_tests.py` - prompt evidence compaction regression checks
 - `demo_cases.yml` - official demo prompt contracts
 - `run_demo_contract_tests.py` - validates demo prompt evidence contracts
+- `generation_eval_cases.yml` - natural-language generation quality cases
+- `run_generation_eval.py` - validates generated DSL node families and graph shape
 - `plugin_resolver.py` - local plugin evidence resolver
 - `run_evidence_smoke_tests.py` - plugin evidence regression checks for demo scenarios
 - `shape_normalizer.py` - deterministic fixes for common LLM-generated DSL field-shape aliases
@@ -413,6 +415,45 @@ Current demo contracts:
 
 - `typeform_gmail_followup` - Typeform trigger plus Gmail follow-up draft.
 - `drive_qdrant_indexing` - Google Drive trigger plus Qdrant indexing; this also covers third-party template fallback evidence.
+
+## Generation Quality Evaluation
+
+Use this before claiming the generator can handle broader workflow patterns. It
+starts from natural-language requirements, calls the same `AppDslAgentService`
+used by the product API, validates the generated YAML, and checks expected node
+families and edge handles.
+
+Fast deterministic gate:
+
+```bash
+cd dify/api
+uv run python ../scripts/dsl_agent/run_generation_eval.py \
+  --no-resolve-dependencies \
+  --json \
+  --output ../scripts/dsl_agent/outputs/generation_eval_latest/report.json
+```
+
+The default case manifest covers:
+
+- structured extraction: `start -> llm -> code -> end`;
+- support ticket classification: `question-classifier` with per-class LLM branches;
+- urgent/default branching: native `if-else` with `true` / `false` handles;
+- RAG answering: `knowledge-retrieval -> llm -> end`.
+
+Optional OpenAI quality run:
+
+```bash
+cd dify/api
+DIFY_DSL_AGENT_OPENAI_TIMEOUT_SECONDS=60 \
+uv run python ../scripts/dsl_agent/run_generation_eval.py \
+  --generation-backend openai \
+  --generation-model gpt-5.5 \
+  --no-resolve-dependencies \
+  --json
+```
+
+OpenAI runs may fall back to the deterministic starter if the model times out
+or returns invalid YAML; the report records `fallback_from` for each case.
 
 ## Validate DSL
 
