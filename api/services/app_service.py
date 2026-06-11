@@ -400,6 +400,12 @@ class AppService:
         app.max_active_requests = args.get("max_active_requests")
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
+        # Sync icon to sites table so the embedded iframe shows the updated icon.
+        site = db.session.query(Site).where(Site.app_id == app.id).first()
+        if site:
+            site.icon_type = resolved_icon_type
+            site.icon = app.icon
+            site.icon_background = app.icon_background
         db.session.commit()
 
         app_was_updated.send(app)
@@ -441,6 +447,12 @@ class AppService:
             app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
+        # Sync icon to sites table so the embedded iframe shows the updated icon.
+        site = db.session.query(Site).where(Site.app_id == app.id).first()
+        if site:
+            site.icon_type = cast(IconType | None, app.icon_type)
+            site.icon = app.icon
+            site.icon_background = app.icon_background
         db.session.commit()
 
         app_was_updated.send(app)
