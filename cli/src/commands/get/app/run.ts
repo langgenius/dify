@@ -59,7 +59,7 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
       if (opts.appId !== undefined && opts.appId !== '') {
         const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
         const wsName = workspaceNameForId(deps.active, wsId)
-        const desc = await apps.describe(opts.appId, wsId, ['info'])
+        const desc = await apps.describe(opts.appId, ['info'])
         return describeToEnvelope(desc, wsId, wsName)
       }
       const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })

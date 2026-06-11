@@ -23,12 +23,12 @@ import { useDocumentList } from '@/service/knowledge/use-document'
 import FileIcon from '../document-file-icon'
 import DocumentList from './document-list'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
   value?: SimpleDocumentDetail | null
   parentMode?: ParentMode
   onChange: (value: SimpleDocumentDetail) => void
-}
+}>
 
 function getDocumentLabel(document: SimpleDocumentDetail) {
   return document.name

@@ -15,13 +15,13 @@ import FileTypeItem from './file-type-item'
 import InputNumberWithSlider from './input-number-with-slider'
 import OptionCard from './option-card'
 
-type Props = {
+type Props = Readonly<{
   payload: UploadFileSetting
   isMultiple: boolean
   inFeaturePanel?: boolean
   hideSupportFileType?: boolean
   onChange: (payload: UploadFileSetting) => void
-}
+}>
 
 const FileUploadSetting: FC<Props> = ({
   payload,

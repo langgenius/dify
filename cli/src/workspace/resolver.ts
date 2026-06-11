@@ -8,11 +8,23 @@ export type WorkspaceResolveInputs = {
   readonly active?: ActiveContext
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function isValidUuid(v: string): boolean {
+  return UUID_RE.test(v)
+}
+
 export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
-  if (truthy(inputs.flag))
+  if (truthy(inputs.flag)) {
+    if (!isValidUuid(inputs.flag))
+      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: `--workspace value ${JSON.stringify(inputs.flag)} is not a valid UUID` })
     return inputs.flag
-  if (truthy(inputs.env))
+  }
+  if (truthy(inputs.env)) {
+    if (!isValidUuid(inputs.env))
+      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: `DIFY_WORKSPACE_ID value ${JSON.stringify(inputs.env)} is not a valid UUID` })
     return inputs.env
+  }
   const ctx = inputs.active?.ctx
   if (ctx !== undefined) {
     if (truthy(ctx.workspace?.id))

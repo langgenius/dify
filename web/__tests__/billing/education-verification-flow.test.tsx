@@ -77,7 +77,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('@/hooks/use-local-storage', () => ({
+vi.mock('foxact/use-local-storage', () => ({
   useSetLocalStorage: () => mockSetEducationVerifying,
 }))
 

@@ -2,17 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from flask import request
 from flask_restx import Resource
-from pydantic import ValidationError
-from werkzeug.exceptions import NotFound, UnprocessableEntity
+from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
+from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
-    PaginationEnvelope,
     RevokeResponse,
     SessionListQuery,
     SessionListResponse,
@@ -42,8 +39,8 @@ from services.oauth_device_flow import (
 
 @openapi_ns.route("/account")
 class AccountApi(Resource):
-    @openapi_ns.response(200, "Account info", openapi_ns.models[AccountResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, AccountResponse, description="Account info")
     def get(self, *, auth_data: AuthData):
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{auth_data.account_id}")
 
@@ -58,31 +55,27 @@ class AccountApi(Resource):
             account=_account_payload(account) if account else None,
             workspaces=[_workspace_payload(m) for m in memberships],
             default_workspace_id=default_ws_id,
-        ).model_dump(mode="json")
+        )
 
 
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
-    @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, RevokeResponse, description="Session revoked")
     def delete(self, *, auth_data: AuthData):
         revoke_oauth_token(db.session, redis_client, str(auth_data.token_id))
-        return RevokeResponse(status="revoked").model_dump(mode="json"), 200
+        return RevokeResponse(status="revoked")
 
 
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
-    @openapi_ns.doc(params=query_params_from_model(SessionListQuery))
-    @openapi_ns.response(200, "Session list", openapi_ns.models[SessionListResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    def get(self, *, auth_data: AuthData):
-        # Validate page/limit through the same model the contract advertises (extra='forbid',
-        # page>=1, 1<=limit<=MAX_PAGE_LIMIT) so the server actually enforces those bounds rather
-        # than silently coercing (e.g. page=0 -> empty slice). Mirrors AppDescribeQuery.
-        try:
-            query = SessionListQuery.model_validate(request.args.to_dict(flat=True))
-        except ValidationError as exc:
-            raise UnprocessableEntity(exc.json())
+    @returns(200, SessionListResponse, description="Session list")
+    @accepts(query=SessionListQuery)
+    def get(self, *, auth_data: AuthData, query: SessionListQuery):
+        # SessionListQuery enforces the advertised bounds (extra='forbid', page>=1,
+        # 1<=limit<=MAX_PAGE_LIMIT) so the server rejects out-of-range paging rather
+        # than silently coercing (e.g. page=0 -> empty slice).
         ctx = get_auth_ctx()
         now = datetime.now(UTC)
         page = query.page
@@ -106,16 +99,19 @@ class AccountSessionsApi(Resource):
             for r in sliced
         ]
 
-        return (
-            PaginationEnvelope.build(page=page, limit=limit, total=total, items=items).model_dump(mode="json"),
-            200,
+        return SessionListResponse(
+            page=page,
+            limit=limit,
+            total=total,
+            has_more=page * limit < total,
+            data=items,
         )
 
 
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
-    @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, RevokeResponse, description="Session revoked")
     def delete(self, session_id: str, *, auth_data: AuthData):
         ctx = get_auth_ctx()
 
@@ -125,7 +121,7 @@ class AccountSessionByIdApi(Resource):
             raise NotFound("session not found")
 
         revoke_oauth_token(db.session, redis_client, session_id)
-        return RevokeResponse(status="revoked").model_dump(mode="json"), 200
+        return RevokeResponse(status="revoked")
 
 
 def _iso(dt: datetime | None) -> str | None:

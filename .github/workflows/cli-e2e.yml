@@ -1,0 +1,415 @@
+name: CLI E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      cli_ref:
+        description: "Git ref (default: current branch)"
+        type: string
+        required: false
+
+      edition:
+        description: "Dify edition"
+        type: choice
+        required: false
+        default: ee
+        options: [ee, ce]
+
+      test_scope:
+        description: "smoke = [P0] only  /  full = all cases"
+        type: choice
+        required: false
+        default: full
+        options: [smoke, full]
+
+      # ── Suite on/off ────────────────────────────────────────────────────────
+      suite_framework_output_error:
+        description: "framework + output + error-handling suites"
+        type: boolean
+        default: true
+      suite_discovery:
+        description: "discovery suite (get app / describe app)"
+        type: boolean
+        default: true
+      suite_run:
+        description: "run suite (basic / streaming / conversation / file / hitl)"
+        type: boolean
+        default: true
+      suite_auth:
+        description: "auth suite (login / status / whoami / use / devices / logout)"
+        type: boolean
+        default: true
+      suite_agent:
+        description: "agent suite"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# ── Shared env injected into every E2E job ───────────────────────────────────
+# Each job reads DIFY_E2E_TOKEN + app IDs from the provision job outputs,
+# so global-setup skips minting and finds existing apps in < 10 s.
+env:
+  DIFY_E2E_NO_KEYRING: "1"   # Linux CI has no keychain; skip probe
+  VITEST_RETRY:        "2"    # Retry flaky staging responses
+
+jobs:
+
+# ════════════════════════════════════════════════════════════════════════════
+# 0. PROVISION — mint token + import DSL fixtures (runs once, outputs IDs)
+# ════════════════════════════════════════════════════════════════════════════
+  provision:
+    name: "Provision: mint token + DSL apps"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      token:                      ${{ steps.out.outputs.DIFY_E2E_TOKEN }}
+      workspace_id:               ${{ steps.out.outputs.DIFY_E2E_WORKSPACE_ID }}
+      workspace_name:             ${{ steps.out.outputs.DIFY_E2E_WORKSPACE_NAME }}
+      ws2_id:                     ${{ steps.out.outputs.DIFY_E2E_WS2_ID }}
+      chat_app_id:                ${{ steps.out.outputs.DIFY_E2E_CHAT_APP_ID }}
+      workflow_app_id:            ${{ steps.out.outputs.DIFY_E2E_WORKFLOW_APP_ID }}
+      file_app_id:                ${{ steps.out.outputs.DIFY_E2E_FILE_APP_ID }}
+      file_chat_app_id:           ${{ steps.out.outputs.DIFY_E2E_FILE_CHAT_APP_ID }}
+      hitl_app_id:                ${{ steps.out.outputs.DIFY_E2E_HITL_APP_ID }}
+      hitl_external_app_id:       ${{ steps.out.outputs.DIFY_E2E_HITL_EXTERNAL_APP_ID }}
+      hitl_single_action_app_id:  ${{ steps.out.outputs.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID }}
+      hitl_multi_node_app_id:     ${{ steps.out.outputs.DIFY_E2E_HITL_MULTI_NODE_APP_ID }}
+      ws2_app_id:                 ${{ steps.out.outputs.DIFY_E2E_WS2_APP_ID }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          package_json_field: packageManager
+          run_install: false
+
+      - name: Install CLI dependencies
+        working-directory: cli
+        run: pnpm install --frozen-lockfile
+
+      - name: Mint token & provision apps
+        id: out
+        working-directory: cli
+        env:
+          DIFY_E2E_HOST:     ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL:    ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD: ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_TOKEN:    ${{ secrets.DIFY_E2E_TOKEN }}
+          DIFY_E2E_EDITION:  ${{ inputs.edition || 'ee' }}
+        run: bun scripts/e2e-provision.ts
+
+# ════════════════════════════════════════════════════════════════════════════
+# 1-B. framework + output + error-handling (parallel with run/discovery)
+# ════════════════════════════════════════════════════════════════════════════
+  suite-framework-output-error:
+    name: "Suite: framework + output + error-handling"
+    if: ${{ inputs.suite_framework_output_error != 'false' }}
+    needs: provision
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: cli
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-web
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with: { package_json_field: packageManager, run_install: false }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tree:gen
+
+      - name: Run framework + output + error-handling
+        env:
+          DIFY_E2E_HOST:           ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL:          ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD:       ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION:        ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN:          ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID:   ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
+          DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
+          DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
+          DIFY_E2E_INCLUDE: "test/e2e/suites/framework/**/*.e2e.ts,test/e2e/suites/output/**/*.e2e.ts,test/e2e/suites/error-handling/**/*.e2e.ts"
+        run: |
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
+
+# ════════════════════════════════════════════════════════════════════════════
+# 1-C. Discovery (parallel)
+# ════════════════════════════════════════════════════════════════════════════
+  suite-discovery:
+    name: "Suite: discovery"
+    if: ${{ inputs.suite_discovery != 'false' }}
+    needs: provision
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: cli
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-web
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with: { package_json_field: packageManager, run_install: false }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tree:gen
+
+      - name: Run discovery suite
+        env:
+          DIFY_E2E_HOST:           ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL:          ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD:       ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION:        ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN:          ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID:   ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
+          DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
+          DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
+          DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
+          DIFY_E2E_INCLUDE: "test/e2e/suites/discovery/**/*.e2e.ts"
+        run: |
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
+
+# ════════════════════════════════════════════════════════════════════════════
+# 1-D. Run suite — 5 files in matrix (parallel)
+# ════════════════════════════════════════════════════════════════════════════
+  suite-run:
+    name: "Suite: run / ${{ matrix.name }}"
+    if: ${{ inputs.suite_run != 'false' }}
+    needs: provision
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: basic
+            file: run-app-basic.e2e.ts
+          - name: streaming
+            file: run-app-streaming.e2e.ts
+          - name: conversation
+            file: run-app-conversation.e2e.ts
+          - name: file
+            file: run-app-file.e2e.ts
+          - name: hitl
+            file: run-app-hitl.e2e.ts
+
+    defaults:
+      run:
+        working-directory: cli
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-web
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with: { package_json_field: packageManager, run_install: false }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tree:gen
+
+      - name: "Run run/${{ matrix.name }}"
+        env:
+          DIFY_E2E_HOST:                      ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL:                     ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD:                  ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION:                   ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_SSO_TOKEN:                 ${{ secrets.DIFY_E2E_SSO_TOKEN }}
+          DIFY_E2E_TOKEN:                     ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID:              ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_WORKSPACE_NAME:            ${{ needs.provision.outputs.workspace_name }}
+          DIFY_E2E_CHAT_APP_ID:               ${{ needs.provision.outputs.chat_app_id }}
+          DIFY_E2E_WORKFLOW_APP_ID:           ${{ needs.provision.outputs.workflow_app_id }}
+          DIFY_E2E_FILE_APP_ID:               ${{ needs.provision.outputs.file_app_id }}
+          DIFY_E2E_FILE_CHAT_APP_ID:          ${{ needs.provision.outputs.file_chat_app_id }}
+          DIFY_E2E_HITL_APP_ID:               ${{ needs.provision.outputs.hitl_app_id }}
+          DIFY_E2E_HITL_EXTERNAL_APP_ID:      ${{ needs.provision.outputs.hitl_external_app_id }}
+          DIFY_E2E_HITL_SINGLE_ACTION_APP_ID: ${{ needs.provision.outputs.hitl_single_action_app_id }}
+          DIFY_E2E_HITL_MULTI_NODE_APP_ID:    ${{ needs.provision.outputs.hitl_multi_node_app_id }}
+          DIFY_E2E_INCLUDE: "test/e2e/suites/run/${{ matrix.file }}"
+        run: |
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
+
+      - name: Upload results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-run-${{ matrix.name }}-${{ github.run_id }}
+          path: cli/test-results/
+          retention-days: 3
+
+# ════════════════════════════════════════════════════════════════════════════
+# 1-E. auth/login + status + whoami (parallel, read-only, safe)
+# ════════════════════════════════════════════════════════════════════════════
+  suite-auth-safe:
+    name: "Suite: auth (login / status / whoami)"
+    if: ${{ inputs.suite_auth != 'false' }}
+    needs: provision
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: cli
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-web
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with: { package_json_field: packageManager, run_install: false }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tree:gen
+
+      - name: Run auth/login + status + whoami
+        env:
+          DIFY_E2E_HOST:           ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL:          ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD:       ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION:        ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN:          ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID:   ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
+          DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
+          DIFY_E2E_INCLUDE: "test/e2e/suites/auth/login.e2e.ts,test/e2e/suites/auth/status.e2e.ts,test/e2e/suites/auth/whoami.e2e.ts"
+        run: |
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm test:e2e -- -t "\[P0\]"
+          else
+            pnpm test:e2e
+          fi
+
+# ════════════════════════════════════════════════════════════════════════════
+# 2. DESTRUCTIVE — auth/use + devices + logout + agent (serial, runs LAST)
+#    Must wait for ALL parallel suites to finish to avoid token revocation
+#    invalidating other in-flight requests.
+# ════════════════════════════════════════════════════════════════════════════
+  suite-last:
+    name: "Suite: auth-use + devices + logout + agent (last, serial)"
+    # Runs when auth is selected; also runs after all parallel jobs finish
+    if: ${{ inputs.suite_auth != 'false' || inputs.suite_agent != 'false' }}
+    needs:
+      - provision
+      - suite-framework-output-error
+      - suite-discovery
+      - suite-run
+      - suite-auth-safe
+    # `needs` on a skipped job is treated as success — safe to proceed even if
+    # some suites were disabled via toggle.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: cli
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-web
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with: { package_json_field: packageManager, run_install: false }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tree:gen
+
+      - name: Run use / devices / logout / agent (serial)
+        env:
+          DIFY_E2E_HOST:                      ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL:                     ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD:                  ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION:                   ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN:                     ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID:              ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_WORKSPACE_NAME:            ${{ needs.provision.outputs.workspace_name }}
+          DIFY_E2E_WS2_ID:                    ${{ needs.provision.outputs.ws2_id }}
+          DIFY_E2E_CHAT_APP_ID:               ${{ needs.provision.outputs.chat_app_id }}
+          DIFY_E2E_WORKFLOW_APP_ID:           ${{ needs.provision.outputs.workflow_app_id }}
+          DIFY_E2E_HITL_APP_ID:               ${{ needs.provision.outputs.hitl_app_id }}
+          DIFY_E2E_HITL_EXTERNAL_APP_ID:      ${{ needs.provision.outputs.hitl_external_app_id }}
+          DIFY_E2E_HITL_SINGLE_ACTION_APP_ID: ${{ needs.provision.outputs.hitl_single_action_app_id }}
+          DIFY_E2E_HITL_MULTI_NODE_APP_ID:    ${{ needs.provision.outputs.hitl_multi_node_app_id }}
+        run: |
+          # Collect files in safe order: use → devices → logout (revokes last) → agent
+          FILES=()
+          if [ "${{ inputs.suite_auth }}" = "true" ]; then
+            FILES+=(
+              test/e2e/suites/auth/use.e2e.ts
+              test/e2e/suites/auth/devices.e2e.ts
+              test/e2e/suites/auth/logout.e2e.ts
+            )
+          fi
+          if [ "${{ inputs.suite_agent }}" = "true" ]; then
+            while IFS= read -r f; do FILES+=("$f"); done \
+              < <(find test/e2e/suites/agent -name '*.e2e.ts' | sort)
+          fi
+
+          [ ${#FILES[@]} -eq 0 ] && { echo "Nothing to run."; exit 0; }
+
+          # Pass files via DIFY_E2E_INCLUDE (comma-separated) so vitest
+          # config's include list is overridden instead of ANDed.
+          INCLUDE=$(IFS=,; echo "${FILES[*]}")
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            DIFY_E2E_INCLUDE="$INCLUDE" pnpm test:e2e -- -t "\[P0\]"
+          else
+            DIFY_E2E_INCLUDE="$INCLUDE" pnpm test:e2e
+          fi
+
+      - name: Upload results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-last-${{ github.run_id }}
+          path: cli/test-results/
+          retention-days: 3

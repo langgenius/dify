@@ -197,13 +197,13 @@ describe('TextGeneration', () => {
       expect(screen.getByTestId('run-once-input-name')).toHaveTextContent('Gamma')
     })
 
-    fireEvent.click(screen.getByTestId('tab-header-item-batch'))
+    fireEvent.click(screen.getByRole('tab', { name: 'share.generation.tabs.batch' }))
     expect(screen.getByRole('button', { name: 'run-batch' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('tab-header-item-saved'))
+    fireEvent.click(screen.getByRole('tab', { name: /^share\.generation\.tabs\.saved/ }))
     expect(screen.getByTestId('saved-items-mock')).toHaveTextContent('2')
 
-    fireEvent.click(screen.getByTestId('tab-header-item-create'))
+    fireEvent.click(screen.getByRole('tab', { name: 'share.generation.tabs.create' }))
     expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()
   })
 
@@ -220,7 +220,7 @@ describe('TextGeneration', () => {
     })
     expect(screen.getByTestId('result-single')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('tab-header-item-batch'))
+    fireEvent.click(screen.getByRole('tab', { name: 'share.generation.tabs.batch' }))
     fireEvent.click(screen.getByRole('button', { name: 'run-batch' }))
     await waitFor(() => {
       expect(screen.getByText('idle')).toBeInTheDocument()

@@ -34,6 +34,10 @@ abstract class FileBasedStore implements Store {
     this.platform = resolvePlatform()
   }
 
+  private ensureDir(): void {
+    fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
+  }
+
   unlock(): void {
     lockfile.unlockSync(`${this.filePath}.lock`)
   }
@@ -42,8 +46,6 @@ abstract class FileBasedStore implements Store {
    * atomically write raw_content (if any)
    */
   flush(): void {
-    fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
-
     // we don't handle A-B-A scenario,
     // which is not likely to happen in cli
     if (!this.dirty) {
@@ -51,6 +53,7 @@ abstract class FileBasedStore implements Store {
     }
 
     if (this.rawContent !== undefined) {
+      this.ensureDir()
       const tmp = `${this.filePath}.tmp.${pid()}.${Date.now()}`
       try {
         fs.writeFileSync(tmp, this.rawContent, { mode: FILE_PERM })
@@ -69,6 +72,7 @@ abstract class FileBasedStore implements Store {
   }
 
   lock(): void {
+    this.ensureDir()
     try {
       lockfile.lockSync(`${this.filePath}.lock`, {
         stale: 30_000,

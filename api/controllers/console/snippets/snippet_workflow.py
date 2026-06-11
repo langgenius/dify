@@ -30,6 +30,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_user,
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -45,6 +46,7 @@ from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
+from models import Account
 from models.snippet import CustomizedSnippet
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.snippet_generate_service import SnippetGenerateService
@@ -158,12 +160,11 @@ class SnippetDraftWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet):
+    def post(self, current_user: Account, snippet: CustomizedSnippet):
         """Sync draft workflow for snippet."""
-        current_user, _ = current_account_with_tenant()
-
         payload = SnippetDraftSyncPayload.model_validate(console_ns.payload or {})
 
         try:
@@ -239,11 +240,11 @@ class SnippetPublishedWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet):
+    def post(self, current_user: Account, snippet: CustomizedSnippet):
         """Publish snippet workflow."""
-        current_user, _ = current_account_with_tenant()
         snippet_service = _snippet_service()
 
         with Session(db.engine) as session:
@@ -331,11 +332,11 @@ class SnippetDraftWorkflowRestoreApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, workflow_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, workflow_id: str):
         """Restore a published snippet workflow version into the draft workflow."""
-        current_user, _ = current_account_with_tenant()
         snippet_service = _snippet_service()
 
         try:
@@ -455,16 +456,16 @@ class SnippetDraftNodeRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, node_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a single node in snippet draft workflow.
 
         Executes a specific node with provided inputs for single-step debugging.
         Returns the node execution result including status, outputs, and timing.
         """
-        current_user, _ = current_account_with_tenant()
         payload = SnippetDraftNodeRunPayload.model_validate(console_ns.payload or {})
 
         user_inputs = payload.inputs
@@ -539,16 +540,16 @@ class SnippetDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, node_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a draft workflow iteration node for snippet.
 
         Iteration nodes execute their internal sub-graph multiple times over an input list.
         Returns an SSE event stream with iteration progress and results.
         """
-        current_user, _ = current_account_with_tenant()
         args = SnippetIterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         try:
@@ -580,16 +581,16 @@ class SnippetDraftRunLoopNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, node_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a draft workflow loop node for snippet.
 
         Loop nodes execute their internal sub-graph repeatedly until a condition is met.
         Returns an SSE event stream with loop progress and results.
         """
-        current_user, _ = current_account_with_tenant()
         args = SnippetLoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
@@ -619,17 +620,16 @@ class SnippetDraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet):
+    def post(self, current_user: Account, snippet: CustomizedSnippet):
         """
         Run draft workflow for snippet.
 
         Executes the snippet's draft workflow with the provided inputs
         and returns an SSE event stream with execution progress and results.
         """
-        current_user, _ = current_account_with_tenant()
-
         payload = SnippetDraftRunPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 

@@ -19,7 +19,7 @@ import CodeGeneratorButton from '../code-generator-button'
 import ToggleExpandBtn from '../toggle-expand-btn'
 import Wrap from './wrap'
 
-type Props = {
+type Props = Readonly<{
   nodeId?: string
   className?: string
   title: React.JSX.Element | string
@@ -41,7 +41,7 @@ type Props = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   footer?: React.ReactNode
-}
+}>
 
 const Base: FC<Props> = ({
   nodeId,

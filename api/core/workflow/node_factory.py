@@ -479,8 +479,9 @@ class DifyNodeFactory(NodeFactory):
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client
-            from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+            from core.workflow.nodes.agent_v2.file_tenant_validator import AgentOutputFileTenantValidator
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
+            from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
             from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
 
@@ -496,11 +497,12 @@ class DifyNodeFactory(NodeFactory):
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
-                "output_adapter": WorkflowAgentOutputAdapter(),
+                # Agent Files §4.6: reback file outputs from the ToolFile row so
+                # downstream metadata is authoritative, not sandbox-provided.
+                "output_adapter": WorkflowAgentOutputAdapter(tool_file_rebacker=reback_tool_file_output),
                 # Stage 4 §5/§7: per-output validation + failure orchestration. The
-                # tenant validator queries upload_files so it stays cheap when
-                # outputs contain no file refs.
-                "type_checker": PerOutputTypeChecker(file_validator=UploadFileTenantValidator()),
+                # tenant validator resolves ToolFile (canonical) + UploadFile refs.
+                "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
                 "session_store": WorkflowAgentRuntimeSessionStore(),
             }

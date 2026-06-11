@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from libs.helper import EmailStr, UUIDStrOrEmpty, uuid_value
+from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
@@ -262,22 +262,6 @@ class AppDescribeQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fields: set[str] | None = Field(default=None, json_schema_extra=_csv_string_query_schema)
-    workspace_id: str | None = None
-
-    @field_validator("workspace_id", mode="before")
-    @classmethod
-    def _validate_workspace_id(cls, v: object) -> str | None:
-        if v is None or v == "":
-            return None
-        if not isinstance(v, str):
-            raise ValueError("workspace_id must be a string")
-        try:
-            import uuid as _uuid
-
-            _uuid.UUID(v)
-        except ValueError:
-            raise ValueError("workspace_id must be a valid UUID")
-        return v
 
     @field_validator("fields", mode="before")
     @classmethod
@@ -297,7 +281,7 @@ class AppDescribeQuery(BaseModel):
 class AppListQuery(BaseModel):
     """mode is a closed enum."""
 
-    workspace_id: str
+    workspace_id: UUIDStr
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
     mode: AppMode | None = None
@@ -438,6 +422,45 @@ class TaskStopResponse(BaseModel):
     types it as a required `'success'` rather than an optional field."""
 
     result: Literal["success"]
+
+
+class AppDslImportPayload(BaseModel):
+    """Request body for POST /workspaces/<workspace_id>/apps/imports."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["yaml-content", "yaml-url"] = Field(..., description="Import mode: yaml-content or yaml-url")
+    yaml_content: str | None = Field(None, description="Inline YAML DSL string (required when mode is yaml-content)")
+    yaml_url: str | None = Field(None, description="Remote URL to fetch YAML from (required when mode is yaml-url)")
+    name: str | None = Field(None, description="Override the app name from the DSL")
+    description: str | None = Field(None, description="Override the app description from the DSL")
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+    app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
+
+    @model_validator(mode="after")
+    def _validate_source_by_mode(self) -> AppDslImportPayload:
+        if self.mode == "yaml-content" and not self.yaml_content:
+            raise ValueError("yaml_content is required when mode is 'yaml-content'")
+        if self.mode == "yaml-url" and not self.yaml_url:
+            raise ValueError("yaml_url is required when mode is 'yaml-url'")
+        return self
+
+
+class AppDslExportQuery(BaseModel):
+    """Query parameters for GET /apps/<app_id>/export."""
+
+    include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
+    workflow_id: UUIDStr | None = Field(
+        None, description="Export a specific workflow version instead of the current draft"
+    )
+
+
+class AppDslExportResponse(BaseModel):
+    """Export DSL response."""
+
+    data: str = Field(..., description="DSL YAML string")
 
 
 class FormSubmitResponse(BaseModel):

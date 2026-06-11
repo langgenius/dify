@@ -17,11 +17,11 @@ import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/t
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 
-type Props = {
+type Props = Readonly<{
   collection: Collection
   onCancel: () => void
   onSaved: (value: Record<string, unknown>) => void
-}
+}>
 
 const ToolCredentialForm: FC<Props> = ({
   collection,

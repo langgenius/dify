@@ -195,6 +195,34 @@ describe('useVariableModalState', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('should notify and stop saving when description exceeds the limit', () => {
+    const notify = vi.fn()
+    const onSave = vi.fn()
+    const onClose = vi.fn()
+    const { result } = renderHook(() => useVariableModalState(createOptions({
+      notify,
+      onClose,
+      onSave,
+    })))
+
+    act(() => {
+      result.current.handleVarNameChange({ target: { value: 'greeting' } } as ChangeEvent<HTMLInputElement>)
+      result.current.handleStringOrNumberChange(['hello'])
+      result.current.setDescription('a'.repeat(256))
+    })
+
+    act(() => {
+      result.current.handleSave()
+    })
+
+    expect(notify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'chatVariable.modal.descriptionTooLong',
+    })
+    expect(onSave).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('should save a new variable and close when state is valid', () => {
     const onSave = vi.fn()
     const onClose = vi.fn()

@@ -33,14 +33,14 @@ import { fetchHitHistoryList } from '@/service/annotation'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import HitHistoryNoData from './hit-history-no-data'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   isShow: boolean
   onHide: () => void
   item: AnnotationItem
   onSave: (editedQuery: string, editedAnswer: string) => Promise<void>
   onRemove: () => void
-}
+}>
 
 enum TabType {
   annotation = 'annotation',

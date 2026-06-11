@@ -14,7 +14,7 @@ import pytest
 from flask import Flask
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
-from controllers.console.error import AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from models.account import AccountStatus
 
 
@@ -254,6 +254,47 @@ class TestActivateApi:
             api = ActivateApi()
             with pytest.raises(AlreadyActivateError):
                 api.post()
+
+    @patch("controllers.console.auth.activate.dify_config.BILLING_ENABLED", True)
+    @patch("controllers.console.auth.activate.BillingService.is_email_in_freeze")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
+    @patch("controllers.console.auth.activate.db")
+    def test_activation_rejects_account_in_billing_freeze(
+        self,
+        mock_db,
+        mock_revoke_token,
+        mock_get_invitation,
+        mock_is_email_in_freeze,
+        app: Flask,
+        mock_invitation,
+        mock_account,
+    ):
+        """Frozen deleted-account emails cannot be reactivated through invitation links."""
+        mock_account.email = "Invitee@Example.com"
+        mock_get_invitation.return_value = mock_invitation
+        mock_is_email_in_freeze.return_value = True
+
+        with app.test_request_context(
+            "/activate",
+            method="POST",
+            json={
+                "workspace_id": "workspace-123",
+                "email": "invitee@example.com",
+                "token": "valid_token",
+                "name": "John Doe",
+                "interface_language": "en-US",
+                "timezone": "UTC",
+            },
+        ):
+            api = ActivateApi()
+            with pytest.raises(AccountInFreezeError):
+                api.post()
+
+        mock_is_email_in_freeze.assert_called_once_with("Invitee@Example.com")
+        mock_revoke_token.assert_not_called()
+        mock_db.session.commit.assert_not_called()
+        assert mock_account.status == AccountStatus.PENDING
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")

@@ -90,6 +90,7 @@
   "chatVariable.modal.arrayValue": "Nilai",
   "chatVariable.modal.description": "Deskripsi",
   "chatVariable.modal.descriptionPlaceholder": "Jelaskan variabel",
+  "chatVariable.modal.descriptionTooLong": "Deskripsi harus {{maxLength}} karakter atau kurang",
   "chatVariable.modal.editInForm": "Edit dalam Formulir",
   "chatVariable.modal.editInJSON": "Edit dalam JSON",
   "chatVariable.modal.editTitle": "Edit Variabel Percakapan",
