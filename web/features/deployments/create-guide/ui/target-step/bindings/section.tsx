@@ -1,15 +1,16 @@
 'use client'
 
+import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   RuntimeCredentialBindingsPanel,
 } from '@/features/deployments/components/runtime-credential-bindings'
+import { selectBindingAtom } from '../../../state/target-atoms'
 import { TargetBindingSkeleton } from '../skeletons'
 import {
   useShouldRenderTargetBindingSection,
   useTargetBindingIsError,
   useTargetBindingIsLoading,
-  useTargetBindingSelectAction,
   useTargetBindingSelections,
   useTargetBindingSlots,
 } from './section.data'
@@ -20,7 +21,7 @@ export function TargetBindingSection() {
   const bindingSlots = useTargetBindingSlots()
   const isBindingError = useTargetBindingIsError()
   const isBindingLoading = useTargetBindingIsLoading()
-  const onSelectBinding = useTargetBindingSelectAction()
+  const selectBinding = useSetAtom(selectBindingAtom)
   const shouldRender = useShouldRenderTargetBindingSection()
 
   if (!shouldRender)
@@ -55,7 +56,7 @@ export function TargetBindingSection() {
       selectCredentialLabel={t('createGuide.target.selectCredential')}
       missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
       bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
-      onChange={onSelectBinding}
+      onChange={(slot, value) => selectBinding({ slot, value })}
       listScrollable={false}
       className="border-components-option-card-option-border bg-components-option-card-option-bg"
     />

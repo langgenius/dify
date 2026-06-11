@@ -1,12 +1,11 @@
 'use client'
 
+import type { WorkflowSourceApp } from '../types'
 import type { DeploymentTargetSubmissionState } from './types'
-import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { isWorkflowApp } from '@/features/deployments/app-mode'
 import { isWorkflowDsl } from '@/features/deployments/dsl'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -32,7 +31,7 @@ export function useCreateDeploymentSubmission({
   isInitialReleaseReady,
   targetSubmissionState,
 }: {
-  effectiveSelectedApp?: App
+  effectiveSelectedApp?: WorkflowSourceApp
   hasInstanceNameConflict: boolean
   isInitialReleaseReady: boolean
   targetSubmissionState: DeploymentTargetSubmissionState
@@ -62,7 +61,7 @@ export function useCreateDeploymentSubmission({
       return
     if (deployToEnvironment && !targetSubmissionState.selectedEnvironment && !targetSubmissionState.selectedEnvironmentId?.trim())
       return
-    if (submissionDraft.method === 'bindApp' && (!effectiveSelectedApp?.id || !isWorkflowApp(effectiveSelectedApp)))
+    if (submissionDraft.method === 'bindApp' && !effectiveSelectedApp?.id)
       return
     if (submissionDraft.method === 'importDsl' && !submissionDraft.dslState.hasDslContent)
       return

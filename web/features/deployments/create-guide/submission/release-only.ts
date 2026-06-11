@@ -1,7 +1,7 @@
 'use client'
 
+import type { WorkflowSourceApp } from '../types'
 import type { CreateDeploymentSubmissionDraft } from './draft'
-import type { App } from '@/types/app'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useRouter } from '@/next/navigation'
@@ -12,7 +12,7 @@ export function useCreateReleaseOnlySubmission({
   effectiveSelectedApp,
   submissionDraft,
 }: {
-  effectiveSelectedApp?: App
+  effectiveSelectedApp?: WorkflowSourceApp
   submissionDraft: CreateDeploymentSubmissionDraft
 }) {
   const router = useRouter()

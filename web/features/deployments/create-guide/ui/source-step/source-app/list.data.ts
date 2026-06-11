@@ -1,15 +1,13 @@
 'use client'
 
 import type { App } from '@/types/app'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { isWorkflowApp } from '@/features/deployments/app-mode'
+import { useAtomValue } from 'jotai'
 import {
   sourceAppsFromQueryData,
   useSourceAppsQuery,
 } from '../../../queries/source'
 import {
   selectedAppAtom,
-  selectSourceAppAtom,
   sourceSearchTextAtom,
 } from '../../../state/source-atoms'
 
@@ -51,12 +49,7 @@ export function useSourceAppsLoading() {
 export function useSourceAppSelected(appId: string) {
   const selectedApp = useAtomValue(selectedAppAtom)
   const sourceApps = useSourceApps()
-  const effectiveSelectedApp = isWorkflowApp(selectedApp) ? selectedApp : sourceApps[0]
-  const effectiveSelectedAppId = effectiveSelectedApp?.id ?? sourceApps[0]?.id
+  const effectiveSelectedApp = selectedApp ?? sourceApps[0]
 
-  return effectiveSelectedAppId === appId
-}
-
-export function useSelectSourceAppAction() {
-  return useSetAtom(selectSourceAppAtom)
+  return effectiveSelectedApp?.id === appId
 }

@@ -1,12 +1,11 @@
 'use client'
 
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { createDeploymentTargetBindings } from '../../../models/deployment-target/bindings'
 import { useDeploymentTargetQueryGate } from '../../../models/deployment-target/query-gate'
 import { useDeploymentOptionsQuery } from '../../../queries/target-options'
 import {
   manualBindingSelectionsAtom,
-  selectBindingAtom,
 } from '../../../state/target-atoms'
 import { unsupportedDslNodesAtom } from '../../../state/unsupported-dsl-atoms'
 
@@ -60,12 +59,6 @@ export function useTargetBindingIsLoading() {
 
   return queryGate.shouldLoadDeploymentTarget
     && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
-}
-
-export function useTargetBindingSelectAction() {
-  const selectBinding = useSetAtom(selectBindingAtom)
-
-  return (slot: string, value: string) => selectBinding({ slot, value })
 }
 
 export function useShouldRenderTargetBindingSection() {

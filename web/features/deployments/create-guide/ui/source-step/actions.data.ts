@@ -1,9 +1,8 @@
 'use client'
 
-import type { App } from '@/types/app'
+import type { WorkflowSourceApp } from '../../types'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { isWorkflowApp } from '@/features/deployments/app-mode'
 import {
   useCreateGuideDslModel,
 } from '../../models/dsl'
@@ -33,8 +32,8 @@ import {
   setStepAtom,
 } from '../../state/workflow-atoms'
 
-function effectiveSourceApp(selectedApp: App | undefined, sourceApps: ReturnType<typeof sourceAppsFromQueryData>) {
-  return isWorkflowApp(selectedApp) ? selectedApp : sourceApps[0]
+function effectiveSourceApp(selectedApp: WorkflowSourceApp | undefined, sourceApps: ReturnType<typeof sourceAppsFromQueryData>) {
+  return selectedApp ?? sourceApps[0]
 }
 
 export function useSourceCanEnterReleaseStep() {

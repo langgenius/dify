@@ -1,7 +1,6 @@
 import type { DeployReq } from '@dify/contracts/enterprise/types.gen'
-import type { GuideMethod } from '../types'
+import type { GuideMethod, WorkflowSourceApp } from '../types'
 import type { DeploymentTargetSubmissionState } from './types'
-import type { App } from '@/types/app'
 import {
   selectedDeploymentRuntimeCredentials,
 } from '@/features/deployments/components/runtime-credential-bindings-utils'
@@ -21,7 +20,7 @@ export function createInitialDeploymentRequest({
   targetEnvironmentId,
   targetSubmissionState,
 }: {
-  effectiveSelectedApp?: App
+  effectiveSelectedApp?: WorkflowSourceApp
   encodedDslContent: string
   instanceDescription: string
   method: GuideMethod

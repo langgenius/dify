@@ -1,6 +1,6 @@
 'use client'
 
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { createDeploymentTargetBindings } from '../../models/deployment-target/bindings'
 import { createDeploymentTargetEnvVars } from '../../models/deployment-target/env-vars'
 import { createDeploymentTargetEnvironment } from '../../models/deployment-target/environment'
@@ -11,10 +11,6 @@ import { useDeployableEnvironmentsQuery } from '../../queries/target-environment
 import { useDeploymentOptionsQuery } from '../../queries/target-options'
 import { dslContentAtom } from '../../state/dsl-atoms'
 import {
-  isCreatingReleaseOnlyAtom,
-  isSubmittingDeploymentGuideAtom,
-} from '../../state/submission-atoms'
-import {
   envVarValuesAtom,
   manualBindingSelectionsAtom,
   selectedEnvironmentIdAtom,
@@ -22,9 +18,6 @@ import {
 import {
   unsupportedDslNodesAtom,
 } from '../../state/unsupported-dsl-atoms'
-import {
-  setStepAtom,
-} from '../../state/workflow-atoms'
 import { useCreateDeploymentSubmission } from '../../submission'
 
 function useDeploymentOptionsForTargetActions() {
@@ -110,18 +103,6 @@ export function useTargetCanSkipDeployment() {
     && !deploymentOptionsResult.deploymentOptionsQuery.isError
     && unsupportedDslNodes.length === 0,
   )
-}
-
-export function useTargetBackAction() {
-  const setStep = useSetAtom(setStepAtom)
-  const isDeploying = useAtomValue(isSubmittingDeploymentGuideAtom)
-
-  function handleBack() {
-    if (!isDeploying)
-      setStep('release')
-  }
-
-  return handleBack
 }
 
 export function useTargetDeployAction() {
@@ -231,12 +212,4 @@ export function useTargetSkipDeploymentAction(canSkipDeployment: boolean) {
   }
 
   return handleSkipDeployment
-}
-
-export function useTargetIsDeploying() {
-  return useAtomValue(isSubmittingDeploymentGuideAtom)
-}
-
-export function useTargetIsSkippingDeployment() {
-  return useAtomValue(isCreatingReleaseOnlyAtom)
 }

@@ -2,13 +2,14 @@
 
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
+import { selectSourceAppAtom } from '../../../state/source-atoms'
 import {
   useFilteredSourceApps,
-  useSelectSourceAppAction,
   useSourceAppSelected,
   useSourceAppsLoading,
 } from './list.data'
@@ -17,7 +18,7 @@ const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-s
 
 export function SourceAppList() {
   const { t } = useTranslation('deployments')
-  const selectSourceApp = useSelectSourceAppAction()
+  const selectSourceApp = useSetAtom(selectSourceAppAtom)
   const filteredApps = useFilteredSourceApps()
   const sourceAppsLoading = useSourceAppsLoading()
 

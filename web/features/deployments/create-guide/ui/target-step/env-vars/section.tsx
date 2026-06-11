@@ -1,24 +1,32 @@
 'use client'
 
+import type { EnvVarValueSelection } from '@/features/deployments/components/env-var-bindings'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   EnvVarBindingsPanel,
 } from '@/features/deployments/components/env-var-bindings'
 import {
-  useTargetEnvVarChangeAction,
+  envVarValuesAtom,
+  setEnvVarAtom,
+} from '../../../state/target-atoms'
+import {
   useTargetEnvVarIsBindingError,
   useTargetEnvVarIsBindingLoading,
   useTargetEnvVarSlots,
-  useTargetEnvVarValues,
 } from './section.data'
 
 export function TargetEnvVarSection() {
   const { t } = useTranslation('deployments')
   const envVarSlots = useTargetEnvVarSlots()
-  const envVarValues = useTargetEnvVarValues()
+  const envVarValues = useAtomValue(envVarValuesAtom)
+  const setEnvVar = useSetAtom(setEnvVarAtom)
   const isBindingError = useTargetEnvVarIsBindingError()
   const isBindingLoading = useTargetEnvVarIsBindingLoading()
-  const onSetEnvVar = useTargetEnvVarChangeAction()
+
+  function onSetEnvVar(key: string, value: EnvVarValueSelection) {
+    setEnvVar({ key, value })
+  }
 
   if (isBindingLoading || isBindingError)
     return null

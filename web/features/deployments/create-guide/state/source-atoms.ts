@@ -1,5 +1,6 @@
 'use client'
 
+import type { WorkflowSourceApp } from '../types'
 import type { App } from '@/types/app'
 import { atom } from 'jotai'
 import { isWorkflowApp } from '@/features/deployments/app-mode'
@@ -7,7 +8,7 @@ import { resetDeploymentTargetOptionsAtom } from './target-atoms'
 import { clearCreateDeploymentGuideUnsupportedDslNodesAtom } from './unsupported-dsl-atoms'
 
 export const sourceSearchTextAtom = atom('')
-export const selectedAppAtom = atom<App | undefined>(undefined)
+export const selectedAppAtom = atom<WorkflowSourceApp | undefined>(undefined)
 
 export const sourceLocalAtoms = [
   sourceSearchTextAtom,

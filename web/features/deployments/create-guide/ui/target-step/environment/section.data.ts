@@ -1,13 +1,12 @@
 'use client'
 
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { environmentMatchesIdentifier } from '@/features/deployments/environment'
 import { createDeploymentTargetEnvironment } from '../../../models/deployment-target/environment'
 import { useDeploymentTargetQueryGate } from '../../../models/deployment-target/query-gate'
 import { useDeployableEnvironmentsQuery } from '../../../queries/target-environments'
 import {
   selectedEnvironmentIdAtom,
-  selectEnvironmentAtom,
 } from '../../../state/target-atoms'
 
 export function useTargetEnvironments() {
@@ -42,10 +41,6 @@ export function useTargetEnvironmentIsLoading() {
 
   return queryGate.shouldLoadDeploymentTarget
     && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
-}
-
-export function useTargetSelectEnvironmentAction() {
-  return useSetAtom(selectEnvironmentAtom)
 }
 
 export function useTargetEnvironmentIsSelected(environmentId: string) {

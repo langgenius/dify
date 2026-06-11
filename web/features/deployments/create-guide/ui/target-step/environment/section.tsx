@@ -4,8 +4,10 @@ import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
+import { selectEnvironmentAtom } from '../../../state/target-atoms'
 import { TargetEnvironmentSkeleton } from '../skeletons'
 import {
   useTargetEffectiveSelectedEnvironmentId,
@@ -13,7 +15,6 @@ import {
   useTargetEnvironmentIsLoading,
   useTargetEnvironmentIsSelected,
   useTargetEnvironments,
-  useTargetSelectEnvironmentAction,
 } from './section.data'
 
 function EnvironmentOptionRow({ environment }: {
@@ -53,7 +54,7 @@ export function TargetEnvironmentSection() {
   const environments = useTargetEnvironments()
   const isEnvironmentError = useTargetEnvironmentIsError()
   const isEnvironmentLoading = useTargetEnvironmentIsLoading()
-  const onSelectEnvironment = useTargetSelectEnvironmentAction()
+  const onSelectEnvironment = useSetAtom(selectEnvironmentAtom)
   const hasEnvironmentOptions = environments.length > 0
 
   return (

@@ -2,7 +2,6 @@
 
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { isWorkflowApp } from '@/features/deployments/app-mode'
 import { useCreateGuideDslModel } from '../../models/dsl'
 import { useSubmittedReleaseFieldsStatus } from '../../models/release'
 import { selectedAppAtom } from '../../state/source-atoms'
@@ -16,7 +15,7 @@ export function useReleaseInstanceNamePlaceholder() {
 
   return method === 'importDsl'
     ? dslModel.dslDefaultAppName || t('createGuide.dsl.defaultAppName')
-    : isWorkflowApp(selectedApp) ? selectedApp.name : undefined
+    : selectedApp?.name
 }
 
 export function useReleaseInstanceNameError() {

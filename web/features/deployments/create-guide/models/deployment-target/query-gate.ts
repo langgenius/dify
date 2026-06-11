@@ -1,10 +1,8 @@
 'use client'
 
 import type { CreateGuideDslState } from '../../state/dsl-derived'
-import type { GuideMethod } from '../../types'
-import type { App } from '@/types/app'
+import type { GuideMethod, WorkflowSourceApp } from '../../types'
 import { useAtomValue } from 'jotai'
-import { isWorkflowApp } from '@/features/deployments/app-mode'
 import {
   dslReadErrorAtom,
   isReadingDslAtom,
@@ -28,7 +26,7 @@ function createDeploymentTargetQueryGate({
 }: {
   dslReadError: boolean
   dslState: CreateGuideDslState
-  effectiveSelectedApp?: App
+  effectiveSelectedApp?: WorkflowSourceApp
   isReadingDsl: boolean
   method: GuideMethod
 }): DeploymentTargetQueryGate {
@@ -52,19 +50,18 @@ export function useDeploymentTargetQueryGate() {
   const isReadingDsl = useAtomValue(isReadingDslAtom)
   const selectedApp = useAtomValue(selectedAppAtom)
   const dslState = useCreateGuideDslModel()
-  const effectiveSelectedApp = isWorkflowApp(selectedApp) ? selectedApp : undefined
   // Target sections must share the same source/DSL gates so their query observers stay consistent.
   const queryGate = createDeploymentTargetQueryGate({
     dslReadError,
     dslState,
-    effectiveSelectedApp,
+    effectiveSelectedApp: selectedApp,
     isReadingDsl,
     method,
   })
 
   return {
     dslState,
-    effectiveSelectedApp,
+    effectiveSelectedApp: selectedApp,
     method,
     queryGate,
   }

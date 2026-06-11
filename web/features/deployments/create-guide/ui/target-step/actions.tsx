@@ -1,14 +1,17 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
-  useTargetBackAction,
+  isCreatingReleaseOnlyAtom,
+  isSubmittingDeploymentGuideAtom,
+} from '../../state/submission-atoms'
+import { setStepAtom } from '../../state/workflow-atoms'
+import {
   useTargetCanDeploy,
   useTargetCanSkipDeployment,
   useTargetDeployAction,
-  useTargetIsDeploying,
-  useTargetIsSkippingDeployment,
   useTargetSkipDeploymentAction,
 } from './actions.data'
 
@@ -16,17 +19,22 @@ export function TargetActionButtons() {
   const { t } = useTranslation('deployments')
   const canDeploy = useTargetCanDeploy()
   const canSkipDeployment = useTargetCanSkipDeployment()
-  const handleBack = useTargetBackAction()
   const handleDeploy = useTargetDeployAction()
   const handleSkipDeployment = useTargetSkipDeploymentAction(canSkipDeployment)
-  const isDeploying = useTargetIsDeploying()
-  const isSkippingDeployment = useTargetIsSkippingDeployment()
+  const setStep = useSetAtom(setStepAtom)
+  const isDeploying = useAtomValue(isSubmittingDeploymentGuideAtom)
+  const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
   const primaryLabel = isDeploying && !isSkippingDeployment
     ? t('createGuide.actions.deploying')
     : t('createGuide.actions.createAndDeploy')
   const skipLabel = isSkippingDeployment
     ? t('createGuide.actions.creating')
     : t('createGuide.actions.skipDeploy')
+
+  function handleBack() {
+    if (!isDeploying)
+      setStep('release')
+  }
 
   return (
     <>

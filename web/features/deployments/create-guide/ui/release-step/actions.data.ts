@@ -14,21 +14,17 @@ import {
   setStepAtom,
 } from '../../state/workflow-atoms'
 
-function useHasUnsupportedDslNodes() {
-  return useAtomValue(unsupportedDslNodesAtom).length > 0
-}
-
 export function useReleaseCanEnterTargetStep() {
   const sourceStatus = useSelectedSourceStatus()
   const releaseFields = useSubmittedReleaseFieldsStatus()
-  const hasUnsupportedDslNodes = useHasUnsupportedDslNodes()
+  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
 
   return sourceStatus.isReady
     && releaseFields.hasInstanceName
     && releaseFields.hasReleaseName
     && !releaseFields.hasInstanceNameConflict
     && !releaseFields.isCheckingInstanceNameConflict
-    && !hasUnsupportedDslNodes
+    && unsupportedDslNodes.length === 0
 }
 
 export function useReleaseNextAction(canEnterTargetStep: boolean) {
