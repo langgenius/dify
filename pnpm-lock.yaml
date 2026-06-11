@@ -264,9 +264,6 @@ catalogs:
     cli-table3:
       specifier: 0.6.5
       version: 0.6.5
-    client-only:
-      specifier: 0.0.1
-      version: 0.0.1
     clsx:
       specifier: 2.1.1
       version: 2.1.1
@@ -1092,9 +1089,6 @@ importers:
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
-      client-only:
-        specifier: 'catalog:'
-        version: 0.0.1
       cmdk:
         specifier: 'catalog:'
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -18200,7 +18194,6 @@ time:
   chokidar@5.0.0: '2025-11-25T23:28:06.854Z'
   class-variance-authority@0.7.1: '2024-11-26T08:20:34.604Z'
   cli-table3@0.6.5: '2024-05-12T16:36:50.079Z'
-  client-only@0.0.1: '2022-09-03T01:07:11.981Z'
   clsx@2.1.1: '2024-04-23T05:26:04.645Z'
   cmdk@1.1.1: '2025-03-14T19:21:16.194Z'
   code-inspector-plugin@1.5.2: '2026-06-07T02:32:04.545Z'
