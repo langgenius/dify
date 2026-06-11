@@ -9,10 +9,10 @@ import { useAppContext } from '@/context/app-context'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import MemberSelector from './member-selector'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   onClose: () => void
-}
+}>
 enum STEP {
   start = 'start',
   verify = 'verify',

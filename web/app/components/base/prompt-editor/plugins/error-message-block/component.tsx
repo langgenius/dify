@@ -6,9 +6,9 @@ import { DELETE_ERROR_MESSAGE_COMMAND, ErrorMessageBlockNode } from '.'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
 import { useSelectOrDelete } from '../../hooks'
 
-type Props = {
+type Props = Readonly<{
   nodeKey: string
-}
+}>
 
 const ErrorMessageBlockComponent: FC<Props> = ({
   nodeKey,

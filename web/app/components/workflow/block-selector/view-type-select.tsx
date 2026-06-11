@@ -10,10 +10,10 @@ export enum ViewType {
   tree = 'tree',
 }
 
-type Props = {
+type Props = Readonly<{
   viewType: ViewType
   onChange: (viewType: ViewType) => void
-}
+}>
 
 const ViewTypeSelect: FC<Props> = ({
   viewType,

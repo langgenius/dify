@@ -7,7 +7,7 @@ import * as React from 'react'
 import { ViewType } from '../../view-type-select'
 import Tool from '../tool'
 
-type Props = {
+type Props = Readonly<{
   groupName: string
   toolList: ToolWithProvider[]
   previewCardHandle: ToolActionPreviewCardHandle
@@ -16,7 +16,7 @@ type Props = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-}
+}>
 
 const Item: FC<Props> = ({
   groupName,

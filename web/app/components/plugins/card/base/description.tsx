@@ -3,11 +3,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   text: string
   descriptionLineRows: number
-}
+}>
 
 const Description: FC<Props> = ({
   className,

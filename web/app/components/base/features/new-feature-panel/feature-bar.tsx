@@ -9,13 +9,13 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { Citations, ContentModeration, FolderUpload, LoveMessage, MessageFast, Microphone01, TextToAudio, VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 
-type Props = {
+type Props = Readonly<{
   isChatMode?: boolean
   showFileUpload?: boolean
   disabled?: boolean
   onFeatureBarClick?: (state: boolean) => void
   hideEditEntrance?: boolean
-}
+}>
 
 const FeatureBar = ({
   isChatMode = true,

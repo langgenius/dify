@@ -1,4 +1,5 @@
 import uuid
+from inspect import unwrap
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -8,14 +9,8 @@ from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
 from controllers.console.datasets.hit_testing import HitTestingApi
+from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
-
-
-def unwrap(func):
-    """Recursively unwrap decorated functions."""
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 @pytest.fixture
@@ -33,6 +28,17 @@ def dataset_id():
 @pytest.fixture
 def dataset():
     return Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="account-1")
+
+
+@pytest.fixture
+def account() -> Account:
+    account = Account(name="User", email="user@example.com")
+    account.id = "account-1"
+    tenant = Tenant(name="Tenant")
+    tenant.id = "tenant-1"
+    account._current_tenant = tenant
+    account.role = TenantAccountRole.OWNER
+    return account
 
 
 def hit_testing_record() -> dict[str, object]:
@@ -98,7 +104,7 @@ def bypass_decorators(mocker: MockerFixture):
 
 
 class TestHitTestingApi:
-    def test_hit_testing_success(self, app: Flask, dataset, dataset_id):
+    def test_hit_testing_success(self, app: Flask, dataset, dataset_id, account: Account):
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -129,13 +135,13 @@ class TestHitTestingApi:
                 return_value={"query": {"content": "what is vector search"}, "records": []},
             ),
         ):
-            result = method(api, dataset_id)
+            result = method(api, account, "tenant-1", dataset_id)
 
         assert "query" in result
         assert "records" in result
         assert result["records"] == []
 
-    def test_hit_testing_success_with_optional_record_fields(self, app: Flask, dataset, dataset_id):
+    def test_hit_testing_success_with_optional_record_fields(self, app: Flask, dataset, dataset_id, account: Account):
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -167,7 +173,7 @@ class TestHitTestingApi:
                 return_value={"query": {"content": payload["query"]}, "records": records},
             ),
         ):
-            result = method(api, dataset_id)
+            result = method(api, account, "tenant-1", dataset_id)
 
         assert result["query"] == {"content": payload["query"]}
         assert result["records"][0]["segment"]["keywords"] == []
@@ -175,7 +181,7 @@ class TestHitTestingApi:
         assert result["records"][0]["files"] == []
         assert result["records"][0]["score"] is None
 
-    def test_hit_testing_dataset_not_found(self, app: Flask, dataset_id):
+    def test_hit_testing_dataset_not_found(self, app: Flask, dataset_id, account: Account):
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -198,9 +204,9 @@ class TestHitTestingApi:
             ),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, dataset_id)
+                method(api, account, "tenant-1", dataset_id)
 
-    def test_hit_testing_invalid_args(self, app: Flask, dataset, dataset_id):
+    def test_hit_testing_invalid_args(self, app: Flask, dataset, dataset_id, account: Account):
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -228,4 +234,4 @@ class TestHitTestingApi:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid parameters"):
-                method(api, dataset_id)
+                method(api, account, "tenant-1", dataset_id)

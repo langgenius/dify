@@ -4,6 +4,7 @@ import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -11,7 +12,6 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
@@ -37,9 +37,9 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-type Props = {
+type Props = Readonly<{
   controlRefreshList?: number
-}
+}>
 function List({
   controlRefreshList = 0,
 }: Props) {

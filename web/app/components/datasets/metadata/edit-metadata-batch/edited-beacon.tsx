@@ -7,9 +7,9 @@ import * as React from 'react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   onReset: () => void
-}
+}>
 
 const EditedBeacon: FC<Props> = ({
   onReset,

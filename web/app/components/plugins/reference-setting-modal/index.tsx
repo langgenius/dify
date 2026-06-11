@@ -16,11 +16,11 @@ import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/co
 import Label from './label'
 
 const i18nPrefix = 'privilege'
-type Props = {
+type Props = Readonly<{
   payload: ReferenceSetting
   onHide: () => void
   onSave: (payload: ReferenceSetting) => void
-}
+}>
 
 const PluginSettingModal: FC<Props> = ({
   payload,

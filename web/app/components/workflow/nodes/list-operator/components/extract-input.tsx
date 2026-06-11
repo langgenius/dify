@@ -9,12 +9,12 @@ import Input from '@/app/components/workflow/nodes/_base/components/input-suppor
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '../../../types'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   readOnly: boolean
   value: string
   onChange: (value: string) => void
-}
+}>
 
 const ExtractInput: FC<Props> = ({
   nodeId,
