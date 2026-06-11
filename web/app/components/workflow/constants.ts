@@ -127,7 +127,15 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [
   {
-    variable: 'usage',
+    variable: 'text',
+    type: VarType.string,
+  },
+  {
+    variable: 'files',
+    type: VarType.arrayFile,
+  },
+  {
+    variable: 'json',
     type: VarType.object,
   },
 ]

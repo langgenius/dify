@@ -5,9 +5,9 @@ import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import { BlockEnum, EditionType, InputVarType, PromptRole } from '@/app/components/workflow/types'
+import { BlockEnum, EditionType, InputVarType, PromptRole, VarType } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
-import { getNodeUsedVars, updateNodeVars } from '../utils'
+import { getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -43,6 +43,42 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 })
 
 describe('variable utils', () => {
+  describe('toNodeAvailableVars', () => {
+    it('uses Agent v2 default declared outputs for agent nodes', () => {
+      const node = createNode<AgentNodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        version: '2',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'node-1',
+            vars: [
+              { variable: 'text', type: VarType.string },
+              { variable: 'files', type: VarType.arrayFile },
+              { variable: 'json', type: VarType.object },
+            ],
+          }),
+        ]),
+      )
+      expect(availableVars.find(item => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+        variable: 'usage',
+        type: VarType.object,
+      })
+    })
+  })
+
   describe('getNodeUsedVars', () => {
     it('should read variables from llm jinja prompt text', () => {
       const node = createNode<LLMNodeType>(

@@ -592,7 +592,7 @@ const formatItem = (
     }
 
     case BlockEnum.Agent: {
-      res.vars = [...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
+      res.vars = AGENT_OUTPUT_STRUCT
       break
     }
 
