@@ -85,12 +85,12 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
- * WorkspacePreviewResponse
+ * SandboxReadResponse
  */
-export const zWorkspacePreviewResponse = z.object({
+export const zSandboxReadResponse = z.object({
   binary: z.boolean(),
   path: z.string(),
-  size: z.int(),
+  size: z.int().nullish(),
   text: z.string().nullish(),
   truncated: z.boolean(),
 })
@@ -867,22 +867,38 @@ export const zAgentReferencingWorkflowsResponse = z.object({
 })
 
 /**
- * WorkspaceFileEntryResponse
+ * SandboxFileEntryResponse
  */
-export const zWorkspaceFileEntryResponse = z.object({
-  mtime: z.int(),
+export const zSandboxFileEntryResponse = z.object({
+  mtime: z.int().nullish(),
   name: z.string(),
-  size: z.int(),
-  type: z.enum(['dir', 'file', 'symlink']),
+  size: z.int().nullish(),
+  type: z.enum(['dir', 'file', 'other', 'symlink']),
 })
 
 /**
- * WorkspaceListResponse
+ * SandboxListResponse
  */
-export const zWorkspaceListResponse = z.object({
-  entries: z.array(zWorkspaceFileEntryResponse).optional(),
+export const zSandboxListResponse = z.object({
+  entries: z.array(zSandboxFileEntryResponse).optional(),
   path: z.string(),
   truncated: z.boolean().optional().default(false),
+})
+
+/**
+ * SandboxToolFileResponse
+ */
+export const zSandboxToolFileResponse = z.object({
+  reference: z.string(),
+  transfer_method: z.enum(['tool_file']).optional().default('tool_file'),
+})
+
+/**
+ * SandboxUploadResponse
+ */
+export const zSandboxUploadResponse = z.object({
+  file: zSandboxToolFileResponse,
+  path: z.string(),
 })
 
 /**
@@ -3175,11 +3191,11 @@ export const zGetAppsByAppIdAgentReferencingWorkflowsPath = z.object({
  */
 export const zGetAppsByAppIdAgentReferencingWorkflowsResponse = zAgentReferencingWorkflowsResponse
 
-export const zGetAppsByAppIdAgentWorkspaceFilesPath = z.object({
+export const zGetAppsByAppIdAgentSandboxFilesPath = z.object({
   app_id: z.string(),
 })
 
-export const zGetAppsByAppIdAgentWorkspaceFilesQuery = z.object({
+export const zGetAppsByAppIdAgentSandboxFilesQuery = z.object({
   conversation_id: z.string().min(1),
   path: z.string().optional().default('.'),
 })
@@ -3187,27 +3203,13 @@ export const zGetAppsByAppIdAgentWorkspaceFilesQuery = z.object({
 /**
  * Listing returned
  */
-export const zGetAppsByAppIdAgentWorkspaceFilesResponse = zWorkspaceListResponse
+export const zGetAppsByAppIdAgentSandboxFilesResponse = zSandboxListResponse
 
-export const zGetAppsByAppIdAgentWorkspaceFilesDownloadPath = z.object({
+export const zGetAppsByAppIdAgentSandboxFilesReadPath = z.object({
   app_id: z.string(),
 })
 
-export const zGetAppsByAppIdAgentWorkspaceFilesDownloadQuery = z.object({
-  conversation_id: z.string().min(1),
-  path: z.string().min(1),
-})
-
-/**
- * File bytes
- */
-export const zGetAppsByAppIdAgentWorkspaceFilesDownloadResponse = z.custom<Blob | File>()
-
-export const zGetAppsByAppIdAgentWorkspaceFilesPreviewPath = z.object({
-  app_id: z.string(),
-})
-
-export const zGetAppsByAppIdAgentWorkspaceFilesPreviewQuery = z.object({
+export const zGetAppsByAppIdAgentSandboxFilesReadQuery = z.object({
   conversation_id: z.string().min(1),
   path: z.string().min(1),
 })
@@ -3215,7 +3217,21 @@ export const zGetAppsByAppIdAgentWorkspaceFilesPreviewQuery = z.object({
 /**
  * Preview returned
  */
-export const zGetAppsByAppIdAgentWorkspaceFilesPreviewResponse = zWorkspacePreviewResponse
+export const zGetAppsByAppIdAgentSandboxFilesReadResponse = zSandboxReadResponse
+
+export const zPostAppsByAppIdAgentSandboxFilesUploadBody = z.object({
+  conversation_id: z.string().min(1),
+  path: z.string().min(1),
+})
+
+export const zPostAppsByAppIdAgentSandboxFilesUploadPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Uploaded
+ */
+export const zPostAppsByAppIdAgentSandboxFilesUploadResponse = zSandboxUploadResponse
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),
@@ -4121,14 +4137,14 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
 export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
   = zWorkflowRunNodeExecutionListResponse
 
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPath
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesPath
   = z.object({
     app_id: z.string(),
     node_id: z.string(),
     workflow_run_id: z.string(),
   })
 
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesQuery
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesQuery
   = z.object({
     node_execution_id: z.string().optional(),
     path: z.string().optional().default('.'),
@@ -4137,17 +4153,17 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspa
 /**
  * Listing returned
  */
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse
-  = zWorkspaceListResponse
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse
+  = zSandboxListResponse
 
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadPath
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadPath
   = z.object({
     app_id: z.string(),
     node_id: z.string(),
     workflow_run_id: z.string(),
   })
 
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadQuery
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadQuery
   = z.object({
     node_execution_id: z.string().optional(),
     path: z.string().min(1),
@@ -4156,27 +4172,27 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspa
 /**
  * File bytes
  */
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponse
-  = z.custom<Blob | File>()
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse
+  = zSandboxReadResponse
 
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewPath
+export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadBody
+  = z.object({
+    node_execution_id: z.string().optional(),
+    path: z.string().min(1),
+  })
+
+export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadPath
   = z.object({
     app_id: z.string(),
     node_id: z.string(),
     workflow_run_id: z.string(),
   })
 
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewQuery
-  = z.object({
-    node_execution_id: z.string().optional(),
-    path: z.string().min(1),
-  })
-
 /**
- * Preview returned
+ * Uploaded
  */
-export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse
-  = zWorkspacePreviewResponse
+export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse
+  = zSandboxUploadResponse
 
 export const zGetAppsByAppIdWorkflowCommentsPath = z.object({
   app_id: z.string(),

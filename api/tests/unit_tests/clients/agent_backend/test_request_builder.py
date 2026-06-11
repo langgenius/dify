@@ -36,8 +36,9 @@ from clients.agent_backend import (
     AgentBackendOutputConfig,
     AgentBackendRunRequestBuilder,
     AgentBackendWorkflowNodeRunInput,
-    CleanupLayerSpec,
+    RuntimeLayerSpec,
     redact_for_agent_backend_log,
+    extract_runtime_layer_specs,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 
@@ -173,11 +174,11 @@ def test_request_builder_builds_cleanup_request_replays_persisted_layer_specs():
             LayerSessionSnapshot(name="llm", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
         ]
     )
-    specs = [CleanupLayerSpec(name="history", type="pydantic_ai.history")]
+    specs = [RuntimeLayerSpec(name="history", type="pydantic_ai.history")]
 
     request = AgentBackendRunRequestBuilder().build_cleanup_request(
         session_snapshot=session_snapshot,
-        composition_layer_specs=specs,
+        runtime_layer_specs=specs,
         idempotency_key="run-1:node-1:binding-1:agent-session-cleanup",
         metadata={"workflow_run_id": "run-1"},
     )
@@ -190,20 +191,18 @@ def test_request_builder_builds_cleanup_request_replays_persisted_layer_specs():
     assert request.metadata["agent_backend_lifecycle"] == "session_cleanup"
 
 
-def test_request_builder_rejects_empty_composition_layer_specs():
+def test_request_builder_rejects_empty_runtime_layer_specs():
     """Empty specs would put us back in the original ``layers=[]`` trap that
     fails on agenton's snapshot-vs-composition validation."""
-    with pytest.raises(ValueError, match="composition_layer_specs"):
+    with pytest.raises(ValueError, match="runtime_layer_specs"):
         AgentBackendRunRequestBuilder().build_cleanup_request(
             session_snapshot=CompositorSessionSnapshot(layers=[]),
-            composition_layer_specs=[],
+            runtime_layer_specs=[],
         )
 
 
-def test_extract_cleanup_layer_specs_drops_plugin_layers_keeps_configs():
+def test_extract_runtime_layer_specs_drops_plugin_layers_keeps_configs():
     from dify_agent.protocol import RunComposition, RunLayerSpec
-
-    from clients.agent_backend import extract_cleanup_layer_specs
 
     composition = RunComposition(
         layers=[
@@ -228,7 +227,7 @@ def test_extract_cleanup_layer_specs_drops_plugin_layers_keeps_configs():
         ]
     )
 
-    specs = extract_cleanup_layer_specs(composition)
+    specs = extract_runtime_layer_specs(composition)
 
     assert [spec.name for spec in specs] == ["agent_soul_prompt", "history"]
     # Non-plugin configs are dumped as JSON-compatible dicts so the persisted

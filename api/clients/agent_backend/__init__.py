@@ -39,10 +39,9 @@ from clients.agent_backend.request_builder import (
     AgentBackendOutputConfig,
     AgentBackendRunRequestBuilder,
     AgentBackendWorkflowNodeRunInput,
-    CleanupLayerSpec,
-    extract_cleanup_layer_specs,
     redact_for_agent_backend_log,
 )
+from dify_agent.protocol import RuntimeLayerSpec, extract_runtime_layer_specs
 
 __all__ = [
     "AGENT_SOUL_PROMPT_LAYER_ID",
@@ -72,11 +71,11 @@ __all__ = [
     "AgentBackendTransportError",
     "AgentBackendValidationError",
     "AgentBackendWorkflowNodeRunInput",
-    "CleanupLayerSpec",
     "DifyAgentBackendRunClient",
     "FakeAgentBackendRunClient",
     "FakeAgentBackendScenario",
+    "RuntimeLayerSpec",
     "create_agent_backend_run_client",
-    "extract_cleanup_layer_specs",
+    "extract_runtime_layer_specs",
     "redact_for_agent_backend_log",
 ]

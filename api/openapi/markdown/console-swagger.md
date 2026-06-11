@@ -1103,12 +1103,12 @@ List workflow apps that reference this Agent App's bound Agent (read-only)
 | 200 | Referencing workflows listed successfully | [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse) |
 | 404 | App not found |  |
 
-### /apps/{app_id}/agent-workspace/files
+### /apps/{app_id}/agent-sandbox/files
 
 #### GET
 ##### Description
 
-List a directory in an Agent App conversation's sandbox workspace (read-only)
+List a directory in an Agent App conversation sandbox
 
 ##### Parameters
 
@@ -1122,14 +1122,14 @@ List a directory in an Agent App conversation's sandbox workspace (read-only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Listing returned | [WorkspaceListResponse](#workspacelistresponse) |
+| 200 | Listing returned | [SandboxListResponse](#sandboxlistresponse) |
 
-### /apps/{app_id}/agent-workspace/files/download
+### /apps/{app_id}/agent-sandbox/files/read
 
 #### GET
 ##### Description
 
-Download a file from an Agent App conversation's sandbox workspace (read-only)
+Read a text/binary preview file in an Agent App conversation sandbox
 
 ##### Parameters
 
@@ -1143,29 +1143,27 @@ Download a file from an Agent App conversation's sandbox workspace (read-only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | File bytes | binary |
-| 413 | File exceeds the workspace download limit |  |
+| 200 | Preview returned | [SandboxReadResponse](#sandboxreadresponse) |
 
-### /apps/{app_id}/agent-workspace/files/preview
+### /apps/{app_id}/agent-sandbox/files/upload
 
-#### GET
+#### POST
 ##### Description
 
-Preview a text/binary file in an Agent App conversation's sandbox workspace
+Upload one Agent App sandbox file as a Dify ToolFile mapping
 
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| conversation_id | query | Agent App conversation ID | Yes | string |
-| path | query | File path relative to the sandbox workspace | Yes | string |
+| payload | body |  | Yes | [AgentSandboxUploadPayload](#agentsandboxuploadpayload) |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Preview returned | [WorkspacePreviewResponse](#workspacepreviewresponse) |
+| 200 | Uploaded | [SandboxUploadResponse](#sandboxuploadresponse) |
 
 ### /apps/{app_id}/agent/logs
 
@@ -2737,12 +2735,12 @@ Get workflow run node execution list
 | 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse) |
 | 404 | Workflow run not found |  |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files
+### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
 
 #### GET
 ##### Description
 
-List a directory in a Workflow Agent node's sandbox workspace (read-only)
+List a directory in a workflow Agent node sandbox
 
 ##### Parameters
 
@@ -2758,14 +2756,14 @@ List a directory in a Workflow Agent node's sandbox workspace (read-only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Listing returned | [WorkspaceListResponse](#workspacelistresponse) |
+| 200 | Listing returned | [SandboxListResponse](#sandboxlistresponse) |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/download
+### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read
 
 #### GET
 ##### Description
 
-Download a file from a Workflow Agent node's sandbox workspace (read-only)
+Read a text/binary preview file in a workflow Agent node sandbox
 
 ##### Parameters
 
@@ -2781,15 +2779,14 @@ Download a file from a Workflow Agent node's sandbox workspace (read-only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | File bytes | binary |
-| 413 | File exceeds the workspace download limit |  |
+| 200 | Preview returned | [SandboxReadResponse](#sandboxreadresponse) |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/preview
+### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload
 
-#### GET
+#### POST
 ##### Description
 
-Preview a text/binary file in a Workflow Agent node's sandbox workspace
+Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 ##### Parameters
 
@@ -2798,14 +2795,13 @@ Preview a text/binary file in a Workflow Agent node's sandbox workspace
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string |
-| node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
-| path | query | File path relative to the sandbox workspace | Yes | string |
+| payload | body |  | Yes | [WorkflowAgentSandboxUploadPayload](#workflowagentsandboxuploadpayload) |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Preview returned | [WorkspacePreviewResponse](#workspacepreviewresponse) |
+| 200 | Uploaded | [SandboxUploadResponse](#sandboxuploadresponse) |
 
 ### /apps/{app_id}/workflow/comments
 
@@ -18348,14 +18344,21 @@ Workflow tool configuration
 | remove_webapp_brand | boolean |  | No |
 | replace_webapp_logo | string |  | No |
 
-#### WorkspaceFileEntryResponse
+#### AgentSandboxUploadPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mtime | integer |  | Yes |
+| conversation_id | string | Agent App conversation ID | Yes |
+| path | string | File path relative to the sandbox workspace | Yes |
+
+#### SandboxFileEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mtime | integer |  | No |
 | name | string |  | Yes |
-| size | integer |  | Yes |
-| type | string | *Enum:* `"dir"`, `"file"`, `"symlink"` | Yes |
+| size | integer |  | No |
+| type | string | *Enum:* `"dir"`, `"file"`, `"other"`, `"symlink"` | Yes |
 
 #### WorkspaceInfoPayload
 
@@ -18370,11 +18373,11 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
-#### WorkspaceListResponse
+#### SandboxListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| entries | [ [WorkspaceFileEntryResponse](#workspacefileentryresponse) ] |  | No |
+| entries | [ [SandboxFileEntryResponse](#sandboxfileentryresponse) ] |  | No |
 | path | string |  | Yes |
 | truncated | boolean |  | No |
 
@@ -18386,15 +18389,36 @@ Workflow tool configuration
 | allow_owner_transfer | boolean |  | Yes |
 | workspace_id | string |  | Yes |
 
-#### WorkspacePreviewResponse
+#### SandboxReadResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | binary | boolean |  | Yes |
 | path | string |  | Yes |
-| size | integer |  | Yes |
+| size | integer |  | No |
 | text | string |  | No |
 | truncated | boolean |  | Yes |
+
+#### SandboxToolFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reference | string |  | Yes |
+| transfer_method | string | *Enum:* `"tool_file"` | No |
+
+#### SandboxUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file | [SandboxToolFileResponse](#sandboxtoolfileresponse) |  | Yes |
+| path | string |  | Yes |
+
+#### WorkflowAgentSandboxUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_execution_id | string | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No |
+| path | string | File path relative to the sandbox workspace | Yes |
 
 #### _AnonymousInlineModel_7b67ac8a4db8
 

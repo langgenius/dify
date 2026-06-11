@@ -25,9 +25,9 @@ from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.routes.runs import create_runs_router
-from dify_agent.server.routes.workspace_files import create_workspace_files_router
+from dify_agent.server.routes.sandbox_files import create_sandbox_files_router
+from dify_agent.server.sandbox_files import SandboxFileService
 from dify_agent.server.settings import ServerSettings
-from dify_agent.server.workspace_files import WorkspaceFileService
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
@@ -44,11 +44,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         agent_stub_url=resolved_settings.agent_stub_url,
         agent_stub_token_codec=agent_stub_token_codec,
     )
-    workspace_file_service = (
-        WorkspaceFileService(
-            shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
-            shellctl_auth_token=resolved_settings.shellctl_auth_token,
-        )
+    sandbox_file_service = (
+        SandboxFileService(layer_providers=layer_providers)
         if resolved_settings.shellctl_entrypoint
         else None
     )
@@ -100,8 +97,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
     app.include_router(create_runs_router(get_store, get_scheduler))
-    # TODO: refactor
-    app.include_router(create_workspace_files_router(lambda: workspace_file_service))
+    app.include_router(create_sandbox_files_router(lambda: sandbox_file_service))
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,

@@ -46,15 +46,15 @@ import {
   zGetAppsByAppIdAgentLogsResponse,
   zGetAppsByAppIdAgentReferencingWorkflowsPath,
   zGetAppsByAppIdAgentReferencingWorkflowsResponse,
-  zGetAppsByAppIdAgentWorkspaceFilesDownloadPath,
-  zGetAppsByAppIdAgentWorkspaceFilesDownloadQuery,
-  zGetAppsByAppIdAgentWorkspaceFilesDownloadResponse,
-  zGetAppsByAppIdAgentWorkspaceFilesPath,
-  zGetAppsByAppIdAgentWorkspaceFilesPreviewPath,
-  zGetAppsByAppIdAgentWorkspaceFilesPreviewQuery,
-  zGetAppsByAppIdAgentWorkspaceFilesPreviewResponse,
-  zGetAppsByAppIdAgentWorkspaceFilesQuery,
-  zGetAppsByAppIdAgentWorkspaceFilesResponse,
+  zGetAppsByAppIdAgentSandboxFilesPath,
+  zGetAppsByAppIdAgentSandboxFilesQuery,
+  zGetAppsByAppIdAgentSandboxFilesResponse,
+  zGetAppsByAppIdAgentSandboxFilesReadPath,
+  zGetAppsByAppIdAgentSandboxFilesReadQuery,
+  zGetAppsByAppIdAgentSandboxFilesReadResponse,
+  zPostAppsByAppIdAgentSandboxFilesUploadBody,
+  zPostAppsByAppIdAgentSandboxFilesUploadPath,
+  zPostAppsByAppIdAgentSandboxFilesUploadResponse,
   zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdPath,
   zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse,
   zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdPath,
@@ -153,15 +153,15 @@ import {
   zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse,
   zGetAppsByAppIdWorkflowRunsByRunIdPath,
   zGetAppsByAppIdWorkflowRunsByRunIdResponse,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadPath,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadQuery,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponse,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPath,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewPath,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewQuery,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesQuery,
-  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse,
+  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesPath,
+  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesQuery,
+  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse,
+  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadPath,
+  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadQuery,
+  zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse,
+  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadBody,
+  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadPath,
+  zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse,
   zGetAppsByAppIdWorkflowRunsCountPath,
   zGetAppsByAppIdWorkflowRunsCountQuery,
   zGetAppsByAppIdWorkflowRunsCountResponse,
@@ -903,80 +903,80 @@ export const agentReferencingWorkflows = {
 }
 
 /**
- * Download a file from an Agent App conversation's sandbox workspace (read-only)
+ * Read a text/binary preview file in an Agent App conversation sandbox
  */
 export const get7 = oc
   .route({
-    description: 'Download a file from an Agent App conversation\'s sandbox workspace (read-only)',
+    description: 'Read a text/binary preview file in an Agent App conversation sandbox',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getAppsByAppIdAgentWorkspaceFilesDownload',
-    path: '/apps/{app_id}/agent-workspace/files/download',
+    operationId: 'getAppsByAppIdAgentSandboxFilesRead',
+    path: '/apps/{app_id}/agent-sandbox/files/read',
     tags: ['console'],
   })
   .input(
     z.object({
-      params: zGetAppsByAppIdAgentWorkspaceFilesDownloadPath,
-      query: zGetAppsByAppIdAgentWorkspaceFilesDownloadQuery,
+      params: zGetAppsByAppIdAgentSandboxFilesReadPath,
+      query: zGetAppsByAppIdAgentSandboxFilesReadQuery,
     }),
   )
-  .output(zGetAppsByAppIdAgentWorkspaceFilesDownloadResponse)
+  .output(zGetAppsByAppIdAgentSandboxFilesReadResponse)
 
-export const download = {
+export const readSandbox = {
   get: get7,
 }
 
 /**
- * Preview a text/binary file in an Agent App conversation's sandbox workspace
+ * List a directory in an Agent App conversation sandbox
  */
 export const get8 = oc
   .route({
-    description: 'Preview a text/binary file in an Agent App conversation\'s sandbox workspace',
+    description: 'List a directory in an Agent App conversation sandbox',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getAppsByAppIdAgentWorkspaceFilesPreview',
-    path: '/apps/{app_id}/agent-workspace/files/preview',
+    operationId: 'getAppsByAppIdAgentSandboxFiles',
+    path: '/apps/{app_id}/agent-sandbox/files',
     tags: ['console'],
   })
   .input(
     z.object({
-      params: zGetAppsByAppIdAgentWorkspaceFilesPreviewPath,
-      query: zGetAppsByAppIdAgentWorkspaceFilesPreviewQuery,
+      params: zGetAppsByAppIdAgentSandboxFilesPath,
+      query: zGetAppsByAppIdAgentSandboxFilesQuery,
     }),
   )
-  .output(zGetAppsByAppIdAgentWorkspaceFilesPreviewResponse)
-
-export const preview2 = {
-  get: get8,
-}
+  .output(zGetAppsByAppIdAgentSandboxFilesResponse)
 
 /**
- * List a directory in an Agent App conversation's sandbox workspace (read-only)
+ * Upload one Agent App sandbox file as a Dify ToolFile mapping
  */
 export const get9 = oc
   .route({
-    description: 'List a directory in an Agent App conversation\'s sandbox workspace (read-only)',
+    description: 'Upload one Agent App sandbox file as a Dify ToolFile mapping',
     inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAppsByAppIdAgentWorkspaceFiles',
-    path: '/apps/{app_id}/agent-workspace/files',
+    method: 'POST',
+    operationId: 'postAppsByAppIdAgentSandboxFilesUpload',
+    path: '/apps/{app_id}/agent-sandbox/files/upload',
     tags: ['console'],
   })
   .input(
     z.object({
-      params: zGetAppsByAppIdAgentWorkspaceFilesPath,
-      query: zGetAppsByAppIdAgentWorkspaceFilesQuery,
+      body: zPostAppsByAppIdAgentSandboxFilesUploadBody,
+      params: zPostAppsByAppIdAgentSandboxFilesUploadPath,
     }),
   )
-  .output(zGetAppsByAppIdAgentWorkspaceFilesResponse)
+  .output(zPostAppsByAppIdAgentSandboxFilesUploadResponse)
 
-export const files = {
-  get: get9,
-  download,
-  preview: preview2,
+export const uploadSandbox = {
+  post: get9,
 }
 
-export const agentWorkspace = {
+export const files = {
+  get: get8,
+  read: readSandbox,
+  upload: uploadSandbox,
+}
+
+export const agentSandbox = {
   files,
 }
 
@@ -2854,91 +2854,85 @@ export const byRunId = {
 }
 
 /**
- * Download a file from a Workflow Agent node's sandbox workspace (read-only)
+ * Read a text/binary preview file in a workflow Agent node sandbox
  */
 export const get47 = oc
   .route({
-    description: 'Download a file from a Workflow Agent node\'s sandbox workspace (read-only)',
+    description: 'Read a text/binary preview file in a workflow Agent node sandbox',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId:
-      'getAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownload',
-    path: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/download',
+    operationId: 'getAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesRead',
+    path: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read',
     tags: ['console'],
   })
   .input(
     z.object({
-      params:
-        zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadPath,
-      query:
-        zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadQuery,
+      params: zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadPath,
+      query: zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadQuery,
     }),
   )
-  .output(
-    zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponse,
-  )
+  .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse)
 
-export const download2 = {
+export const readSandbox2 = {
   get: get47,
 }
 
 /**
- * Preview a text/binary file in a Workflow Agent node's sandbox workspace
+ * List a directory in a workflow Agent node sandbox
  */
 export const get48 = oc
   .route({
-    description: 'Preview a text/binary file in a Workflow Agent node\'s sandbox workspace',
+    description: 'List a directory in a workflow Agent node sandbox',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreview',
-    path: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/preview',
+    operationId: 'getAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFiles',
+    path: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files',
     tags: ['console'],
   })
   .input(
     z.object({
-      params: zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewPath,
-      query: zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewQuery,
+      params: zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesPath,
+      query: zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesQuery.optional(),
     }),
   )
-  .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse)
-
-export const preview3 = {
-  get: get48,
-}
+  .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse)
 
 /**
- * List a directory in a Workflow Agent node's sandbox workspace (read-only)
+ * Upload one workflow Agent sandbox file as a Dify ToolFile mapping
  */
 export const get49 = oc
   .route({
-    description: 'List a directory in a Workflow Agent node\'s sandbox workspace (read-only)',
+    description: 'Upload one workflow Agent sandbox file as a Dify ToolFile mapping',
     inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFiles',
-    path: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUpload',
+    path: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload',
     tags: ['console'],
   })
   .input(
     z.object({
-      params: zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPath,
-      query:
-        zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesQuery.optional(),
+      body: zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadBody,
+      params: zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadPath,
     }),
   )
-  .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse)
+  .output(zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse)
 
-export const files2 = {
-  get: get49,
-  download: download2,
-  preview: preview3,
+export const uploadSandbox2 = {
+  post: get49,
 }
 
-export const workspace = {
+export const files2 = {
+  get: get48,
+  read: readSandbox2,
+  upload: uploadSandbox2,
+}
+
+export const sandbox = {
   files: files2,
 }
 
 export const byNodeId4 = {
-  workspace,
+  sandbox,
 }
 
 export const agentNodes = {
@@ -4848,7 +4842,7 @@ export const byAppId2 = {
   agentComposer,
   agentFeatures,
   agentReferencingWorkflows,
-  agentWorkspace,
+  agentSandbox,
   agent,
   annotationReply,
   annotationSetting,
