@@ -1,6 +1,7 @@
 import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
+import { setVerbose } from '@/framework/context'
 import { HttpClientError } from './base'
 import { ErrorCode } from './codes'
 import { formatErrorForCli } from './format'
@@ -32,6 +33,10 @@ function validationError(overrides: ValidationErrorOverrides = {}): HttpClientEr
     },
   })
 }
+
+afterEach(() => {
+  setVerbose(false)
+})
 
 describe('formatErrorForCli — human', () => {
   it('prints server code, message, and details without verbose', () => {
@@ -74,6 +79,64 @@ describe('formatErrorForCli — human', () => {
 
     expect(out).toContain('- body required (invalid)')
     expect(out).not.toContain('- : body required')
+  })
+
+  it('hints at -v when a raw response exists but is hidden', () => {
+    const err = new HttpClientError({
+      code: ErrorCode.Server4xxOther,
+      message: 'request failed (HTTP 400)',
+      httpStatus: 400,
+      rawResponse: '<html>not json</html>',
+    })
+
+    const out = formatErrorForCli(err, { isErrTTY: false })
+
+    expect(out).toContain('run again with -v to see the raw server response')
+    expect(out).not.toContain('raw_response')
+  })
+
+  it('no -v hint when the server body parsed', () => {
+    const err = new HttpClientError({
+      code: ErrorCode.Server4xxOther,
+      message: 'Request validation failed',
+      httpStatus: 422,
+      rawResponse: '{"code":"invalid_param","message":"Request validation failed","status":422}',
+      serverError: { code: 'invalid_param', message: 'Request validation failed', status: 422 },
+    })
+
+    const out = formatErrorForCli(err, { isErrTTY: false })
+
+    expect(out).not.toContain('run again with -v')
+  })
+
+  it('existing hints win over the -v hint', () => {
+    const err = new HttpClientError({
+      code: ErrorCode.Server4xxOther,
+      message: 'request failed (HTTP 400)',
+      httpStatus: 400,
+      hint: 'cli hint',
+      rawResponse: '<html>not json</html>',
+    })
+
+    const out = formatErrorForCli(err, { isErrTTY: false })
+
+    expect(out).toContain('cli hint')
+    expect(out).not.toContain('run again with -v')
+  })
+
+  it('shows raw_response instead of the -v hint when verbose', () => {
+    setVerbose(true)
+    const err = new HttpClientError({
+      code: ErrorCode.Server4xxOther,
+      message: 'request failed (HTTP 400)',
+      httpStatus: 400,
+      rawResponse: '<html>not json</html>',
+    })
+
+    const out = formatErrorForCli(err, { isErrTTY: false })
+
+    expect(out).toContain('raw_response: <html>not json</html>')
+    expect(out).not.toContain('run again with -v')
   })
 
   it('renders request and http_status lines', () => {

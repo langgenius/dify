@@ -3,6 +3,8 @@ import { isVerbose } from '@/framework/context'
 import { redactBearer } from '@/http/sanitize'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 
+const RAW_RESPONSE_HINT = 'run again with -v to see the raw server response'
+
 export type FormatErrorOptions = {
   readonly format?: string
   readonly isErrTTY?: boolean
@@ -54,7 +56,7 @@ function renderHuman(env: ErrorEnvelope, isErrTTY: boolean): string {
     const loc = (d.loc ?? []).join('.')
     lines.push(`  - ${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`)
   }
-  const hint = server?.hint ?? e.hint
+  const hint = server?.hint ?? e.hint ?? (server === undefined && e.raw_response && !isVerbose() ? RAW_RESPONSE_HINT : undefined)
   if (hint !== undefined && hint !== null)
     lines.push(`${cs.magenta('hint:')} ${cs.cyan(hint)}`)
   if (e.method !== undefined && e.url !== undefined)
