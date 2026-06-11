@@ -38,13 +38,16 @@ export type AgentSkillDetail = {
   description: string
   fileCount?: number
   files: AgentSkillFileNode[]
+  selectedFileId?: string
   sections: AgentSkillDetailSection[]
 }
 
 function AgentSkillFileRows({
   files,
+  selectedFileId,
 }: {
   files: AgentSkillFileNode[]
+  selectedFileId?: string
 }) {
   return files.map((file) => {
     if (file.children?.length) {
@@ -55,14 +58,14 @@ function AgentSkillFileRows({
             <FileTreeLabel className="max-w-full" title={file.name}>{file.name}</FileTreeLabel>
           </FileTreeFolderTrigger>
           <FileTreeFolderPanel>
-            <AgentSkillFileRows files={file.children} />
+            <AgentSkillFileRows files={file.children} selectedFileId={selectedFileId} />
           </FileTreeFolderPanel>
         </FileTreeFolder>
       )
     }
 
     return (
-      <FileTreeFile key={file.id}>
+      <FileTreeFile key={file.id} selected={file.id === selectedFileId}>
         <FileTreeIcon type={file.icon} />
         <FileTreeLabel className="max-w-full" title={file.name}>{file.name}</FileTreeLabel>
       </FileTreeFile>
@@ -77,14 +80,16 @@ function countFiles(files: AgentSkillFileNode[]): number {
 function AgentSkillFileList({
   files,
   fileCount,
+  selectedFileId,
 }: {
   files: AgentSkillFileNode[]
   fileCount: number
+  selectedFileId?: string
 }) {
   const { t } = useTranslation('agentV2')
 
   return (
-    <aside className="flex h-64.5 w-54 max-w-54 min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3">
+    <aside className="flex h-[258px] w-full max-w-full min-w-0 flex-col overflow-clip rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3">
       <h3 id="agent-skill-detail-files-heading" className="sr-only">
         {t('agentDetail.configure.skills.detail.files')}
       </h3>
@@ -94,14 +99,21 @@ function AgentSkillFileList({
       >
         {t('agentDetail.configure.skills.detail.fileCount', { count: fileCount })}
       </div>
-      <FileTreeRoot
-        aria-labelledby="agent-skill-detail-files-heading"
-        className="min-h-0 w-full max-w-full flex-1 overflow-hidden p-0"
+      <ScrollArea
+        className="min-h-0 w-full max-w-full flex-1 overflow-hidden"
+        labelledBy="agent-skill-detail-files-heading"
+        slotClassNames={{
+          viewport: 'overscroll-contain',
+          content: 'w-full max-w-full min-w-0',
+          scrollbar: 'hidden',
+        }}
       >
-        <FileTreeList className="w-full max-w-full overflow-hidden">
-          <AgentSkillFileRows files={files} />
-        </FileTreeList>
-      </FileTreeRoot>
+        <FileTreeRoot className="w-full max-w-full min-w-0 p-0">
+          <FileTreeList className="w-full max-w-full min-w-0">
+            <AgentSkillFileRows files={files} selectedFileId={selectedFileId} />
+          </FileTreeList>
+        </FileTreeRoot>
+      </ScrollArea>
     </aside>
   )
 }
@@ -169,7 +181,7 @@ export function AgentSkillDetailDialog({
           ))}
         </ScrollArea>
         <div className="flex w-56 max-w-56 min-w-0 shrink-0 items-start justify-center p-4 pl-2">
-          <AgentSkillFileList files={detail.files} fileCount={fileCount} />
+          <AgentSkillFileList files={detail.files} fileCount={fileCount} selectedFileId={detail.selectedFileId} />
         </div>
       </div>
     </DialogContent>

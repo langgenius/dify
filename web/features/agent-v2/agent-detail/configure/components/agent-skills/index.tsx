@@ -8,6 +8,7 @@ import { AgentSkillItem } from './agent-skill-item'
 const createSkillDetail = (skillName: string) => ({
   description: 'Dify brand executor rules, voice, typography, layout patterns, and visual design system. Use when generating any Dify brand material including web pages, social graphics, presentations, one-pagers, and pitch decks.',
   fileCount: 12,
+  selectedFileId: `${skillName}-skill-md`,
   files: [
     {
       id: `${skillName}-skill-md`,
