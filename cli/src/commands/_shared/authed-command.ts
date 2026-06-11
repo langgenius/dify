@@ -39,13 +39,13 @@ export async function buildAuthedContext(
   opts: AuthedContextOptions,
 ): Promise<AuthedContext> {
   const io = realStreams(opts.format ?? '')
-  const reg = Registry.load()
+  const reg = await Registry.load()
   const active = reg.resolveActive()
   if (active === undefined)
     fail(cmd, opts, io)
 
-  const { store } = getTokenStore()
-  const bearer = store.get(tokenKey(active.host, active.email))
+  const { store } = await getTokenStore()
+  const bearer = await store.get(tokenKey(active.host, active.email))
   if (bearer === '')
     fail(cmd, opts, io)
 

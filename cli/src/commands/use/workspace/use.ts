@@ -66,7 +66,7 @@ export async function runUseWorkspace(
     available_workspaces: list.workspaces.map<Workspace>(w => ({ id: w.id, name: w.name, role: w.role })),
   }
   deps.reg.upsert(deps.active.host, deps.active.email, nextCtx)
-  deps.reg.save()
+  await deps.reg.save()
   deps.io.out.write(`${cs.successIcon()} Switched to ${matched.name} (${matched.id})\n`)
   return deps.reg
 }

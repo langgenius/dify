@@ -11,9 +11,9 @@ import { runUseAccount } from './use-account'
 function memStore(seed: Record<string, string>): Store {
   const m = new Map<string, unknown>(Object.entries(seed))
   return {
-    get<T>(k: Key<T>): T { return (m.get(k.key) as T | undefined) ?? k.default },
-    set<T>(k: Key<T>, v: T): void { m.set(k.key, v) },
-    unset<T>(k: Key<T>): void { m.delete(k.key) },
+    async get<T>(k: Key<T>): Promise<T> { return (m.get(k.key) as T | undefined) ?? k.default },
+    async set<T>(k: Key<T>, v: T): Promise<void> { m.set(k.key, v) },
+    async unset<T>(k: Key<T>): Promise<void> { m.delete(k.key) },
   }
 }
 
@@ -29,7 +29,7 @@ describe('runUseAccount', () => {
     reg.upsert('h1', 'b@x', { account: { id: '2', email: 'b@x', name: 'B' } })
     reg.setHost('h1')
     reg.setAccount('a@x')
-    reg.save()
+    await reg.save()
   })
   afterEach(async () => {
     if (prev === undefined)
@@ -40,7 +40,7 @@ describe('runUseAccount', () => {
 
   it('switches current_account when email valid + token present', async () => {
     await runUseAccount({ io: bufferStreams(), email: 'b@x', store: memStore({ 'tokens.h1.b@x': 'dfoa_b' }) })
-    expect(Registry.load().hosts.h1?.current_account).toBe('b@x')
+    expect((await Registry.load()).hosts.h1?.current_account).toBe('b@x')
   })
 
   it('errors when the account has no stored token', async () => {

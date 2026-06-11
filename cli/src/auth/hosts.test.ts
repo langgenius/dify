@@ -140,19 +140,19 @@ describe('Registry.load / Registry.save', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  it('returns an empty registry when nothing saved', () => {
-    const reg = Registry.load()
+  it('returns an empty registry when nothing saved', async () => {
+    const reg = await Registry.load()
     expect(reg.current_host).toBeUndefined()
     expect(Object.keys(reg.hosts)).toHaveLength(0)
   })
 
-  it('round-trips a populated registry', () => {
+  it('round-trips a populated registry', async () => {
     const reg = Registry.empty('keychain')
     reg.upsert('cloud.dify.ai', 'a@x', { account: { id: '1', email: 'a@x', name: 'A' } })
     reg.setHost('cloud.dify.ai')
     reg.setAccount('a@x')
-    reg.save()
-    const loaded = Registry.load()
+    await reg.save()
+    const loaded = await Registry.load()
     expect(loaded?.current_host).toBe('cloud.dify.ai')
     expect(loaded?.hosts['cloud.dify.ai']?.accounts['a@x']?.account.email).toBe('a@x')
   })
@@ -160,9 +160,9 @@ describe('Registry.load / Registry.save', () => {
 
 class MemStore implements Store {
   readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T { return (this.entries.get(key.key) as T | undefined) ?? key.default }
-  set<T>(key: Key<T>, value: T): void { this.entries.set(key.key, value) }
-  unset<T>(key: Key<T>): void { this.entries.delete(key.key) }
+  async get<T>(key: Key<T>): Promise<T> { return (this.entries.get(key.key) as T | undefined) ?? key.default }
+  async set<T>(key: Key<T>, value: T): Promise<void> { this.entries.set(key.key, value) }
+  async unset<T>(key: Key<T>): Promise<void> { this.entries.delete(key.key) }
 }
 
 describe('Registry.forget', () => {
@@ -180,21 +180,21 @@ describe('Registry.forget', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  it('drops token + active context, keeps siblings, unsets pointers', () => {
+  it('drops token + active context, keeps siblings, unsets pointers', async () => {
     const store = new MemStore()
     const reg = Registry.empty('file')
     reg.upsert('h1', 'a@x', { account: { id: '1', email: 'a@x', name: 'A' } })
     reg.upsert('h1', 'b@x', { account: { id: '2', email: 'b@x', name: 'B' } })
     reg.setHost('h1')
     reg.setAccount('a@x')
-    reg.save()
-    store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
+    await reg.save()
+    await store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
 
     const active = reg.resolveActive()!
-    reg.forget(active, store)
+    await reg.forget(active, store)
 
-    expect(store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
-    const after = Registry.load()
+    expect(await store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
+    const after = await Registry.load()
     expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
     expect(after?.hosts.h1?.accounts['b@x']).toBeDefined()
     expect(after?.current_host).toBeUndefined()

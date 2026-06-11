@@ -19,7 +19,7 @@ describe('runUseHost', () => {
     reg.upsert('h2', 'b@x', { account: { id: '2', email: 'b@x', name: 'B' } })
     reg.setHost('h1')
     reg.setAccount('a@x')
-    reg.save()
+    await reg.save()
   })
   afterEach(async () => {
     if (prev === undefined)
@@ -30,7 +30,7 @@ describe('runUseHost', () => {
 
   it('switches current_host when host is valid', async () => {
     await runUseHost({ io: bufferStreams(), host: 'h2' })
-    expect(Registry.load().current_host).toBe('h2')
+    expect((await Registry.load()).current_host).toBe('h2')
   })
 
   it('errors when host is unknown, listing valid hosts', async () => {
@@ -44,7 +44,7 @@ describe('runUseHost', () => {
   })
 
   it('errors when no hosts exist', async () => {
-    Registry.empty('file').save()
+    await Registry.empty('file').save()
     await expect(runUseHost({ io: bufferStreams(), host: 'h1' })).rejects.toThrow(/no hosts|not logged in/i)
   })
 })
