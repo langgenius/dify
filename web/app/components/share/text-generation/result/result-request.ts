@@ -60,6 +60,52 @@ const hasPendingLocalFiles = (completionFiles: VisionFile[]) => {
   return completionFiles.some(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+const isProcessedFileInput = (value: unknown): value is Record<string, unknown> => {
+  return isRecord(value) && 'transfer_method' in value
+}
+
+const processInputFileFromServer = (fileItem: Record<string, unknown>) => {
+  return {
+    type: fileItem.type,
+    transfer_method: fileItem.transfer_method,
+    url: fileItem.url || fileItem.remote_url || '',
+    upload_file_id: fileItem.upload_file_id || fileItem.related_id || '',
+  }
+}
+
+const hasPendingPromptFile = (value: ResultInputValue) => {
+  if (!value)
+    return false
+
+  const files = Array.isArray(value) ? value : [value]
+
+  return files.some((file) => {
+    if (!isRecord(file))
+      return false
+
+    if ('transfer_method' in file)
+      return file.transfer_method === TransferMethod.local_file && !file.upload_file_id && !file.related_id
+
+    return file.transferMethod === TransferMethod.local_file && !file.uploadedId
+  })
+}
+
+const hasPendingPromptFiles = (
+  promptVariables: PromptConfig['prompt_variables'] | undefined,
+  inputs: Record<string, ResultInputValue>,
+) => {
+  return promptVariables?.some((variable) => {
+    if (variable.type !== 'file' && variable.type !== 'file-list')
+      return false
+
+    return hasPendingPromptFile(inputs[variable.key])
+  })
+}
+
 export const validateResultRequest = ({
   completionFiles,
   inputs,
@@ -106,7 +152,7 @@ export const validateResultRequest = ({
     }
   }
 
-  if (hasPendingLocalFiles(completionFiles)) {
+  if (hasPendingLocalFiles(completionFiles) || hasPendingPromptFiles(promptVariables, inputs)) {
     return {
       canSend: false,
       notification: {
@@ -132,12 +178,20 @@ export const buildResultRequestData = ({
   promptConfig?.prompt_variables.forEach((variable) => {
     const value = processedInputs[variable.key]
     if (variable.type === 'file' && value && typeof value === 'object' && !Array.isArray(value)) {
-      processedInputs[variable.key] = getProcessedFiles([value as FileEntity])[0]!
+      processedInputs[variable.key] = isProcessedFileInput(value)
+        ? processInputFileFromServer(value)
+        : getProcessedFiles([value as FileEntity])[0]!
       return
     }
 
-    if (variable.type === 'file-list' && Array.isArray(value) && value.length > 0)
-      processedInputs[variable.key] = getProcessedFiles(value as FileEntity[])
+    if (variable.type === 'file-list' && Array.isArray(value) && value.length > 0) {
+      processedInputs[variable.key] = value.map((file) => {
+        if (isProcessedFileInput(file))
+          return processInputFileFromServer(file)
+
+        return getProcessedFiles([file as FileEntity])[0]!
+      })
+    }
   })
 
   return {
