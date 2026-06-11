@@ -19,6 +19,9 @@ export type WorkflowCanvasShortcutId
     | 'workflow.zoom-in'
     | 'workflow.download-import-log'
     | 'workflow.dim-other-nodes'
+    | 'workflow.save'
+    | 'workflow.run'
+    | 'workflow.stop'
 
 export type WorkflowCanvasHotkeyMeta = {
   id: WorkflowCanvasShortcutId
@@ -147,6 +150,24 @@ export const WORKFLOW_CANVAS_SHORTCUTS: Record<WorkflowCanvasShortcutId, Workflo
     displayHotkey: 'Shift',
     name: 'Dim other nodes',
     description: 'Dim nodes outside the current workflow selection',
+  },
+  'workflow.save': {
+    id: 'workflow.save',
+    hotkeys: ['Mod+S'],
+    name: 'Save workflow draft',
+    description: 'Save the current workflow draft',
+  },
+  'workflow.run': {
+    id: 'workflow.run',
+    hotkeys: ['Mod+Enter'],
+    name: 'Run workflow',
+    description: 'Run the current workflow',
+  },
+  'workflow.stop': {
+    id: 'workflow.stop',
+    hotkeys: ['Escape'],
+    name: 'Stop workflow run',
+    description: 'Stop the active workflow run',
   },
 }
 
