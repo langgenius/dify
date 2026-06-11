@@ -1,8 +1,6 @@
 'use client'
 
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
-import type { AgentFileNode } from '../configured-data'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   FileTreeFile,
   FileTreeFolder,

@@ -1,6 +1,5 @@
 'use client'
 
-import type { AgentCliTool, AgentProviderTool, AgentTool, AgentToolAction } from '../configured-data'
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
@@ -236,28 +235,28 @@ function AgentCliToolItem({
       </div>
       {tool.action === 'preAuthorize'
         ? (
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              className="flex items-center justify-center rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span aria-hidden className="mr-1 i-ri-key-2-line size-3.5" />
-              <span className="system-xs-medium">{t('agentDetail.configure.tools.preAuthorize')}</span>
-            </button>
-            <button
-              type="button"
-              aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span aria-hidden className="i-ri-more-fill size-4" />
-            </button>
-          </div>
-        )
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                className="flex items-center justify-center rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              >
+                <span aria-hidden className="mr-1 i-ri-key-2-line size-3.5" />
+                <span className="system-xs-medium">{t('agentDetail.configure.tools.preAuthorize')}</span>
+              </button>
+              <button
+                type="button"
+                aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
+                className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              >
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </button>
+            </div>
+          )
         : (
-          <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-            {t('agentDetail.configure.tools.cliTool')}
-          </span>
-        )}
+            <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+              {t('agentDetail.configure.tools.cliTool')}
+            </span>
+          )}
     </div>
   )
 }

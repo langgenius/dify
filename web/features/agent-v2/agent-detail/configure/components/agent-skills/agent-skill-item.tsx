@@ -8,13 +8,16 @@ import { AgentSkillDetailDialog } from './agent-skill-detail-dialog'
 export type AgentSkill = {
   id: string
   name: string
+}
+
+export type AgentSkillWithDetail = AgentSkill & {
   detail: AgentSkillDetail
 }
 
 export function AgentSkillItem({
   skill,
 }: {
-  skill: AgentSkill
+  skill: AgentSkillWithDetail
 }) {
   const { t } = useTranslation('agentV2')
 

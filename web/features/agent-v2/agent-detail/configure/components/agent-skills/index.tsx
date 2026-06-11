@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentSkill } from './agent-skill-item'
+import type { AgentSkillWithDetail } from './agent-skill-item'
 import { useTranslation } from 'react-i18next'
 import { ConfigureSection } from '../configure-section'
 import { AgentSkillItem } from './agent-skill-item'
@@ -172,7 +172,7 @@ const createSkillDetail = (skillName: string) => ({
   ],
 })
 
-const defaultSkills: AgentSkill[] = [
+const defaultSkills: AgentSkillWithDetail[] = [
   {
     id: 'tender-analyzer-1',
     name: 'tender-analyzer',
@@ -198,7 +198,7 @@ const defaultSkills: AgentSkill[] = [
 export function AgentSkills({
   skills = defaultSkills,
 }: {
-  skills?: AgentSkill[]
+  skills?: AgentSkillWithDetail[]
 }) {
   const { t } = useTranslation('agentV2')
   const skillsTip = t('agentDetail.configure.skills.tip')

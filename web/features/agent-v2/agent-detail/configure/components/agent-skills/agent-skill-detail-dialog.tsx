@@ -100,10 +100,10 @@ function AgentSkillFileList({
         {t('agentDetail.configure.skills.detail.fileCount', { count: fileCount })}
       </div>
       <ScrollArea
-        className="min-h-0 w-full max-w-full flex-1 overflow-hidden"
+        className="relative min-h-0 w-full max-w-full flex-1 has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"
         labelledBy="agent-skill-detail-files-heading"
         slotClassNames={{
-          viewport: 'overscroll-contain',
+          viewport: 'overscroll-contain outline-none focus-visible:outline-none mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
           content: 'w-full max-w-full min-w-0',
           scrollbar: 'hidden',
         }}
@@ -168,11 +168,11 @@ export function AgentSkillDetailDialog({
 
       <div className="flex min-h-0 flex-1 items-start">
         <ScrollArea
-          className="min-h-0 flex-1 self-stretch overflow-hidden"
+          className="relative min-h-0 flex-1 self-stretch overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"
           label={t('agentDetail.configure.skills.detail.contentRegion')}
           slotClassNames={{
-            viewport: 'overscroll-contain',
-            content: 'flex min-h-full flex-col gap-2 px-6 pt-4 pb-0',
+            viewport: 'overscroll-contain outline-none focus-visible:outline-none mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
+            content: 'flex min-h-full w-full max-w-full min-w-0 flex-col gap-2 px-6 pt-4 pb-0',
             scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
           }}
         >
