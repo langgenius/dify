@@ -42,6 +42,7 @@ from models import Account
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.conversation_service import ConversationService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -112,6 +113,12 @@ class CompletionMessageApi(Resource):
 
         streaming = args_model.response_mode != "blocking"
         args["auto_generate_name"] = False
+
+        # Eagerly validate conversation to avoid hanging on invalid conversation_id
+        if args_model.conversation_id:
+            ConversationService.get_conversation(
+                app_model=app_model, conversation_id=args_model.conversation_id, user=current_user
+            )
 
         try:
             response = AppGenerateService.generate(
