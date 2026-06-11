@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import subprocess
 import sys
 import time
 from collections import Counter
@@ -17,6 +18,9 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 API_DIR = REPO_ROOT / "api"
 DEFAULT_CASES = SCRIPT_DIR / "generation_eval_cases.yml"
 DEFAULT_OUTPUT_ROOT = SCRIPT_DIR / "outputs"
+DEFAULT_COOKIE_JAR = Path.home() / ".dify_console_cookies.txt"
+DEFAULT_CONSOLE_BASE = "http://localhost"
+DEFAULT_DEBUG_INPUTS = {"input": "hello"}
 
 
 def load_app_dsl_agent_service():
@@ -33,6 +37,14 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
     if not cases:
         raise ValueError(f"{path} does not define any cases")
     return cases
+
+
+def write_json(path: Path, data: Any) -> None:
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+
+
+def read_json(path: Path) -> Any:
+    return json.loads(path.read_text())
 
 
 def graph_nodes(yaml_content: str) -> list[dict[str, Any]]:
@@ -114,6 +126,125 @@ def assert_case_expectations(
     return errors
 
 
+def parse_json_arg(value: str | None, default: Any) -> Any:
+    if not value:
+        return default
+    parsed = json.loads(value)
+    return parsed
+
+
+def case_inputs(case: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    if args.inputs:
+        parsed = parse_json_arg(args.inputs, DEFAULT_DEBUG_INPUTS)
+        if not isinstance(parsed, dict):
+            raise ValueError("--inputs must be a JSON object")
+        return parsed
+    inputs = case.get("inputs")
+    if isinstance(inputs, dict):
+        return inputs
+    return dict(DEFAULT_DEBUG_INPUTS)
+
+
+def debug_loop_skip_reason(case: dict[str, Any]) -> str | None:
+    debug_config = case.get("debug")
+    if not isinstance(debug_config, dict):
+        return None
+    if debug_config.get("skip"):
+        return str(debug_config.get("reason") or "debug loop disabled for this case")
+    return None
+
+
+def run_debug_loop_for_case(
+    *,
+    case: dict[str, Any],
+    case_dir: Path,
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    skip_reason = debug_loop_skip_reason(case)
+    if skip_reason:
+        return {
+            "enabled": True,
+            "skipped": True,
+            "skip_reason": skip_reason,
+            "ok": True,
+        }
+
+    yaml_file = case_dir / "generated.yml"
+    report_path = case_dir / "debug_loop_report.json"
+    inputs = case_inputs(case, args)
+    cmd = [
+        sys.executable,
+        str(SCRIPT_DIR / "debug_loop.py"),
+        str(case_dir),
+        "--yaml-file",
+        str(yaml_file),
+        "--console-base",
+        args.console_base,
+        "--cookie-jar",
+        str(args.cookie_jar),
+        "--mode",
+        str(case.get("mode") or "workflow"),
+        "--inputs",
+        json.dumps(inputs, ensure_ascii=False),
+        "--max-loops",
+        str(args.debug_max_loops),
+        "--repair-backend",
+        args.repair_backend,
+        "--repair-attempts",
+        str(args.repair_attempts),
+        "--output",
+        str(report_path),
+    ]
+    if args.install_missing_dependencies:
+        cmd.append("--install-missing-dependencies")
+    if args.no_wait_plugin_install:
+        cmd.append("--no-wait-plugin-install")
+    if args.skip_run_records:
+        cmd.append("--skip-run-records")
+    if args.no_repair:
+        cmd.append("--no-repair")
+
+    started = time.perf_counter()
+    try:
+        completed = subprocess.run(cmd, capture_output=True, text=True, timeout=args.debug_timeout_seconds)
+        elapsed = time.perf_counter() - started
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "enabled": True,
+            "ok": False,
+            "status": "timeout",
+            "elapsed_seconds": args.debug_timeout_seconds,
+            "report": str(report_path),
+            "stdout": (exc.stdout or "").strip() if isinstance(exc.stdout, str) else "",
+            "stderr": (exc.stderr or "").strip() if isinstance(exc.stderr, str) else "",
+            "error": f"Timed out after {args.debug_timeout_seconds}s",
+        }
+
+    report = read_json(report_path) if report_path.exists() else {"status": "missing_report"}
+    expect_debug = case.get("expect_debug") if isinstance(case.get("expect_debug"), dict) else {}
+    expected_status = str(expect_debug.get("status") or "succeeded")
+    status = str(report.get("status") or "unknown") if isinstance(report, dict) else "unknown"
+    errors: list[str] = []
+    if status != expected_status:
+        errors.append(f"debug status expected {expected_status}, got {status}")
+    if completed.returncode != 0 and status == expected_status:
+        errors.append(f"debug_loop.py returned {completed.returncode}")
+
+    return {
+        "enabled": True,
+        "ok": not errors,
+        "status": status,
+        "expected_status": expected_status,
+        "elapsed_seconds": round(elapsed, 3),
+        "report": str(report_path),
+        "app_id": report.get("app_id") if isinstance(report, dict) else None,
+        "final_yaml": report.get("final_yaml") if isinstance(report, dict) else None,
+        "errors": errors,
+        "stdout": completed.stdout.strip(),
+        "stderr": completed.stderr.strip(),
+    }
+
+
 def run_case(case: dict[str, Any], args: argparse.Namespace, service_module: Any) -> dict[str, Any]:
     case_id = str(case.get("id") or "")
     if not case_id:
@@ -149,14 +280,34 @@ def run_case(case: dict[str, Any], args: argparse.Namespace, service_module: Any
     if case_dir:
         case_dir.mkdir(parents=True, exist_ok=True)
         (case_dir / "generated.yml").write_text(result.yaml_content)
-        (case_dir / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
+        write_json(case_dir / "metadata.json", metadata)
 
     validation = metadata.get("validation") if isinstance(metadata.get("validation"), dict) else {}
     generation = metadata.get("generation") if isinstance(metadata.get("generation"), dict) else {}
+    debug_result = None
+    if args.debug_loop:
+        if expectation_errors:
+            debug_result = {
+                "enabled": True,
+                "skipped": True,
+                "ok": False,
+                "skip_reason": "generation expectations failed",
+            }
+        elif not case_dir:
+            debug_result = {
+                "enabled": True,
+                "skipped": True,
+                "ok": False,
+                "skip_reason": "debug loop requires --output-root",
+            }
+        else:
+            debug_result = run_debug_loop_for_case(case=case, case_dir=case_dir, args=args)
+
+    case_ok = not expectation_errors and (not debug_result or bool(debug_result.get("ok")))
     return {
         "id": case_id,
         "title": case.get("title"),
-        "ok": not expectation_errors,
+        "ok": case_ok,
         "elapsed_seconds": round(elapsed, 3),
         "backend": metadata.get("backend"),
         "generation_backend": generation.get("backend"),
@@ -165,6 +316,7 @@ def run_case(case: dict[str, Any], args: argparse.Namespace, service_module: Any
         "node_type_counts": dict(sorted(type_counts.items())),
         "edge_count": len(edges),
         "expectation_errors": expectation_errors,
+        "debug": debug_result,
         "output_dir": str(case_dir) if case_dir else None,
     }
 
@@ -172,6 +324,12 @@ def run_case(case: dict[str, Any], args: argparse.Namespace, service_module: Any
 def run(args: argparse.Namespace) -> int:
     service_module = load_app_dsl_agent_service()
     cases = load_cases(args.cases)
+    if args.case_id:
+        selected_ids = set(args.case_id)
+        cases = [case for case in cases if str(case.get("id") or "") in selected_ids]
+        missing_ids = selected_ids - {str(case.get("id") or "") for case in cases}
+        if missing_ids:
+            raise ValueError(f"Unknown case id(s): {', '.join(sorted(missing_ids))}")
     if args.output_root:
         args.output_root.mkdir(parents=True, exist_ok=True)
     results = [run_case(case, args, service_module) for case in cases]
@@ -205,6 +363,7 @@ def report_line(report: dict[str, Any]) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate natural-language DSL generation quality.")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
+    parser.add_argument("--case-id", action="append", help="Run only the selected case id. May be repeated.")
     parser.add_argument("--generation-backend", default="deterministic_starter")
     parser.add_argument("--generation-model")
     parser.add_argument("--provider", default="langgenius/openai/openai")
@@ -214,6 +373,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT / "generation_eval_latest")
+    parser.add_argument("--debug-loop", action="store_true", help="Import generated YAML and run draft debug loop.")
+    parser.add_argument("--console-base", default=DEFAULT_CONSOLE_BASE)
+    parser.add_argument("--cookie-jar", type=Path, default=DEFAULT_COOKIE_JAR)
+    parser.add_argument("--inputs", help="Override all case inputs with a JSON object.")
+    parser.add_argument("--debug-max-loops", type=int, default=2)
+    parser.add_argument("--debug-timeout-seconds", type=int, default=120)
+    parser.add_argument("--repair-backend", choices=["auto", "deterministic", "llm"], default="auto")
+    parser.add_argument("--repair-attempts", type=int, default=1)
+    parser.add_argument("--install-missing-dependencies", action="store_true")
+    parser.add_argument("--no-wait-plugin-install", action="store_true")
+    parser.add_argument("--skip-run-records", action="store_true")
+    parser.add_argument("--no-repair", action="store_true")
     return parser.parse_args()
 
 

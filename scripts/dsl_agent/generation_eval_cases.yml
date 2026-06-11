@@ -5,6 +5,11 @@ cases:
       Build a workflow that extracts customer name, company, pain points,
       urgency, and next action from the input as JSON, validates and normalizes
       the JSON shape, then returns only the normalized JSON.
+    inputs:
+      input: >
+        Customer: Maya Chen from Northstar Logistics. They need faster invoice
+        dispute triage, urgency is high, and the next action is to schedule a
+        workflow demo with operations.
     expect:
       required_node_types:
         - start
@@ -22,6 +27,10 @@ cases:
     request: >
       Build a workflow that classifies a support ticket as billing, technical,
       account, or other, then returns the category and a short reasoning.
+    inputs:
+      input: >
+        I was charged twice for my invoice this month. Can someone help me fix
+        the billing issue?
     expect:
       required_node_types:
         - start
@@ -44,6 +53,10 @@ cases:
       Build a workflow that checks if the incoming customer message is urgent.
       If urgent, produce an escalation note. Otherwise produce a normal support
       reply. Return the selected response.
+    inputs:
+      input: >
+        urgent: production workflow imports are failing for a strategic customer
+        and they need an escalation note now.
     expect:
       required_node_types:
         - start
@@ -64,6 +77,11 @@ cases:
       Build a RAG workflow that retrieves relevant knowledge base chunks for
       the user question, answers with citations, and returns the answer plus
       cited sources.
+    inputs:
+      input: What is our refund policy for annual enterprise contracts?
+    debug:
+      skip: true
+      reason: Requires replacing REPLACE_WITH_DATASET_ID with a real workspace dataset id.
     expect:
       required_node_types:
         - start

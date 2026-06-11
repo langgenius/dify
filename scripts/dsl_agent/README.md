@@ -455,6 +455,29 @@ uv run python ../scripts/dsl_agent/run_generation_eval.py \
 OpenAI runs may fall back to the deterministic starter if the model times out
 or returns invalid YAML; the report records `fallback_from` for each case.
 
+Optional local CE import/draft debug loop:
+
+```bash
+cd dify/api
+uv run python ../scripts/dsl_agent/run_generation_eval.py \
+  --no-resolve-dependencies \
+  --debug-loop \
+  --console-base http://localhost \
+  --install-missing-dependencies \
+  --skip-run-records \
+  --json
+```
+
+This writes each generated `generated.yml` under
+`scripts/dsl_agent/outputs/generation_eval_latest/<case-id>/`, then invokes
+`debug_loop.py` for import, dependency check/install, draft run, runtime error
+capture, and repair attempts. Cases can define `inputs` for draft execution.
+Cases that require workspace-specific resources, such as a real dataset id for
+RAG, can set `debug.skip: true` and remain part of the structural generation
+gate without failing the live CE loop.
+
+To iterate on one failing case, pass `--case-id <id>`; the flag may be repeated.
+
 ## Validate DSL
 
 ```bash
