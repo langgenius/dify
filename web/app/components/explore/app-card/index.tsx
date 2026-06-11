@@ -82,10 +82,12 @@ const AppCard = ({
               <PlusIcon className="mr-1 size-4" />
               <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
             </Button>
-            <Button disabled={!canViewApp} className="h-7" onClick={handleTryApp}>
-              <span className="mr-1 i-ri-information-2-line size-4" />
-              <span>{t('appCard.try', { ns: 'explore' })}</span>
-            </Button>
+            {canViewApp && (
+              <Button className="h-7" onClick={handleTryApp}>
+                <span className="mr-1 i-ri-information-2-line size-4" />
+                <span>{t('appCard.try', { ns: 'explore' })}</span>
+              </Button>
+            )}
           </div>
         </div>
       )}

@@ -129,13 +129,11 @@ describe('AppCard', () => {
       expect(screen.getByRole('button', { name: 'explore.appCard.try' })).toBeEnabled()
     })
 
-    it('should keep try button visible but disabled outside cloud edition', () => {
+    it('should hide try button outside cloud edition', () => {
       mockConfig.isCloudEdition = false
       renderComponent({ canCreate: true, isExplore: true })
 
-      const button = screen.getByRole('button', { name: 'explore.appCard.try' })
-      expect(button).toBeDisabled()
-      fireEvent.click(button)
+      expect(screen.queryByRole('button', { name: 'explore.appCard.try' })).not.toBeInTheDocument()
       expect(onTry).not.toHaveBeenCalled()
     })
   })
