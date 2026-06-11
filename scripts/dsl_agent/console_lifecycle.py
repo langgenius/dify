@@ -756,6 +756,25 @@ def format_stream_result(raw_text: str, *, include_raw: bool) -> dict[str, Any]:
     return result
 
 
+def extract_first_workflow_run_id(runs_result: Any) -> str | None:
+    candidates: Any = runs_result
+    if isinstance(runs_result, dict):
+        for key in ("data", "workflow_runs", "items"):
+            if isinstance(runs_result.get(key), list):
+                candidates = runs_result[key]
+                break
+    if not isinstance(candidates, list):
+        return None
+    for item in candidates:
+        if not isinstance(item, dict):
+            continue
+        for key in ("id", "workflow_run_id"):
+            run_id = item.get(key)
+            if isinstance(run_id, str) and run_id:
+                return run_id
+    return None
+
+
 def truncate_raw_error_detail(detail: Any) -> Any:
     if isinstance(detail, dict):
         result: dict[str, Any] = {}
@@ -947,10 +966,33 @@ def run_debug_draft_sequence(
         "mode": mode,
         "dependencies": None,
         "draft_run": None,
+        "workflow_runs": None,
         "run_detail": None,
         "node_executions": None,
         "errors": [],
     }
+
+    def collect_run_records(run_id: str | None) -> None:
+        if skip_run_records:
+            return
+        resolved_run_id = run_id
+        if not resolved_run_id:
+            try:
+                result["workflow_runs"] = client.workflow_runs(app_id, mode=mode, limit=5)
+                resolved_run_id = extract_first_workflow_run_id(result["workflow_runs"])
+            except ConsoleApiError as exc:
+                result["errors"].append(console_error_to_dict("workflow_runs", exc))
+                return
+        if not resolved_run_id:
+            return
+        try:
+            result["run_detail"] = client.workflow_run_detail(app_id, resolved_run_id)
+        except ConsoleApiError as exc:
+            result["errors"].append(console_error_to_dict("workflow_run_detail", exc))
+        try:
+            result["node_executions"] = client.workflow_run_node_executions(app_id, resolved_run_id)
+        except ConsoleApiError as exc:
+            result["errors"].append(console_error_to_dict("workflow_run_node_executions", exc))
 
     if not skip_dependencies:
         try:
@@ -966,19 +1008,12 @@ def run_debug_draft_sequence(
         result["draft_run"] = format_stream_result(raw, include_raw=include_raw)
     except ConsoleApiError as exc:
         result["errors"].append(console_error_to_dict("draft_run", exc))
+        collect_run_records(None)
         return result
 
     summary = (result.get("draft_run") or {}).get("summary") if isinstance(result.get("draft_run"), dict) else {}
     run_id = summary.get("workflow_run_id") if isinstance(summary, dict) else None
-    if run_id and not skip_run_records:
-        try:
-            result["run_detail"] = client.workflow_run_detail(app_id, run_id)
-        except ConsoleApiError as exc:
-            result["errors"].append(console_error_to_dict("workflow_run_detail", exc))
-        try:
-            result["node_executions"] = client.workflow_run_node_executions(app_id, run_id)
-        except ConsoleApiError as exc:
-            result["errors"].append(console_error_to_dict("workflow_run_node_executions", exc))
+    collect_run_records(run_id)
 
     return result
 

@@ -4,7 +4,13 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from console_lifecycle import ConsoleApiError, encode_sensitive_field, run_install_dependencies_sequence, run_preflight_sequence
+from console_lifecycle import (
+    ConsoleApiError,
+    encode_sensitive_field,
+    run_debug_draft_sequence,
+    run_install_dependencies_sequence,
+    run_preflight_sequence,
+)
 
 
 class FakeConsoleClient:
@@ -99,6 +105,56 @@ class FakePreflightClient:
         return self.workspace_payload
 
 
+class FakeDraftDebugClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def check_dependencies(self, app_id: str) -> dict[str, Any]:
+        self.calls.append({"method": "check_dependencies", "app_id": app_id})
+        return {"leaked_dependencies": []}
+
+    def draft_run(self, app_id: str, inputs: dict[str, Any], files: list[dict[str, Any]] | None = None) -> str:
+        self.calls.append({"method": "draft_run", "app_id": app_id, "inputs": inputs, "files": files})
+        return "\n".join(
+            [
+                "event: workflow_finished",
+                'data: {"data": {"status": "failed", "error": "missing selector"}}',
+                "",
+            ]
+        )
+
+    def workflow_runs(
+        self,
+        app_id: str,
+        *,
+        mode: str = "workflow",
+        limit: int = 20,
+        last_id: str | None = None,
+        status: str | None = None,
+        triggered_from: str = "debugging",
+    ) -> dict[str, Any]:
+        self.calls.append(
+            {
+                "method": "workflow_runs",
+                "app_id": app_id,
+                "mode": mode,
+                "limit": limit,
+                "last_id": last_id,
+                "status": status,
+                "triggered_from": triggered_from,
+            }
+        )
+        return {"data": [{"id": "run-1", "status": "failed"}]}
+
+    def workflow_run_detail(self, app_id: str, run_id: str) -> dict[str, Any]:
+        self.calls.append({"method": "workflow_run_detail", "app_id": app_id, "run_id": run_id})
+        return {"id": run_id, "status": "failed", "error": "missing selector"}
+
+    def workflow_run_node_executions(self, app_id: str, run_id: str) -> dict[str, Any]:
+        self.calls.append({"method": "workflow_run_node_executions", "app_id": app_id, "run_id": run_id})
+        return {"data": [{"node_id": "llm", "status": "failed", "error": "missing selector"}]}
+
+
 def assert_preflight() -> list[dict[str, Any]]:
     cases = [
         (
@@ -143,6 +199,30 @@ def assert_field_encoding() -> dict[str, Any]:
         if encoded != expected:
             raise AssertionError(f"{name}: expected {expected}, got {encoded}")
     return {"name": "field_encoding", "valid": True, "cases": sorted(cases)}
+
+
+def assert_draft_debug_run_record_fallback() -> dict[str, Any]:
+    client = FakeDraftDebugClient()
+    result = run_debug_draft_sequence(
+        client,  # type: ignore[arg-type]
+        app_id="app-1",
+        mode="workflow",
+        inputs={"query": "hello"},
+        query="hello",
+        files=None,
+        skip_dependencies=False,
+        skip_run_records=False,
+        include_raw=False,
+    )
+    methods = [call["method"] for call in client.calls]
+    for expected in ("workflow_runs", "workflow_run_detail", "workflow_run_node_executions"):
+        if expected not in methods:
+            raise AssertionError(f"missing run-record fallback call {expected}: {client.calls}")
+    if result["run_detail"] != {"id": "run-1", "status": "failed", "error": "missing selector"}:
+        raise AssertionError(f"expected fallback run_detail from latest run: {result}")
+    if not result["node_executions"]:
+        raise AssertionError(f"expected fallback node executions: {result}")
+    return {"name": "draft_debug_run_record_fallback", "valid": True, "calls": client.calls}
 
 
 def main() -> int:
@@ -197,6 +277,7 @@ def main() -> int:
                 "calls": client.calls,
                 "preflight_cases": assert_preflight(),
                 "field_encoding": assert_field_encoding(),
+                "draft_debug": assert_draft_debug_run_record_fallback(),
             },
             ensure_ascii=False,
             indent=2,
