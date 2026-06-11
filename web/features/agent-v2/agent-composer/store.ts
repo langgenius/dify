@@ -4,14 +4,9 @@ import type { EnvVariable } from '../agent-detail/configure/components/orchestra
 import type { AgentSkill } from '../agent-detail/configure/components/orchestrate/skills/item'
 import type { AgentTool } from '../agent-detail/configure/components/orchestrate/tools'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import isEqual from 'fast-deep-equal'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import {
-  defaultAgentFiles,
-  defaultAgentKnowledgeRetrievals,
-  defaultAgentSkills,
-  defaultAgentTools,
-} from '../agent-detail/configure/components/data'
 
 export type AgentComposerDraft = {
   prompt: string
@@ -27,29 +22,16 @@ export type AgentComposerDraft = {
 
 export const defaultAgentComposerDraft: AgentComposerDraft = {
   prompt: '',
-  skills: defaultAgentSkills,
-  files: defaultAgentFiles,
-  tools: defaultAgentTools,
-  knowledgeRetrievals: defaultAgentKnowledgeRetrievals,
-  envVariables: [
-    {
-      id: 'openai-api-key',
-      key: 'OPENAI_API_KEY',
-      value: '••••••••••••',
-      scope: 'secret',
-      masked: true,
-    },
-    {
-      id: 'tender-corpus-id',
-      key: 'TENDER_CORPUS_ID',
-      value: 'tender-corpus-2025',
-      scope: 'plain',
-    },
-  ],
+  skills: [],
+  files: [],
+  tools: [],
+  knowledgeRetrievals: [],
+  envVariables: [],
   toolSettings: {},
 }
 
 export const agentComposerOriginalConfigAtom = atom<AgentSoulConfig | undefined>(undefined)
+export const agentComposerOriginalDraftAtom = atom<AgentComposerDraft | undefined>(defaultAgentComposerDraft)
 export const agentComposerDraftAtom = atom<AgentComposerDraft>(defaultAgentComposerDraft)
 
 const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => [
@@ -247,17 +229,10 @@ export const agentComposerToolSettingsAtom = atom(
 )
 
 export const isAgentComposerDirtyAtom = atom((get) => {
-  const originalConfig = get(agentComposerOriginalConfigAtom)
+  const originalDraft = get(agentComposerOriginalDraftAtom)
   const draft = get(agentComposerDraftAtom)
 
-  if (!originalConfig)
-    return draft.prompt !== '' || !!draft.model || !!draft.config
-
-  return (
-    draft.prompt !== (originalConfig.prompt?.system_prompt ?? '')
-    || draft.model?.provider !== originalConfig.model?.model_provider
-    || draft.model?.model !== originalConfig.model?.model
-  )
+  return !isEqual(draft, originalDraft ?? defaultAgentComposerDraft)
 })
 
 const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
@@ -273,24 +248,30 @@ const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
   }
 }
 
-export const agentComposerDraftFromConfig = (config?: AgentSoulConfig): AgentComposerDraft => ({
-  ...defaultAgentComposerDraft,
+export const agentComposerDraftFromConfig = (
+  config?: AgentSoulConfig,
+  baseDraft: AgentComposerDraft = defaultAgentComposerDraft,
+): AgentComposerDraft => ({
+  ...baseDraft,
   prompt: config?.prompt?.system_prompt ?? '',
   model: toDraftModel(config),
   config,
 })
 
 export function useHydrate({
+  defaultDraft = defaultAgentComposerDraft,
   instanceKey,
   draft,
   originalConfig,
   waitForDraft,
 }: {
+  defaultDraft?: AgentComposerDraft
   instanceKey: string
   draft?: AgentComposerDraft
   originalConfig?: AgentSoulConfig
   waitForDraft?: boolean
 }) {
+  const setOriginalDraft = useSetAtom(agentComposerOriginalDraftAtom)
   const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
   const setDraft = useSetAtom(agentComposerDraftAtom)
   const resetKeyRef = useRef<string | undefined>(undefined)
@@ -301,7 +282,8 @@ export function useHydrate({
       resetKeyRef.current = instanceKey
       hydratedKeyRef.current = undefined
       setOriginalConfig(undefined)
-      setDraft(defaultAgentComposerDraft)
+      setOriginalDraft(defaultDraft)
+      setDraft(defaultDraft)
     }
 
     if (waitForDraft && !draft)
@@ -312,34 +294,40 @@ export function useHydrate({
 
     hydratedKeyRef.current = instanceKey
     setOriginalConfig(originalConfig)
-    setDraft(draft ?? defaultAgentComposerDraft)
-  }, [draft, instanceKey, originalConfig, setDraft, setOriginalConfig, waitForDraft])
+    setOriginalDraft(draft ?? defaultDraft)
+    setDraft(draft ?? defaultDraft)
+  }, [defaultDraft, draft, instanceKey, originalConfig, setDraft, setOriginalConfig, setOriginalDraft, waitForDraft])
 }
 
 export function useHydrateAgentComposerDraft({
   agentId,
   activeVersionId,
+  baseDraft = defaultAgentComposerDraft,
   config,
 }: {
   agentId: string
   activeVersionId?: string | null
+  baseDraft?: AgentComposerDraft
   config?: AgentSoulConfig
 }) {
   const routeKey = `${agentId}:${activeVersionId ?? 'draft'}`
   useHydrate({
+    defaultDraft: baseDraft,
     instanceKey: routeKey,
-    draft: agentComposerDraftFromConfig(config),
+    draft: agentComposerDraftFromConfig(config, baseDraft),
     originalConfig: config,
     waitForDraft: !!activeVersionId && !config,
   })
 }
 
 export function usePrompt() {
-  return useAtom(agentComposerPromptAtom)
+  const [prompt, setPrompt] = useAtom(agentComposerPromptAtom)
+  return [prompt, setPrompt] as const
 }
 
 export function useModel() {
-  return useAtom(agentComposerModelAtom)
+  const [model, setModel] = useAtom(agentComposerModelAtom)
+  return [model, setModel] as const
 }
 
 export function useCurrentModel(defaultModel?: DefaultModel) {
@@ -372,27 +360,33 @@ export function useConfigPublishPayload({
 }
 
 export function useSkills() {
-  return useAtom(agentComposerSkillsAtom)
+  const [skills, setSkills] = useAtom(agentComposerSkillsAtom)
+  return [skills, setSkills] as const
 }
 
 export function useFiles() {
-  return useAtom(agentComposerFilesAtom)
+  const [files, setFiles] = useAtom(agentComposerFilesAtom)
+  return [files, setFiles] as const
 }
 
 export function useTools() {
-  return useAtom(agentComposerToolsAtom)
+  const [tools, setTools] = useAtom(agentComposerToolsAtom)
+  return [tools, setTools] as const
 }
 
 export function useKnowledgeRetrievals() {
-  return useAtom(agentComposerKnowledgeRetrievalsAtom)
+  const [knowledgeRetrievals, setKnowledgeRetrievals] = useAtom(agentComposerKnowledgeRetrievalsAtom)
+  return [knowledgeRetrievals, setKnowledgeRetrievals] as const
 }
 
 export function useEnvVariables() {
-  return useAtom(agentComposerEnvVariablesAtom)
+  const [envVariables, setEnvVariables] = useAtom(agentComposerEnvVariablesAtom)
+  return [envVariables, setEnvVariables] as const
 }
 
 export function useToolSettings() {
-  return useAtom(agentComposerToolSettingsAtom)
+  const [toolSettings, setToolSettings] = useAtom(agentComposerToolSettingsAtom)
+  return [toolSettings, setToolSettings] as const
 }
 
 export function useRemoveSkill() {

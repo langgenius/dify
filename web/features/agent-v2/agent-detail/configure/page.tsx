@@ -13,6 +13,7 @@ import { AgentOrchestratePanel } from './components/orchestrate'
 import { AgentPreviewChat } from './components/preview/chat'
 import { AgentPreviewHeader } from './components/preview/header'
 import { AgentPreviewVersionsPanel } from './components/preview/versions-panel'
+import { defaultAgentConfigureDraft } from './draft'
 
 type AgentConfigurePageProps = {
   agentId: string
@@ -22,7 +23,7 @@ export function AgentConfigurePage({
   agentId,
 }: AgentConfigurePageProps) {
   return (
-    <AgentComposerProvider>
+    <AgentComposerProvider initialDraft={defaultAgentConfigureDraft}>
       <AgentConfigurePageContent agentId={agentId} />
     </AgentComposerProvider>
   )
@@ -58,6 +59,7 @@ function AgentConfigurePageContent({
   useHydrateAgentComposerDraft({
     agentId,
     activeVersionId,
+    baseDraft: defaultAgentConfigureDraft,
     config: agentSoulConfig,
   })
   const {

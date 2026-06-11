@@ -3,7 +3,9 @@ import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentConfigurePromptAtom } from '../../../atoms'
+import { defaultAgentConfigureDraft } from '../../../draft'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
 type PublishHandler = NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['onPublish']>
@@ -46,14 +48,17 @@ function renderPublishBar({
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
   prompt = '',
+  setupStore,
 }: {
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   isPublishing?: boolean
   onPublish?: PublishMock
   prompt?: string
+  setupStore?: (store: ReturnType<typeof createStore>) => void
 } = {}) {
   const store = createStore()
   store.set(agentConfigurePromptAtom, prompt)
+  setupStore?.(store)
 
   render(
     <JotaiProvider store={store}>
@@ -133,6 +138,21 @@ describe('AgentConfigurePublishBar', () => {
         }),
       }),
     }))
+  })
+
+  it('should mark non-prompt draft changes as unpublished', () => {
+    renderPublishBar({
+      activeConfigSnapshot,
+      setupStore: (store) => {
+        store.set(agentComposerOriginalDraftAtom, defaultAgentConfigureDraft)
+        store.set(agentComposerDraftAtom, {
+          ...defaultAgentConfigureDraft,
+          files: [],
+        })
+      },
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
   })
 
   it('should render publishing as a single disabled action state', () => {

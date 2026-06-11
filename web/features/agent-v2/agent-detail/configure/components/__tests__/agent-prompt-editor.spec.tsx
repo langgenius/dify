@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom, agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store'
+import { defaultAgentConfigureDraft } from '../../draft'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 
 const mockPromptEditor = vi.hoisted(() => vi.fn())
@@ -26,7 +27,10 @@ vi.mock('@/app/components/base/infotip', () => ({
 
 const renderAgentPromptEditor = (value: string) => {
   const store = createStore()
-  store.set(agentComposerPromptAtom, value)
+  store.set(agentComposerDraftAtom, {
+    ...defaultAgentConfigureDraft,
+    prompt: value,
+  })
 
   const view = render(
     <JotaiProvider store={store}>
