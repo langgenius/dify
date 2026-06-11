@@ -2,9 +2,9 @@
 
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 
 type AgentKnowledgeRetrievalItem = {
   id: string
@@ -69,22 +69,9 @@ export function AgentKnowledgeRetrieval({
           >
             {t('agentDetail.configure.knowledgeRetrieval.label')}
           </h3>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <button
-                  type="button"
-                  aria-label={knowledgeRetrievalTip}
-                  className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-question-line size-3.5" />
-                </button>
-              )}
-            />
-            <TooltipContent placement="top" className="max-w-64">
-              {knowledgeRetrievalTip}
-            </TooltipContent>
-          </Tooltip>
+          <Infotip aria-label={knowledgeRetrievalTip} popupClassName="max-w-64">
+            {knowledgeRetrievalTip}
+          </Infotip>
           <button
             type="button"
             aria-label={t('agentDetail.configure.knowledgeRetrieval.toggle')}

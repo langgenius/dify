@@ -4,10 +4,10 @@ import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
+import { Infotip } from '@/app/components/base/infotip'
 import { CollectionType } from '@/app/components/tools/types'
 
 type AgentToolBase = {
@@ -382,22 +382,9 @@ export function AgentTools({
             >
               {t('agentDetail.configure.tools.label')}
             </h3>
-            <Tooltip>
-              <TooltipTrigger
-                render={(
-                  <button
-                    type="button"
-                    aria-label={toolsTip}
-                    className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  >
-                    <span aria-hidden className="i-ri-question-line size-3.5" />
-                  </button>
-                )}
-              />
-              <TooltipContent placement="top" className="max-w-64">
-                {toolsTip}
-              </TooltipContent>
-            </Tooltip>
+            <Infotip aria-label={toolsTip} popupClassName="max-w-64">
+              {toolsTip}
+            </Infotip>
             <button
               type="button"
               aria-label={t('agentDetail.configure.tools.toggle')}

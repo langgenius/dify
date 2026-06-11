@@ -6,8 +6,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 
 type AgentPromptEditorProps = {
@@ -93,22 +93,9 @@ export function AgentPromptEditor({
           >
             {t('agentDetail.configure.prompt.label')}
           </h3>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <button
-                  type="button"
-                  aria-label={promptTip}
-                  className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-question-line size-3.5" />
-                </button>
-              )}
-            />
-            <TooltipContent placement="top" className="max-w-64">
-              {promptTip}
-            </TooltipContent>
-          </Tooltip>
+          <Infotip aria-label={promptTip} popupClassName="max-w-64">
+            {promptTip}
+          </Infotip>
         </div>
       </div>
 

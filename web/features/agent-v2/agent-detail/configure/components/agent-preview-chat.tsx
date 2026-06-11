@@ -11,7 +11,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Inputs } from '@/models/debug'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -246,14 +246,15 @@ export function AgentPreviewChat({
   const { userProfile } = useAppContext()
   const versionQuery = useQuery({
     ...consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-          version_id: activeVersionId ?? '',
-        },
-      },
+      input: activeVersionId
+        ? {
+            params: {
+              agent_id: agentId,
+              version_id: activeVersionId,
+            },
+          }
+        : skipToken,
     }),
-    enabled: !!activeVersionId,
   })
   const agentSoulConfig = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined)?.config_snapshot
   const config = useMemo(() => buildChatConfig({
