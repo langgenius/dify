@@ -169,6 +169,19 @@ def _account_service(**overrides) -> SimpleNamespace:
     return SimpleNamespace(**methods)
 
 
+def _patch_write_session(monkeypatch, session: MagicMock) -> MagicMock:
+    """Keep the auth decorator bypassed while preserving `with_session`."""
+    from controllers.console.app import wraps as wraps_module
+
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    session_context.__exit__.return_value = None
+    session_maker = MagicMock()
+    session_maker.begin.return_value = session_context
+    monkeypatch.setattr(wraps_module.session_factory, "get_session_maker", lambda: session_maker)
+    return session_maker
+
+
 # ---------------------------------------------------------------------------
 # Route registration
 # ---------------------------------------------------------------------------
@@ -272,16 +285,19 @@ def test_switch_returns_workspace_detail_with_current_true(
     app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
 ):
     """Happy path: switch service is called, then the workspace+membership
-    row is re-queried so the returned `current` reflects post-commit state.
+    row is re-queried with the injected request session so the returned
+    `current` reflects the switch within the same transaction.
     """
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceSwitchApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.return_value = _account(account_id=str(acct_id))
+    session = MagicMock()
+    session_maker = _patch_write_session(monkeypatch, session)
+    account = _account(account_id=str(acct_id))
+    session.get.return_value = account
     membership = SimpleNamespace(role=TenantAccountRole.OWNER, current=True)
-    mock_db.session.execute.return_value.first.return_value = (_tenant(ws_id), membership)
+    session.execute.return_value.first.return_value = (_tenant(ws_id), membership)
 
     switch_mock = Mock()
     monkeypatch.setattr(
@@ -289,7 +305,6 @@ def test_switch_returns_workspace_detail_with_current_true(
         "TenantService",
         _tenant_service(switch_tenant=switch_mock),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
@@ -298,7 +313,8 @@ def test_switch_returns_workspace_detail_with_current_true(
     assert status == 200
     assert body["id"] == ws_id
     assert body["current"] is True
-    assert switch_mock.called
+    session_maker.begin.assert_called_once()
+    switch_mock.assert_called_once_with(account, ws_id, session=session)
 
 
 def test_switch_404s_when_service_raises_account_not_link_tenant(
@@ -310,15 +326,15 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
     acct_id = uuid.uuid4()
     api = WorkspaceSwitchApi()
 
-    mock_db = MagicMock()
-    mock_db.session.get.return_value = _account(account_id=str(acct_id))
+    session = MagicMock()
+    _patch_write_session(monkeypatch, session)
+    session.get.return_value = _account(account_id=str(acct_id))
 
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
         _tenant_service(switch_tenant=Mock(side_effect=AccountNotLinkTenantError("…"))),
     )
-    monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
