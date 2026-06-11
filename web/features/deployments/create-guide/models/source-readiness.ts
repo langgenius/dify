@@ -10,13 +10,14 @@ import {
 import { selectedAppAtom } from '../state/source-atoms'
 import { methodAtom } from '../state/workflow-atoms'
 
-export function useSourceReady() {
+export function useCreateGuideSourceReady() {
   const selectedApp = useAtomValue(selectedAppAtom)
   const method = useAtomValue(methodAtom)
   const dslReadError = useAtomValue(dslReadErrorAtom)
   const dslUnsupportedMode = useAtomValue(dslUnsupportedModeAtom)
   const hasDslContent = useAtomValue(hasDslContentAtom)
   const isReadingDsl = useAtomValue(isReadingDslAtom)
+
   return method === 'importDsl'
     ? hasDslContent && !isReadingDsl && !dslReadError && !dslUnsupportedMode
     : Boolean(selectedApp?.id)

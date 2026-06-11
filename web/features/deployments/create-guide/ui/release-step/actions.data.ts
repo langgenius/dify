@@ -3,8 +3,8 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import {
   useReleaseInstanceNameConflictQuery,
-} from '../../models/release'
-import { useSourceReady } from '../../models/source'
+} from '../../models/release-instance-name-conflict'
+import { useCreateGuideSourceReady } from '../../models/source-readiness'
 import { submittedReleaseFieldsAtom } from '../../state/release-atoms'
 import {
   resetDeploymentTargetOptionsAtom,
@@ -17,7 +17,7 @@ import {
 } from '../../state/workflow-atoms'
 
 function useReleaseTargetStepReady() {
-  const sourceReady = useSourceReady()
+  const sourceReady = useCreateGuideSourceReady()
   const {
     submittedInstanceName,
     submittedReleaseName,

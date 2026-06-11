@@ -2,25 +2,25 @@
 
 import { useAtomValue } from 'jotai'
 import { createDeploymentTargetEnvironment } from '../../../models/deployment-target/environment'
-import { useDeploymentTargetQueryGate } from '../../../models/deployment-target/query-gate'
-import { useDeployableEnvironmentsQuery } from '../../../queries/target-environments'
+import {
+  useCreateGuideDeployableEnvironmentsQuery,
+  useCreateGuideDeploymentTargetEnabled,
+} from '../../../models/deployment-target/query-config'
 import {
   selectedEnvironmentIdAtom,
 } from '../../../state/target-atoms'
 
 export function useTargetEnvironments() {
-  const { queryGate } = useDeploymentTargetQueryGate()
-  const deployableEnvironmentsQuery = useDeployableEnvironmentsQuery(queryGate.shouldLoadDeploymentTarget)
+  const shouldLoadDeploymentTarget = useCreateGuideDeploymentTargetEnabled()
+  const deployableEnvironmentsQuery = useCreateGuideDeployableEnvironmentsQuery()
 
-  return queryGate.shouldLoadDeploymentTarget
+  return shouldLoadDeploymentTarget
     ? deployableEnvironmentsQuery.data?.data ?? []
     : []
 }
 
 export function useTargetEnvironmentsQuery() {
-  const { queryGate } = useDeploymentTargetQueryGate()
-
-  return useDeployableEnvironmentsQuery(queryGate.shouldLoadDeploymentTarget)
+  return useCreateGuideDeployableEnvironmentsQuery()
 }
 
 export function useTargetEffectiveSelectedEnvironmentId() {

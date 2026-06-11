@@ -2,44 +2,32 @@
 
 import { useAtomValue } from 'jotai'
 import { createDeploymentTargetEnvVars } from '../../../models/deployment-target/env-vars'
-import { useDeploymentTargetQueryGate } from '../../../models/deployment-target/query-gate'
-import { useDeploymentOptionsQuery } from '../../../queries/target-options'
+import {
+  useCreateGuideDeploymentOptionsQuery,
+  useCreateGuideDeploymentTargetEnabled,
+} from '../../../models/deployment-target/query-config'
 import { dslContentAtom } from '../../../state/dsl-atoms'
 import {
   envVarValuesAtom,
 } from '../../../state/target-atoms'
-
-function useDeploymentOptionsForTargetEnvVars() {
-  const {
-    encodedDslContent,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  } = useDeploymentTargetQueryGate()
-
-  return useDeploymentOptionsQuery({
-    encodedDslContent,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  })
-}
+import { methodAtom } from '../../../state/workflow-atoms'
 
 export function useTargetEnvVarDeploymentOptionsQuery() {
-  return useDeploymentOptionsForTargetEnvVars().deploymentOptionsQuery
+  return useCreateGuideDeploymentOptionsQuery()
 }
 
 export function useTargetEnvVarSlots() {
   const dslContent = useAtomValue(dslContentAtom)
   const envVarValues = useAtomValue(envVarValuesAtom)
-  const { method, queryGate } = useDeploymentTargetQueryGate()
-  const deploymentOptionsResult = useDeploymentOptionsForTargetEnvVars()
+  const method = useAtomValue(methodAtom)
+  const shouldLoadDeploymentTarget = useCreateGuideDeploymentTargetEnabled()
+  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
 
   return createDeploymentTargetEnvVars({
     dslContent,
     envVarValues,
     method,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
-    slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
+    shouldLoadDeploymentTarget,
+    slots: deploymentOptionsQuery.data?.options?.envVarSlots,
   }).envVarSlots
 }

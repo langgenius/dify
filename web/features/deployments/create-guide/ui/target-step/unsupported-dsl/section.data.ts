@@ -3,29 +3,21 @@
 import { useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 import { unsupportedDslNodeError } from '@/features/deployments/error'
-import { useDeploymentTargetQueryGate } from '../../../models/deployment-target/query-gate'
-import { useDeploymentOptionsQuery } from '../../../queries/target-options'
+import {
+  useCreateGuideDeploymentOptionsQuery,
+  useCreateGuideDeploymentTargetEnabled,
+} from '../../../models/deployment-target/query-config'
 import { setDeploymentOptionsUnsupportedDslNodesAtom } from '../../../state/unsupported-dsl-atoms'
 
 export function useDeploymentOptionsUnsupportedDslNodeSync() {
-  const {
-    encodedDslContent,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  } = useDeploymentTargetQueryGate()
+  const shouldLoadDeploymentTarget = useCreateGuideDeploymentTargetEnabled()
   const setDeploymentOptionsUnsupportedDslNodes = useSetAtom(setDeploymentOptionsUnsupportedDslNodesAtom)
-  const deploymentOptionsQuery = useDeploymentOptionsQuery({
-    encodedDslContent,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  }).deploymentOptionsQuery
+  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
 
   useEffect(() => {
     let cancelled = false
 
-    if (!queryGate.shouldLoadDeploymentTarget)
+    if (!shouldLoadDeploymentTarget)
       return
 
     if (!deploymentOptionsQuery.isError) {
@@ -44,7 +36,7 @@ export function useDeploymentOptionsUnsupportedDslNodeSync() {
   }, [
     deploymentOptionsQuery.error,
     deploymentOptionsQuery.isError,
-    queryGate.shouldLoadDeploymentTarget,
     setDeploymentOptionsUnsupportedDslNodes,
+    shouldLoadDeploymentTarget,
   ])
 }

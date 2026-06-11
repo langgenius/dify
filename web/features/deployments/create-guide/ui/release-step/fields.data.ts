@@ -2,7 +2,7 @@
 
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useReleaseInstanceNameConflictQuery } from '../../models/release'
+import { useReleaseInstanceNameConflictQuery } from '../../models/release-instance-name-conflict'
 import { dslDefaultAppNameAtom } from '../../state/dsl-atoms'
 import { selectedAppAtom } from '../../state/source-atoms'
 import { methodAtom } from '../../state/workflow-atoms'

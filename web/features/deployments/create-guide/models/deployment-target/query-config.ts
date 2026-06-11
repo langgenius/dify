@@ -2,6 +2,8 @@
 
 import type { GuideMethod, WorkflowSourceApp } from '../../types'
 import { useAtomValue } from 'jotai'
+import { useDeployableEnvironmentsQuery } from '../../queries/target-environments'
+import { useDeploymentOptionsQuery } from '../../queries/target-options'
 import {
   dslReadErrorAtom,
   dslUnsupportedModeAtom,
@@ -12,28 +14,31 @@ import {
 import { selectedAppAtom } from '../../state/source-atoms'
 import { methodAtom } from '../../state/workflow-atoms'
 
-type DeploymentTargetQueryGate = {
+type DeploymentTargetQueryConfig = {
+  encodedDslContent: string
+  method: GuideMethod
+  selectedApp?: WorkflowSourceApp
   shouldLoadDeploymentTarget: boolean
   shouldLoadDslDeploymentOptions: boolean
   shouldLoadSourceDeploymentOptions: boolean
 }
 
-function createDeploymentTargetQueryGate({
+function createDeploymentTargetQueryConfig({
   dslReadError,
   dslUnsupportedMode,
-  effectiveSelectedApp,
   hasDslContent,
   isReadingDsl,
   method,
+  selectedApp,
 }: {
   dslReadError: boolean
   dslUnsupportedMode: boolean
-  effectiveSelectedApp?: WorkflowSourceApp
   hasDslContent: boolean
   isReadingDsl: boolean
   method: GuideMethod
-}): DeploymentTargetQueryGate {
-  const shouldLoadSourceDeploymentOptions = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
+  selectedApp?: WorkflowSourceApp
+}) {
+  const shouldLoadSourceDeploymentOptions = method === 'bindApp' && Boolean(selectedApp?.id)
   const shouldLoadDslDeploymentOptions = method === 'importDsl'
     && hasDslContent
     && !isReadingDsl
@@ -47,7 +52,7 @@ function createDeploymentTargetQueryGate({
   }
 }
 
-export function useDeploymentTargetQueryGate() {
+function useDeploymentTargetQueryConfig(): DeploymentTargetQueryConfig {
   const method = useAtomValue(methodAtom)
   const dslReadError = useAtomValue(dslReadErrorAtom)
   const dslUnsupportedMode = useAtomValue(dslUnsupportedModeAtom)
@@ -55,20 +60,45 @@ export function useDeploymentTargetQueryGate() {
   const hasDslContent = useAtomValue(hasDslContentAtom)
   const isReadingDsl = useAtomValue(isReadingDslAtom)
   const selectedApp = useAtomValue(selectedAppAtom)
-  // Target sections must share the same source/DSL gates so their query observers stay consistent.
-  const queryGate = createDeploymentTargetQueryGate({
+  const queryConfig = createDeploymentTargetQueryConfig({
     dslReadError,
     dslUnsupportedMode,
-    effectiveSelectedApp: selectedApp,
     hasDslContent,
     isReadingDsl,
     method,
+    selectedApp,
   })
 
   return {
     encodedDslContent,
-    effectiveSelectedApp: selectedApp,
     method,
-    queryGate,
+    selectedApp,
+    ...queryConfig,
   }
+}
+
+export function useCreateGuideDeploymentTargetEnabled() {
+  return useDeploymentTargetQueryConfig().shouldLoadDeploymentTarget
+}
+
+export function useCreateGuideDeploymentOptionsQuery() {
+  const {
+    encodedDslContent,
+    method,
+    selectedApp,
+    shouldLoadDslDeploymentOptions,
+    shouldLoadSourceDeploymentOptions,
+  } = useDeploymentTargetQueryConfig()
+
+  return useDeploymentOptionsQuery({
+    encodedDslContent,
+    method,
+    selectedApp,
+    shouldLoadDslDeploymentOptions,
+    shouldLoadSourceDeploymentOptions,
+  })
+}
+
+export function useCreateGuideDeployableEnvironmentsQuery() {
+  return useDeployableEnvironmentsQuery(useCreateGuideDeploymentTargetEnabled())
 }

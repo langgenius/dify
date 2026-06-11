@@ -11,24 +11,24 @@ type DeploymentTargetQueryGate = {
 
 export function useDeploymentOptionsQuery({
   encodedDslContent,
-  effectiveSelectedApp,
   method,
-  queryGate,
+  selectedApp,
+  shouldLoadDslDeploymentOptions,
+  shouldLoadSourceDeploymentOptions,
 }: {
   encodedDslContent: string
-  effectiveSelectedApp?: WorkflowSourceApp
   method: GuideMethod
-  queryGate: DeploymentTargetQueryGate
-}) {
+  selectedApp?: WorkflowSourceApp
+} & DeploymentTargetQueryGate) {
   // oRPC encodes input before TanStack can skip work, so keep a valid input shape and gate requests with enabled.
   const sourceDeploymentOptionsQuery = useQuery({
     ...consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
       input: {
         body: {
-          sourceAppId: effectiveSelectedApp?.id ?? '',
+          sourceAppId: selectedApp?.id ?? '',
         },
       },
-      enabled: queryGate.shouldLoadSourceDeploymentOptions && Boolean(effectiveSelectedApp?.id),
+      enabled: shouldLoadSourceDeploymentOptions && Boolean(selectedApp?.id),
     }),
     retry: false,
   })
@@ -39,14 +39,10 @@ export function useDeploymentOptionsQuery({
           dsl: encodedDslContent,
         },
       },
-      enabled: queryGate.shouldLoadDslDeploymentOptions,
+      enabled: shouldLoadDslDeploymentOptions,
     }),
     retry: false,
   })
-  const deploymentOptionsQuery = method === 'importDsl' ? dslDeploymentOptionsQuery : sourceDeploymentOptionsQuery
 
-  return {
-    deploymentOptions: deploymentOptionsQuery.data?.options,
-    deploymentOptionsQuery,
-  }
+  return method === 'importDsl' ? dslDeploymentOptionsQuery : sourceDeploymentOptionsQuery
 }

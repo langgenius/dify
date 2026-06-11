@@ -30,21 +30,21 @@ export function useSourceAppListQuery() {
   return useSourceAppsQuery({ sourceSearchText })
 }
 
-export function useSourceApps() {
+export function useSourceAppOptions() {
   return sourceAppsFromQueryData(useSourceAppListQuery().data)
 }
 
-export function useFilteredSourceApps() {
+export function useFilteredSourceAppOptions() {
   const sourceSearchText = useAtomValue(sourceSearchTextAtom)
-  const sourceApps = useSourceApps()
+  const sourceApps = useSourceAppOptions()
 
   return filterSourceAppsBySearchText(sourceApps, sourceSearchText)
 }
 
-export function useSourceAppSelected(appId: string) {
+export function useEffectiveSourceAppId() {
   const selectedApp = useAtomValue(selectedAppAtom)
-  const sourceApps = useSourceApps()
+  const sourceApps = useSourceAppOptions()
   const effectiveSelectedApp = selectedApp ?? sourceApps[0]
 
-  return effectiveSelectedApp?.id === appId
+  return effectiveSelectedApp?.id
 }

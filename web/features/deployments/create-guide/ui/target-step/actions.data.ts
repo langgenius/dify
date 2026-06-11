@@ -4,10 +4,12 @@ import { useAtomValue } from 'jotai'
 import { createDeploymentTargetBindings } from '../../models/deployment-target/bindings'
 import { createDeploymentTargetEnvVars } from '../../models/deployment-target/env-vars'
 import { createDeploymentTargetEnvironment } from '../../models/deployment-target/environment'
-import { useDeploymentTargetQueryGate } from '../../models/deployment-target/query-gate'
-import { useSourceReady } from '../../models/source'
-import { useDeployableEnvironmentsQuery } from '../../queries/target-environments'
-import { useDeploymentOptionsQuery } from '../../queries/target-options'
+import {
+  useCreateGuideDeployableEnvironmentsQuery,
+  useCreateGuideDeploymentOptionsQuery,
+  useCreateGuideDeploymentTargetEnabled,
+} from '../../models/deployment-target/query-config'
+import { useCreateGuideSourceReady } from '../../models/source-readiness'
 import { dslContentAtom } from '../../state/dsl-atoms'
 import { submittedReleaseFieldsAtom } from '../../state/release-atoms'
 import { selectedAppAtom } from '../../state/source-atoms'
@@ -19,23 +21,8 @@ import {
 import {
   unsupportedDslNodesAtom,
 } from '../../state/unsupported-dsl-atoms'
+import { methodAtom } from '../../state/workflow-atoms'
 import { useCreateDeploymentSubmission } from '../../submission'
-
-function useDeploymentOptionsForTargetActions() {
-  const {
-    encodedDslContent,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  } = useDeploymentTargetQueryGate()
-
-  return useDeploymentOptionsQuery({
-    encodedDslContent,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  })
-}
 
 function useTargetSubmittedReleaseReady(sourceReady: boolean) {
   const {
@@ -61,18 +48,18 @@ function queryIsLoading(query: QueryFetchState) {
   return query.isLoading || (query.isFetching && !query.data)
 }
 
-function useTargetActionDraft() {
-  const sourceReady = useSourceReady()
-  const selectedApp = useAtomValue(selectedAppAtom)
+function useTargetDeployReady() {
+  const sourceReady = useCreateGuideSourceReady()
   const dslContent = useAtomValue(dslContentAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
   const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
   const envVarValues = useAtomValue(envVarValuesAtom)
   const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
-  const { method, queryGate } = useDeploymentTargetQueryGate()
-  const deploymentOptionsResult = useDeploymentOptionsForTargetActions()
-  const deployableEnvironmentsQuery = useDeployableEnvironmentsQuery(queryGate.shouldLoadDeploymentTarget)
-  const environments = queryGate.shouldLoadDeploymentTarget
+  const method = useAtomValue(methodAtom)
+  const shouldLoadDeploymentTarget = useCreateGuideDeploymentTargetEnabled()
+  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
+  const deployableEnvironmentsQuery = useCreateGuideDeployableEnvironmentsQuery()
+  const environments = shouldLoadDeploymentTarget
     ? deployableEnvironmentsQuery.data?.data ?? []
     : []
   const targetEnvironment = createDeploymentTargetEnvironment({
@@ -80,77 +67,92 @@ function useTargetActionDraft() {
     selectedEnvironmentId,
   })
   const targetBindings = createDeploymentTargetBindings({
-    credentialSlots: deploymentOptionsResult.deploymentOptions?.credentialSlots,
+    credentialSlots: deploymentOptionsQuery.data?.options?.credentialSlots,
     manualBindingSelections,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
+    shouldLoadDeploymentTarget,
   })
   const targetEnvVars = createDeploymentTargetEnvVars({
     dslContent,
     envVarValues,
     method,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
-    slots: deploymentOptionsResult.deploymentOptions?.envVarSlots,
+    shouldLoadDeploymentTarget,
+    slots: deploymentOptionsQuery.data?.options?.envVarSlots,
   })
   const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
-
-  return {
-    deployableEnvironmentsQuery,
-    deploymentOptions: deploymentOptionsResult.deploymentOptions,
-    deploymentOptionsQuery: deploymentOptionsResult.deploymentOptionsQuery,
-    envVarValues,
-    queryGate,
-    selectedApp,
-    selectedEnvironmentId,
-    submittedReleaseReady,
-    targetBindings,
-    targetEnvironment,
-    targetEnvVars,
-    unsupportedDslNodes,
-  }
-}
-
-type TargetActionDraft = ReturnType<typeof useTargetActionDraft>
-
-function targetCanDeploy(draft: TargetActionDraft) {
-  const deploymentTargetReady = draft.queryGate.shouldLoadDeploymentTarget
-    && !queryIsLoading(draft.deployableEnvironmentsQuery)
-    && !draft.deployableEnvironmentsQuery.isError
-    && !queryIsLoading(draft.deploymentOptionsQuery)
-    && !draft.deploymentOptionsQuery.isError
-    && draft.unsupportedDslNodes.length === 0
+  const deploymentTargetReady = shouldLoadDeploymentTarget
+    && !queryIsLoading(deployableEnvironmentsQuery)
+    && !deployableEnvironmentsQuery.isError
+    && !queryIsLoading(deploymentOptionsQuery)
+    && !deploymentOptionsQuery.isError
+    && unsupportedDslNodes.length === 0
 
   return Boolean(
-    draft.targetEnvironment.selectedEnvironment?.id
+    targetEnvironment.selectedEnvironment?.id
     && deploymentTargetReady
-    && draft.targetBindings.requiredBindingsReady
-    && draft.targetEnvVars.requiredEnvVarsReady
-    && draft.submittedReleaseReady,
+    && targetBindings.requiredBindingsReady
+    && targetEnvVars.requiredEnvVarsReady
+    && submittedReleaseReady,
   )
 }
 
-function targetCanSkipDeployment(draft: TargetActionDraft) {
+function useTargetSkipDeploymentReady() {
+  const sourceReady = useCreateGuideSourceReady()
+  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
+  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
+  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
+
   return Boolean(
-    draft.submittedReleaseReady
-    && !draft.deploymentOptionsQuery.isError
-    && draft.unsupportedDslNodes.length === 0,
+    submittedReleaseReady
+    && !deploymentOptionsQuery.isError
+    && unsupportedDslNodes.length === 0,
   )
 }
 
-function useTargetDeploymentSubmission(draft: TargetActionDraft) {
+function useTargetDeploymentSubmissionAction() {
+  const sourceReady = useCreateGuideSourceReady()
+  const selectedApp = useAtomValue(selectedAppAtom)
+  const dslContent = useAtomValue(dslContentAtom)
+  const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
+  const envVarValues = useAtomValue(envVarValuesAtom)
+  const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
+  const method = useAtomValue(methodAtom)
+  const shouldLoadDeploymentTarget = useCreateGuideDeploymentTargetEnabled()
+  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
+  const deployableEnvironmentsQuery = useCreateGuideDeployableEnvironmentsQuery()
+  const environments = shouldLoadDeploymentTarget
+    ? deployableEnvironmentsQuery.data?.data ?? []
+    : []
+  const targetEnvironment = createDeploymentTargetEnvironment({
+    environments,
+    selectedEnvironmentId,
+  })
+  const targetBindings = createDeploymentTargetBindings({
+    credentialSlots: deploymentOptionsQuery.data?.options?.credentialSlots,
+    manualBindingSelections,
+    shouldLoadDeploymentTarget,
+  })
+  const targetEnvVars = createDeploymentTargetEnvVars({
+    dslContent,
+    envVarValues,
+    method,
+    shouldLoadDeploymentTarget,
+    slots: deploymentOptionsQuery.data?.options?.envVarSlots,
+  })
+  const submittedReleaseReady = useTargetSubmittedReleaseReady(sourceReady)
   const { createDeploymentAndRelease } = useCreateDeploymentSubmission({
-    effectiveSelectedApp: draft.selectedApp,
+    effectiveSelectedApp: selectedApp,
     hasInstanceNameConflict: false,
-    isInitialReleaseReady: draft.submittedReleaseReady,
+    isInitialReleaseReady: submittedReleaseReady,
     targetSubmissionState: {
-      bindingSelections: draft.targetBindings.bindingSelections,
-      bindingSlots: draft.targetBindings.bindingSlots,
-      deployableEnvironmentsQuery: draft.deployableEnvironmentsQuery,
-      deploymentOptions: draft.deploymentOptions,
-      envVarSlots: draft.targetEnvVars.envVarSlots,
-      envVarValues: draft.envVarValues,
-      requiredEnvVarsReady: draft.targetEnvVars.requiredEnvVarsReady,
-      selectedEnvironment: draft.targetEnvironment.selectedEnvironment,
-      selectedEnvironmentId: draft.selectedEnvironmentId,
+      bindingSelections: targetBindings.bindingSelections,
+      bindingSlots: targetBindings.bindingSlots,
+      deployableEnvironmentsQuery,
+      deploymentOptions: deploymentOptionsQuery.data?.options,
+      envVarSlots: targetEnvVars.envVarSlots,
+      envVarValues,
+      requiredEnvVarsReady: targetEnvVars.requiredEnvVarsReady,
+      selectedEnvironment: targetEnvironment.selectedEnvironment,
+      selectedEnvironmentId,
     },
   })
 
@@ -158,19 +160,19 @@ function useTargetDeploymentSubmission(draft: TargetActionDraft) {
 }
 
 export function useTargetDeployDisabled() {
-  return !targetCanDeploy(useTargetActionDraft())
+  return !useTargetDeployReady()
 }
 
 export function useTargetSkipDeploymentDisabled() {
-  return !targetCanSkipDeployment(useTargetActionDraft())
+  return !useTargetSkipDeploymentReady()
 }
 
 export function useTargetDeployAction() {
-  const draft = useTargetActionDraft()
-  const createDeploymentAndRelease = useTargetDeploymentSubmission(draft)
+  const deployReady = useTargetDeployReady()
+  const createDeploymentAndRelease = useTargetDeploymentSubmissionAction()
 
   async function handleDeploy() {
-    if (!targetCanDeploy(draft))
+    if (!deployReady)
       return
 
     await createDeploymentAndRelease({ deployToEnvironment: true })
@@ -180,11 +182,11 @@ export function useTargetDeployAction() {
 }
 
 export function useTargetSkipDeploymentAction() {
-  const draft = useTargetActionDraft()
-  const createDeploymentAndRelease = useTargetDeploymentSubmission(draft)
+  const skipDeploymentReady = useTargetSkipDeploymentReady()
+  const createDeploymentAndRelease = useTargetDeploymentSubmissionAction()
 
   async function handleSkipDeployment() {
-    if (!targetCanSkipDeployment(draft))
+    if (!skipDeploymentReady)
       return
 
     await createDeploymentAndRelease({ deployToEnvironment: false })

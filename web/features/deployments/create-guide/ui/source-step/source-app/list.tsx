@@ -9,10 +9,10 @@ import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
 import { selectSourceAppAtom } from '../../../state/source-atoms'
 import {
-  useFilteredSourceApps,
+  useEffectiveSourceAppId,
+  useFilteredSourceAppOptions,
   useSourceAppListQuery,
-  useSourceApps,
-  useSourceAppSelected,
+  useSourceAppOptions,
 } from './list.data'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
@@ -21,8 +21,9 @@ export function SourceAppList() {
   const { t } = useTranslation('deployments')
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
   const sourceAppsQuery = useSourceAppListQuery()
-  const sourceApps = useSourceApps()
-  const filteredApps = useFilteredSourceApps()
+  const sourceApps = useSourceAppOptions()
+  const filteredApps = useFilteredSourceAppOptions()
+  const effectiveSourceAppId = useEffectiveSourceAppId()
   const sourceAppsLoading = sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)
 
   return (
@@ -41,6 +42,7 @@ export function SourceAppList() {
                   <SourceAppOption
                     key={app.id}
                     app={app}
+                    selected={effectiveSourceAppId === app.id}
                     onSelect={() => selectSourceApp(app)}
                   />
                 ))}
@@ -66,12 +68,11 @@ function SourceAppSkeleton() {
   )
 }
 
-function SourceAppOption({ app, onSelect }: {
+function SourceAppOption({ app, onSelect, selected }: {
   app: App
   onSelect: () => void
+  selected: boolean
 }) {
-  const selected = useSourceAppSelected(app.id)
-
   return (
     <label
       className={cn(

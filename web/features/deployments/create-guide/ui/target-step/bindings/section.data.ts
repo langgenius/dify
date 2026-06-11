@@ -2,52 +2,38 @@
 
 import { useAtomValue } from 'jotai'
 import { createDeploymentTargetBindings } from '../../../models/deployment-target/bindings'
-import { useDeploymentTargetQueryGate } from '../../../models/deployment-target/query-gate'
-import { useDeploymentOptionsQuery } from '../../../queries/target-options'
+import {
+  useCreateGuideDeploymentOptionsQuery,
+  useCreateGuideDeploymentTargetEnabled,
+} from '../../../models/deployment-target/query-config'
 import {
   manualBindingSelectionsAtom,
 } from '../../../state/target-atoms'
 
-function useDeploymentOptionsForTargetBinding() {
-  const {
-    encodedDslContent,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  } = useDeploymentTargetQueryGate()
-
-  return useDeploymentOptionsQuery({
-    encodedDslContent,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  })
-}
-
 export function useTargetBindingDeploymentOptionsQuery() {
-  return useDeploymentOptionsForTargetBinding().deploymentOptionsQuery
+  return useCreateGuideDeploymentOptionsQuery()
 }
 
 export function useTargetBindingSelections() {
   const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
-  const { queryGate } = useDeploymentTargetQueryGate()
-  const deploymentOptionsResult = useDeploymentOptionsForTargetBinding()
+  const shouldLoadDeploymentTarget = useCreateGuideDeploymentTargetEnabled()
+  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
 
   return createDeploymentTargetBindings({
-    credentialSlots: deploymentOptionsResult.deploymentOptions?.credentialSlots,
+    credentialSlots: deploymentOptionsQuery.data?.options?.credentialSlots,
     manualBindingSelections,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
+    shouldLoadDeploymentTarget,
   }).bindingSelections
 }
 
 export function useTargetBindingSlots() {
   const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
-  const { queryGate } = useDeploymentTargetQueryGate()
-  const deploymentOptionsResult = useDeploymentOptionsForTargetBinding()
+  const shouldLoadDeploymentTarget = useCreateGuideDeploymentTargetEnabled()
+  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
 
   return createDeploymentTargetBindings({
-    credentialSlots: deploymentOptionsResult.deploymentOptions?.credentialSlots,
+    credentialSlots: deploymentOptionsQuery.data?.options?.credentialSlots,
     manualBindingSelections,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
+    shouldLoadDeploymentTarget,
   }).bindingSlots
 }
