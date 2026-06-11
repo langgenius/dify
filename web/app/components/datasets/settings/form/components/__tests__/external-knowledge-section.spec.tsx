@@ -116,8 +116,7 @@ describe('ExternalKnowledgeSection', () => {
 
     it('should render API connection icon', () => {
       const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-      // The ApiConnectionMod icon should be rendered
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('.i-custom-vender-solid-development-api-connection-mod')
       expect(icon).toBeInTheDocument()
     })
 
