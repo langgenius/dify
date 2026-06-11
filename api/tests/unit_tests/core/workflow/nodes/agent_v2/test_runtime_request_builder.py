@@ -152,7 +152,7 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
     assert dumped["composition"]["layers"][-1]["config"]["json_schema"]["properties"]["summary"]["type"] == "string"
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
-    assert result.redacted_request["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    assert result.redacted_request["composition"]["layers"][6]["config"]["credentials"] == "[REDACTED]"
 
 
 def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
@@ -226,7 +226,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert output_schema["properties"]["report"]["properties"]["file_id"]["type"] == "string"
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
-    assert dumped["composition"]["layers"][5]["config"]["model_settings"] == {"temperature": 0.2}
+    assert dumped["composition"]["layers"][6]["config"]["model_settings"] == {"temperature": 0.2}
     assert result.metadata["runtime_support"]["reserved_status"]["tools.dify_tools"] == "supported_when_config_valid"
     assert result.metadata["runtime_support"]["reserved_status"]["tools.cli_tools"] == "reserved_not_executed"
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]

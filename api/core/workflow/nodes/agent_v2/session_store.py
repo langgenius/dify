@@ -98,6 +98,53 @@ class WorkflowAgentRuntimeSessionStore:
                 for row in rows
             ]
 
+    def load_active_session_for_node(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        node_id: str,
+    ) -> StoredWorkflowAgentSession | None:
+        """Return the newest active runtime session for one workflow node scope.
+
+        Sandbox file APIs need the persisted ``session_snapshot`` plus replayable
+        non-plugin composition layer specs, not just the raw snapshot. The latest
+        updated row wins when historical active rows still exist from older agent
+        or binding revisions for the same workflow node.
+        """
+        with session_factory.create_session() as session:
+            row = session.scalar(
+                select(WorkflowAgentRuntimeSession)
+                .where(
+                    WorkflowAgentRuntimeSession.tenant_id == tenant_id,
+                    WorkflowAgentRuntimeSession.app_id == app_id,
+                    WorkflowAgentRuntimeSession.workflow_run_id == workflow_run_id,
+                    WorkflowAgentRuntimeSession.node_id == node_id,
+                    WorkflowAgentRuntimeSession.status == WorkflowAgentRuntimeSessionStatus.ACTIVE,
+                )
+                .order_by(WorkflowAgentRuntimeSession.updated_at.desc(), WorkflowAgentRuntimeSession.id.desc())
+                .limit(1)
+            )
+            if row is None:
+                return None
+            return StoredWorkflowAgentSession(
+                scope=WorkflowAgentSessionScope(
+                    tenant_id=row.tenant_id,
+                    app_id=row.app_id,
+                    workflow_id=row.workflow_id,
+                    workflow_run_id=row.workflow_run_id,
+                    node_id=row.node_id,
+                    node_execution_id=row.node_execution_id or "",
+                    binding_id=row.binding_id,
+                    agent_id=row.agent_id,
+                    agent_config_snapshot_id=row.agent_config_snapshot_id,
+                ),
+                session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
+                backend_run_id=row.backend_run_id,
+                composition_layer_specs=_deserialize_specs(row.composition_layer_specs),
+            )
+
     def save_active_snapshot(
         self,
         *,

@@ -30,6 +30,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -46,6 +47,7 @@ AGENT_SOUL_PROMPT_LAYER_ID = "agent_soul_prompt"
 WORKFLOW_NODE_JOB_PROMPT_LAYER_ID = "workflow_node_job_prompt"
 WORKFLOW_USER_PROMPT_LAYER_ID = "workflow_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
+DIFY_SHELL_LAYER_ID = "shell"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 
 # Layer types that hold credentials in their per-run config. These are excluded
@@ -260,6 +262,13 @@ class AgentBackendRunRequestBuilder:
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
                     metadata=run_input.metadata,
                     config=run_input.execution_context,
+                ),
+                RunLayerSpec(
+                    name=DIFY_SHELL_LAYER_ID,
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=DifyShellLayerConfig(),
                 ),
             ]
         )

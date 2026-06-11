@@ -2,10 +2,11 @@
 
 Only explicitly allowed provider type ids are constructible here. The default
 provider set contains prompt layers, the optional pydantic-ai history layer, the
-state-free Dify structured output layer, the Dify execution-context layer, and
-the Dify plugin business-layer family:
+state-free Dify structured output layer, the Dify execution-context layer, the
+resumable Dify sandbox shell layer, and the Dify plugin business-layer family:
 
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
+- ``dify.shell`` for resumable sandbox workspace state,
 - ``dify.plugin.llm`` for plugin-backed model selection, and
 - ``dify.plugin.tools`` for prepared plugin tool exposure.
 
@@ -31,6 +32,7 @@ from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
+from dify_agent.layers.shell.layer import DifyShellLayer
 
 
 type DifyAgentLayerProvider = LayerProvider[Any]
@@ -56,6 +58,7 @@ def create_default_layer_providers(
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),
         LayerProvider.from_layer_type(DifyPluginToolsLayer),
+        LayerProvider.from_layer_type(DifyShellLayer),
     )
 
 

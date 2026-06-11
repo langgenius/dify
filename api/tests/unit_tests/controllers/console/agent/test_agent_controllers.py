@@ -4,6 +4,7 @@ import pytest
 
 from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
+from controllers.console.agent import sandbox as sandbox_controller
 from controllers.console.agent.composer import (
     AgentAppComposerApi,
     AgentAppComposerCandidatesApi,
@@ -14,6 +15,17 @@ from controllers.console.agent.composer import (
     WorkflowAgentComposerSaveToRosterApi,
     WorkflowAgentComposerValidateApi,
 )
+from controllers.console.agent.sandbox import (
+    AgentAppSandboxListApi,
+    AgentAppSandboxReadApi,
+    AgentAppSandboxUploadApi,
+    SandboxListPayload,
+    SandboxReadPayload,
+    SandboxUploadPayload,
+    WorkflowAgentSandboxListApi,
+    WorkflowAgentSandboxReadApi,
+    WorkflowAgentSandboxUploadApi,
+)
 from controllers.console.agent.roster import (
     AgentInviteOptionsApi,
     AgentRosterDetailApi,
@@ -22,6 +34,7 @@ from controllers.console.agent.roster import (
     AgentRosterVersionsApi,
 )
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
+from services.agent.sandbox_service import SandboxOperationError
 
 
 def _unwrap(method):
@@ -123,6 +136,7 @@ def account():
 def patch_account_context(monkeypatch, account):
     monkeypatch.setattr(roster_controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(composer_controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(sandbox_controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
 
 
 def test_roster_list_get_parses_query_and_calls_service(app, monkeypatch):
@@ -338,3 +352,100 @@ def test_agent_app_composer_get_put_validate_and_candidates(app, monkeypatch):
         }
     agent_app_candidates = _unwrap(AgentAppComposerCandidatesApi.get)(AgentAppComposerCandidatesApi(), app_model)
     assert agent_app_candidates["variant"] == "agent_app"
+
+
+def test_workflow_agent_sandbox_routes_delegate_to_service(app, monkeypatch):
+    service = SimpleNamespace(
+        list_files=lambda **kwargs: {"path": kwargs["path"], "entries": [], "truncated": False},
+        read_file=lambda **kwargs: {
+            "path": kwargs["path"],
+            "encoding": kwargs["encoding"],
+            "content": "hello",
+            "size": 5,
+            "truncated": False,
+        },
+        upload_file=lambda **kwargs: {
+            "path": kwargs["path"],
+            "file": {"id": "file-1", "name": "report.txt", "size": 5, "mime_type": "text/plain"},
+        },
+    )
+    monkeypatch.setattr(sandbox_controller, "build_workflow_agent_sandbox_service", lambda: service)
+    app_model = SimpleNamespace(id="app-1")
+    workflow_list = _unwrap(WorkflowAgentSandboxListApi.post)
+    workflow_read = _unwrap(WorkflowAgentSandboxReadApi.post)
+    workflow_upload = _unwrap(WorkflowAgentSandboxUploadApi.post)
+
+    with app.test_request_context(method="POST", json={"path": "."}):
+        assert workflow_list(WorkflowAgentSandboxListApi(), SandboxListPayload(path="."), app_model, "run-1", "node-1")[
+            "path"
+        ] == "."
+    with app.test_request_context(method="POST", json={"path": "report.txt", "encoding": "utf-8", "max_bytes": 10}):
+        assert workflow_read(
+            WorkflowAgentSandboxReadApi(),
+            SandboxReadPayload(path="report.txt", encoding="utf-8", max_bytes=10),
+            app_model,
+            "run-1",
+            "node-1",
+        )[
+            "content"
+        ] == "hello"
+    with app.test_request_context(method="POST", json={"path": "report.txt"}):
+        assert workflow_upload(
+            WorkflowAgentSandboxUploadApi(),
+            SandboxUploadPayload(path="report.txt"),
+            app_model,
+            "run-1",
+            "node-1",
+        )["file"]["id"] == "file-1"
+
+
+def test_agent_app_sandbox_routes_return_unavailable(app, monkeypatch):
+    monkeypatch.setattr(
+        sandbox_controller,
+        "build_agent_app_sandbox_service",
+        lambda: SimpleNamespace(
+            list_files=lambda **kwargs: (_ for _ in ()).throw(
+                SandboxOperationError(
+                    error_code="sandbox_unavailable",
+                    description="Agent App sandbox is unavailable until Agent App execution runs through dify-agent shell sessions.",
+                    status_code=503,
+                )
+            ),
+            read_file=lambda **kwargs: (_ for _ in ()).throw(
+                SandboxOperationError(
+                    error_code="sandbox_unavailable",
+                    description="Agent App sandbox is unavailable until Agent App execution runs through dify-agent shell sessions.",
+                    status_code=503,
+                )
+            ),
+            upload_file=lambda **kwargs: (_ for _ in ()).throw(
+                SandboxOperationError(
+                    error_code="sandbox_unavailable",
+                    description="Agent App sandbox is unavailable until Agent App execution runs through dify-agent shell sessions.",
+                    status_code=503,
+                )
+            ),
+        ),
+    )
+    agent_list = _unwrap(AgentAppSandboxListApi.post)
+    agent_read = _unwrap(AgentAppSandboxReadApi.post)
+    agent_upload = _unwrap(AgentAppSandboxUploadApi.post)
+
+    with app.test_request_context(method="POST", json={"path": "."}):
+        with pytest.raises(SandboxOperationError) as exc_info:
+            agent_list(AgentAppSandboxListApi(), SandboxListPayload(path="."), SimpleNamespace(id="app-1"))
+    assert exc_info.value.data["code"] == "sandbox_unavailable"
+
+    with app.test_request_context(method="POST", json={"path": "report.txt", "encoding": "base64", "max_bytes": 9}):
+        with pytest.raises(SandboxOperationError) as exc_info:
+            agent_read(
+                AgentAppSandboxReadApi(),
+                SandboxReadPayload(path="report.txt", encoding="base64", max_bytes=9),
+                SimpleNamespace(id="app-1"),
+            )
+    assert exc_info.value.data["code"] == "sandbox_unavailable"
+
+    with app.test_request_context(method="POST", json={"path": "report.txt"}):
+        with pytest.raises(SandboxOperationError) as exc_info:
+            agent_upload(AgentAppSandboxUploadApi(), SandboxUploadPayload(path="report.txt"), SimpleNamespace(id="app-1"))
+    assert exc_info.value.data["code"] == "sandbox_unavailable"

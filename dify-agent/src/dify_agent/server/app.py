@@ -18,7 +18,9 @@ from redis.asyncio import Redis
 
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
+from dify_agent.server.routes.sandbox import create_sandbox_router, install_sandbox_exception_handlers
 from dify_agent.server.routes.runs import create_runs_router
+from dify_agent.server.sandbox_service import SandboxService
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
 
@@ -47,8 +49,15 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             layer_providers=layer_providers,
         )
+        sandbox_service = SandboxService(
+            layer_providers=layer_providers,
+            command_timeout_seconds=resolved_settings.sandbox_command_timeout_seconds,
+            max_read_bytes=resolved_settings.sandbox_max_read_bytes,
+            max_upload_bytes=resolved_settings.sandbox_max_upload_bytes,
+        )
         state["store"] = store
         state["scheduler"] = scheduler
+        state["sandbox_service"] = sandbox_service
         try:
             yield
         finally:
@@ -57,6 +66,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             await redis.aclose()
 
     app = FastAPI(title="Dify Agent Run Server", version="0.1.0", lifespan=lifespan)
+    install_sandbox_exception_handlers(app)
 
     def get_store() -> RedisRunStore:
         return state["store"]  # pyright: ignore[reportReturnType]
@@ -64,7 +74,11 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     def get_scheduler() -> RunScheduler:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
+    def get_sandbox_service() -> SandboxService:
+        return state["sandbox_service"]  # pyright: ignore[reportReturnType]
+
     app.include_router(create_runs_router(get_store, get_scheduler))
+    app.include_router(create_sandbox_router(get_sandbox_service))
     return app
 
 

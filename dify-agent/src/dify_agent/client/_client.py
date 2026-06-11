@@ -1,13 +1,19 @@
-"""HTTPX-based client for Dify Agent runs.
+"""HTTPX-based client for Dify Agent runs and sandbox file operations.
 
 The client uses the public DTOs from ``dify_agent.protocol.schemas`` for all
-normal request and response parsing. It intentionally does not retry
-``POST /runs`` because create-run is not idempotent, and create helpers require a
-``CreateRunRequest`` instance rather than accepting raw payload dicts. SSE
-streams are the only operation with reconnect logic: transient stream, connect,
-or read failures, stream timeouts, and HTTP 5xx stream responses reconnect with
-the latest observed event id, while HTTP 4xx responses, DTO validation failures,
-and malformed SSE frames fail immediately.
+normal request and response parsing. Run creation intentionally does not retry
+``POST /runs`` because create-run is not idempotent, and create helpers require
+a ``CreateRunRequest`` instance rather than accepting raw payload dicts.
+
+The same concrete client also implements the shared sandbox HTTP boundary used
+by API-side workflow services after the sandbox client merge. Those sandbox
+methods post typed locator payloads to ``/sandbox/files/list``, ``/read``, and
+``/upload`` without introducing a second API-local HTTP wrapper.
+
+SSE streams are the only operation with reconnect logic: transient stream,
+connect, or read failures, stream timeouts, and HTTP 5xx stream responses
+reconnect with the latest observed event id, while HTTP 4xx responses, DTO
+validation failures, and malformed SSE frames fail immediately.
 """
 
 from __future__ import annotations
@@ -28,6 +34,14 @@ from dify_agent.protocol.schemas import (
     CreateRunRequest,
     CreateRunResponse,
     RUN_EVENT_ADAPTER,
+    SandboxListFilesRequest,
+    SandboxListResult,
+    SandboxLocator,
+    SandboxReadEncoding,
+    SandboxReadFileRequest,
+    SandboxReadResult,
+    SandboxUploadFileRequest,
+    SandboxUploadResult,
     RunEvent,
     RunEventsResponse,
     RunStatusResponse,
@@ -280,6 +294,126 @@ class Client:
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"create_run_sync request failed: {exc}") from exc
         return _parse_model_response(response, CreateRunResponse)
+
+    async def list_sandbox_files(self, locator: SandboxLocator, *, path: str = ".") -> SandboxListResult:
+        """List files from ``POST /sandbox/files/list``."""
+        request_model = SandboxListFilesRequest(locator=_validate_sandbox_locator(locator), path=path)
+        try:
+            response = await self._get_async_http_client().post(
+                self._url("/sandbox/files/list"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("list_sandbox_files timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"list_sandbox_files request failed: {exc}") from exc
+        return _parse_model_response(response, SandboxListResult)
+
+    def list_sandbox_files_sync(self, locator: SandboxLocator, *, path: str = ".") -> SandboxListResult:
+        """Synchronous variant of ``list_sandbox_files``."""
+        request_model = SandboxListFilesRequest(locator=_validate_sandbox_locator(locator), path=path)
+        try:
+            response = self._get_sync_http_client().post(
+                self._url("/sandbox/files/list"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("list_sandbox_files_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"list_sandbox_files_sync request failed: {exc}") from exc
+        return _parse_model_response(response, SandboxListResult)
+
+    async def read_sandbox_file(
+        self,
+        locator: SandboxLocator,
+        *,
+        path: str,
+        encoding: SandboxReadEncoding = "utf-8",
+        max_bytes: int = 262144,
+    ) -> SandboxReadResult:
+        """Read one file from ``POST /sandbox/files/read``."""
+        request_model = SandboxReadFileRequest(
+            locator=_validate_sandbox_locator(locator),
+            path=path,
+            encoding=encoding,
+            max_bytes=max_bytes,
+        )
+        try:
+            response = await self._get_async_http_client().post(
+                self._url("/sandbox/files/read"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("read_sandbox_file timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"read_sandbox_file request failed: {exc}") from exc
+        return _parse_model_response(response, SandboxReadResult)
+
+    def read_sandbox_file_sync(
+        self,
+        locator: SandboxLocator,
+        *,
+        path: str,
+        encoding: SandboxReadEncoding = "utf-8",
+        max_bytes: int = 262144,
+    ) -> SandboxReadResult:
+        """Synchronous variant of ``read_sandbox_file``."""
+        request_model = SandboxReadFileRequest(
+            locator=_validate_sandbox_locator(locator),
+            path=path,
+            encoding=encoding,
+            max_bytes=max_bytes,
+        )
+        try:
+            response = self._get_sync_http_client().post(
+                self._url("/sandbox/files/read"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("read_sandbox_file_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"read_sandbox_file_sync request failed: {exc}") from exc
+        return _parse_model_response(response, SandboxReadResult)
+
+    async def upload_sandbox_file(self, locator: SandboxLocator, *, path: str) -> SandboxUploadResult:
+        """Upload one file from ``POST /sandbox/files/upload``."""
+        request_model = SandboxUploadFileRequest(locator=_validate_sandbox_locator(locator), path=path)
+        try:
+            response = await self._get_async_http_client().post(
+                self._url("/sandbox/files/upload"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("upload_sandbox_file timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"upload_sandbox_file request failed: {exc}") from exc
+        return _parse_model_response(response, SandboxUploadResult)
+
+    def upload_sandbox_file_sync(self, locator: SandboxLocator, *, path: str) -> SandboxUploadResult:
+        """Synchronous variant of ``upload_sandbox_file``."""
+        request_model = SandboxUploadFileRequest(locator=_validate_sandbox_locator(locator), path=path)
+        try:
+            response = self._get_sync_http_client().post(
+                self._url("/sandbox/files/upload"),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("upload_sandbox_file_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"upload_sandbox_file_sync request failed: {exc}") from exc
+        return _parse_model_response(response, SandboxUploadResult)
 
     async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Request explicit cancellation for ``run_id``.
@@ -593,6 +727,13 @@ def _validate_create_run_request(request: CreateRunRequest) -> CreateRunRequest:
     if isinstance(request, CreateRunRequest):
         return request
     raise DifyAgentValidationError(detail="request must be a CreateRunRequest")
+
+
+def _validate_sandbox_locator(locator: SandboxLocator) -> SandboxLocator:
+    """Reject raw locator payloads so sandbox requests use the public DTO boundary."""
+    if isinstance(locator, SandboxLocator):
+        return locator
+    raise DifyAgentValidationError(detail="locator must be a SandboxLocator")
 
 
 def _parse_model_response(response: httpx.Response, model_type: type[_ResponseModelT]) -> _ResponseModelT:

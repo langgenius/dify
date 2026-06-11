@@ -16,6 +16,7 @@ from dify_agent.layers.dify_plugin import (
 )
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -28,6 +29,7 @@ from clients.agent_backend import (
     AGENT_SOUL_PROMPT_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
+    DIFY_SHELL_LAYER_ID,
     WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
     WORKFLOW_USER_PROMPT_LAYER_ID,
     AgentBackendModelConfig,
@@ -80,6 +82,7 @@ def test_request_builder_outputs_dify_agent_create_run_request():
         WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
         WORKFLOW_USER_PROMPT_LAYER_ID,
         DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        DIFY_SHELL_LAYER_ID,
         DIFY_AGENT_HISTORY_LAYER_ID,
         DIFY_AGENT_MODEL_LAYER_ID,
         DIFY_AGENT_OUTPUT_LAYER_ID,
@@ -110,6 +113,8 @@ def test_request_builder_sets_model_and_output_layer_contract_ids():
 
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].type == DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID
     assert cast(DifyExecutionContextLayerConfig, layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].config).user_id == "user-1"
+    assert layers[DIFY_SHELL_LAYER_ID].type == DIFY_SHELL_LAYER_TYPE_ID
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     assert layers[DIFY_AGENT_HISTORY_LAYER_ID].type == PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].type == DIFY_PLUGIN_LLM_LAYER_TYPE_ID
     assert cast(DifyPluginLLMLayerConfig, layers[DIFY_AGENT_MODEL_LAYER_ID].config).plugin_id == "langgenius/openai"
@@ -248,4 +253,4 @@ def test_redact_for_agent_backend_log_hides_credentials():
 
     redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
 
-    assert redacted["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    assert redacted["composition"]["layers"][6]["config"]["credentials"] == "[REDACTED]"

@@ -24,6 +24,7 @@ from dify_agent.protocol.schemas import (
     CancelRunResponse,
     CreateRunRequest,
     RUN_EVENT_ADAPTER,
+    SandboxLocator,
     RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
@@ -62,6 +63,44 @@ def _run_succeeded_event(*, event_id: str = "2-0", run_id: str = "run-1") -> Run
 def _run_status_json(status: str) -> dict[str, object]:
     now = datetime(2026, 5, 11, tzinfo=UTC).isoformat()
     return {"run_id": "run-1", "status": status, "created_at": now, "updated_at": now, "error": None}
+
+
+def _sandbox_locator() -> SandboxLocator:
+    return SandboxLocator.model_validate(
+        {
+            "composition": {
+                "layers": [
+                    {
+                        "name": "execution_context",
+                        "type": "dify.execution_context",
+                        "config": {"tenant_id": "tenant-1", "invoke_from": "workflow_run"},
+                    },
+                    {
+                        "name": "shell",
+                        "type": "dify.shell",
+                        "deps": {"execution_context": "execution_context"},
+                        "config": {},
+                    },
+                ]
+            },
+            "session_snapshot": {
+                "layers": [
+                    {"name": "execution_context", "lifecycle_state": "suspended", "runtime_state": {}},
+                    {
+                        "name": "shell",
+                        "lifecycle_state": "suspended",
+                        "runtime_state": {
+                            "session_id": "internal",
+                            "workspace_cwd": "/tmp/workspace",
+                            "job_ids": [],
+                            "job_offsets": {},
+                        },
+                    },
+                ]
+            },
+            "shell_layer_name": "shell",
+        }
+    )
 
 
 class DisconnectingSyncStream(httpx.SyncByteStream):
@@ -183,6 +222,167 @@ def test_error_mapping_and_create_run_input_validation() -> None:
 
     with pytest.raises(DifyAgentValidationError):
         _ = client.create_run_sync({"unknown": "field"})  # pyright: ignore[reportArgumentType]
+
+
+def test_public_sandbox_methods_reject_raw_locator_payloads() -> None:
+    sync_calls = 0
+
+    def sync_handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal sync_calls
+        sync_calls += 1
+        raise AssertionError("sandbox locator validation should fail before any sync HTTP request")
+
+    client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(sync_handler)))
+
+    with pytest.raises(DifyAgentValidationError):
+        _ = client.list_sandbox_files_sync({"not": "a locator"}, path=".")  # pyright: ignore[reportArgumentType]
+    assert sync_calls == 0
+
+    async def scenario() -> None:
+        async_calls = 0
+
+        def async_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal async_calls
+            async_calls += 1
+            raise AssertionError("sandbox locator validation should fail before any async HTTP request")
+
+        async_client = Client(
+            base_url="http://testserver",
+            async_http_client=httpx.AsyncClient(transport=httpx.MockTransport(async_handler)),
+        )
+        with pytest.raises(DifyAgentValidationError):
+            _ = await async_client.list_sandbox_files({"not": "a locator"}, path=".")  # pyright: ignore[reportArgumentType]
+        assert async_calls == 0
+        await async_client._async_http_client.aclose()  # pyright: ignore[reportOptionalMemberAccess]
+
+    asyncio.run(scenario())
+
+
+def test_sync_sandbox_methods_post_expected_endpoints_and_bodies() -> None:
+    seen: list[tuple[str, dict[str, object]]] = []
+    locator = _sandbox_locator()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = cast(dict[str, object], json.loads(request.content))
+        seen.append((request.url.path, payload))
+        if request.url.path == "/sandbox/files/list":
+            return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
+        if request.url.path == "/sandbox/files/read":
+            return httpx.Response(200, json={"path": "report.txt", "encoding": "utf-8", "content": "hello", "size": 5, "truncated": False})
+        if request.url.path == "/sandbox/files/upload":
+            return httpx.Response(200, json={"path": "report.txt", "file": {"id": "file-1", "name": "report.txt", "size": 5, "mime_type": "text/plain"}})
+        raise AssertionError(f"unexpected path {request.url.path}")
+
+    client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+    _ = client.list_sandbox_files_sync(locator, path=".")
+    _ = client.read_sandbox_file_sync(locator, path="report.txt", encoding="utf-8", max_bytes=10)
+    _ = client.upload_sandbox_file_sync(locator, path="report.txt")
+
+    assert seen == [
+        ("/sandbox/files/list", {"locator": locator.model_dump(mode="json"), "path": "."}),
+        (
+            "/sandbox/files/read",
+            {"locator": locator.model_dump(mode="json"), "path": "report.txt", "encoding": "utf-8", "max_bytes": 10},
+        ),
+        ("/sandbox/files/upload", {"locator": locator.model_dump(mode="json"), "path": "report.txt"}),
+    ]
+
+
+def test_async_sandbox_methods_post_expected_endpoints_and_bodies() -> None:
+    seen: list[tuple[str, dict[str, object]]] = []
+    locator = _sandbox_locator()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = cast(dict[str, object], json.loads(request.content))
+        seen.append((request.url.path, payload))
+        if request.url.path == "/sandbox/files/list":
+            return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
+        if request.url.path == "/sandbox/files/read":
+            return httpx.Response(200, json={"path": "report.txt", "encoding": "base64", "content": "aGVsbG8=", "size": 5, "truncated": False})
+        if request.url.path == "/sandbox/files/upload":
+            return httpx.Response(200, json={"path": "report.txt", "file": {"id": "file-1", "name": "report.txt", "size": 5, "mime_type": "text/plain"}})
+        raise AssertionError(f"unexpected path {request.url.path}")
+
+    async def scenario() -> None:
+        client = Client(base_url="http://testserver", async_http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        _ = await client.list_sandbox_files(locator, path="subdir")
+        _ = await client.read_sandbox_file(locator, path="report.txt", encoding="base64", max_bytes=9)
+        _ = await client.upload_sandbox_file(locator, path="report.txt")
+        await client._async_http_client.aclose()  # pyright: ignore[reportOptionalMemberAccess]
+
+    asyncio.run(scenario())
+
+    assert seen == [
+        ("/sandbox/files/list", {"locator": locator.model_dump(mode="json"), "path": "subdir"}),
+        (
+            "/sandbox/files/read",
+            {"locator": locator.model_dump(mode="json"), "path": "report.txt", "encoding": "base64", "max_bytes": 9},
+        ),
+        ("/sandbox/files/upload", {"locator": locator.model_dump(mode="json"), "path": "report.txt"}),
+    ]
+
+
+def test_sync_sandbox_methods_map_422_and_404_errors() -> None:
+    responses = iter(
+        [
+            httpx.Response(422, json={"detail": "invalid locator"}),
+            httpx.Response(404, json={"detail": "missing file"}),
+            httpx.Response(422, json={"detail": "invalid upload"}),
+        ]
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return next(responses)
+
+    client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+    locator = _sandbox_locator()
+
+    with pytest.raises(DifyAgentValidationError) as list_exc:
+        _ = client.list_sandbox_files_sync(locator, path=".")
+    assert list_exc.value.status_code == 422
+
+    with pytest.raises(DifyAgentNotFoundError) as read_exc:
+        _ = client.read_sandbox_file_sync(locator, path="missing.txt")
+    assert read_exc.value.status_code == 404
+
+    with pytest.raises(DifyAgentValidationError) as upload_exc:
+        _ = client.upload_sandbox_file_sync(locator, path="report.txt")
+    assert upload_exc.value.status_code == 422
+
+
+def test_async_sandbox_methods_map_422_and_404_errors() -> None:
+    locator = _sandbox_locator()
+    responses = iter(
+        [
+            httpx.Response(422, json={"detail": "invalid locator"}),
+            httpx.Response(404, json={"detail": "missing file"}),
+            httpx.Response(422, json={"detail": "invalid upload"}),
+        ]
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return next(responses)
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        with pytest.raises(DifyAgentValidationError) as list_exc:
+            _ = await client.list_sandbox_files(locator, path=".")
+        assert list_exc.value.status_code == 422
+
+        with pytest.raises(DifyAgentNotFoundError) as read_exc:
+            _ = await client.read_sandbox_file(locator, path="missing.txt")
+        assert read_exc.value.status_code == 404
+
+        with pytest.raises(DifyAgentValidationError) as upload_exc:
+            _ = await client.upload_sandbox_file(locator, path="report.txt")
+        assert upload_exc.value.status_code == 422
+
+        await http_client.aclose()
+
+    asyncio.run(scenario())
 
 
 def test_http_timeout_maps_to_client_timeout_error() -> None:

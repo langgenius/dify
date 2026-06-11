@@ -39,7 +39,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorConfig, CompositorSessionSnapshot, LayerConfigInput, LayerNodeConfig
-from agenton.layers import ExitIntent
+from agenton.layers import ExitIntent, LifecycleState
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
@@ -55,6 +55,7 @@ RunEventType = Literal[
     "run_failed",
     "run_cancelled",
 ]
+SandboxReadEncoding = Literal["utf-8", "base64"]
 
 
 def utc_now() -> datetime:
@@ -148,6 +149,112 @@ class CancelRunRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class SandboxLocator(BaseModel):
+    """Minimal resume payload needed to re-enter one sandbox shell layer.
+
+    ``composition.layers`` and ``session_snapshot.layers`` must describe the
+    same ordered layer slice so Agenton can resume runtime state deterministically.
+    Callers are expected to build this DTO through
+    ``build_sandbox_locator_from_run_request()`` rather than inventing an
+    ad-hoc locator: that helper keeps the named shell layer plus its full
+    transitive dependency closure, preserves matching snapshot entries in the
+    same order, and leaves shell ``session_id`` inside runtime state only.
+
+    ``shell_layer_name`` is part of the public contract and may differ from the
+    conventional ``"shell"`` node name. The locator therefore identifies the
+    resumable shell by graph node name plus matching snapshot state rather than
+    by exposing any top-level ``session_id`` field.
+    """
+
+    composition: RunComposition
+    session_snapshot: CompositorSessionSnapshot
+    shell_layer_name: str = "shell"
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class SandboxListFilesRequest(BaseModel):
+    """Request body for listing files inside a sandbox workspace."""
+
+    locator: SandboxLocator
+    path: str = "."
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class SandboxFileEntry(BaseModel):
+    """One file-system entry returned by sandbox file listing."""
+
+    name: str
+    type: Literal["file", "directory"]
+    size: int
+    mtime: int
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class SandboxListResult(BaseModel):
+    """Sandbox file listing response."""
+
+    path: str
+    entries: list[SandboxFileEntry]
+    truncated: bool = False
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class SandboxReadFileRequest(BaseModel):
+    """Request body for reading one sandbox file."""
+
+    locator: SandboxLocator
+    path: str
+    encoding: SandboxReadEncoding = "utf-8"
+    max_bytes: int = Field(default=262144, ge=1)
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class SandboxReadResult(BaseModel):
+    """Sandbox file read response for text or base64 payloads."""
+
+    path: str
+    encoding: SandboxReadEncoding
+    content: str
+    size: int
+    truncated: bool = False
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class SandboxUploadFileRequest(BaseModel):
+    """Request body for uploading one sandbox file through the stub CLI."""
+
+    locator: SandboxLocator
+    path: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class SandboxUploadedFile(BaseModel):
+    """Uploaded Dify file metadata returned by the stub CLI."""
+
+    id: str
+    name: str
+    size: int
+    mime_type: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class SandboxUploadResult(BaseModel):
+    """Sandbox upload response."""
+
+    path: str
+    file: SandboxUploadedFile
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 def normalize_composition(composition: RunComposition) -> tuple[CompositorConfig, dict[str, LayerConfigInput]]:
     """Split public Dify composition into Agenton's graph config and layer configs.
 
@@ -175,6 +282,71 @@ def normalize_composition(composition: RunComposition) -> tuple[CompositorConfig
     )
     layer_configs = {layer.name: layer.config for layer in composition.layers}
     return graph_config, layer_configs
+
+
+def build_sandbox_locator_from_run_request(
+    request: CreateRunRequest,
+    *,
+    shell_layer_name: str = "shell",
+) -> SandboxLocator:
+    """Extract the resumable shell subset from a full run request.
+
+    The locator keeps only the named shell layer plus its transitive
+    dependencies and matching session snapshots, preserving the original layer
+    order exactly so ``composition.layers`` and ``session_snapshot.layers`` stay
+    aligned for Agenton resume validation. This helper is also the guardrail
+    that prevents ``/sandbox`` callers from drifting into a second locator
+    protocol: shell ``session_id`` remains buried inside shell runtime state and
+    never becomes a separate top-level request field.
+    """
+    shell_layer = next((layer for layer in request.composition.layers if layer.name == shell_layer_name), None)
+    if shell_layer is None:
+        raise ValueError(f"Sandbox shell layer '{shell_layer_name}' is missing from composition.")
+    if request.session_snapshot is None:
+        raise ValueError("Sandbox locator requires a resumable session_snapshot.")
+
+    included_names: set[str] = set()
+    pending_names = [shell_layer_name]
+    composition_by_name = {layer.name: layer for layer in request.composition.layers}
+    while pending_names:
+        current_name = pending_names.pop()
+        if current_name in included_names:
+            continue
+        try:
+            current_layer = composition_by_name[current_name]
+        except KeyError as exc:
+            raise ValueError(f"Sandbox layer dependency '{current_name}' is missing from composition.") from exc
+        included_names.add(current_name)
+        pending_names.extend(current_layer.deps.values())
+
+    filtered_layers = [layer.model_copy(deep=True) for layer in request.composition.layers if layer.name in included_names]
+    snapshot_by_name = {layer.name: layer for layer in request.session_snapshot.layers}
+    filtered_snapshots = []
+    for layer in filtered_layers:
+        layer_snapshot = snapshot_by_name.get(layer.name)
+        if layer_snapshot is None:
+            raise ValueError(f"Sandbox layer snapshot '{layer.name}' is missing from session_snapshot.")
+        filtered_snapshots.append(layer_snapshot.model_copy(deep=True))
+
+    shell_snapshot = snapshot_by_name.get(shell_layer_name)
+    if shell_snapshot is None:
+        raise ValueError(f"Sandbox shell snapshot '{shell_layer_name}' is missing from session_snapshot.")
+    if shell_snapshot.lifecycle_state is not LifecycleState.SUSPENDED:
+        raise ValueError(
+            f"Sandbox shell snapshot '{shell_layer_name}' must be suspended, got {shell_snapshot.lifecycle_state.value}."
+        )
+
+    return SandboxLocator(
+        composition=RunComposition(
+            schema_version=request.composition.schema_version,
+            layers=filtered_layers,
+        ),
+        session_snapshot=CompositorSessionSnapshot(
+            schema_version=request.session_snapshot.schema_version,
+            layers=filtered_snapshots,
+        ),
+        shell_layer_name=shell_layer_name,
+    )
 
 
 class CreateRunResponse(BaseModel):
@@ -326,6 +498,16 @@ class RunEventsResponse(BaseModel):
 
 __all__ = [
     "BaseRunEvent",
+    "SandboxFileEntry",
+    "SandboxListFilesRequest",
+    "SandboxListResult",
+    "SandboxLocator",
+    "SandboxReadEncoding",
+    "SandboxReadFileRequest",
+    "SandboxReadResult",
+    "SandboxUploadFileRequest",
+    "SandboxUploadedFile",
+    "SandboxUploadResult",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",
@@ -354,6 +536,7 @@ __all__ = [
     "RunSucceededEvent",
     "RunSucceededEventData",
     "RunLayerSpec",
+    "build_sandbox_locator_from_run_request",
     "normalize_composition",
     "utc_now",
 ]

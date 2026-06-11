@@ -9,6 +9,7 @@ import dify_agent.protocol as protocol_exports
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LLM_LAYER_TYPE_ID, DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
     RUN_EVENT_ADAPTER,
@@ -26,6 +27,8 @@ from dify_agent.protocol.schemas import (
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
+    SandboxLocator,
+    build_sandbox_locator_from_run_request,
     normalize_composition,
 )
 from dify_agent.layers.dify_plugin.configs import (
@@ -346,6 +349,210 @@ def test_create_run_request_rejects_removed_top_level_execution_context() -> Non
 def test_layer_exit_signals_reject_extra_fields() -> None:
     with pytest.raises(ValidationError):
         _ = LayerExitSignals.model_validate({"default": "suspend", "unknown": "value"})
+
+
+def test_build_sandbox_locator_from_run_request_keeps_shell_and_execution_context_layers() -> None:
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                ),
+                RunLayerSpec(
+                    name="shell",
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyShellLayerConfig(),
+                ),
+                RunLayerSpec(name="prompt", type=PLAIN_PROMPT_LAYER_TYPE_ID, config=PromptLayerConfig(user="hello")),
+            ]
+        ),
+        session_snapshot=CompositorSessionSnapshot.model_validate(
+            {
+                "layers": [
+                    {"name": "execution_context", "lifecycle_state": "suspended", "runtime_state": {}},
+                    {
+                        "name": "shell",
+                        "lifecycle_state": "suspended",
+                        "runtime_state": {
+                            "session_id": "internal",
+                            "workspace_cwd": "/tmp/workspace",
+                            "job_ids": [],
+                            "job_offsets": {},
+                        },
+                    },
+                    {"name": "prompt", "lifecycle_state": "suspended", "runtime_state": {}},
+                ]
+            }
+        ),
+    )
+
+    locator = build_sandbox_locator_from_run_request(request)
+
+    assert isinstance(locator, SandboxLocator)
+    assert [layer.name for layer in locator.composition.layers] == ["execution_context", "shell"]
+    assert [layer.name for layer in locator.session_snapshot.layers] == ["execution_context", "shell"]
+    assert not hasattr(locator, "session_id")
+
+
+def test_build_sandbox_locator_from_run_request_keeps_transitive_shell_dependencies() -> None:
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(name="support", type=PLAIN_PROMPT_LAYER_TYPE_ID, config=PromptLayerConfig(prefix="support")),
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    deps={"support_dep": "support"},
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                ),
+                RunLayerSpec(
+                    name="shell",
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyShellLayerConfig(),
+                ),
+            ]
+        ),
+        session_snapshot=CompositorSessionSnapshot.model_validate(
+            {
+                "layers": [
+                    {"name": "support", "lifecycle_state": "suspended", "runtime_state": {}},
+                    {"name": "execution_context", "lifecycle_state": "suspended", "runtime_state": {}},
+                    {
+                        "name": "shell",
+                        "lifecycle_state": "suspended",
+                        "runtime_state": {
+                            "session_id": "internal",
+                            "workspace_cwd": "/tmp/workspace",
+                            "job_ids": [],
+                            "job_offsets": {},
+                        },
+                    },
+                ]
+            }
+        ),
+    )
+
+    locator = build_sandbox_locator_from_run_request(request)
+
+    assert [layer.name for layer in locator.composition.layers] == ["support", "execution_context", "shell"]
+    assert [layer.name for layer in locator.session_snapshot.layers] == ["support", "execution_context", "shell"]
+
+
+def test_build_sandbox_locator_from_run_request_supports_custom_shell_and_execution_context_names() -> None:
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="env_ctx",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                ),
+                RunLayerSpec(
+                    name="worker_shell",
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": "env_ctx"},
+                    config=DifyShellLayerConfig(),
+                ),
+            ]
+        ),
+        session_snapshot=CompositorSessionSnapshot.model_validate(
+            {
+                "layers": [
+                    {"name": "env_ctx", "lifecycle_state": "suspended", "runtime_state": {}},
+                    {
+                        "name": "worker_shell",
+                        "lifecycle_state": "suspended",
+                        "runtime_state": {
+                            "session_id": "internal",
+                            "workspace_cwd": "/tmp/workspace",
+                            "job_ids": [],
+                            "job_offsets": {},
+                        },
+                    },
+                ]
+            }
+        ),
+    )
+
+    locator = build_sandbox_locator_from_run_request(request, shell_layer_name="worker_shell")
+
+    assert locator.shell_layer_name == "worker_shell"
+    assert [layer.name for layer in locator.composition.layers] == ["env_ctx", "worker_shell"]
+    assert [layer.name for layer in locator.session_snapshot.layers] == ["env_ctx", "worker_shell"]
+
+
+def test_build_sandbox_locator_from_run_request_rejects_missing_shell_snapshot() -> None:
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                ),
+                RunLayerSpec(
+                    name="shell",
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyShellLayerConfig(),
+                ),
+            ]
+        ),
+        session_snapshot=CompositorSessionSnapshot.model_validate(
+            {
+                "layers": [
+                    {"name": "execution_context", "lifecycle_state": "suspended", "runtime_state": {}},
+                ]
+            }
+        ),
+    )
+
+    with pytest.raises(ValueError, match="shell"):
+        build_sandbox_locator_from_run_request(request)
+
+
+def test_build_sandbox_locator_from_run_request_rejects_non_suspended_shell_state() -> None:
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                ),
+                RunLayerSpec(
+                    name="shell",
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyShellLayerConfig(),
+                ),
+            ]
+        ),
+        session_snapshot=CompositorSessionSnapshot.model_validate(
+            {
+                "layers": [
+                    {"name": "execution_context", "lifecycle_state": "suspended", "runtime_state": {}},
+                    {
+                        "name": "shell",
+                        "lifecycle_state": "new",
+                        "runtime_state": {
+                            "session_id": "internal",
+                            "workspace_cwd": "/tmp/workspace",
+                            "job_ids": [],
+                            "job_offsets": {},
+                        },
+                    },
+                ]
+            }
+        ),
+    )
+
+    with pytest.raises(ValueError, match="must be suspended"):
+        build_sandbox_locator_from_run_request(request)
 
 
 @pytest.mark.parametrize("event_type", ["agent_output", "session_snapshot"])

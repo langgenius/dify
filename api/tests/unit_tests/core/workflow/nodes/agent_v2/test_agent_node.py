@@ -178,7 +178,7 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert agent_log["agent_backend"]["run_id"] == "fake-run-1"
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
-    assert result.inputs["agent_backend_request"]["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    assert result.inputs["agent_backend_request"]["composition"]["layers"][6]["config"]["credentials"] == "[REDACTED]"
 
 
 def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():

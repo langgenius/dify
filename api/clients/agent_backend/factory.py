@@ -1,4 +1,10 @@
-"""Factories for API-side Agent backend clients."""
+"""Factories for API-side Agent backend clients.
+
+Only the run lifecycle surface keeps an API-side factory because it still wraps
+the shared ``dify-agent`` run client for API-specific error normalization.
+Sandbox services now construct ``dify_agent.client.Client`` directly where
+needed, so no parallel sandbox factory remains here.
+"""
 
 from __future__ import annotations
 

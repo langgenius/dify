@@ -235,6 +235,74 @@ def test_list_active_sessions_handles_legacy_rows_without_specs():
     assert listed[0].composition_layer_specs == []
 
 
+def test_load_active_session_for_node_returns_newest_active_row_with_round_tripped_specs_and_snapshot():
+    store = WorkflowAgentRuntimeSessionStore()
+    scope_a = _scope(binding_id="binding-A")
+    scope_b = _scope(binding_id="binding-B")
+    store.save_active_snapshot(
+        scope=scope_a,
+        backend_run_id="run-A",
+        snapshot=_snapshot(messages=1),
+        composition_layer_specs=_specs(),
+    )
+    store.save_active_snapshot(
+        scope=scope_b,
+        backend_run_id="run-B",
+        snapshot=_snapshot(messages=3),
+        composition_layer_specs=[
+            CleanupLayerSpec(name="workflow_node_job_prompt", type="plain.prompt", config={"prefix": "newest"}),
+            CleanupLayerSpec(name="history", type="pydantic_ai.history"),
+        ],
+    )
+
+    loaded = store.load_active_session_for_node(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="wfr-1",
+        node_id="agent-node",
+    )
+
+    assert loaded is not None
+    assert loaded.backend_run_id == "run-B"
+    assert loaded.scope.binding_id == "binding-B"
+    assert loaded.session_snapshot.layers[0].runtime_state["messages"] == [
+        {"role": "user", "content": "m0"},
+        {"role": "user", "content": "m1"},
+        {"role": "user", "content": "m2"},
+    ]
+    assert loaded.composition_layer_specs[0].config == {"prefix": "newest"}
+
+
+def test_load_active_session_for_node_ignores_cleaned_rows() -> None:
+    store = WorkflowAgentRuntimeSessionStore()
+    active_scope = _scope(binding_id="binding-active")
+    cleaned_scope = _scope(binding_id="binding-cleaned")
+    store.save_active_snapshot(
+        scope=cleaned_scope,
+        backend_run_id="run-cleaned",
+        snapshot=_snapshot(messages=1),
+        composition_layer_specs=_specs(),
+    )
+    store.mark_cleaned(scope=cleaned_scope, backend_run_id="cleanup-run")
+    store.save_active_snapshot(
+        scope=active_scope,
+        backend_run_id="run-active",
+        snapshot=_snapshot(messages=2),
+        composition_layer_specs=_specs(),
+    )
+
+    loaded = store.load_active_session_for_node(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="wfr-1",
+        node_id="agent-node",
+    )
+
+    assert loaded is not None
+    assert loaded.backend_run_id == "run-active"
+    assert loaded.scope.binding_id == "binding-active"
+
+
 def test_mark_cleaned_sets_status_and_cleaned_at_with_backend_run_id():
     store = WorkflowAgentRuntimeSessionStore()
     store.save_active_snapshot(

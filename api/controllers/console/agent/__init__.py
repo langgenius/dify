@@ -1,3 +1,3 @@
-from . import composer, roster
+from . import composer, roster, sandbox
 
-__all__ = ["composer", "roster"]
+__all__ = ["composer", "roster", "sandbox"]

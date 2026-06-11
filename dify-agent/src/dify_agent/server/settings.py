@@ -30,6 +30,9 @@ class ServerSettings(BaseSettings):
     plugin_daemon_max_connections: int = Field(default=100, ge=1)
     plugin_daemon_max_keepalive_connections: int = Field(default=20, ge=0)
     plugin_daemon_keepalive_expiry: float = Field(default=30.0, ge=0)
+    sandbox_command_timeout_seconds: float = Field(default=30.0, ge=0.1)
+    sandbox_max_read_bytes: int = Field(default=262144, ge=1)
+    sandbox_max_upload_bytes: int = Field(default=262144, ge=1)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix="DIFY_AGENT_",
