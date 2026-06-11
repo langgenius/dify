@@ -1,6 +1,7 @@
 'use client'
 
-import type { AgentSkillWithDetail } from './agent-skill-item'
+import type { AgentSkillFileNode } from './agent-skill-detail-dialog'
+import type { AgentSkill } from './agent-skill-item'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -12,6 +13,7 @@ import ActionButton from '@/app/components/base/action-button'
 import { consoleQuery } from '@/service/client'
 import { formatFileSize } from '@/utils/format'
 import { ConfigureSection } from '../configure-section'
+import { defaultAgentFiles, defaultAgentSkills } from '../configured-data'
 import { AgentSkillItem } from './agent-skill-item'
 
 const skillPackageAccept = '.zip,.skill'
@@ -40,104 +42,21 @@ type DataTransferItemWithEntry = {
   webkitGetAsEntry?: () => SkillUploadEntry | null
 }
 
-const createSkillDetail = (skillName: string) => ({
+function getFirstFileId(files: AgentSkillFileNode[]): string | undefined {
+  for (const file of files) {
+    if (!file.children?.length)
+      return file.id
+
+    const childFileId = getFirstFileId(file.children)
+    if (childFileId)
+      return childFileId
+  }
+}
+
+const createSkillDetail = (skillName: string, files: AgentSkillFileNode[]) => ({
   description: 'Dify brand executor rules, voice, typography, layout patterns, and visual design system. Use when generating any Dify brand material including web pages, social graphics, presentations, one-pagers, and pitch decks.',
-  fileCount: 12,
-  selectedFileId: `${skillName}-skill-md`,
-  files: [
-    {
-      id: `${skillName}-skill-md`,
-      name: 'SKILL.md',
-      icon: 'markdown' as const,
-    },
-    {
-      id: `${skillName}-output-schema`,
-      name: 'output_schema.json',
-      icon: 'json' as const,
-    },
-    {
-      id: `${skillName}-toolmap`,
-      name: 'toolmap.yaml',
-      icon: 'file' as const,
-    },
-    {
-      id: `${skillName}-examples`,
-      name: 'examples.json',
-      icon: 'json' as const,
-    },
-    {
-      id: `${skillName}-readme`,
-      name: 'README.md',
-      icon: 'markdown' as const,
-    },
-    {
-      id: `${skillName}-src`,
-      name: 'scripts',
-      icon: 'folder' as const,
-      children: [
-        {
-          id: `${skillName}-calculate-discount`,
-          name: 'calculate_discount.py',
-          icon: 'code' as const,
-        },
-        {
-          id: `${skillName}-references`,
-          name: 'references',
-          icon: 'folder' as const,
-          children: [
-            {
-              id: `${skillName}-references-brand`,
-              name: 'brand-guidelines',
-              icon: 'folder' as const,
-              children: [
-                {
-                  id: `${skillName}-references-brand-typography`,
-                  name: 'typography-and-layout-rules-for-long-form-output.md',
-                  icon: 'markdown' as const,
-                },
-                {
-                  id: `${skillName}-references-brand-tone`,
-                  name: 'voice-tone-and-product-narrative-reference.md',
-                  icon: 'markdown' as const,
-                },
-              ],
-            },
-            {
-              id: `${skillName}-references-implementation`,
-              name: 'implementation-notes',
-              icon: 'folder' as const,
-              children: [
-                {
-                  id: `${skillName}-references-implementation-checklist`,
-                  name: 'agent-runtime-validation-checklist.json',
-                  icon: 'json' as const,
-                },
-              ],
-            },
-          ],
-        },
-        {
-          id: `${skillName}-assets`,
-          name: 'assets',
-          icon: 'folder' as const,
-          children: [
-            {
-              id: `${skillName}-assets-examples`,
-              name: 'examples',
-              icon: 'folder' as const,
-              children: [
-                {
-                  id: `${skillName}-assets-examples-brief`,
-                  name: 'sample-output-brief-with-extra-long-file-name-for-truncation.md',
-                  icon: 'markdown' as const,
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ],
+  selectedFileId: getFirstFileId(files),
+  files,
   sections: [
     {
       id: 'text-formatting',
@@ -207,35 +126,14 @@ const createSkillDetail = (skillName: string) => ({
   ],
 })
 
-const defaultSkills: AgentSkillWithDetail[] = [
-  {
-    id: 'tender-analyzer-1',
-    name: 'tender-analyzer',
-    detail: createSkillDetail('tender-analyzer'),
-  },
-  {
-    id: 'playwright',
-    name: 'Playwright',
-    detail: createSkillDetail('Playwright'),
-  },
-  {
-    id: 'figma-code-connect',
-    name: 'Figma Code Connect',
-    detail: createSkillDetail('Figma Code Connect'),
-  },
-  {
-    id: 'tender-analyzer-2',
-    name: 'tender-analyzer',
-    detail: createSkillDetail('tender-analyzer'),
-  },
-]
-
 export function AgentSkills({
   agentId,
-  skills = defaultSkills,
+  skills = defaultAgentSkills,
+  files = defaultAgentFiles,
 }: {
   agentId: string
-  skills?: AgentSkillWithDetail[]
+  skills?: AgentSkill[]
+  files?: AgentSkillFileNode[]
 }) {
   const { t } = useTranslation('agentV2')
   const skillsTip = t('agentDetail.configure.skills.tip')
@@ -264,7 +162,13 @@ export function AgentSkills({
         )}
       >
         {skills.map(skill => (
-          <AgentSkillItem key={skill.id} skill={skill} />
+          <AgentSkillItem
+            key={skill.id}
+            skill={{
+              ...skill,
+              detail: createSkillDetail(skill.name, files),
+            }}
+          />
         ))}
       </ConfigureSection>
       <AgentSkillUploadDialog

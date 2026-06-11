@@ -18,6 +18,7 @@ import { AgentPreviewVersionsPanel } from './components/agent-preview-versions-p
 import { AgentPromptEditor } from './components/agent-prompt-editor'
 import { AgentSkills } from './components/agent-skills'
 import { AgentTools } from './components/agent-tools'
+import { defaultAgentFiles } from './components/configured-data'
 
 type AgentConfigurePageProps = {
   agentId: string
@@ -51,6 +52,7 @@ export function AgentConfigurePage({
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
+  const agentFiles = defaultAgentFiles
 
   return (
     <section
@@ -91,10 +93,10 @@ export function AgentConfigurePage({
           <AgentPromptEditor value={prompt} onChange={setPrompt} />
 
           {/* Skills */}
-          <AgentSkills agentId={agentId} />
+          <AgentSkills agentId={agentId} files={agentFiles} />
 
           {/* Files */}
-          <AgentFiles />
+          <AgentFiles files={agentFiles} />
 
           {/* Tools */}
           <AgentTools />

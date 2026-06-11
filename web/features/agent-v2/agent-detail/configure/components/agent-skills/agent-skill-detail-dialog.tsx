@@ -100,10 +100,10 @@ function AgentSkillFileList({
         {t('agentDetail.configure.skills.detail.fileCount', { count: fileCount })}
       </div>
       <ScrollArea
-        className="relative min-h-0 w-full max-w-full flex-1 has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"
+        className="min-h-0 w-full max-w-full flex-1 overflow-hidden"
         labelledBy="agent-skill-detail-files-heading"
         slotClassNames={{
-          viewport: 'overscroll-contain outline-none focus-visible:outline-none mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
+          viewport: 'overscroll-contain',
           content: 'w-full max-w-full min-w-0',
           scrollbar: 'hidden',
         }}
