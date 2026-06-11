@@ -12,26 +12,27 @@ import {
   encodedDslContentAtom,
   hasDslContentAtom,
 } from './dsl-atoms'
-import { deploymentTargetSubmissionStateAtom, submittedReleaseReadyAtom } from './guide-derived-atoms'
 import {
   instanceDescriptionAtom,
-  submittedReleaseFieldsAtom,
+  instanceNameAtom,
+  releaseDescriptionAtom,
+  releaseNameAtom,
 } from './release-atoms'
+import { submittedReleaseReadyAtom } from './release-derived-atoms'
 import { selectedAppAtom } from './source-atoms'
+import {
+  isCreatingDeploymentAtom,
+  isCreatingReleaseOnlyAtom,
+  isSubmittingDeploymentGuideAtom,
+} from './submission-busy-atoms'
 import { createInitialDeploymentRequest } from './submission-payload'
 import {
   hasMissingDeploymentTargetBinding,
   resolveSelectedDeploymentEnvironmentId,
 } from './submission-target'
-import { setSubmissionUnsupportedDslNodesAtom } from './unsupported-dsl-atoms'
+import { deploymentTargetSubmissionStateAtom } from './target-derived-atoms'
+import { submissionUnsupportedDslNodesAtom } from './unsupported-dsl-atoms'
 import { methodAtom } from './workflow-atoms'
-
-export const isCreatingDeploymentAtom = atom(false)
-export const isCreatingReleaseOnlyAtom = atom(false)
-
-export const isSubmittingDeploymentGuideAtom = atom(get => (
-  get(isCreatingDeploymentAtom) || get(isCreatingReleaseOnlyAtom)
-))
 
 const createDeploymentSubmissionDraftAtom = atom(get => ({
   dslContent: get(dslContentAtom),
@@ -39,7 +40,9 @@ const createDeploymentSubmissionDraftAtom = atom(get => ({
   hasDslContent: get(hasDslContentAtom),
   instanceDescription: get(instanceDescriptionAtom),
   method: get(methodAtom),
-  ...get(submittedReleaseFieldsAtom),
+  submittedInstanceName: get(instanceNameAtom).trim(),
+  submittedReleaseDescription: get(releaseDescriptionAtom).trim(),
+  submittedReleaseName: get(releaseNameAtom).trim(),
 }))
 
 const createAppInstanceMutationAtom = atomWithMutation(() =>
@@ -76,7 +79,7 @@ async function captureUnsupportedDslNodeError(
   if (!unsupportedError?.nodes.length)
     return false
 
-  set(setSubmissionUnsupportedDslNodesAtom, unsupportedError.nodes)
+  set(submissionUnsupportedDslNodesAtom, unsupportedError.nodes)
 
   return true
 }
@@ -148,7 +151,7 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
   if (submissionDraft.method === 'importDsl' && !isWorkflowDsl(submissionDraft.dslContent))
     throw new CreateDeploymentGuideSubmissionBlockedError('unsupportedDslMode')
 
-  set(setSubmissionUnsupportedDslNodesAtom, [])
+  set(submissionUnsupportedDslNodesAtom, [])
 
   try {
     if (!deployToEnvironment) {

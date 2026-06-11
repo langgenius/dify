@@ -5,15 +5,13 @@ import { useTranslation } from 'react-i18next'
 import {
   RuntimeCredentialBindingsPanel,
 } from '@/features/deployments/components/runtime-credential-bindings'
+import { deploymentOptionsQueryAtom } from '../../../state/query-atoms'
+import { selectBindingAtom } from '../../../state/target-binding-action-atoms'
 import {
   deploymentTargetBindingSelectionsAtom,
   deploymentTargetBindingSlotsAtom,
-  unsupportedDslNodesAtom,
-} from '../../../state/guide-derived-atoms'
-import { deploymentOptionsQueryAtom } from '../../../state/query-atoms'
-import {
-  selectBindingAtom,
-} from '../../../state/target-atoms'
+} from '../../../state/target-derived-atoms'
+import { unsupportedDslNodesAtom } from '../../../state/unsupported-dsl-derived-atoms'
 import { TargetBindingSkeleton } from '../skeletons'
 
 export function TargetBindingSection() {

@@ -4,7 +4,7 @@ import { useAtomValue } from 'jotai'
 import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
 import {
   unsupportedDslNodesAtom,
-} from '../../../state/guide-derived-atoms'
+} from '../../../state/unsupported-dsl-derived-atoms'
 
 export function TargetUnsupportedDslNodesSection() {
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)

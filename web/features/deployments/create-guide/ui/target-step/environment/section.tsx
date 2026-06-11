@@ -7,14 +7,14 @@ import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
+import { deployableEnvironmentsQueryAtom } from '../../../state/query-atoms'
+import {
+  selectedEnvironmentIdAtom,
+} from '../../../state/target-atoms'
 import {
   deployableEnvironmentsAtom,
   effectiveSelectedEnvironmentIdAtom,
-} from '../../../state/guide-derived-atoms'
-import { deployableEnvironmentsQueryAtom } from '../../../state/query-atoms'
-import {
-  selectEnvironmentAtom,
-} from '../../../state/target-atoms'
+} from '../../../state/target-derived-atoms'
 import { TargetEnvironmentSkeleton } from '../skeletons'
 
 function EnvironmentOptionRow({ environment }: {
@@ -54,7 +54,7 @@ export function TargetEnvironmentSection() {
   const effectiveSelectedEnvironmentId = useAtomValue(effectiveSelectedEnvironmentIdAtom)
   const isEnvironmentError = environmentsQuery.isError
   const isEnvironmentLoading = environmentsQuery.isLoading || (environmentsQuery.isFetching && !environmentsQuery.data)
-  const onSelectEnvironment = useSetAtom(selectEnvironmentAtom)
+  const onSelectEnvironment = useSetAtom(selectedEnvironmentIdAtom)
   const hasEnvironmentOptions = environments.length > 0
 
   return (

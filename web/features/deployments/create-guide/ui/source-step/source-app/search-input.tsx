@@ -4,14 +4,13 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
-  setSourceSearchTextAtom,
   sourceSearchTextAtom,
 } from '../../../state/source-atoms'
 
 export function SourceSearchInput() {
   const { t } = useTranslation('deployments')
   const sourceSearchText = useAtomValue(sourceSearchTextAtom)
-  const setSourceSearchText = useSetAtom(setSourceSearchTextAtom)
+  const setSourceSearchText = useSetAtom(sourceSearchTextAtom)
 
   return (
     <div className="relative">

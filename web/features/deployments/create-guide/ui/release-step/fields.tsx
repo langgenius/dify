@@ -5,18 +5,20 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { dslDefaultAppNameAtom } from '../../state/dsl-atoms'
 import {
-  hasInstanceNameConflictAtom,
-} from '../../state/guide-derived-atoms'
-import {
   instanceDescriptionAtom,
   instanceNameAtom,
   releaseDescriptionAtom,
   releaseNameAtom,
+} from '../../state/release-atoms'
+import {
+  hasInstanceNameConflictAtom,
+} from '../../state/release-derived-atoms'
+import {
   setInstanceDescriptionAtom,
   setInstanceNameAtom,
   setReleaseDescriptionAtom,
   setReleaseNameAtom,
-} from '../../state/release-atoms'
+} from '../../state/release-field-action-atoms'
 import { selectedAppAtom } from '../../state/source-atoms'
 import { methodAtom } from '../../state/workflow-atoms'
 

@@ -20,7 +20,7 @@ import {
 import {
   isCreatingDeploymentAtom,
   isCreatingReleaseOnlyAtom,
-} from './submission-atoms'
+} from './submission-busy-atoms'
 import {
   envVarValuesAtom,
   manualBindingSelectionsAtom,

@@ -3,10 +3,10 @@
 import { atom } from 'jotai'
 import {
   dslReadErrorAtom,
-  dslUnsupportedModeAtom,
   hasDslContentAtom,
   isReadingDslAtom,
 } from './dsl-atoms'
+import { dslUnsupportedModeAtom } from './dsl-derived-atoms'
 import { selectedAppAtom } from './source-atoms'
 import { methodAtom } from './workflow-atoms'
 

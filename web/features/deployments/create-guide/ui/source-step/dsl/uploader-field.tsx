@@ -2,9 +2,9 @@
 
 import { useAtomValue, useSetAtom } from 'jotai'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { selectDslFileAtom } from '../../../state/dsl-action-atoms'
 import {
   dslFileAtom,
-  selectDslFileAtom,
 } from '../../../state/dsl-atoms'
 
 export function DslUploaderField() {

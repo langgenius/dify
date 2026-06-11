@@ -7,16 +7,18 @@ import { useTranslation } from 'react-i18next'
 import { deploymentErrorMessage } from '@/features/deployments/error'
 import { useRouter } from '@/next/navigation'
 import {
-  canDeployAtom,
-  canSkipDeploymentAtom,
-} from '../../state/guide-derived-atoms'
-import {
   createDeploymentGuideSubmissionAtom,
   CreateDeploymentGuideSubmissionBlockedError,
+} from '../../state/submission-atoms'
+import {
   isCreatingReleaseOnlyAtom,
   isSubmittingDeploymentGuideAtom,
-} from '../../state/submission-atoms'
-import { setStepAtom } from '../../state/workflow-atoms'
+} from '../../state/submission-busy-atoms'
+import {
+  canDeployAtom,
+  canSkipDeploymentAtom,
+} from '../../state/target-derived-atoms'
+import { stepAtom } from '../../state/workflow-atoms'
 
 export function TargetActionButtons() {
   return (
@@ -30,7 +32,7 @@ export function TargetActionButtons() {
 
 function TargetBackButton() {
   const { t } = useTranslation('deployments')
-  const setStep = useSetAtom(setStepAtom)
+  const setStep = useSetAtom(stepAtom)
   const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
 
   function handleBack() {

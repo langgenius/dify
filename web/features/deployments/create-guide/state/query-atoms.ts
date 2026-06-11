@@ -1,5 +1,6 @@
 'use client'
 
+import type { WorkflowSourceApp } from './types'
 import { keepPreviousData } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
@@ -10,13 +11,9 @@ import {
 } from '@/features/deployments/data'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
-import {
-  deploymentTargetQueryEnabledAtom,
-} from './deployment-target-query-atoms'
-import {
-  encodedDslContentAtom,
-} from './dsl-atoms'
-import { submittedReleaseFieldsAtom } from './release-atoms'
+import { deploymentTargetQueryEnabledAtom } from './deployment-target-gate-atoms'
+import { encodedDslContentAtom } from './dsl-atoms'
+import { instanceNameAtom } from './release-atoms'
 import {
   selectedAppAtom,
   sourceSearchTextAtom,
@@ -44,7 +41,7 @@ export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   }
 })
 
-export const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
+const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
   ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
     input: pageParam => ({
       query: {
@@ -59,7 +56,7 @@ export const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
 }))
 
 export const instanceNameConflictQueryAtom = atomWithQuery((get) => {
-  const submittedInstanceName = get(submittedReleaseFieldsAtom).submittedInstanceName
+  const submittedInstanceName = get(instanceNameAtom).trim()
 
   return consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
     input: {
@@ -117,7 +114,7 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
 export const sourceAppsAtom = atom((get) => {
   const sourceAppsQuery = get(sourceAppsQueryAtom)
 
-  return sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []
+  return (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
 })
 
 export const existingInstanceNamesAtom = atom((get) => {
@@ -130,14 +127,4 @@ export const existingInstanceNamesAtom = atom((get) => {
       return name ? [name] : []
     }),
   ) ?? []
-})
-
-export const remoteInstanceNameConflictAtom = atom((get) => {
-  const submittedInstanceName = get(submittedReleaseFieldsAtom).submittedInstanceName
-  if (!submittedInstanceName)
-    return false
-
-  const instanceNameConflictQuery = get(instanceNameConflictQueryAtom)
-
-  return instanceNameConflictQuery.data?.data.some(appInstance => appInstance.name.trim() === submittedInstanceName) ?? false
 })

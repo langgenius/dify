@@ -5,24 +5,20 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   releaseCanGoNextAtom,
-} from '../../state/guide-derived-atoms'
-import { resetDeploymentTargetOptionsAtom } from '../../state/target-atoms'
+} from '../../state/release-derived-atoms'
+import { continueFromReleaseAtom } from '../../state/release-next-action-atoms'
 import {
-  setStepAtom,
+  stepAtom,
 } from '../../state/workflow-atoms'
 
 export function ReleaseActionButtons() {
   const { t } = useTranslation('deployments')
   const canGoNext = useAtomValue(releaseCanGoNextAtom)
-  const setStep = useSetAtom(setStepAtom)
-  const resetTargetOptions = useSetAtom(resetDeploymentTargetOptionsAtom)
+  const setStep = useSetAtom(stepAtom)
+  const continueFromRelease = useSetAtom(continueFromReleaseAtom)
 
   function handleNext() {
-    if (!canGoNext)
-      return
-
-    resetTargetOptions()
-    setStep('target')
+    continueFromRelease()
   }
 
   return (

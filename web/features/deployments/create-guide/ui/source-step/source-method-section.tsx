@@ -7,10 +7,9 @@ import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
+import { selectMethodAtom } from '../../state/workflow-action-atoms'
 import {
   methodAtom,
-  selectMethodAtom,
-  setStepAtom,
 } from '../../state/workflow-atoms'
 import { StepShell } from '../shell/layout'
 
@@ -58,12 +57,10 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
 export function SourceMethodSection() {
   const { t } = useTranslation('deployments')
   const method = useAtomValue(methodAtom)
-  const setStep = useSetAtom(setStepAtom)
   const selectMethod = useSetAtom(selectMethodAtom)
 
   function handleSelect(nextMethod: GuideMethod) {
     selectMethod(nextMethod)
-    setStep('source')
   }
 
   return (
