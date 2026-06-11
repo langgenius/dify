@@ -821,6 +821,41 @@ optional skip counted as OK. This is the first quality gate, not the final
 coverage claim for "most workflows." New node families and plugin flows should
 be added as batch cases before claiming broader coverage.
 
+## Official Demo Evaluation
+
+Use the official demo runner when you need a repeatable capability report for
+the DSL Agent demo instead of ad hoc single-case tests:
+
+```bash
+python3 dify/scripts/dsl_agent/run_official_demo_eval.py
+```
+
+This runs `official_demo_cases.yml` through the generation evaluator and writes
+`official_demo_summary.json`, `generation_eval_report.json`, and per-case
+artifacts under `scripts/dsl_agent/outputs/official_demo_latest/`.
+
+For the local CE end-to-end proof, run:
+
+```bash
+python3 dify/scripts/dsl_agent/run_official_demo_eval.py \
+  --live \
+  --full-lifecycle
+```
+
+That validates generated DSL, imports it, runs draft debug, publishes, enables
+Service API, creates an App API key, runs Service API regression, collects
+workflow app logs, and cleans up created apps and temporary RAG datasets. To add
+fixture-based repair proof to the same summary:
+
+```bash
+python3 dify/scripts/dsl_agent/run_official_demo_eval.py \
+  --repair-fixtures
+```
+
+Current demo cases cover structured JSON postprocess, question-classifier
+routing, native if-else routing, and RAG with dataset bootstrap. Repair fixtures
+cover selector repair and runtime code-node repair.
+
 Fetch full run records after a draft run:
 
 ```bash

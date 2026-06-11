@@ -1,0 +1,97 @@
+cases:
+  - id: demo_structured_json_postprocess
+    title: Structured extraction with code postprocess
+    request: >
+      Build a workflow that extracts customer name, company, pain points,
+      urgency, and next action from the input as JSON, validates and normalizes
+      the JSON shape with a code node, then returns only the normalized JSON.
+    inputs:
+      input: >
+        Customer: Maya Chen from Northstar Logistics. They need faster invoice
+        dispute triage, urgency is high, and the next action is to schedule a
+        workflow demo with operations.
+    expect:
+      required_node_types:
+        - start
+        - llm
+        - code
+        - end
+      min_node_type_counts:
+        code: 1
+      required_text:
+        - "json.loads"
+        - "{{#start.input#}}"
+
+  - id: demo_support_ticket_classifier
+    title: Support ticket classifier with four routed branches
+    request: >
+      Build a workflow that classifies a support ticket as billing, technical,
+      account, or other, then routes to a dedicated response branch and returns
+      the category plus a short reasoning.
+    inputs:
+      input: >
+        I was charged twice for my invoice this month. Can someone help me fix
+        the billing issue?
+    expect:
+      required_node_types:
+        - start
+        - question-classifier
+        - llm
+        - end
+      min_node_type_counts:
+        llm: 4
+        end: 4
+      required_edge_handles:
+        classify:
+          - billing
+          - technical
+          - account
+          - other
+
+  - id: demo_urgent_if_else_branch
+    title: Native if-else routing for urgent requests
+    request: >
+      Build a workflow that checks if the incoming customer message is urgent.
+      If urgent, produce an escalation note. Otherwise produce a normal support
+      reply. Return the selected response.
+    inputs:
+      input: >
+        urgent: production workflow imports are failing for a strategic customer
+        and they need an escalation note now.
+    expect:
+      required_node_types:
+        - start
+        - if-else
+        - llm
+        - end
+      min_node_type_counts:
+        llm: 2
+        end: 2
+      required_edge_handles:
+        if_else:
+          - "true"
+          - "false"
+
+  - id: demo_rag_answer_with_citations
+    title: RAG answering with dataset bootstrap
+    request: >
+      Build a RAG workflow that retrieves relevant knowledge base chunks for
+      the user question, answers with citations, and returns the answer plus
+      cited sources.
+    inputs:
+      input: What is our refund policy for annual enterprise contracts?
+    debug:
+      skip: true
+      bootstrap_rag_dataset: true
+      reason: Requires replacing REPLACE_WITH_DATASET_ID with a real workspace dataset id.
+    expect:
+      required_node_types:
+        - start
+        - knowledge-retrieval
+        - llm
+        - end
+      min_node_type_counts:
+        knowledge-retrieval: 1
+      required_text:
+        - "REPLACE_WITH_DATASET_ID"
+        - "{{#retrieve_knowledge.result#}}"

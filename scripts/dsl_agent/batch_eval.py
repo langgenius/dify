@@ -180,6 +180,8 @@ def run_case(
         cmd.append("--no-wait-plugin-install")
     if args.skip_run_records:
         cmd.append("--skip-run-records")
+    if args.cleanup_app:
+        cmd.append("--cleanup-app")
 
     started = time.monotonic()
     timeout = int(case.get("timeout_seconds") or args.timeout_seconds)
@@ -283,6 +285,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--include-optional", action="store_true")
     parser.add_argument("--no-wait-plugin-install", action="store_true")
     parser.add_argument("--skip-run-records", action="store_true")
+    parser.add_argument("--cleanup-app", action="store_true", help="Delete apps created for each batch eval case.")
     return parser.parse_args()
 
 
