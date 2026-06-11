@@ -39,6 +39,7 @@ const InstalledApp = ({
         app_id: id,
         site: {
           title: app.name,
+          description: app.description,
           icon_type: app.icon_type,
           icon: app.icon,
           icon_background: app.icon_background,

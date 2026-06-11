@@ -1,11 +1,13 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { FC, RefObject } from 'react'
+import { useState } from 'react'
 import type { InputValueTypes, TextGenerationCustomConfig, TextGenerationRunControl } from './types'
 import type { PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
@@ -69,6 +71,8 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   visionConfig,
 }) => {
   const { t } = useTranslation()
+  const [descExpanded, setDescExpanded] = useState(false)
+  const showDescToggle = !!siteInfo.description && (siteInfo.description.includes('\n') || siteInfo.description.length > 100)
 
   return (
     <Tabs
@@ -93,7 +97,30 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} data={siteInfo} />
         </div>
         {siteInfo.description && (
-          <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
+          <div>
+            <div className={cn(
+              'relative system-xs-regular text-text-tertiary whitespace-pre-wrap break-words',
+              !descExpanded && 'line-clamp-2',
+              descExpanded && 'max-h-32 overflow-y-auto',
+            )}>
+              {siteInfo.description}
+              {!descExpanded && showDescToggle && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+              )}
+            </div>
+            {showDescToggle && (
+              <button
+                type="button"
+                className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+                onClick={() => setDescExpanded(v => !v)}
+              >
+                {descExpanded
+                  ? <><RiArrowUpSLine className="size-3" />{t('chat.collapse', { ns: 'share' })}</>
+                  : <><RiArrowDownSLine className="size-3" />{t('chat.expand', { ns: 'share' })}</>
+                }
+              </button>
+            )}
+          </div>
         )}
         <TabsList className="w-full">
           <TabsTab value="create">

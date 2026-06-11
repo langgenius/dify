@@ -5,6 +5,7 @@ import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/mod
 import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -38,6 +39,7 @@ const TextGeneration: FC<Props> = ({
   appData,
 }) => {
   const { t } = useTranslation()
+  const [descExpanded, setDescExpanded] = useState(false)
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
@@ -210,9 +212,35 @@ const TextGeneration: FC<Props> = ({
             />
             <div className="grow truncate system-md-semibold text-text-secondary">{siteInfo.title}</div>
           </div>
-          {siteInfo.description && (
-            <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
-          )}
+          {siteInfo.description && (() => {
+            const showDescToggle = siteInfo.description.includes('\n') || siteInfo.description.length > 100
+            return (
+              <div>
+                <div className={cn(
+                  'relative system-xs-regular text-text-tertiary whitespace-pre-wrap break-words',
+                  !descExpanded && 'line-clamp-2',
+                  descExpanded && 'max-h-32 overflow-y-auto',
+                )}>
+                  {siteInfo.description}
+                  {!descExpanded && showDescToggle && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+                  )}
+                </div>
+                {showDescToggle && (
+                  <button
+                    type="button"
+                    className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+                    onClick={() => setDescExpanded(v => !v)}
+                  >
+                    {descExpanded
+                      ? <><RiArrowUpSLine className="size-3" />{t('chat.collapse', { ns: 'share' })}</>
+                      : <><RiArrowDownSLine className="size-3" />{t('chat.expand', { ns: 'share' })}</>
+                    }
+                  </button>
+                )}
+              </div>
+            )
+          })()}
         </div>
         {/* form */}
         <div className={cn(
