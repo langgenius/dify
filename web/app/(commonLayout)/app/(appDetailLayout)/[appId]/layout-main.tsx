@@ -26,6 +26,7 @@ import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
@@ -54,6 +55,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     setAppSidebarExpand: state.setAppSidebarExpand,
   })))
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
+  const [storedSidebarMode] = useLocalStorage<string>('app-detail-collapse-or-expand', 'expand', { raw: true })
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
   const [navigation, setNavigation] = useState<Array<{
     name: string
@@ -104,14 +106,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useEffect(() => {
     if (appDetail) {
-      const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+      const localeMode = storedSidebarMode || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
       setAppSidebarExpand(isMobile ? mode : localeMode)
       // TODO: consider screen size and mode
       // if ((appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
       //   setAppSidebarExpand('collapse')
     }
-  }, [appDetail, isMobile])
+  }, [appDetail, isMobile, storedSidebarMode])
 
   useEffect(() => {
     setAppDetail()
