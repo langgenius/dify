@@ -54,6 +54,10 @@ export const getPluginLinkInMarketplace = (plugin: Plugin, params?: Record<strin
   return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
 }
 
+export const getMarketplaceCategoryUrl = (category?: string, params?: Record<string, string | undefined>) => {
+  return getMarketplaceUrl(category ? `/plugins/${category}` : '/plugins', params)
+}
+
 export const getPluginDetailLinkInMarketplace = (plugin: Plugin) => {
   if (plugin.type === 'bundle')
     return `/bundles/${plugin.org}/${plugin.name}`

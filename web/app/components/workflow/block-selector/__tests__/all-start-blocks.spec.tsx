@@ -49,7 +49,7 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: () => 'https://marketplace.test/start',
+    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
   }
 })
 
@@ -225,7 +225,7 @@ describe('AllStartBlocks', () => {
         />,
       )
 
-      expect(await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/ })).toHaveAttribute('href', 'https://marketplace.test/start')
+      expect(await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/ })).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
     })
   })
 

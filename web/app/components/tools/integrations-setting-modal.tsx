@@ -6,6 +6,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import IntegrationsPage from '@/app/components/integrations/page'
+import { getMarketplaceUrl } from '@/utils/var'
 
 type IntegrationsSettingModalProps = {
   section: IntegrationSection
@@ -20,7 +21,7 @@ export default function IntegrationsSettingModal({
 }: IntegrationsSettingModalProps) {
   const { t } = useTranslation()
   const handleSwitchToMarketplace = useCallback((path: string) => {
-    window.open(path, '_blank', 'noopener,noreferrer')
+    window.open(getMarketplaceUrl(path), '_blank', 'noopener,noreferrer')
   }, [])
 
   return (

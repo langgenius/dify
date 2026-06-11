@@ -8,11 +8,11 @@ import { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
-import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { getFormattedPlugin, getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import Link from '@/next/link'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
-import { getMarketplaceUrl } from '@/utils/var'
 import List from './list'
 
 type RAGToolRecommendationsProps = {
@@ -86,7 +86,7 @@ const RAGToolRecommendations = ({
                       className="text-text-accent"
                       target="_blank"
                       rel="noopener noreferrer"
-                      href={getMarketplaceUrl('', { tags: 'rag' })}
+                      href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool, { tags: 'rag' })}
                     />
                   ),
                 }}

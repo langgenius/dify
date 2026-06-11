@@ -10,12 +10,13 @@ import { useTranslation } from 'react-i18next'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import {
   buildIntegrationPath,
-  buildMarketplacePathByIntegrationSection,
+  buildMarketplaceUrlPathByIntegrationSection,
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
+import { getMarketplaceUrl } from '@/utils/var'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
 import { useIntegrationSection } from './hooks/use-integration-section'
@@ -136,7 +137,7 @@ export default function IntegrationsPage({
         />
       )
     : undefined
-  const marketplacePath = buildMarketplacePathByIntegrationSection(section)
+  const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
   const headerDescription = integrationHeader?.description ?? (section === 'provider' ? t('modelProvider.pageDesc', { ns: 'common' }) : undefined)
   const headerDescriptionDocPath = headerDescriptionDocPaths[section]
   const headerDescriptionWithLink = headerDescription && headerDescriptionDocPath
@@ -151,11 +152,11 @@ export default function IntegrationsPage({
     : headerDescription
   const handleSwitchToMarketplace = () => {
     if (onSwitchToMarketplace) {
-      onSwitchToMarketplace(marketplacePath)
+      onSwitchToMarketplace(marketplaceUrlPath)
       return
     }
 
-    router.push(marketplacePath)
+    window.open(getMarketplaceUrl(marketplaceUrlPath), '_blank', 'noopener,noreferrer')
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
