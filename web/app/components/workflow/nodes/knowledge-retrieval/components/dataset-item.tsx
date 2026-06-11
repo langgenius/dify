@@ -27,13 +27,13 @@ import FeatureIcon from '@/app/components/header/account-setting/model-provider-
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
 
-type Props = {
+type Props = Readonly<{
   payload: DataSet
   onRemove: () => void
   onChange: (dataSet: DataSet) => void
   readonly?: boolean
   editable?: boolean
-}
+}>
 
 const DatasetItem: FC<Props> = ({
   payload,

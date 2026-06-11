@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PluginSource } from '../types'
 
-type Props = {
+type Props = Readonly<{
   source: PluginSource
   onInfo: () => void
   onCheckVersion: () => void
@@ -25,7 +25,7 @@ type Props = {
   sideOffset?: number
   alignOffset?: number
   popupClassName?: string
-}
+}>
 
 const OperationDropdown: FC<Props> = ({
   source,

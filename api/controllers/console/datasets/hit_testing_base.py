@@ -19,7 +19,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.login import current_user
+from libs.login import resolve_account_fallback
 from models.account import Account
 from models.dataset import Dataset
 from services.dataset_service import DatasetService
@@ -71,8 +71,10 @@ class DatasetsHitTestingBase:
         return normalized_records
 
     @staticmethod
-    def get_and_validate_dataset(dataset_id: str) -> Dataset:
-        assert isinstance(current_user, Account)
+    def get_and_validate_dataset(
+        dataset_id: str, current_user: Account | None = None, current_tenant_id: str | None = None
+    ) -> Dataset:
+        current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -95,9 +97,14 @@ class DatasetsHitTestingBase:
         return hit_testing_payload.model_dump(exclude_none=True)
 
     @staticmethod
-    def perform_hit_testing(dataset: Dataset, args: dict[str, Any]) -> dict[str, Any]:
-        assert isinstance(current_user, Account)
+    def perform_hit_testing(
+        dataset: Dataset,
+        args: dict[str, Any],
+        current_user: Account | None = None,
+        current_tenant_id: str | None = None,
+    ) -> dict[str, Any]:
         try:
+            current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
                 dataset=dataset,
                 query=cast(str, args.get("query")),
