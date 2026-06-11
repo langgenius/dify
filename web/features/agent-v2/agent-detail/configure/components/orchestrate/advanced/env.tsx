@@ -4,7 +4,7 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
-import { useAgentConfigureEnvVariables } from '../../../atoms'
+import { useEnvVariables } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSection } from '../common/section'
 
@@ -152,7 +152,7 @@ function EnvEditorDraftRow() {
 
 export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
-  const [envVariables, setEnvVariables] = useAgentConfigureEnvVariables()
+  const [envVariables, setEnvVariables] = useEnvVariables()
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
   const envEditorTableId = 'agent-configure-env-editor-table'
   const updateVariableScope = (id: string, scope: EnvScope) => {

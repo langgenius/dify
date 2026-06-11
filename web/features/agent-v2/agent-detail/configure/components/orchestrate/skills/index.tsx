@@ -4,7 +4,7 @@ import type { AgentSkillFileNode } from './detail-dialog'
 import type { AgentSkillWithDetail } from './item'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAgentConfigureFiles, useAgentConfigureSkills, useRemoveAgentConfigureSkill } from '../../../atoms'
+import { useFiles, useRemoveSkill, useSkills } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSection } from '../common/section'
 import { getFirstAgentFileId } from '../utils'
@@ -90,9 +90,9 @@ export function AgentSkills({
   agentId: string
 }) {
   const { t } = useTranslation('agentV2')
-  const [skills] = useAgentConfigureSkills()
-  const [files] = useAgentConfigureFiles()
-  const removeSkill = useRemoveAgentConfigureSkill()
+  const [skills] = useSkills()
+  const [files] = useFiles()
+  const removeSkill = useRemoveSkill()
   const skillsWithDetail = skills.map<AgentSkillWithDetail>(skill => ({
     ...skill,
     detail: createSkillDetail(skill.name, files),

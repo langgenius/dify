@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { agentConfigurePromptAtom } from '../../atoms'
+import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 
 const mockPromptEditor = vi.hoisted(() => vi.fn())
@@ -26,7 +26,7 @@ vi.mock('@/app/components/base/infotip', () => ({
 
 const renderAgentPromptEditor = (value: string) => {
   const store = createStore()
-  store.set(agentConfigurePromptAtom, value)
+  store.set(agentComposerPromptAtom, value)
 
   const view = render(
     <JotaiProvider store={store}>
@@ -38,7 +38,7 @@ const renderAgentPromptEditor = (value: string) => {
     store,
     ...view,
     rerenderWithValue: (nextValue: string) => {
-      store.set(agentConfigurePromptAtom, nextValue)
+      store.set(agentComposerPromptAtom, nextValue)
       view.rerender(
         <JotaiProvider store={store}>
           <AgentPromptEditor />
@@ -75,7 +75,7 @@ describe('AgentPromptEditor', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
 
-      expect(store.get(agentConfigurePromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
+      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
       })

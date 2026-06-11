@@ -18,6 +18,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { InputVarType } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useCurrentModel, usePrompt } from '@/features/agent-v2/agent-composer/store'
 import { PromptMode } from '@/models/debug'
 import dynamic from '@/next/dynamic'
 import {
@@ -26,7 +27,6 @@ import {
   stopChatMessageResponding,
 } from '@/service/debug'
 import { AgentStrategy, ModelModeType, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
-import { useAgentConfigureCurrentModel, useAgentConfigurePrompt } from '../../atoms'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
@@ -240,8 +240,8 @@ export function AgentPreviewChat({
   onClearChatListChange: (clearChatList: boolean) => void
 }) {
   const { userProfile } = useAppContext()
-  const [prompt] = useAgentConfigurePrompt()
-  const currentModel = useAgentConfigureCurrentModel()
+  const [prompt] = usePrompt()
+  const currentModel = useCurrentModel()
   const config = useMemo(() => buildChatConfig({
     appId,
     agentSoulConfig,

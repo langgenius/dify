@@ -6,8 +6,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { useCurrentModel, useHydrateAgentComposerDraft, useModel } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/client'
-import { useAgentConfigureCurrentModel, useAgentConfigureModel, useHydrateAgentConfigureDraft } from './atoms'
 import { AgentOrchestratePanel } from './components/orchestrate'
 import { AgentPreviewChat } from './components/preview/chat'
 import { AgentPreviewHeader } from './components/preview/header'
@@ -20,10 +21,20 @@ type AgentConfigurePageProps = {
 export function AgentConfigurePage({
   agentId,
 }: AgentConfigurePageProps) {
+  return (
+    <AgentComposerProvider>
+      <AgentConfigurePageContent agentId={agentId} />
+    </AgentComposerProvider>
+  )
+}
+
+function AgentConfigurePageContent({
+  agentId,
+}: AgentConfigurePageProps) {
   const { t } = useTranslation('agentV2')
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
-  const [, setConfigureModel] = useAgentConfigureModel()
+  const [, setConfigureModel] = useModel()
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
       params: {
@@ -44,7 +55,7 @@ export function AgentConfigurePage({
   }))
   const activeConfigSnapshot = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined) ?? agentQuery.data?.active_config_snapshot
   const agentSoulConfig = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined)?.config_snapshot
-  useHydrateAgentConfigureDraft({
+  useHydrateAgentComposerDraft({
     agentId,
     activeVersionId,
     config: agentSoulConfig,
@@ -58,7 +69,7 @@ export function AgentConfigurePage({
         model: defaultTextGenerationModel.model,
       }
     : undefined
-  const currentModel = useAgentConfigureCurrentModel(defaultModel)
+  const currentModel = useCurrentModel(defaultModel)
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)

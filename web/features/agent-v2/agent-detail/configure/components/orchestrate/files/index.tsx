@@ -7,7 +7,7 @@ import {
   FileTreeFile,
 } from '@langgenius/dify-ui/file-tree'
 import { useTranslation } from 'react-i18next'
-import { useAgentConfigureFiles } from '../../../atoms'
+import { useFiles } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSection } from '../common/section'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
@@ -42,7 +42,7 @@ function createFileDetail(file: AgentFileNode, files: AgentFileNode[]): AgentSki
 
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
-  const [files] = useAgentConfigureFiles()
+  const [files] = useFiles()
   const filesTip = t('agentDetail.configure.files.tip')
   const filesTreeId = 'agent-configure-files-tree'
 

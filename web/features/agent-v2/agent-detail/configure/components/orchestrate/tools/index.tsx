@@ -13,7 +13,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
-import { useAgentConfigureTools, useAgentConfigureToolSettings } from '../../../atoms'
+import { useTools, useToolSettings } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSection } from '../common/section'
 
@@ -281,8 +281,8 @@ function AgentToolItem({
 
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
-  const [tools] = useAgentConfigureTools()
-  const [toolSettings, setToolSettings] = useAgentConfigureToolSettings()
+  const [tools] = useTools()
+  const [toolSettings, setToolSettings] = useToolSettings()
   const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())
   const [settingTarget, setSettingTarget] = useState<ToolSettingTarget | null>(null)
   const toolsTip = t('agentDetail.configure.tools.tip')

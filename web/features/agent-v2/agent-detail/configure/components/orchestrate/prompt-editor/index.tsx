@@ -7,12 +7,12 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import {
-  useAgentConfigureFiles,
-  useAgentConfigureKnowledgeRetrievals,
-  useAgentConfigurePrompt,
-  useAgentConfigureSkills,
-  useAgentConfigureTools,
-} from '../../../atoms'
+  useFiles,
+  useKnowledgeRetrievals,
+  usePrompt,
+  useSkills,
+  useTools,
+} from '@/features/agent-v2/agent-composer/store'
 import { AgentPromptOptionMenu } from './option-menu'
 import { appendToken, insertOptions, mentionOptions, replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
@@ -62,11 +62,11 @@ const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: s
 
 export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
-  const [value, onChange] = useAgentConfigurePrompt()
-  const [skills] = useAgentConfigureSkills()
-  const [files] = useAgentConfigureFiles()
-  const [tools] = useAgentConfigureTools()
-  const [retrievals] = useAgentConfigureKnowledgeRetrievals()
+  const [value, onChange] = usePrompt()
+  const [skills] = useSkills()
+  const [files] = useFiles()
+  const [tools] = useTools()
+  const [retrievals] = useKnowledgeRetrievals()
   const isHydrated = useIsHydrated()
   const promptTip = t('agentDetail.configure.prompt.tip')
   const count = value.length

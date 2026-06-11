@@ -8,8 +8,8 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { isAgentComposerDirtyAtom, useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { isAgentConfigureDirtyAtom, useAgentConfigurePublishPayload } from '../../atoms'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P'
 
@@ -75,8 +75,8 @@ export function AgentConfigurePublishBar({
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const isDirty = useAtomValue(isAgentConfigureDirtyAtom)
-  const publishPayload = useAgentConfigurePublishPayload({
+  const isDirty = useAtomValue(isAgentComposerDirtyAtom)
+  const publishPayload = useConfigPublishPayload({
     agentId,
     baseConfig: agentSoulConfig,
     currentModel,
