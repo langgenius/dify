@@ -3,29 +3,11 @@
 import type { AgentSkill } from './agent-skill-item'
 import { useTranslation } from 'react-i18next'
 import { ConfigureSection } from '../configure-section'
+import { defaultAgentSkills } from '../configured-data'
 import { AgentSkillItem } from './agent-skill-item'
 
-const defaultSkills: AgentSkill[] = [
-  {
-    id: 'tender-analyzer-1',
-    name: 'tender-analyzer',
-  },
-  {
-    id: 'playwright',
-    name: 'Playwright',
-  },
-  {
-    id: 'figma-code-connect',
-    name: 'Figma Code Connect',
-  },
-  {
-    id: 'tender-analyzer-2',
-    name: 'tender-analyzer',
-  },
-]
-
 export function AgentSkills({
-  skills = defaultSkills,
+  skills = defaultAgentSkills,
 }: {
   skills?: AgentSkill[]
 }) {

@@ -74,6 +74,7 @@
   "agentDetail.configure.tools.editAction": "Edit {{name}}",
   "agentDetail.configure.tools.label": "Tools",
   "agentDetail.configure.tools.moreActions": "More actions for {{name}}",
+  "agentDetail.configure.tools.pluginType": "Plugin",
   "agentDetail.configure.tools.preAuthorize": "Pre-authorize",
   "agentDetail.configure.tools.removeAction": "Remove {{name}}",
   "agentDetail.configure.tools.tip": "Tools this agent can call while orchestrating tasks.",

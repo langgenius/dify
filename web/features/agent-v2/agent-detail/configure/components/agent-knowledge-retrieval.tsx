@@ -1,24 +1,9 @@
 'use client'
 
-import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type { AgentKnowledgeRetrievalItem } from './configured-data'
 import { useTranslation } from 'react-i18next'
 import { ConfigureSection } from './configure-section'
-
-type AgentKnowledgeRetrievalItem = {
-  id: string
-  nameKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
-}
-
-const defaultRetrievals: AgentKnowledgeRetrievalItem[] = [
-  {
-    id: 'retrieval-1',
-    nameKey: 'agentDetail.configure.knowledgeRetrieval.retrievalOne',
-  },
-  {
-    id: 'retrieval-2',
-    nameKey: 'agentDetail.configure.knowledgeRetrieval.retrievalTwo',
-  },
-]
+import { defaultAgentKnowledgeRetrievals } from './configured-data'
 
 function KnowledgeRetrievalIcon() {
   return (
@@ -48,7 +33,7 @@ function AgentKnowledgeRetrievalRow({
 }
 
 export function AgentKnowledgeRetrieval({
-  retrievals = defaultRetrievals,
+  retrievals = defaultAgentKnowledgeRetrievals,
 }: {
   retrievals?: AgentKnowledgeRetrievalItem[]
 }) {

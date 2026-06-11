@@ -1,6 +1,8 @@
 'use client'
 
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
+import type { AgentFileNode } from '../configured-data'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   FileTreeFile,
   FileTreeFolder,
@@ -13,6 +15,7 @@ import {
 } from '@langgenius/dify-ui/file-tree'
 import { useTranslation } from 'react-i18next'
 import { ConfigureSection } from '../configure-section'
+import { defaultAgentFiles } from '../configured-data'
 
 export type AgentFileNode = {
   id: string
@@ -20,46 +23,6 @@ export type AgentFileNode = {
   icon: FileTreeIconType
   children?: AgentFileNode[]
 }
-
-const defaultFiles: AgentFileNode[] = [
-  {
-    id: 'index-json',
-    name: '_index.json',
-    icon: 'json',
-  },
-  {
-    id: 'web-game',
-    name: 'web-game',
-    icon: 'folder',
-    children: [
-      {
-        id: 'web-game-public',
-        name: 'public',
-        icon: 'folder',
-      },
-      {
-        id: 'web-game-assets',
-        name: 'assets',
-        icon: 'folder',
-      },
-      {
-        id: 'web-game-src',
-        name: 'src',
-        icon: 'folder',
-      },
-      {
-        id: 'web-game-styles',
-        name: 'styles',
-        icon: 'folder',
-      },
-      {
-        id: 'web-game-readme',
-        name: 'README.md',
-        icon: 'markdown',
-      },
-    ],
-  },
-]
 
 function AgentFileRows({
   files,
@@ -91,7 +54,7 @@ function AgentFileRows({
 }
 
 export function AgentFiles({
-  files = defaultFiles,
+  files = defaultAgentFiles,
 }: {
   files?: AgentFileNode[]
 }) {

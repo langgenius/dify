@@ -1,5 +1,6 @@
 'use client'
 
+import type { AgentCliTool, AgentProviderTool, AgentTool, AgentToolAction } from '../configured-data'
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
@@ -14,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
 import { ConfigureSection } from '../configure-section'
+import { defaultAgentTools } from '../configured-data'
 
 type AgentToolBase = {
   id: string
@@ -41,76 +43,6 @@ type AgentCliTool = AgentToolBase & {
 }
 
 export type AgentTool = AgentProviderTool | AgentCliTool
-
-const defaultTools: AgentTool[] = [
-  {
-    id: 'duckduckgo',
-    name: 'DuckDuckGo',
-    kind: 'provider',
-    iconClassName: 'i-custom-public-other-default-tool-icon text-[#ef5b39]',
-    credentialKey: 'agentDetail.configure.tools.credential.authOne',
-    credentialVariant: 'authorized',
-    actions: [
-      {
-        id: 'duckduckgo-ai-chat',
-        name: 'DuckDuckGo AI Chat',
-        toolName: 'duckduckgo_ai_chat',
-        description: 'Chat with DuckDuckGo AI for lightweight web answers.',
-      },
-      {
-        id: 'duckduckgo-image-search',
-        name: 'DuckDuckGo Image Search',
-        toolName: 'duckduckgo_image_search',
-        description: 'Search DuckDuckGo images and return matching image results.',
-      },
-      {
-        id: 'duckduckgo-search',
-        name: 'DuckDuckGo Search',
-        toolName: 'duckduckgo_search',
-        description: 'Search DuckDuckGo and return relevant webpage snippets.',
-      },
-      {
-        id: 'duckduckgo-translate',
-        name: 'DuckDuckGo Translate',
-        toolName: 'duckduckgo_translate',
-        description: 'Translate short text with DuckDuckGo translation tools.',
-      },
-    ],
-  },
-  {
-    id: 'web-search',
-    name: 'Web Search',
-    kind: 'provider',
-    iconClassName: 'i-ri-search-line text-[#ef3d32]',
-    credentialKey: 'agentDetail.configure.tools.credential.endUserOAuth',
-    credentialVariant: 'endUser',
-    actions: [
-      {
-        id: 'web-search-query',
-        name: 'Search',
-        toolName: 'web_search',
-        description: 'Search the web and return relevant result snippets.',
-      },
-      {
-        id: 'web-search-read',
-        name: 'Read webpage',
-        toolName: 'read_webpage',
-        description: 'Read and summarize content from a webpage URL.',
-      },
-    ],
-  },
-  {
-    id: 'lark-cli-badge',
-    name: 'Lark CLI',
-    kind: 'cli',
-  },
-  {
-    id: 'lark-cli-action',
-    name: 'Lark CLI',
-    kind: 'cli',
-    action: 'preAuthorize',
-  },
-]
 
 type ToolSettingTarget = {
   action: AgentToolAction
@@ -304,28 +236,28 @@ function AgentCliToolItem({
       </div>
       {tool.action === 'preAuthorize'
         ? (
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                className="flex items-center justify-center rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              >
-                <span aria-hidden className="mr-1 i-ri-key-2-line size-3.5" />
-                <span className="system-xs-medium">{t('agentDetail.configure.tools.preAuthorize')}</span>
-              </button>
-              <button
-                type="button"
-                aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
-                className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              >
-                <span aria-hidden className="i-ri-more-fill size-4" />
-              </button>
-            </div>
-          )
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              className="flex items-center justify-center rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              <span aria-hidden className="mr-1 i-ri-key-2-line size-3.5" />
+              <span className="system-xs-medium">{t('agentDetail.configure.tools.preAuthorize')}</span>
+            </button>
+            <button
+              type="button"
+              aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
+              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              <span aria-hidden className="i-ri-more-fill size-4" />
+            </button>
+          </div>
+        )
         : (
-            <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-              {t('agentDetail.configure.tools.cliTool')}
-            </span>
-          )}
+          <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+            {t('agentDetail.configure.tools.cliTool')}
+          </span>
+        )}
     </div>
   )
 }
@@ -348,7 +280,7 @@ function AgentToolItem({
 }
 
 export function AgentTools({
-  tools = defaultTools,
+  tools = defaultAgentTools,
 }: {
   tools?: AgentTool[]
 }) {

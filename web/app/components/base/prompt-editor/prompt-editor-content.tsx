@@ -91,6 +91,8 @@ type PromptEditorContentProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
+  disableSlashPicker?: boolean
+  disableBracePicker?: boolean
   onBlur?: () => void
   onFocus?: () => void
   instanceId?: string
@@ -117,6 +119,8 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   errorMessageBlock,
   lastRunBlock,
   isSupportFileVar,
+  disableSlashPicker,
+  disableBracePicker,
   onBlur,
   onFocus,
   instanceId,
@@ -150,34 +154,38 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           {(closePortal, onInsert) => <Popup onClose={closePortal} onInsert={onInsert} />}
         </ShortcutsPopupPlugin>
       ))}
-      <ComponentPickerBlock
-        triggerString="/"
-        contextBlock={contextBlock}
-        historyBlock={historyBlock}
-        queryBlock={queryBlock}
-        requestURLBlock={requestURLBlock}
-        variableBlock={variableBlock}
-        externalToolBlock={externalToolBlock}
-        workflowVariableBlock={workflowVariableBlock}
-        currentBlock={currentBlock}
-        errorMessageBlock={errorMessageBlock}
-        lastRunBlock={lastRunBlock}
-        isSupportFileVar={isSupportFileVar}
-      />
-      <ComponentPickerBlock
-        triggerString="{"
-        contextBlock={contextBlock}
-        historyBlock={historyBlock}
-        queryBlock={queryBlock}
-        requestURLBlock={requestURLBlock}
-        variableBlock={variableBlock}
-        externalToolBlock={externalToolBlock}
-        workflowVariableBlock={workflowVariableBlock}
-        currentBlock={currentBlock}
-        errorMessageBlock={errorMessageBlock}
-        lastRunBlock={lastRunBlock}
-        isSupportFileVar={isSupportFileVar}
-      />
+      {!disableSlashPicker && (
+        <ComponentPickerBlock
+          triggerString="/"
+          contextBlock={contextBlock}
+          historyBlock={historyBlock}
+          queryBlock={queryBlock}
+          requestURLBlock={requestURLBlock}
+          variableBlock={variableBlock}
+          externalToolBlock={externalToolBlock}
+          workflowVariableBlock={workflowVariableBlock}
+          currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
+          isSupportFileVar={isSupportFileVar}
+        />
+      )}
+      {!disableBracePicker && (
+        <ComponentPickerBlock
+          triggerString="{"
+          contextBlock={contextBlock}
+          historyBlock={historyBlock}
+          queryBlock={queryBlock}
+          requestURLBlock={requestURLBlock}
+          variableBlock={variableBlock}
+          externalToolBlock={externalToolBlock}
+          workflowVariableBlock={workflowVariableBlock}
+          currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
+          isSupportFileVar={isSupportFileVar}
+        />
+      )}
       {contextBlock?.show && (
         <>
           <ContextBlock {...contextBlock} />

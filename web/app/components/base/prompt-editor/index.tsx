@@ -132,6 +132,8 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
+  disableSlashPicker?: boolean
+  disableBracePicker?: boolean
   shortcutPopups?: Array<{
     hotkey: Hotkey
     displayMode?: ShortcutPopupDisplayMode
@@ -165,6 +167,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
   errorMessageBlock,
   lastRunBlock,
   isSupportFileVar,
+  disableSlashPicker = false,
+  disableBracePicker = false,
   shortcutPopups = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -251,6 +255,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
+          disableSlashPicker={disableSlashPicker}
+          disableBracePicker={disableBracePicker}
           onBlur={onBlur}
           onFocus={onFocus}
           instanceId={instanceId}
