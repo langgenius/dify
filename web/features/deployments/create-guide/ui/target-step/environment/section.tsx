@@ -4,53 +4,23 @@ import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { environmentMatchesIdentifier } from '@/features/deployments/environment'
-import {
-  createDeploymentTargetEnvironment,
-} from '../../../models/deployment-target/environment'
-import { useDeployableEnvironmentsQuery } from '../../../queries/target-environments'
-import {
-  selectedEnvironmentIdAtom,
-  selectEnvironmentAtom,
-} from '../../../state/target-atoms'
-import { useTargetStepDeploymentQueryModel } from '../deployment-options-query'
 import { TargetEnvironmentSkeleton } from '../skeletons'
+import {
+  useTargetEffectiveSelectedEnvironmentId,
+  useTargetEnvironmentIsError,
+  useTargetEnvironmentIsLoading,
+  useTargetEnvironmentIsSelected,
+  useTargetEnvironments,
+  useTargetSelectEnvironmentAction,
+} from './section.data'
 
-function useTargetEnvironmentSectionData() {
-  const { queryGate } = useTargetStepDeploymentQueryModel()
-  const shouldLoadDeploymentTarget = queryGate.shouldLoadDeploymentTarget
-  const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
-  const selectEnvironment = useSetAtom(selectEnvironmentAtom)
-  const deployableEnvironmentsQuery = useDeployableEnvironmentsQuery(shouldLoadDeploymentTarget)
-  const environments = shouldLoadDeploymentTarget
-    ? deployableEnvironmentsQuery.data?.data ?? []
-    : []
-  const {
-    effectiveSelectedEnvironmentId,
-  } = createDeploymentTargetEnvironment({
-    environments,
-    selectedEnvironmentId,
-  })
-  const isEnvironmentLoading = shouldLoadDeploymentTarget
-    && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
-
-  return {
-    effectiveSelectedEnvironmentId,
-    environments,
-    isEnvironmentError: deployableEnvironmentsQuery.isError,
-    isEnvironmentLoading,
-    onSelectEnvironment: selectEnvironment,
-  }
-}
-
-function EnvironmentOptionRow({ environment, selected }: {
+function EnvironmentOptionRow({ environment }: {
   environment: Environment
-  selected: boolean
 }) {
   const { t } = useTranslation('deployments')
+  const selected = useTargetEnvironmentIsSelected(environment.id)
   const summary = environment.description.trim() || `${t(`mode.${environment.mode}`)} · ${t(`backend.${environment.backend}`)}`
 
   return (
@@ -79,13 +49,11 @@ function EnvironmentOptionRow({ environment, selected }: {
 
 export function TargetEnvironmentSection() {
   const { t } = useTranslation('deployments')
-  const {
-    effectiveSelectedEnvironmentId,
-    environments,
-    isEnvironmentError,
-    isEnvironmentLoading,
-    onSelectEnvironment,
-  } = useTargetEnvironmentSectionData()
+  const effectiveSelectedEnvironmentId = useTargetEffectiveSelectedEnvironmentId()
+  const environments = useTargetEnvironments()
+  const isEnvironmentError = useTargetEnvironmentIsError()
+  const isEnvironmentLoading = useTargetEnvironmentIsLoading()
+  const onSelectEnvironment = useTargetSelectEnvironmentAction()
   const hasEnvironmentOptions = environments.length > 0
 
   return (
@@ -102,7 +70,6 @@ export function TargetEnvironmentSection() {
                 <EnvironmentOptionRow
                   key={environment.id}
                   environment={environment}
-                  selected={effectiveSelectedEnvironmentId ? environmentMatchesIdentifier(environment, effectiveSelectedEnvironmentId) : false}
                 />
               ))}
             </RadioGroup>

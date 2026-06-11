@@ -2,13 +2,13 @@
 
 import { useAtomValue } from 'jotai'
 import {
-  createDslState,
-} from '../models/dsl'
-import {
   dslContentAtom,
   dslReadErrorAtom,
   isReadingDslAtom,
 } from '../state/dsl-atoms'
+import {
+  createDslState,
+} from '../state/dsl-derived'
 import {
   instanceDescriptionAtom,
   submittedReleaseFieldsAtom,

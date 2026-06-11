@@ -3,9 +3,10 @@
 import type { CreateDeploymentSubmissionDraft } from './draft'
 import type { App } from '@/types/app'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { isCreatingReleaseOnlyAtom } from '../state/submission-atoms'
 
 export function useCreateReleaseOnlySubmission({
   effectiveSelectedApp,
@@ -18,7 +19,8 @@ export function useCreateReleaseOnlySubmission({
   const createAppInstance = useMutation(consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions())
   const createReleaseFromDsl = useMutation(consoleQuery.enterprise.releaseService.createReleaseFromDsl.mutationOptions())
   const createReleaseFromSourceApp = useMutation(consoleQuery.enterprise.releaseService.createReleaseFromSourceApp.mutationOptions())
-  const [isSkippingReleaseOnly, setIsSkippingReleaseOnly] = useState(false)
+  const isSkippingReleaseOnly = useAtomValue(isCreatingReleaseOnlyAtom)
+  const setIsSkippingReleaseOnly = useSetAtom(isCreatingReleaseOnlyAtom)
 
   async function createInitialReleaseOnly() {
     setIsSkippingReleaseOnly(true)

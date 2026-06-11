@@ -2,38 +2,24 @@
 
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
 import {
-  createEffectiveSelectedApp,
-  filterSourceAppsBySearchText,
-} from '../../../models/source'
-import {
-  sourceAppsFromQueryData,
-  useSourceAppsQuery,
-} from '../../../queries/source'
-import {
-  selectedAppAtom,
-  selectSourceAppAtom,
-  sourceSearchTextAtom,
-} from '../../../state/source-atoms'
+  useFilteredSourceApps,
+  useSelectSourceAppAction,
+  useSourceAppSelected,
+  useSourceAppsLoading,
+} from './list.data'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 
 export function SourceAppList() {
   const { t } = useTranslation('deployments')
-  const sourceSearchText = useAtomValue(sourceSearchTextAtom)
-  const selectedApp = useAtomValue(selectedAppAtom)
-  const selectSourceApp = useSetAtom(selectSourceAppAtom)
-  const sourceAppsQuery = useSourceAppsQuery({ sourceSearchText })
-  const sourceApps = sourceAppsFromQueryData(sourceAppsQuery.data)
-  const effectiveSelectedApp = createEffectiveSelectedApp(selectedApp, sourceApps)
-  const effectiveSelectedAppId = effectiveSelectedApp?.id ?? sourceApps[0]?.id
-  const filteredApps = filterSourceAppsBySearchText(sourceApps, sourceSearchText)
-  const sourceAppsLoading = sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)
+  const selectSourceApp = useSelectSourceAppAction()
+  const filteredApps = useFilteredSourceApps()
+  const sourceAppsLoading = useSourceAppsLoading()
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
@@ -51,7 +37,6 @@ export function SourceAppList() {
                   <SourceAppOption
                     key={app.id}
                     app={app}
-                    selected={effectiveSelectedAppId === app.id}
                     onSelect={() => selectSourceApp(app)}
                   />
                 ))}
@@ -77,11 +62,12 @@ function SourceAppSkeleton() {
   )
 }
 
-function SourceAppOption({ app, selected, onSelect }: {
+function SourceAppOption({ app, onSelect }: {
   app: App
-  selected: boolean
   onSelect: () => void
 }) {
+  const selected = useSourceAppSelected(app.id)
+
   return (
     <label
       className={cn(

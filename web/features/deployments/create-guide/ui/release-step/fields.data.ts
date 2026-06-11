@@ -2,77 +2,26 @@
 
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import {
-  createDslState,
-} from '../../models/dsl'
-import {
-  hasReleaseInstanceNameConflict,
-} from '../../models/release'
-import {
-  createSelectedWorkflowSourceApp,
-  createSourceStatus,
-} from '../../models/source'
-import {
-  existingInstanceNamesFromQueryData,
-  instanceNameConflictFromQueryData,
-  useExistingInstanceNamesQuery,
-  useInstanceNameConflictQuery,
-} from '../../queries/source'
-import {
-  dslContentAtom,
-  dslReadErrorAtom,
-  isReadingDslAtom,
-} from '../../state/dsl-atoms'
-import {
-  submittedReleaseFieldsAtom,
-} from '../../state/release-atoms'
-import {
-  selectedAppAtom,
-} from '../../state/source-atoms'
-import {
-  methodAtom,
-} from '../../state/workflow-atoms'
+import { isWorkflowApp } from '@/features/deployments/app-mode'
+import { useCreateGuideDslModel } from '../../models/dsl'
+import { useSubmittedReleaseFieldsStatus } from '../../models/release'
+import { selectedAppAtom } from '../../state/source-atoms'
+import { methodAtom } from '../../state/workflow-atoms'
 
-export function useReleaseInstanceNameFieldData() {
+export function useReleaseInstanceNamePlaceholder() {
   const { t } = useTranslation('deployments')
   const method = useAtomValue(methodAtom)
-  const dslContent = useAtomValue(dslContentAtom)
-  const dslReadError = useAtomValue(dslReadErrorAtom)
-  const isReadingDsl = useAtomValue(isReadingDslAtom)
   const selectedApp = useAtomValue(selectedAppAtom)
-  const appInstancesQuery = useExistingInstanceNamesQuery()
-  const existingInstanceNames = existingInstanceNamesFromQueryData(appInstancesQuery.data)
-  const {
-    submittedInstanceName,
-  } = useAtomValue(submittedReleaseFieldsAtom)
-  const instanceNameConflictQuery = useInstanceNameConflictQuery({
-    enabled: Boolean(submittedInstanceName),
-    submittedInstanceName,
-  })
-  const dslState = createDslState({
-    dslContent,
-    dslReadError,
-    isReadingDsl,
-    method,
-  })
-  const effectiveSelectedApp = createSelectedWorkflowSourceApp(selectedApp)
-  const source = createSourceStatus({
-    dslFallbackAppName: t('createGuide.dsl.defaultAppName'),
-    dslReadError,
-    dslState,
-    effectiveSelectedApp,
-    isReadingDsl,
-    method,
-  })
-  const remoteInstanceNameConflict = instanceNameConflictFromQueryData(instanceNameConflictQuery.data, submittedInstanceName)
-  const hasInstanceNameConflict = hasReleaseInstanceNameConflict({
-    existingInstanceNames,
-    remoteInstanceNameConflict,
-    submittedInstanceName,
-  })
+  const dslModel = useCreateGuideDslModel()
 
-  return {
-    instanceNameError: hasInstanceNameConflict ? t('createGuide.release.instanceNameConflict') : undefined,
-    sourceName: source.sourceName,
-  }
+  return method === 'importDsl'
+    ? dslModel.dslDefaultAppName || t('createGuide.dsl.defaultAppName')
+    : isWorkflowApp(selectedApp) ? selectedApp.name : undefined
+}
+
+export function useReleaseInstanceNameError() {
+  const { t } = useTranslation('deployments')
+  const { hasInstanceNameConflict } = useSubmittedReleaseFieldsStatus()
+
+  return hasInstanceNameConflict ? t('createGuide.release.instanceNameConflict') : undefined
 }

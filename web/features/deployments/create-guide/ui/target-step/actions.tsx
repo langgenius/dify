@@ -2,19 +2,25 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import { useTargetAction } from './actions.data'
+import {
+  useTargetBackAction,
+  useTargetCanDeploy,
+  useTargetCanSkipDeployment,
+  useTargetDeployAction,
+  useTargetIsDeploying,
+  useTargetIsSkippingDeployment,
+  useTargetSkipDeploymentAction,
+} from './actions.data'
 
 export function TargetActionButtons() {
   const { t } = useTranslation('deployments')
-  const {
-    canDeploy,
-    canSkipDeployment,
-    handleBack,
-    handleDeploy,
-    handleSkipDeployment,
-    isDeploying,
-    isSkippingDeployment,
-  } = useTargetAction()
+  const canDeploy = useTargetCanDeploy()
+  const canSkipDeployment = useTargetCanSkipDeployment()
+  const handleBack = useTargetBackAction()
+  const handleDeploy = useTargetDeployAction()
+  const handleSkipDeployment = useTargetSkipDeploymentAction(canSkipDeployment)
+  const isDeploying = useTargetIsDeploying()
+  const isSkippingDeployment = useTargetIsSkippingDeployment()
   const primaryLabel = isDeploying && !isSkippingDeployment
     ? t('createGuide.actions.deploying')
     : t('createGuide.actions.createAndDeploy')

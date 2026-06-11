@@ -18,6 +18,10 @@ import {
   selectedAppAtom,
   sourceSearchTextAtom,
 } from './source-atoms'
+import {
+  isCreatingDeploymentAtom,
+  isCreatingReleaseOnlyAtom,
+} from './submission-atoms'
 import { resetDeploymentTargetOptionsAtom } from './target-atoms'
 import { clearCreateDeploymentGuideUnsupportedDslNodesAtom } from './unsupported-dsl-atoms'
 import {
@@ -39,6 +43,8 @@ export const resetGuideAtom = atom(null, (_get, set) => {
   set(instanceDescriptionAtom, '')
   set(releaseNameAtom, '')
   set(releaseDescriptionAtom, '')
+  set(isCreatingDeploymentAtom, false)
+  set(isCreatingReleaseOnlyAtom, false)
   set(resetDeploymentTargetOptionsAtom)
   set(clearCreateDeploymentGuideUnsupportedDslNodesAtom)
 })

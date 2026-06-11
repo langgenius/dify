@@ -1,71 +1,27 @@
 'use client'
 
-import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   RuntimeCredentialBindingsPanel,
 } from '@/features/deployments/components/runtime-credential-bindings'
-import {
-  createDeploymentTargetBindings,
-} from '../../../models/deployment-target/bindings'
-import {
-  manualBindingSelectionsAtom,
-  selectBindingAtom,
-} from '../../../state/target-atoms'
-import {
-  unsupportedDslNodesAtom,
-} from '../../../state/unsupported-dsl-atoms'
-import {
-  useDeploymentOptionsQueryResult,
-  useTargetStepDeploymentQueryModel,
-} from '../deployment-options-query'
 import { TargetBindingSkeleton } from '../skeletons'
-
-function useTargetBindingSectionData() {
-  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
-  const manualBindingSelections = useAtomValue(manualBindingSelectionsAtom)
-  const selectBinding = useSetAtom(selectBindingAtom)
-  const {
-    dslState,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  } = useTargetStepDeploymentQueryModel()
-  const deploymentOptionsResult = useDeploymentOptionsQueryResult({
-    dslState,
-    effectiveSelectedApp,
-    method,
-    queryGate,
-  })
-  const targetBindings = createDeploymentTargetBindings({
-    credentialSlots: deploymentOptionsResult.deploymentOptions?.credentialSlots,
-    manualBindingSelections,
-    shouldLoadDeploymentTarget: queryGate.shouldLoadDeploymentTarget,
-  })
-  const isBindingLoading = queryGate.shouldLoadDeploymentTarget
-    && (deploymentOptionsResult.deploymentOptionsQuery.isLoading || (deploymentOptionsResult.deploymentOptionsQuery.isFetching && !deploymentOptionsResult.deploymentOptionsQuery.data))
-  const isBindingError = deploymentOptionsResult.deploymentOptionsQuery.isError
-
-  return {
-    bindingSelections: targetBindings.bindingSelections,
-    bindingSlots: targetBindings.bindingSlots,
-    isBindingError,
-    isBindingLoading,
-    onSelectBinding: (slot: string, value: string) => selectBinding({ slot, value }),
-    shouldRender: !(isBindingError && unsupportedDslNodes.length > 0),
-  }
-}
+import {
+  useShouldRenderTargetBindingSection,
+  useTargetBindingIsError,
+  useTargetBindingIsLoading,
+  useTargetBindingSelectAction,
+  useTargetBindingSelections,
+  useTargetBindingSlots,
+} from './section.data'
 
 export function TargetBindingSection() {
   const { t } = useTranslation('deployments')
-  const {
-    bindingSelections,
-    bindingSlots,
-    isBindingError,
-    isBindingLoading,
-    onSelectBinding,
-    shouldRender,
-  } = useTargetBindingSectionData()
+  const bindingSelections = useTargetBindingSelections()
+  const bindingSlots = useTargetBindingSlots()
+  const isBindingError = useTargetBindingIsError()
+  const isBindingLoading = useTargetBindingIsLoading()
+  const onSelectBinding = useTargetBindingSelectAction()
+  const shouldRender = useShouldRenderTargetBindingSection()
 
   if (!shouldRender)
     return null

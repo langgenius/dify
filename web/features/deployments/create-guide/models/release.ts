@@ -1,26 +1,15 @@
-export function isInitialReleaseReady({
-  hasInstanceNameConflict,
-  isCheckingInstanceNameConflict,
-  isSourceReady,
-  submittedInstanceName,
-  submittedReleaseName,
-}: {
-  hasInstanceNameConflict: boolean
-  isCheckingInstanceNameConflict: boolean
-  isSourceReady: boolean
-  submittedInstanceName: string
-  submittedReleaseName: string
-}) {
-  return Boolean(
-    isSourceReady
-    && submittedInstanceName
-    && submittedReleaseName
-    && !hasInstanceNameConflict
-    && !isCheckingInstanceNameConflict,
-  )
-}
+'use client'
 
-export function hasReleaseInstanceNameConflict({
+import { useAtomValue } from 'jotai'
+import {
+  existingInstanceNamesFromQueryData,
+  instanceNameConflictFromQueryData,
+  useExistingInstanceNamesQuery,
+  useInstanceNameConflictQuery,
+} from '../queries/source'
+import { submittedReleaseFieldsAtom } from '../state/release-atoms'
+
+function hasReleaseInstanceNameConflict({
   existingInstanceNames,
   remoteInstanceNameConflict,
   submittedInstanceName,
@@ -36,4 +25,30 @@ export function hasReleaseInstanceNameConflict({
       || remoteInstanceNameConflict
     ),
   )
+}
+
+export function useSubmittedReleaseFieldsStatus() {
+  const appInstancesQuery = useExistingInstanceNamesQuery()
+  const existingInstanceNames = existingInstanceNamesFromQueryData(appInstancesQuery.data)
+  const {
+    submittedInstanceName,
+    submittedReleaseName,
+  } = useAtomValue(submittedReleaseFieldsAtom)
+  const instanceNameConflictQuery = useInstanceNameConflictQuery({
+    enabled: Boolean(submittedInstanceName),
+    submittedInstanceName,
+  })
+  const remoteInstanceNameConflict = instanceNameConflictFromQueryData(instanceNameConflictQuery.data, submittedInstanceName)
+  const hasInstanceNameConflict = hasReleaseInstanceNameConflict({
+    existingInstanceNames,
+    remoteInstanceNameConflict,
+    submittedInstanceName,
+  })
+
+  return {
+    hasInstanceName: Boolean(submittedInstanceName),
+    hasInstanceNameConflict,
+    hasReleaseName: Boolean(submittedReleaseName),
+    isCheckingInstanceNameConflict: Boolean(submittedInstanceName) && instanceNameConflictQuery.isLoading,
+  }
 }

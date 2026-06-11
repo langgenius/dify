@@ -1,10 +1,117 @@
-import type { EnvVarInput, EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
+import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
 import type { GuideMethod } from '../../types'
-import type { EnvVarBindingSlot, EnvVarValues } from '@/features/deployments/components/env-var-bindings'
+import type {
+  EnvVarBindingSlot,
+  EnvVarValues,
+} from '@/features/deployments/components/env-var-bindings'
+import type { DslEnvVarSlot } from '@/features/deployments/dsl'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
-import {
-  createTargetEnvVarSlots,
-} from './env-var-slots'
+import { dslEnvVarSlots } from '@/features/deployments/dsl'
+
+type EnvVarSlotMetadata = {
+  key: string
+  description?: string
+  defaultValue?: string
+  hasDefaultValue?: boolean
+  valueType?: EnvVarBindingSlot['valueType']
+}
+
+function envVarBindingValueType(value?: string): EnvVarBindingSlot['valueType'] {
+  return value === 'number' || value === 'secret' ? value : 'string'
+}
+
+function deploymentEnvVarBindingSlot(slot: EnvVarSlot): EnvVarBindingSlot | undefined {
+  const key = slot.key.trim()
+  if (!key)
+    return undefined
+
+  const bindingSlot = {
+    ...slot,
+    key,
+    valueType: envVarBindingValueType(slot.valueType),
+  }
+
+  return bindingSlot
+}
+
+function normalizeDslEnvVarSlotMetadata(slot: DslEnvVarSlot): EnvVarSlotMetadata | undefined {
+  const key = slot.key.trim()
+  if (!key)
+    return undefined
+
+  const metadata = {
+    key,
+    ...(slot.description ? { description: slot.description } : {}),
+    ...(slot.defaultValue !== undefined ? { defaultValue: slot.defaultValue, hasDefaultValue: true } : {}),
+    ...(slot.valueType ? { valueType: envVarBindingValueType(slot.valueType) } : {}),
+  }
+
+  return metadata
+}
+
+function mergeEnvVarSlotMetadata(slots: EnvVarBindingSlot[], metadataSlots: EnvVarSlotMetadata[]) {
+  if (metadataSlots.length === 0)
+    return slots
+
+  const metadataByKey = new Map(
+    metadataSlots.map(slot => [slot.key, slot] as const),
+  )
+
+  return slots.map((slot) => {
+    const metadata = metadataByKey.get(slot.key)
+    if (!metadata)
+      return slot
+
+    const nextSlot = { ...slot }
+
+    if (!nextSlot.description && metadata.description)
+      nextSlot.description = metadata.description
+    if (!nextSlot.hasDefaultValue && metadata.defaultValue !== undefined) {
+      nextSlot.defaultValue = metadata.defaultValue
+      nextSlot.hasDefaultValue = true
+    }
+    if (nextSlot.valueType === 'string' && metadata.valueType)
+      nextSlot.valueType = metadata.valueType
+
+    return nextSlot
+  })
+}
+
+function createDeploymentEnvVarSlots(shouldLoadDeploymentTarget: boolean, slots: EnvVarSlot[] | undefined) {
+  return shouldLoadDeploymentTarget
+    ? slots?.flatMap((slot): EnvVarBindingSlot[] => {
+      const bindingSlot = deploymentEnvVarBindingSlot(slot)
+      return bindingSlot ? [bindingSlot] : []
+    }) ?? []
+    : []
+}
+
+function createDslEnvVarMetadataSlots(dslContent: string, method: GuideMethod) {
+  return method === 'importDsl' && dslContent
+    ? dslEnvVarSlots(dslContent).flatMap((slot): EnvVarSlotMetadata[] => {
+        const metadata = normalizeDslEnvVarSlotMetadata(slot)
+        return metadata ? [metadata] : []
+      })
+    : []
+}
+
+function createTargetEnvVarSlots({
+  dslContent,
+  method,
+  shouldLoadDeploymentTarget,
+  slots,
+}: {
+  dslContent: string
+  method: GuideMethod
+  shouldLoadDeploymentTarget: boolean
+  slots: EnvVarSlot[] | undefined
+}) {
+  // Deployment options own the canonical slot list; DSL metadata only enriches import-DSL defaults.
+  const deploymentOptionEnvVarSlots = createDeploymentEnvVarSlots(shouldLoadDeploymentTarget, slots)
+  const dslEnvVarMetadataSlots = createDslEnvVarMetadataSlots(dslContent, method)
+
+  return mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarMetadataSlots)
+}
 
 function createEnvVarValueSource(slot: EnvVarBindingSlot, values: EnvVarValues) {
   return values[slot.key]?.valueSource
@@ -28,34 +135,6 @@ function areRequiredEnvVarsReady(slots: EnvVarBindingSlot[], values: EnvVarValue
       return false
 
     return slot.valueType !== 'number' || !Number.isNaN(Number(selection.value))
-  })
-}
-
-export function createDeploymentEnvVarInputs(slots: EnvVarBindingSlot[], values: EnvVarValues): EnvVarInput[] {
-  return slots.flatMap((slot): EnvVarInput[] => {
-    const selection = values[slot.key]
-    const valueSource = createEnvVarValueSource(slot, values)
-
-    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
-      return slot.hasLastValue
-        ? [{ key: slot.key, valueSource }]
-        : []
-    }
-
-    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
-      return slot.hasDefaultValue
-        ? [{ key: slot.key, valueSource }]
-        : []
-    }
-
-    if (!selection?.value || (slot.valueType === 'number' && Number.isNaN(Number(selection.value))))
-      return []
-
-    return [{
-      key: slot.key,
-      value: selection.value,
-      valueSource,
-    }]
   })
 }
 

@@ -1,14 +1,12 @@
 'use client'
 
+import type { App } from '@/types/app'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { isWorkflowApp } from '@/features/deployments/app-mode'
 import {
-  createDslState,
+  useCreateGuideDslModel,
 } from '../../models/dsl'
-import {
-  createEffectiveSelectedApp,
-  createSourceStatus,
-} from '../../models/source'
 import {
   existingInstanceNamesFromQueryData,
   sourceAppsFromQueryData,
@@ -16,7 +14,6 @@ import {
   useSourceAppsQuery,
 } from '../../queries/source'
 import {
-  dslContentAtom,
   dslReadErrorAtom,
   isReadingDslAtom,
 } from '../../state/dsl-atoms'
@@ -36,15 +33,38 @@ import {
   setStepAtom,
 } from '../../state/workflow-atoms'
 
-export function useSourceAction() {
-  const { t } = useTranslation('deployments')
+function effectiveSourceApp(selectedApp: App | undefined, sourceApps: ReturnType<typeof sourceAppsFromQueryData>) {
+  return isWorkflowApp(selectedApp) ? selectedApp : sourceApps[0]
+}
+
+export function useSourceCanEnterReleaseStep() {
   const method = useAtomValue(methodAtom)
-  const dslContent = useAtomValue(dslContentAtom)
   const dslReadError = useAtomValue(dslReadErrorAtom)
   const isReadingDsl = useAtomValue(isReadingDslAtom)
   const sourceSearchText = useAtomValue(sourceSearchTextAtom)
   const selectedApp = useAtomValue(selectedAppAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
+  const sourceAppsQuery = useSourceAppsQuery({
+    enabled: method === 'bindApp',
+    sourceSearchText,
+  })
+  const dslModel = useCreateGuideDslModel()
+  const effectiveSelectedApp = effectiveSourceApp(selectedApp, sourceAppsFromQueryData(sourceAppsQuery.data))
+  const importDslReady = method === 'importDsl'
+    && dslModel.hasDslContent
+    && !isReadingDsl
+    && !dslReadError
+    && !dslModel.dslUnsupportedMode
+  const bindAppReady = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
+
+  return (importDslReady || bindAppReady) && unsupportedDslNodes.length === 0
+}
+
+export function useSourceNextAction(canEnterReleaseStep: boolean) {
+  const { t } = useTranslation('deployments')
+  const method = useAtomValue(methodAtom)
+  const sourceSearchText = useAtomValue(sourceSearchTextAtom)
+  const selectedApp = useAtomValue(selectedAppAtom)
   const setStep = useSetAtom(setStepAtom)
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
   const applyReleaseDefaults = useSetAtom(applyReleaseDefaultsAtom)
@@ -54,40 +74,26 @@ export function useSourceAction() {
   })
   const appInstancesQuery = useExistingInstanceNamesQuery()
   const existingInstanceNames = existingInstanceNamesFromQueryData(appInstancesQuery.data)
-  const dslState = createDslState({
-    dslContent,
-    dslReadError,
-    isReadingDsl,
-    method,
-  })
-  const effectiveSelectedApp = createEffectiveSelectedApp(selectedApp, sourceAppsFromQueryData(sourceAppsQuery.data))
-  const source = createSourceStatus({
-    dslFallbackAppName: t('createGuide.dsl.defaultAppName'),
-    dslReadError,
-    dslState,
-    effectiveSelectedApp,
-    isReadingDsl,
-    method,
-  })
-  const canGoNext = source.isSourceReady && unsupportedDslNodes.length === 0
+  const dslModel = useCreateGuideDslModel()
+  const effectiveSelectedApp = effectiveSourceApp(selectedApp, sourceAppsFromQueryData(sourceAppsQuery.data))
+  const sourceName = method === 'importDsl'
+    ? dslModel.dslDefaultAppName || t('createGuide.dsl.defaultAppName')
+    : effectiveSelectedApp?.name
 
   function handleNext() {
-    if (!canGoNext)
+    if (!canEnterReleaseStep)
       return
 
-    if (method === 'bindApp' && source.effectiveSelectedApp)
-      selectSourceApp(source.effectiveSelectedApp)
+    if (method === 'bindApp' && effectiveSelectedApp)
+      selectSourceApp(effectiveSelectedApp)
 
     applyReleaseDefaults({
       defaultReleaseName: t('createGuide.release.defaultName'),
       existingNames: existingInstanceNames,
-      sourceName: source.sourceName,
+      sourceName,
     })
     setStep('release')
   }
 
-  return {
-    canGoNext,
-    handleNext,
-  }
+  return handleNext
 }

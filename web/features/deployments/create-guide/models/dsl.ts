@@ -1,39 +1,24 @@
-import type { GuideMethod } from '../types'
+'use client'
+
+import { useAtomValue } from 'jotai'
 import {
-  dslAppName,
-  encodeDslContent,
-  isWorkflowDsl,
-} from '@/features/deployments/dsl'
+  dslContentAtom,
+  dslReadErrorAtom,
+  isReadingDslAtom,
+} from '../state/dsl-atoms'
+import { createDslState } from '../state/dsl-derived'
+import { methodAtom } from '../state/workflow-atoms'
 
-export type CreateGuideDslState = {
-  dslDefaultAppName: string
-  dslUnsupportedMode: boolean
-  encodedDslContent: string
-  hasDslContent: boolean
-}
+export function useCreateGuideDslModel() {
+  const method = useAtomValue(methodAtom)
+  const dslContent = useAtomValue(dslContentAtom)
+  const dslReadError = useAtomValue(dslReadErrorAtom)
+  const isReadingDsl = useAtomValue(isReadingDslAtom)
 
-export function createDslState({
-  dslContent,
-  dslReadError,
-  isReadingDsl,
-  method,
-}: {
-  dslContent: string
-  dslReadError: boolean
-  isReadingDsl: boolean
-  method: GuideMethod
-}): CreateGuideDslState {
-  const hasDslContent = Boolean(dslContent.trim())
-  const dslUnsupportedMode = method === 'importDsl'
-    && hasDslContent
-    && !isReadingDsl
-    && !dslReadError
-    && !isWorkflowDsl(dslContent)
-
-  return {
-    dslDefaultAppName: dslContent ? dslAppName(dslContent) : '',
-    dslUnsupportedMode,
-    encodedDslContent: hasDslContent ? encodeDslContent(dslContent) : '',
-    hasDslContent,
-  }
+  return createDslState({
+    dslContent,
+    dslReadError,
+    isReadingDsl,
+    method,
+  })
 }

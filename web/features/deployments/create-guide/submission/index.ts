@@ -4,12 +4,16 @@ import type { DeploymentTargetSubmissionState } from './types'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { isWorkflowApp } from '@/features/deployments/app-mode'
 import { isWorkflowDsl } from '@/features/deployments/dsl'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import {
+  isCreatingDeploymentAtom,
+  isSubmittingDeploymentGuideAtom,
+} from '../state/submission-atoms'
 import {
   setSubmissionUnsupportedDslNodesAtom,
 } from '../state/unsupported-dsl-atoms'
@@ -37,6 +41,8 @@ export function useCreateDeploymentSubmission({
   const router = useRouter()
   const submissionDraft = useCreateDeploymentSubmissionDraft()
   const setSubmissionUnsupportedDslNodes = useSetAtom(setSubmissionUnsupportedDslNodesAtom)
+  const setIsCreatingDeployment = useSetAtom(isCreatingDeploymentAtom)
+  const isSubmittingDeploymentGuide = useAtomValue(isSubmittingDeploymentGuideAtom)
   const createInitialDeployment = useMutation(consoleQuery.enterprise.deploymentService.deploy.mutationOptions())
   const {
     createInitialReleaseOnly,
@@ -45,7 +51,7 @@ export function useCreateDeploymentSubmission({
     effectiveSelectedApp,
     submissionDraft,
   })
-  const isDeploying = isSkippingReleaseOnly || createInitialDeployment.isPending
+  const isDeploying = isSubmittingDeploymentGuide || createInitialDeployment.isPending
 
   async function createDeploymentAndRelease({ deployToEnvironment }: {
     deployToEnvironment: boolean
@@ -97,8 +103,11 @@ export function useCreateDeploymentSubmission({
       if (!deploymentRequest)
         return
 
+      setIsCreatingDeployment(true)
       const response = await createInitialDeployment.mutateAsync({
         body: deploymentRequest,
+      }).finally(() => {
+        setIsCreatingDeployment(false)
       })
       const appInstanceId = response.appInstance.id
 

@@ -14,7 +14,8 @@ import {
   setReleaseNameAtom,
 } from '../../state/release-atoms'
 import {
-  useReleaseInstanceNameFieldData,
+  useReleaseInstanceNameError,
+  useReleaseInstanceNamePlaceholder,
 } from './fields.data'
 
 const releaseTextareaClassName = 'min-h-16 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
@@ -51,10 +52,8 @@ function InstanceNameField() {
   const { t } = useTranslation('deployments')
   const instanceName = useAtomValue(instanceNameAtom)
   const setInstanceName = useSetAtom(setInstanceNameAtom)
-  const {
-    instanceNameError,
-    sourceName,
-  } = useReleaseInstanceNameFieldData()
+  const instanceNameError = useReleaseInstanceNameError()
+  const instanceNamePlaceholder = useReleaseInstanceNamePlaceholder()
   const instanceNameErrorId = 'create-guide-instance-name-error'
 
   return (
@@ -66,7 +65,7 @@ function InstanceNameField() {
         id="create-guide-instance-name"
         value={instanceName}
         onChange={event => setInstanceName(event.target.value)}
-        placeholder={sourceName}
+        placeholder={instanceNamePlaceholder}
         required
         aria-invalid={instanceNameError ? true : undefined}
         aria-describedby={instanceNameError ? instanceNameErrorId : undefined}

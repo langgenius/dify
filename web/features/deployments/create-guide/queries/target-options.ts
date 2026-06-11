@@ -1,13 +1,15 @@
 'use client'
 
-import type { createDeploymentTargetQueryGate } from '../models/deployment-target/query-gate'
-import type { CreateGuideDslState } from '../models/dsl'
+import type { CreateGuideDslState } from '../state/dsl-derived'
 import type { GuideMethod } from '../types'
 import type { App } from '@/types/app'
 import { useQuery } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
 
-type DeploymentTargetQueryGate = ReturnType<typeof createDeploymentTargetQueryGate>
+type DeploymentTargetQueryGate = {
+  shouldLoadDslDeploymentOptions: boolean
+  shouldLoadSourceDeploymentOptions: boolean
+}
 
 export function useDeploymentOptionsQuery({
   dslState,

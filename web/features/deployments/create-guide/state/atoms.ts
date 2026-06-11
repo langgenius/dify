@@ -8,6 +8,9 @@ import {
   sourceLocalAtoms,
 } from './source-atoms'
 import {
+  submissionLocalAtoms,
+} from './submission-atoms'
+import {
   targetLocalAtoms,
 } from './target-atoms'
 import {
@@ -22,6 +25,7 @@ export const createDeploymentGuideLocalAtoms = [
   ...sourceLocalAtoms,
   ...dslLocalAtoms,
   ...releaseLocalAtoms,
+  ...submissionLocalAtoms,
   ...targetLocalAtoms,
   ...unsupportedDslLocalAtoms,
 ] as const

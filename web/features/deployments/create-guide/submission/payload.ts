@@ -8,7 +8,7 @@ import {
 import { createDeploymentIdempotencyKey } from '@/features/deployments/idempotency'
 import {
   createDeploymentEnvVarInputs,
-} from '../models/deployment-target/env-vars'
+} from './env-vars'
 
 export function createInitialDeploymentRequest({
   effectiveSelectedApp,
