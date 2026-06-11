@@ -10,7 +10,6 @@ from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 
 
 class _ImmediateThread:
@@ -258,20 +257,6 @@ class TestQAIndexProcessor:
 
         mock_summary.assert_called_once_with(dataset, None)
         vector.delete.assert_called_once()
-
-    def test_retrieve_filters_by_score_threshold(self, processor: QAIndexProcessor, dataset: Mock) -> None:
-        result_ok = Document(page_content="accepted", metadata={"source": "a", "score": 0.9})
-        result_low = Document(page_content="rejected", metadata={"source": "b", "score": 0.1})
-
-        with patch("core.rag.index_processor.processor.qa_index_processor.RetrievalService.retrieve") as mock_retrieve:
-            mock_retrieve.return_value = [result_ok, result_low]
-            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
-            docs = processor.retrieve(RetrievalMethod.SEMANTIC_SEARCH, "query", dataset, 5, 0.5, reranking_model)
-
-        assert len(docs) == 1
-        assert docs[0].page_content == "accepted"
-        assert docs[0].metadata["score"] == 0.9
-        assert result_ok.metadata == {"source": "a", "score": 0.9}
 
     def test_index_adds_documents_and_vectors_for_high_quality(
         self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock

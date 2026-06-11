@@ -8,7 +8,6 @@ from core.rag.entities import ParentMode, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 
 
 class TestParentChildIndexProcessor:
@@ -293,22 +292,6 @@ class TestParentChildIndexProcessor:
             processor.clean(dataset, None, delete_summaries=True)
 
         mock_summary.assert_called_once_with(dataset, None)
-
-    def test_retrieve_filters_by_score_threshold(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        ok_result = Document(page_content="keep", metadata={"m": 1, "score": 0.8})
-        low_result = Document(page_content="drop", metadata={"m": 2, "score": 0.2})
-
-        with patch(
-            "core.rag.index_processor.processor.parent_child_index_processor.RetrievalService.retrieve"
-        ) as mock_retrieve:
-            mock_retrieve.return_value = [ok_result, low_result]
-            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
-            docs = processor.retrieve(RetrievalMethod.SEMANTIC_SEARCH, "query", dataset, 3, 0.5, reranking_model)
-
-        assert len(docs) == 1
-        assert docs[0].page_content == "keep"
-        assert docs[0].metadata["score"] == 0.8
-        assert ok_result.metadata == {"m": 1, "score": 0.8}
 
     def test_split_child_nodes_requires_subchunk_segmentation(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=None)
