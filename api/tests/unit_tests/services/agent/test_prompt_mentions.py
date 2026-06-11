@@ -140,14 +140,34 @@ def test_soul_resolver_cli_tool_resolves_by_id_and_keeps_name_alias(soul: AgentS
     assert expand_prompt_mentions("[§cli_tool:ct-1§]", build_soul_mention_resolver(soul)) == "ffmpeg-v7"
 
 
-def test_soul_resolver_all_tools_sentinel_never_dangles(soul: AgentSoulConfig):
-    assert (
-        expand_prompt_mentions("Use [§tool:*:ALL TOOLS§].", build_soul_mention_resolver(soul))
-        == "Use all available tools."
+@pytest.fixture
+def soul_with_provider_entry(soul: AgentSoulConfig) -> AgentSoulConfig:
+    # provider-level entry (tool_name omitted) = all tools of the provider
+    soul.tools.dify_tools.append(
+        soul.tools.dify_tools[0].model_copy(
+            update={"plugin_id": "langgenius/duckduckgo", "provider": "duckduckgo", "tool_name": None}
+        )
     )
-    # resolves even with zero configured tools — the sentinel is always valid
-    empty_resolver = build_soul_mention_resolver(AgentSoulConfig.model_validate({}))
-    assert expand_prompt_mentions("[§tool:*§]", empty_resolver) == "all available tools"
+    return soul
+
+
+def test_soul_resolver_provider_all_tools_mention(soul_with_provider_entry: AgentSoulConfig):
+    resolver = build_soul_mention_resolver(soul_with_provider_entry)
+    # [§tool:<provider>/*§] = all tools of that provider
+    assert expand_prompt_mentions("Use [§tool:duckduckgo/*:DuckDuckGo 全部§].", resolver) == (
+        "Use all duckduckgo tools."
+    )
+    # plugin-prefixed alias of the same provider
+    assert expand_prompt_mentions("[§tool:langgenius/duckduckgo/duckduckgo/*§]", resolver) == "all duckduckgo tools"
+    # without a provider-level entry the mention dangles -> degrades to label
+    bare = build_soul_mention_resolver(AgentSoulConfig.model_validate({}))
+    assert expand_prompt_mentions("[§tool:duckduckgo/*:DuckDuckGo 全部§]", bare) == "DuckDuckGo 全部"
+
+
+def test_soul_resolver_single_tool_resolves_via_provider_level_entry(soul_with_provider_entry: AgentSoulConfig):
+    # one tool offered through the provider-level ("all") entry still resolves
+    resolver = build_soul_mention_resolver(soul_with_provider_entry)
+    assert expand_prompt_mentions("[§tool:duckduckgo/ddg_search§]", resolver) == "ddg_search"
 
 
 # ── node-job resolver ─────────────────────────────────────────────────────────

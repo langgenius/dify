@@ -918,3 +918,43 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch):
     captured.clear()
     assert AgentComposerService._dataset_rows(tenant_id="tenant-1", dataset_ids=["nope"]) == {}
     assert captured == {}
+
+
+def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatch):
+    """The slash-menu Tools tab needs both selection granularities: a provider
+    hosts many tools (like an MCP server), so candidates return one
+    provider-level entry (id = <provider>/*, = all tools) plus one per tool."""
+    from types import SimpleNamespace
+
+    provider = SimpleNamespace(
+        name="duckduckgo",
+        plugin_id="langgenius/duckduckgo",
+        label=SimpleNamespace(en_US="DuckDuckGo"),
+        description=SimpleNamespace(en_US="Privacy-first web search"),
+        tools=[
+            SimpleNamespace(name="ddg_search", label=SimpleNamespace(en_US="DuckDuckGo Search")),
+            SimpleNamespace(name="ddg_news", label=SimpleNamespace(en_US="DuckDuckGo News")),
+        ],
+    )
+
+    import services.tools.builtin_tools_manage_service as builtin_tools_module
+
+    monkeypatch.setattr(
+        builtin_tools_module.BuiltinToolManageService,
+        "list_builtin_tools",
+        staticmethod(lambda user_id, tenant_id: [provider]),
+    )
+
+    entries = AgentComposerService._workspace_dify_tools(tenant_id="tenant-1", user_id="user-1")
+
+    assert entries[0] == {
+        "id": "duckduckgo/*",
+        "granularity": "provider",
+        "name": "DuckDuckGo",
+        "description": "Privacy-first web search",
+        "provider": "duckduckgo",
+        "plugin_id": "langgenius/duckduckgo",
+        "tools_count": 2,
+    }
+    assert [entry["id"] for entry in entries[1:]] == ["duckduckgo/ddg_search", "duckduckgo/ddg_news"]
+    assert {entry["granularity"] for entry in entries[1:]} == {"tool"}

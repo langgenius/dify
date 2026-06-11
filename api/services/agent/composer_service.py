@@ -457,10 +457,28 @@ class AgentComposerService:
             return []
         tools: list[dict[str, Any]] = []
         for provider in providers:
-            for tool in provider.tools or []:
+            provider_tools = provider.tools or []
+            # Provider-level entry first: selecting it means "all tools of this
+            # provider" (a provider hosts many tools, like an MCP server). Its
+            # ``id`` is also the mention id (``[§tool:<provider>/*§]``); the
+            # write-back is one ``tools.dify_tools`` entry with ``tool_name``
+            # omitted.
+            tools.append(
+                {
+                    "id": f"{provider.name}/*",
+                    "granularity": "provider",
+                    "name": provider.label.en_US if provider.label else provider.name,
+                    "description": provider.description.en_US if provider.description else None,
+                    "provider": provider.name,
+                    "plugin_id": provider.plugin_id or None,
+                    "tools_count": len(provider_tools),
+                }
+            )
+            for tool in provider_tools:
                 tools.append(
                     {
                         "id": f"{provider.name}/{tool.name}",
+                        "granularity": "tool",
                         "name": tool.name,
                         "description": tool.label.en_US if tool.label else tool.name,
                         "provider": provider.name,

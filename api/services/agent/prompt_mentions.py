@@ -57,12 +57,13 @@ _RESIDUAL_MENTION_PATTERN = re.compile(r"\[§([A-Za-z_][A-Za-z0-9_]*:[^§]*?)§\
 MAX_MENTIONS_PER_PROMPT = 200
 MAX_MENTION_FIELD_LENGTH = 255
 
-# Reserved ``tool`` mention id meaning "every tool this agent has" (single tools use
-# ``<provider>/<tool_name>``, so ``*`` can never collide with a real tool id). The
-# menu row is a static frontend entry; selecting it writes nothing back to config,
-# and validation always resolves it, so it can never dangle.
-ALL_TOOLS_MENTION_ID = "*"
-_ALL_TOOLS_MENTION_TEXT = "all available tools"
+# Reserved ``tool`` mention id suffix: ``<provider>/*`` means "every tool of this
+# provider" (a provider hosts many tools, like an MCP server). Single tools use
+# ``<provider>/<tool_name>``, so ``*`` can never collide with a real tool name.
+# The mention points at a provider-level config entry (``tool_name`` omitted in
+# ``tools.dify_tools``); the runtime expands that entry into all of the
+# provider's tools.
+ALL_PROVIDER_TOOLS_SUFFIX = "*"
 
 # Per-surface allowlists (design §2.4): the soul prompt may only reference
 # soul-owned entities; the workflow job prompt may only reference run-scoped ones.
@@ -184,14 +185,26 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
                     if mention.ref_id in (file.id, file.name):
                         return file.name or file.id
             case MentionKind.TOOL:
-                if mention.ref_id == ALL_TOOLS_MENTION_ID:
-                    return _ALL_TOOLS_MENTION_TEXT
                 for tool in agent_soul.tools.dify_tools:
-                    aliases = {tool.tool_name} | {
-                        f"{prefix}/{tool.tool_name}"
-                        for prefix in (tool.provider, tool.provider_id, tool.plugin_id)
-                        if prefix
-                    }
+                    prefixes = {prefix for prefix in (tool.provider, tool.provider_id, tool.plugin_id) if prefix}
+                    if tool.plugin_id and tool.provider:
+                        prefixes.add(f"{tool.plugin_id}/{tool.provider}")
+                    if tool.tool_name is None:
+                        # Provider-level entry = all tools of this provider.
+                        # ``[§tool:<provider>/*§]`` names the whole provider;
+                        # ``[§tool:<provider>/<tool>§]`` names one tool offered
+                        # through it.
+                        display = tool.provider or tool.provider_id or tool.plugin_id
+                        if any(mention.ref_id == f"{prefix}/{ALL_PROVIDER_TOOLS_SUFFIX}" for prefix in prefixes):
+                            return f"all {display} tools"
+                        # longest prefix first — shorter prefixes can be proper
+                        # prefixes of longer ones and would mis-split the ref.
+                        for prefix in sorted(prefixes, key=len, reverse=True):
+                            single = mention.ref_id.removeprefix(f"{prefix}/")
+                            if single != mention.ref_id and single and "/" not in single:
+                                return single
+                        continue
+                    aliases = {tool.tool_name} | {f"{prefix}/{tool.tool_name}" for prefix in prefixes}
                     if mention.ref_id in aliases:
                         return tool.name or tool.tool_name
             case MentionKind.CLI_TOOL:
@@ -258,7 +271,7 @@ def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> tuple[str, str] | 
 
 
 __all__ = [
-    "ALL_TOOLS_MENTION_ID",
+    "ALL_PROVIDER_TOOLS_SUFFIX",
     "MAX_MENTIONS_PER_PROMPT",
     "MAX_MENTION_FIELD_LENGTH",
     "MENTION_PATTERN",

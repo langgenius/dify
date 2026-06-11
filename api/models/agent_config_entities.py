@@ -340,7 +340,11 @@ class AgentSoulDifyToolConfig(BaseModel):
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
-    tool_name: str = Field(min_length=1, max_length=255)
+    # ``None`` = provider-level entry selecting ALL tools of the provider (a
+    # provider hosts many tools, like an MCP server). The runtime expands the
+    # entry into every tool the provider currently declares; ``credential_ref``
+    # applies to all of them. Mention form: ``[§tool:<provider>/*§]``.
+    tool_name: str | None = Field(default=None, min_length=1, max_length=255)
     credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
     credential_ref: AgentSoulDifyToolCredentialRef | None = None
     # Reserved for a future user-rename UX. Accepted but currently rejected at
