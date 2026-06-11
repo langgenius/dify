@@ -22,6 +22,8 @@
   "batchModal.run": "Exécuter le lot",
   "batchModal.runError": "L'exécution du lot a échoué",
   "batchModal.template": "Téléchargez le modèle ici",
+  "batchModal.csvTemplate": "Télécharger le modèle CSV",
+  "batchModal.jsonlTemplate": "Télécharger le modèle JSONL",
   "batchModal.tip": "Le fichier CSV doit se conformer à la structure suivante :",
   "batchModal.jsonlTip": "Le fichier JSONL doit se conformer à la structure suivante :",
   "batchModal.title": "Importation en masse",

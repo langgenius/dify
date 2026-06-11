@@ -22,6 +22,8 @@
   "batchModal.run": "Uruchom batch",
   "batchModal.runError": "Uruchomienie batcha nie powiodło się",
   "batchModal.template": "Pobierz szablon tutaj",
+  "batchModal.csvTemplate": "Pobierz szablon CSV",
+  "batchModal.jsonlTemplate": "Pobierz szablon JSONL",
   "batchModal.tip": "Plik CSV musi spełniać następującą strukturę:",
   "batchModal.jsonlTip": "Plik JSONL musi spełniać następującą strukturę:",
   "batchModal.title": "Masowy import",

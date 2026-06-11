@@ -22,6 +22,8 @@
   "batchModal.run": "Jalankan Batch",
   "batchModal.runError": "Menjalankan batch gagal",
   "batchModal.template": "Unduh templat di sini",
+  "batchModal.csvTemplate": "Unduh templat CSV",
+  "batchModal.jsonlTemplate": "Unduh templat JSONL",
   "batchModal.tip": "File CSV harus sesuai dengan struktur berikut:",
   "batchModal.jsonlTip": "File JSONL harus sesuai dengan struktur berikut:",
   "batchModal.title": "Impor Massal",

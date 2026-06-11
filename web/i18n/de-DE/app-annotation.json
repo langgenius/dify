@@ -22,6 +22,8 @@
   "batchModal.run": "Batch ausführen",
   "batchModal.runError": "Batch-Ausführung fehlgeschlagen",
   "batchModal.template": "Laden Sie die Vorlage hier herunter",
+  "batchModal.csvTemplate": "CSV-Vorlage herunterladen",
+  "batchModal.jsonlTemplate": "JSONL-Vorlage herunterladen",
   "batchModal.tip": "Die CSV-Datei muss der folgenden Struktur entsprechen:",
   "batchModal.jsonlTip": "Die JSONL-Datei muss der folgenden Struktur entsprechen:",
   "batchModal.title": "Massenimport",

@@ -22,6 +22,8 @@
   "batchModal.run": "Zaženi množično obdelavo",
   "batchModal.runError": "Napaka pri množičnem zagonu",
   "batchModal.template": "Prenesite predlogo tukaj",
+  "batchModal.csvTemplate": "Prenesite predlogo CSV",
+  "batchModal.jsonlTemplate": "Prenesite predlogo JSONL",
   "batchModal.tip": "CSV datoteka mora ustrezati naslednji strukturi:",
   "batchModal.jsonlTip": "JSONL datoteka mora ustrezati naslednji strukturi:",
   "batchModal.title": "Množični uvoz",

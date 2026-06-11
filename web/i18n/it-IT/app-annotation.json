@@ -22,6 +22,8 @@
   "batchModal.run": "Esegui Batch",
   "batchModal.runError": "Errore nell'esecuzione del batch",
   "batchModal.template": "Scarica il modello qui",
+  "batchModal.csvTemplate": "Scarica modello CSV",
+  "batchModal.jsonlTemplate": "Scarica modello JSONL",
   "batchModal.tip": "Il file CSV deve conformarsi alla seguente struttura:",
   "batchModal.jsonlTip": "Il file JSONL deve conformarsi alla seguente struttura:",
   "batchModal.title": "Importazione Bulk",

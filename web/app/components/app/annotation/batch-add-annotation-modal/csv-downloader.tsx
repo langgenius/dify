@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,6 +8,7 @@ import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vend
 
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
+import { downloadBlob } from '@/utils/download'
 
 const CSV_TEMPLATE_QA_EN = [
   ['question', 'answer'],
@@ -26,7 +26,7 @@ const JSONL_TEMPLATE_QA = [
   '{"question":"question2","answer":"answer2"}',
 ].join('\n')
 
-const CSVDownload: FC = () => {
+function CSVDownload() {
   const { t } = useTranslation()
 
   const locale = useLocale()
@@ -34,6 +34,11 @@ const CSVDownload: FC = () => {
 
   const getTemplate = () => {
     return locale !== LanguagesSupported[1] ? CSV_TEMPLATE_QA_EN : CSV_TEMPLATE_QA_CN
+  }
+
+  const downloadJsonlTemplate = () => {
+    const file = new Blob([`${JSONL_TEMPLATE_QA}\n`], { type: 'application/jsonl' })
+    downloadBlob({ data: file, fileName: `template-${locale}.jsonl` })
   }
 
   return (
@@ -79,18 +84,28 @@ const CSVDownload: FC = () => {
           {JSONL_TEMPLATE_QA}
         </pre>
       </div>
-      <CSVDownloader
-        className="mt-2 block cursor-pointer"
-        type={Type.Link}
-        filename={`template-${locale}`}
-        bom={true}
-        data={getTemplate()}
-      >
-        <div className="flex h-[18px] items-center space-x-1 system-xs-medium text-text-accent">
-          <DownloadIcon className="mr-1 size-3" />
-          {t('batchModal.template', { ns: 'appAnnotation' })}
-        </div>
-      </CSVDownloader>
+      <div className="mt-3 flex items-center gap-4">
+        <CSVDownloader
+          className="block cursor-pointer"
+          type={Type.Link}
+          filename={`template-${locale}`}
+          bom={true}
+          data={getTemplate()}
+        >
+          <div className="flex h-[18px] items-center system-xs-medium text-text-accent">
+            <DownloadIcon className="mr-1 size-3" aria-hidden="true" />
+            {t('batchModal.csvTemplate', { ns: 'appAnnotation' })}
+          </div>
+        </CSVDownloader>
+        <button
+          type="button"
+          className="flex h-[18px] cursor-pointer items-center border-none bg-transparent p-0 system-xs-medium text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={downloadJsonlTemplate}
+        >
+          <DownloadIcon className="mr-1 size-3" aria-hidden="true" />
+          {t('batchModal.jsonlTemplate', { ns: 'appAnnotation' })}
+        </button>
+      </div>
     </div>
 
   )

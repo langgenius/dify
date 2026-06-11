@@ -22,6 +22,8 @@
   "batchModal.run": "เรียกใช้แบทช์",
   "batchModal.runError": "เรียกใช้ชุดงานล้มเหลว",
   "batchModal.template": "ดาวน์โหลดเทมเพลตที่นี่",
+  "batchModal.csvTemplate": "ดาวน์โหลดเทมเพลต CSV",
+  "batchModal.jsonlTemplate": "ดาวน์โหลดเทมเพลต JSONL",
   "batchModal.tip": "ไฟล์ CSV ต้องสอดคล้องกับโครงสร้างต่อไปนี้:",
   "batchModal.jsonlTip": "ไฟล์ JSONL ต้องสอดคล้องกับโครงสร้างต่อไปนี้:",
   "batchModal.title": "นําเข้าจํานวนมาก",

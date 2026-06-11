@@ -22,6 +22,8 @@
   "batchModal.run": "Запустити партію",
   "batchModal.runError": "Не вдалося запустити партію",
   "batchModal.template": "Завантажте шаблон тут",
+  "batchModal.csvTemplate": "Завантажити шаблон CSV",
+  "batchModal.jsonlTemplate": "Завантажити шаблон JSONL",
   "batchModal.tip": "Файл CSV повинен відповідати такій структурі:",
   "batchModal.jsonlTip": "Файл JSONL повинен відповідати такій структурі:",
   "batchModal.title": "Масовий імпорт",

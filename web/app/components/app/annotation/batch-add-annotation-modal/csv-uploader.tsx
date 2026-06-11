@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -25,10 +24,10 @@ function getFileNameParts(fileName: string) {
   }
 }
 
-const CSVUploader: FC<Props> = ({
+function CSVUploader({
   file,
   updateFile,
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -106,8 +105,8 @@ const CSVUploader: FC<Props> = ({
       <div ref={dropRef}>
         {!file && (
           <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg system-sm-regular', dragging && 'border border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
-            <div className="flex w-full items-center justify-center space-x-2">
-              <div className="flex shrink-0 items-center gap-1">
+            <div className="flex w-full items-center justify-center gap-3">
+              <div className="flex shrink-0 items-center gap-2">
                 <CSVIcon className="shrink-0" aria-hidden="true" />
                 <JSONIcon className="shrink-0" aria-hidden="true" />
               </div>
@@ -115,7 +114,7 @@ const CSVUploader: FC<Props> = ({
                 {t('batchModal.csvUploadTitle', { ns: 'appAnnotation' })}
                 <button
                   type="button"
-                  className="inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="ml-1 inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
                   {t('batchModal.browse', { ns: 'appAnnotation' })}

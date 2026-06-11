@@ -22,6 +22,8 @@
   "batchModal.run": "一括実行",
   "batchModal.runError": "一括実行に失敗しました",
   "batchModal.template": "テンプレートをここからダウンロード",
+  "batchModal.csvTemplate": "CSVテンプレートをダウンロード",
+  "batchModal.jsonlTemplate": "JSONLテンプレートをダウンロード",
   "batchModal.tip": "CSV ファイルは以下の構造に準拠する必要があります：",
   "batchModal.jsonlTip": "JSONL ファイルは以下の構造に準拠する必要があります：",
   "batchModal.title": "一括インポート",

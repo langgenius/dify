@@ -22,6 +22,8 @@
   "batchModal.run": "Запустить пакет",
   "batchModal.runError": "Ошибка запуска пакета",
   "batchModal.template": "Скачать шаблон здесь",
+  "batchModal.csvTemplate": "Скачать шаблон CSV",
+  "batchModal.jsonlTemplate": "Скачать шаблон JSONL",
   "batchModal.tip": "CSV-файл должен соответствовать следующей структуре:",
   "batchModal.jsonlTip": "JSONL-файл должен соответствовать следующей структуре:",
   "batchModal.title": "Массовый импорт",

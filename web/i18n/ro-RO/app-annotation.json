@@ -22,6 +22,8 @@
   "batchModal.run": "Rulează Lotul",
   "batchModal.runError": "Eroare la rularea lotului",
   "batchModal.template": "Descarcă șablonul aici",
+  "batchModal.csvTemplate": "Descarcă șablonul CSV",
+  "batchModal.jsonlTemplate": "Descarcă șablonul JSONL",
   "batchModal.tip": "Fișierul CSV trebuie să respecte următoarea structură:",
   "batchModal.jsonlTip": "Fișierul JSONL trebuie să respecte următoarea structură:",
   "batchModal.title": "Import în Masă",

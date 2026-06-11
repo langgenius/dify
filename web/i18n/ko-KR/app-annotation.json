@@ -22,6 +22,8 @@
   "batchModal.run": "일괄 실행",
   "batchModal.runError": "일괄 실행 실패",
   "batchModal.template": "여기서 템플릿 다운로드",
+  "batchModal.csvTemplate": "CSV 템플릿 다운로드",
+  "batchModal.jsonlTemplate": "JSONL 템플릿 다운로드",
   "batchModal.tip": "CSV 파일은 다음 구조를 따라야 합니다:",
   "batchModal.jsonlTip": "JSONL 파일은 다음 구조를 따라야 합니다:",
   "batchModal.title": "일괄 가져오기",

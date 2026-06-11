@@ -22,6 +22,8 @@
   "batchModal.run": "匯入",
   "batchModal.runError": "批次匯入失敗",
   "batchModal.template": "下載模板",
+  "batchModal.csvTemplate": "下載 CSV 模板",
+  "batchModal.jsonlTemplate": "下載 JSONL 模板",
   "batchModal.tip": "CSV 檔案必須符合以下結構：",
   "batchModal.jsonlTip": "JSONL 檔案必須符合以下結構：",
   "batchModal.title": "批次匯入",

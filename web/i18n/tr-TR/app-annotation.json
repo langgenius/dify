@@ -22,6 +22,8 @@
   "batchModal.run": "Toplu İşlemi Çalıştır",
   "batchModal.runError": "Toplu işlem başarısız oldu",
   "batchModal.template": "Şablonu buradan indir",
+  "batchModal.csvTemplate": "CSV şablonunu indir",
+  "batchModal.jsonlTemplate": "JSONL şablonunu indir",
   "batchModal.tip": "CSV dosyası aşağıdaki yapıya uygun olmalıdır:",
   "batchModal.jsonlTip": "JSONL dosyası aşağıdaki yapıya uygun olmalıdır:",
   "batchModal.title": "Toplu İçe Aktarma",

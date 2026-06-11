@@ -22,6 +22,8 @@
   "batchModal.run": "बैच चलाएँ",
   "batchModal.runError": "बैच चलाना विफल रहा",
   "batchModal.template": "टेम्पलेट यहां डाउनलोड करें",
+  "batchModal.csvTemplate": "CSV टेम्पलेट डाउनलोड करें",
+  "batchModal.jsonlTemplate": "JSONL टेम्पलेट डाउनलोड करें",
   "batchModal.tip": "CSV फ़ाइल को निम्नलिखित संरचना के अनुरूप होना चाहिए:",
   "batchModal.jsonlTip": "JSONL फ़ाइल को निम्नलिखित संरचना के अनुरूप होना चाहिए:",
   "batchModal.title": "बल्क आयात",

@@ -22,6 +22,8 @@
   "batchModal.run": "Chạy hàng loạt",
   "batchModal.runError": "Chạy hàng loạt thất bại",
   "batchModal.template": "Tải mẫu tại đây",
+  "batchModal.csvTemplate": "Tải mẫu CSV",
+  "batchModal.jsonlTemplate": "Tải mẫu JSONL",
   "batchModal.tip": "Tệp CSV phải tuân theo cấu trúc sau:",
   "batchModal.jsonlTip": "Tệp JSONL phải tuân theo cấu trúc sau:",
   "batchModal.title": "Nhập hàng loạt",

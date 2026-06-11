@@ -22,6 +22,8 @@
   "batchModal.run": "اجرای دسته‌ای",
   "batchModal.runError": "اجرای دسته‌ای ناموفق بود",
   "batchModal.template": "الگو را از اینجا دانلود کنید",
+  "batchModal.csvTemplate": "دانلود قالب CSV",
+  "batchModal.jsonlTemplate": "دانلود قالب JSONL",
   "batchModal.tip": "فایل CSV باید از ساختار زیر پیروی کند:",
   "batchModal.jsonlTip": "فایل JSONL باید از ساختار زیر پیروی کند:",
   "batchModal.title": "واردات انبوه",
