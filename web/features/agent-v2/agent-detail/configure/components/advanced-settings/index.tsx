@@ -14,8 +14,8 @@ export function AgentAdvancedSettings() {
       labelId="agent-configure-advanced-settings-label"
       panelId={advancedSettingsPanelId}
       description={t('agentDetail.configure.advancedSettings.description')}
-      rootClassName="gap-2 px-1 pt-1 pb-3"
-      headerClassName="mb-0 px-3 pt-2"
+      rootClassName="gap-2 pt-1 pb-3"
+      headerClassName="mb-0 pt-2"
       titleRowClassName="min-h-6"
       panelContentClassName="flex flex-col rounded-lg bg-background-section"
     >
