@@ -552,9 +552,7 @@ class AppListApi(Resource):
                 ]
                 if accessible_app_ids:
                     params.accessible_app_ids = accessible_app_ids
-                    params.include_own_apps = (
-                        "app.create_and_management" in permissions.workspace.permission_keys
-                    )
+                    params.include_own_apps = "app.create_and_management" in permissions.workspace.permission_keys
                 elif "app.create_and_management" in permissions.workspace.permission_keys:
                     params.is_created_by_me = True
                 else:

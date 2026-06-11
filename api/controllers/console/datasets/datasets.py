@@ -418,9 +418,7 @@ class DatasetListApi(Resource):
                 for override in permissions.dataset.overrides
                 if "dataset.acl.readonly" in override.permission_keys
             ]
-            include_own_datasets = (
-                "dataset.create_and_management" in permissions.workspace.permission_keys
-            )
+            include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
 
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(
