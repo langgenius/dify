@@ -17,6 +17,7 @@ import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
 import Empty from '../apps/empty'
 import Footer from '../apps/footer'
+import { StudioListHeader } from '../apps/studio-list-header'
 import SnippetCard from './components/snippet-card'
 import SnippetCreateButton from './components/snippet-create-button'
 import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
@@ -122,20 +123,23 @@ const SnippetList = () => {
 
   return (
     <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-      <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-12 pt-4 pb-5">
-        <div className="flex h-6 min-w-0 items-center">
-          <Link
-            href="/apps"
-            className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            {t('menus.apps', { ns: 'common' })}
-          </Link>
-          <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
-          <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-            {t('tabs.snippets', { ns: 'workflow' })}
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <StudioListHeader
+        title={(
+          <>
+            <Link
+              href="/apps"
+              className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            >
+              {t('menus.apps', { ns: 'common' })}
+            </Link>
+            <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
+            <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
+              {t('tabs.snippets', { ns: 'workflow' })}
+            </h1>
+          </>
+        )}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <CreatorsFilter
               value={creatorIDs}
@@ -166,9 +170,9 @@ const SnippetList = () => {
             <SnippetCreateButton />
           )}
         </div>
-      </div>
+      </StudioListHeader>
       <div className={cn(
-        'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+        'relative grid grow grid-cols-1 content-start gap-4 px-8 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
         !hasAnySnippet && 'overflow-hidden',
       )}
       >
