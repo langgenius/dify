@@ -668,12 +668,16 @@ python3 dify/scripts/dsl_agent/debug_loop.py \
   --enable-api \
   --create-api-key \
   --export-backup \
-  --service-regression
+  --service-regression \
+  --collect-app-logs \
+  --app-log-detail
 ```
 
 This adds `post_success_lifecycle.json`, `exported.yml`, and
-`service_regression.json` when those stages run. If any publish/API/export or
-Service API check fails, `debug_loop_report.json` reports
+`service_regression.json` when those stages run. When app log collection is
+enabled, it also writes `workflow_app_logs.json` with the latest workflow app
+execution logs. If any publish/API/export or Service API check fails,
+`debug_loop_report.json` reports
 `post_success_failed`. API key payloads are redacted in persisted reports; the
 raw key is kept only in memory long enough to run Service API regression.
 

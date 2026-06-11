@@ -297,6 +297,29 @@ class DifyConsoleClient:
     def workflow_run_node_executions(self, app_id: str, run_id: str) -> Any:
         return self.request("GET", f"/console/api/apps/{app_id}/workflow-runs/{run_id}/node-executions")
 
+    def workflow_app_logs(
+        self,
+        app_id: str,
+        *,
+        page: int = 1,
+        limit: int = 20,
+        status: str | None = None,
+        keyword: str | None = None,
+        detail: bool = False,
+        created_at_before: str | None = None,
+        created_at_after: str | None = None,
+    ) -> Any:
+        query: dict[str, Any] = {"page": page, "limit": limit, "detail": str(detail).lower()}
+        if status:
+            query["status"] = status
+        if keyword:
+            query["keyword"] = keyword
+        if created_at_before:
+            query["created_at__before"] = created_at_before
+        if created_at_after:
+            query["created_at__after"] = created_at_after
+        return self.request("GET", f"/console/api/apps/{app_id}/workflow-app-logs", query=query)
+
     def draft_run(self, app_id: str, inputs: dict[str, Any], files: list[dict[str, Any]] | None = None) -> Any:
         body: dict[str, Any] = {"inputs": inputs}
         if files is not None:
@@ -1166,6 +1189,16 @@ def parse_args() -> argparse.Namespace:
     node_execs.add_argument("app_id")
     node_execs.add_argument("run_id")
 
+    app_logs = subparsers.add_parser("workflow-app-logs")
+    app_logs.add_argument("app_id")
+    app_logs.add_argument("--page", type=int, default=1)
+    app_logs.add_argument("--limit", type=int, default=20)
+    app_logs.add_argument("--status", choices=["running", "succeeded", "failed", "stopped", "partial-succeeded"])
+    app_logs.add_argument("--keyword")
+    app_logs.add_argument("--detail", action="store_true")
+    app_logs.add_argument("--created-at-before")
+    app_logs.add_argument("--created-at-after")
+
     draft = subparsers.add_parser("draft-run")
     draft.add_argument("app_id")
     draft.add_argument("--inputs", default="{}")
@@ -1352,6 +1385,17 @@ def run(args: argparse.Namespace) -> Any:
         return client.workflow_run_detail(args.app_id, args.run_id)
     if args.command == "workflow-run-node-executions":
         return client.workflow_run_node_executions(args.app_id, args.run_id)
+    if args.command == "workflow-app-logs":
+        return client.workflow_app_logs(
+            args.app_id,
+            page=args.page,
+            limit=args.limit,
+            status=args.status,
+            keyword=args.keyword,
+            detail=args.detail,
+            created_at_before=args.created_at_before,
+            created_at_after=args.created_at_after,
+        )
     if args.command == "draft-run":
         raw = client.draft_run(args.app_id, parse_json_arg(args.inputs, {}), parse_json_arg(args.files, None))
         return format_stream_result(raw, include_raw=not args.hide_raw) if args.parse_events else raw

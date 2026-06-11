@@ -10,6 +10,7 @@ from typing import Any
 import debug_loop
 from debug_loop import (
     align_yaml_dependencies_to_current_identifiers,
+    collect_workflow_app_logs,
     cleanup_created_app,
     draft_debug_succeeded,
     extract_api_key_token,
@@ -123,6 +124,10 @@ class FakeClient:
     def delete_app(self, app_id: str) -> dict[str, Any]:
         self.calls.append({"method": "delete_app", "app_id": app_id})
         return {"result": "success"}
+
+    def workflow_app_logs(self, app_id: str, *, limit: int = 20, detail: bool = False) -> dict[str, Any]:
+        self.calls.append({"method": "workflow_app_logs", "app_id": app_id, "limit": limit, "detail": detail})
+        return {"data": [{"id": "log-1", "workflow_run_id": "run-1", "status": "succeeded"}], "total": 1}
 
 
 def assert_api_key_helpers() -> dict[str, Any]:
@@ -342,6 +347,55 @@ def assert_cleanup_created_app() -> dict[str, Any]:
     return {"name": "cleanup_created_app", "valid": True}
 
 
+def assert_collect_workflow_app_logs() -> dict[str, Any]:
+    with tempfile.TemporaryDirectory() as tmp:
+        run_dir = Path(tmp)
+        client = FakeClient()
+        disabled = collect_workflow_app_logs(
+            client=client,  # type: ignore[arg-type]
+            run_dir=run_dir,
+            app_id="app-1",
+            mode="workflow",
+            iteration=1,
+            enabled=False,
+            limit=10,
+            detail=True,
+        )
+        if disabled.get("skipped") is not True or client.calls:
+            raise AssertionError(f"disabled app log collection should not call API: {disabled}, calls={client.calls}")
+
+        advanced_chat = collect_workflow_app_logs(
+            client=client,  # type: ignore[arg-type]
+            run_dir=run_dir,
+            app_id="app-1",
+            mode="advanced-chat",
+            iteration=1,
+            enabled=True,
+            limit=10,
+            detail=True,
+        )
+        if advanced_chat.get("skipped") is not True or client.calls:
+            raise AssertionError(f"advanced-chat app log collection should be skipped: {advanced_chat}, calls={client.calls}")
+
+        collected = collect_workflow_app_logs(
+            client=client,  # type: ignore[arg-type]
+            run_dir=run_dir,
+            app_id="app-1",
+            mode="workflow",
+            iteration=1,
+            enabled=True,
+            limit=10,
+            detail=True,
+        )
+        artifact = Path(str(collected.get("artifact")))
+        if collected.get("ok") is not True or collected.get("count") != 1 or not artifact.exists():
+            raise AssertionError(f"expected collected app logs with artifact: {collected}")
+        if not (run_dir / "workflow_app_logs.json").exists():
+            raise AssertionError("canonical workflow_app_logs.json was not written")
+
+    return {"name": "collect_workflow_app_logs", "valid": True, "calls": client.calls}
+
+
 def main() -> int:
     cases = [
         assert_api_key_helpers(),
@@ -351,6 +405,7 @@ def main() -> int:
         assert_post_success_arg_validation(),
         assert_dependency_alignment(),
         assert_cleanup_created_app(),
+        assert_collect_workflow_app_logs(),
     ]
     print(json.dumps({"valid": True, "cases": cases}, ensure_ascii=False, indent=2))
     return 0

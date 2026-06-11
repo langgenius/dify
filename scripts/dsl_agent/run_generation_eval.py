@@ -245,6 +245,15 @@ def append_post_success_args(cmd: list[str], args: argparse.Namespace) -> None:
         cmd.append("--skip-preflight")
 
 
+def append_debug_observability_args(cmd: list[str], args: argparse.Namespace) -> None:
+    if args.collect_app_logs:
+        cmd.append("--collect-app-logs")
+    if args.app_log_limit:
+        cmd.extend(["--app-log-limit", str(args.app_log_limit)])
+    if args.app_log_detail:
+        cmd.append("--app-log-detail")
+
+
 def cleanup_rag_dataset(dataset_bootstrap: dict[str, Any] | None, args: argparse.Namespace) -> dict[str, Any] | None:
     if not args.cleanup_rag_dataset or not dataset_bootstrap:
         return None
@@ -283,6 +292,25 @@ def summarize_post_success(report: dict[str, Any]) -> dict[str, Any] | None:
         "service_regression_ok": service_regression.get("ok") if isinstance(service_regression, dict) else None,
         "service_regression_artifact": post_success.get("service_regression_artifact"),
     }
+
+
+def summarize_app_logs(report: dict[str, Any]) -> dict[str, Any] | None:
+    iterations = report.get("iterations")
+    if not isinstance(iterations, list):
+        return None
+    for iteration in reversed(iterations):
+        if not isinstance(iteration, dict):
+            continue
+        app_logs = iteration.get("app_logs")
+        if isinstance(app_logs, dict):
+            return {
+                "ok": app_logs.get("ok"),
+                "skipped": app_logs.get("skipped"),
+                "count": app_logs.get("count"),
+                "artifact": app_logs.get("artifact"),
+                "error": app_logs.get("error"),
+            }
+    return None
 
 
 def run_debug_loop_for_case(
@@ -368,6 +396,7 @@ def run_debug_loop_for_case(
     if args.no_repair:
         cmd.append("--no-repair")
     append_post_success_args(cmd, args)
+    append_debug_observability_args(cmd, args)
 
     started = time.perf_counter()
     try:
@@ -419,6 +448,7 @@ def run_debug_loop_for_case(
         "dataset_cleanup": dataset_cleanup,
         "cleanup": report.get("cleanup") if isinstance(report, dict) else None,
         "post_success": summarize_post_success(report) if isinstance(report, dict) else None,
+        "app_logs": summarize_app_logs(report) if isinstance(report, dict) else None,
         "errors": errors,
         "stdout": completed.stdout.strip(),
         "stderr": completed.stderr.strip(),
@@ -566,6 +596,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-run-records", action="store_true")
     parser.add_argument("--no-repair", action="store_true")
     parser.add_argument("--skip-preflight", action="store_true", help="Skip Console health/setup/login preflight.")
+    parser.add_argument("--collect-app-logs", action="store_true", help="Collect recent workflow app logs in debug-loop.")
+    parser.add_argument("--app-log-limit", type=int, default=20)
+    parser.add_argument("--app-log-detail", action="store_true")
     parser.add_argument("--publish", action="store_true", help="Publish after draft debug succeeds.")
     parser.add_argument("--publish-name")
     parser.add_argument("--publish-comment")

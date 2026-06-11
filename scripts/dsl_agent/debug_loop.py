@@ -645,6 +645,37 @@ def cleanup_created_app(
         return {"enabled": True, "ok": False, "app_id": app_id, "error": console_error_to_dict("delete_app", exc)}
 
 
+def collect_workflow_app_logs(
+    *,
+    client: DifyConsoleClient,
+    run_dir: Path,
+    app_id: str | None,
+    mode: str,
+    iteration: int,
+    enabled: bool,
+    limit: int,
+    detail: bool,
+) -> dict[str, Any]:
+    if not enabled:
+        return {"enabled": False, "skipped": True}
+    if mode != "workflow":
+        return {"enabled": True, "skipped": True, "reason": "workflow-app-logs is only available for workflow apps."}
+    if not app_id:
+        return {"enabled": True, "skipped": True, "reason": "No app_id is available."}
+    try:
+        result = client.workflow_app_logs(app_id, limit=limit, detail=detail)
+        artifact = copy_json_artifact(run_dir, "workflow_app_logs.json", f"workflow_app_logs.loop{iteration}.json", result)
+        items = result.get("data") if isinstance(result, dict) else None
+        return {
+            "enabled": True,
+            "ok": True,
+            "artifact": str(artifact),
+            "count": len(items) if isinstance(items, list) else None,
+        }
+    except ConsoleApiError as exc:
+        return {"enabled": True, "ok": False, "error": console_error_to_dict("workflow_app_logs", exc)}
+
+
 def run(args: argparse.Namespace) -> int:
     run_dir = args.run_dir
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -875,14 +906,15 @@ def run(args: argparse.Namespace) -> int:
             summary["status"] = "succeeded"
             summary["app_id"] = app_id
             summary["final_yaml"] = str(yaml_file)
-            if (
+            has_post_success_actions = (
                 args.publish
                 or args.enable_api
                 or args.create_api_key
                 or args.list_api_keys
                 or args.export_backup
                 or args.service_regression
-            ):
+            )
+            if has_post_success_actions:
                 post_success = run_post_success_lifecycle(
                     client=client,
                     run_dir=run_dir,
@@ -898,6 +930,18 @@ def run(args: argparse.Namespace) -> int:
                 summary["post_success_artifact"] = str(post_success_path)
                 if not post_success.get("ok"):
                     summary["status"] = "post_success_failed"
+            if args.collect_app_logs:
+                app_logs = collect_workflow_app_logs(
+                    client=client,
+                    run_dir=run_dir,
+                    app_id=str(app_id) if app_id else None,
+                    mode=mode,
+                    iteration=iteration,
+                    enabled=True,
+                    limit=args.app_log_limit,
+                    detail=args.app_log_detail,
+                )
+                record["app_logs"] = app_logs
             break
 
         if args.no_repair:
@@ -980,6 +1024,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plugin-install-timeout-seconds", type=int, default=180)
     parser.add_argument("--plugin-install-poll-interval-seconds", type=float, default=2.0)
     parser.add_argument("--skip-run-records", action="store_true")
+    parser.add_argument("--collect-app-logs", action="store_true", help="Collect recent workflow-app-logs after draft debug.")
+    parser.add_argument("--app-log-limit", type=int, default=20)
+    parser.add_argument("--app-log-detail", action="store_true")
     parser.add_argument("--include-raw", action="store_true")
     parser.add_argument("--publish", action="store_true", help="Publish the workflow after draft debug succeeds.")
     parser.add_argument("--publish-name", help="Optional marked name for publish.")

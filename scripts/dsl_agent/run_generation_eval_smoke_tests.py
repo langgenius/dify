@@ -4,7 +4,13 @@ from __future__ import annotations
 import argparse
 import json
 
-from run_generation_eval import append_post_success_args, debug_loop_skip_reason, summarize_post_success
+from run_generation_eval import (
+    append_debug_observability_args,
+    append_post_success_args,
+    debug_loop_skip_reason,
+    summarize_app_logs,
+    summarize_post_success,
+)
 
 
 def assert_post_success_args() -> dict[str, object]:
@@ -74,6 +80,28 @@ def assert_post_success_summary() -> dict[str, object]:
     return {"name": "post_success_summary", "valid": True}
 
 
+def assert_debug_observability_args() -> dict[str, object]:
+    args = argparse.Namespace(collect_app_logs=True, app_log_limit=7, app_log_detail=True)
+    cmd: list[str] = []
+    append_debug_observability_args(cmd, args)
+    expected = ["--collect-app-logs", "--app-log-limit", "7", "--app-log-detail"]
+    if cmd != expected:
+        raise AssertionError(f"unexpected debug observability args: {cmd}")
+    return {"name": "debug_observability_args", "valid": True}
+
+
+def assert_app_logs_summary() -> dict[str, object]:
+    report = {
+        "iterations": [
+            {"app_logs": {"ok": True, "count": 2, "artifact": "/tmp/workflow_app_logs.loop1.json"}},
+        ]
+    }
+    summary = summarize_app_logs(report)
+    if not summary or summary.get("count") != 2 or summary.get("artifact") != "/tmp/workflow_app_logs.loop1.json":
+        raise AssertionError(f"unexpected app logs summary: {summary}")
+    return {"name": "app_logs_summary", "valid": True}
+
+
 def assert_rag_bootstrap_skip_override() -> dict[str, object]:
     case = {
         "debug": {
@@ -95,6 +123,8 @@ def main() -> int:
     cases = [
         assert_post_success_args(),
         assert_post_success_summary(),
+        assert_debug_observability_args(),
+        assert_app_logs_summary(),
         assert_rag_bootstrap_skip_override(),
     ]
     print(json.dumps({"valid": True, "cases": cases}, ensure_ascii=False, indent=2))  # noqa: T201
