@@ -22,6 +22,26 @@ The provider verifies this preference before running collection DDL and creates
 Oracle Text indexes with `SYNC (ON COMMIT)` so committed documents are searchable
 immediately. Provision the preference as the schema owner during deployment.
 
+## Metadata filters
+
+Native Oracle metadata predicates support Dify's persisted custom metadata
+types: scalar strings, numbers, Unix-time numbers, and null/missing values.
+`in` and `not in` accept a collection of scalar filter values. Stored JSON
+arrays are outside Dify's custom-metadata service contract and are not treated
+as scalar fields by this provider.
+
+These native predicates are a provider-level API. Dify's current indexing path
+stores custom metadata in `DatasetDocument.doc_metadata`, not in each vector
+row's `meta` JSON, and metadata edits do not synchronize vector rows. Normal
+Dify retrieval must therefore continue using its relational document-ID
+prefilter. Do not forward custom metadata predicates into this provider until a
+separate change adds initial indexing and mutation synchronization.
+
+String filter values are limited to 4,000 UTF-8 bytes. Longer filter values fail
+with a clear validation error. Contains, prefix, and suffix filters read stored
+values as CLOBs, so those operations do not truncate long stored strings;
+equality and membership use Oracle's scalar `JSON_VALUE` return type.
+
 ## Upgrading existing collections
 
 Collections created by an earlier provider version may have a flexible

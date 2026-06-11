@@ -595,14 +595,13 @@ def test_delete_methods(oracle_module, monkeypatch: pytest.MonkeyPatch):
 
     vector.delete_by_ids(["id-1", "id-2"])
     vector.delete_by_metadata_field("document_id", "doc-1")
+    vector.delete_by_metadata_field("document_id')) = 'x' OR '1'='1", "doc-2")
     vector.delete()
-
-    with pytest.raises(ValueError, match="Invalid Oracle JSON metadata key"):
-        vector.delete_by_metadata_field("document_id')) = 'x' OR '1'='1", "doc-1")
 
     executed_sql = [call.args[0] for call in cursor.execute.call_args_list]
     assert any("DELETE FROM embedding_collection_1 WHERE id IN" in sql for sql in executed_sql)
     assert any("JSON_VALUE(meta" in sql for sql in executed_sql)
+    assert any("JSON_VALUE(meta, '$.\"document_id'')) = ''x'' OR ''1''=''1\"') = :1" in sql for sql in executed_sql)
     assert any("DROP TABLE IF EXISTS embedding_collection_1" in sql for sql in executed_sql)
     delete_cache.assert_called_once_with(oracle_module.collection_cache_key("collection_1", vector.config))
 
@@ -695,6 +694,397 @@ def test_search_by_vector_merges_global_top_k_across_document_filter_batches(ora
     assert [doc.metadata["doc_id"] for doc in docs] == ["second"]
 
 
+def test_search_by_vector_applies_metadata_conditions(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    vector.input_type_handler = MagicMock()
+    vector.output_type_handler = MagicMock()
+
+    cursor = MagicMock()
+    cursor.__iter__.return_value = iter([({"doc_id": "1"}, "doc-1", 0.1)])
+    vector._get_connection = MagicMock(return_value=_connection_with_cursor(cursor))
+
+    metadata_condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[
+            SimpleNamespace(name="source", comparison_operator="contains", value="oracle%"),
+            SimpleNamespace(name="year", comparison_operator=">", value=2024),
+            SimpleNamespace(name="region", comparison_operator="in", value=["us", "eu"]),
+        ],
+    )
+
+    docs = vector.search_by_vector([0.1, 0.2], metadata_condition=metadata_condition, score_threshold=0.5)
+
+    assert len(docs) == 1
+    sql = cursor.execute.call_args.args[0]
+    params = cursor.execute.call_args.args[1]
+    assert (
+        "JSON_VALUE(meta, '$.source' RETURNING CLOB NULL ON ERROR) LIKE '%' || :metadata_filter_1 || '%' ESCAPE '\\'"
+    ) in sql
+    assert "JSON_VALUE(meta, '$.year' RETURNING NUMBER NULL ON ERROR) > :metadata_filter_2" in sql
+    assert "JSON_VALUE(meta, '$.region') IN (:metadata_filter_3, :metadata_filter_4)" in sql
+    assert " AND " in sql
+    assert params["metadata_filter_1"] == "oracle\\%"
+    assert params["metadata_filter_2"] == 2024
+    assert params["metadata_filter_3"] == "us"
+    assert params["metadata_filter_4"] == "eu"
+
+
+def test_metadata_condition_filter_supports_or_empty_and_not_empty(oracle_module):
+    params = {}
+    condition = SimpleNamespace(
+        logical_operator="or",
+        conditions=[
+            SimpleNamespace(name="owner", comparison_operator="is not", value="legacy"),
+            SimpleNamespace(name="expires_at", comparison_operator="empty", value=None),
+            SimpleNamespace(name="title", comparison_operator="not empty", value=None),
+        ],
+    )
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert " OR " in predicate
+    assert "JSON_VALUE(meta, '$.owner') != :metadata_filter_0" in predicate
+    assert "NOT JSON_EXISTS(meta, '$.expires_at?(@ != null)')" in predicate
+    assert "JSON_EXISTS(meta, '$.title?(@ != null)')" in predicate
+    assert "NULLIF" not in predicate
+    assert params["metadata_filter_0"] == "legacy"
+
+
+def test_metadata_condition_filter_matches_dify_value_semantics(oracle_module):
+    params = {}
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[
+            SimpleNamespace(name="category", comparison_operator="contains", value=None),
+            SimpleNamespace(name="symbol", comparison_operator="in", value="AAPL, MSFT, "),
+            SimpleNamespace(name="rating", comparison_operator="=", value=4.5),
+            SimpleNamespace(name="archived", comparison_operator="not in", value=[]),
+        ],
+    )
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert "category" not in predicate
+    assert "JSON_VALUE(meta, '$.symbol') IN (:metadata_filter_0, :metadata_filter_1)" in predicate
+    assert "JSON_VALUE(meta, '$.rating' RETURNING NUMBER NULL ON ERROR) = :metadata_filter_2" in predicate
+    assert "1 = 1" in predicate
+    assert params == {
+        "metadata_filter_0": "AAPL",
+        "metadata_filter_1": "MSFT",
+        "metadata_filter_2": 4.5,
+    }
+
+
+@pytest.mark.parametrize("logical_operator", ["and", "or"])
+def test_metadata_condition_filter_ignores_none_values_except_empty_operators(oracle_module, logical_operator):
+    params = {}
+    condition = SimpleNamespace(
+        logical_operator=logical_operator,
+        conditions=[
+            SimpleNamespace(name="region", comparison_operator="in", value=None),
+            SimpleNamespace(name="region", comparison_operator="not in", value=None),
+            SimpleNamespace(name="owner", comparison_operator="is", value="alice"),
+        ],
+    )
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert "1 = 0" not in predicate
+    assert "1 = 1" not in predicate
+    assert predicate.count("JSON_VALUE(meta, '$.owner')") == 1
+    assert params == {"metadata_filter_0": "alice"}
+
+
+def test_metadata_condition_filter_preserves_empty_string_semantics(oracle_module):
+    params = {}
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[
+            SimpleNamespace(name="contains_empty", comparison_operator="contains", value=""),
+            SimpleNamespace(name="not_contains", comparison_operator="not contains", value="draft"),
+            SimpleNamespace(name="equals_empty", comparison_operator="is", value=""),
+            SimpleNamespace(name="not_equals", comparison_operator="is not", value="legacy"),
+            SimpleNamespace(name="inside", comparison_operator="in", value=["", "active"]),
+            SimpleNamespace(name="outside", comparison_operator="not in", value=["", "legacy"]),
+        ],
+    )
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert "JSON_EXISTS(meta, '$.contains_empty?(@ != null)')" in predicate
+    assert (
+        "JSON_EXISTS(meta, '$.not_contains?(@ == \"\")') OR JSON_VALUE(meta, '$.not_contains' RETURNING CLOB"
+    ) in predicate
+    assert "JSON_EXISTS(meta, '$.equals_empty?(@ == \"\")')" in predicate
+    assert "JSON_VALUE(meta, '$.not_equals') IS NULL OR JSON_VALUE(meta, '$.not_equals') !=" in predicate
+    assert "JSON_EXISTS(meta, '$.inside?(@ == \"\")') OR JSON_VALUE(meta, '$.inside') IN" in predicate
+    assert "NOT JSON_EXISTS(meta, '$.outside?(@ == \"\")')" in predicate
+    assert "JSON_VALUE(meta, '$.outside') IS NULL OR JSON_VALUE(meta, '$.outside') NOT IN" in predicate
+    assert params == {
+        "metadata_filter_0": "draft",
+        "metadata_filter_1": "legacy",
+        "metadata_filter_2": "active",
+        "metadata_filter_3": "legacy",
+    }
+
+
+@pytest.mark.parametrize("value", ["x" * 4001, "客" * 1334])
+def test_metadata_condition_filter_rejects_string_values_over_oracle_limit(oracle_module, value):
+    params = {}
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="owner", comparison_operator="is", value=value)],
+    )
+
+    with pytest.raises(ValueError, match="at most 4000 UTF-8 bytes"):
+        oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert params == {}
+
+
+def test_metadata_condition_filter_accepts_string_value_at_oracle_limit(oracle_module):
+    params = {}
+    value = "x" * 4000
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="owner", comparison_operator="is", value=value)],
+    )
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert "JSON_VALUE(meta, '$.owner') = :metadata_filter_0" in predicate
+    assert params == {"metadata_filter_0": value}
+
+
+def test_metadata_condition_rejects_unsupported_operators(oracle_module):
+    unsupported = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="source", comparison_operator="near", value="x")],
+    )
+    with pytest.raises(ValueError, match="Unsupported Oracle metadata comparison operator"):
+        oracle_module.build_metadata_condition_filter(unsupported, {})
+
+    bad_logic = SimpleNamespace(
+        logical_operator="xor",
+        conditions=[SimpleNamespace(name="source", comparison_operator="is", value="x")],
+    )
+    with pytest.raises(ValueError, match="logical_operator"):
+        oracle_module.build_metadata_condition_filter(bad_logic, {})
+
+    with pytest.raises(ValueError, match="logical_operator"):
+        oracle_module.build_metadata_condition_filter(SimpleNamespace(logical_operator="xor", conditions=[]), {})
+
+
+@pytest.mark.parametrize(
+    ("key", "expected_path"),
+    [
+        ("release-date", '$."release-date"'),
+        ("Customer Name", '$."Customer Name"'),
+        ("2024_source", '$."2024_source"'),
+        ("a.b", '$."a.b"'),
+        ('quote"key', '$."quote\\"key"'),
+        ("O'Brien", "$.\"O''Brien\""),
+        (r"path\name", '$."path\\\\name"'),
+        ("客户", '$."客户"'),
+        ("source')) OR 1=1 --", "$.\"source'')) OR 1=1 --\""),
+    ],
+)
+def test_metadata_json_value_quotes_arbitrary_dify_keys(oracle_module, key, expected_path):
+    expression = oracle_module.metadata_json_value(key)
+
+    assert expression == f"JSON_VALUE(meta, '{expected_path}')"
+
+
+@pytest.mark.parametrize("key", ["", "x" * 256])
+def test_metadata_json_value_rejects_keys_outside_dify_length_contract(oracle_module, key):
+    with pytest.raises(ValueError, match="between 1 and 255"):
+        oracle_module.metadata_json_value(key)
+
+
+def test_metadata_negative_operators_exclude_missing_fields(oracle_module):
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[
+            SimpleNamespace(name="title", comparison_operator="not contains", value="draft"),
+            SimpleNamespace(name="owner", comparison_operator="is not", value="legacy"),
+            SimpleNamespace(name="region", comparison_operator="not in", value=["us", "eu"]),
+        ],
+    )
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, {})
+
+    assert "JSON_VALUE(meta, '$.title' RETURNING CLOB NULL ON ERROR) NOT LIKE" in predicate
+    assert "JSON_VALUE(meta, '$.owner') !=" in predicate
+    assert "JSON_VALUE(meta, '$.region') NOT IN" in predicate
+    assert " IS NULL OR " in predicate
+
+
+def test_metadata_scalar_equality_ignores_sequence_values(oracle_module):
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="region", comparison_operator="is", value=["us", "eu"])],
+    )
+    params = {}
+
+    assert oracle_module.build_metadata_condition_filter(condition, params) == ""
+    assert params == {}
+
+
+@pytest.mark.parametrize("operator", ["=", "≠"])
+def test_metadata_numeric_equality_ignores_missing_values(oracle_module, operator):
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="rating", comparison_operator=operator, value=None)],
+    )
+    params = {}
+
+    assert oracle_module.build_metadata_condition_filter(condition, params) == ""
+    assert params == {}
+
+
+def test_metadata_in_filter_accepts_general_collection_values(oracle_module):
+    from collections import deque
+
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="region", comparison_operator="in", value=deque(["us", "eu"]))],
+    )
+    params = {}
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert "JSON_VALUE(meta, '$.region') IN (:metadata_filter_0, :metadata_filter_1)" in predicate
+    assert params == {"metadata_filter_0": "us", "metadata_filter_1": "eu"}
+
+
+@pytest.mark.parametrize("operator", ["=", "≠", ">", "<", "≥", "≤", "before", "after"])
+@pytest.mark.parametrize("value", ["not-a-number", True, [1], float("nan"), float("inf")])
+def test_metadata_numeric_operators_reject_non_finite_or_non_numeric_values(oracle_module, operator, value):
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="rating", comparison_operator=operator, value=value)],
+    )
+    params = {}
+
+    with pytest.raises(ValueError, match="requires a finite numeric value"):
+        oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert params == {}
+
+
+@pytest.mark.parametrize("operator", ["in", "not in"])
+@pytest.mark.parametrize("use_comma_separated_value", [False, True])
+def test_metadata_in_filter_enforces_value_limit(oracle_module, operator, use_comma_separated_value):
+    values = [f"value-{index}" for index in range(oracle_module.ORACLE_IN_CLAUSE_BATCH_SIZE + 1)]
+    condition_value = ",".join(values) if use_comma_separated_value else values
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="region", comparison_operator=operator, value=condition_value)],
+    )
+    params = {}
+
+    with pytest.raises(ValueError, match="at most 900 values"):
+        oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert params == {}
+
+
+def test_metadata_in_filter_accepts_limit_boundary(oracle_module):
+    values = [f"value-{index}" for index in range(oracle_module.ORACLE_IN_CLAUSE_BATCH_SIZE)]
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="region", comparison_operator="in", value=values)],
+    )
+    params = {}
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert "JSON_VALUE(meta, '$.region') IN (" in predicate
+    assert len(params) == oracle_module.ORACLE_IN_CLAUSE_BATCH_SIZE
+
+
+@pytest.mark.parametrize(("operator", "sql_operator"), [("before", "<"), ("after", ">")])
+def test_metadata_time_filters_use_unix_timestamp_numbers(oracle_module, operator, sql_operator):
+    timestamp = 1735689600
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[SimpleNamespace(name="published_at", comparison_operator=operator, value=timestamp)],
+    )
+    params = {}
+
+    predicate = oracle_module.build_metadata_condition_filter(condition, params)
+
+    assert (
+        f"JSON_VALUE(meta, '$.published_at' RETURNING NUMBER NULL ON ERROR) {sql_operator} :metadata_filter_0"
+    ) in predicate
+    assert params == {"metadata_filter_0": timestamp}
+
+
+def test_search_by_vector_rejects_oversized_metadata_filter_before_connection(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    vector._get_connection = MagicMock()
+    condition = SimpleNamespace(
+        logical_operator="and",
+        conditions=[
+            SimpleNamespace(
+                name="region",
+                comparison_operator="in",
+                value=[f"value-{index}" for index in range(oracle_module.ORACLE_IN_CLAUSE_BATCH_SIZE + 1)],
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="at most 900 values"):
+        vector.search_by_vector([0.1, 0.2], metadata_condition=condition)
+
+    vector._get_connection.assert_not_called()
+
+
+def test_search_by_vector_batches_document_ids_with_metadata_and_merges_global_top_k(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    vector.input_type_handler = MagicMock()
+    vector.output_type_handler = MagicMock()
+    cursor = MagicMock()
+    cursor.__iter__.side_effect = [
+        iter([('{"doc_id": "first"}', "first batch", 0.4)]),
+        iter([('{"doc_id": "second"}', "second batch", 0.1)]),
+    ]
+    vector._get_connection = MagicMock(return_value=_connection_with_cursor(cursor))
+    document_ids = [f"doc-{index}" for index in range(oracle_module.ORACLE_IN_CLAUSE_BATCH_SIZE + 1)]
+    metadata_condition = SimpleNamespace(
+        logical_operator="or",
+        conditions=[
+            SimpleNamespace(name="source", comparison_operator="contains", value="oracle%"),
+            SimpleNamespace(name="year", comparison_operator=">", value=2024),
+        ],
+    )
+
+    docs = vector.search_by_vector(
+        [0.1, 0.2],
+        top_k=1,
+        document_ids_filter=document_ids,
+        metadata_condition=metadata_condition,
+    )
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["second"]
+    assert cursor.execute.call_count == 2
+    for call in cursor.execute.call_args_list:
+        sql, params = call.args
+        metadata_values = [value for name, value in params.items() if name.startswith("metadata_filter_")]
+        assert len([name for name in params if name.startswith("doc_id_")]) <= 900
+        assert "JSON_VALUE(meta, '$.document_id') IN (" in sql
+        assert "JSON_VALUE(meta, '$.source' RETURNING CLOB NULL ON ERROR) LIKE" in sql
+        assert "JSON_VALUE(meta, '$.year' RETURNING NUMBER NULL ON ERROR) >" in sql
+        assert " AND (" in sql
+        assert " OR " in sql
+        assert "oracle\\%" in metadata_values
+        assert 2024 in metadata_values
+        assert params["query_vector"].dtype == numpy.float32
+
+
 def test_search_by_vector_rejects_invalid_top_k_before_sql(oracle_module):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"
@@ -742,13 +1132,33 @@ def test_search_by_full_text_chinese_and_english_paths(oracle_module, monkeypatc
     monkeypatch.setitem(sys.modules, "nltk", nltk)
     monkeypatch.setitem(sys.modules, "nltk.corpus", nltk_corpus)
     cursor.__iter__.return_value = iter([('{"doc_id": "2"}', "text-2", [0.3, 0.4], 80)])
-    en_docs = vector.search_by_full_text("alice and bob?", top_k=5, document_ids_filter=["d-1"])
+    metadata_condition = {
+        "logical_operator": "or",
+        "conditions": [
+            {"name": "department", "comparison_operator": "start with", "value": "eng"},
+            {"name": "rating", "comparison_operator": "≥", "value": 4.5},
+        ],
+    }
+    en_docs = vector.search_by_full_text(
+        "alice and bob?",
+        top_k=5,
+        document_ids_filter=["d-1"],
+        metadata_condition=metadata_condition,
+    )
     assert len(en_docs) == 1
     en_sql = cursor.execute.call_args.args[0]
     en_params = cursor.execute.call_args.args[1]
     assert "fetch first 5 rows only" in en_sql
     assert en_params["kk"] == "alice ACCUM bob"
+    assert "JSON_VALUE(meta, '$.document_id') IN (:doc_id_0)" in en_sql
+    assert (
+        "JSON_VALUE(meta, '$.department' RETURNING CLOB NULL ON ERROR) LIKE :metadata_filter_2 || '%' ESCAPE '\\'"
+    ) in en_sql
+    assert "JSON_VALUE(meta, '$.rating' RETURNING NUMBER NULL ON ERROR) >= :metadata_filter_3" in en_sql
+    assert " OR " in en_sql
     assert en_params["doc_id_0"] == "d-1"
+    assert en_params["metadata_filter_2"] == "eng"
+    assert en_params["metadata_filter_3"] == 4.5
 
 
 def test_search_by_full_text_batches_large_document_filters(oracle_module, monkeypatch: pytest.MonkeyPatch):
@@ -795,6 +1205,52 @@ def test_search_by_full_text_merges_global_top_k_across_document_filter_batches(
     docs = vector.search_by_full_text("oracle", top_k=1, document_ids_filter=document_ids)
 
     assert [doc.metadata["doc_id"] for doc in docs] == ["second"]
+
+
+def test_search_by_full_text_batches_document_ids_with_metadata_and_merges_global_top_k(
+    oracle_module,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    cursor = MagicMock()
+    cursor.__iter__.side_effect = [
+        iter([('{"doc_id": "first"}', "first batch", [0.1], 60)]),
+        iter([('{"doc_id": "second"}', "second batch", [0.2], 90)]),
+    ]
+    vector._get_connection = MagicMock(return_value=_connection_with_cursor(cursor))
+    nltk, nltk_corpus = _fake_nltk_module(missing_data=False)
+    monkeypatch.setitem(sys.modules, "nltk", nltk)
+    monkeypatch.setitem(sys.modules, "nltk.corpus", nltk_corpus)
+    document_ids = [f"doc-{index}" for index in range(oracle_module.ORACLE_IN_CLAUSE_BATCH_SIZE + 1)]
+    metadata_condition = {
+        "logical_operator": "or",
+        "conditions": [
+            {"name": "source", "comparison_operator": "contains", "value": "oracle%"},
+            {"name": "year", "comparison_operator": ">", "value": 2024},
+        ],
+    }
+
+    docs = vector.search_by_full_text(
+        "oracle",
+        top_k=1,
+        document_ids_filter=document_ids,
+        metadata_filtering_conditions=metadata_condition,
+    )
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["second"]
+    assert cursor.execute.call_count == 2
+    for call in cursor.execute.call_args_list:
+        sql, params = call.args
+        metadata_values = [value for name, value in params.items() if name.startswith("metadata_filter_")]
+        assert len([name for name in params if name.startswith("doc_id_")]) <= 900
+        assert "WHERE CONTAINS(text, :kk, 1) > 0  AND JSON_VALUE(meta, '$.document_id') IN (" in sql
+        assert "JSON_VALUE(meta, '$.source' RETURNING CLOB NULL ON ERROR) LIKE" in sql
+        assert "JSON_VALUE(meta, '$.year' RETURNING NUMBER NULL ON ERROR) >" in sql
+        assert " AND (" in sql
+        assert " OR " in sql
+        assert "oracle\\%" in metadata_values
+        assert 2024 in metadata_values
 
 
 def test_search_by_full_text_rejects_invalid_top_k_before_sql(oracle_module):

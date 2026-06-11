@@ -23,6 +23,13 @@ from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
+from dify_vdb_oracle.oracle_metadata_filter import (
+    ORACLE_IN_CLAUSE_BATCH_SIZE,
+    build_and_clause,
+    build_metadata_condition_filter,
+    build_where_clause,
+    metadata_json_value,
+)
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
@@ -61,7 +68,6 @@ ORACLE_TEXT_RESERVED_TOKENS = {
     "WITHIN",
 }
 ORACLE_TEXT_PARSER_ERROR_CODES = ("DRG-50901", "DRG-50902", "DRG-50906", "DRG-50907")
-ORACLE_IN_CLAUSE_BATCH_SIZE = 900
 ORACLE_CLOSED_CONNECTION_ERROR_CODES = ("DPY-4011", "DPY-1001", "DPI-1010")
 ORACLE_TEXT_LEXER_PREFERENCE = "WORLD_LEXER"
 ORACLE_TEXT_LEXER_TYPE = "WORLD_LEXER"
@@ -178,12 +184,6 @@ INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS
 def validate_identifier(value: str, name: str) -> str:
     if not value or len(value) > 128 or ORACLE_IDENTIFIER.fullmatch(value) is None:
         raise ValueError(f"Invalid Oracle identifier for {name}: {value}")
-    return value
-
-
-def validate_json_key(value: str) -> str:
-    if not value or ORACLE_IDENTIFIER.fullmatch(value) is None:
-        raise ValueError(f"Invalid Oracle JSON metadata key: {value}")
     return value
 
 
@@ -588,10 +588,10 @@ class OracleVector(BaseVector):
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
-        key = validate_json_key(key)
+        metadata_expr = metadata_json_value(key)
         with self._get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(f"DELETE FROM {self.table_name} WHERE JSON_VALUE(meta, '$." + key + "') = :1", (value,))
+                cur.execute(f"DELETE FROM {self.table_name} WHERE {metadata_expr} = :1", (value,))
             conn.commit()
 
     @override
@@ -606,6 +606,8 @@ class OracleVector(BaseVector):
         top_k = validate_top_k(kwargs.get("top_k", 4), 4)
         query_array = numpy.asarray(query_vector, dtype=numpy.float32)
         document_batches = document_id_filter_batches(kwargs.get("document_ids_filter"))
+        metadata_condition = kwargs.get("metadata_condition") or kwargs.get("metadata_filtering_conditions")
+        build_metadata_condition_filter(metadata_condition, {})
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         top_documents: list[tuple[float, int, Document]] = []
         sequence = 0
@@ -617,7 +619,8 @@ class OracleVector(BaseVector):
                 for document_batch in document_batches:
                     params: dict[str, Any] = {"query_vector": query_array}
                     document_filter = build_document_ids_filter(document_batch, params)
-                    where_clause = f"WHERE {document_filter}" if document_filter else ""
+                    metadata_filter = build_metadata_condition_filter(metadata_condition, params)
+                    where_clause = build_where_clause([document_filter, metadata_filter])
                     cur.execute(
                         f"""SELECT meta, text, vector_distance(embedding,
                         (select to_vector(:query_vector) from dual),cosine)
@@ -674,6 +677,8 @@ class OracleVector(BaseVector):
             return []
 
         document_batches = document_id_filter_batches(kwargs.get("document_ids_filter"))
+        metadata_condition = kwargs.get("metadata_condition") or kwargs.get("metadata_filtering_conditions")
+        build_metadata_condition_filter(metadata_condition, {})
         top_documents: list[tuple[float, int, Document]] = []
         sequence = 0
 
@@ -682,7 +687,8 @@ class OracleVector(BaseVector):
                 for document_batch in document_batches:
                     params: dict[str, Any] = {"kk": text_query}
                     document_filter = build_document_ids_filter(document_batch, params)
-                    and_clause = f" AND {document_filter} " if document_filter else ""
+                    metadata_filter = build_metadata_condition_filter(metadata_condition, params)
+                    and_clause = build_and_clause([document_filter, metadata_filter])
 
                     try:
                         cur.execute(

@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 class OracleConfig(BaseSettings):
     """
-    Configuration settings for Oracle database
+    Configuration settings for the Oracle database.
     """
 
     ORACLE_USER: str | None = Field(
@@ -18,8 +18,8 @@ class OracleConfig(BaseSettings):
     )
 
     ORACLE_DSN: str | None = Field(
-        description="Oracle database connection string. For traditional database, use format 'host:port/service_name'. "
-        "For autonomous database, use the service name from tnsnames.ora in the wallet",
+        description="Oracle database connection string. For a traditional database, use format "
+        "'host:port/service_name'. For an autonomous database, use the service name from tnsnames.ora in the wallet",
         default=None,
     )
 
