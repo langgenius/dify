@@ -104,9 +104,7 @@ def _normalize_annotation_import_value(value: object) -> str:
     return text
 
 
-def _validate_annotation_import_record(
-    question: str, answer: str, location: str
-) -> AnnotationImportRecord | None:
+def _validate_annotation_import_record(question: str, answer: str, location: str) -> AnnotationImportRecord | None:
     if not question or not answer:
         return None
 

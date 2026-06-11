@@ -343,7 +343,9 @@ class AnnotationUpdateDeleteApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
 class AnnotationBatchImportApi(Resource):
     @console_ns.doc("batch_import_annotations")
-    @console_ns.doc(description="Batch import annotations from CSV or JSONL file with rate limiting and security checks")
+    @console_ns.doc(
+        description="Batch import annotations from CSV or JSONL file with rate limiting and security checks"
+    )
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(200, "Batch import started successfully")
     @console_ns.response(403, "Insufficient permissions")

@@ -1386,7 +1386,7 @@ Create a new annotation for an app
 #### POST
 ##### Description
 
-Batch import annotations from CSV file with rate limiting and security checks
+Batch import annotations from CSV or JSONL file with rate limiting and security checks
 
 ##### Parameters
 
