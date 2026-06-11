@@ -1,6 +1,6 @@
 'use client'
 
-import type { App } from '@/types/app'
+import type { WorkflowSourceApp } from '@/features/deployments/create-guide/state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
@@ -8,9 +8,8 @@ import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
 import {
-  effectiveSelectedAppAtom,
+  selectedAppAtom,
   selectSourceAppAtom,
-  sourceAppsAtom,
   sourceAppsQueryAtom,
 } from '@/features/deployments/create-guide/state'
 
@@ -19,9 +18,10 @@ const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-s
 export function SourceAppList() {
   const { t } = useTranslation('deployments')
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
+  const selectedApp = useAtomValue(selectedAppAtom)
   const sourceAppsQuery = useAtomValue(sourceAppsQueryAtom)
-  const sourceApps = useAtomValue(sourceAppsAtom)
-  const effectiveSelectedApp = useAtomValue(effectiveSelectedAppAtom)
+  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
+  const effectiveSelectedApp = selectedApp ?? sourceApps[0]
   const sourceAppsLoading = sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)
 
   return (
@@ -67,7 +67,7 @@ function SourceAppSkeleton() {
 }
 
 function SourceAppOption({ app, onSelect, selected }: {
-  app: App
+  app: WorkflowSourceApp
   onSelect: () => void
   selected: boolean
 }) {

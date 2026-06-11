@@ -1,14 +1,15 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { methodAtom } from '@/features/deployments/create-guide/state'
+import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
+import { methodAtom, unsupportedDslNodesAtom } from '@/features/deployments/create-guide/state'
 import { DslUploadSection } from './dsl/upload-section'
 import { SourceAppSelectionSection } from './source-app/selection-section'
 import { SourceMethodSection } from './source-method-section'
-import { SourceUnsupportedDslNodesSection } from './unsupported-dsl/section'
 
 export function SourceStepContent() {
   const method = useAtomValue(methodAtom)
+  const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -19,7 +20,7 @@ export function SourceStepContent() {
       {method === 'importDsl' && (
         <DslUploadSection />
       )}
-      <SourceUnsupportedDslNodesSection />
+      <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />
     </div>
   )
 }

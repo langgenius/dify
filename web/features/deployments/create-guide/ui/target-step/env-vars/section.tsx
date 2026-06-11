@@ -1,6 +1,5 @@
 'use client'
 
-import type { EnvVarValueSelection } from '@/features/deployments/components/env-var-bindings'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
@@ -22,10 +21,6 @@ export function TargetEnvVarSection() {
   const isBindingError = deploymentOptionsQuery.isError
   const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
 
-  function onSetEnvVar(key: string, value: EnvVarValueSelection) {
-    setEnvVar({ key, value })
-  }
-
   if (isBindingLoading || isBindingError)
     return null
 
@@ -46,7 +41,7 @@ export function TargetEnvVarSection() {
       }}
       sourceAriaLabel={key => t('createGuide.target.envVarSource.ariaLabel', { key })}
       envVarCountLabel={t('createGuide.target.envVarCount', { count: envVarSlots.length })}
-      onChange={onSetEnvVar}
+      onChange={setEnvVar}
       listScrollable={false}
       className="border-components-option-card-option-border bg-components-option-card-option-bg"
     />

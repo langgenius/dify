@@ -12,7 +12,7 @@ import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enter
 import { keepPreviousData } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
-import { loadable } from 'jotai/utils'
+import { unwrap } from 'jotai/utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
@@ -60,26 +60,17 @@ export const isReadingDslAtom = atom(false)
 export const dslReadErrorAtom = atom(false)
 const dslReadTokenAtom = atom(0)
 
-const hasDslContentAtom = atom(get => Boolean(get(dslContentAtom).trim()))
-
 export const dslDefaultAppNameAtom = atom((get) => {
   const dslContent = get(dslContentAtom)
 
   return dslContent ? dslAppName(dslContent) : ''
 })
 
-const encodedDslContentAtom = atom((get) => {
-  const dslContent = get(dslContentAtom)
-
-  return get(hasDslContentAtom) ? encodeDslContent(dslContent) : ''
-})
-
 export const dslUnsupportedModeAtom = atom((get) => {
   const dslContent = get(dslContentAtom)
-  const hasDslContent = get(hasDslContentAtom)
 
   return get(methodAtom) === 'importDsl'
-    && hasDslContent
+    && Boolean(dslContent.trim())
     && !get(isReadingDslAtom)
     && !get(dslReadErrorAtom)
     && !isWorkflowDsl(dslContent)
@@ -96,12 +87,6 @@ export const selectedEnvironmentIdAtom = atom('')
 const manualBindingSelectionsAtom = atom<RuntimeCredentialBindingSelections>({})
 export const envVarValuesAtom = atom<EnvVarValues>({})
 
-const resetDeploymentTargetOptionsAtom = atom(null, (_get, set) => {
-  set(selectedEnvironmentIdAtom, '')
-  set(manualBindingSelectionsAtom, {})
-  set(envVarValuesAtom, {})
-})
-
 // Submission primitives
 const submissionUnsupportedDslNodesAtom = atom<UnsupportedDslNode[]>([])
 const isCreatingDeploymentAtom = atom(false)
@@ -111,20 +96,7 @@ export const isSubmittingDeploymentGuideAtom = atom(get => (
   get(isCreatingDeploymentAtom) || get(isCreatingReleaseOnlyAtom)
 ))
 
-// Query gate and remote data
-const deploymentTargetQueryEnabledAtom = atom((get) => {
-  const method = get(methodAtom)
-
-  return (method === 'bindApp' && Boolean(get(selectedAppAtom)?.id))
-    || (
-      method === 'importDsl'
-      && get(hasDslContentAtom)
-      && !get(isReadingDslAtom)
-      && !get(dslReadErrorAtom)
-      && !get(dslUnsupportedModeAtom)
-    )
-})
-
+// Query and remote data
 export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   const sourceSearchText = get(sourceSearchTextAtom)
 
@@ -176,7 +148,15 @@ const instanceNameConflictQueryAtom = atomWithQuery((get) => {
 })
 
 export const deployableEnvironmentsQueryAtom = atomWithQuery((get) => {
-  const enabled = get(deploymentTargetQueryEnabledAtom)
+  const method = get(methodAtom)
+  const enabled = (method === 'bindApp' && Boolean(get(selectedAppAtom)?.id))
+    || (
+      method === 'importDsl'
+      && Boolean(get(dslContentAtom).trim())
+      && !get(isReadingDslAtom)
+      && !get(dslReadErrorAtom)
+      && !get(dslUnsupportedModeAtom)
+    )
 
   return consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
     input: {
@@ -187,15 +167,23 @@ export const deployableEnvironmentsQueryAtom = atomWithQuery((get) => {
 })
 
 export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
-  const enabled = get(deploymentTargetQueryEnabledAtom)
   const method = get(methodAtom)
   const selectedApp = get(selectedAppAtom)
+  const dslContent = get(dslContentAtom)
+  const enabled = (method === 'bindApp' && Boolean(selectedApp?.id))
+    || (
+      method === 'importDsl'
+      && Boolean(dslContent.trim())
+      && !get(isReadingDslAtom)
+      && !get(dslReadErrorAtom)
+      && !get(dslUnsupportedModeAtom)
+    )
 
   const deploymentOptionsQueryOptions = method === 'importDsl'
     ? consoleQuery.enterprise.releaseService.getDeploymentOptionsFromDsl.queryOptions({
         input: {
           body: {
-            dsl: get(encodedDslContentAtom),
+            dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
           },
         },
         enabled,
@@ -216,69 +204,58 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
   }
 })
 
-export const sourceAppsAtom = atom((get) => {
-  const sourceAppsQuery = get(sourceAppsQueryAtom)
-
-  return (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
-})
-
-const existingInstanceNamesAtom = atom((get) => {
-  const appInstancesQuery = get(existingInstanceNamesQueryAtom)
-
-  return appInstancesQuery.data?.pages.flatMap(page =>
-    page.data.flatMap((appInstance) => {
-      const name = appInstance.name.trim()
-
-      return name ? [name] : []
-    }),
-  ) ?? []
-})
-
 // Unsupported DSL state
-const deploymentOptionsUnsupportedDslNodesAsyncAtom = atom(async (get): Promise<UnsupportedDslNode[]> => {
-  const enabled = get(deploymentTargetQueryEnabledAtom)
+const deploymentOptionsUnsupportedDslNodesAtom = unwrap(atom(async (get): Promise<UnsupportedDslNode[]> => {
+  const method = get(methodAtom)
+  const enabled = (method === 'bindApp' && Boolean(get(selectedAppAtom)?.id))
+    || (
+      method === 'importDsl'
+      && Boolean(get(dslContentAtom).trim())
+      && !get(isReadingDslAtom)
+      && !get(dslReadErrorAtom)
+      && !get(dslUnsupportedModeAtom)
+    )
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
 
   if (!enabled || !deploymentOptionsQuery.isError)
     return []
 
   return (await unsupportedDslNodeError(deploymentOptionsQuery.error))?.nodes ?? []
-})
-
-const deploymentOptionsUnsupportedDslNodesLoadableAtom = loadable(deploymentOptionsUnsupportedDslNodesAsyncAtom)
+}), (): UnsupportedDslNode[] => [])
 
 export const unsupportedDslNodesAtom = atom((get): UnsupportedDslNode[] => {
   const submissionUnsupportedDslNodes = get(submissionUnsupportedDslNodesAtom)
   if (submissionUnsupportedDslNodes.length > 0)
     return submissionUnsupportedDslNodes
 
-  const deploymentOptionsUnsupportedDslNodes = get(deploymentOptionsUnsupportedDslNodesLoadableAtom)
-
-  return deploymentOptionsUnsupportedDslNodes.state === 'hasData'
-    ? deploymentOptionsUnsupportedDslNodes.data
-    : []
-})
-
-// Source derived state and actions
-export const effectiveSelectedAppAtom = atom((get) => {
-  return get(selectedAppAtom) ?? get(sourceAppsAtom)[0]
+  try {
+    return get(deploymentOptionsUnsupportedDslNodesAtom)
+  }
+  catch {
+    return []
+  }
 })
 
 export const sourceCanGoNextAtom = atom((get) => {
   const method = get(methodAtom)
+  const sourceAppsQuery = get(sourceAppsQueryAtom)
+  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
+  const effectiveSelectedApp = get(selectedAppAtom) ?? sourceApps[0]
   const importDslReady = method === 'importDsl'
-    && get(hasDslContentAtom)
+    && Boolean(get(dslContentAtom).trim())
     && !get(isReadingDslAtom)
     && !get(dslReadErrorAtom)
     && !get(dslUnsupportedModeAtom)
-  const bindAppReady = method === 'bindApp' && Boolean(get(effectiveSelectedAppAtom)?.id)
+  const bindAppReady = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
 
   return (importDslReady || bindAppReady) && get(unsupportedDslNodesAtom).length === 0
 })
 
 export const selectSourceAppAtom = atom(null, (_get, set, app: WorkflowSourceApp) => {
   set(selectedAppAtom, app)
-  set(resetDeploymentTargetOptionsAtom)
+  set(selectedEnvironmentIdAtom, '')
+  set(manualBindingSelectionsAtom, {})
+  set(envVarValuesAtom, {})
   set(submissionUnsupportedDslNodesAtom, [])
 })
 
@@ -293,7 +270,9 @@ export const continueFromSourceAtom = atom(null, (get, set, {
     return
 
   const method = get(methodAtom)
-  const effectiveSelectedApp = get(effectiveSelectedAppAtom)
+  const sourceAppsQuery = get(sourceAppsQueryAtom)
+  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
+  const effectiveSelectedApp = get(selectedAppAtom) ?? sourceApps[0]
   if (method === 'bindApp' && effectiveSelectedApp)
     set(selectSourceAppAtom, effectiveSelectedApp)
 
@@ -303,7 +282,16 @@ export const continueFromSourceAtom = atom(null, (get, set, {
   const nextInstanceName = sourceName?.trim()
 
   if (!get(instanceNameAtom).trim() && nextInstanceName) {
-    const existingNameSet = new Set(get(existingInstanceNamesAtom))
+    const existingInstanceNamesQuery = get(existingInstanceNamesQueryAtom)
+    const existingNameSet = new Set(
+      existingInstanceNamesQuery.data?.pages.flatMap(page =>
+        page.data.flatMap((appInstance) => {
+          const name = appInstance.name.trim()
+
+          return name ? [name] : []
+        }),
+      ) ?? [],
+    )
     let availableInstanceName = nextInstanceName
 
     if (existingNameSet.has(nextInstanceName)) {
@@ -343,7 +331,9 @@ export const continueFromSourceAtom = atom(null, (get, set, {
 
 // DSL actions
 export const selectDslFileAtom = atom(null, async (get, set, dslFile?: File) => {
-  set(resetDeploymentTargetOptionsAtom)
+  set(selectedEnvironmentIdAtom, '')
+  set(manualBindingSelectionsAtom, {})
+  set(envVarValuesAtom, {})
   set(submissionUnsupportedDslNodesAtom, [])
 
   // Token guard prevents a slow read from an older file from overwriting the newest selection.
@@ -382,32 +372,34 @@ export const selectDslFileAtom = atom(null, async (get, set, dslFile?: File) => 
 export const hasInstanceNameConflictAtom = atom((get) => {
   const submittedInstanceName = get(instanceNameAtom).trim()
   const instanceNameConflictQuery = get(instanceNameConflictQueryAtom)
+  const existingInstanceNamesQuery = get(existingInstanceNamesQueryAtom)
+  const existingInstanceNames = existingInstanceNamesQuery.data?.pages.flatMap(page =>
+    page.data.flatMap((appInstance) => {
+      const name = appInstance.name.trim()
+
+      return name ? [name] : []
+    }),
+  ) ?? []
 
   return Boolean(
     submittedInstanceName
     && (
-      get(existingInstanceNamesAtom).includes(submittedInstanceName)
+      existingInstanceNames.includes(submittedInstanceName)
       || (instanceNameConflictQuery.data?.data.some(appInstance => appInstance.name.trim() === submittedInstanceName) ?? false)
     ),
   )
 })
 
-const submittedReleaseReadyAtom = atom((get) => {
+export const releaseCanGoNextAtom = atom((get) => {
   const method = get(methodAtom)
-  const sourceReady = method === 'importDsl'
-    ? get(hasDslContentAtom) && !get(isReadingDslAtom) && !get(dslReadErrorAtom) && !get(dslUnsupportedModeAtom)
-    : Boolean(get(selectedAppAtom)?.id)
   const submittedInstanceName = get(instanceNameAtom).trim()
   const submittedReleaseName = get(releaseNameAtom).trim()
+  const instanceNameConflictQuery = get(instanceNameConflictQueryAtom)
+  const sourceReady = method === 'importDsl'
+    ? Boolean(get(dslContentAtom).trim()) && !get(isReadingDslAtom) && !get(dslReadErrorAtom) && !get(dslUnsupportedModeAtom)
+    : Boolean(get(selectedAppAtom)?.id)
 
   return Boolean(sourceReady && submittedInstanceName && submittedReleaseName)
-})
-
-export const releaseCanGoNextAtom = atom((get) => {
-  const submittedInstanceName = get(instanceNameAtom).trim()
-  const instanceNameConflictQuery = get(instanceNameConflictQueryAtom)
-
-  return get(submittedReleaseReadyAtom)
     && !get(hasInstanceNameConflictAtom)
     && !(Boolean(submittedInstanceName) && instanceNameConflictQuery.isLoading)
     && get(unsupportedDslNodesAtom).length === 0
@@ -437,13 +429,23 @@ export const continueFromReleaseAtom = atom(null, (get, set) => {
   if (!get(releaseCanGoNextAtom))
     return
 
-  set(resetDeploymentTargetOptionsAtom)
+  set(selectedEnvironmentIdAtom, '')
+  set(manualBindingSelectionsAtom, {})
+  set(envVarValuesAtom, {})
   set(stepAtom, 'target')
 })
 
 // Target derived state and actions
 export const deployableEnvironmentsAtom = atom((get) => {
-  const enabled = get(deploymentTargetQueryEnabledAtom)
+  const method = get(methodAtom)
+  const enabled = (method === 'bindApp' && Boolean(get(selectedAppAtom)?.id))
+    || (
+      method === 'importDsl'
+      && Boolean(get(dslContentAtom).trim())
+      && !get(isReadingDslAtom)
+      && !get(dslReadErrorAtom)
+      && !get(dslUnsupportedModeAtom)
+    )
   const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
 
   return enabled
@@ -455,16 +457,16 @@ export const effectiveSelectedEnvironmentIdAtom = atom((get) => {
   return get(selectedEnvironmentIdAtom) || get(deployableEnvironmentsAtom)[0]?.id
 })
 
-const selectedDeploymentEnvironmentAtom = atom((get) => {
-  const effectiveSelectedEnvironmentId = get(effectiveSelectedEnvironmentIdAtom)
-
-  return effectiveSelectedEnvironmentId
-    ? get(deployableEnvironmentsAtom).find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId))
-    : undefined
-})
-
 export const deploymentTargetBindingSlotsAtom = atom((get) => {
-  const enabled = get(deploymentTargetQueryEnabledAtom)
+  const method = get(methodAtom)
+  const enabled = (method === 'bindApp' && Boolean(get(selectedAppAtom)?.id))
+    || (
+      method === 'importDsl'
+      && Boolean(get(dslContentAtom).trim())
+      && !get(isReadingDslAtom)
+      && !get(dslReadErrorAtom)
+      && !get(dslUnsupportedModeAtom)
+    )
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
 
   return enabled
@@ -479,21 +481,19 @@ export const deploymentTargetBindingSelectionsAtom = atom((get) => {
   )
 })
 
-const deploymentTargetRequiredBindingsReadyAtom = atom((get) => {
-  const bindingSlots = get(deploymentTargetBindingSlotsAtom)
-  const bindingSelections = get(deploymentTargetBindingSelectionsAtom)
-
-  return bindingSlots.every(slot =>
-    !hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]),
-  )
-})
-
 export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
-  const enabled = get(deploymentTargetQueryEnabledAtom)
+  const method = get(methodAtom)
+  const enabled = (method === 'bindApp' && Boolean(get(selectedAppAtom)?.id))
+    || (
+      method === 'importDsl'
+      && Boolean(get(dslContentAtom).trim())
+      && !get(isReadingDslAtom)
+      && !get(dslReadErrorAtom)
+      && !get(dslUnsupportedModeAtom)
+    )
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
   const slots = enabled ? deploymentOptionsQuery.data?.options?.envVarSlots : undefined
   const dslContent = get(dslContentAtom)
-  const method = get(methodAtom)
   const valueType = (value?: string): EnvVarBindingSlot['valueType'] => (
     value === 'number' || value === 'secret' ? value : 'string'
   )
@@ -552,10 +552,39 @@ export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
   })
 })
 
-const deploymentTargetRequiredEnvVarsReadyAtom = atom((get) => {
+export const canDeployAtom = atom((get) => {
+  const method = get(methodAtom)
+  const enabled = (method === 'bindApp' && Boolean(get(selectedAppAtom)?.id))
+    || (
+      method === 'importDsl'
+      && Boolean(get(dslContentAtom).trim())
+      && !get(isReadingDslAtom)
+      && !get(dslReadErrorAtom)
+      && !get(dslUnsupportedModeAtom)
+    )
+  const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
+  const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
+  const effectiveSelectedEnvironmentId = get(effectiveSelectedEnvironmentIdAtom)
+  const selectedEnvironment = effectiveSelectedEnvironmentId
+    ? get(deployableEnvironmentsAtom).find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId))
+    : undefined
+  const bindingSlots = get(deploymentTargetBindingSlotsAtom)
+  const bindingSelections = get(deploymentTargetBindingSelectionsAtom)
   const envVarValues = get(envVarValuesAtom)
-
-  return get(deploymentTargetEnvVarSlotsAtom).every((slot) => {
+  const sourceReady = method === 'importDsl'
+    ? Boolean(get(dslContentAtom).trim()) && !get(isReadingDslAtom) && !get(dslReadErrorAtom) && !get(dslUnsupportedModeAtom)
+    : Boolean(get(selectedAppAtom)?.id)
+  const submittedReleaseReady = Boolean(sourceReady && get(instanceNameAtom).trim() && get(releaseNameAtom).trim())
+  const deploymentTargetReady = enabled
+    && !(deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
+    && !deployableEnvironmentsQuery.isError
+    && !(deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
+    && !deploymentOptionsQuery.isError
+    && get(unsupportedDslNodesAtom).length === 0
+  const requiredBindingsReady = bindingSlots.every(slot =>
+    !hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]),
+  )
+  const requiredEnvVarsReady = get(deploymentTargetEnvVarSlotsAtom).every((slot) => {
     const selection = envVarValues[slot.key]
     const valueSource = selection?.valueSource
       ?? (slot.hasDefaultValue
@@ -573,73 +602,39 @@ const deploymentTargetRequiredEnvVarsReadyAtom = atom((get) => {
 
     return slot.valueType !== 'number' || !Number.isNaN(Number(selection.value))
   })
-})
 
-const deploymentTargetReadyAtom = atom((get) => {
-  const enabled = get(deploymentTargetQueryEnabledAtom)
-  const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
-  const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
-
-  return enabled
-    && !(deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
-    && !deployableEnvironmentsQuery.isError
-    && !(deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
-    && !deploymentOptionsQuery.isError
-    && get(unsupportedDslNodesAtom).length === 0
-})
-
-export const canDeployAtom = atom((get) => {
   return Boolean(
-    get(selectedDeploymentEnvironmentAtom)?.id
-    && get(deploymentTargetReadyAtom)
-    && get(deploymentTargetRequiredBindingsReadyAtom)
-    && get(deploymentTargetRequiredEnvVarsReadyAtom)
-    && get(submittedReleaseReadyAtom),
+    selectedEnvironment?.id
+    && deploymentTargetReady
+    && requiredBindingsReady
+    && requiredEnvVarsReady
+    && submittedReleaseReady,
   )
 })
 
 export const canSkipDeploymentAtom = atom((get) => {
+  const method = get(methodAtom)
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
+  const sourceReady = method === 'importDsl'
+    ? Boolean(get(dslContentAtom).trim()) && !get(isReadingDslAtom) && !get(dslReadErrorAtom) && !get(dslUnsupportedModeAtom)
+    : Boolean(get(selectedAppAtom)?.id)
+  const submittedReleaseReady = Boolean(sourceReady && get(instanceNameAtom).trim() && get(releaseNameAtom).trim())
 
   return Boolean(
-    get(submittedReleaseReadyAtom)
+    submittedReleaseReady
     && !deploymentOptionsQuery.isError
     && get(unsupportedDslNodesAtom).length === 0,
   )
 })
 
-const deploymentTargetSubmissionStateAtom = atom(get => ({
-  bindingSelections: get(deploymentTargetBindingSelectionsAtom),
-  bindingSlots: get(deploymentTargetBindingSlotsAtom),
-  deployableEnvironmentsQuery: get(deployableEnvironmentsQueryAtom),
-  deploymentOptions: get(deploymentOptionsQueryAtom).data?.options,
-  envVarSlots: get(deploymentTargetEnvVarSlotsAtom),
-  envVarValues: get(envVarValuesAtom),
-  requiredEnvVarsReady: get(deploymentTargetRequiredEnvVarsReadyAtom),
-  selectedEnvironment: get(selectedDeploymentEnvironmentAtom),
-  selectedEnvironmentId: get(selectedEnvironmentIdAtom),
-}))
-
-export const selectBindingAtom = atom(null, (get, set, {
-  slot,
-  value,
-}: {
-  slot: string
-  value: string
-}) => {
+export const selectBindingAtom = atom(null, (get, set, slot: string, value: string) => {
   set(manualBindingSelectionsAtom, {
     ...get(manualBindingSelectionsAtom),
     [slot]: value,
   })
 })
 
-export const setEnvVarAtom = atom(null, (get, set, {
-  key,
-  value,
-}: {
-  key: string
-  value: EnvVarValueSelection
-}) => {
+export const setEnvVarAtom = atom(null, (get, set, key: string, value: EnvVarValueSelection) => {
   set(envVarValuesAtom, {
     ...get(envVarValuesAtom),
     [key]: value,
@@ -649,23 +644,14 @@ export const setEnvVarAtom = atom(null, (get, set, {
 // Workflow actions
 export const selectMethodAtom = atom(null, (_get, set, method: GuideMethod) => {
   set(methodAtom, method)
-  set(resetDeploymentTargetOptionsAtom)
+  set(selectedEnvironmentIdAtom, '')
+  set(manualBindingSelectionsAtom, {})
+  set(envVarValuesAtom, {})
   set(submissionUnsupportedDslNodesAtom, [])
   set(stepAtom, 'source')
 })
 
 // Submission
-const createDeploymentSubmissionDraftAtom = atom(get => ({
-  dslContent: get(dslContentAtom),
-  encodedDslContent: get(encodedDslContentAtom),
-  hasDslContent: get(hasDslContentAtom),
-  instanceDescription: get(instanceDescriptionAtom),
-  method: get(methodAtom),
-  submittedInstanceName: get(instanceNameAtom).trim(),
-  submittedReleaseDescription: get(releaseDescriptionAtom).trim(),
-  submittedReleaseName: get(releaseNameAtom).trim(),
-}))
-
 const createAppInstanceMutationAtom = atomWithMutation(() =>
   consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions(),
 )
@@ -697,20 +683,57 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
 }: {
   deployToEnvironment: boolean
 }) => {
-  if (get(isSubmittingDeploymentGuideAtom) || !get(submittedReleaseReadyAtom))
+  const method = get(methodAtom)
+  const dslContent = get(dslContentAtom)
+  const sourceReady = method === 'importDsl'
+    ? Boolean(dslContent.trim()) && !get(isReadingDslAtom) && !get(dslReadErrorAtom) && !get(dslUnsupportedModeAtom)
+    : Boolean(get(selectedAppAtom)?.id)
+  const submittedInstanceName = get(instanceNameAtom).trim()
+  const submittedReleaseName = get(releaseNameAtom).trim()
+  const submittedReleaseDescription = get(releaseDescriptionAtom).trim()
+  const submittedReleaseReady = Boolean(sourceReady && submittedInstanceName && submittedReleaseName)
+
+  if (get(isSubmittingDeploymentGuideAtom) || !submittedReleaseReady)
     return undefined
 
-  const submissionDraft = get(createDeploymentSubmissionDraftAtom)
   const effectiveSelectedApp = get(selectedAppAtom)
-  const targetSubmissionState = get(deploymentTargetSubmissionStateAtom)
+  const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
+  const deploymentOptions = get(deploymentOptionsQueryAtom).data?.options
+  const envVarSlots = get(deploymentTargetEnvVarSlotsAtom)
+  const envVarValues = get(envVarValuesAtom)
+  const bindingSlots = get(deploymentTargetBindingSlotsAtom)
+  const bindingSelections = get(deploymentTargetBindingSelectionsAtom)
+  const selectedEnvironmentId = get(selectedEnvironmentIdAtom)
+  const effectiveSelectedEnvironmentId = selectedEnvironmentId || get(deployableEnvironmentsAtom)[0]?.id
+  const selectedEnvironment = effectiveSelectedEnvironmentId
+    ? get(deployableEnvironmentsAtom).find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId))
+    : undefined
+  const requiredEnvVarsReady = envVarSlots.every((slot) => {
+    const selection = envVarValues[slot.key]
+    const valueSource = selection?.valueSource
+      ?? (slot.hasDefaultValue
+        ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
+        : slot.hasLastValue
+          ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
+          : ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL)
 
-  if (deployToEnvironment && !targetSubmissionState.selectedEnvironment && !targetSubmissionState.selectedEnvironmentId?.trim())
+    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
+      return Boolean(slot.hasLastValue)
+    if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
+      return Boolean(slot.hasDefaultValue)
+    if (!selection?.value)
+      return false
+
+    return slot.valueType !== 'number' || !Number.isNaN(Number(selection.value))
+  })
+
+  if (deployToEnvironment && !selectedEnvironment && !selectedEnvironmentId.trim())
     return undefined
-  if (submissionDraft.method === 'bindApp' && !effectiveSelectedApp?.id)
+  if (method === 'bindApp' && !effectiveSelectedApp?.id)
     return undefined
-  if (submissionDraft.method === 'importDsl' && !submissionDraft.hasDslContent)
+  if (method === 'importDsl' && !dslContent.trim())
     return undefined
-  if (submissionDraft.method === 'importDsl' && !isWorkflowDsl(submissionDraft.dslContent))
+  if (method === 'importDsl' && !isWorkflowDsl(dslContent))
     throw new CreateDeploymentGuideSubmissionBlockedError('unsupportedDslMode')
 
   set(submissionUnsupportedDslNodesAtom, [])
@@ -722,19 +745,19 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
       try {
         const createdAppInstance = await get(createAppInstanceMutationAtom).mutateAsync({
           body: {
-            name: submissionDraft.submittedInstanceName,
-            description: submissionDraft.instanceDescription.trim() || undefined,
+            name: submittedInstanceName,
+            description: get(instanceDescriptionAtom).trim() || undefined,
           },
         })
         const appInstanceId = createdAppInstance.appInstance.id
 
-        if (submissionDraft.method === 'importDsl') {
+        if (method === 'importDsl') {
           await get(createReleaseFromDslMutationAtom).mutateAsync({
             body: {
               appInstanceId,
-              dsl: submissionDraft.encodedDslContent,
-              name: submissionDraft.submittedReleaseName,
-              description: submissionDraft.submittedReleaseDescription || undefined,
+              dsl: encodeDslContent(dslContent),
+              name: submittedReleaseName,
+              description: submittedReleaseDescription || undefined,
               createAppInstance: false,
             },
           })
@@ -749,8 +772,8 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
           body: {
             appInstanceId,
             sourceAppId: effectiveSelectedApp.id,
-            name: submissionDraft.submittedReleaseName,
-            description: submissionDraft.submittedReleaseDescription || undefined,
+            name: submittedReleaseName,
+            description: submittedReleaseDescription || undefined,
             createAppInstance: false,
           },
         })
@@ -762,10 +785,10 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
       }
     }
 
-    const selectedEnvironmentIdentifier = targetSubmissionState.selectedEnvironmentId?.trim()
-    const freshSelectedEnvironment = targetSubmissionState.selectedEnvironment || (
+    const selectedEnvironmentIdentifier = selectedEnvironmentId.trim()
+    const freshSelectedEnvironment = selectedEnvironment || (
       selectedEnvironmentIdentifier
-        ? (await targetSubmissionState.deployableEnvironmentsQuery.refetch()).data?.data.find(environment =>
+        ? (await deployableEnvironmentsQuery.refetch()).data?.data.find(environment =>
             environmentMatchesIdentifier(environment, selectedEnvironmentIdentifier),
           )
         : undefined
@@ -774,16 +797,16 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
     if (!targetEnvironmentId)
       throw new CreateDeploymentGuideSubmissionBlockedError('deployFailed')
 
-    if (targetSubmissionState.bindingSlots.some(slot =>
-      hasMissingRequiredRuntimeCredentialBinding(slot, targetSubmissionState.bindingSelections[runtimeCredentialSlotKey(slot)]),
+    if (bindingSlots.some(slot =>
+      hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]),
     )) {
       throw new Error('Missing required deployment binding.')
     }
-    if (!targetSubmissionState.requiredEnvVarsReady)
+    if (!requiredEnvVarsReady)
       throw new Error('Missing required deployment environment variable.')
 
-    const envVars = targetSubmissionState.envVarSlots.flatMap((slot): EnvVarInput[] => {
-      const selection = targetSubmissionState.envVarValues[slot.key]
+    const envVars = envVarSlots.flatMap((slot): EnvVarInput[] => {
+      const selection = envVarValues[slot.key]
       const valueSource = selection?.valueSource
         ?? (slot.hasDefaultValue
           ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
@@ -814,21 +837,21 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
     })
     const commonDeploymentRequest = {
       new: {
-        name: submissionDraft.submittedInstanceName,
-        description: submissionDraft.instanceDescription.trim() || undefined,
+        name: submittedInstanceName,
+        description: get(instanceDescriptionAtom).trim() || undefined,
       },
       environmentId: targetEnvironmentId,
-      releaseName: submissionDraft.submittedReleaseName,
-      releaseDescription: submissionDraft.submittedReleaseDescription || undefined,
-      credentials: selectedDeploymentRuntimeCredentials(targetSubmissionState.bindingSlots, targetSubmissionState.bindingSelections),
+      releaseName: submittedReleaseName,
+      releaseDescription: submittedReleaseDescription || undefined,
+      credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
       envVars,
       idempotencyKey: createDeploymentIdempotencyKey(),
-      expectedDslDigest: targetSubmissionState.deploymentOptions?.dslDigest,
+      expectedDslDigest: deploymentOptions?.dslDigest,
     } satisfies Omit<DeployReq, 'dsl' | 'sourceAppId'>
-    const deploymentRequest = submissionDraft.method === 'importDsl'
+    const deploymentRequest = method === 'importDsl'
       ? {
           ...commonDeploymentRequest,
-          dsl: submissionDraft.encodedDslContent,
+          dsl: encodeDslContent(dslContent),
         }
       : effectiveSelectedApp?.id
         ? {

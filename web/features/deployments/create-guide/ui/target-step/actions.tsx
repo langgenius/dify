@@ -16,34 +16,19 @@ import {
 import { deploymentErrorMessage } from '@/features/deployments/error'
 import { useRouter } from '@/next/navigation'
 
-export function TargetActionButtons() {
-  return (
-    <>
-      <TargetBackButton />
-      <TargetSkipDeploymentButton />
-      <TargetDeployButton />
-    </>
-  )
-}
-
-function TargetBackButton() {
+export function TargetBackButton() {
   const { t } = useTranslation('deployments')
   const setStep = useSetAtom(stepAtom)
   const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
 
-  function handleBack() {
-    if (!isSubmitting)
-      setStep('release')
-  }
-
   return (
-    <Button type="button" variant="secondary" onClick={handleBack} disabled={isSubmitting}>
+    <Button type="button" variant="secondary" onClick={() => setStep('release')} disabled={isSubmitting}>
       {t('createGuide.actions.back')}
     </Button>
   )
 }
 
-function TargetSkipDeploymentButton() {
+export function TargetSkipDeploymentButton() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
   const canSkipDeployment = useAtomValue(canSkipDeploymentAtom)
@@ -79,7 +64,7 @@ function TargetSkipDeploymentButton() {
   )
 }
 
-function TargetDeployButton() {
+export function TargetDeployButton() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
   const canDeploy = useAtomValue(canDeployAtom)

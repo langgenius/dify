@@ -52,7 +52,7 @@ export function TargetEnvironmentSection() {
   const effectiveSelectedEnvironmentId = useAtomValue(effectiveSelectedEnvironmentIdAtom)
   const isEnvironmentError = environmentsQuery.isError
   const isEnvironmentLoading = environmentsQuery.isLoading || (environmentsQuery.isFetching && !environmentsQuery.data)
-  const onSelectEnvironment = useSetAtom(selectedEnvironmentIdAtom)
+  const selectEnvironment = useSetAtom(selectedEnvironmentIdAtom)
   const hasEnvironmentOptions = environments.length > 0
 
   return (
@@ -62,7 +62,7 @@ export function TargetEnvironmentSection() {
         ? (
             <RadioGroup<string>
               value={effectiveSelectedEnvironmentId}
-              onValueChange={onSelectEnvironment}
+              onValueChange={selectEnvironment}
               className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2"
             >
               {environments.map(environment => (

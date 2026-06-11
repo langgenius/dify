@@ -57,7 +57,7 @@ export function TargetBindingSection() {
       selectCredentialLabel={t('createGuide.target.selectCredential')}
       missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
       bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
-      onChange={(slot, value) => selectBinding({ slot, value })}
+      onChange={selectBinding}
       listScrollable={false}
       className="border-components-option-card-option-border bg-components-option-card-option-bg"
     />

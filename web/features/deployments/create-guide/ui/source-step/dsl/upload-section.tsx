@@ -1,12 +1,16 @@
 'use client'
 
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { dslFileAtom, selectDslFileAtom } from '@/features/deployments/create-guide/state'
 import { StepShell } from '../../shell/layout'
 import { DslReadStatus } from './read-status'
-import { DslUploaderField } from './uploader-field'
 
 export function DslUploadSection() {
   const { t } = useTranslation('deployments')
+  const dslFile = useAtomValue(dslFileAtom)
+  const selectDslFile = useSetAtom(selectDslFileAtom)
 
   return (
     <StepShell title={t('createGuide.dsl.title')} description={t('createGuide.dsl.description')} hideHeader>
@@ -18,7 +22,11 @@ export function DslUploadSection() {
             <div className="system-sm-regular text-text-tertiary">{t('createGuide.dsl.dropDescription')}</div>
           </div>
         </div>
-        <DslUploaderField />
+        <Uploader
+          className="mt-0"
+          file={dslFile}
+          updateFile={selectDslFile}
+        />
         <DslReadStatus />
       </div>
     </StepShell>

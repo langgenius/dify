@@ -13,15 +13,16 @@ export function SourceActionButtons() {
   const canGoNext = useAtomValue(sourceCanGoNextAtom)
   const continueFromSource = useSetAtom(continueFromSourceAtom)
 
-  function handleNext() {
-    continueFromSource({
-      defaultDslAppName: t('createGuide.dsl.defaultAppName'),
-      defaultReleaseName: t('createGuide.release.defaultName'),
-    })
-  }
-
   return (
-    <Button type="button" variant="primary" disabled={!canGoNext} onClick={handleNext}>
+    <Button
+      type="button"
+      variant="primary"
+      disabled={!canGoNext}
+      onClick={() => continueFromSource({
+        defaultDslAppName: t('createGuide.dsl.defaultAppName'),
+        defaultReleaseName: t('createGuide.release.defaultName'),
+      })}
+    >
       {t('createGuide.actions.next')}
     </Button>
   )

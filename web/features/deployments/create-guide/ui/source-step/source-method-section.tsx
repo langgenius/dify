@@ -56,10 +56,6 @@ export function SourceMethodSection() {
   const method = useAtomValue(methodAtom)
   const selectMethod = useSetAtom(selectMethodAtom)
 
-  function handleSelect(nextMethod: GuideMethod) {
-    selectMethod(nextMethod)
-  }
-
   return (
     <StepShell
       title={t('createGuide.steps.method')}
@@ -69,7 +65,7 @@ export function SourceMethodSection() {
     >
       <RadioGroup<GuideMethod>
         value={method}
-        onValueChange={handleSelect}
+        onValueChange={selectMethod}
         className="flex flex-col items-stretch gap-2 sm:flex-row"
       >
         <SourceMethodCard
