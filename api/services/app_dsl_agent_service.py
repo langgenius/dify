@@ -45,6 +45,40 @@ POSTPROCESS_CODE_KEYWORDS = (
     "提取",
     "转换",
 )
+CLASSIFICATION_KEYWORDS = (
+    "category",
+    "classif",
+    "categorize",
+    "intent",
+    "route",
+    "routing",
+    "triage",
+    "分类",
+    "路由",
+)
+IF_ELSE_KEYWORDS = (
+    " if ",
+    "else",
+    "otherwise",
+    "urgent",
+    "high priority",
+    "low priority",
+    "如果",
+    "否则",
+    "紧急",
+)
+RAG_KEYWORDS = (
+    "citation",
+    "cite",
+    "knowledge",
+    "knowledge base",
+    "rag",
+    "retriev",
+    "source",
+    "引用",
+    "知识库",
+    "检索",
+)
 DSL_AGENT_STAGE_PLAN = "plan"
 DSL_AGENT_STAGE_SOURCE_EVIDENCE = "source_evidence"
 DSL_AGENT_STAGE_RESOLVE_DEPENDENCIES = "resolve_dependencies"
@@ -58,6 +92,10 @@ DSL_AGENT_RUN_STATUS_SUCCEEDED = "succeeded"
 DSL_AGENT_RUN_STATUS_FAILED = "failed"
 DSL_AGENT_RUN_REDIS_KEY_PREFIX = "console:dsl_agent_run:"
 DSL_AGENT_RUN_TTL_SECONDS = int(os.environ.get("DIFY_DSL_AGENT_RUN_TTL_SECONDS", str(24 * 60 * 60)))
+DSL_AGENT_TASK_SOFT_TIME_LIMIT_SECONDS = int(os.environ.get("DIFY_DSL_AGENT_TASK_SOFT_TIME_LIMIT_SECONDS", "300"))
+DSL_AGENT_TASK_TIME_LIMIT_SECONDS = int(
+    os.environ.get("DIFY_DSL_AGENT_TASK_TIME_LIMIT_SECONDS", str(DSL_AGENT_TASK_SOFT_TIME_LIMIT_SECONDS + 30))
+)
 
 
 def normalize_generation_backend(generation_backend: str | None) -> str:
@@ -715,13 +753,14 @@ class DslAgentOrchestrator:
                 if isinstance(source_evidence.get("_source_context_full"), dict)
                 else {}
             )
+            prompt_source_context = dsl_generation.compact_source_context_for_prompt(source_context)
             yaml_content = dsl_generation.generate_yaml(
                 client=client,
                 model=plan["generation_model"],
                 request=self._generation_request(plan),
                 plan=llm_plan,
                 plugin_evidence=prompt_plugin_evidence,
-                source_context=source_context,
+                source_context=prompt_source_context,
             )
             self._apply_yaml_app_metadata(plan, yaml_content)
             return yaml_content, {
@@ -859,13 +898,14 @@ class DslAgentOrchestrator:
                     if isinstance(source_evidence.get("_source_context_full"), dict)
                     else {}
                 )
+                prompt_source_context = dsl_generation.compact_source_context_for_prompt(source_context)
                 repaired = dsl_generation.repair_yaml(
                     client=self._openai_client(),
                     model=plan["generation_model"],
                     request=self._generation_request(plan),
                     plan=llm_plan,
                     plugin_evidence=prompt_plugin_evidence,
-                    source_context=source_context,
+                    source_context=prompt_source_context,
                     yaml_text=yaml_content,
                     validation=validation_report,
                 )
@@ -965,6 +1005,8 @@ class DslAgentOrchestrator:
             return "OpenAI API key is invalid or unauthorized."
         if "rate limit" in lowered or "429" in lowered:
             return "OpenAI request was rate limited."
+        if "timed out" in lowered or "timeout" in lowered:
+            return "OpenAI request timed out. Try again or choose a faster generation model."
         if len(message) > 500:
             return f"{message[:500]}..."
         return message
@@ -1084,6 +1126,70 @@ class DslAgentOrchestrator:
         return emit
 
     def _deterministic_graph_plan(self, prompt: str) -> dict:
+        labels = self._classification_labels(prompt)
+        if labels:
+            nodes = [{"id": "start", "type": "start"}, {"id": "classify", "type": "question-classifier"}]
+            edges = [{"source": "start", "target": "classify"}]
+            for label in labels:
+                reply_id = f"reply_{label}"
+                finish_id = f"finish_{label}"
+                nodes.extend(
+                    [
+                        {"id": reply_id, "type": "llm", "class_id": label},
+                        {"id": finish_id, "type": "end", "class_id": label},
+                    ]
+                )
+                edges.extend(
+                    [
+                        {"source": "classify", "target": reply_id, "source_handle": label},
+                        {"source": reply_id, "target": finish_id},
+                    ]
+                )
+            return {
+                "mode": "workflow",
+                "nodes": nodes,
+                "edges": edges,
+                "data_flow_notes": ["A question-classifier routes the input before short per-class LLM responses."],
+            }
+
+        if self._needs_rag_node(prompt):
+            return {
+                "mode": "workflow",
+                "nodes": [
+                    {"id": "start", "type": "start"},
+                    {"id": "retrieve_knowledge", "type": "knowledge-retrieval"},
+                    {"id": "llm", "type": "llm"},
+                    {"id": "end", "type": "end"},
+                ],
+                "edges": [
+                    {"source": "start", "target": "retrieve_knowledge"},
+                    {"source": "retrieve_knowledge", "target": "llm"},
+                    {"source": "llm", "target": "end"},
+                ],
+                "data_flow_notes": ["Knowledge retrieval feeds grounded context into the LLM answer node."],
+            }
+
+        if self._needs_if_else_node(prompt):
+            return {
+                "mode": "workflow",
+                "nodes": [
+                    {"id": "start", "type": "start"},
+                    {"id": "if_else", "type": "if-else"},
+                    {"id": "urgent_reply", "type": "llm"},
+                    {"id": "normal_reply", "type": "llm"},
+                    {"id": "finish_urgent", "type": "end"},
+                    {"id": "finish_normal", "type": "end"},
+                ],
+                "edges": [
+                    {"source": "start", "target": "if_else"},
+                    {"source": "if_else", "target": "urgent_reply", "source_handle": "true"},
+                    {"source": "if_else", "target": "normal_reply", "source_handle": "false"},
+                    {"source": "urgent_reply", "target": "finish_urgent"},
+                    {"source": "normal_reply", "target": "finish_normal"},
+                ],
+                "data_flow_notes": ["A native if-else branch routes urgent inputs separately from the default branch."],
+            }
+
         nodes = [
             {"id": "start", "type": "start"},
             {"id": "llm", "type": "llm"},
@@ -1107,7 +1213,54 @@ class DslAgentOrchestrator:
         lowered = prompt.lower()
         return any(keyword in lowered for keyword in POSTPROCESS_CODE_KEYWORDS)
 
+    def _needs_if_else_node(self, prompt: str) -> bool:
+        lowered = f" {prompt.lower()} "
+        return any(keyword in lowered for keyword in IF_ELSE_KEYWORDS)
+
+    def _needs_rag_node(self, prompt: str) -> bool:
+        lowered = prompt.lower()
+        return any(keyword in lowered for keyword in RAG_KEYWORDS)
+
+    def _classification_labels(self, prompt: str) -> list[str]:
+        lowered = prompt.lower()
+        if not any(keyword in lowered for keyword in CLASSIFICATION_KEYWORDS):
+            return []
+        patterns = [
+            r"\bas\s+([a-z0-9][a-z0-9,_/\-\s]+?)(?:,?\s+(?:then|and\s+return|return|with)\b|[.;。]|$)",
+            r"\binto\s+([a-z0-9][a-z0-9,_/\-\s]+?)(?:,?\s+(?:then|and\s+return|return|with)\b|[.;。]|$)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, lowered)
+            if not match:
+                continue
+            labels = self._split_label_text(match.group(1))
+            if len(labels) >= 2:
+                return labels[:6]
+        return ["primary", "secondary", "other"]
+
+    def _split_label_text(self, value: str) -> list[str]:
+        value = re.sub(r"\bor\b", ",", value)
+        value = re.sub(r"\band\b", ",", value)
+        labels: list[str] = []
+        for raw_label in re.split(r"[,/、]+", value):
+            label = self._slug(raw_label)
+            if label and label not in labels:
+                labels.append(label)
+        return labels
+
+    def _slug(self, value: str) -> str:
+        slug = re.sub(r"[^a-z0-9_]+", "_", value.strip().lower())
+        slug = re.sub(r"_+", "_", slug).strip("_")
+        return slug or "other"
+
     def _build_graph(self, plan: dict) -> dict:
+        if self._plan_has_node_type(plan, "question-classifier"):
+            return self._build_classifier_graph(plan)
+        if self._plan_has_node_type(plan, "knowledge-retrieval"):
+            return self._build_rag_graph(plan)
+        if self._plan_has_node_type(plan, "if-else"):
+            return self._build_if_else_graph(plan)
+
         prompt = str(plan["prompt"])
         provider = str(plan["provider"])
         model = str(plan["model"])
@@ -1151,12 +1304,163 @@ class DslAgentOrchestrator:
         nodes = graph_plan.get("nodes") if isinstance(graph_plan.get("nodes"), list) else []
         return any(isinstance(node, dict) and node.get("type") == node_type for node in nodes)
 
-    def _graph_edge(self, source: str, target: str, source_type: str, target_type: str) -> dict:
+    def _build_classifier_graph(self, plan: dict) -> dict:
+        prompt = str(plan["prompt"])
+        provider = str(plan["provider"])
+        model = str(plan["model"])
+        input_variable = str(plan["input_variable"])
+        labels = self._classification_labels(prompt)
+        if not labels:
+            labels = self._labels_from_graph_plan(plan) or ["primary", "secondary", "other"]
+        nodes = [
+            self._start_node(input_variable),
+            self._question_classifier_node(labels, provider=provider, model=model, input_variable=input_variable),
+        ]
+        edges = [self._graph_edge("start", "classify", "start", "question-classifier")]
+        for index, label in enumerate(labels):
+            y = 40 + index * 170
+            reply_id = f"reply_{label}"
+            finish_id = f"finish_{label}"
+            nodes.extend(
+                [
+                    self._llm_node(
+                        prompt=(
+                            f"The ticket was classified as `{label}`.\n"
+                            "Use the original input to return the category and a short reasoning."
+                        ),
+                        provider=provider,
+                        model=model,
+                        input_variable=input_variable,
+                        node_id=reply_id,
+                        title=f"{label.replace('_', ' ').title()} Reasoning",
+                        x=620,
+                        y=y,
+                    ),
+                    self._end_node(node_id=finish_id, source_node_id=reply_id, x=960, y=y),
+                ]
+            )
+            edges.extend(
+                [
+                    self._graph_edge(
+                        "classify",
+                        reply_id,
+                        "question-classifier",
+                        "llm",
+                        source_handle=label,
+                    ),
+                    self._graph_edge(reply_id, finish_id, "llm", "end"),
+                ]
+            )
+        return {"edges": edges, "nodes": nodes, "viewport": {"x": 0, "y": 0, "zoom": 0.8}}
+
+    def _build_rag_graph(self, plan: dict) -> dict:
+        prompt = str(plan["prompt"])
+        provider = str(plan["provider"])
+        model = str(plan["model"])
+        input_variable = str(plan["input_variable"])
+        return {
+            "edges": [
+                self._graph_edge("start", "retrieve_knowledge", "start", "knowledge-retrieval"),
+                self._graph_edge("retrieve_knowledge", "llm", "knowledge-retrieval", "llm"),
+                self._graph_edge("llm", "end", "llm", "end"),
+            ],
+            "nodes": [
+                self._start_node(input_variable),
+                self._knowledge_retrieval_node(input_variable),
+                self._llm_node(
+                    prompt=(
+                        "Answer the user question using the retrieved knowledge context. "
+                        "Include citations or source references when the retrieved context provides them.\n"
+                        f"Requirement:\n{prompt}"
+                    ),
+                    provider=provider,
+                    model=model,
+                    input_variable=input_variable,
+                    user_prompt=(
+                        f"Question: {{{{#start.{input_variable}#}}}}\n\n"
+                        "Retrieved context:\n{{#retrieve_knowledge.result#}}"
+                    ),
+                ),
+                self._end_node(source_node_id="llm"),
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.8},
+        }
+
+    def _build_if_else_graph(self, plan: dict) -> dict:
+        prompt = str(plan["prompt"])
+        provider = str(plan["provider"])
+        model = str(plan["model"])
+        input_variable = str(plan["input_variable"])
+        return {
+            "edges": [
+                self._graph_edge("start", "if_else", "start", "if-else"),
+                self._graph_edge("if_else", "urgent_reply", "if-else", "llm", source_handle="true"),
+                self._graph_edge("if_else", "normal_reply", "if-else", "llm", source_handle="false"),
+                self._graph_edge("urgent_reply", "finish_urgent", "llm", "end"),
+                self._graph_edge("normal_reply", "finish_normal", "llm", "end"),
+            ],
+            "nodes": [
+                self._start_node(input_variable),
+                self._if_else_node(input_variable),
+                self._llm_node(
+                    prompt=(
+                        f"Urgent branch for this workflow requirement:\n{prompt}\n"
+                        "Return an escalation-ready response."
+                    ),
+                    provider=provider,
+                    model=model,
+                    input_variable=input_variable,
+                    node_id="urgent_reply",
+                    title="Urgent Reply",
+                    x=620,
+                    y=40,
+                ),
+                self._llm_node(
+                    prompt=(
+                        f"Default branch for this workflow requirement:\n{prompt}\n"
+                        "Return a normal support response."
+                    ),
+                    provider=provider,
+                    model=model,
+                    input_variable=input_variable,
+                    node_id="normal_reply",
+                    title="Normal Reply",
+                    x=620,
+                    y=240,
+                ),
+                self._end_node(node_id="finish_urgent", source_node_id="urgent_reply", x=960, y=40),
+                self._end_node(node_id="finish_normal", source_node_id="normal_reply", x=960, y=240),
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.8},
+        }
+
+    def _labels_from_graph_plan(self, plan: dict) -> list[str]:
+        graph_plan = plan.get("graph_plan") if isinstance(plan.get("graph_plan"), dict) else {}
+        edges = graph_plan.get("edges") if isinstance(graph_plan.get("edges"), list) else []
+        labels = []
+        for edge in edges:
+            if not isinstance(edge, dict):
+                continue
+            handle = edge.get("source_handle") or edge.get("sourceHandle")
+            label = self._slug(str(handle or ""))
+            if label and label != "source" and label not in labels:
+                labels.append(label)
+        return labels[:6]
+
+    def _graph_edge(
+        self,
+        source: str,
+        target: str,
+        source_type: str,
+        target_type: str,
+        *,
+        source_handle: str = "source",
+    ) -> dict:
         return {
             "data": {"isInLoop": False, "sourceType": source_type, "targetType": target_type},
-            "id": f"{source}-source-{target}-target",
+            "id": f"{source}-{source_handle}-{target}-target",
             "source": source,
-            "sourceHandle": "source",
+            "sourceHandle": source_handle,
             "target": target,
             "targetHandle": "target",
             "type": "custom",
@@ -1184,7 +1488,19 @@ class DslAgentOrchestrator:
             "type": "start",
         }
 
-    def _llm_node(self, *, prompt: str, provider: str, model: str, input_variable: str) -> dict:
+    def _llm_node(
+        self,
+        *,
+        prompt: str,
+        provider: str,
+        model: str,
+        input_variable: str,
+        node_id: str = "llm",
+        title: str = "Reason With Model",
+        user_prompt: str | None = None,
+        x: int = 420,
+        y: int = 120,
+    ) -> dict:
         return {
             "data": {
                 "context": {"enabled": False, "variable_selector": []},
@@ -1196,18 +1512,100 @@ class DslAgentOrchestrator:
                 },
                 "prompt_template": [
                     {"role": "system", "text": prompt},
-                    {"role": "user", "text": f"{{{{#start.{input_variable}#}}}}"},
+                    {"role": "user", "text": user_prompt or f"{{{{#start.{input_variable}#}}}}"},
                 ],
-                "title": "Reason With Model",
+                "title": title,
                 "type": "llm",
                 "variables": [],
                 "vision": {"enabled": False},
             },
-            "id": "llm",
-            "position": {"x": 420, "y": 120},
+            "id": node_id,
+            "position": {"x": x, "y": y},
             "sourcePosition": "right",
             "targetPosition": "left",
             "type": "llm",
+        }
+
+    def _question_classifier_node(
+        self,
+        labels: list[str],
+        *,
+        provider: str,
+        model: str,
+        input_variable: str,
+    ) -> dict:
+        return {
+            "data": {
+                "classes": [{"id": label, "name": label.replace("_", " ").title()} for label in labels],
+                "instruction": "Classify the incoming user input into the best matching category.",
+                "model": {
+                    "completion_params": {"temperature": 0},
+                    "mode": "chat",
+                    "name": model,
+                    "provider": provider,
+                },
+                "query_variable_selector": ["start", input_variable],
+                "title": "Classify",
+                "type": "question-classifier",
+                "vision": {"enabled": False},
+            },
+            "id": "classify",
+            "position": {"x": 360, "y": 120},
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "type": "question-classifier",
+        }
+
+    def _if_else_node(self, input_variable: str) -> dict:
+        return {
+            "data": {
+                "cases": [
+                    {
+                        "case_id": "true",
+                        "conditions": [
+                            {
+                                "comparison_operator": "contains",
+                                "id": "contains_urgent",
+                                "value": "urgent",
+                                "varType": "string",
+                                "variable_selector": ["start", input_variable],
+                            }
+                        ],
+                        "logical_operator": "and",
+                    }
+                ],
+                "desc": "",
+                "title": "IF/ELSE",
+                "type": "if-else",
+            },
+            "id": "if_else",
+            "position": {"x": 360, "y": 120},
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "type": "if-else",
+        }
+
+    def _knowledge_retrieval_node(self, input_variable: str) -> dict:
+        return {
+            "data": {
+                "dataset_ids": ["REPLACE_WITH_DATASET_ID"],
+                "metadata_filtering_mode": "disabled",
+                "multiple_retrieval_config": {
+                    "reranking_enable": False,
+                    "score_threshold": None,
+                    "top_k": 3,
+                },
+                "query_variable_selector": ["start", input_variable],
+                "retrieval_mode": "multiple",
+                "title": "Retrieve Knowledge",
+                "type": "knowledge-retrieval",
+                "vision": {"enabled": False},
+            },
+            "id": "retrieve_knowledge",
+            "position": {"x": 420, "y": 120},
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "type": "knowledge-retrieval",
         }
 
     def _postprocess_code_node(self) -> dict:
@@ -1248,7 +1646,7 @@ class DslAgentOrchestrator:
             "type": "code",
         }
 
-    def _end_node(self, *, source_node_id: str) -> dict:
+    def _end_node(self, *, source_node_id: str, node_id: str = "end", x: int | None = None, y: int = 120) -> dict:
         output_selector = [source_node_id, "result"] if source_node_id == "postprocess" else [source_node_id, "text"]
         return {
             "data": {
@@ -1262,8 +1660,8 @@ class DslAgentOrchestrator:
                 "title": "End",
                 "type": "end",
             },
-            "id": "end",
-            "position": {"x": 1100 if source_node_id == "postprocess" else 760, "y": 120},
+            "id": node_id,
+            "position": {"x": x if x is not None else (1100 if source_node_id == "postprocess" else 760), "y": y},
             "sourcePosition": "right",
             "targetPosition": "left",
             "type": "end",
@@ -1429,6 +1827,20 @@ class AppDslAgentRunStore:
             self._append_event(run, "run", "failed", "DSL generation run failed.")
             self._save_run(run)
             return False
+
+    def fail_run(self, run_id: str, error: str, *, message: str = "DSL generation run failed.") -> bool:
+        run = self._load_run(run_id)
+        if not run:
+            return False
+        if self._is_run_expired(run):
+            return False
+        run.status = DSL_AGENT_RUN_STATUS_FAILED
+        run.current_stage = None
+        run.error = error
+        run.updated_at = utc_now_iso()
+        self._append_event(run, "run", "failed", message)
+        self._save_run(run)
+        return True
 
     def _append_event(self, run: AppDslAgentRun, stage: str, status: str, message: str) -> None:
         run.events.append(

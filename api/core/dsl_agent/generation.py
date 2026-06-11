@@ -9,6 +9,7 @@ client plus plan/evidence and return text; they do not touch the filesystem.
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -44,6 +45,9 @@ PLUGIN_NODE_TYPES = {
 }
 PROMPT_STRING_LIMIT = 1200
 PROMPT_LIST_LIMIT = 8
+SOURCE_SNIPPET_STRING_LIMIT = 1200
+SOURCE_SNIPPET_LIST_LIMIT = 6
+DEFAULT_MAX_OUTPUT_TOKENS = 6000
 
 
 def chat(
@@ -66,6 +70,16 @@ def chat(
         kwargs["temperature"] = temperature
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
+    max_output_tokens = int(
+        os.environ.get("DIFY_DSL_AGENT_OPENAI_MAX_OUTPUT_TOKENS")
+        or os.environ.get("OPENAI_MAX_OUTPUT_TOKENS")
+        or DEFAULT_MAX_OUTPUT_TOKENS
+    )
+    if max_output_tokens > 0:
+        if model.startswith("gpt-5"):
+            kwargs["max_completion_tokens"] = max_output_tokens
+        else:
+            kwargs["max_tokens"] = max_output_tokens
     response = client.chat.completions.create(**kwargs)
     content = response.choices[0].message.content
     if not content:
@@ -310,6 +324,50 @@ def compact_plugin_evidence_for_prompt(plugin_evidence: dict[str, Any], plan: di
             list_limit=PROMPT_LIST_LIMIT,
         ),
         "pruned_reason": "Prompt evidence is compacted; full evidence remains in plugin_evidence.json.",
+    }
+
+
+def compact_source_context_for_prompt(source_context: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(source_context, dict):
+        return {}
+
+    dsl_facts = source_context.get("dsl_facts") if isinstance(source_context.get("dsl_facts"), dict) else {}
+    snippets = source_context.get("snippets") if isinstance(source_context.get("snippets"), list) else []
+    compact_snippets = []
+    for snippet in snippets[:SOURCE_SNIPPET_LIST_LIMIT]:
+        if not isinstance(snippet, dict):
+            continue
+        compact_snippets.append(
+            {
+                "node_type": snippet.get("node_type"),
+                "path": snippet.get("path"),
+                "snippet": truncate_prompt_value(
+                    snippet.get("snippet"),
+                    string_limit=SOURCE_SNIPPET_STRING_LIMIT,
+                    list_limit=2,
+                ),
+            }
+        )
+
+    return {
+        "source_policy": truncate_prompt_value(
+            source_context.get("source_policy") or [],
+            string_limit=320,
+            list_limit=4,
+        ),
+        "dsl_facts": truncate_prompt_value(
+            {
+                "current_app_dsl_version": dsl_facts.get("current_app_dsl_version"),
+                "facts": dsl_facts.get("facts") or [],
+            },
+            string_limit=320,
+            list_limit=8,
+        ),
+        "node_types": source_context.get("node_types") or [],
+        "snippets": compact_snippets,
+        "pruned_reason": (
+            "Source snippets are compacted for LLM prompt latency; full source context stays in run metadata."
+        ),
     }
 
 

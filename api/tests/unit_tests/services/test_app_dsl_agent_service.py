@@ -105,6 +105,93 @@ def test_generate_builds_importable_workflow_yaml(monkeypatch):
     assert result.metadata["repair"]["backend"] == "not_needed"
 
 
+def test_deterministic_starter_builds_classifier_graph(monkeypatch):
+    monkeypatch.setattr(
+        app_dsl_agent_service.DependenciesAnalysisService,
+        "generate_latest_dependencies",
+        lambda _plugin_ids: [],
+    )
+
+    result = AppDslAgentService().generate(
+        AppDslAgentGenerateArgs(
+            prompt=(
+                "Build a workflow that classifies a support ticket as billing, "
+                "technical, account, or other, then returns the category and a short reasoning."
+            ),
+            provider="langgenius/openai/openai",
+            model="gpt-4.1",
+            resolve_dependencies=False,
+        )
+    )
+    data = yaml.safe_load(result.yaml_content)
+    nodes = {node["id"]: node for node in data["workflow"]["graph"]["nodes"]}
+    edges = data["workflow"]["graph"]["edges"]
+
+    assert nodes["classify"]["type"] == "question-classifier"
+    assert [item["id"] for item in nodes["classify"]["data"]["classes"]] == [
+        "billing",
+        "technical",
+        "account",
+        "other",
+    ]
+    assert {"billing", "technical", "account", "other"}.issubset(
+        {edge["sourceHandle"] for edge in edges if edge["source"] == "classify"}
+    )
+    assert result.metadata["validation"]["valid"] is True
+
+
+def test_deterministic_starter_builds_if_else_graph(monkeypatch):
+    monkeypatch.setattr(
+        app_dsl_agent_service.DependenciesAnalysisService,
+        "generate_latest_dependencies",
+        lambda _plugin_ids: [],
+    )
+
+    result = AppDslAgentService().generate(
+        AppDslAgentGenerateArgs(
+            prompt=(
+                "Build a workflow that checks if the incoming customer message is urgent. "
+                "If urgent, produce an escalation note. Otherwise produce a normal support reply."
+            ),
+            provider="langgenius/openai/openai",
+            model="gpt-4.1",
+            resolve_dependencies=False,
+        )
+    )
+    data = yaml.safe_load(result.yaml_content)
+    nodes = {node["id"]: node for node in data["workflow"]["graph"]["nodes"]}
+    edges = data["workflow"]["graph"]["edges"]
+
+    assert nodes["if_else"]["type"] == "if-else"
+    assert nodes["if_else"]["data"]["cases"][0]["case_id"] == "true"
+    assert {"true", "false"}.issubset({edge["sourceHandle"] for edge in edges if edge["source"] == "if_else"})
+    assert result.metadata["validation"]["valid"] is True
+
+
+def test_deterministic_starter_builds_rag_graph(monkeypatch):
+    monkeypatch.setattr(
+        app_dsl_agent_service.DependenciesAnalysisService,
+        "generate_latest_dependencies",
+        lambda _plugin_ids: [],
+    )
+
+    result = AppDslAgentService().generate(
+        AppDslAgentGenerateArgs(
+            prompt="Build a RAG workflow that retrieves knowledge base chunks and answers with citations.",
+            provider="langgenius/openai/openai",
+            model="gpt-4.1",
+            resolve_dependencies=False,
+        )
+    )
+    data = yaml.safe_load(result.yaml_content)
+    nodes = {node["id"]: node for node in data["workflow"]["graph"]["nodes"]}
+
+    assert nodes["retrieve_knowledge"]["type"] == "knowledge-retrieval"
+    assert nodes["retrieve_knowledge"]["data"]["dataset_ids"] == ["REPLACE_WITH_DATASET_ID"]
+    assert "{{#retrieve_knowledge.result#}}" in nodes["llm"]["data"]["prompt_template"][1]["text"]
+    assert result.metadata["validation"]["valid"] is True
+
+
 def test_generate_uses_core_dsl_agent_modules(monkeypatch):
     class FakePluginResolver:
         def resolve(self, request: str, limit: int = 8):
@@ -210,6 +297,27 @@ def test_generate_uses_core_dsl_agent_modules(monkeypatch):
         "valid": True,
         "issues": [{"severity": "warning", "code": "fake_warning", "message": "ok"}],
     }
+
+
+def test_source_context_prompt_compaction():
+    source_context = {
+        "source_policy": ["Prefer local Dify source."],
+        "dsl_facts": {
+            "current_app_dsl_version": "0.6.0",
+            "facts": ["fact"] * 12,
+        },
+        "node_types": ["llm"],
+        "snippets": [
+            {"node_type": "llm", "path": f"/tmp/{index}.py", "snippet": "x" * 5000}
+            for index in range(8)
+        ],
+    }
+
+    compact = app_dsl_agent_service.dsl_generation.compact_source_context_for_prompt(source_context)
+
+    assert len(compact["snippets"]) == 6
+    assert all(len(snippet["snippet"]) < 1400 for snippet in compact["snippets"])
+    assert compact["dsl_facts"]["facts"] == ["fact"] * 8
 
 
 def test_generate_can_use_openai_backend_without_real_network(monkeypatch):
@@ -733,6 +841,22 @@ def test_run_store_records_generation_failures(monkeypatch):
     assert payload["events"][-1]["status"] == "failed"
 
 
+def test_run_store_can_mark_run_failed_without_worker_context():
+    fake_redis = _FakeRedis()
+    enqueued_run_ids = []
+    store = AppDslAgentRunStore(redis_client=fake_redis, ttl_seconds=3600, enqueue_run=enqueued_run_ids.append)
+
+    run = store.create_run(AppDslAgentGenerateArgs(prompt="Slow workflow."))
+    assert enqueued_run_ids == [run.id]
+
+    assert store.fail_run(run.id, "timed out", message="DSL generation run timed out.") is True
+    payload = serialize_run(store.get_run(run.id))
+
+    assert payload["status"] == "failed"
+    assert payload["error"] == "timed out"
+    assert payload["events"][-1]["message"] == "DSL generation run timed out."
+
+
 def test_celery_task_executes_dsl_agent_run_store(monkeypatch):
     from tasks import app_dsl_agent_generate_task
 
@@ -746,3 +870,33 @@ def test_celery_task_executes_dsl_agent_run_store(monkeypatch):
 
     assert app_dsl_agent_generate_task.run_app_dsl_agent_generation_task.run("run-1") is True
     assert calls == ["run-1"]
+
+
+def test_celery_task_marks_soft_timeout_failed(monkeypatch):
+    from billiard.exceptions import SoftTimeLimitExceeded
+
+    from tasks import app_dsl_agent_generate_task
+
+    calls = []
+
+    def execute_run(run_id: str) -> bool:
+        calls.append(("execute", run_id))
+        raise SoftTimeLimitExceeded()
+
+    def fail_run(run_id: str, error: str, *, message: str) -> bool:
+        calls.append(("fail", run_id, error, message))
+        return True
+
+    monkeypatch.setattr(app_dsl_agent_generate_task.app_dsl_agent_run_store, "execute_run", execute_run)
+    monkeypatch.setattr(app_dsl_agent_generate_task.app_dsl_agent_run_store, "fail_run", fail_run)
+
+    assert app_dsl_agent_generate_task.run_app_dsl_agent_generation_task.run("run-1") is False
+    assert calls == [
+        ("execute", "run-1"),
+        (
+            "fail",
+            "run-1",
+            "DSL generation timed out. Try again or choose a faster generation model.",
+            "DSL generation run timed out.",
+        ),
+    ]
