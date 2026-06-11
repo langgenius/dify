@@ -33,11 +33,11 @@ const Item: FC<ItemProps> = ({
   )
 }
 
-type Props = {
+type Props = Readonly<{
   options: Option[]
   value: string
   onChange: (value: string) => void
-}
+}>
 
 const RadioGroup: FC<Props> = ({
   options,

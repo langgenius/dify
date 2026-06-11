@@ -29,12 +29,12 @@ const DEFAULT_PARAM: Param = {
   required: false,
 }
 
-type Props = {
+type Props = Readonly<{
   type: 'add' | 'edit'
   payload?: Param
   onSave: (payload: Param, moreInfo?: MoreInfo) => void
   onCancel?: () => void
-}
+}>
 
 const TYPES = [ParamType.string, ParamType.number, ParamType.bool, ParamType.arrayString, ParamType.arrayNumber, ParamType.arrayObject, ParamType.arrayBool]
 

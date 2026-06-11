@@ -7,7 +7,7 @@ import { InstallStep } from '../../types'
 import Install from './steps/install'
 import Installed from './steps/installed'
 
-type Props = {
+type Props = Readonly<{
   step: InstallStep
   onStepChange: (step: InstallStep) => void
   onStartToInstall: () => void
@@ -15,7 +15,7 @@ type Props = {
   allPlugins: Dependency[]
   onClose: () => void
   isFromMarketPlace?: boolean
-}
+}>
 
 const ReadyToInstall: FC<Props> = ({
   step,

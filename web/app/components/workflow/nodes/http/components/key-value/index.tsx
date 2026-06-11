@@ -4,7 +4,7 @@ import type { KeyValue } from '../../types'
 import * as React from 'react'
 import KeyValueEdit from './key-value-edit'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   list: KeyValue[]
@@ -12,7 +12,7 @@ type Props = {
   onAdd: () => void
   isSupportFile?: boolean
   // toggleKeyValueEdit: () => void
-}
+}>
 
 const KeyValueList: FC<Props> = ({
   readonly,

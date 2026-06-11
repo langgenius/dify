@@ -5,12 +5,12 @@ import { useTranslation } from 'react-i18next'
 import { env } from '@/env'
 import ParamItem from '.'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value: number
   onChange: (key: string, value: number) => void
   enable: boolean
-}
+}>
 
 const maxTopK = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
 const VALUE_LIMIT = {

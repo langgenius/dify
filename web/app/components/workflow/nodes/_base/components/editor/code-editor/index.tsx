@@ -21,7 +21,7 @@ if (typeof window !== 'undefined')
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 
-export type Props = {
+export type Props = Readonly<{
   nodeId?: string
   value?: string | object
   placeholder?: React.JSX.Element | string
@@ -42,7 +42,7 @@ export type Props = {
   className?: string
   tip?: React.JSX.Element
   footer?: React.ReactNode
-}
+}>
 
 export const languageMap = {
   [CodeLanguage.javascript]: 'javascript',
