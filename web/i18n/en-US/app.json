@@ -168,6 +168,7 @@
   "newApp.dslAgentPrompt": "Requirement",
   "newApp.dslAgentPromptPlaceholder": "Describe the workflow to create",
   "newApp.dslAgentProvider": "Provider",
+  "newApp.dslAgentDependencyCheckWarning": "App created, but plugin dependency check failed. You can review dependencies inside the app.",
   "newApp.dslAgentStage.dependencies": "Check plugin dependencies",
   "newApp.dslAgentStage.dependencies.desc": "Dify is checking whether the workspace has the required model and plugin packages.",
   "newApp.dslAgentStage.generate": "Generate DSL",

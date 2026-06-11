@@ -82,18 +82,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   default: ({
     defaultModel,
     onSelect,
+    triggerClassName,
     popupClassName,
     popupPlacement,
     positionerProps,
   }: {
     defaultModel?: { provider: string, model: string }
     onSelect: (model: { provider: string, model: string }) => void
+    triggerClassName?: string
     popupClassName?: string
     popupPlacement?: string
     positionerProps?: { collisionAvoidance?: { fallbackAxisSide?: string } }
   }) => (
     <div>
       <div data-testid="selected-model">{defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'none'}</div>
+      <div data-testid="model-selector-trigger-class">{triggerClassName}</div>
       <div data-testid="model-selector-popup-class">{popupClassName}</div>
       <div data-testid="model-selector-popup-placement">{popupPlacement}</div>
       <div data-testid="model-selector-fallback-axis-side">{positionerProps?.collisionAvoidance?.fallbackAxisSide}</div>
@@ -231,7 +234,8 @@ describe('CreateFromAIModal', () => {
     )
 
     expect(screen.getByTestId('selected-model')).toHaveTextContent('langgenius/openai/openai/gpt-5.5')
-    expect(screen.getByTestId('model-selector-popup-class')).toHaveTextContent('z-[10000]')
+    expect(screen.getByTestId('model-selector-trigger-class')).toHaveTextContent('h-10 gap-2 px-2')
+    expect(screen.getByTestId('model-selector-popup-class')).toHaveTextContent('!z-[1200]')
     expect(screen.getByTestId('model-selector-popup-placement')).toHaveTextContent('top-start')
     expect(screen.getByTestId('model-selector-fallback-axis-side')).toHaveTextContent('none')
 
@@ -267,6 +271,45 @@ describe('CreateFromAIModal', () => {
     expect(handleClose).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-ai')
+  })
+
+  it('should not surface a create error when a post-create step fails after the app is created', async () => {
+    const handleClose = vi.fn()
+    const handleSuccess = vi.fn()
+    mockCreateDSLRun.mockResolvedValue(buildDslRun())
+    mockImportDSL.mockResolvedValue({
+      id: 'import-ai',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-ai',
+      app_mode: 'workflow',
+    })
+    // The app is created, then a post-create step (redirection) throws.
+    mockGetRedirection.mockImplementationOnce(() => {
+      throw new Error('redirect failed')
+    })
+
+    render(
+      <CreateFromAIModal
+        show
+        onClose={handleClose}
+        onSuccess={handleSuccess}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
+      target: { value: 'Summarize customer support tickets.' },
+    })
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    // The app was created: success callbacks still ran and redirection was attempted...
+    expect(handleSuccess).toHaveBeenCalledTimes(1)
+    expect(handleClose).toHaveBeenCalledTimes(1)
+    expect(mockGetRedirection).toHaveBeenCalled()
+    // ...and no misleading "Failed to create app" error toast was shown.
+    expect(toastMocks.error).not.toHaveBeenCalled()
   })
 
   it('should use the model selected from the model selector', async () => {
@@ -322,9 +365,9 @@ describe('CreateFromAIModal', () => {
     })
 
     expect(screen.getByText('newApp.dslAgentProgressTitle')).toBeInTheDocument()
-    expect(screen.getByText('newApp.dslAgentStage.plan')).toBeInTheDocument()
+    expect(screen.getAllByText('newApp.dslAgentStage.plan').length).toBeGreaterThan(0)
     expect(screen.getByText('newApp.dslAgentStage.plan.desc')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /newApp\.dslAgentWorking/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /newApp\.dslAgentStage\.plan/i })).toBeDisabled()
 
     await act(async () => {
       resolveRun(buildDslRun())

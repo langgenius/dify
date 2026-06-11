@@ -82,13 +82,13 @@ describe('ModelIcon', () => {
   })
 
   // Provider override
-  it('should ignore icon_small for OpenAI models starting with "o"', () => {
+  it('should ignore icon_small for OpenAI models', () => {
     const provider = createModel({
       provider: 'openai',
       icon_small: createI18nText('openai.png'),
     })
 
-    const { container } = render(<ModelIcon provider={provider} modelName="o1" />)
+    const { container } = render(<ModelIcon provider={provider} modelName="gpt-4o-mini" />)
 
     expect(document.querySelector('img')).not.toBeInTheDocument()
     expect(container.querySelector('svg')).toBeInTheDocument()
@@ -102,13 +102,13 @@ describe('ModelIcon', () => {
     expect(container.firstChild).not.toBeNull()
   })
 
-  it('should render OpenAI Yellow icon for langgenius/openai/openai provider with model starting with o', () => {
+  it('should render OpenAI Yellow icon for langgenius/openai/openai provider', () => {
     const provider = createModel({
       provider: 'langgenius/openai/openai',
       icon_small: createI18nText('openai.png'),
     })
 
-    const { container } = render(<ModelIcon provider={provider} modelName="o3" />)
+    const { container } = render(<ModelIcon provider={provider} modelName="gpt-5.5" />)
 
     expect(document.querySelector('img')).not.toBeInTheDocument()
     expect(container.querySelector('svg')).toBeInTheDocument()

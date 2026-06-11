@@ -27,6 +27,7 @@ import { useRouter } from '@/next/navigation'
 import { createDSLRun, getDSLRun, importDSL, importDSLConfirm } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { parsePluginErrorMessage } from '@/utils/error-parser'
 import ShortcutsName from '../../workflow/shortcuts-name'
 
 type CreateFromAIModalProps = {
@@ -112,6 +113,13 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   }, [defaultModel, modelList])
 
   const activeModel = selectedModel || workspaceDefaultModel
+  const currentDslAgentActionLabel = useMemo(() => {
+    if (!isCreating)
+      return t('newApp.Create', { ns: 'app' })
+    if (dslAgentStageState.active)
+      return t(`newApp.dslAgentStage.${dslAgentStageState.active}`, { ns: 'app' })
+    return t('newApp.dslAgentWorking', { ns: 'app' })
+  }, [dslAgentStageState.active, isCreating, t])
 
   const resetDslAgentProgress = () => {
     setDslAgentStageState({ completed: [], messages: {} })
@@ -227,6 +235,22 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     return run.result
   }
 
+  const checkImportedAppDependencies = async (appId: string) => {
+    startDslAgentStage(DslAgentStage.DEPENDENCIES)
+    try {
+      await handleCheckPluginDependencies(appId)
+      completeDslAgentStage(DslAgentStage.DEPENDENCIES)
+    }
+    catch (error) {
+      const message = await parsePluginErrorMessage(error)
+      completeDslAgentStage(DslAgentStage.DEPENDENCIES, t('newApp.dslAgentDependencyCheckWarning', { ns: 'app' }))
+      toast.warning(
+        t('newApp.dslAgentDependencyCheckWarning', { ns: 'app' }),
+        message ? { description: message } : undefined,
+      )
+    }
+  }
+
   const onCreate = async () => {
     if (!aiPrompt.trim() || !activeModel)
       return
@@ -237,6 +261,9 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     setGeneratedYaml('')
     resetDslAgentProgress()
 
+    // Once the app is imported, post-create steps (dependency check, redirect,
+    // onSuccess/onClose) must not surface a "create failed" error.
+    let appCreated = false
     try {
       const generated = await createAndPollDslAgentRun()
       setGeneratedYaml(generated.yaml_content)
@@ -251,6 +278,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
 
       const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
+        appCreated = true
         trackEvent('create_app_with_ai', {
           app_mode,
           has_warnings: status === DSLImportStatus.COMPLETED_WITH_WARNINGS,
@@ -263,11 +291,8 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
             : undefined,
         })
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        if (app_id) {
-          startDslAgentStage(DslAgentStage.DEPENDENCIES)
-          await handleCheckPluginDependencies(app_id)
-          completeDslAgentStage(DslAgentStage.DEPENDENCIES)
-        }
+        if (app_id)
+          await checkImportedAppDependencies(app_id)
         if (onSuccess)
           onSuccess()
         if (onClose)
@@ -289,9 +314,19 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
         toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
-    catch {
-      failDslAgentStage()
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+    catch (error) {
+      // The app was already created; a post-create step (redirect, callbacks)
+      // failed. Don't show a misleading "create failed" error.
+      if (appCreated) {
+        console.error('DSL agent post-create step failed', error)
+        return
+      }
+      const message = await parsePluginErrorMessage(error)
+      failDslAgentStage(undefined, message)
+      toast.error(
+        t('newApp.appCreateFailed', { ns: 'app' }),
+        message ? { description: message } : undefined,
+      )
     }
     finally {
       isCreatingRef.current = false
@@ -312,6 +347,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   })
 
   const onDSLConfirm: MouseEventHandler = async () => {
+    let appCreated = false
     try {
       if (!importId)
         return
@@ -322,6 +358,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
       const { status, app_id, app_mode } = response
 
       if (status === DSLImportStatus.COMPLETED) {
+        appCreated = true
         if (onSuccess)
           onSuccess()
         if (onClose)
@@ -329,7 +366,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
 
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
-          await handleCheckPluginDependencies(app_id)
+          await checkImportedAppDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
@@ -337,8 +374,16 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
         toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
-    catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+    catch (error) {
+      if (appCreated) {
+        console.error('DSL agent post-create step failed', error)
+        return
+      }
+      const message = await parsePluginErrorMessage(error)
+      toast.error(
+        t('newApp.appCreateFailed', { ns: 'app' }),
+        message ? { description: message } : undefined,
+      )
     }
   }
 
@@ -356,6 +401,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
         isShow={show}
         onClose={noop}
         overflowVisible
+        highPriority
       >
         <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
           {t('newApp.startFromAI', { ns: 'app' })}
@@ -390,8 +436,8 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
               <ModelSelector
                 defaultModel={activeModel}
                 modelList={modelList}
-                triggerClassName="h-10"
-                popupClassName="z-[10000]"
+                triggerClassName="h-10 gap-2 px-2"
+                popupClassName="!z-[1200]"
                 popupPlacement="top-start"
                 positionerProps={{
                   collisionAvoidance: {
@@ -413,7 +459,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                 <div className="mb-2 flex items-center justify-between">
                   <div className="system-sm-semibold text-text-secondary">{t('newApp.dslAgentProgressTitle', { ns: 'app' })}</div>
                   {isCreating && (
-                    <div className="system-xs-medium text-text-tertiary">{t('newApp.dslAgentWorking', { ns: 'app' })}</div>
+                    <div className="system-xs-medium text-text-tertiary">{currentDslAgentActionLabel}</div>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -466,7 +512,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
             className="gap-1"
           >
             {isCreating && <span className="i-ri-loader-2-line h-4 w-4 animate-spin" />}
-            <span>{isCreating ? t('newApp.dslAgentWorking', { ns: 'app' }) : t('newApp.Create', { ns: 'app' })}</span>
+            <span>{currentDslAgentActionLabel}</span>
             {!isCreating && <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />}
           </Button>
         </div>

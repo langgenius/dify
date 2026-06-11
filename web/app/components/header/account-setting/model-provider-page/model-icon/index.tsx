@@ -22,7 +22,7 @@ type ModelIconProps = {
 const ModelIcon: FC<ModelIconProps> = ({
   provider,
   className,
-  modelName,
+  modelName: _modelName,
   iconClassName,
   isDeprecated = false,
 }) => {
@@ -38,9 +38,15 @@ const ModelIcon: FC<ModelIconProps> = ({
       )
     : ''
   const shouldShowImageIcon = !!iconSrc && failedIconSrc !== iconSrc
+  const isOpenAIProvider = provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider)
 
-  if (provider?.provider && ['openai', 'langgenius/openai/openai'].includes(provider.provider) && modelName?.startsWith('o'))
-    return <div className="flex items-center justify-center"><OpenaiYellow className={cn('h-5 w-5', className)} /></div>
+  if (isOpenAIProvider) {
+    return (
+      <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center', isDeprecated && 'opacity-50', className)}>
+        <OpenaiYellow className={cn('h-4 w-4', iconClassName)} />
+      </div>
+    )
+  }
 
   if (shouldShowImageIcon) {
     return (

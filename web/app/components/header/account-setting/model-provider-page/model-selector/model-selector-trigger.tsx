@@ -100,10 +100,10 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
             />
           )}
 
-      <div className={cn('flex grow items-center gap-1 truncate px-1 py-[3px]', isDeprecated && deprecatedClassName)}>
+      <div className={cn('flex min-w-0 grow items-center gap-1 truncate px-1 py-[3px]', isDeprecated && deprecatedClassName)}>
         {isSelected && (
           <ModelName
-            className="grow"
+            className="min-w-0 grow"
             modelItem={currentModel}
             showMode={shouldShowModelMeta}
             showFeatures={shouldShowModelMeta}
