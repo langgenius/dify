@@ -1,12 +1,11 @@
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import (
+    DeferredToolCallPayload,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
     RunCancelledEventData,
     RunFailedEvent,
     RunFailedEventData,
-    RunPausedEvent,
-    RunPausedEventData,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -14,11 +13,11 @@ from dify_agent.protocol import (
 from pydantic_ai.messages import FinalResultEvent
 
 from clients.agent_backend import (
+    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
-    AgentBackendRunPausedInternalEvent,
     AgentBackendRunStartedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
@@ -92,21 +91,27 @@ def test_event_adapter_maps_run_failed_to_failed_result():
     ]
 
 
-def test_event_adapter_maps_run_paused_to_resumable_pause():
+def test_event_adapter_maps_deferred_tool_call_success_to_internal_event():
     snapshot = CompositorSessionSnapshot(layers=[])
+    deferred_tool_call = DeferredToolCallPayload(
+        tool_call_id="tool-call-1",
+        tool_name="ask_human",
+        args={"question": "Need review"},
+        metadata={"layer_type": "dify.ask_human", "schema_version": 1},
+    )
     adapted = AgentBackendRunEventAdapter().adapt(
-        RunPausedEvent(
+        RunSucceededEvent(
             id="5-0",
             run_id="run-1",
-            data=RunPausedEventData(reason="human_handoff", message="Need review", session_snapshot=snapshot),
+            data=RunSucceededEventData(deferred_tool_call=deferred_tool_call, session_snapshot=snapshot),
         )
     )
 
     assert adapted == [
-        AgentBackendRunPausedInternalEvent(
+        AgentBackendDeferredToolCallInternalEvent(
             run_id="run-1",
             source_event_id="5-0",
-            reason="human_handoff",
+            deferred_tool_call=deferred_tool_call,
             message="Need review",
             session_snapshot=snapshot,
         )
