@@ -10660,6 +10660,7 @@ composer/publish validators and skipped by runtime request builders.
 | dangerous_command | boolean |  | No |
 | description | string |  | No |
 | enabled | boolean, <br>**Default:** true |  | No |
+| env | [AgentCliToolEnvConfig](#agentclitoolenvconfig) |  | No |
 | install | string |  | No |
 | install_command | string |  | No |
 | install_commands | [ string ] |  | No |
@@ -10673,6 +10674,13 @@ composer/publish validators and skipped by runtime request builders.
 | risk_level | [AgentCliToolRiskLevel](#agentclitoolrisklevel) |  | No |
 | setup_command | string |  | No |
 | tool_name | string |  | No |
+
+#### AgentCliToolEnvConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| secret_refs | [ [AgentSecretRefConfig](#agentsecretrefconfig) ] |  | No |
+| variables | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
 
 #### AgentCliToolRiskLevel
 
