@@ -725,6 +725,7 @@ class RBACService:
                 json={"copy_member": copy_member},
                 params={"id": role_id},
             )
+
             return RBACRole.model_validate(data or {})
 
         @staticmethod
