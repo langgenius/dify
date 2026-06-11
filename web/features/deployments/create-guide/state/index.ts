@@ -209,6 +209,9 @@ export const effectiveSelectedAppAtom = atom((get) => {
     return selectedApp
 
   const sourceAppsQuery = get(sourceAppsQueryAtom)
+  if (sourceAppsQuery.isPlaceholderData)
+    return undefined
+
   const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
 
   return sourceApps[0]
@@ -292,14 +295,14 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
 })
 
 // Unsupported DSL state
-const deploymentOptionsUnsupportedDslNodesAtom = unwrap(atom(async (get): Promise<UnsupportedDslNode[]> => {
+const deploymentOptionsUnsupportedDslNodesAtom = unwrap(atom(async (get): Promise<UnsupportedDslNode[] | undefined> => {
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
 
   if (!sourceReady(get) || !deploymentOptionsQuery.isError)
     return []
 
   return (await unsupportedDslNodeError(deploymentOptionsQuery.error))?.nodes ?? []
-}), (): UnsupportedDslNode[] => [])
+}), (): undefined => undefined)
 
 export const unsupportedDslNodesAtom = atom((get): UnsupportedDslNode[] => {
   const submissionUnsupportedDslNodes = get(submissionUnsupportedDslNodesAtom)
@@ -307,7 +310,7 @@ export const unsupportedDslNodesAtom = atom((get): UnsupportedDslNode[] => {
     return submissionUnsupportedDslNodes
 
   try {
-    return get(deploymentOptionsUnsupportedDslNodesAtom)
+    return get(deploymentOptionsUnsupportedDslNodesAtom) ?? []
   }
   catch {
     return []
@@ -322,13 +325,41 @@ const deploymentOptionsReadyAtom = atom((get) => {
     && get(unsupportedDslNodesAtom).length === 0
 })
 
+const deploymentOptionsContentCheckedAtom = atom((get) => {
+  const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
+  const isLoadingOptions = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
+
+  if (!sourceReady(get) || isLoadingOptions)
+    return false
+
+  if (deploymentOptionsQuery.isError) {
+    const unsupportedDslNodes = get(deploymentOptionsUnsupportedDslNodesAtom)
+
+    return unsupportedDslNodes !== undefined && unsupportedDslNodes.length === 0
+  }
+
+  return deploymentOptionsQuery.isSuccess && get(unsupportedDslNodesAtom).length === 0
+})
+
 export const sourceCanGoNextAtom = atom((get) => {
   const method = get(methodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const importDslReady = method === 'importDsl' && get(importDslReadyAtom)
   const bindAppReady = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
 
-  return (importDslReady || bindAppReady) && get(deploymentOptionsReadyAtom)
+  return (importDslReady || bindAppReady) && get(deploymentOptionsContentCheckedAtom)
+})
+
+export const setSourceSearchTextAtom = atom(null, (get, set, value: string) => {
+  if (get(sourceSearchTextAtom) === value)
+    return
+
+  set(sourceSearchTextAtom, value)
+  set(selectedAppAtom, undefined)
+  set(selectedEnvironmentIdAtom, '')
+  set(manualBindingSelectionsAtom, {})
+  set(envVarValuesAtom, {})
+  set(submissionUnsupportedDslNodesAtom, [])
 })
 
 export const selectSourceAppAtom = atom(null, (_get, set, app: WorkflowSourceApp) => {
@@ -461,7 +492,7 @@ export const releaseCanGoNextAtom = atom((get) => {
   return Boolean(get(submittedReleaseReadyAtom))
     && !get(hasInstanceNameConflictAtom)
     && !(Boolean(submittedInstanceName) && instanceNameConflictQuery.isLoading)
-    && get(deploymentOptionsReadyAtom)
+    && get(deploymentOptionsContentCheckedAtom)
 })
 
 export const setInstanceNameAtom = atom(null, (_get, set, value: string) => {
