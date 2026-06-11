@@ -102,7 +102,7 @@ describe('StartPlaceholderPanel', () => {
   })
 
   describe('Start node selection', () => {
-    it('should replace the placeholder with user input without reopening the legacy start selector', () => {
+    it('should replace the placeholder with user input and auto-open the next node selector', () => {
       render(
         <Panel
           id="placeholder-1"
@@ -125,7 +125,7 @@ describe('StartPlaceholderPanel', () => {
       })
       expect(currentNodes[1]?.data.selected).toBe(false)
       expect(mocks.setHasSelectedStartNode).toHaveBeenCalledWith(true)
-      expect(mocks.setShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
+      expect(mocks.setShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(true)
       expect(mocks.handleSyncWorkflowDraft).toHaveBeenCalledWith(true, false, expect.objectContaining({
         onSuccess: expect.any(Function),
       }))
