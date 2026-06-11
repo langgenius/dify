@@ -541,11 +541,7 @@ def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyP
 
     try:
         assert extractor.parse_docx(tmp_path) == (
-            "Before table\n"
-            "| Header A | Header B |\n"
-            "| --- | --- |\n"
-            "| Cell A | Cell B |\n"
-            "After table"
+            "Before table\n| Header A | Header B |\n| --- | --- |\n| Cell A | Cell B |\nAfter table"
         )
     finally:
         if os.path.exists(tmp_path):
