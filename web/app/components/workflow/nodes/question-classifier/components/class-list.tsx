@@ -20,14 +20,14 @@ import { getDefaultClassLabel, isDefaultClassLabel } from './class-label-utils'
 const i18nPrefix = 'nodes.questionClassifiers'
 const INLINE_LABEL_HINT_STORAGE_KEY = 'question-classifier-inline-label-hint-dismissed'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   list: Topic[]
   onChange: (list: Topic[]) => void
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
   handleSortTopic?: (newTopics: (Topic & { id: string })[]) => void
-}
+}>
 
 const ClassList: FC<Props> = ({
   nodeId,
