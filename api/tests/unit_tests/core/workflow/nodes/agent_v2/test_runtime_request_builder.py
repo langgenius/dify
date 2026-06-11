@@ -169,10 +169,9 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_id"] == "agent-1"
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_config_version_id"] == "snapshot-1"
-    # Real Dify access context is forwarded; the agent run mode moves to agent_mode.
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["user_from"] == "account"
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "debugger"
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_mode"] == "single_step"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "debugger"
     assert dumped["idempotency_key"] == "run-1:node-exec-1"
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are careful."
     assert dumped["composition"]["layers"][1]["config"]["prefix"] == "Use the previous output."
@@ -247,12 +246,17 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "service-api"
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_mode"] == "workflow_run"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "service-api"
     assert dumped["idempotency_key"] == "node-exec-1"
     output_schema = dumped["composition"]["layers"][-1]["config"]["json_schema"]
-    assert output_schema["properties"]["report"]["properties"]["file_id"]["type"] == "string"
-    assert output_schema["properties"]["report"]["required"] == ["file_id"]
+    report_schema = output_schema["properties"]["report"]
+    assert len(report_schema["oneOf"]) == 4
+    assert all(branch["additionalProperties"] is False for branch in report_schema["oneOf"])
+    assert report_schema["oneOf"][0]["required"] == ["transfer_method", "reference"]
+    assert report_schema["oneOf"][1]["required"] == ["transfer_method", "reference"]
+    assert report_schema["oneOf"][2]["required"] == ["transfer_method", "reference"]
+    assert report_schema["oneOf"][3]["required"] == ["transfer_method", "url"]
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert dumped["composition"]["layers"][5]["config"]["model_settings"] == {"temperature": 0.2}
@@ -545,8 +549,8 @@ def test_empty_declared_outputs_injects_prd_defaults_text_files_json():
     assert properties["text"]["type"] == "string"
     assert properties["files"]["type"] == "array"
     # `files` defaults to array<file> → items is a file ref object.
-    assert properties["files"]["items"]["properties"]["file_id"]["type"] == "string"
-    assert properties["files"]["items"]["required"] == ["file_id"]
+    assert len(properties["files"]["items"]["oneOf"]) == 4
+    assert all(branch["additionalProperties"] is False for branch in properties["files"]["items"]["oneOf"])
     assert properties["json"]["type"] == "object"
     # Defaults are all required=False so no `required:` key on the schema.
     assert "required" not in output_layer["json_schema"]
@@ -595,3 +599,40 @@ def test_effective_declared_outputs_passthrough_when_user_declared():
     declared = [DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)]
     effective = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared)
     assert list(effective) == declared
+
+
+def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
+    """ENG-616: slash-menu mention tokens expand to canonical names; node_output
+    mentions expand to the reference name only (the value stays in the Workflow
+    context user prompt), and no ``[§…§]`` marker leaks into the request."""
+    import json
+
+    context = _context()
+    context.snapshot.config_snapshot = AgentSoulConfig(
+        prompt={"system_prompt": "Careful. Ask [§human:c-1:EMAIL · DAVE§] when unsure."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        human={"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
+    )
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": (
+                "Read [§node_output:previous-node.text:PREV/text§] and produce [§output:summary§]. "
+                "Unknown [§knowledge:gone:旧手册§] degrades."
+            ),
+            "previous_node_output_refs": [
+                {"selector": ["previous-node", "text"], "name": "PREV/text"},
+            ],
+            "declared_outputs": [{"name": "summary", "type": "string"}],
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    assert dumped["composition"]["layers"][0]["config"]["prefix"] == ("Careful. Ask EMAIL · David Hayes when unsure.")
+    assert dumped["composition"]["layers"][1]["config"]["prefix"] == (
+        "Read PREV/text and produce summary (string). Unknown 旧手册 degrades."
+    )
+    # the value still rides the Workflow context block, not the job prompt
+    assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
+    assert "[§" not in json.dumps(dumped["composition"]["layers"][:3])

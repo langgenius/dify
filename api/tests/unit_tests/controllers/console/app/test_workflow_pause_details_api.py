@@ -8,8 +8,8 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 
+from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
-from controllers.web.error import NotFoundError
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig

@@ -10,7 +10,7 @@ import KeyValueItem from './item'
 
 const i18nPrefix = 'nodes.http'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   list: KeyValue[]
@@ -20,7 +20,7 @@ type Props = {
   // onSwitchToBulkEdit: () => void
   keyNotSupportVar?: boolean
   insertVarTipToLeft?: boolean
-}
+}>
 
 const KeyValueList: FC<Props> = ({
   readonly,

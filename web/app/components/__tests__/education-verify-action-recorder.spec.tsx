@@ -12,7 +12,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-local-storage', () => ({
+vi.mock('foxact/use-local-storage', () => ({
   useSetLocalStorage: () => setEducationVerifyingMock,
 }))
 

@@ -8,11 +8,11 @@ import TextEditor from '@/app/components/workflow/nodes/_base/components/editor/
 
 const i18nPrefix = 'nodes.http'
 
-type Props = {
+type Props = Readonly<{
   value: string
   onChange: (value: string) => void
   onSwitchToKeyValueEdit: () => void
-}
+}>
 
 const BulkEdit: FC<Props> = ({
   value,

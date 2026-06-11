@@ -23,6 +23,7 @@ class UploadConfig(ResponseModel):
 
 class FileResponse(ResponseModel):
     id: str
+    reference: str | None = None
     name: str
     size: int
     extension: str | None = None

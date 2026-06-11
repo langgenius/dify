@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -8,21 +9,34 @@ import pytest
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.snippets import snippet_workflow as snippet_workflow_module
+from models.account import Account, TenantAccountRole
+from models.snippet import CustomizedSnippet
 
 
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+def _account(account_id: str = "account-1") -> Account:
+    account = Account(name="Test User", email=f"{account_id}@example.com")
+    account.id = account_id
+    account.role = TenantAccountRole.EDITOR
+    return account
+
+
+def _snippet(**overrides) -> CustomizedSnippet:
+    data = {
+        "id": "snippet-1",
+        "tenant_id": "tenant-1",
+        "name": "Snippet",
+        "description": "Description",
+        "type": "node",
+        "created_by": "account-1",
+    }
+    data.update(overrides)
+    return CustomizedSnippet(**data)
 
 
 @pytest.fixture(autouse=True)
 def _patch_snippet_service_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     def factory():
-        service_factory = snippet_workflow_module.SnippetService
-        if isinstance(service_factory, type):
-            return service_factory.__new__(service_factory)
-        return service_factory()
+        return snippet_workflow_module.SnippetService()
 
     monkeypatch.setattr(snippet_workflow_module, "_snippet_service", factory)
     monkeypatch.setattr(snippet_workflow_module, "_snippet_session_maker", Mock(return_value=Mock()))
@@ -39,7 +53,7 @@ def test_get_snippet_requires_snippet_id(app):
 
 
 def test_get_snippet_injects_resolved_snippet(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    snippet = _snippet()
 
     @snippet_workflow_module.get_snippet
     def view(**kwargs):
@@ -48,7 +62,7 @@ def test_get_snippet_injects_resolved_snippet(app, monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(
         snippet_workflow_module,
         "current_account_with_tenant",
-        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+        lambda: (_account("account-1"), "tenant-1"),
     )
     monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
 
@@ -66,7 +80,7 @@ def test_get_snippet_raises_not_found_when_snippet_missing(app, monkeypatch: pyt
     monkeypatch.setattr(
         snippet_workflow_module,
         "current_account_with_tenant",
-        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+        lambda: (_account("account-1"), "tenant-1"),
     )
     monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
@@ -76,7 +90,7 @@ def test_get_snippet_raises_not_found_when_snippet_missing(app, monkeypatch: pyt
 
 
 def test_draft_workflow_get_raises_when_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    snippet = _snippet()
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
@@ -84,7 +98,7 @@ def test_draft_workflow_get_raises_when_missing(app, monkeypatch: pytest.MonkeyP
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/draft"):
         with pytest.raises(snippet_workflow_module.DraftWorkflowNotExist):
@@ -92,10 +106,9 @@ def test_draft_workflow_get_raises_when_missing(app, monkeypatch: pytest.MonkeyP
 
 
 def test_draft_workflow_post_returns_400_for_invalid_graph(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(id="account-1")
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    user = _account("account-1")
+    snippet = _snippet()
     sync_draft_workflow = Mock(side_effect=ValueError("invalid graph"))
-    monkeypatch.setattr(snippet_workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
@@ -103,14 +116,14 @@ def test_draft_workflow_post_returns_400_for_invalid_graph(app, monkeypatch: pyt
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/snippets/snippet-1/workflows/draft",
         method="POST",
         json={"graph": {"nodes": [], "edges": []}, "hash": "hash-1"},
     ):
-        response, status_code = handler(api, snippet=snippet)
+        response, status_code = handler(api, user, snippet)
 
     assert status_code == 400
     assert response == {"message": "invalid graph"}
@@ -118,7 +131,7 @@ def test_draft_workflow_post_returns_400_for_invalid_graph(app, monkeypatch: pyt
 
 def test_draft_config_returns_parallel_depth_limit(app) -> None:
     api = snippet_workflow_module.SnippetDraftConfigApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/draft/config"):
         assert handler(api, snippet=SimpleNamespace(id="snippet-1")) == {"parallel_depth_limit": 3}
@@ -126,16 +139,16 @@ def test_draft_config_returns_parallel_depth_limit(app) -> None:
 
 def test_published_workflow_get_returns_none_when_not_published(app) -> None:
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/publish"):
         assert handler(api, snippet=SimpleNamespace(id="snippet-1", is_published=False)) is None
 
 
 def test_published_workflow_post_returns_400_when_publish_fails(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(id="account-1")
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
-    merged_snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    user = _account("account-1")
+    snippet = _snippet()
+    merged_snippet = _snippet()
     session = SimpleNamespace(merge=Mock(return_value=merged_snippet), commit=Mock())
 
     class SessionContext:
@@ -148,7 +161,6 @@ def test_published_workflow_post_returns_400_when_publish_fails(app, monkeypatch
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(snippet_workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
     monkeypatch.setattr(snippet_workflow_module, "Session", SessionContext)
     monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(
@@ -158,10 +170,10 @@ def test_published_workflow_post_returns_400_when_publish_fails(app, monkeypatch
     )
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context("/snippets/snippet-1/workflows/publish", method="POST", json={}):
-        response, status_code = handler(api, snippet=snippet)
+        response, status_code = handler(api, user, snippet)
 
     assert status_code == 400
     assert response == {"message": "No valid workflow found."}
@@ -177,7 +189,7 @@ def test_default_block_configs_delegates_to_service(app, monkeypatch: pytest.Mon
     )
 
     api = snippet_workflow_module.SnippetDefaultBlockConfigsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/default-workflow-block-configs"):
         result = handler(api, snippet=SimpleNamespace(id="snippet-1"))
@@ -192,10 +204,9 @@ def test_restore_published_snippet_workflow_to_draft_success(app, monkeypatch: p
         updated_at=None,
         created_at=datetime(2024, 1, 1),
     )
-    user = SimpleNamespace(id="account-1")
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    user = _account("account-1")
+    snippet = _snippet()
 
-    monkeypatch.setattr(snippet_workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
@@ -203,23 +214,22 @@ def test_restore_published_snippet_workflow_to_draft_success(app, monkeypatch: p
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/snippets/snippet-1/workflows/published-workflow/restore",
         method="POST",
     ):
-        response = handler(api, snippet=snippet, workflow_id="published-workflow")
+        response = handler(api, user, snippet, workflow_id="published-workflow")
 
     assert response["result"] == "success"
     assert response["hash"] == "restored-hash"
 
 
 def test_restore_published_snippet_workflow_to_draft_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(id="account-1")
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    user = _account("account-1")
+    snippet = _snippet()
 
-    monkeypatch.setattr(snippet_workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
@@ -231,23 +241,22 @@ def test_restore_published_snippet_workflow_to_draft_not_found(app, monkeypatch:
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/snippets/snippet-1/workflows/published-workflow/restore",
         method="POST",
     ):
         with pytest.raises(NotFound):
-            handler(api, snippet=snippet, workflow_id="published-workflow")
+            handler(api, user, snippet, workflow_id="published-workflow")
 
 
 def test_restore_published_snippet_workflow_to_draft_returns_400_for_draft_source(
     app, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    user = SimpleNamespace(id="account-1")
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    user = _account("account-1")
+    snippet = _snippet()
 
-    monkeypatch.setattr(snippet_workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
@@ -259,14 +268,14 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_draft_sourc
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/snippets/snippet-1/workflows/draft-workflow/restore",
         method="POST",
     ):
         with pytest.raises(HTTPException) as exc:
-            handler(api, snippet=snippet, workflow_id="draft-workflow")
+            handler(api, user, snippet, workflow_id="draft-workflow")
 
     assert exc.value.code == 400
     assert exc.value.description == snippet_workflow_module.RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE
@@ -275,10 +284,9 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_draft_sourc
 def test_restore_published_snippet_workflow_to_draft_returns_400_for_invalid_graph(
     app, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    user = SimpleNamespace(id="account-1")
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    user = _account("account-1")
+    snippet = _snippet()
 
-    monkeypatch.setattr(snippet_workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
@@ -290,21 +298,21 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_invalid_gra
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/snippets/snippet-1/workflows/published-workflow/restore",
         method="POST",
     ):
         with pytest.raises(HTTPException) as exc:
-            handler(api, snippet=snippet, workflow_id="published-workflow")
+            handler(api, user, snippet, workflow_id="published-workflow")
 
     assert exc.value.code == 400
     assert exc.value.description == "invalid snippet workflow graph"
 
 
 def test_workflow_run_detail_raises_not_found_when_run_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    snippet = _snippet()
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
@@ -312,7 +320,7 @@ def test_workflow_run_detail_raises_not_found_when_run_missing(app, monkeypatch:
     )
 
     api = snippet_workflow_module.SnippetWorkflowRunDetailApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflow-runs/run-1"):
         with pytest.raises(NotFound, match="Workflow run not found"):
@@ -320,7 +328,7 @@ def test_workflow_run_detail_raises_not_found_when_run_missing(app, monkeypatch:
 
 
 def test_draft_node_last_run_raises_not_found_when_execution_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    snippet = _snippet()
     draft_workflow = SimpleNamespace(id="workflow-1")
     monkeypatch.setattr(
         snippet_workflow_module,
@@ -332,7 +340,7 @@ def test_draft_node_last_run_raises_not_found_when_execution_missing(app, monkey
     )
 
     api = snippet_workflow_module.SnippetDraftNodeLastRunApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows/draft/nodes/llm-1/last-run"):
         with pytest.raises(NotFound, match="Node last run not found"):
@@ -354,7 +362,7 @@ def test_workflow_task_stop_uses_queue_flag_and_graph_command(app, monkeypatch: 
     )
 
     api = snippet_workflow_module.SnippetWorkflowTaskStopApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context("/snippets/snippet-1/workflow-runs/tasks/task-1/stop", method="POST"):
         result = handler(api, snippet=SimpleNamespace(id="snippet-1"), task_id="task-1")

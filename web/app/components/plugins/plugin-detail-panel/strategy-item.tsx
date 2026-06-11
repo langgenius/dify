@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import StrategyDetailPanel from './strategy-detail'
 
-type Props = {
+type Props = Readonly<{
   provider: {
     author: string
     name: string
@@ -20,7 +20,7 @@ type Props = {
     tags: string[]
   }
   detail: StrategyDetail
-}
+}>
 
 const StrategyItem = ({
   provider,

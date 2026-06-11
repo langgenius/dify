@@ -11,6 +11,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 
@@ -22,7 +23,6 @@ import {
 } from '@/app/education-apply/constants'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   useAccountSettingModal,
   usePricingModal,

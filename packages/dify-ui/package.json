@@ -37,6 +37,10 @@
       "types": "./src/combobox/index.tsx",
       "import": "./src/combobox/index.tsx"
     },
+    "./collapsible": {
+      "types": "./src/collapsible/index.tsx",
+      "import": "./src/collapsible/index.tsx"
+    },
     "./context-menu": {
       "types": "./src/context-menu/index.tsx",
       "import": "./src/context-menu/index.tsx"
@@ -60,6 +64,10 @@
     "./fieldset": {
       "types": "./src/fieldset/index.tsx",
       "import": "./src/fieldset/index.tsx"
+    },
+    "./file-tree": {
+      "types": "./src/file-tree/index.tsx",
+      "import": "./src/file-tree/index.tsx"
     },
     "./form": {
       "types": "./src/form/index.tsx",

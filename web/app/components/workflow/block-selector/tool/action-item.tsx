@@ -24,14 +24,14 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   provider: ToolWithProvider
   payload: Tool
   previewCardHandle: PreviewCardHandle
   disabled?: boolean
   isAdded?: boolean
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
-}
+}>
 
 export type ToolActionPreviewPayload = {
   providerIcon: ToolWithProvider['icon']

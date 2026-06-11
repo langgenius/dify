@@ -1,11 +1,11 @@
 'use client'
 
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useEffect } from 'react'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useSearchParams } from '@/next/navigation'
 
 export function EducationVerifyActionRecorder() {

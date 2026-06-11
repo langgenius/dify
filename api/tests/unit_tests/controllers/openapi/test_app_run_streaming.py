@@ -94,4 +94,4 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app, bypass_pipeline, mo
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
     graph_instance.send_stop_command.assert_called_once_with("task-1")
-    assert result == {"result": "success"}
+    assert result == ({"result": "success"}, 200)

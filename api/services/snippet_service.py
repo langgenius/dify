@@ -229,7 +229,7 @@ class SnippetService:
             stmt = stmt.where(CustomizedSnippet.created_by.in_(creators))
 
         if tag_ids:
-            target_ids = TagService.get_target_ids_by_tag_ids("snippet", tenant_id, tag_ids)
+            target_ids = TagService.get_target_ids_by_tag_ids("snippet", tenant_id, tag_ids, match_all=True)
             if target_ids:
                 stmt = stmt.where(CustomizedSnippet.id.in_(target_ids))
             else:

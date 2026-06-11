@@ -12,11 +12,11 @@ import { AUTO_UPDATE_MODE } from './types'
 
 const i18nPrefix = 'autoUpdate'
 
-type Props = {
+type Props = Readonly<{
   updateMode: AUTO_UPDATE_MODE
   value: string[] // plugin ids
   onChange: (value: string[]) => void
-}
+}>
 
 const PluginsPicker: FC<Props> = ({
   updateMode,
