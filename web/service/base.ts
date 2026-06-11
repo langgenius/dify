@@ -373,10 +373,6 @@ export const handleStream = (
             else if (bufferObj.event === 'datasource_error') {
               onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
             }
-            else if (bufferObj.event === 'error') {
-              hasError = true
-              onCompleted?.(true, bufferObj.message)
-            }
             else {
               console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
             }
