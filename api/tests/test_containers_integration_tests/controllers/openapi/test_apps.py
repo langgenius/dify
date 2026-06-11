@@ -30,6 +30,7 @@ def _create_app(
     fixture free of model-runtime patching.
     """
     tenant = account.current_tenant
+    assert tenant is not None
     params = CreateAppParams(
         name=name,
         description="",
@@ -54,6 +55,7 @@ class TestAppList:
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
+        assert tenant is not None
         visible = _create_app(db_session_with_containers, account, name="Visible", enable_api=True)
         _create_app(db_session_with_containers, account, name="Hidden", enable_api=False)
 
@@ -72,6 +74,7 @@ class TestAppList:
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
+        assert tenant is not None
         target = _create_app(db_session_with_containers, account, name="Target", enable_api=True)
 
         api = AppListApi()
@@ -95,6 +98,7 @@ class TestAppList:
         outsider = make_account()
         foreign_app = _create_app(db_session_with_containers, owner, name="Foreign", enable_api=True)
         outsider_tenant = outsider.current_tenant
+        assert outsider_tenant is not None
 
         api = AppListApi()
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={outsider_tenant.id}&name={foreign_app.id}"):

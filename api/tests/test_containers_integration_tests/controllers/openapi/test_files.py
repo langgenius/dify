@@ -16,6 +16,7 @@ from tests.test_containers_integration_tests.controllers.openapi.conftest import
 def _create_app(db_session: Session, account: Account, *, name: str = "Uploader") -> App:
     """Create a workflow app (no model_config → no ModelManager) for the upload context."""
     tenant = account.current_tenant
+    assert tenant is not None
     params = CreateAppParams(
         name=name,
         description="",
@@ -35,6 +36,7 @@ class TestAppFileUpload:
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
+        assert tenant is not None
         app_model = _create_app(db_session_with_containers, account)
         content = b"hello integration world"
 

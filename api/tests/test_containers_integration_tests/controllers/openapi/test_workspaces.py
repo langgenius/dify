@@ -20,6 +20,7 @@ class TestWorkspacesList:
     ) -> None:
         account = make_account()
         owner_tenant = account.current_tenant
+        assert owner_tenant is not None
 
         api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
@@ -39,6 +40,7 @@ class TestWorkspacesList:
     ) -> None:
         account = make_account()
         owner_tenant = account.current_tenant
+        assert owner_tenant is not None
         second = add_tenant_for_account(account, role="normal", name="Second WS")
 
         api = WorkspacesApi()
@@ -54,6 +56,7 @@ class TestWorkspaceDetail:
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
+        assert tenant is not None
 
         api = WorkspaceByIdApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}"):
@@ -72,6 +75,7 @@ class TestWorkspaceDetail:
         owner = make_account()
         outsider = make_account()
         someone_elses_ws = owner.current_tenant
+        assert someone_elses_ws is not None
 
         api = WorkspaceByIdApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{someone_elses_ws.id}"):
@@ -85,6 +89,7 @@ class TestWorkspaceSwitch:
     ) -> None:
         account = make_account()
         owner_tenant = account.current_tenant
+        assert owner_tenant is not None
         target = add_tenant_for_account(account, role="normal", name="Switch Target")
 
         api = WorkspaceSwitchApi()
@@ -108,6 +113,7 @@ class TestWorkspaceSwitch:
     ) -> None:
         account = make_account()
         outsider_ws = make_account().current_tenant
+        assert outsider_ws is not None
 
         api = WorkspaceSwitchApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{outsider_ws.id}/switch", method="POST"):

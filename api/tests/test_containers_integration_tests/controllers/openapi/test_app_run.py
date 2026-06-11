@@ -15,6 +15,7 @@ from tests.test_containers_integration_tests.controllers.openapi.conftest import
 
 def _create_app(db_session: Session, account: Account, *, name: str = "Runner") -> App:
     tenant = account.current_tenant
+    assert tenant is not None
     params = CreateAppParams(
         name=name,
         description="",

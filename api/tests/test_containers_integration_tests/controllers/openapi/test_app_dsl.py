@@ -56,9 +56,9 @@ def external_deps() -> Generator[dict[str, object], None, None]:
     ):
         mock_workflow_service.return_value.get_draft_workflow.return_value = None
         mock_workflow_service.return_value.sync_draft_workflow.return_value = None
-        mock_dependencies_service.generate_latest_dependencies.return_value = []
-        mock_dependencies_service.get_leaked_dependencies.return_value = []
-        mock_dependencies_service.generate_dependencies.return_value = []
+        mock_dependencies_service.generate_latest_dependencies.return_value = []  # type: ignore[assignment]
+        mock_dependencies_service.get_leaked_dependencies.return_value = []  # type: ignore[assignment]
+        mock_dependencies_service.generate_dependencies.return_value = []  # type: ignore[assignment]
         mock_app_was_created.send.return_value = None
 
         mock_model_instance = mock_model_manager.return_value
@@ -84,10 +84,11 @@ def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, A
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            mode=mode,
+            mode=mode,  # type: ignore[arg-type]
             icon_type="emoji",
             icon="🤖",
             icon_background="#FF6B6B",
@@ -104,6 +105,7 @@ class TestDslImport:
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
+        assert tenant is not None
 
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content="[]")  # not a mapping
@@ -120,6 +122,7 @@ class TestDslImport:
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
+        assert tenant is not None
 
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content=_workflow_yaml(version="99.0.0"))
@@ -139,6 +142,7 @@ class TestDslImport:
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
+        assert tenant is not None
 
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content=_workflow_yaml(name="Imported"))
@@ -157,6 +161,7 @@ class TestDslImportConfirm:
         """An expired/unknown import id has no Redis pending data → FAILED → 400."""
         account = make_account()
         tenant = account.current_tenant
+        assert tenant is not None
         import_id = str(uuid4())
 
         api = AppDslImportConfirmApi()
@@ -182,7 +187,7 @@ class TestDslExport:
             model_id="gpt-3.5-turbo",
             model=json.dumps({"provider": "openai", "name": "gpt-3.5-turbo", "mode": "chat", "completion_params": {}}),
             pre_prompt="You are a helpful assistant.",
-            prompt_type="simple",
+            prompt_type="simple",  # type: ignore[arg-type]
             created_by=account.id,
             updated_by=account.id,
         )

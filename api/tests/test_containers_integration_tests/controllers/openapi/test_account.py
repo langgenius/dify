@@ -15,6 +15,7 @@ class TestAccountInfo:
     def test_returns_account_and_owner_workspace(self, app: Flask, make_account: Callable[..., Account]) -> None:
         account = make_account()
         owner_tenant = account.current_tenant
+        assert owner_tenant is not None
 
         api = AccountApi()
         with app.test_request_context("/openapi/v1/account"):
@@ -36,6 +37,7 @@ class TestAccountInfo:
     def test_lists_all_joined_workspaces(self, app: Flask, make_account: Callable[..., Account]) -> None:
         account = make_account()
         owner_tenant = account.current_tenant
+        assert owner_tenant is not None
         second = add_tenant_for_account(account, role="normal", name="Second WS")
 
         api = AccountApi()
