@@ -1,7 +1,6 @@
-from flask import current_app
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, NotFound
 from pydantic import BaseModel, Field
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
@@ -133,7 +132,6 @@ class AppDslAgentRunsApi(Resource):
                 marketplace_plugin_id=args.marketplace_plugin_id,
                 resolve_dependencies=args.resolve_dependencies,
             ),
-            app=current_app._get_current_object(),
             account_id=current_user.id,
             tenant_id=current_tenant_id,
         )

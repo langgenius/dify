@@ -3,11 +3,10 @@ import os
 import re
 import threading
 import uuid
-from collections.abc import Iterable, Mapping
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any, Callable
+from typing import Any
 
 import yaml
 
@@ -40,7 +39,6 @@ DSL_AGENT_RUN_STATUS_SUCCEEDED = "succeeded"
 DSL_AGENT_RUN_STATUS_FAILED = "failed"
 DSL_AGENT_RUN_REDIS_KEY_PREFIX = "console:dsl_agent_run:"
 DSL_AGENT_RUN_TTL_SECONDS = int(os.environ.get("DIFY_DSL_AGENT_RUN_TTL_SECONDS", str(24 * 60 * 60)))
-DSL_AGENT_RUN_MEMORY_MAX = int(os.environ.get("DIFY_DSL_AGENT_RUN_MEMORY_MAX", "512"))
 
 
 def normalize_generation_backend(generation_backend: str | None) -> str:
@@ -190,6 +188,12 @@ def _deserialize_run(payload: dict) -> AppDslAgentRun:
         error=payload.get("error"),
         events=events,
     )
+
+
+def enqueue_app_dsl_agent_run(run_id: str) -> None:
+    from tasks.app_dsl_agent_generate_task import run_app_dsl_agent_generation_task
+
+    run_app_dsl_agent_generation_task.delay(run_id)
 
 
 def parse_sse_events(text: str) -> list[dict[str, Any]]:
@@ -447,7 +451,9 @@ class DslAgentOrchestrator:
         emit(DSL_AGENT_STAGE_RESOLVE_DEPENDENCIES, "completed", "Dependency resolution completed.")
 
         emit(DSL_AGENT_STAGE_GENERATE, "running", "Generating Dify DSL YAML.")
-        yaml_content, generation_report, generation_warnings = self.generate_yaml_content(plan, dependencies, source_evidence)
+        yaml_content, generation_report, generation_warnings = self.generate_yaml_content(
+            plan, dependencies, source_evidence
+        )
         warnings.extend(generation_warnings)
         emit(DSL_AGENT_STAGE_GENERATE, "completed", "Dify DSL YAML generated.")
 
@@ -635,7 +641,9 @@ class DslAgentOrchestrator:
             },
         }
 
-    def generate_yaml_content(self, plan: dict, dependencies: list[dict], source_evidence: dict) -> tuple[str, dict, list[str]]:
+    def generate_yaml_content(
+        self, plan: dict, dependencies: list[dict], source_evidence: dict
+    ) -> tuple[str, dict, list[str]]:
         if plan.get("generation_backend") == GENERATION_BACKEND_OPENAI:
             yaml_content, report = self._generate_openai_yaml_content(plan, source_evidence)
             if yaml_content:
@@ -646,7 +654,9 @@ class DslAgentOrchestrator:
                 "backend": GENERATION_BACKEND_DETERMINISTIC,
                 "fallback_from": GENERATION_BACKEND_OPENAI,
                 "fallback_reason": report.get("error") or "OpenAI generation did not return YAML.",
-            }, [f"OpenAI DSL generation fell back to deterministic starter: {report.get('error') or 'empty YAML'}"]
+            }, [
+                f"OpenAI DSL generation fell back to deterministic starter: {report.get('error') or 'empty YAML'}"
+            ]
 
         data = self.generate_dsl_mapping(plan, dependencies)
         return yaml.safe_dump(data, allow_unicode=True, sort_keys=False), {
@@ -659,10 +669,20 @@ class DslAgentOrchestrator:
 
         try:
             client = self._openai_client()
-            llm_plan = plan.get("llm_plan") if isinstance(plan.get("llm_plan"), dict) else self._fallback_llm_plan(plan)
-            plugin_evidence = source_evidence.get("plugin_evidence") if isinstance(source_evidence.get("plugin_evidence"), dict) else {}
+            llm_plan = (
+                plan.get("llm_plan") if isinstance(plan.get("llm_plan"), dict) else self._fallback_llm_plan(plan)
+            )
+            plugin_evidence = (
+                source_evidence.get("plugin_evidence")
+                if isinstance(source_evidence.get("plugin_evidence"), dict)
+                else {}
+            )
             prompt_plugin_evidence = dsl_generation.compact_plugin_evidence_for_prompt(plugin_evidence, llm_plan)
-            source_context = source_evidence.get("_source_context_full") if isinstance(source_evidence.get("_source_context_full"), dict) else {}
+            source_context = (
+                source_evidence.get("_source_context_full")
+                if isinstance(source_evidence.get("_source_context_full"), dict)
+                else {}
+            )
             yaml_content = dsl_generation.generate_yaml(
                 client=client,
                 model=plan["generation_model"],
@@ -1123,24 +1143,19 @@ class DslAgentOrchestrator:
 class AppDslAgentRunStore:
     def __init__(
         self,
-        executor: ThreadPoolExecutor | None = None,
         *,
         ttl_seconds: int = DSL_AGENT_RUN_TTL_SECONDS,
-        max_memory_runs: int = DSL_AGENT_RUN_MEMORY_MAX,
-        use_redis: bool = True,
+        redis_client: Any | None = None,
+        enqueue_run: Callable[[str], None] | None = None,
     ) -> None:
-        self._runs: dict[str, AppDslAgentRun] = {}
-        self._lock = threading.RLock()
-        self._executor = executor or ThreadPoolExecutor(max_workers=2, thread_name_prefix="dsl-agent")
         self._ttl_seconds = max(60, ttl_seconds)
         self._ttl_delta = timedelta(seconds=self._ttl_seconds)
-        self._max_memory_runs = max(16, max_memory_runs)
-        self._use_redis = use_redis
+        self._redis_client = redis_client
+        self._enqueue_run = enqueue_run or enqueue_app_dsl_agent_run
 
     def create_run(
         self,
         args: AppDslAgentGenerateArgs,
-        app=None,
         *,
         account_id: str | None = None,
         tenant_id: str | None = None,
@@ -1166,11 +1181,18 @@ class AppDslAgentRunStore:
                 "resolve_dependencies": args.resolve_dependencies,
             },
         )
-        with self._lock:
-            self._remember_run_locked(run)
-            self._append_event_locked(run, "queued", "queued", "DSL generation run queued.")
-            self._save_run_locked(run)
-        self._executor.submit(self._execute_run, run.id, args, app)
+        self._append_event(run, "queued", "queued", "DSL generation run queued.")
+        self._save_run(run)
+        try:
+            self._enqueue_run(run.id)
+        except Exception as exc:
+            run.status = DSL_AGENT_RUN_STATUS_FAILED
+            run.current_stage = None
+            run.error = f"Failed to enqueue DSL generation run: {exc}"
+            run.updated_at = utc_now_iso()
+            self._append_event(run, "run", "failed", "DSL generation run failed to enqueue.")
+            self._save_run(run)
+            raise
         return run
 
     def get_run(
@@ -1180,78 +1202,64 @@ class AppDslAgentRunStore:
         account_id: str | None = None,
         tenant_id: str | None = None,
     ) -> AppDslAgentRun | None:
-        with self._lock:
-            run = self._runs.get(run_id)
-            if run:
-                if self._is_run_expired(run):
-                    self._runs.pop(run_id, None)
-                    return None
-                if self._can_read_run(run, account_id=account_id, tenant_id=tenant_id):
-                    return run
-                return None
-
         run = self._load_run(run_id)
         if not run:
             return None
+        if self._is_run_expired(run):
+            return None
         if not self._can_read_run(run, account_id=account_id, tenant_id=tenant_id):
             return None
-        with self._lock:
-            self._remember_run_locked(run)
         return run
 
-    def _execute_run(self, run_id: str, args: AppDslAgentGenerateArgs, app=None) -> None:
-        if app:
-            with app.app_context():
-                self._execute_run_inner(run_id, args)
-        else:
-            self._execute_run_inner(run_id, args)
+    def execute_run(self, run_id: str) -> bool:
+        run = self._load_run(run_id)
+        if not run:
+            return False
+        if self._is_run_expired(run):
+            return False
 
-    def _execute_run_inner(self, run_id: str, args: AppDslAgentGenerateArgs) -> None:
-        with self._lock:
-            run = self._runs.get(run_id)
-            if not run:
-                return
-            run.status = DSL_AGENT_RUN_STATUS_RUNNING
+        try:
+            args = self._generate_args_from_request(run.request)
+        except Exception as exc:
+            run.status = DSL_AGENT_RUN_STATUS_FAILED
+            run.current_stage = None
+            run.error = str(exc)
             run.updated_at = utc_now_iso()
-            self._append_event_locked(run, "run", "running", "DSL generation run started.")
-            self._save_run_locked(run)
+            self._append_event(run, "run", "failed", "DSL generation run has invalid request data.")
+            self._save_run(run)
+            return False
+
+        run.status = DSL_AGENT_RUN_STATUS_RUNNING
+        run.updated_at = utc_now_iso()
+        self._append_event(run, "run", "running", "DSL generation run started.")
+        self._save_run(run)
 
         def progress(stage: str, status: str, message: str) -> None:
-            with self._lock:
-                current = self._runs.get(run_id)
-                if not current:
-                    return
-                if status == "running":
-                    current.current_stage = stage
-                current.updated_at = utc_now_iso()
-                self._append_event_locked(current, stage, status, message)
-                self._save_run_locked(current)
+            if status == "running":
+                run.current_stage = stage
+            run.updated_at = utc_now_iso()
+            self._append_event(run, stage, status, message)
+            self._save_run(run)
 
         try:
             result = AppDslAgentService().generate(args, progress=progress)
-            with self._lock:
-                run = self._runs.get(run_id)
-                if not run:
-                    return
-                run.status = DSL_AGENT_RUN_STATUS_SUCCEEDED
-                run.current_stage = None
-                run.result = result
-                run.updated_at = utc_now_iso()
-                self._append_event_locked(run, "run", "succeeded", "DSL generation run completed.")
-                self._save_run_locked(run)
+            run.status = DSL_AGENT_RUN_STATUS_SUCCEEDED
+            run.current_stage = None
+            run.result = result
+            run.updated_at = utc_now_iso()
+            self._append_event(run, "run", "succeeded", "DSL generation run completed.")
+            self._save_run(run)
+            return True
         except Exception as exc:
-            with self._lock:
-                run = self._runs.get(run_id)
-                if not run:
-                    return
-                run.status = DSL_AGENT_RUN_STATUS_FAILED
-                run.current_stage = None
-                run.error = str(exc)
-                run.updated_at = utc_now_iso()
-                self._append_event_locked(run, "run", "failed", "DSL generation run failed.")
-                self._save_run_locked(run)
+            run.status = DSL_AGENT_RUN_STATUS_FAILED
+            run.current_stage = None
+            run.error = str(exc)
+            run.updated_at = utc_now_iso()
+            self._append_event(run, "run", "failed", "DSL generation run failed.")
+            self._save_run(run)
+            return False
 
-    def _append_event_locked(self, run: AppDslAgentRun, stage: str, status: str, message: str) -> None:
+    def _append_event(self, run: AppDslAgentRun, stage: str, status: str, message: str) -> None:
         run.events.append(
             AppDslAgentRunEvent(
                 sequence=len(run.events) + 1,
@@ -1261,24 +1269,6 @@ class AppDslAgentRunStore:
                 created_at=utc_now_iso(),
             )
         )
-
-    def _remember_run_locked(self, run: AppDslAgentRun) -> None:
-        self._runs[run.id] = run
-        self._prune_runs_locked()
-
-    def _prune_runs_locked(self) -> None:
-        for run_id, run in list(self._runs.items()):
-            if self._is_run_expired(run):
-                self._runs.pop(run_id, None)
-        overflow = len(self._runs) - self._max_memory_runs
-        if overflow <= 0:
-            return
-        oldest_run_ids = sorted(
-            self._runs,
-            key=lambda item: self._runs[item].updated_at,
-        )[:overflow]
-        for run_id in oldest_run_ids:
-            self._runs.pop(run_id, None)
 
     def _is_run_expired(self, run: AppDslAgentRun) -> bool:
         try:
@@ -1302,29 +1292,15 @@ class AppDslAgentRunStore:
             return False
         return True
 
-    def _save_run_locked(self, run: AppDslAgentRun) -> None:
-        if not self._use_redis:
-            return
-        try:
-            from extensions.ext_redis import redis_client
-
-            redis_client.setex(
-                self._redis_key(run.id),
-                self._ttl_seconds,
-                json.dumps(_serialize_run_for_store(run), ensure_ascii=False),
-            )
-        except Exception:
-            return
+    def _save_run(self, run: AppDslAgentRun) -> None:
+        self._get_redis_client().setex(
+            self._redis_key(run.id),
+            self._ttl_seconds,
+            json.dumps(_serialize_run_for_store(run), ensure_ascii=False),
+        )
 
     def _load_run(self, run_id: str) -> AppDslAgentRun | None:
-        if not self._use_redis:
-            return None
-        try:
-            from extensions.ext_redis import redis_client
-
-            payload = redis_client.get(self._redis_key(run_id))
-        except Exception:
-            return None
+        payload = self._get_redis_client().get(self._redis_key(run_id))
         if not payload:
             return None
         if isinstance(payload, bytes):
@@ -1339,6 +1315,41 @@ class AppDslAgentRunStore:
         if not run.id:
             return None
         return run
+
+    def _get_redis_client(self) -> Any:
+        if self._redis_client is not None:
+            return self._redis_client
+        from extensions.ext_redis import redis_client
+
+        return redis_client
+
+    def _generate_args_from_request(self, request: dict) -> AppDslAgentGenerateArgs:
+        if not isinstance(request, dict):
+            raise ValueError("DSL generation request payload is missing.")
+        prompt = str(request.get("prompt") or "").strip()
+        if not prompt:
+            raise ValueError("DSL generation prompt is missing.")
+        resolve_dependencies = request.get("resolve_dependencies", True)
+        if not isinstance(resolve_dependencies, bool):
+            resolve_dependencies = True
+        return AppDslAgentGenerateArgs(
+            prompt=prompt,
+            app_name=self._optional_string(request.get("app_name")),
+            app_description=self._optional_string(request.get("app_description")),
+            provider=str(request.get("provider") or DEFAULT_MODEL_PROVIDER),
+            model=str(request.get("model") or DEFAULT_MODEL_NAME),
+            generation_backend=self._optional_string(request.get("generation_backend")),
+            generation_model=self._optional_string(request.get("generation_model")),
+            input_variable=str(request.get("input_variable") or DEFAULT_INPUT_VARIABLE),
+            marketplace_plugin_id=self._optional_string(request.get("marketplace_plugin_id")),
+            resolve_dependencies=resolve_dependencies,
+        )
+
+    def _optional_string(self, value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
 
     def _redis_key(self, run_id: str) -> str:
         return f"{DSL_AGENT_RUN_REDIS_KEY_PREFIX}{run_id}"

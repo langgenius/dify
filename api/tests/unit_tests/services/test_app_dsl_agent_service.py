@@ -1,6 +1,7 @@
-import yaml
-import pytest
 from types import SimpleNamespace
+
+import pytest
+import yaml
 
 from services import app_dsl_agent_service
 from services.app_dsl_agent_service import (
@@ -16,17 +17,37 @@ from services.app_dsl_agent_service import (
 )
 
 
-class _ImmediateExecutor:
-    def submit(self, fn, *args, **kwargs):
-        fn(*args, **kwargs)
-
-
 class _Dependency:
     def __init__(self, data: dict):
         self.data = data
 
     def model_dump(self, mode: str = "python"):
         return self.data
+
+
+class _FakeRedis:
+    def __init__(self):
+        self.values = {}
+        self.ttls = {}
+
+    def setex(self, key, ttl, value):
+        self.values[key] = value
+        self.ttls[key] = ttl
+
+    def get(self, key):
+        return self.values.get(key)
+
+
+def _create_inline_run_store(*, redis_client: _FakeRedis | None = None, ttl_seconds: int = 3600) -> AppDslAgentRunStore:
+    fake_redis = redis_client or _FakeRedis()
+    store_holder = {}
+
+    def enqueue(run_id: str) -> None:
+        store_holder["store"].execute_run(run_id)
+
+    store = AppDslAgentRunStore(redis_client=fake_redis, ttl_seconds=ttl_seconds, enqueue_run=enqueue)
+    store_holder["store"] = store
+    return store
 
 
 @pytest.fixture(autouse=True)
@@ -153,7 +174,11 @@ def test_generate_uses_core_dsl_agent_modules(monkeypatch):
         "normalize_yaml_text",
         FakeDependencyNormalizerModule.normalize_yaml_text,
     )
-    monkeypatch.setattr(app_dsl_agent_service.dsl_validator, "validate_yaml_text", FakeValidatorModule.validate_yaml_text)
+    monkeypatch.setattr(
+        app_dsl_agent_service.dsl_validator,
+        "validate_yaml_text",
+        FakeValidatorModule.validate_yaml_text,
+    )
 
     result = AppDslAgentService().generate(
         AppDslAgentGenerateArgs(
@@ -222,7 +247,15 @@ def test_generate_can_use_openai_backend_without_real_network(monkeypatch):
     def fake_compact_plugin_evidence_for_prompt(plugin_evidence: dict, plan: dict):
         return plugin_evidence
 
-    def fake_generate_yaml(*, client, model: str, request: str, plan: dict, plugin_evidence: dict, source_context: dict):
+    def fake_generate_yaml(
+        *,
+        client,
+        model: str,
+        request: str,
+        plan: dict,
+        plugin_evidence: dict,
+        source_context: dict,
+    ):
         assert model == "gpt-test"
         return """
 app:
@@ -353,7 +386,8 @@ def test_format_stream_result_extracts_workflow_runtime_errors():
             'data: {"id": "run-1", "task_id": "task-1"}',
             "",
             "event: node_finished",
-            'data: {"node_id": "llm", "node_type": "llm", "title": "Reason", "status": "failed", "error": "model credential missing", "elapsed_time": 0.2}',
+            'data: {"node_id": "llm", "node_type": "llm", "title": "Reason", '
+            '"status": "failed", "error": "model credential missing", "elapsed_time": 0.2}',
             "",
             "event: workflow_finished",
             'data: {"status": "failed", "error": "workflow failed"}',
@@ -460,7 +494,11 @@ def test_debug_service_repairs_yaml_from_runtime_evidence(monkeypatch):
         "repair_yaml_text",
         FakeRepairModule.repair_yaml_text,
     )
-    monkeypatch.setattr(app_dsl_agent_service.dsl_validator, "validate_yaml_text", FakeValidatorModule.validate_yaml_text)
+    monkeypatch.setattr(
+        app_dsl_agent_service.dsl_validator,
+        "validate_yaml_text",
+        FakeValidatorModule.validate_yaml_text,
+    )
 
     result = AppDslAgentDebugService().repair_yaml(
         AppDslAgentRepairArgs(
@@ -518,7 +556,11 @@ def test_debug_service_runs_draft_then_repairs_from_runtime_evidence(monkeypatch
         "repair_yaml_text",
         FakeRepairModule.repair_yaml_text,
     )
-    monkeypatch.setattr(app_dsl_agent_service.dsl_validator, "validate_yaml_text", FakeValidatorModule.validate_yaml_text)
+    monkeypatch.setattr(
+        app_dsl_agent_service.dsl_validator,
+        "validate_yaml_text",
+        FakeValidatorModule.validate_yaml_text,
+    )
 
     result = AppDslAgentDebugService().run_draft_workflow_and_repair(
         app_model=SimpleNamespace(mode=AppMode.WORKFLOW),
@@ -582,7 +624,7 @@ def test_run_store_executes_generation_and_records_stage_events(monkeypatch):
         "generate_latest_dependencies",
         lambda _plugin_ids: [_Dependency(dependency)],
     )
-    store = AppDslAgentRunStore(executor=_ImmediateExecutor())
+    store = _create_inline_run_store()
 
     run = store.create_run(
         AppDslAgentGenerateArgs(
@@ -617,30 +659,17 @@ def test_run_store_executes_generation_and_records_stage_events(monkeypatch):
 
 
 def test_run_store_persists_runs_for_cross_worker_polling(monkeypatch):
-    class FakeRedis:
-        def __init__(self):
-            self.values = {}
-            self.ttls = {}
-
-        def setex(self, key, ttl, value):
-            self.values[key] = value
-            self.ttls[key] = ttl
-
-        def get(self, key):
-            return self.values.get(key)
-
-    fake_redis = FakeRedis()
-    from extensions import ext_redis
-
-    monkeypatch.setattr(ext_redis, "redis_client", fake_redis)
+    fake_redis = _FakeRedis()
+    enqueued_run_ids = []
     monkeypatch.setattr(
         app_dsl_agent_service.DependenciesAnalysisService,
         "generate_latest_dependencies",
         lambda _plugin_ids: [],
     )
 
-    writer_store = AppDslAgentRunStore(executor=_ImmediateExecutor(), ttl_seconds=3600, use_redis=True)
-    reader_store = AppDslAgentRunStore(executor=_ImmediateExecutor(), ttl_seconds=3600, use_redis=True)
+    writer_store = AppDslAgentRunStore(redis_client=fake_redis, ttl_seconds=3600, enqueue_run=enqueued_run_ids.append)
+    worker_store = AppDslAgentRunStore(redis_client=fake_redis, ttl_seconds=3600, enqueue_run=lambda _run_id: None)
+    reader_store = AppDslAgentRunStore(redis_client=fake_redis, ttl_seconds=3600, enqueue_run=lambda _run_id: None)
 
     run = writer_store.create_run(
         AppDslAgentGenerateArgs(prompt="Summarize the supplied text."),
@@ -649,8 +678,15 @@ def test_run_store_persists_runs_for_cross_worker_polling(monkeypatch):
     )
 
     redis_key = f"{app_dsl_agent_service.DSL_AGENT_RUN_REDIS_KEY_PREFIX}{run.id}"
+    assert enqueued_run_ids == [run.id]
     assert redis_key in fake_redis.values
     assert fake_redis.ttls[redis_key] == 3600
+
+    queued = reader_store.get_run(run.id, account_id="account-1", tenant_id="tenant-1")
+    assert queued is not None
+    assert queued.status == "queued"
+
+    assert worker_store.execute_run(run.id) is True
 
     restored = reader_store.get_run(run.id, account_id="account-1", tenant_id="tenant-1")
     assert restored is not None
@@ -668,7 +704,7 @@ def test_run_store_records_generation_failures(monkeypatch):
         raise RuntimeError("generation failed")
 
     monkeypatch.setattr(AppDslAgentService, "generate", raise_error)
-    store = AppDslAgentRunStore(executor=_ImmediateExecutor())
+    store = _create_inline_run_store()
 
     run = store.create_run(AppDslAgentGenerateArgs(prompt="Broken workflow."))
     payload = serialize_run(store.get_run(run.id))
@@ -677,3 +713,18 @@ def test_run_store_records_generation_failures(monkeypatch):
     assert payload["error"] == "generation failed"
     assert payload["result"] is None
     assert payload["events"][-1]["status"] == "failed"
+
+
+def test_celery_task_executes_dsl_agent_run_store(monkeypatch):
+    from tasks import app_dsl_agent_generate_task
+
+    calls = []
+
+    def execute_run(run_id: str) -> bool:
+        calls.append(run_id)
+        return True
+
+    monkeypatch.setattr(app_dsl_agent_generate_task.app_dsl_agent_run_store, "execute_run", execute_run)
+
+    assert app_dsl_agent_generate_task.run_app_dsl_agent_generation_task.run("run-1") is True
+    assert calls == ["run-1"]
