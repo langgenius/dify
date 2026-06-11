@@ -15,9 +15,11 @@ from itertools import starmap
 from urllib import parse
 
 from flask_restx import Resource
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
+from controllers.console.app.wraps import with_session
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
@@ -70,8 +72,8 @@ def _load_tenant(workspace_id: str) -> Tenant:
     return tenant
 
 
-def _load_account(account_id: object) -> Account:
-    account = AccountService.get_account_by_id(db.session, str(account_id)) if account_id else None
+def _load_account(session: Session | scoped_session, account_id: object) -> Account:
+    account = AccountService.get_account_by_id(session, str(account_id)) if account_id else None
     if account is None:
         raise RuntimeError("authenticated account_id has no Account row")
     return account
@@ -124,15 +126,16 @@ class WorkspaceSwitchApi(Resource):
 
     @auth_router.guard_workspace(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, WorkspaceDetailResponse, description="Workspace detail")
-    def post(self, workspace_id: str, *, auth_data: AuthData):
-        account = _load_account(auth_data.account_id)
+    @with_session
+    def post(self, session: Session, workspace_id: str, *, auth_data: AuthData):
+        account = _load_account(session, auth_data.account_id)
 
         try:
-            TenantService.switch_tenant(account, workspace_id)
+            TenantService.switch_tenant(account, workspace_id, session=session)
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
-        row = TenantService.find_workspace_for_account(db.session, str(auth_data.account_id), workspace_id)
+        row = TenantService.find_workspace_for_account(session, str(auth_data.account_id), workspace_id)
         if row is None:
             raise NotFound("workspace not found")
         tenant, membership = row
@@ -172,7 +175,7 @@ class WorkspaceMembersApi(Resource):
     @returns(201, MemberInviteResponse, description="Member invited")
     @accepts(body=MemberInvitePayload)
     def post(self, workspace_id: str, *, auth_data: AuthData, body: MemberInvitePayload):
-        inviter = _load_account(auth_data.account_id)
+        inviter = _load_account(db.session, auth_data.account_id)
         tenant = _load_tenant(workspace_id)
 
         _check_member_invite_quota(str(tenant.id))
@@ -225,7 +228,7 @@ class WorkspaceMemberApi(Resource):
     )
     @returns(200, MemberActionResponse, description="Member removed")
     def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
-        operator = _load_account(auth_data.account_id)
+        operator = _load_account(db.session, auth_data.account_id)
         tenant = _load_tenant(workspace_id)
         member = AccountService.get_account_by_id(db.session, member_id)
         if member is None:
@@ -259,7 +262,7 @@ class WorkspaceMemberRoleApi(Resource):
     @returns(200, MemberActionResponse, description="Role updated")
     @accepts(body=MemberRoleUpdatePayload)
     def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData, body: MemberRoleUpdatePayload):
-        operator = _load_account(auth_data.account_id)
+        operator = _load_account(db.session, auth_data.account_id)
         tenant = _load_tenant(workspace_id)
         member = AccountService.get_account_by_id(db.session, member_id)
         if member is None:
