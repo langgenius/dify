@@ -11,13 +11,13 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import TagInput from '@/app/components/base/tag-input'
 import { SupportUploadFileTypes } from '../../../types'
 
-type Props = {
+type Props = Readonly<{
   type: SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video | SupportUploadFileTypes.custom
   selected: boolean
   onToggle: (type: SupportUploadFileTypes) => void
   onCustomFileTypesChange?: (customFileTypes: string[]) => void
   customFileTypes?: string[]
-}
+}>
 
 const FileTypeItem: FC<Props> = ({
   type,

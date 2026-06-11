@@ -19,14 +19,14 @@ import AddedMetadataItem from './add-row'
 import EditMetadataBatchItem from './edit-row'
 
 const i18nPrefix = 'metadata.batchEditMetadata'
-type Props = {
+type Props = Readonly<{
   datasetId: string
   documentNum: number
   list: MetadataItemInBatchEdit[]
   onSave: (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
   onHide: () => void
   onShowManage: () => void
-}
+}>
 const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSave, onHide, onShowManage }) => {
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)

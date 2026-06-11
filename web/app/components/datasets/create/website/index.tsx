@@ -16,7 +16,7 @@ import JinaReader from './jina-reader'
 import NoData from './no-data'
 import Watercrawl from './watercrawl'
 
-type Props = {
+type Props = Readonly<{
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
@@ -25,7 +25,7 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
   authedDataSourceList: DataSourceAuth[]
-}
+}>
 
 const Website: FC<Props> = ({
   onPreview,

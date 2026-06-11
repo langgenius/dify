@@ -8,9 +8,9 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import FileIcon from '../document-file-icon'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-}
+}>
 
 function getDocumentExtension(document: SimpleDocumentDetail) {
   const detailExtension = document.data_source_detail_dict?.upload_file?.extension

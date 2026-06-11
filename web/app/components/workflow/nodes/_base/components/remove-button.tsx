@@ -4,10 +4,10 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import ActionButton from '@/app/components/base/action-button'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   onClick: (e: React.MouseEvent) => void
-}
+}>
 
 const Remove: FC<Props> = ({
   onClick,
