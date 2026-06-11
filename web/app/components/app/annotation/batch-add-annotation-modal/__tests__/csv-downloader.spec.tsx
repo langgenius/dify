@@ -48,6 +48,7 @@ describe('CSVDownload', () => {
     renderWithLocale('en-US' as Locale)
 
     expect(screen.getByText('appAnnotation.batchModal.tip')).toBeInTheDocument()
+    expect(screen.getByText('appAnnotation.batchModal.jsonlTip')).toBeInTheDocument()
     expect(screen.getByText('{"question":"question1","answer":"answer1"}')).toBeInTheDocument()
     expect(screen.getByText('appAnnotation.batchModal.template')).toBeInTheDocument()
 

@@ -74,6 +74,7 @@ const CSVDownload: FC = () => {
             </tr>
           </tbody>
         </table>
+        <div className="mt-3 system-sm-medium text-text-primary">{t('batchModal.jsonlTip', { ns: 'appAnnotation' })}</div>
         <pre className="mt-2 overflow-auto rounded-lg border border-divider-regular bg-components-panel-bg p-3 text-xs text-text-secondary">
           {JSONL_TEMPLATE_QA}
         </pre>

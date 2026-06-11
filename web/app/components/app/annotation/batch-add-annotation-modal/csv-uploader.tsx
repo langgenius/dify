@@ -7,7 +7,7 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
+import { Csv as CSVIcon, Json as JSONIcon } from '@/app/components/base/icons/src/public/files'
 
 export type Props = Readonly<{
   file: File | undefined
@@ -78,6 +78,7 @@ const CSVUploader: FC<Props> = ({
     updateFile(currentFile)
   }
   const selectedFileName = file ? getFileNameParts(file.name) : undefined
+  const SelectedFileIcon = selectedFileName?.extension.toLowerCase() === '.jsonl' ? JSONIcon : CSVIcon
 
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
@@ -106,7 +107,10 @@ const CSVUploader: FC<Props> = ({
         {!file && (
           <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg system-sm-regular', dragging && 'border border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
             <div className="flex w-full items-center justify-center space-x-2">
-              <CSVIcon className="shrink-0" />
+              <div className="flex shrink-0 items-center gap-1">
+                <CSVIcon className="shrink-0" aria-hidden="true" />
+                <JSONIcon className="shrink-0" aria-hidden="true" />
+              </div>
               <div className="text-text-tertiary">
                 {t('batchModal.csvUploadTitle', { ns: 'appAnnotation' })}
                 <button
@@ -123,7 +127,7 @@ const CSVUploader: FC<Props> = ({
         )}
         {file && (
           <div className={cn('group flex h-20 items-center rounded-xl border border-components-panel-border bg-components-panel-bg px-6 text-sm font-normal', 'hover:border-components-panel-bg-blur hover:bg-components-panel-bg-blur')}>
-            <CSVIcon className="shrink-0" />
+            <SelectedFileIcon className="shrink-0" aria-hidden="true" />
             <div className="ml-2 flex w-0 grow">
               <span className="max-w-[calc(100%-48px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{selectedFileName?.name}</span>
               <span className="shrink-0 text-text-tertiary">{selectedFileName?.extension}</span>
