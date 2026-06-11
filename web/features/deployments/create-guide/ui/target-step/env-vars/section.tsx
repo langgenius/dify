@@ -6,21 +6,31 @@ import { useTranslation } from 'react-i18next'
 import {
   EnvVarBindingsPanel,
 } from '@/features/deployments/components/env-var-bindings'
+import { deploymentTargetEnvVarSlots } from '../../../models/deployment-target/env-vars'
+import {
+  useCreateGuideDeploymentOptionsQuery,
+} from '../../../models/deployment-target/query-config'
+import { deploymentTargetQueryEnabledAtom } from '../../../state/deployment-target-query-atoms'
+import { dslContentAtom } from '../../../state/dsl-atoms'
 import {
   envVarValuesAtom,
   setEnvVarAtom,
 } from '../../../state/target-atoms'
-import {
-  useTargetEnvVarDeploymentOptionsQuery,
-  useTargetEnvVarSlots,
-} from './section.data'
+import { methodAtom } from '../../../state/workflow-atoms'
 
 export function TargetEnvVarSection() {
   const { t } = useTranslation('deployments')
-  const envVarSlots = useTargetEnvVarSlots()
-  const envVarValues = useAtomValue(envVarValuesAtom)
   const setEnvVar = useSetAtom(setEnvVarAtom)
-  const deploymentOptionsQuery = useTargetEnvVarDeploymentOptionsQuery()
+  const dslContent = useAtomValue(dslContentAtom)
+  const envVarValues = useAtomValue(envVarValuesAtom)
+  const method = useAtomValue(methodAtom)
+  const enabled = useAtomValue(deploymentTargetQueryEnabledAtom)
+  const deploymentOptionsQuery = useCreateGuideDeploymentOptionsQuery()
+  const envVarSlots = deploymentTargetEnvVarSlots({
+    dslContent,
+    method,
+    slots: enabled ? deploymentOptionsQuery.data?.options?.envVarSlots : undefined,
+  })
   const isBindingError = deploymentOptionsQuery.isError
   const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
 

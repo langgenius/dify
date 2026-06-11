@@ -4,6 +4,13 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
+  existingInstanceNamesFromQueryData,
+  instanceNameConflictFromQueryData,
+  useExistingInstanceNamesQuery,
+  useInstanceNameConflictQuery,
+} from '../../queries/source'
+import { dslDefaultAppNameAtom } from '../../state/dsl-atoms'
+import {
   instanceDescriptionAtom,
   instanceNameAtom,
   releaseDescriptionAtom,
@@ -12,11 +19,10 @@ import {
   setInstanceNameAtom,
   setReleaseDescriptionAtom,
   setReleaseNameAtom,
+  submittedReleaseFieldsAtom,
 } from '../../state/release-atoms'
-import {
-  useReleaseInstanceNameError,
-  useReleaseInstanceNamePlaceholder,
-} from './fields.data'
+import { selectedAppAtom } from '../../state/source-atoms'
+import { methodAtom } from '../../state/workflow-atoms'
 
 const releaseTextareaClassName = 'min-h-16 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
 
@@ -52,8 +58,30 @@ function InstanceNameField() {
   const { t } = useTranslation('deployments')
   const instanceName = useAtomValue(instanceNameAtom)
   const setInstanceName = useSetAtom(setInstanceNameAtom)
-  const instanceNameError = useReleaseInstanceNameError()
-  const instanceNamePlaceholder = useReleaseInstanceNamePlaceholder()
+  const method = useAtomValue(methodAtom)
+  const selectedApp = useAtomValue(selectedAppAtom)
+  const dslDefaultAppName = useAtomValue(dslDefaultAppNameAtom)
+  const instanceNamePlaceholder = method === 'importDsl'
+    ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
+    : selectedApp?.name
+  const appInstancesQuery = useExistingInstanceNamesQuery()
+  const existingInstanceNames = existingInstanceNamesFromQueryData(appInstancesQuery.data)
+  const submittedInstanceName = useAtomValue(submittedReleaseFieldsAtom).submittedInstanceName
+  const instanceNameConflictQuery = useInstanceNameConflictQuery({
+    enabled: Boolean(submittedInstanceName),
+    submittedInstanceName,
+  })
+  const remoteInstanceNameConflict = instanceNameConflictFromQueryData(instanceNameConflictQuery.data, submittedInstanceName)
+  const hasInstanceNameConflict = Boolean(
+    submittedInstanceName
+    && (
+      existingInstanceNames.includes(submittedInstanceName)
+      || remoteInstanceNameConflict
+    ),
+  )
+  const instanceNameError = hasInstanceNameConflict
+    ? t('createGuide.release.instanceNameConflict')
+    : undefined
   const instanceNameErrorId = 'create-guide-instance-name-error'
 
   return (

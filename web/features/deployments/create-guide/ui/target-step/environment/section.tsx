@@ -4,16 +4,19 @@ import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { useSetAtom } from 'jotai'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { selectEnvironmentAtom } from '../../../state/target-atoms'
-import { TargetEnvironmentSkeleton } from '../skeletons'
+import { consoleQuery } from '@/service/client'
 import {
-  useTargetEffectiveSelectedEnvironmentId,
-  useTargetEnvironments,
-  useTargetEnvironmentsQuery,
-} from './section.data'
+  deploymentTargetQueryEnabledAtom,
+} from '../../../state/deployment-target-query-atoms'
+import {
+  selectedEnvironmentIdAtom,
+  selectEnvironmentAtom,
+} from '../../../state/target-atoms'
+import { TargetEnvironmentSkeleton } from '../skeletons'
 
 function EnvironmentOptionRow({ environment }: {
   environment: Environment
@@ -47,9 +50,18 @@ function EnvironmentOptionRow({ environment }: {
 
 export function TargetEnvironmentSection() {
   const { t } = useTranslation('deployments')
-  const effectiveSelectedEnvironmentId = useTargetEffectiveSelectedEnvironmentId()
-  const environments = useTargetEnvironments()
-  const environmentsQuery = useTargetEnvironmentsQuery()
+  const enabled = useAtomValue(deploymentTargetQueryEnabledAtom)
+  const environmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
+    input: {
+      query: {},
+    },
+    enabled,
+  }))
+  const environments = enabled
+    ? environmentsQuery.data?.data ?? []
+    : []
+  const selectedEnvironmentId = useAtomValue(selectedEnvironmentIdAtom)
+  const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id
   const isEnvironmentError = environmentsQuery.isError
   const isEnvironmentLoading = environmentsQuery.isLoading || (environmentsQuery.isFetching && !environmentsQuery.data)
   const onSelectEnvironment = useSetAtom(selectEnvironmentAtom)

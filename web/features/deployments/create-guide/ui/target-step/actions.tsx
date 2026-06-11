@@ -9,18 +9,16 @@ import {
 } from '../../state/submission-atoms'
 import { setStepAtom } from '../../state/workflow-atoms'
 import {
-  useTargetDeployAction,
-  useTargetDeployDisabled,
-  useTargetSkipDeploymentAction,
-  useTargetSkipDeploymentDisabled,
+  useTargetCanDeploy,
+  useTargetCanSkipDeployment,
+  useTargetDeploymentSubmissionAction,
 } from './actions.data'
 
 export function TargetActionButtons() {
   const { t } = useTranslation('deployments')
-  const deployDisabled = useTargetDeployDisabled()
-  const skipDeploymentDisabled = useTargetSkipDeploymentDisabled()
-  const handleDeploy = useTargetDeployAction()
-  const handleSkipDeployment = useTargetSkipDeploymentAction()
+  const canDeploy = useTargetCanDeploy()
+  const canSkipDeployment = useTargetCanSkipDeployment()
+  const createDeploymentAndRelease = useTargetDeploymentSubmissionAction()
   const setStep = useSetAtom(setStepAtom)
   const isDeploying = useAtomValue(isSubmittingDeploymentGuideAtom)
   const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
@@ -36,15 +34,29 @@ export function TargetActionButtons() {
       setStep('release')
   }
 
+  async function handleDeploy() {
+    if (!canDeploy)
+      return
+
+    await createDeploymentAndRelease({ deployToEnvironment: true })
+  }
+
+  async function handleSkipDeployment() {
+    if (!canSkipDeployment)
+      return
+
+    await createDeploymentAndRelease({ deployToEnvironment: false })
+  }
+
   return (
     <>
       <Button type="button" variant="secondary" onClick={handleBack} disabled={isDeploying}>
         {t('createGuide.actions.back')}
       </Button>
-      <Button type="button" variant="secondary" disabled={skipDeploymentDisabled || isDeploying} onClick={handleSkipDeployment}>
+      <Button type="button" variant="secondary" disabled={!canSkipDeployment || isDeploying} onClick={handleSkipDeployment}>
         {skipLabel}
       </Button>
-      <Button type="button" variant="primary" disabled={deployDisabled || isDeploying} onClick={handleDeploy}>
+      <Button type="button" variant="primary" disabled={!canDeploy || isDeploying} onClick={handleDeploy}>
         {primaryLabel}
       </Button>
     </>

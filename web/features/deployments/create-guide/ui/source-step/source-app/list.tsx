@@ -2,35 +2,35 @@
 
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
-import { selectSourceAppAtom } from '../../../state/source-atoms'
+import { useSourceAppsQuery } from '../../../queries/source'
 import {
-  useEffectiveSourceAppId,
-  useFilteredSourceAppOptions,
-  useSourceAppListQuery,
-  useSourceAppOptions,
-} from './list.data'
+  selectedAppAtom,
+  selectSourceAppAtom,
+  sourceSearchTextAtom,
+} from '../../../state/source-atoms'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 
 export function SourceAppList() {
   const { t } = useTranslation('deployments')
+  const selectedApp = useAtomValue(selectedAppAtom)
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
-  const sourceAppsQuery = useSourceAppListQuery()
-  const sourceApps = useSourceAppOptions()
-  const filteredApps = useFilteredSourceAppOptions()
-  const effectiveSourceAppId = useEffectiveSourceAppId()
+  const sourceSearchText = useAtomValue(sourceSearchTextAtom)
+  const sourceAppsQuery = useSourceAppsQuery({ sourceSearchText })
+  const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []
+  const effectiveSelectedApp = selectedApp ?? sourceApps[0]
   const sourceAppsLoading = sourceAppsQuery.isLoading || (sourceAppsQuery.isFetching && sourceApps.length === 0)
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
       {sourceAppsLoading
         ? <SourceAppSkeleton />
-        : filteredApps.length === 0
+        : sourceApps.length === 0
           ? (
               <DeploymentStateMessage variant="embedded">
                 {t('createGuide.source.empty')}
@@ -38,11 +38,11 @@ export function SourceAppList() {
             )
           : (
               <div>
-                {filteredApps.map(app => (
+                {sourceApps.map(app => (
                   <SourceAppOption
                     key={app.id}
                     app={app}
-                    selected={effectiveSourceAppId === app.id}
+                    selected={effectiveSelectedApp?.id === app.id}
                     onSelect={() => selectSourceApp(app)}
                   />
                 ))}

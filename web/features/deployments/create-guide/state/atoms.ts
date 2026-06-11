@@ -1,4 +1,7 @@
 import {
+  deploymentTargetQueryLocalAtoms,
+} from './deployment-target-query-atoms'
+import {
   dslLocalAtoms,
 } from './dsl-atoms'
 import {
@@ -27,5 +30,6 @@ export const createDeploymentGuideLocalAtoms = [
   ...releaseLocalAtoms,
   ...submissionLocalAtoms,
   ...targetLocalAtoms,
+  ...deploymentTargetQueryLocalAtoms,
   ...unsupportedDslLocalAtoms,
 ] as const

@@ -1,6 +1,5 @@
 'use client'
 
-import type { WorkflowSourceApp } from '../types'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { DEPLOYMENT_PAGE_SIZE, getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '@/features/deployments/data'
 import { consoleQuery } from '@/service/client'
@@ -66,15 +65,8 @@ export function useInstanceNameConflictQuery({
   }))
 }
 
-type SourceAppsQueryData = ReturnType<typeof useSourceAppsQuery>['data']
 type ExistingInstanceNamesQueryData = ReturnType<typeof useExistingInstanceNamesQuery>['data']
 type InstanceNameConflictQueryData = ReturnType<typeof useInstanceNameConflictQuery>['data']
-
-export function sourceAppsFromQueryData(data: SourceAppsQueryData): WorkflowSourceApp[] {
-  const sourceApps = data?.pages.flatMap(page => page.data) ?? []
-
-  return sourceApps as WorkflowSourceApp[]
-}
 
 export function existingInstanceNamesFromQueryData(data: ExistingInstanceNamesQueryData) {
   return data?.pages.flatMap(page =>
