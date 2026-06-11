@@ -6,7 +6,7 @@ import type { AgentTool } from './components/agent-tools'
 import type { AgentKnowledgeRetrievalItem } from './components/configured-data'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   defaultAgentFiles,
   defaultAgentKnowledgeRetrievals,
@@ -52,6 +52,118 @@ const defaultDraft: AgentConfigureDraft = {
 
 const originalConfigAtom = atom<AgentSoulConfig | undefined>(undefined)
 const draftAtom = atom<AgentConfigureDraft>(defaultDraft)
+
+const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => [
+  file,
+  ...flattenFileNodes(file.children ?? []),
+])
+
+const toSkillRefs = (skills: AgentSkill[]) => skills.map(skill => ({
+  id: skill.id,
+  name: skill.name,
+}))
+
+const toFileRefs = (files: AgentFileNode[]) => flattenFileNodes(files).map(file => ({
+  id: file.id,
+  name: file.name,
+  type: file.icon,
+}))
+
+const toKnowledgeDatasets = (knowledgeRetrievals: AgentKnowledgeRetrievalItem[]) => knowledgeRetrievals.map(item => ({
+  id: item.id,
+  name: item.nameKey,
+}))
+
+const toDifyToolConfigs = (
+  tools: AgentTool[],
+  toolSettings: Record<string, Record<string, unknown>>,
+) => tools.flatMap((tool) => {
+  if (tool.kind !== 'provider')
+    return []
+
+  return tool.actions.map(action => ({
+    enabled: true,
+    name: action.name,
+    provider: tool.name,
+    provider_id: tool.id,
+    provider_type: 'builtin',
+    tool_name: action.toolName,
+    runtime_parameters: toolSettings[action.id] ?? {},
+    credential_type: tool.credentialVariant === 'endUser' ? 'oauth2' as const : 'api-key' as const,
+  }))
+})
+
+const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
+  if (tool.kind !== 'cli')
+    return []
+
+  return [{
+    enabled: true,
+    name: tool.name,
+    tool_name: tool.id,
+    pre_authorized: tool.action === 'preAuthorize',
+  }]
+})
+
+const toEnvConfig = (variables: EnvVariable[]): AgentSoulConfig['env'] => ({
+  variables: variables
+    .filter(variable => variable.scope === 'plain')
+    .map(variable => ({
+      id: variable.id,
+      key: variable.key,
+      name: variable.key,
+      value: variable.value,
+      variable: variable.key,
+    })),
+  secret_refs: variables
+    .filter(variable => variable.scope === 'secret')
+    .map(variable => ({
+      id: variable.id,
+      key: variable.key,
+      name: variable.key,
+      ref: variable.id,
+      variable: variable.key,
+    })),
+})
+
+const toConfigSnapshot = ({
+  baseConfig,
+  draft,
+  currentModel,
+}: {
+  baseConfig?: AgentSoulConfig
+  draft: AgentConfigureDraft
+  currentModel?: DefaultModel
+}): AgentSoulConfig => ({
+  ...baseConfig,
+  prompt: {
+    ...baseConfig?.prompt,
+    system_prompt: draft.prompt,
+  },
+  model: currentModel
+    ? {
+        ...baseConfig?.model,
+        model_provider: currentModel.provider,
+        model: currentModel.model,
+        plugin_id: baseConfig?.model?.plugin_id ?? '',
+      }
+    : baseConfig?.model,
+  skills_files: {
+    ...baseConfig?.skills_files,
+    skills: toSkillRefs(draft.skills),
+    files: toFileRefs(draft.files),
+  },
+  tools: {
+    ...baseConfig?.tools,
+    dify_tools: toDifyToolConfigs(draft.tools, draft.toolSettings),
+    cli_tools: toCliToolConfigs(draft.tools),
+  },
+  knowledge: {
+    ...baseConfig?.knowledge,
+    datasets: toKnowledgeDatasets(draft.knowledgeRetrievals),
+  },
+  env: toEnvConfig(draft.envVariables),
+})
 
 export const agentConfigurePromptAtom = atom(
   get => get(draftAtom).prompt,
@@ -218,6 +330,27 @@ export function useAgentConfigureCurrentModel(defaultModel?: DefaultModel) {
 
 export function useAgentConfigureConfig() {
   return useAtomValue(agentConfigureConfigAtom)
+}
+
+export function useAgentConfigurePublishPayload({
+  agentId,
+  baseConfig,
+  currentModel,
+}: {
+  agentId: string
+  baseConfig?: AgentSoulConfig
+  currentModel?: DefaultModel
+}) {
+  const draft = useAtomValue(draftAtom)
+
+  return useMemo(() => ({
+    agent_id: agentId,
+    config_snapshot: toConfigSnapshot({
+      baseConfig,
+      draft,
+      currentModel,
+    }),
+  }), [agentId, baseConfig, currentModel, draft])
 }
 
 export function useAgentConfigureSkills() {
