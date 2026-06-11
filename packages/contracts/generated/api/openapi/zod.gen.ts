@@ -79,7 +79,7 @@ export const zAppMode = z.enum([
  */
 export const zAppListQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: zAppMode.optional(),
+  mode: zAppMode.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
   tag: z.string().max(100).nullish(),
@@ -245,7 +245,7 @@ export const zMarketplace = z.object({
  * MemberActionResponse
  */
 export const zMemberActionResponse = z.object({
-  result: z.string().optional().default('success'),
+  result: z.literal('success').optional().default('success'),
 })
 
 /**
@@ -263,7 +263,7 @@ export const zMemberInviteResponse = z.object({
   email: z.string(),
   invite_url: z.string(),
   member_id: z.string(),
-  result: z.string().optional().default('success'),
+  result: z.literal('success').optional().default('success'),
   role: z.string(),
   tenant_id: z.string(),
 })
@@ -323,7 +323,7 @@ export const zPackage = z.object({
  */
 export const zPermittedExternalAppsListQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: zAppMode.optional(),
+  mode: zAppMode.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
 })
@@ -405,7 +405,7 @@ export const zAppDescribeInfo = z.object({
  * AppDescribeResponse
  */
 export const zAppDescribeResponse = z.object({
-  info: zAppDescribeInfo.optional(),
+  info: zAppDescribeInfo.nullish(),
   input_schema: z.record(z.string(), z.unknown()).nullish(),
   parameters: z.record(z.string(), z.unknown()).nullish(),
 })
@@ -467,7 +467,7 @@ export const zPermittedExternalAppsListResponse = z.object({
  * types it as a required `'success'` rather than an optional field.
  */
 export const zTaskStopResponse = z.object({
-  result: z.string(),
+  result: z.literal('success'),
 })
 
 /**
@@ -481,7 +481,7 @@ export const zType = z.enum(['github', 'marketplace', 'package'])
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
   type: zType,
-  value: z.unknown(),
+  value: z.union([zGithub, zMarketplace, zPackage]),
 })
 
 /**
@@ -505,7 +505,7 @@ export const zUsageInfo = z.object({
  */
 export const zMessageMetadata = z.object({
   retriever_resources: z.array(z.record(z.string(), z.unknown())).optional().default([]),
-  usage: zUsageInfo.optional(),
+  usage: zUsageInfo.nullish(),
 })
 
 /**
@@ -549,7 +549,7 @@ export const zWorkspacePayload = z.object({
  * AccountResponse
  */
 export const zAccountResponse = z.object({
-  account: zAccountPayload.optional(),
+  account: zAccountPayload.nullish(),
   default_workspace_id: z.string().nullish(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),

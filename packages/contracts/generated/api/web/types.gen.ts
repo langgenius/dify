@@ -539,9 +539,7 @@ export type DeleteConversationsByCIdError
   = DeleteConversationsByCIdErrors[keyof DeleteConversationsByCIdErrors]
 
 export type DeleteConversationsByCIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteConversationsByCIdResponse
@@ -1378,9 +1376,7 @@ export type DeleteSavedMessagesByMessageIdError
   = DeleteSavedMessagesByMessageIdErrors[keyof DeleteSavedMessagesByMessageIdErrors]
 
 export type DeleteSavedMessagesByMessageIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteSavedMessagesByMessageIdResponse
