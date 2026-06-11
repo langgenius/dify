@@ -63,14 +63,14 @@ export function ConfigureSection({
           <div className={cn('flex min-w-0 items-center gap-0.5', titleRowClassName)}>
             <Heading id={labelId} className="min-w-0">
               <CollapsibleTrigger
-                className="group h-6 min-h-0 justify-start gap-0 rounded-sm px-0 text-text-secondary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary"
+                className="group/collapse h-6 min-h-0 justify-start gap-0 rounded-sm px-0 text-text-secondary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary"
               >
                 <span className="min-w-0 truncate system-sm-semibold-uppercase">
                   {label}
                 </span>
                 <span
-                  aria-hidden
-                  className="i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none"
+                  aria-hidden="true"
+                  className="i-custom-vender-solid-general-arrow-down-round-fill size-4 rotate-270 cursor-pointer text-text-quaternary transition-transform group-hover/collapse:text-text-secondary group-data-panel-open/collapse:rotate-0 motion-reduce:transition-none"
                 />
               </CollapsibleTrigger>
             </Heading>

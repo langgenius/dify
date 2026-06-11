@@ -1,6 +1,7 @@
 'use client'
 
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -49,6 +50,7 @@ export function AgentConfigurePage({
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
+  const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
 
   return (
     <section
@@ -57,11 +59,11 @@ export function AgentConfigurePage({
       className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden p-1"
     >
       {/* Orchestrate configuration panel */}
-      <div className="flex max-w-[560px] min-w-[360px] flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg">
+      <div className="flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg">
         {/* Orchestrate header */}
         <div className="flex shrink-0 items-center gap-1 px-4 py-2">
           <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <h2 className="truncate title-xl-semi-bold text-text-primary">
+            <h2 id={orchestrateHeadingId} className="truncate title-xl-semi-bold text-text-primary">
               {t('agentDetail.configure.orchestrate')}
             </h2>
           </div>
@@ -77,7 +79,15 @@ export function AgentConfigurePage({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+        <ScrollArea
+          className="min-h-0 flex-1 overflow-hidden"
+          labelledBy={orchestrateHeadingId}
+          slotClassNames={{
+            viewport: 'overscroll-contain',
+            content: 'min-h-full px-4 py-3',
+            scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
+          }}
+        >
           {/* Prompt editor */}
           <AgentPromptEditor value={prompt} onChange={setPrompt} />
 
@@ -95,7 +105,7 @@ export function AgentConfigurePage({
 
           {/* Advanced settings */}
           <AgentAdvancedSettings />
-        </div>
+        </ScrollArea>
 
         {/* Save and publish actions */}
         <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-4">
@@ -105,8 +115,8 @@ export function AgentConfigurePage({
       </div>
 
       {/* Preview area */}
-      <div className="flex min-w-[420px] flex-1 gap-1 overflow-hidden">
-        <div className="flex min-w-[420px] flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
+      <div className="flex min-w-105 flex-1 gap-1 overflow-hidden">
+        <div className="flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
           <AgentPreviewHeader
             isVersionsOpen={showPreviewVersions}
             onToggleVersions={() => setShowPreviewVersions(open => !open)}
