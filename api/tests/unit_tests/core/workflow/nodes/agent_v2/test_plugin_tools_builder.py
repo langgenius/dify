@@ -518,3 +518,31 @@ def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
     with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
         _build(builder, tools)
     assert exc_info.value.error_code == "agent_tool_declaration_not_found"
+
+
+def test_list_provider_tool_names_reads_builtin_provider(monkeypatch):
+    """The default provider-tools lister maps ToolManager's provider controller
+    to the plain name list the expansion step consumes."""
+    from types import SimpleNamespace
+
+    from core.workflow.nodes.agent_v2 import plugin_tools_builder as module
+
+    provider = SimpleNamespace(
+        get_tools=lambda: [
+            SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="ddg_search"))),
+            SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="ddg_news"))),
+        ]
+    )
+    captured: dict[str, str] = {}
+
+    def fake_get_builtin_provider(provider_id, tenant_id):
+        captured["provider_id"] = provider_id
+        captured["tenant_id"] = tenant_id
+        return provider
+
+    monkeypatch.setattr(module.ToolManager, "get_builtin_provider", staticmethod(fake_get_builtin_provider))
+
+    names = module._list_provider_tool_names(tenant_id="tenant-1", provider_id="langgenius/duckduckgo/duckduckgo")
+
+    assert names == ["ddg_search", "ddg_news"]
+    assert captured == {"provider_id": "langgenius/duckduckgo/duckduckgo", "tenant_id": "tenant-1"}
