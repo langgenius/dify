@@ -1,7 +1,7 @@
 import { noop } from 'es-toolkit/function'
 import {
   createContext,
-  useContext,
+  use,
   useRef,
 } from 'react'
 import { useMitt } from '@/hooks/use-mitt'
@@ -46,5 +46,5 @@ export const MittProvider = ({ children }: { children: React.ReactNode }) => {
 }
 
 export const useMittContext = () => {
-  return useContext(MittContext)
+  return use(MittContext)
 }

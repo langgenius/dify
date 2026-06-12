@@ -65,7 +65,7 @@ class BaseTraceInfo(BaseModel):
         match parent_ctx:
             case ParentTraceContext():
                 context = parent_ctx
-            case _ if isinstance(parent_ctx, Mapping):
+            case Mapping():
                 try:
                     context = ParentTraceContext.model_validate(parent_ctx)
                 except ValueError:

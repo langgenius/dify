@@ -5,6 +5,7 @@ import type { PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/de
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
@@ -12,7 +13,6 @@ import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { appDefaultIconBackground } from '@/config'
 import { AccessMode } from '@/models/access-control'
-import TabHeader from '../../base/tab-header'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import RunOnce from './run-once'
@@ -71,7 +71,9 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div
+    <Tabs
+      value={currentTab}
+      onValueChange={onTabChange}
       className={cn(
         'relative flex h-full shrink-0 flex-col',
         isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
@@ -93,29 +95,25 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         {siteInfo.description && (
           <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
         )}
-        <TabHeader
-          items={[
-            { id: 'create', name: t('generation.tabs.create', { ns: 'share' }) },
-            { id: 'batch', name: t('generation.tabs.batch', { ns: 'share' }) },
-            ...(!isWorkflow
-              ? [{
-                  id: 'saved',
-                  name: t('generation.tabs.saved', { ns: 'share' }),
-                  isRight: true,
-                  icon: <span aria-hidden className="i-ri-bookmark-3-line size-4" />,
-                  extra: savedMessages.length > 0
-                    ? (
-                        <Badge className="ml-1">
-                          {savedMessages.length}
-                        </Badge>
-                      )
-                    : null,
-                }]
-              : []),
-          ]}
-          value={currentTab}
-          onChange={onTabChange}
-        />
+        <TabsList className="w-full">
+          <TabsTab value="create">
+            <span className="ml-2">{t('generation.tabs.create', { ns: 'share' })}</span>
+          </TabsTab>
+          <TabsTab value="batch">
+            <span className="ml-2">{t('generation.tabs.batch', { ns: 'share' })}</span>
+          </TabsTab>
+          {!isWorkflow && (
+            <TabsTab value="saved" className="ml-auto">
+              <span aria-hidden className="i-ri-bookmark-3-line size-4" />
+              <span className="ml-2">{t('generation.tabs.saved', { ns: 'share' })}</span>
+              {savedMessages.length > 0 && (
+                <Badge className="ml-1">
+                  {savedMessages.length}
+                </Badge>
+              )}
+            </TabsTab>
+          )}
+        </TabsList>
       </div>
       <div
         className={cn(
@@ -124,7 +122,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
         )}
       >
-        <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
+        <TabsPanel value="create" keepMounted>
           <RunOnce
             siteInfo={siteInfo}
             inputs={inputs}
@@ -136,22 +134,24 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             onVisionFilesChange={onVisionFilesChange}
             runControl={runControl}
           />
-        </div>
-        <div className={cn(currentTab === 'batch' ? 'block' : 'hidden')}>
+        </TabsPanel>
+        <TabsPanel value="batch" keepMounted>
           <RunBatch
             vars={promptConfig.prompt_variables}
             onSend={onBatchSend}
             isAllFinished={allTasksRun}
           />
-        </div>
-        {currentTab === 'saved' && (
-          <SavedItems
-            className={cn(isPC ? 'mt-6' : 'mt-4')}
-            isShowTextToSpeech={textToSpeechConfig?.enabled}
-            list={savedMessages}
-            onRemove={onRemoveSavedMessage}
-            onStartCreateContent={() => onTabChange('create')}
-          />
+        </TabsPanel>
+        {!isWorkflow && (
+          <TabsPanel value="saved">
+            <SavedItems
+              className={cn(isPC ? 'mt-6' : 'mt-4')}
+              isShowTextToSpeech={textToSpeechConfig?.enabled}
+              list={savedMessages}
+              onRemove={onRemoveSavedMessage}
+              onStartCreateContent={() => onTabChange('create')}
+            />
+          </TabsPanel>
         )}
       </div>
       {!customConfig?.remove_webapp_brand && (
@@ -170,7 +170,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
               : <DifyLogo size="small" />}
         </div>
       )}
-    </div>
+    </Tabs>
   )
 }
 

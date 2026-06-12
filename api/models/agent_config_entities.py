@@ -117,7 +117,41 @@ class AgentPermissionConfig(BaseModel):
     state: str | None = Field(default=None, max_length=64)
 
 
+class AgentEnvVariableConfig(AgentFlexibleConfig):
+    name: str | None = Field(default=None, max_length=255)
+    key: str | None = Field(default=None, max_length=255)
+    env_name: str | None = Field(default=None, max_length=255)
+    variable: str | None = Field(default=None, max_length=255)
+    type: str | None = Field(default=None, max_length=64)
+    value: RuntimeParameterValue = None
+    default: RuntimeParameterValue = None
+    required: bool = False
+
+
+class AgentSecretRefConfig(AgentFlexibleConfig):
+    name: str | None = Field(default=None, max_length=255)
+    key: str | None = Field(default=None, max_length=255)
+    env_name: str | None = Field(default=None, max_length=255)
+    variable: str | None = Field(default=None, max_length=255)
+    type: str | None = Field(default=None, max_length=64)
+    id: str | None = Field(default=None, max_length=255)
+    ref: str | None = Field(default=None, max_length=255)
+    credential_id: str | None = Field(default=None, max_length=255)
+    provider_credential_id: str | None = Field(default=None, max_length=255)
+    provider: str | None = Field(default=None, max_length=255)
+    permission: AgentPermissionConfig | None = None
+    permission_status: str | None = Field(default=None, max_length=64)
+
+
+class AgentCliToolEnvConfig(BaseModel):
+    variables: list[AgentEnvVariableConfig] = Field(default_factory=list)
+    secret_refs: list[AgentSecretRefConfig] = Field(default_factory=list)
+
+
 class AgentCliToolConfig(AgentFlexibleConfig):
+    # Stable mention/reference id (minted by the frontend on creation, backfilled at
+    # composer save) so renaming a CLI tool never breaks `[§cli_tool:<id>§]` mentions.
+    id: str | None = Field(default=None, max_length=255)
     enabled: bool = True
     name: str | None = Field(default=None, max_length=255)
     tool_name: str | None = Field(default=None, max_length=255)
@@ -129,6 +163,7 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     install: str | None = None
     setup_command: str | None = None
     invoke_metadata: dict[str, Any] = Field(default_factory=dict, json_schema_extra={"x-dify-opaque": True})
+    env: AgentCliToolEnvConfig = Field(default_factory=AgentCliToolEnvConfig)
     pre_authorized: bool | None = None
     authorization_status: AgentCliToolAuthorizationStatus | None = None
     permission: AgentPermissionConfig | None = None
@@ -171,32 +206,6 @@ class AgentHumanToolConfig(AgentFlexibleConfig):
     enabled: bool = True
     name: str | None = Field(default=None, max_length=255)
     description: str | None = None
-
-
-class AgentEnvVariableConfig(AgentFlexibleConfig):
-    name: str | None = Field(default=None, max_length=255)
-    key: str | None = Field(default=None, max_length=255)
-    env_name: str | None = Field(default=None, max_length=255)
-    variable: str | None = Field(default=None, max_length=255)
-    type: str | None = Field(default=None, max_length=64)
-    value: RuntimeParameterValue = None
-    default: RuntimeParameterValue = None
-    required: bool = False
-
-
-class AgentSecretRefConfig(AgentFlexibleConfig):
-    name: str | None = Field(default=None, max_length=255)
-    key: str | None = Field(default=None, max_length=255)
-    env_name: str | None = Field(default=None, max_length=255)
-    variable: str | None = Field(default=None, max_length=255)
-    type: str | None = Field(default=None, max_length=64)
-    id: str | None = Field(default=None, max_length=255)
-    ref: str | None = Field(default=None, max_length=255)
-    credential_id: str | None = Field(default=None, max_length=255)
-    provider_credential_id: str | None = Field(default=None, max_length=255)
-    provider: str | None = Field(default=None, max_length=255)
-    permission: AgentPermissionConfig | None = None
-    permission_status: str | None = Field(default=None, max_length=64)
 
 
 class AgentSandboxProviderConfig(AgentFlexibleConfig):
@@ -337,7 +346,11 @@ class AgentSoulDifyToolConfig(BaseModel):
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
-    tool_name: str = Field(min_length=1, max_length=255)
+    # ``None`` = provider-level entry selecting ALL tools of the provider (a
+    # provider hosts many tools, like an MCP server). The runtime expands the
+    # entry into every tool the provider currently declares; ``credential_ref``
+    # applies to all of them. Mention form: ``[§tool:<provider>/*§]``.
+    tool_name: str | None = Field(default=None, min_length=1, max_length=255)
     credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
     credential_ref: AgentSoulDifyToolCredentialRef | None = None
     # Reserved for a future user-rename UX. Accepted but currently rejected at

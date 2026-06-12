@@ -24,6 +24,7 @@ from controllers.console.agent.roster import (
     AgentRosterVersionDetailApi,
     AgentRosterVersionsApi,
 )
+from models.model import AppMode
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
 
 
@@ -109,6 +110,22 @@ def _candidates_response(variant: str) -> dict:
         "allowed_soul_candidates": {},
         "capabilities": {"human_roster_available": False},
     }
+
+
+def _get_app_model_modes(view) -> list[AppMode]:
+    current = view
+    while current is not None:
+        closure = getattr(current, "__closure__", None)
+        if closure is not None:
+            for cell in closure:
+                try:
+                    value = cell.cell_contents
+                except ValueError:
+                    continue
+                if isinstance(value, list) and all(isinstance(item, AppMode) for item in value):
+                    return value
+        current = getattr(current, "__wrapped__", None)
+    return []
 
 
 class _PayloadWithDescription(Protocol):
@@ -289,12 +306,12 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
         )
         assert saved_state["save_options"] == ["node_job_only"]
         assert unwrap(WorkflowAgentComposerValidateApi.post)(
-            WorkflowAgentComposerValidateApi(), app_model, "node-1"
-        ) == {"result": "success", "errors": []}
+            WorkflowAgentComposerValidateApi(), "tenant-1", app_model, "node-1"
+        ) == {"result": "success", "errors": [], "warnings": [], "knowledge_retrieval_placeholder": []}
     assert (
-        unwrap(WorkflowAgentComposerCandidatesApi.get)(WorkflowAgentComposerCandidatesApi(), app_model, "node-1")[
-            "variant"
-        ]
+        unwrap(WorkflowAgentComposerCandidatesApi.get)(
+            WorkflowAgentComposerCandidatesApi(), "tenant-1", account_id, app_model, "node-1"
+        )["variant"]
         == "workflow"
     )
     with app.test_request_context(json=payload):
@@ -349,9 +366,39 @@ def test_agent_app_composer_get_put_validate_and_candidates(
             unwrap(AgentAppComposerApi.put)(AgentAppComposerApi(), "tenant-1", account_id, app_model)["variant"]
             == "agent_app"
         )
-        assert unwrap(AgentAppComposerValidateApi.post)(AgentAppComposerValidateApi(), app_model) == {
+        assert unwrap(AgentAppComposerValidateApi.post)(AgentAppComposerValidateApi(), "tenant-1", app_model) == {
             "result": "success",
             "errors": [],
+            "warnings": [],
+            "knowledge_retrieval_placeholder": [],
         }
-    agent_app_candidates = unwrap(AgentAppComposerCandidatesApi.get)(AgentAppComposerCandidatesApi(), app_model)
+    agent_app_candidates = unwrap(AgentAppComposerCandidatesApi.get)(
+        AgentAppComposerCandidatesApi(), "tenant-1", account_id, app_model
+    )
     assert agent_app_candidates["variant"] == "agent_app"
+
+
+def test_agent_app_composer_routes_are_agent_mode_only() -> None:
+    assert _get_app_model_modes(AgentAppComposerApi.get) == [AppMode.AGENT]
+    assert _get_app_model_modes(AgentAppComposerApi.put) == [AppMode.AGENT]
+    assert _get_app_model_modes(AgentAppComposerValidateApi.post) == [AppMode.AGENT]
+    assert _get_app_model_modes(AgentAppComposerCandidatesApi.get) == [AppMode.AGENT]
+
+
+def test_dify_tool_candidate_response_keeps_granularity_fields():
+    """Both selection granularities must survive the fields-layer model —
+    the frontend needs granularity/tools_count to render the Tools menu."""
+    from fields.agent_fields import AgentComposerDifyToolCandidateResponse
+
+    provider_entry = AgentComposerDifyToolCandidateResponse.model_validate(
+        {
+            "id": "duckduckgo/*",
+            "granularity": "provider",
+            "name": "DuckDuckGo",
+            "provider": "duckduckgo",
+            "plugin_id": "langgenius/duckduckgo",
+            "tools_count": 2,
+        }
+    ).model_dump(exclude_none=True)
+    assert provider_entry["granularity"] == "provider"
+    assert provider_entry["tools_count"] == 2

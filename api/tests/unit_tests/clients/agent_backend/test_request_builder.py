@@ -304,8 +304,9 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
     assert DIFY_SHELL_LAYER_ID in layers
     shell = layers[DIFY_SHELL_LAYER_ID]
     assert shell.type == DIFY_SHELL_LAYER_TYPE_ID
-    # The shell layer declares NoLayerDeps, so the spec must carry no deps.
-    assert not shell.deps
+    # The shell layer depends on execution_context so the agent server can mint
+    # per-command Agent Stub env for sandbox CLI forwarding.
+    assert shell.deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     shell_config = cast(DifyShellLayerConfig, shell.config)
     assert shell_config.env[0].name == "PROJECT_NAME"
 
@@ -324,6 +325,6 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
 
     assert DIFY_SHELL_LAYER_ID in layers
     assert layers[DIFY_SHELL_LAYER_ID].type == DIFY_SHELL_LAYER_TYPE_ID
-    assert not layers[DIFY_SHELL_LAYER_ID].deps
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.env[0].name == "APP_ENV"

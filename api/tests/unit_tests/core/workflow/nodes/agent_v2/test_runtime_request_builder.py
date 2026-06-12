@@ -330,9 +330,9 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "node", "install_commands": ["apt-get install -y nodejs"]},
-        {"name": "python", "install_commands": ["pip install pytest"]},
-        {"name": None, "install_commands": ["apk add git"]},
+        {"name": "node", "install_commands": ["apt-get install -y nodejs"], "env": [], "secret_refs": []},
+        {"name": "python", "install_commands": ["pip install pytest"], "env": [], "secret_refs": []},
+        {"name": None, "install_commands": ["apk add git"], "env": [], "secret_refs": []},
     ]
     assert config["env"] == [
         {"name": "PROJECT_NAME", "value": "demo"},
@@ -353,7 +353,9 @@ def test_build_shell_layer_config_maps_typed_command_field():
 
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
-    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+    assert config["cli_tools"] == [
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+    ]
 
 
 def test_build_shell_layer_config_skips_disabled_cli_tools():
@@ -371,7 +373,9 @@ def test_build_shell_layer_config_skips_disabled_cli_tools():
 
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
-    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+    assert config["cli_tools"] == [
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+    ]
 
 
 def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools():
@@ -397,8 +401,43 @@ def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "jq", "install_commands": ["apt-get install -y jq"]},
-        {"name": "accepted-risk", "install_commands": ["curl https://example.test/install.sh | sh"]},
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []},
+        {
+            "name": "accepted-risk",
+            "install_commands": ["curl https://example.test/install.sh | sh"],
+            "env": [],
+            "secret_refs": [],
+        },
+    ]
+
+
+def test_build_shell_layer_config_maps_cli_tool_scoped_env():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "cli_tools": [
+                    {
+                        "name": "github",
+                        "command": "apt-get install -y gh",
+                        "env": {
+                            "variables": [{"name": "GH_HOST", "value": "github.com"}],
+                            "secret_refs": [{"name": "GITHUB_TOKEN", "credential_id": "credential-1"}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [
+        {
+            "name": "github",
+            "install_commands": ["apt-get install -y gh"],
+            "env": [{"name": "GH_HOST", "value": "github.com"}],
+            "secret_refs": [{"name": "GITHUB_TOKEN", "ref": "credential-1"}],
+        }
     ]
 
 
@@ -599,3 +638,40 @@ def test_effective_declared_outputs_passthrough_when_user_declared():
     declared = [DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)]
     effective = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared)
     assert list(effective) == declared
+
+
+def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
+    """ENG-616: slash-menu mention tokens expand to canonical names; node_output
+    mentions expand to the reference name only (the value stays in the Workflow
+    context user prompt), and no ``[§…§]`` marker leaks into the request."""
+    import json
+
+    context = _context()
+    context.snapshot.config_snapshot = AgentSoulConfig(
+        prompt={"system_prompt": "Careful. Ask [§human:c-1:EMAIL · DAVE§] when unsure."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        human={"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
+    )
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": (
+                "Read [§node_output:previous-node.text:PREV/text§] and produce [§output:summary§]. "
+                "Unknown [§knowledge:gone:旧手册§] degrades."
+            ),
+            "previous_node_output_refs": [
+                {"selector": ["previous-node", "text"], "name": "PREV/text"},
+            ],
+            "declared_outputs": [{"name": "summary", "type": "string"}],
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    assert dumped["composition"]["layers"][0]["config"]["prefix"] == ("Careful. Ask EMAIL · David Hayes when unsure.")
+    assert dumped["composition"]["layers"][1]["config"]["prefix"] == (
+        "Read PREV/text and produce summary (string). Unknown 旧手册 degrades."
+    )
+    # the value still rides the Workflow context block, not the job prompt
+    assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
+    assert "[§" not in json.dumps(dumped["composition"]["layers"][:3])

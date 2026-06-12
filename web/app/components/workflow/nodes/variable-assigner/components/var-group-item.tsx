@@ -25,7 +25,7 @@ type Payload = VarGroupItemType & {
   group_name?: string
 }
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   payload: Payload
@@ -35,7 +35,7 @@ type Props = {
   canRemove?: boolean
   onRemove?: () => void
   availableVars: NodeOutPutVar[]
-}
+}>
 
 const VarGroupItem: FC<Props> = ({
   readOnly,

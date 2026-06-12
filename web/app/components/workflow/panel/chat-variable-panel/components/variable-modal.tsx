@@ -12,6 +12,7 @@ import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import { useVariableModalState } from './use-variable-modal-state'
 import {
   getEditorToggleLabelKey,
+  MAX_DESCRIPTION_LENGTH,
   typeList,
   validateVariableName,
 } from './variable-modal.helpers'
@@ -72,6 +73,7 @@ const ChatVariableModal = ({
       return
     handleVarNameChange(e)
   }
+
   return (
     <div
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
@@ -127,6 +129,7 @@ const ChatVariableModal = ({
         />
         <DescriptionSection
           description={description}
+          maxLength={MAX_DESCRIPTION_LENGTH}
           onChange={setDescription}
           placeholder={t('chatVariable.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
           title={t('chatVariable.modal.description', { ns: 'workflow' })}

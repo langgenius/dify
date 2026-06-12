@@ -25,7 +25,8 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
 
     @override
-    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
+    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+        del current_tenant_id
         try:
             return self.fetch_pipeline_templates_from_dify_official(language)
         except Exception as e:

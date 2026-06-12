@@ -730,6 +730,10 @@ def _workspace_cwd(session_id: str) -> str:
 
 def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
     """Return the workspace bootstrap script for env + CLI tool declarations."""
+    has_bootstrap = bool(config.env or config.secret_refs or config.cli_tools or config.sandbox is not None)
+    if not has_bootstrap:
+        return ""
+
     lines: list[str] = [
         "set -eu",
         'mkdir -p ".dify"',
@@ -741,6 +745,11 @@ def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
         # Secret refs are resolved outside this public DTO. Preserve the env var
         # name without inventing a value so host-provided env can flow through.
         lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
+    for tool in config.cli_tools:
+        for env_var in tool.env:
+            lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
+        for secret_ref in tool.secret_refs:
+            lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
     if config.sandbox is not None:
         if config.sandbox.provider:
             lines.append(f"export DIFY_SANDBOX_PROVIDER={_shquote(config.sandbox.provider)}")
@@ -751,12 +760,13 @@ def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
         [
             "DIFY_ENV_EOF",
             'chmod 600 ".dify/env.sh"',
+            '. ".dify/env.sh"',
         ]
     )
     for tool in config.cli_tools:
         for command in tool.install_commands:
             lines.append(command)
-    return "\n".join(lines) if len(lines) > 5 or config.cli_tools else ""
+    return "\n".join(lines)
 
 
 def _wrap_user_script(script: str) -> str:

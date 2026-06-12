@@ -45,6 +45,27 @@ export type AppDescribeResponse = {
   } | null
 }
 
+export type AppDslExportQuery = {
+  include_secret?: boolean
+  workflow_id?: string | null
+}
+
+export type AppDslExportResponse = {
+  data: string
+}
+
+export type AppDslImportPayload = {
+  app_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  mode: 'yaml-content' | 'yaml-url'
+  name?: string | null
+  yaml_content?: string | null
+  yaml_url?: string | null
+}
+
 export type AppInfoResponse = {
   author?: string | null
   description?: string | null
@@ -107,6 +128,10 @@ export type AppRunRequest = {
   workspace_id?: string | null
 }
 
+export type CheckDependenciesResult = {
+  leaked_dependencies?: Array<PluginDependency>
+}
+
 export type DeviceCodeRequest = {
   client_id: string
   device_label: string
@@ -143,6 +168,20 @@ export type DevicePollRequest = {
   device_code: string
 }
 
+export type ErrorBody = {
+  code: string
+  details?: Array<ErrorDetail> | null
+  hint?: string | null
+  message: string
+  status: number
+}
+
+export type ErrorDetail = {
+  loc?: Array<unknown>
+  msg: string
+  type: string
+}
+
 export type FileResponse = {
   conversation_id?: string | null
   created_at?: number | null
@@ -165,6 +204,13 @@ export type FormSubmitResponse = {
   [key: string]: never
 }
 
+export type Github = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
 export type HealthResponse = {
   ok: boolean
 }
@@ -176,7 +222,24 @@ export type HumanInputFormSubmitPayload = {
   }
 }
 
+export type Import = {
+  app_id?: string | null
+  app_mode?: string | null
+  current_dsl_version?: string
+  error?: string
+  id: string
+  imported_dsl_version?: string
+  status: ImportStatus
+}
+
+export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
 export type JsonValue = unknown
+
+export type Marketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
 
 export type MemberActionResponse = {
   result?: string
@@ -229,6 +292,42 @@ export type MessageMetadata = {
   usage?: UsageInfo
 }
 
+export type OpenApiErrorCode
+  = | 'app_unavailable'
+    | 'bad_gateway'
+    | 'bad_request'
+    | 'completion_request_error'
+    | 'conflict'
+    | 'conversation_completed'
+    | 'file_extension_blocked'
+    | 'file_too_large'
+    | 'filename_not_exists'
+    | 'forbidden'
+    | 'internal_server_error'
+    | 'invalid_param'
+    | 'member_license_exceeded'
+    | 'member_limit_exceeded'
+    | 'method_not_allowed'
+    | 'model_currently_not_support'
+    | 'no_file_uploaded'
+    | 'not_acceptable'
+    | 'not_found'
+    | 'provider_not_initialize'
+    | 'provider_quota_exceeded'
+    | 'rate_limit_error'
+    | 'request_entity_too_large'
+    | 'too_many_files'
+    | 'too_many_requests'
+    | 'unauthorized'
+    | 'unknown'
+    | 'unsupported_file_type'
+    | 'unsupported_media_type'
+
+export type Package = {
+  plugin_unique_identifier: string
+  version?: string | null
+}
+
 export type PermittedExternalAppsListQuery = {
   limit?: number
   mode?: AppMode
@@ -242,6 +341,12 @@ export type PermittedExternalAppsListResponse = {
   limit: number
   page: number
   total: number
+}
+
+export type PluginDependency = {
+  current_identifier?: string | null
+  type: Type
+  value: unknown
 }
 
 export type RevokeResponse = {
@@ -283,6 +388,8 @@ export type TagItem = {
 export type TaskStopResponse = {
   result: string
 }
+
+export type Type = 'github' | 'marketplace' | 'package'
 
 export type UsageInfo = {
   completion_tokens?: number
@@ -339,6 +446,12 @@ export type GetHealthData = {
   url: '/_health'
 }
 
+export type GetHealthErrors = {
+  default: ErrorBody
+}
+
+export type GetHealthError = GetHealthErrors[keyof GetHealthErrors]
+
 export type GetHealthResponses = {
   200: HealthResponse
 }
@@ -352,6 +465,12 @@ export type GetVersionData = {
   url: '/_version'
 }
 
+export type GetVersionErrors = {
+  default: ErrorBody
+}
+
+export type GetVersionError = GetVersionErrors[keyof GetVersionErrors]
+
 export type GetVersionResponses = {
   200: ServerVersionResponse
 }
@@ -364,6 +483,12 @@ export type GetAccountData = {
   query?: never
   url: '/account'
 }
+
+export type GetAccountErrors = {
+  default: ErrorBody
+}
+
+export type GetAccountError = GetAccountErrors[keyof GetAccountErrors]
 
 export type GetAccountResponses = {
   200: AccountResponse
@@ -381,6 +506,13 @@ export type GetAccountSessionsData = {
   url: '/account/sessions'
 }
 
+export type GetAccountSessionsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAccountSessionsError = GetAccountSessionsErrors[keyof GetAccountSessionsErrors]
+
 export type GetAccountSessionsResponses = {
   200: SessionListResponse
 }
@@ -394,6 +526,13 @@ export type DeleteAccountSessionsSelfData = {
   query?: never
   url: '/account/sessions/self'
 }
+
+export type DeleteAccountSessionsSelfErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAccountSessionsSelfError
+  = DeleteAccountSessionsSelfErrors[keyof DeleteAccountSessionsSelfErrors]
 
 export type DeleteAccountSessionsSelfResponses = {
   200: RevokeResponse
@@ -410,6 +549,13 @@ export type DeleteAccountSessionsBySessionIdData = {
   query?: never
   url: '/account/sessions/{session_id}'
 }
+
+export type DeleteAccountSessionsBySessionIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAccountSessionsBySessionIdError
+  = DeleteAccountSessionsBySessionIdErrors[keyof DeleteAccountSessionsBySessionIdErrors]
 
 export type DeleteAccountSessionsBySessionIdResponses = {
   200: RevokeResponse
@@ -432,11 +578,41 @@ export type GetAppsData = {
   url: '/apps'
 }
 
+export type GetAppsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsError = GetAppsErrors[keyof GetAppsErrors]
+
 export type GetAppsResponses = {
   200: AppListResponse
 }
 
 export type GetAppsResponse = GetAppsResponses[keyof GetAppsResponses]
+
+export type GetAppsByAppIdCheckDependenciesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/check-dependencies'
+}
+
+export type GetAppsByAppIdCheckDependenciesErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdCheckDependenciesError
+  = GetAppsByAppIdCheckDependenciesErrors[keyof GetAppsByAppIdCheckDependenciesErrors]
+
+export type GetAppsByAppIdCheckDependenciesResponses = {
+  200: CheckDependenciesResult
+}
+
+export type GetAppsByAppIdCheckDependenciesResponse
+  = GetAppsByAppIdCheckDependenciesResponses[keyof GetAppsByAppIdCheckDependenciesResponses]
 
 export type GetAppsByAppIdDescribeData = {
   body?: never
@@ -449,12 +625,46 @@ export type GetAppsByAppIdDescribeData = {
   url: '/apps/{app_id}/describe'
 }
 
+export type GetAppsByAppIdDescribeErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdDescribeError
+  = GetAppsByAppIdDescribeErrors[keyof GetAppsByAppIdDescribeErrors]
+
 export type GetAppsByAppIdDescribeResponses = {
   200: AppDescribeResponse
 }
 
 export type GetAppsByAppIdDescribeResponse
   = GetAppsByAppIdDescribeResponses[keyof GetAppsByAppIdDescribeResponses]
+
+export type GetAppsByAppIdExportData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    include_secret?: boolean
+    workflow_id?: string
+  }
+  url: '/apps/{app_id}/export'
+}
+
+export type GetAppsByAppIdExportErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdExportError = GetAppsByAppIdExportErrors[keyof GetAppsByAppIdExportErrors]
+
+export type GetAppsByAppIdExportResponses = {
+  200: AppDslExportResponse
+}
+
+export type GetAppsByAppIdExportResponse
+  = GetAppsByAppIdExportResponses[keyof GetAppsByAppIdExportResponses]
 
 export type PostAppsByAppIdFilesUploadData = {
   body?: never
@@ -478,6 +688,7 @@ export type PostAppsByAppIdFilesUploadErrors = {
   415: {
     [key: string]: unknown
   }
+  default: ErrorBody
 }
 
 export type PostAppsByAppIdFilesUploadError
@@ -519,6 +730,14 @@ export type PostAppsByAppIdFormHumanInputByFormTokenData = {
   url: '/apps/{app_id}/form/human_input/{form_token}'
 }
 
+export type PostAppsByAppIdFormHumanInputByFormTokenErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdFormHumanInputByFormTokenError
+  = PostAppsByAppIdFormHumanInputByFormTokenErrors[keyof PostAppsByAppIdFormHumanInputByFormTokenErrors]
+
 export type PostAppsByAppIdFormHumanInputByFormTokenResponses = {
   200: FormSubmitResponse
 }
@@ -534,6 +753,12 @@ export type PostAppsByAppIdRunData = {
   query?: never
   url: '/apps/{app_id}/run'
 }
+
+export type PostAppsByAppIdRunErrors = {
+  422: ErrorBody
+}
+
+export type PostAppsByAppIdRunError = PostAppsByAppIdRunErrors[keyof PostAppsByAppIdRunErrors]
 
 export type PostAppsByAppIdRunResponses = {
   200: {
@@ -572,6 +797,13 @@ export type PostAppsByAppIdTasksByTaskIdStopData = {
   query?: never
   url: '/apps/{app_id}/tasks/{task_id}/stop'
 }
+
+export type PostAppsByAppIdTasksByTaskIdStopErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdTasksByTaskIdStopError
+  = PostAppsByAppIdTasksByTaskIdStopErrors[keyof PostAppsByAppIdTasksByTaskIdStopErrors]
 
 export type PostAppsByAppIdTasksByTaskIdStopResponses = {
   200: TaskStopResponse
@@ -666,6 +898,14 @@ export type GetPermittedExternalAppsData = {
   url: '/permitted-external-apps'
 }
 
+export type GetPermittedExternalAppsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetPermittedExternalAppsError
+  = GetPermittedExternalAppsErrors[keyof GetPermittedExternalAppsErrors]
+
 export type GetPermittedExternalAppsResponses = {
   200: PermittedExternalAppsListResponse
 }
@@ -679,6 +919,12 @@ export type GetWorkspacesData = {
   query?: never
   url: '/workspaces'
 }
+
+export type GetWorkspacesErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesError = GetWorkspacesErrors[keyof GetWorkspacesErrors]
 
 export type GetWorkspacesResponses = {
   200: WorkspaceListResponse
@@ -695,12 +941,70 @@ export type GetWorkspacesByWorkspaceIdData = {
   url: '/workspaces/{workspace_id}'
 }
 
+export type GetWorkspacesByWorkspaceIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdError
+  = GetWorkspacesByWorkspaceIdErrors[keyof GetWorkspacesByWorkspaceIdErrors]
+
 export type GetWorkspacesByWorkspaceIdResponses = {
   200: WorkspaceDetailResponse
 }
 
 export type GetWorkspacesByWorkspaceIdResponse
   = GetWorkspacesByWorkspaceIdResponses[keyof GetWorkspacesByWorkspaceIdResponses]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsData = {
+  body: AppDslImportPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/imports'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsErrors = {
+  400: Import
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsError
+  = PostWorkspacesByWorkspaceIdAppsImportsErrors[keyof PostWorkspacesByWorkspaceIdAppsImportsErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsResponses = {
+  200: Import
+  202: Import
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsResponse
+  = PostWorkspacesByWorkspaceIdAppsImportsResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsResponses]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmData = {
+  body?: never
+  path: {
+    import_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/imports/{import_id}/confirm'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors = {
+  400: Import
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmError
+  = PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors[keyof PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses = {
+  200: Import
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse
+  = PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses]
 
 export type GetWorkspacesByWorkspaceIdMembersData = {
   body?: never
@@ -713,6 +1017,14 @@ export type GetWorkspacesByWorkspaceIdMembersData = {
   }
   url: '/workspaces/{workspace_id}/members'
 }
+
+export type GetWorkspacesByWorkspaceIdMembersErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdMembersError
+  = GetWorkspacesByWorkspaceIdMembersErrors[keyof GetWorkspacesByWorkspaceIdMembersErrors]
 
 export type GetWorkspacesByWorkspaceIdMembersResponses = {
   200: MemberListResponse
@@ -729,6 +1041,14 @@ export type PostWorkspacesByWorkspaceIdMembersData = {
   query?: never
   url: '/workspaces/{workspace_id}/members'
 }
+
+export type PostWorkspacesByWorkspaceIdMembersErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdMembersError
+  = PostWorkspacesByWorkspaceIdMembersErrors[keyof PostWorkspacesByWorkspaceIdMembersErrors]
 
 export type PostWorkspacesByWorkspaceIdMembersResponses = {
   201: MemberInviteResponse
@@ -747,6 +1067,13 @@ export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdData = {
   url: '/workspaces/{workspace_id}/members/{member_id}'
 }
 
+export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdError
+  = DeleteWorkspacesByWorkspaceIdMembersByMemberIdErrors[keyof DeleteWorkspacesByWorkspaceIdMembersByMemberIdErrors]
+
 export type DeleteWorkspacesByWorkspaceIdMembersByMemberIdResponses = {
   200: MemberActionResponse
 }
@@ -764,6 +1091,14 @@ export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleData = {
   url: '/workspaces/{workspace_id}/members/{member_id}/role'
 }
 
+export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleError
+  = PutWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors[keyof PutWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors]
+
 export type PutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponses = {
   200: MemberActionResponse
 }
@@ -779,6 +1114,13 @@ export type PostWorkspacesByWorkspaceIdSwitchData = {
   query?: never
   url: '/workspaces/{workspace_id}/switch'
 }
+
+export type PostWorkspacesByWorkspaceIdSwitchErrors = {
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdSwitchError
+  = PostWorkspacesByWorkspaceIdSwitchErrors[keyof PostWorkspacesByWorkspaceIdSwitchErrors]
 
 export type PostWorkspacesByWorkspaceIdSwitchResponses = {
   200: WorkspaceDetailResponse

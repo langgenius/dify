@@ -15,7 +15,7 @@ import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-sele
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useAllMCPTools } from '@/service/use-tools'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   value: ToolValue[]
   label: string
@@ -27,7 +27,7 @@ type Props = {
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId?: string
-}
+}>
 
 const MultipleToolSelector = ({
   disabled,
