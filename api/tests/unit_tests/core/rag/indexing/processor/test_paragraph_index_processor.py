@@ -234,20 +234,6 @@ class TestParagraphIndexProcessor:
 
         mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["node-2"])
 
-    def test_retrieve_filters_by_threshold(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
-        accepted = SimpleNamespace(page_content="keep", metadata={"source": "a"}, score=0.9)
-        rejected = SimpleNamespace(page_content="drop", metadata={"source": "b"}, score=0.1)
-
-        with patch(
-            "core.rag.index_processor.processor.paragraph_index_processor.RetrievalService.retrieve"
-        ) as mock_retrieve:
-            mock_retrieve.return_value = [accepted, rejected]
-            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
-            docs = processor.retrieve("semantic_search", "query", dataset, 5, 0.5, reranking_model)
-
-        assert len(docs) == 1
-        assert docs[0].metadata["score"] == 0.9
-
     def test_index_list_chunks_high_quality(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:

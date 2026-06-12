@@ -437,3 +437,112 @@ def test_legacy_provider_name_and_tool_parameters_normalized():
     assert tool.runtime_parameters == {"region": "us"}
     assert tool.credential_ref is not None
     assert tool.credential_ref.id == "credential-1"
+
+
+# ── provider-level entries (tool_name omitted = all tools of the provider) ───
+
+
+def test_provider_level_entry_expands_to_all_tools():
+    runtime_provider = FakeRuntimeProvider(_tool())
+    listed: list[tuple[str, str]] = []
+
+    def lister(*, tenant_id: str, provider_id: str) -> list[str]:
+        listed.append((tenant_id, provider_id))
+        return ["search", "image_search"]
+
+    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider, provider_tools_lister=lister)
+    tools = AgentSoulToolsConfig.model_validate(
+        {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    assert [tool.tool_name for tool in result.tools] == ["search", "image_search"]
+    assert listed == [("tenant-1", "langgenius/search/search")]
+
+
+def test_explicit_tool_entry_wins_over_provider_expansion():
+    builder = WorkflowAgentPluginToolsBuilder(
+        tool_runtime_provider=FakeRuntimeProvider(_tool()),
+        provider_tools_lister=lambda *, tenant_id, provider_id: ["search", "image_search"],
+    )
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {"provider_id": "langgenius/search/search", "credential_type": "unauthorized"},
+                {
+                    "provider_id": "langgenius/search/search",
+                    "tool_name": "search",
+                    "credential_type": "unauthorized",
+                    "runtime_parameters": {"region": "eu"},
+                },
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    # the expansion skips "search" (explicit entry wins); no duplicate error
+    assert result is not None
+    assert sorted(tool.tool_name for tool in result.tools) == ["image_search", "search"]
+
+
+def test_provider_level_entry_with_no_tools_maps_to_declaration_not_found():
+    builder = WorkflowAgentPluginToolsBuilder(
+        tool_runtime_provider=FakeRuntimeProvider(_tool()),
+        provider_tools_lister=lambda *, tenant_id, provider_id: [],
+    )
+    tools = AgentSoulToolsConfig.model_validate(
+        {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
+    )
+
+    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+        _build(builder, tools)
+    assert exc_info.value.error_code == "agent_tool_declaration_not_found"
+
+
+def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
+    from core.tools.errors import ToolProviderNotFoundError
+
+    def lister(*, tenant_id: str, provider_id: str) -> list[str]:
+        raise ToolProviderNotFoundError("provider gone")
+
+    builder = WorkflowAgentPluginToolsBuilder(
+        tool_runtime_provider=FakeRuntimeProvider(_tool()), provider_tools_lister=lister
+    )
+    tools = AgentSoulToolsConfig.model_validate(
+        {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
+    )
+
+    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+        _build(builder, tools)
+    assert exc_info.value.error_code == "agent_tool_declaration_not_found"
+
+
+def test_list_provider_tool_names_reads_builtin_provider(monkeypatch):
+    """The default provider-tools lister maps ToolManager's provider controller
+    to the plain name list the expansion step consumes."""
+    from types import SimpleNamespace
+
+    from core.workflow.nodes.agent_v2 import plugin_tools_builder as module
+
+    provider = SimpleNamespace(
+        get_tools=lambda: [
+            SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="ddg_search"))),
+            SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="ddg_news"))),
+        ]
+    )
+    captured: dict[str, str] = {}
+
+    def fake_get_builtin_provider(provider_id, tenant_id):
+        captured["provider_id"] = provider_id
+        captured["tenant_id"] = tenant_id
+        return provider
+
+    monkeypatch.setattr(module.ToolManager, "get_builtin_provider", staticmethod(fake_get_builtin_provider))
+
+    names = module._list_provider_tool_names(tenant_id="tenant-1", provider_id="langgenius/duckduckgo/duckduckgo")
+
+    assert names == ["ddg_search", "ddg_news"]
+    assert captured == {"provider_id": "langgenius/duckduckgo/duckduckgo", "tenant_id": "tenant-1"}

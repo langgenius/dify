@@ -383,3 +383,22 @@ def test_agent_app_composer_routes_are_agent_mode_only() -> None:
     assert _get_app_model_modes(AgentAppComposerApi.put) == [AppMode.AGENT]
     assert _get_app_model_modes(AgentAppComposerValidateApi.post) == [AppMode.AGENT]
     assert _get_app_model_modes(AgentAppComposerCandidatesApi.get) == [AppMode.AGENT]
+
+
+def test_dify_tool_candidate_response_keeps_granularity_fields():
+    """Both selection granularities must survive the fields-layer model —
+    the frontend needs granularity/tools_count to render the Tools menu."""
+    from fields.agent_fields import AgentComposerDifyToolCandidateResponse
+
+    provider_entry = AgentComposerDifyToolCandidateResponse.model_validate(
+        {
+            "id": "duckduckgo/*",
+            "granularity": "provider",
+            "name": "DuckDuckGo",
+            "provider": "duckduckgo",
+            "plugin_id": "langgenius/duckduckgo",
+            "tools_count": 2,
+        }
+    ).model_dump(exclude_none=True)
+    assert provider_entry["granularity"] == "provider"
+    assert provider_entry["tools_count"] == 2

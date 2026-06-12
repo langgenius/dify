@@ -1723,6 +1723,7 @@ export type AgentCliToolConfig = {
   description?: string | null
   enabled?: boolean
   env?: AgentCliToolEnvConfig
+  id?: string | null
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
@@ -1743,11 +1744,13 @@ export type AgentCliToolConfig = {
 
 export type AgentComposerDifyToolCandidateResponse = {
   description?: string | null
+  granularity?: string | null
   id?: string | null
   name?: string | null
   plugin_id?: string | null
   provider?: string | null
   provider_id?: string | null
+  tools_count?: number | null
 }
 
 export type AgentKnowledgeDatasetConfig = {
@@ -2004,7 +2007,7 @@ export type AgentSoulDifyToolConfig = {
   runtime_parameters?: {
     [key: string]: unknown
   }
-  tool_name: string
+  tool_name?: string | null
 }
 
 export type AgentCliToolAuthorizationStatus

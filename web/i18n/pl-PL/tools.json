@@ -123,7 +123,7 @@
   "mcp.modal.confirm": "Dodaj i autoryzuj",
   "mcp.modal.editTitle": "Edytuj serwer MCP (HTTP)",
   "mcp.modal.forwardUserIdentity": "Przekaż tożsamość użytkownika",
-  "mcp.modal.forwardUserIdentityTip": "Wysyła zweryfikowaną tożsamość SSO wywołującego użytkownika do tego serwera MCP jako token Authorization Bearer. Wymaga Dify Enterprise SSO.",
+  "mcp.modal.forwardUserIdentityTip": "Przekazuje zweryfikowaną tożsamość SSO wywołującego użytkownika do tego serwera MCP w nagłówku X-Dify-SSO-Token. Wymaga Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Nazwa nagłówka",
   "mcp.modal.headerKeyPlaceholder": "np. Autoryzacja",
   "mcp.modal.headerValue": "Wartość nagłówka",
