@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { agentComposerDraftAtom, agentComposerPromptAtom, defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom, agentComposerKnowledgeRetrievalsAtom, agentComposerPromptAtom, defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
@@ -154,6 +154,25 @@ describe('AgentPromptEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
 
       expect(mockCopy).toHaveBeenCalledWith('Review these tenders')
+    })
+
+    it('should update knowledge reference labels when the retrieval title changes', () => {
+      const store = createStore()
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentComposerDraft,
+        prompt: 'Use [§knowledge:retrieval-1:Old Search§] and [§knowledge:retrieval-2:Keep Search§]',
+        knowledgeRetrievals: [
+          { id: 'retrieval-1', name: 'Old Search' },
+          { id: 'retrieval-2', name: 'Keep Search' },
+        ],
+      })
+
+      store.set(agentComposerKnowledgeRetrievalsAtom, [
+        { id: 'retrieval-1', name: 'Release Search' },
+        { id: 'retrieval-2', name: 'Keep Search' },
+      ])
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Use [§knowledge:retrieval-1:Release Search§] and [§knowledge:retrieval-2:Keep Search§]')
     })
   })
 
