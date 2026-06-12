@@ -14,6 +14,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import WorkflowNodeJobConfig
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.composer_service import AgentComposerService
@@ -90,10 +91,18 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch):
 
 
 def test_load_workflow_composer_serializes_existing_binding(monkeypatch):
-    binding = SimpleNamespace(agent_id="agent-1", current_snapshot_id="version-1")
+    binding = SimpleNamespace(
+        agent_id="agent-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        current_snapshot_id="version-1",
+    )
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
-    monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: SimpleNamespace(id="agent-1"))
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_agent_if_present",
+        lambda **kwargs: SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1"),
+    )
     monkeypatch.setattr(
         AgentComposerService,
         "_get_version_if_present",
@@ -122,14 +131,22 @@ def test_load_workflow_composer_serializes_existing_binding(monkeypatch):
 )
 def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, helper_name):
     fake_session = FakeSession()
-    binding = SimpleNamespace(agent_id="agent-1", current_snapshot_id="version-1")
+    binding = SimpleNamespace(
+        agent_id="agent-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        current_snapshot_id="version-1",
+    )
     calls = []
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
-    monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: SimpleNamespace(id="agent-1"))
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_agent_if_present",
+        lambda **kwargs: SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1"),
+    )
     monkeypatch.setattr(
         AgentComposerService,
         "_get_version_if_present",
